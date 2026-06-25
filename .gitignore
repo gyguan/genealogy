@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# Java
+target/
+build/
+.gradle/
+
+# Node
+node_modules/
+dist/
+
+# Uploads
+data/uploads/
