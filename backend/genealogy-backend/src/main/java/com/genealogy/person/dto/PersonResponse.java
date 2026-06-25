@@ -1,0 +1,41 @@
+package com.genealogy.person.dto;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+public record PersonResponse(
+        Long id,
+        Long clanId,
+        Long branchId,
+        String personCode,
+        String name,
+        String genealogyName,
+        String courtesyName,
+        String aliasName,
+        String gender,
+        Integer generationNo,
+        String generationWord,
+        String rankInFamily,
+        LocalDate birthDate,
+        String birthDatePrecision,
+        LocalDate deathDate,
+        String deathDatePrecision,
+        Boolean isLiving,
+        String birthPlace,
+        String residencePlace,
+        String occupation,
+        String education,
+        String titleOrHonor,
+        String biography,
+        String tombPlace,
+        String epitaph,
+        Boolean hasDescendant,
+        String lineageStatus,
+        String privacyLevel,
+        String dataStatus,
+        Long createdBy,
+        LocalDateTime createdAt,
+        Long updatedBy,
+        LocalDateTime updatedAt
+) {
+}

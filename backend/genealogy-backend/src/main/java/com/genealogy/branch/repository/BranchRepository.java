@@ -4,6 +4,7 @@ import com.genealogy.branch.entity.BranchEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
 
@@ -16,4 +17,6 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
     boolean existsByClanId(Long clanId);
 
     boolean existsByParentId(Long parentId);
+
+    Optional<BranchEntity> findByIdAndClanId(Long id, Long clanId);
 }
