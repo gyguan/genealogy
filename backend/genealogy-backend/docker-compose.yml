@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: genealogy-postgres
+    environment:
+      POSTGRES_DB: genealogy
+      POSTGRES_USER: genealogy
+      POSTGRES_PASSWORD: genealogy
+    ports:
+      - "5432:5432"
+    volumes:
+      - genealogy-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  genealogy-postgres-data:
