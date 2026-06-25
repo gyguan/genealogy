@@ -8,4 +8,12 @@ import java.util.List;
 public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
 
     List<BranchEntity> findByClanIdOrderByLevelAscSortOrderAscIdAsc(Long clanId);
+
+    boolean existsByClanIdAndBranchName(Long clanId, String branchName);
+
+    boolean existsByClanIdAndBranchNameAndIdNot(Long clanId, String branchName, Long id);
+
+    boolean existsByClanId(Long clanId);
+
+    boolean existsByParentId(Long parentId);
 }
