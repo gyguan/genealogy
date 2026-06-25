@@ -1,0 +1,91 @@
+package com.genealogy.member.application;
+
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.member.dto.MemberCreateRequest;
+import com.genealogy.member.dto.MemberResponse;
+import com.genealogy.member.entity.ClanMemberEntity;
+import com.genealogy.member.enums.MemberScopeType;
+import com.genealogy.member.enums.MemberStatus;
+import com.genealogy.member.repository.ClanMemberRepository;
+import com.genealogy.member.repository.RoleRepository;
+import com.genealogy.member.repository.UserAccountRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+public class MemberApplicationService {
+
+    private final ClanMemberRepository clanMemberRepository;
+    private final ClanRepository clanRepository;
+    private final BranchRepository branchRepository;
+    private final UserAccountRepository userAccountRepository;
+    private final RoleRepository roleRepository;
+
+    public MemberApplicationService(
+            ClanMemberRepository clanMemberRepository,
+            ClanRepository clanRepository,
+            BranchRepository branchRepository,
+            UserAccountRepository userAccountRepository,
+            RoleRepository roleRepository
+    ) {
+        this.clanMemberRepository = clanMemberRepository;
+        this.clanRepository = clanRepository;
+        this.branchRepository = branchRepository;
+        this.userAccountRepository = userAccountRepository;
+        this.roleRepository = roleRepository;
+    }
+
+    @Transactional
+    public MemberResponse create(Long clanId, MemberCreateRequest request) {
+        if (!clanRepository.existsById(clanId)) {
+            throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
+        }
+        if (!userAccountRepository.existsById(request.userId())) {
+            throw new BusinessException("USER_NOT_FOUND", "user not found");
+        }
+        if (!roleRepository.existsById(request.roleId())) {
+            throw new BusinessException("ROLE_NOT_FOUND", "role not found");
+        }
+        if (request.branchId() != null && branchRepository.findByIdAndClanId(request.branchId(), clanId).isEmpty()) {
+            throw new BusinessException("BRANCH_CLAN_MISMATCH", "branch not found in clan");
+        }
+        ClanMemberEntity entity = new ClanMemberEntity();
+        entity.setClanId(clanId);
+        entity.setUserId(request.userId());
+        entity.setBranchId(request.branchId());
+        entity.setRoleId(request.roleId());
+        entity.setMemberName(request.memberName());
+        entity.setMemberStatus(MemberStatus.active);
+        entity.setScopeType(request.scopeType() == null ? MemberScopeType.clan : request.scopeType());
+        entity.setScopeId(request.scopeId());
+        LocalDateTime now = LocalDateTime.now();
+        entity.setJoinedAt(now);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        return toResponse(clanMemberRepository.save(entity));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MemberResponse> listActiveByClan(Long clanId) {
+        if (!clanRepository.existsById(clanId)) {
+            throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
+        }
+        return clanMemberRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private MemberResponse toResponse(ClanMemberEntity entity) {
+        return new MemberResponse(
+                entity.getId(), entity.getClanId(), entity.getUserId(), entity.getBranchId(), entity.getRoleId(),
+                entity.getMemberName(), entity.getMemberStatus(), entity.getScopeType(), entity.getScopeId(),
+                entity.getJoinedAt(), entity.getCreatedAt()
+        );
+    }
+}
