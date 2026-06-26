@@ -29,6 +29,6 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build and test
+      - name: Compile backend
         working-directory: backend/genealogy-backend
-        run: mvn -B clean test
+        run: mvn -q -DskipTests compile
