@@ -72,6 +72,19 @@ GET  /api/v1/persons/{personId}/review-records
 
 当前优先支持人物档案审核：提交后人物状态变为 `pending_review`，审核通过后变为 `official`，审核驳回后回到 `draft`。
 
+## 来源证据链接口
+
+```text
+POST   /api/v1/source-bindings
+GET    /api/v1/source-bindings?targetType=person&targetId={id}
+GET    /api/v1/sources/{sourceId}/bindings
+DELETE /api/v1/source-bindings/{bindingId}
+POST   /api/v1/attachments
+GET    /api/v1/sources/{sourceId}/attachments
+```
+
+当前支持将资料来源绑定到 `person`、`relationship`、`branch`、`clan` 等目标对象；附件接口先登记文件元数据，不处理真实文件上传。
+
 ## 模块规划
 
 ```text
