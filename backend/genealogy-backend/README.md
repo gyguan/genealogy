@@ -110,6 +110,17 @@ GET  /api/v1/generation-schemes/{schemeId}/items/{generationNo}
 validationEnabled=false 时跳过校验
 ```
 
+## 人物 CSV 导入导出
+
+```text
+GET  /api/v1/imports/templates/persons.csv
+POST /api/v1/clans/{clanId}/imports/persons.csv
+GET  /api/v1/clans/{clanId}/exports/persons.csv
+GET  /api/v1/exports/types
+```
+
+人物 CSV 导入复用人物创建逻辑，因此人物编码唯一性、生卒日期、支派归属、字辈校验等规则都会生效。导入接口使用 `multipart/form-data`，文件字段名为 `file`。
+
 ## 模块规划
 
 ```text
