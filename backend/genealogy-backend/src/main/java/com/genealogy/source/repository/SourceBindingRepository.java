@@ -1,0 +1,15 @@
+package com.genealogy.source.repository;
+
+import com.genealogy.source.entity.SourceBindingEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface SourceBindingRepository extends JpaRepository<SourceBindingEntity, Long> {
+
+    List<SourceBindingEntity> findByTargetTypeAndTargetIdOrderByCreatedAtDesc(String targetType, Long targetId);
+
+    List<SourceBindingEntity> findBySourceIdOrderByCreatedAtDesc(Long sourceId);
+
+    boolean existsBySourceIdAndTargetTypeAndTargetId(Long sourceId, String targetType, Long targetId);
+}
