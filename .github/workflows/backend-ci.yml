@@ -37,21 +37,6 @@ jobs:
     name: Startup Check with PostgreSQL
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: genealogy
-          POSTGRES_USER: genealogy
-          POSTGRES_PASSWORD: genealogy
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U genealogy -d genealogy"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,9 +48,33 @@ jobs:
           java-version: "17"
           cache: maven
 
+      - name: Start PostgreSQL quietly
+        run: |
+          set -euo pipefail
+          docker pull postgres:16 >/dev/null
+          docker run -d \
+            --name genealogy-postgres \
+            -e POSTGRES_DB=genealogy \
+            -e POSTGRES_USER=genealogy \
+            -e POSTGRES_PASSWORD=genealogy \
+            -p 5432:5432 \
+            postgres:16 >/dev/null
+
+          for i in $(seq 1 30); do
+            if docker exec genealogy-postgres pg_isready -U genealogy -d genealogy >/dev/null 2>&1; then
+              echo "PostgreSQL is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "PostgreSQL did not become ready. Container logs:"
+          docker logs genealogy-postgres | tail -n 80
+          exit 1
+
       - name: Package backend
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipTests package
+        run: mvn -q -DskipTests package
 
       - name: Start backend and check health
         working-directory: backend/genealogy-backend
@@ -84,12 +93,14 @@ jobs:
             if curl -fsS http://localhost:8080/api/v1/health; then
               echo "Backend startup health check passed."
               kill $(cat /tmp/genealogy-backend.pid) || true
+              docker rm -f genealogy-postgres >/dev/null 2>&1 || true
               exit 0
             fi
 
             if ! kill -0 $(cat /tmp/genealogy-backend.pid) 2>/dev/null; then
               echo "Backend process exited before health check passed. Startup log tail:"
               tail -n 200 /tmp/genealogy-backend-startup.log
+              docker rm -f genealogy-postgres >/dev/null 2>&1 || true
               exit 1
             fi
 
@@ -100,4 +111,5 @@ jobs:
           echo "Backend health check timeout. Startup log tail:"
           tail -n 200 /tmp/genealogy-backend-startup.log
           kill $(cat /tmp/genealogy-backend.pid) || true
+          docker rm -f genealogy-postgres >/dev/null 2>&1 || true
           exit 1
