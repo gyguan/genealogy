@@ -121,6 +121,16 @@ GET  /api/v1/exports/types
 
 人物 CSV 导入复用人物创建逻辑，因此人物编码唯一性、生卒日期、支派归属、字辈校验等规则都会生效。导入接口使用 `multipart/form-data`，文件字段名为 `file`。
 
+## 操作日志接口
+
+```text
+GET /api/v1/logs/operations
+GET /api/v1/logs/operations?clanId={clanId}
+GET /api/v1/logs/operations?targetType=person&targetId={personId}
+```
+
+当前会记录人物新增、人物更新、人物删除、人物审核提交、审核通过、审核驳回、人物 CSV 导入等关键动作。
+
 ## 模块规划
 
 ```text
