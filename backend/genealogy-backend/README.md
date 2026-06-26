@@ -37,6 +37,8 @@ OpenAPI 预留
 Backend CI → mvn -B clean test
 ```
 
+本分支用于触发来源证据链功能的编译检查。
+
 ## 本地启动
 
 准备 PostgreSQL：
