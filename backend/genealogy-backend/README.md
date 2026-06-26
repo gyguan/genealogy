@@ -85,6 +85,19 @@ GET    /api/v1/sources/{sourceId}/attachments
 
 当前支持将资料来源绑定到 `person`、`relationship`、`branch`、`clan` 等目标对象；附件接口先登记文件元数据，不处理真实文件上传。
 
+## 字辈明细接口
+
+```text
+POST /api/v1/clans/{clanId}/generation-schemes
+GET  /api/v1/clans/{clanId}/generation-schemes
+PUT  /api/v1/generation-schemes/{schemeId}/items
+POST /api/v1/generation-schemes/{schemeId}/items
+GET  /api/v1/generation-schemes/{schemeId}/items
+GET  /api/v1/generation-schemes/{schemeId}/items/{generationNo}
+```
+
+支持创建字辈方案、全量替换字辈明细、追加单个字辈、查询方案字辈表，以及按代次查询字辈。
+
 ## 模块规划
 
 ```text
