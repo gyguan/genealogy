@@ -4,6 +4,7 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.entity.PersonEntity;
@@ -32,15 +33,18 @@ public class PersonCsvApplicationService {
     private final ClanRepository clanRepository;
     private final PersonRepository personRepository;
     private final PersonApplicationService personApplicationService;
+    private final OperationLogApplicationService operationLogApplicationService;
 
     public PersonCsvApplicationService(
             ClanRepository clanRepository,
             PersonRepository personRepository,
-            PersonApplicationService personApplicationService
+            PersonApplicationService personApplicationService,
+            OperationLogApplicationService operationLogApplicationService
     ) {
         this.clanRepository = clanRepository;
         this.personRepository = personRepository;
         this.personApplicationService = personApplicationService;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     public byte[] buildPersonTemplate() {
@@ -121,7 +125,9 @@ public class PersonCsvApplicationService {
                 errors.add("第" + (i + 1) + "行导入失败：" + ex.getMessage());
             }
         }
-        return new CsvImportResultResponse(total, success, total - success, errors);
+        CsvImportResultResponse result = new CsvImportResultResponse(total, success, total - success, errors);
+        operationLogApplicationService.record(clanId, null, "person_csv_import", "clan", clanId, "导入人物CSV：成功" + success + "条，失败" + (total - success) + "条", String.join("\n", errors));
+        return result;
     }
 
     private void ensureClanExists(Long clanId) {
