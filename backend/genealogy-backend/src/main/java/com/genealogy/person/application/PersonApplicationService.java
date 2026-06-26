@@ -5,6 +5,10 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.generation.entity.GenerationSchemeEntity;
+import com.genealogy.generation.entity.GenerationWordEntity;
+import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.generation.repository.GenWordRepository;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
 import com.genealogy.person.dto.PersonUpdateRequest;
@@ -19,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PersonApplicationService {
@@ -29,15 +35,21 @@ public class PersonApplicationService {
     private final PersonRepository personRepository;
     private final ClanRepository clanRepository;
     private final BranchRepository branchRepository;
+    private final GenSchemeRepository genSchemeRepository;
+    private final GenWordRepository genWordRepository;
 
     public PersonApplicationService(
             PersonRepository personRepository,
             ClanRepository clanRepository,
-            BranchRepository branchRepository
+            BranchRepository branchRepository,
+            GenSchemeRepository genSchemeRepository,
+            GenWordRepository genWordRepository
     ) {
         this.personRepository = personRepository;
         this.clanRepository = clanRepository;
         this.branchRepository = branchRepository;
+        this.genSchemeRepository = genSchemeRepository;
+        this.genWordRepository = genWordRepository;
     }
 
     @Transactional
@@ -46,6 +58,7 @@ public class PersonApplicationService {
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
+        validateGenerationWord(clanId, request.branchId(), request.generationNo(), request.generationWord());
         PersonEntity entity = PersonMapper.toEntity(clanId, request);
         applyDefaults(entity);
         LocalDateTime now = LocalDateTime.now();
@@ -84,6 +97,7 @@ public class PersonApplicationService {
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
+        validateGenerationWord(entity.getClanId(), request.branchId(), request.generationNo(), request.generationWord());
         PersonMapper.updateEntity(entity, request);
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
@@ -136,6 +150,54 @@ public class PersonApplicationService {
         if (birthDate != null && deathDate != null && deathDate.isBefore(birthDate)) {
             throw new BusinessException("PERSON_DEATH_BEFORE_BIRTH", "逝世日期不能早于出生日期");
         }
+    }
+
+    private void validateGenerationWord(Long clanId, Long branchId, Integer generationNo, String generationWord) {
+        if (generationNo == null || generationWord == null || generationWord.isBlank()) {
+            return;
+        }
+        Optional<GenerationSchemeEntity> schemeOptional = findEffectiveScheme(clanId, branchId);
+        if (schemeOptional.isEmpty()) {
+            return;
+        }
+        GenerationSchemeEntity scheme = schemeOptional.get();
+        if (!Boolean.TRUE.equals(scheme.getValidationEnabled())) {
+            return;
+        }
+        Optional<GenerationWordEntity> expectedWordOptional = genWordRepository.findBySchemeIdAndGenerationNo(scheme.getId(), generationNo);
+        if (expectedWordOptional.isEmpty()) {
+            if (Boolean.TRUE.equals(scheme.getStrictMode())) {
+                throw new BusinessException("GENERATION_WORD_NOT_FOUND", "当前字辈方案下不存在该代次字辈");
+            }
+            return;
+        }
+        String expectedWord = expectedWordOptional.get().getWord();
+        if (!expectedWord.equals(generationWord.trim()) && Boolean.TRUE.equals(scheme.getStrictMode())) {
+            throw new BusinessException(
+                    "GENERATION_WORD_MISMATCH",
+                    "人物字辈与字辈方案不匹配，期望字辈为：" + expectedWord
+            );
+        }
+    }
+
+    private Optional<GenerationSchemeEntity> findEffectiveScheme(Long clanId, Long branchId) {
+        List<GenerationSchemeEntity> schemes = genSchemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId);
+        if (schemes.isEmpty()) {
+            return Optional.empty();
+        }
+        if (branchId != null) {
+            Optional<GenerationSchemeEntity> branchScheme = schemes.stream()
+                    .filter(item -> branchId.equals(item.getBranchId()))
+                    .findFirst();
+            if (branchScheme.isPresent()) {
+                return branchScheme;
+            }
+        }
+        return schemes.stream()
+                .filter(item -> item.getBranchId() == null && Boolean.TRUE.equals(item.getIsDefault()))
+                .findFirst()
+                .or(() -> schemes.stream().filter(item -> item.getBranchId() == null).findFirst())
+                .or(() -> schemes.stream().findFirst());
     }
 
     private void applyDefaults(PersonEntity entity) {
