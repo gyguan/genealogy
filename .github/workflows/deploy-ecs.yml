@@ -1,0 +1,55 @@
+name: Deploy Backend to ECS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Alibaba Cloud ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Package backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+
+      - name: Prepare deploy bundle
+        run: |
+          rm -rf deploy-bundle
+          mkdir -p deploy-bundle/genealogy-backend/target
+          cp backend/genealogy-backend/Dockerfile deploy-bundle/genealogy-backend/Dockerfile
+          cp backend/genealogy-backend/target/*.jar deploy-bundle/genealogy-backend/target/
+          cp deploy/ecs/docker-compose.yml deploy-bundle/docker-compose.yml
+          tar -czf deploy-bundle.tar.gz -C deploy-bundle .
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/ecs_key
+          chmod 600 ~/.ssh/ecs_key
+          ssh-keyscan -p "${{ secrets.ECS_SSH_PORT || '22' }}" "${{ secrets.ECS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload bundle to ECS
+        run: |
+          scp -i ~/.ssh/ecs_key -P "${{ secrets.ECS_SSH_PORT || '22' }}" deploy-bundle.tar.gz "${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}:/tmp/genealogy-deploy-bundle.tar.gz"
+
+      - name: Deploy on ECS
+        run: |
+          ssh -i ~/.ssh/ecs_key -p "${{ secrets.ECS_SSH_PORT || '22' }}" "${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}" << 'EOF'
+          set -e
+          mkdir -p /opt/genealogy
+          tar -xzf /tmp/genealogy-deploy-bundle.tar.gz -C /opt/genealogy
+          cd /opt/genealogy
+          docker compose up -d --build
+          docker compose ps
+          EOF
