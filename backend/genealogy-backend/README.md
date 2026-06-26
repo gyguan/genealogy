@@ -37,6 +37,8 @@ OpenAPI 预留
 Backend CI → mvn -B clean test
 ```
 
+本分支用于验证错误摘要版启动日志。
+
 ## 本地启动
 
 准备 PostgreSQL：
