@@ -1,0 +1,1 @@
+trigger startup validation after app user fix
