@@ -98,6 +98,18 @@ GET  /api/v1/generation-schemes/{schemeId}/items/{generationNo}
 
 支持创建字辈方案、全量替换字辈明细、追加单个字辈、查询方案字辈表，以及按代次查询字辈。
 
+## 人物字辈校验
+
+创建或更新人物时，如果同时填写了 `generationNo` 和 `generationWord`，系统会根据当前宗族有效字辈方案进行校验：
+
+```text
+优先使用人物所属支派的字辈方案
+其次使用宗族默认字辈方案
+严格模式 strictMode=true 时，字辈不匹配会拦截
+非严格模式下暂不拦截，用于兼容历史数据
+validationEnabled=false 时跳过校验
+```
+
 ## 模块规划
 
 ```text
