@@ -38,19 +38,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-
-      - name: Start PostgreSQL quietly
+      - name: Startup check with focused diagnostics
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
         run: |
           set -euo pipefail
+
+          echo "Java version:"
+          java -version
+          echo "Maven version:"
+          mvn -version | head -n 2
+
+          echo "Starting PostgreSQL..."
           docker pull postgres:16 >/dev/null
           docker run -d \
             --name genealogy-postgres \
@@ -63,27 +64,34 @@ jobs:
           for i in $(seq 1 30); do
             if docker exec genealogy-postgres pg_isready -U genealogy -d genealogy >/dev/null 2>&1; then
               echo "PostgreSQL is ready."
-              exit 0
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "PostgreSQL did not become ready. Container logs:"
+              docker logs genealogy-postgres | tail -n 80
+              exit 1
             fi
             sleep 2
           done
 
-          echo "PostgreSQL did not become ready. Container logs:"
-          docker logs genealogy-postgres | tail -n 80
-          exit 1
+          REF_NAME="${GITHUB_HEAD_REF:-main}"
+          echo "Downloading repository archive for ref: ${REF_NAME}"
+          curl -fsSL "https://github.com/gyguan/genealogy/archive/${REF_NAME}.tar.gz" -o repo.tgz
+          mkdir repo
+          tar -xzf repo.tgz -C repo --strip-components=1
+          cd repo/backend/genealogy-backend
 
-      - name: Package backend
-        working-directory: backend/genealogy-backend
-        run: mvn -q -DskipTests package
+          echo "Packaging backend..."
+          set +e
+          mvn -q -DskipTests package > /tmp/genealogy-maven-package.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "Maven package failed. Output tail:"
+            tail -n 160 /tmp/genealogy-maven-package.log
+            exit "$code"
+          fi
 
-      - name: Start backend and check health
-        working-directory: backend/genealogy-backend
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
-          SPRING_DATASOURCE_USERNAME: genealogy
-          SPRING_DATASOURCE_PASSWORD: genealogy
-        run: |
-          set -euo pipefail
           JAR_FILE=$(ls target/genealogy-backend-*.jar | head -n 1)
           echo "Starting ${JAR_FILE}"
           java -jar "${JAR_FILE}" > /tmp/genealogy-backend-startup.log 2>&1 &
@@ -99,7 +107,7 @@ jobs:
 
             if ! kill -0 $(cat /tmp/genealogy-backend.pid) 2>/dev/null; then
               echo "Backend process exited before health check passed. Startup log tail:"
-              tail -n 200 /tmp/genealogy-backend-startup.log
+              tail -n 220 /tmp/genealogy-backend-startup.log
               docker rm -f genealogy-postgres >/dev/null 2>&1 || true
               exit 1
             fi
@@ -109,7 +117,7 @@ jobs:
           done
 
           echo "Backend health check timeout. Startup log tail:"
-          tail -n 200 /tmp/genealogy-backend-startup.log
+          tail -n 220 /tmp/genealogy-backend-startup.log
           kill $(cat /tmp/genealogy-backend.pid) || true
           docker rm -f genealogy-postgres >/dev/null 2>&1 || true
           exit 1
