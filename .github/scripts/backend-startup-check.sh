@@ -13,6 +13,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+print_startup_error() {
+  echo "Startup error summary:"
+  grep -Ei "ERROR|Exception|Caused by|Schema-validation|SchemaManagementException|Flyway|Failed|missing|column|table|relation|duplicate|constraint" /tmp/genealogy-backend-startup.log | tail -n 120 || true
+  echo "Startup log tail:"
+  tail -n 80 /tmp/genealogy-backend-startup.log
+}
+
 echo "Java version:"
 java -version
 
@@ -72,8 +79,8 @@ for i in $(seq 1 40); do
   fi
 
   if ! kill -0 "$(cat /tmp/genealogy-backend.pid)" 2>/dev/null; then
-    echo "Backend process exited before health check passed. Startup log tail:"
-    tail -n 220 /tmp/genealogy-backend-startup.log
+    echo "Backend process exited before health check passed."
+    print_startup_error
     exit 1
   fi
 
@@ -81,6 +88,6 @@ for i in $(seq 1 40); do
   sleep 5
 done
 
-echo "Backend health check timeout. Startup log tail:"
-tail -n 220 /tmp/genealogy-backend-startup.log
+echo "Backend health check timeout."
+print_startup_error
 exit 1
