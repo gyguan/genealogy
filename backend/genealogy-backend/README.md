@@ -59,6 +59,17 @@ mvn spring-boot:run
 GET /api/v1/health
 ```
 
+## 认证登录接口
+
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/logout
+```
+
+当前采用轻量 token 会话机制：密码使用 PBKDF2 哈希存储；登录后生成不透明 token，服务端保存 token hash，调用 `/me` 和 `/logout` 时通过 `Authorization: Bearer {token}` 识别当前用户。
+
 ## 审核闭环接口
 
 ```text
