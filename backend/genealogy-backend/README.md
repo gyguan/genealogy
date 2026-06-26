@@ -29,6 +29,14 @@ OpenAPI 预留
 - 健康检查接口
 - 各业务模块包结构占位
 
+## 云端编译
+
+后端代码变更会触发 GitHub Actions：
+
+```text
+Backend CI → mvn -B clean test
+```
+
 ## 本地启动
 
 准备 PostgreSQL：
