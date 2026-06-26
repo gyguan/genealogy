@@ -2,6 +2,7 @@ package com.genealogy.review.application;
 
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.review.dto.AuditRecordResponse;
@@ -33,15 +34,18 @@ public class ApprovalApplicationService {
     private final PersonRepository personRepository;
     private final AuditRecordRepository auditRecordRepository;
     private final CheckTaskRepository checkTaskRepository;
+    private final OperationLogApplicationService operationLogApplicationService;
 
     public ApprovalApplicationService(
             PersonRepository personRepository,
             AuditRecordRepository auditRecordRepository,
-            CheckTaskRepository checkTaskRepository
+            CheckTaskRepository checkTaskRepository,
+            OperationLogApplicationService operationLogApplicationService
     ) {
         this.personRepository = personRepository;
         this.auditRecordRepository = auditRecordRepository;
         this.checkTaskRepository = checkTaskRepository;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional
@@ -77,6 +81,7 @@ public class ApprovalApplicationService {
         person.setUpdatedAt(now);
         personRepository.save(person);
 
+        operationLogApplicationService.record(person.getClanId(), request.submitterId(), "review_submit", TARGET_PERSON, personId, "提交人物审核：" + person.getName(), request.diffSummary());
         return toTaskResponse(savedTask);
     }
 
@@ -117,6 +122,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
 
         applyTargetAfterApproval(record, now);
+        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "审核通过", request.comment());
         return toTaskResponse(savedTask);
     }
 
@@ -139,6 +145,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
 
         rollbackTargetAfterReject(record, now);
+        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "审核驳回", comment);
         return toTaskResponse(savedTask);
     }
 
