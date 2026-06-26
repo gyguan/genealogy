@@ -1,0 +1,70 @@
+package com.genealogy.review.controller;
+
+import com.genealogy.common.api.ApiResponse;
+import com.genealogy.review.application.ApprovalApplicationService;
+import com.genealogy.review.dto.AuditRecordResponse;
+import com.genealogy.review.dto.CheckTaskResponse;
+import com.genealogy.review.dto.PersonSubmitReviewRequest;
+import com.genealogy.review.dto.ReviewDecisionRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@Validated
+@RestController
+@RequestMapping("/api/v1")
+public class ApprovalController {
+
+    private final ApprovalApplicationService approvalApplicationService;
+
+    public ApprovalController(ApprovalApplicationService approvalApplicationService) {
+        this.approvalApplicationService = approvalApplicationService;
+    }
+
+    @PostMapping("/persons/{personId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitPersonReview(
+            @Positive @PathVariable Long personId,
+            @Valid @RequestBody PersonSubmitReviewRequest request
+    ) {
+        return ApiResponse.success(approvalApplicationService.submitPerson(personId, request));
+    }
+
+    @GetMapping("/clans/{clanId}/review-tasks/pending")
+    public ApiResponse<List<CheckTaskResponse>> listPending(@Positive @PathVariable Long clanId) {
+        return ApiResponse.success(approvalApplicationService.listPending(clanId));
+    }
+
+    @GetMapping("/review-tasks/{taskId}")
+    public ApiResponse<CheckTaskResponse> getTask(@Positive @PathVariable Long taskId) {
+        return ApiResponse.success(approvalApplicationService.getTask(taskId));
+    }
+
+    @PostMapping("/review-tasks/{taskId}/approve")
+    public ApiResponse<CheckTaskResponse> approve(
+            @Positive @PathVariable Long taskId,
+            @Valid @RequestBody ReviewDecisionRequest request
+    ) {
+        return ApiResponse.success(approvalApplicationService.approve(taskId, request));
+    }
+
+    @PostMapping("/review-tasks/{taskId}/reject")
+    public ApiResponse<CheckTaskResponse> reject(
+            @Positive @PathVariable Long taskId,
+            @Valid @RequestBody ReviewDecisionRequest request
+    ) {
+        return ApiResponse.success(approvalApplicationService.reject(taskId, request));
+    }
+
+    @GetMapping("/persons/{personId}/review-records")
+    public ApiResponse<List<AuditRecordResponse>> listPersonRecords(@Positive @PathVariable Long personId) {
+        return ApiResponse.success(approvalApplicationService.listPersonRecords(personId));
+    }
+}
