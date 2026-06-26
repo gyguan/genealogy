@@ -9,6 +9,7 @@ import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
 import com.genealogy.generation.repository.GenWordRepository;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
 import com.genealogy.person.dto.PersonUpdateRequest;
@@ -37,19 +38,22 @@ public class PersonApplicationService {
     private final BranchRepository branchRepository;
     private final GenSchemeRepository genSchemeRepository;
     private final GenWordRepository genWordRepository;
+    private final OperationLogApplicationService operationLogApplicationService;
 
     public PersonApplicationService(
             PersonRepository personRepository,
             ClanRepository clanRepository,
             BranchRepository branchRepository,
             GenSchemeRepository genSchemeRepository,
-            GenWordRepository genWordRepository
+            GenWordRepository genWordRepository,
+            OperationLogApplicationService operationLogApplicationService
     ) {
         this.personRepository = personRepository;
         this.clanRepository = clanRepository;
         this.branchRepository = branchRepository;
         this.genSchemeRepository = genSchemeRepository;
         this.genWordRepository = genWordRepository;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional
@@ -64,7 +68,9 @@ public class PersonApplicationService {
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
-        return PersonMapper.toResponse(personRepository.save(entity));
+        PersonEntity saved = personRepository.save(entity);
+        operationLogApplicationService.record(clanId, null, "person_create", "person", saved.getId(), "新增人物：" + saved.getName(), null);
+        return PersonMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +107,9 @@ public class PersonApplicationService {
         PersonMapper.updateEntity(entity, request);
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
-        return PersonMapper.toResponse(personRepository.save(entity));
+        PersonEntity saved = personRepository.save(entity);
+        operationLogApplicationService.record(saved.getClanId(), null, "person_update", "person", saved.getId(), "更新人物：" + saved.getName(), null);
+        return PersonMapper.toResponse(saved);
     }
 
     @Transactional
@@ -110,6 +118,7 @@ public class PersonApplicationService {
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
+        operationLogApplicationService.record(entity.getClanId(), null, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
     }
 
     private PersonEntity getActiveEntity(Long id) {
