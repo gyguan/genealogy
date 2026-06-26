@@ -37,6 +37,8 @@ OpenAPI 预留
 Backend CI → mvn -B clean test
 ```
 
+本分支用于验证 app_user 表迁移修复后的启动结果。
+
 ## 本地启动
 
 准备 PostgreSQL：
