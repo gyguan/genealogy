@@ -35,6 +35,7 @@ SAE 运行 genealogy-backend
 3. 创建 RDS PostgreSQL 实例。
 4. 创建 OSS Bucket，用于存放构建后的 Jar 包。
 5. 准备 RAM 用户 AccessKey，并授予 SAE、OSS 相关权限。
+6. 如果希望自动健康检查，需要给 SAE 应用配置公网访问地址。
 
 ## GitHub Secrets
 
@@ -46,17 +47,18 @@ Settings → Secrets and variables → Actions → New repository secret
 
 添加以下 Secrets：
 
-| Secret | 说明 |
-|---|---|
-| ALIBABA_CLOUD_ACCESS_KEY_ID | 阿里云 RAM 用户 AccessKey ID |
-| ALIBABA_CLOUD_ACCESS_KEY_SECRET | 阿里云 RAM 用户 AccessKey Secret |
-| ALIBABA_CLOUD_REGION_ID | 地域，例如 cn-hangzhou |
-| SAE_APP_ID | SAE 应用 ID |
-| OSS_BUCKET | OSS Bucket 名称 |
-| OSS_ENDPOINT | OSS Endpoint，例如 https://oss-cn-hangzhou.aliyuncs.com |
-| SPRING_DATASOURCE_URL | RDS PostgreSQL JDBC 地址 |
-| SPRING_DATASOURCE_USERNAME | 数据库用户名 |
-| SPRING_DATASOURCE_PASSWORD | 数据库密码 |
+| Secret | 必填 | 说明 |
+|---|---:|---|
+| ALIBABA_CLOUD_ACCESS_KEY_ID | 是 | 阿里云 RAM 用户 AccessKey ID |
+| ALIBABA_CLOUD_ACCESS_KEY_SECRET | 是 | 阿里云 RAM 用户 AccessKey Secret |
+| ALIBABA_CLOUD_REGION_ID | 是 | 地域，例如 cn-hangzhou |
+| SAE_APP_ID | 是 | SAE 应用 ID |
+| OSS_BUCKET | 是 | OSS Bucket 名称 |
+| OSS_ENDPOINT | 是 | OSS Endpoint，例如 https://oss-cn-hangzhou.aliyuncs.com |
+| SPRING_DATASOURCE_URL | 是 | RDS PostgreSQL JDBC 地址 |
+| SPRING_DATASOURCE_USERNAME | 是 | 数据库用户名 |
+| SPRING_DATASOURCE_PASSWORD | 是 | 数据库密码 |
+| SAE_PUBLIC_URL | 否 | SAE 公网访问地址，用于部署后自动访问 /api/v1/health |
 
 ## 触发部署
 
@@ -64,6 +66,13 @@ Settings → Secrets and variables → Actions → New repository secret
 
 ```text
 Actions → Deploy Backend to SAE → Run workflow
+```
+
+可以选择：
+
+```text
+skip_health_check=false  默认，执行健康检查
+skip_health_check=true   跳过健康检查
 ```
 
 ## 数据库环境变量示例
@@ -74,12 +83,32 @@ SPRING_DATASOURCE_USERNAME=genealogy
 SPRING_DATASOURCE_PASSWORD=your-password
 ```
 
+## 失败诊断能力
+
+当前 `deploy-sae.yml` 已增强部署诊断，失败时会尽量把关键错误输出到 GitHub Actions 日志：
+
+1. 预检查必填 Secrets 是否存在。
+2. Maven 打包失败时输出最后 160 行日志。
+3. 打印 Jar 包路径和大小。
+4. 上传 OSS 后执行 `ossutil64 stat` 校验对象是否存在。
+5. 打印 Package URL。
+6. 捕获并输出 `DeployApplication` 响应。
+7. 部署前后尝试查询 SAE 应用状态和配置。
+8. 配置 `SAE_PUBLIC_URL` 后，会最多重试 30 次访问 `/api/v1/health`。
+9. 健康检查失败时，会再次输出 SAE 应用状态和配置。
+
 ## 验证
 
 部署完成后，在 SAE 控制台查看公网访问地址，然后访问：
 
 ```text
 https://你的SAE公网地址/api/v1/health
+```
+
+如果配置了 GitHub Secret `SAE_PUBLIC_URL`，workflow 会自动访问：
+
+```text
+${SAE_PUBLIC_URL}/api/v1/health
 ```
 
 返回 `status=UP` 即表示应用启动成功。
