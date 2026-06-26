@@ -59,6 +59,19 @@ mvn spring-boot:run
 GET /api/v1/health
 ```
 
+## 审核闭环接口
+
+```text
+POST /api/v1/persons/{personId}/submit-review
+GET  /api/v1/clans/{clanId}/review-tasks/pending
+GET  /api/v1/review-tasks/{taskId}
+POST /api/v1/review-tasks/{taskId}/approve
+POST /api/v1/review-tasks/{taskId}/reject
+GET  /api/v1/persons/{personId}/review-records
+```
+
+当前优先支持人物档案审核：提交后人物状态变为 `pending_review`，审核通过后变为 `official`，审核驳回后回到 `draft`。
+
 ## 模块规划
 
 ```text
