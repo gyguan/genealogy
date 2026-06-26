@@ -1,0 +1,76 @@
+name: Deploy Backend to SAE
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy to Alibaba Cloud SAE
+    runs-on: ubuntu-latest
+
+    env:
+      REGION_ID: ${{ secrets.ALIBABA_CLOUD_REGION_ID }}
+      OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
+      OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT }}
+      SAE_APP_ID: ${{ secrets.SAE_APP_ID }}
+      SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+      SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+      SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Package backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+
+      - name: Install Alibaba Cloud CLI and OSSUtil
+        run: |
+          curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli.tgz
+          tar -xzf aliyun-cli.tgz
+          sudo mv aliyun /usr/local/bin/aliyun
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil64 -o ossutil64
+          chmod +x ossutil64
+          sudo mv ossutil64 /usr/local/bin/ossutil64
+
+      - name: Configure Alibaba Cloud credentials
+        run: |
+          aliyun configure set \
+            --profile default \
+            --mode AK \
+            --region "$REGION_ID" \
+            --access-key-id "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}" \
+            --access-key-secret "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}"
+          ossutil64 config \
+            -e "$OSS_ENDPOINT" \
+            -i "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}" \
+            -k "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}" \
+            -L CH
+
+      - name: Upload package to OSS
+        id: upload
+        run: |
+          JAR_FILE=$(ls backend/genealogy-backend/target/genealogy-backend-*.jar | head -n 1)
+          VERSION="${GITHUB_SHA::12}"
+          OSS_KEY="genealogy/backend/genealogy-backend-${VERSION}.jar"
+          ossutil64 cp "$JAR_FILE" "oss://${OSS_BUCKET}/${OSS_KEY}" -f
+          PACKAGE_URL="https://${OSS_BUCKET}.${OSS_ENDPOINT#https://}/${OSS_KEY}"
+          echo "package_url=${PACKAGE_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy package to SAE
+        run: |
+          PACKAGE_URL="${{ steps.upload.outputs.package_url }}"
+          aliyun sae DeployApplication \
+            --RegionId "$REGION_ID" \
+            --AppId "$SAE_APP_ID" \
+            --PackageUrl "$PACKAGE_URL" \
+            --JarStartOptions "--server.port=8080" \
+            --Envs "SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL},SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME},SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}"
