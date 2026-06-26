@@ -2,6 +2,15 @@ name: Deploy Backend to SAE
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_health_check:
+        description: "Skip post-deploy health check"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   build-and-deploy:
@@ -13,6 +22,7 @@ jobs:
       OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
       OSS_ENDPOINT: ${{ secrets.OSS_ENDPOINT }}
       SAE_APP_ID: ${{ secrets.SAE_APP_ID }}
+      SAE_PUBLIC_URL: ${{ secrets.SAE_PUBLIC_URL }}
       SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
       SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
       SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
@@ -28,49 +38,161 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Package backend
+      - name: Preflight check deployment inputs
+        run: |
+          set -euo pipefail
+          echo "Checking required deployment inputs..."
+          : "${REGION_ID:?Missing secret ALIBABA_CLOUD_REGION_ID}"
+          : "${OSS_BUCKET:?Missing secret OSS_BUCKET}"
+          : "${OSS_ENDPOINT:?Missing secret OSS_ENDPOINT}"
+          : "${SAE_APP_ID:?Missing secret SAE_APP_ID}"
+          : "${SPRING_DATASOURCE_URL:?Missing secret SPRING_DATASOURCE_URL}"
+          : "${SPRING_DATASOURCE_USERNAME:?Missing secret SPRING_DATASOURCE_USERNAME}"
+          : "${SPRING_DATASOURCE_PASSWORD:?Missing secret SPRING_DATASOURCE_PASSWORD}"
+          : "${ALIBABA_CLOUD_ACCESS_KEY_ID:?Missing secret ALIBABA_CLOUD_ACCESS_KEY_ID}"
+          : "${ALIBABA_CLOUD_ACCESS_KEY_SECRET:?Missing secret ALIBABA_CLOUD_ACCESS_KEY_SECRET}"
+          echo "Required inputs are present."
+          echo "Region: ${REGION_ID}"
+          echo "OSS bucket: ${OSS_BUCKET}"
+          echo "SAE app id: ${SAE_APP_ID}"
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+
+      - name: Package backend with diagnostics
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipTests package
+        run: |
+          set +e
+          mvn -B -DskipTests package > /tmp/genealogy-maven-package.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "Maven package failed. Output tail:"
+            tail -n 160 /tmp/genealogy-maven-package.log
+            exit "$code"
+          fi
+          echo "Maven package succeeded."
+          ls -lh target/*.jar
 
       - name: Install Alibaba Cloud CLI and OSSUtil
         run: |
+          set -euo pipefail
           curl -fsSL https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz -o aliyun-cli.tgz
           tar -xzf aliyun-cli.tgz
           sudo mv aliyun /usr/local/bin/aliyun
+          aliyun version
           curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil64 -o ossutil64
           chmod +x ossutil64
           sudo mv ossutil64 /usr/local/bin/ossutil64
+          ossutil64 --version || true
 
       - name: Configure Alibaba Cloud credentials
         run: |
+          set -euo pipefail
           aliyun configure set \
             --profile default \
             --mode AK \
             --region "$REGION_ID" \
-            --access-key-id "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}" \
-            --access-key-secret "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}"
+            --access-key-id "${ALIBABA_CLOUD_ACCESS_KEY_ID}" \
+            --access-key-secret "${ALIBABA_CLOUD_ACCESS_KEY_SECRET}"
           ossutil64 config \
             -e "$OSS_ENDPOINT" \
-            -i "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}" \
-            -k "${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}" \
+            -i "${ALIBABA_CLOUD_ACCESS_KEY_ID}" \
+            -k "${ALIBABA_CLOUD_ACCESS_KEY_SECRET}" \
             -L CH
+          echo "Alibaba Cloud credentials configured."
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
 
-      - name: Upload package to OSS
+      - name: Diagnose SAE app before deployment
+        continue-on-error: true
+        run: |
+          set +e
+          echo "Querying SAE application status before deployment..."
+          aliyun sae DescribeApplicationStatus --RegionId "$REGION_ID" --AppId "$SAE_APP_ID"
+          echo "Querying SAE application config before deployment..."
+          aliyun sae DescribeApplicationConfig --RegionId "$REGION_ID" --AppId "$SAE_APP_ID"
+
+      - name: Upload package to OSS with verification
         id: upload
         run: |
+          set -euo pipefail
           JAR_FILE=$(ls backend/genealogy-backend/target/genealogy-backend-*.jar | head -n 1)
+          if [ -z "$JAR_FILE" ] || [ ! -f "$JAR_FILE" ]; then
+            echo "Jar file not found under backend/genealogy-backend/target"
+            exit 1
+          fi
           VERSION="${GITHUB_SHA::12}"
           OSS_KEY="genealogy/backend/genealogy-backend-${VERSION}.jar"
+          echo "Uploading ${JAR_FILE} to oss://${OSS_BUCKET}/${OSS_KEY}"
           ossutil64 cp "$JAR_FILE" "oss://${OSS_BUCKET}/${OSS_KEY}" -f
-          PACKAGE_URL="https://${OSS_BUCKET}.${OSS_ENDPOINT#https://}/${OSS_KEY}"
+          echo "Verifying OSS object..."
+          ossutil64 stat "oss://${OSS_BUCKET}/${OSS_KEY}"
+          OSS_HOST="${OSS_ENDPOINT#https://}"
+          OSS_HOST="${OSS_HOST#http://}"
+          PACKAGE_URL="https://${OSS_BUCKET}.${OSS_HOST}/${OSS_KEY}"
+          echo "Package URL: ${PACKAGE_URL}"
           echo "package_url=${PACKAGE_URL}" >> "$GITHUB_OUTPUT"
+          echo "oss_key=${OSS_KEY}" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy package to SAE
+      - name: Deploy package to SAE with response capture
+        id: deploy
         run: |
+          set +e
           PACKAGE_URL="${{ steps.upload.outputs.package_url }}"
+          echo "Deploying package to SAE..."
+          echo "SAE AppId: ${SAE_APP_ID}"
+          echo "Package URL: ${PACKAGE_URL}"
           aliyun sae DeployApplication \
             --RegionId "$REGION_ID" \
             --AppId "$SAE_APP_ID" \
             --PackageUrl "$PACKAGE_URL" \
             --JarStartOptions "--server.port=8080" \
-            --Envs "SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL},SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME},SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}"
+            --Envs "SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL},SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME},SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}" \
+            > /tmp/sae-deploy-response.json 2>&1
+          code=$?
+          echo "SAE DeployApplication response:"
+          cat /tmp/sae-deploy-response.json
+          if [ "$code" -ne 0 ]; then
+            echo "SAE DeployApplication failed. Basic diagnostics:"
+            aliyun sae DescribeApplicationStatus --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+            aliyun sae DescribeApplicationConfig --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+            exit "$code"
+          fi
+          echo "SAE DeployApplication command completed."
+
+      - name: Diagnose SAE app after deployment
+        if: always()
+        continue-on-error: true
+        run: |
+          echo "Querying SAE application status after deployment..."
+          aliyun sae DescribeApplicationStatus --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+          echo "Querying SAE application config after deployment..."
+          aliyun sae DescribeApplicationConfig --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+
+      - name: Post-deploy health check
+        if: ${{ github.event.inputs.skip_health_check != 'true' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SAE_PUBLIC_URL:-}" ]; then
+            echo "SAE_PUBLIC_URL is not configured. Skip HTTP health check."
+            echo "Configure GitHub secret SAE_PUBLIC_URL to enable health check, for example: https://example.com"
+            exit 0
+          fi
+          HEALTH_URL="${SAE_PUBLIC_URL%/}/api/v1/health"
+          echo "Checking health endpoint: ${HEALTH_URL}"
+          for i in $(seq 1 30); do
+            code=$(curl -k -sS -o /tmp/health-response.txt -w "%{http_code}" "$HEALTH_URL" || true)
+            echo "Attempt ${i}/30, HTTP status: ${code}"
+            cat /tmp/health-response.txt || true
+            if [ "$code" = "200" ]; then
+              echo "Health check passed."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check failed after retries. SAE diagnostics:"
+          aliyun sae DescribeApplicationStatus --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+          aliyun sae DescribeApplicationConfig --RegionId "$REGION_ID" --AppId "$SAE_APP_ID" || true
+          exit 1
