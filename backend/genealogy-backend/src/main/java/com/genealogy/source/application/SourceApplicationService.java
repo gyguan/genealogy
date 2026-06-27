@@ -4,6 +4,7 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.source.dto.SourceCreateRequest;
 import com.genealogy.source.dto.SourceResponse;
 import com.genealogy.source.entity.SourceEntity;
@@ -21,14 +22,25 @@ public class SourceApplicationService {
 
     private final SourceRepository sourceRepository;
     private final ClanRepository clanRepository;
+    private final OperationLogApplicationService operationLogApplicationService;
 
-    public SourceApplicationService(SourceRepository sourceRepository, ClanRepository clanRepository) {
+    public SourceApplicationService(
+            SourceRepository sourceRepository,
+            ClanRepository clanRepository,
+            OperationLogApplicationService operationLogApplicationService
+    ) {
         this.sourceRepository = sourceRepository;
         this.clanRepository = clanRepository;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional
     public SourceResponse create(Long clanId, SourceCreateRequest request) {
+        return create(clanId, request, null);
+    }
+
+    @Transactional
+    public SourceResponse create(Long clanId, SourceCreateRequest request, Long actorId) {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
@@ -43,8 +55,11 @@ public class SourceApplicationService {
         entity.setExcerpt(request.excerpt());
         entity.setVerificationStatus(request.verificationStatus() == null ? "unverified" : request.verificationStatus());
         entity.setDescription(request.description());
+        entity.setCreatedBy(actorId);
         entity.setCreatedAt(LocalDateTime.now());
-        return toResponse(sourceRepository.save(entity));
+        SourceEntity saved = sourceRepository.save(entity);
+        operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "新增资料来源：" + saved.getSourceName(), null);
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
