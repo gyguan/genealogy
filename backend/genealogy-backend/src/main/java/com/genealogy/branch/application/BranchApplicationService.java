@@ -1,5 +1,6 @@
 package com.genealogy.branch.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.dto.BranchCreateRequest;
 import com.genealogy.branch.dto.BranchResponse;
 import com.genealogy.branch.dto.BranchUpdateRequest;
@@ -20,15 +21,27 @@ public class BranchApplicationService {
 
     private final BranchRepository branchRepository;
     private final ClanRepository clanRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public BranchApplicationService(BranchRepository branchRepository, ClanRepository clanRepository) {
+    public BranchApplicationService(
+            BranchRepository branchRepository,
+            ClanRepository clanRepository,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.branchRepository = branchRepository;
         this.clanRepository = clanRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
     public BranchResponse create(Long clanId, BranchCreateRequest request) {
+        return create(clanId, request, null);
+    }
+
+    @Transactional
+    public BranchResponse create(Long clanId, BranchCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         validateBranchNameForCreate(clanId, request.branchName());
         BranchEntity parent = getParentBranch(clanId, request.parentId());
         BranchEntity entity = BranchMapper.toEntity(clanId, request);
@@ -57,7 +70,13 @@ public class BranchApplicationService {
 
     @Transactional
     public void delete(Long id) {
+        delete(id, null);
+    }
+
+    @Transactional
+    public void delete(Long id, Long actorId) {
         BranchEntity entity = getEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         if (branchRepository.existsByParentId(id)) {
             throw new BusinessException("BRANCH_HAS_CHILDREN", "支派下存在下级支派，不能删除");
         }
@@ -66,7 +85,13 @@ public class BranchApplicationService {
 
     @Transactional
     public BranchResponse update(Long id, BranchUpdateRequest request) {
+        return update(id, request, null);
+    }
+
+    @Transactional
+    public BranchResponse update(Long id, BranchUpdateRequest request, Long actorId) {
         BranchEntity entity = getEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         validateParentIsNotSelf(id, request.parentId());
         validateBranchNameForUpdate(entity.getClanId(), id, request.branchName());
         BranchEntity parent = getParentBranch(entity.getClanId(), request.parentId());
