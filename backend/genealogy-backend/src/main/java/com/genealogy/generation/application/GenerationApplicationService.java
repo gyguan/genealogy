@@ -1,5 +1,6 @@
 package com.genealogy.generation.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -25,22 +26,31 @@ public class GenerationApplicationService {
     private final GenSchemeRepository schemeRepository;
     private final GenWordRepository wordRepository;
     private final ClanRepository clanRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
     public GenerationApplicationService(
             GenSchemeRepository schemeRepository,
             GenWordRepository wordRepository,
-            ClanRepository clanRepository
+            ClanRepository clanRepository,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.schemeRepository = schemeRepository;
         this.wordRepository = wordRepository;
         this.clanRepository = clanRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
     public GenSchemeResponse createScheme(Long clanId, GenSchemeCreateRequest request) {
+        return createScheme(clanId, request, null);
+    }
+
+    @Transactional
+    public GenSchemeResponse createScheme(Long clanId, GenSchemeCreateRequest request, Long actorId) {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         GenerationSchemeEntity entity = new GenerationSchemeEntity();
         entity.setClanId(clanId);
         entity.setBranchId(request.branchId());
@@ -67,7 +77,13 @@ public class GenerationApplicationService {
 
     @Transactional
     public List<GenItemResponse> replaceItems(Long schemeId, List<GenItemRequest> requests) {
-        getScheme(schemeId);
+        return replaceItems(schemeId, requests, null);
+    }
+
+    @Transactional
+    public List<GenItemResponse> replaceItems(Long schemeId, List<GenItemRequest> requests, Long actorId) {
+        GenerationSchemeEntity scheme = getScheme(schemeId);
+        authorizationApplicationService.requireClanMember(scheme.getClanId(), actorId);
         validateItems(requests);
         wordRepository.deleteBySchemeId(schemeId);
         List<GenerationWordEntity> entities = requests.stream()
@@ -80,7 +96,13 @@ public class GenerationApplicationService {
 
     @Transactional
     public GenItemResponse addItem(Long schemeId, GenItemRequest request) {
-        getScheme(schemeId);
+        return addItem(schemeId, request, null);
+    }
+
+    @Transactional
+    public GenItemResponse addItem(Long schemeId, GenItemRequest request, Long actorId) {
+        GenerationSchemeEntity scheme = getScheme(schemeId);
+        authorizationApplicationService.requireClanMember(scheme.getClanId(), actorId);
         if (wordRepository.existsBySchemeIdAndGenerationNo(schemeId, request.generationNo())) {
             throw new BusinessException("GENERATION_WORD_DUPLICATED", "该代次字辈已存在");
         }
