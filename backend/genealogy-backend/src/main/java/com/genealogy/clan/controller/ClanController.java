@@ -1,5 +1,6 @@
 package com.genealogy.clan.controller;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.application.ClanApplicationService;
 import com.genealogy.clan.dto.ClanCreateRequest;
 import com.genealogy.clan.dto.ClanResponse;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,14 +27,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class ClanController {
 
     private final ClanApplicationService clanApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ClanController(ClanApplicationService clanApplicationService) {
+    public ClanController(ClanApplicationService clanApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.clanApplicationService = clanApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping
-    public ApiResponse<ClanResponse> create(@Valid @RequestBody ClanCreateRequest request) {
-        return ApiResponse.success(clanApplicationService.create(request));
+    public ApiResponse<ClanResponse> create(
+            @Valid @RequestBody ClanCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(clanApplicationService.create(request, actorId));
     }
 
     @GetMapping("/{id}")
@@ -46,13 +54,22 @@ public class ClanController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ClanResponse> update(@Positive @PathVariable Long id, @Valid @RequestBody ClanUpdateRequest request) {
-        return ApiResponse.success(clanApplicationService.update(id, request));
+    public ApiResponse<ClanResponse> update(
+            @Positive @PathVariable Long id,
+            @Valid @RequestBody ClanUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(clanApplicationService.update(id, request, actorId));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@Positive @PathVariable Long id) {
-        clanApplicationService.delete(id);
+    public ApiResponse<Void> delete(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        clanApplicationService.delete(id, actorId);
         return ApiResponse.success();
     }
 }
