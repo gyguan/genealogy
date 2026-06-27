@@ -89,11 +89,25 @@ public class PersonApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public PersonResponse get(Long id, Long viewerId) {
+        return toPrivacyAwareResponse(getActiveEntity(id), viewerId);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<PersonResponse> listByClan(Long clanId, int pageNo, int pageSize) {
         ensureClanExists(clanId);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<PersonResponse> page = personRepository.findByClanIdAndDeletedAtIsNull(clanId, pageRequest)
                 .map(PersonMapper::toResponse);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PersonResponse> listByClan(Long clanId, int pageNo, int pageSize, Long viewerId) {
+        ensureClanExists(clanId);
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+        Page<PersonResponse> page = personRepository.findByClanIdAndDeletedAtIsNull(clanId, pageRequest)
+                .map(person -> toPrivacyAwareResponse(person, viewerId));
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
@@ -104,6 +118,16 @@ public class PersonApplicationService {
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<PersonResponse> page = personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId, pageRequest)
                 .map(PersonMapper::toResponse);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PersonResponse> listByClanAndBranch(Long clanId, Long branchId, int pageNo, int pageSize, Long viewerId) {
+        ensureClanExists(clanId);
+        ensureBranchBelongsToClan(clanId, branchId);
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+        Page<PersonResponse> page = personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId, pageRequest)
+                .map(person -> toPrivacyAwareResponse(person, viewerId));
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
@@ -141,6 +165,32 @@ public class PersonApplicationService {
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
         operationLogApplicationService.record(entity.getClanId(), actorId, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
+    }
+
+    private PersonResponse toPrivacyAwareResponse(PersonEntity entity, Long viewerId) {
+        PersonResponse response = PersonMapper.toResponse(entity);
+        if (!shouldMaskSensitiveFields(entity, viewerId)) {
+            return response;
+        }
+        return new PersonResponse(
+                response.id(), response.clanId(), response.branchId(), response.personCode(), response.name(),
+                response.genealogyName(), response.courtesyName(), response.aliasName(), response.gender(),
+                response.generationNo(), response.generationWord(), response.rankInFamily(), null, null,
+                response.deathDate(), response.deathDatePrecision(), response.isLiving(), null, null,
+                response.occupation(), response.education(), response.titleOrHonor(), null, null, null,
+                response.hasDescendant(), response.lineageStatus(), response.privacyLevel(), response.dataStatus(),
+                response.createdBy(), response.createdAt(), response.updatedBy(), response.updatedAt()
+        );
+    }
+
+    private boolean shouldMaskSensitiveFields(PersonEntity entity, Long viewerId) {
+        if (!Boolean.TRUE.equals(entity.getIsLiving())) {
+            return false;
+        }
+        if (!DEFAULT_PRIVACY_LEVEL.equals(entity.getPrivacyLevel()) && !"private".equals(entity.getPrivacyLevel())) {
+            return false;
+        }
+        return !authorizationApplicationService.isActiveClanMember(entity.getClanId(), viewerId);
     }
 
     private PersonEntity getActiveEntity(Long id) {
