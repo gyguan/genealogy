@@ -114,7 +114,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getTaskEntity(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        authorizationApplicationService.requireClanMember(record.getClanId(), request.reviewerId());
+        authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
         LocalDateTime now = LocalDateTime.now();
 
         record.setStatus(STATUS_APPROVED);
@@ -137,7 +137,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getTaskEntity(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        authorizationApplicationService.requireClanMember(record.getClanId(), request.reviewerId());
+        authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
         LocalDateTime now = LocalDateTime.now();
 
         String comment = trimToNull(request.comment());
@@ -199,33 +199,17 @@ public class ApprovalApplicationService {
 
     private CheckTaskResponse toTaskResponse(CheckTaskEntity task) {
         return new CheckTaskResponse(
-                task.getId(),
-                task.getClanId(),
-                task.getRevisionId(),
-                task.getReviewLevel(),
-                task.getReviewerId(),
-                task.getReviewerRole(),
-                task.getBranchId(),
-                task.getStatus(),
-                task.getReviewComment(),
-                task.getReviewedAt(),
-                task.getCreatedAt()
+                task.getId(), task.getClanId(), task.getRevisionId(), task.getReviewLevel(), task.getReviewerId(),
+                task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(),
+                task.getReviewedAt(), task.getCreatedAt()
         );
     }
 
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {
         return new AuditRecordResponse(
-                record.getId(),
-                record.getClanId(),
-                record.getTargetType(),
-                record.getTargetId(),
-                record.getChangeType(),
-                record.getDiffSummary(),
-                record.getSubmitterId(),
-                record.getSubmitTime(),
-                record.getStatus(),
-                record.getApprovedAt(),
-                record.getRejectedReason()
+                record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(),
+                record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(),
+                record.getApprovedAt(), record.getRejectedReason()
         );
     }
 
