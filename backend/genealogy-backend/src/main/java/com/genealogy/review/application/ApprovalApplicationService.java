@@ -1,5 +1,7 @@
 package com.genealogy.review.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ApprovalApplicationService {
@@ -54,6 +57,7 @@ public class ApprovalApplicationService {
     private final CheckTaskRepository checkTaskRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final ObjectMapper objectMapper;
 
     public ApprovalApplicationService(
             PersonRepository personRepository,
@@ -64,7 +68,8 @@ public class ApprovalApplicationService {
             AuditRecordRepository auditRecordRepository,
             CheckTaskRepository checkTaskRepository,
             OperationLogApplicationService operationLogApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
+            AuthorizationApplicationService authorizationApplicationService,
+            ObjectMapper objectMapper
     ) {
         this.personRepository = personRepository;
         this.relationshipRepository = relationshipRepository;
@@ -75,15 +80,19 @@ public class ApprovalApplicationService {
         this.checkTaskRepository = checkTaskRepository;
         this.operationLogApplicationService = operationLogApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
     public CheckTaskResponse submitPerson(Long personId, PersonSubmitReviewRequest request) {
         PersonEntity person = getPerson(personId);
-        authorizationApplicationService.requireClanMember(person.getClanId(), request.submitterId());
-        CheckTaskResponse response = submitTarget(person.getClanId(), TARGET_PERSON, personId, person.getBranchId(), request.submitterId(), request.diffSummary(), "提交人物审核：" + person.getName());
+        authorizationApplicationService.requireBranchWriteScope(person.getClanId(), request.submitterId(), person.getBranchId());
+        String beforePayload = toJson(person);
+        LocalDateTime now = LocalDateTime.now();
         person.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
-        person.setUpdatedAt(LocalDateTime.now());
+        person.setUpdatedAt(now);
+        String afterPayload = toJson(person);
+        CheckTaskResponse response = submitTarget(person.getClanId(), TARGET_PERSON, personId, person.getBranchId(), request.submitterId(), request.diffSummary(), "提交人物审核：" + person.getName(), beforePayload, afterPayload);
         personRepository.save(person);
         return response;
     }
@@ -94,9 +103,11 @@ public class ApprovalApplicationService {
                 .filter(entity -> entity.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND));
         authorizationApplicationService.requireClanMember(relationship.getClanId(), request.submitterId());
-        CheckTaskResponse response = submitTarget(relationship.getClanId(), TARGET_RELATIONSHIP, relationshipId, null, request.submitterId(), request.diffSummary(), "提交关系审核");
+        String beforePayload = toJson(relationship);
         relationship.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
         relationship.setUpdatedAt(LocalDateTime.now());
+        String afterPayload = toJson(relationship);
+        CheckTaskResponse response = submitTarget(relationship.getClanId(), TARGET_RELATIONSHIP, relationshipId, null, request.submitterId(), request.diffSummary(), "提交关系审核", beforePayload, afterPayload);
         relationshipRepository.save(relationship);
         return response;
     }
@@ -106,8 +117,10 @@ public class ApprovalApplicationService {
         SourceEntity source = sourceRepository.findById(sourceId)
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
         authorizationApplicationService.requireClanMember(source.getClanId(), request.submitterId());
-        CheckTaskResponse response = submitTarget(source.getClanId(), TARGET_SOURCE, sourceId, null, request.submitterId(), request.diffSummary(), "提交资料来源审核：" + source.getSourceName());
+        String beforePayload = toJson(source);
         source.setVerificationStatus(PERSON_STATUS_PENDING_REVIEW);
+        String afterPayload = toJson(source);
+        CheckTaskResponse response = submitTarget(source.getClanId(), TARGET_SOURCE, sourceId, null, request.submitterId(), request.diffSummary(), "提交资料来源审核：" + source.getSourceName(), beforePayload, afterPayload);
         sourceRepository.save(source);
         return response;
     }
@@ -116,10 +129,12 @@ public class ApprovalApplicationService {
     public CheckTaskResponse submitBranch(Long branchId, TargetSubmitRequest request) {
         BranchEntity branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
-        authorizationApplicationService.requireClanMember(branch.getClanId(), request.submitterId());
-        CheckTaskResponse response = submitTarget(branch.getClanId(), TARGET_BRANCH, branchId, branchId, request.submitterId(), request.diffSummary(), "提交支派审核：" + branch.getBranchName());
+        authorizationApplicationService.requireBranchWriteScope(branch.getClanId(), request.submitterId(), branch.getId());
+        String beforePayload = toJson(branch);
         branch.setStatus(PERSON_STATUS_PENDING_REVIEW);
         branch.setUpdatedAt(LocalDateTime.now());
+        String afterPayload = toJson(branch);
+        CheckTaskResponse response = submitTarget(branch.getClanId(), TARGET_BRANCH, branchId, branchId, request.submitterId(), request.diffSummary(), "提交支派审核：" + branch.getBranchName(), beforePayload, afterPayload);
         branchRepository.save(branch);
         return response;
     }
@@ -128,14 +143,16 @@ public class ApprovalApplicationService {
     public CheckTaskResponse submitGenerationScheme(Long schemeId, TargetSubmitRequest request) {
         GenerationSchemeEntity scheme = genSchemeRepository.findById(schemeId)
                 .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "字辈方案不存在"));
-        authorizationApplicationService.requireClanMember(scheme.getClanId(), request.submitterId());
-        CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "提交字辈方案审核：" + scheme.getSchemeName());
+        authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), request.submitterId(), scheme.getBranchId());
+        String beforePayload = toJson(scheme);
         scheme.setStatus(PERSON_STATUS_PENDING_REVIEW);
+        String afterPayload = toJson(scheme);
+        CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "提交字辈方案审核：" + scheme.getSchemeName(), beforePayload, afterPayload);
         genSchemeRepository.save(scheme);
         return response;
     }
 
-    private CheckTaskResponse submitTarget(Long clanId, String targetType, Long targetId, Long branchId, Long submitterId, String diffSummary, String logSummary) {
+    private CheckTaskResponse submitTarget(Long clanId, String targetType, Long targetId, Long branchId, Long submitterId, String diffSummary, String logSummary, String beforePayload, String afterPayload) {
         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(targetType, targetId, STATUS_PENDING)) {
             throw new BusinessException("REVIEW_ALREADY_PENDING", "目标对象已存在待审核任务");
         }
@@ -145,6 +162,8 @@ public class ApprovalApplicationService {
         record.setTargetType(targetType);
         record.setTargetId(targetId);
         record.setChangeType(CHANGE_SUBMIT_REVIEW);
+        record.setOldPayload(beforePayload);
+        record.setNewPayload(afterPayload);
         record.setDiffSummary(trimToNull(diffSummary));
         record.setSubmitterId(submitterId);
         record.setSubmitTime(now);
@@ -316,9 +335,21 @@ public class ApprovalApplicationService {
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {
         return new AuditRecordResponse(
                 record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(),
-                record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(),
-                record.getApprovedAt(), record.getRejectedReason()
+                record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(),
+                record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason()
         );
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException ex) {
+            try {
+                return objectMapper.writeValueAsString(Map.of("snapshotError", ex.getMessage()));
+            } catch (JsonProcessingException ignored) {
+                return "{}";
+            }
+        }
     }
 
     private String trimToNull(String value) {
