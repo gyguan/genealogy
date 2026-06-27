@@ -12,11 +12,6 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   const [parentId, setParentId] = useState(workspace.branchId);
   const [list, setList] = useState<unknown>();
 
-  async function create() {
-    const data: any = await apiClient.post(`/clans/${clanId}`, {});
-    return data;
-  }
-
   async function createBranch() {
     const data: any = await apiClient.post(`/clans/${clanId}/branches`, {
       branchName,
