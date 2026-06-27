@@ -1,5 +1,6 @@
 package com.genealogy.importexport.controller;
 
+import com.genealogy.auth.application.AuthApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.importexport.application.PersonCsvApplicationService;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
@@ -12,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,9 +28,11 @@ import java.util.Map;
 public class ImportExportController {
 
     private final PersonCsvApplicationService personCsvApplicationService;
+    private final AuthApplicationService authApplicationService;
 
-    public ImportExportController(PersonCsvApplicationService personCsvApplicationService) {
+    public ImportExportController(PersonCsvApplicationService personCsvApplicationService, AuthApplicationService authApplicationService) {
         this.personCsvApplicationService = personCsvApplicationService;
+        this.authApplicationService = authApplicationService;
     }
 
     @GetMapping("/imports/templates/persons.csv")
@@ -39,9 +43,12 @@ public class ImportExportController {
     @PostMapping(value = "/clans/{clanId}/imports/persons.csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> importPersons(
             @Positive @PathVariable Long clanId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader HttpHeaders headers
     ) {
-        return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file));
+        String authorization = headers.getFirst(HttpHeaders.AUTHORIZATION);
+        Long actorId = authApplicationService.currentUserIdOrNull(authorization);
+        return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId));
     }
 
     @GetMapping("/clans/{clanId}/exports/persons.csv")
