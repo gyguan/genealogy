@@ -45,6 +45,11 @@ public class SourceApplicationService {
 
     @Transactional
     public SourceResponse create(Long clanId, SourceCreateRequest request, Long actorId) {
+        return create(clanId, request, actorId, null, null);
+    }
+
+    @Transactional
+    public SourceResponse create(Long clanId, SourceCreateRequest request, Long actorId, String requestId, String clientIp) {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
@@ -63,7 +68,7 @@ public class SourceApplicationService {
         entity.setCreatedBy(actorId);
         entity.setCreatedAt(LocalDateTime.now());
         SourceEntity saved = sourceRepository.save(entity);
-        operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "新增资料来源：" + saved.getSourceName(), null);
+        operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "新增资料来源：" + saved.getSourceName(), null, requestId, clientIp);
         return toResponse(saved);
     }
 
@@ -85,16 +90,8 @@ public class SourceApplicationService {
 
     private SourceResponse toResponse(SourceEntity entity) {
         return new SourceResponse(
-                entity.getId(),
-                entity.getClanId(),
-                entity.getSourceName(),
-                entity.getSourceType(),
-                entity.getProviderName(),
-                entity.getBookTitle(),
-                entity.getVolumeNo(),
-                entity.getPageNo(),
-                entity.getExcerpt(),
-                entity.getVerificationStatus(),
+                entity.getId(), entity.getClanId(), entity.getSourceName(), entity.getSourceType(), entity.getProviderName(),
+                entity.getBookTitle(), entity.getVolumeNo(), entity.getPageNo(), entity.getExcerpt(), entity.getVerificationStatus(),
                 entity.getCreatedAt()
         );
     }
