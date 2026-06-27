@@ -28,6 +28,11 @@ public class AuthorizationApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public Long currentUserIdOrNull(String authorization) {
+        return authApplicationService.currentUserIdOrNull(authorization);
+    }
+
+    @Transactional(readOnly = true)
     public Long requireClanMember(Long clanId, String authorization) {
         Long userId = requireLogin(authorization);
         requireClanMember(clanId, userId);
@@ -45,5 +50,15 @@ public class AuthorizationApplicationService {
             throw new BusinessException("AUTH_FORBIDDEN", "当前用户不是有效宗族成员");
         }
         return member;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isActiveClanMember(Long clanId, Long userId) {
+        if (clanId == null || userId == null) {
+            return false;
+        }
+        return clanMemberRepository.findByClanIdAndUserId(clanId, userId)
+                .filter(member -> member.getMemberStatus() == MemberStatus.active)
+                .isPresent();
     }
 }
