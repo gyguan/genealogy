@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/genealogy-backend/**"
       - "frontend/mvp/**"
+      - "frontend/genealogy-web/**"
       - ".github/workflows/backend-ci.yml"
       - ".github/scripts/backend-startup-check.sh"
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - "backend/genealogy-backend/**"
       - "frontend/mvp/**"
+      - "frontend/genealogy-web/**"
       - ".github/workflows/backend-ci.yml"
       - ".github/scripts/backend-startup-check.sh"
   workflow_dispatch:
@@ -38,7 +40,7 @@ jobs:
         run: mvn -B clean test
 
   frontend-check:
-    name: MVP1 Frontend Static Check
+    name: MVP1 Static Frontend Check
     runs-on: ubuntu-latest
 
     steps:
@@ -57,6 +59,27 @@ jobs:
       - name: Frontend contract check
         working-directory: frontend/mvp
         run: node check-frontend.js
+
+  commercial-frontend-build:
+    name: Commercial Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Build commercial frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
 
   startup-check:
     name: Startup Check with PostgreSQL
