@@ -56,29 +56,25 @@ async function request(path, options = {}) {
   return data?.data ?? data;
 }
 
+function toRows(rows) {
+  if (Array.isArray(rows)) return rows;
+  return rows?.records || rows?.items || rows?.content || rows?.data || [];
+}
+
 function renderList(id, rows, options = {}) {
-  const list = Array.isArray(rows) ? rows : (rows?.items || rows?.content || []);
+  const list = toRows(rows);
   document.getElementById(id).innerHTML = list.map(row => {
     const title = options.title ? options.title(row) : `${row.name || row.clanName || row.branchName || row.sourceName || row.actionType || '记录'} #${row.id || ''}`;
     return `<div class="item"><div class="item-title">${escapeHtml(title)}</div><pre>${escapeHtml(JSON.stringify(row, null, 2))}</pre></div>`;
   }).join('') || '<p class="hint">暂无数据</p>';
 }
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
-}
+function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 
 function downloadUrl(path, fileName) {
-  const url = api(path);
-  fetch(url, { headers: authHeaders(false) })
+  fetch(api(path), { headers: authHeaders(false) })
     .then(res => { if (!res.ok) throw new Error(`下载失败：${res.status}`); return res.blob(); })
-    .then(blob => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    })
+    .then(blob => { const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fileName; link.click(); URL.revokeObjectURL(link.href); })
     .catch(error => show(error.message, true));
 }
 
@@ -88,13 +84,10 @@ function me() { run(() => request('/auth/me', { headers: authHeaders(false) }));
 
 function createClan() { run(() => request('/clans', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ clanName: val('clan-name'), surname: val('clan-surname'), clanCode: val('clan-code'), hallName: val('clan-hall'), originPlace: val('clan-origin') }) })); }
 function listClans() { run(async () => { const data = await request('/clans', { headers: authHeaders(false) }); renderList('clan-list', data); return data; }); }
-
 function createMember() { run(() => request(`/clans/${num('member-clan-id')}/members`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ userId: num('member-user-id'), branchId: num('member-branch-id'), roleId: num('member-role-id'), memberName: val('member-name'), scopeType: val('member-scope-type'), scopeId: num('member-scope-id') }) })); }
 function listMembers() { run(async () => { const data = await request(`/clans/${num('member-list-clan-id')}/members`, { headers: authHeaders(false) }); renderList('member-list', data); return data; }); }
-
 function createBranch() { run(() => request(`/clans/${num('branch-clan-id')}/branches`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ branchName: val('branch-name'), parentId: num('branch-parent-id'), migrationFrom: val('branch-migration-from'), migrationTo: val('branch-migration-to') }) })); }
 function listBranches() { run(async () => { const data = await request(`/clans/${num('branch-clan-id')}/branches`, { headers: authHeaders(false) }); renderList('branch-list', data); return data; }); }
-
 function createGenerationScheme() { run(() => request(`/clans/${num('gen-clan-id')}/generation-schemes`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ branchId: num('gen-branch-id'), schemeName: val('gen-name'), poemText: val('gen-poem'), startGeneration: num('gen-start'), isDefault: checked('gen-default'), validationEnabled: true, strictMode: checked('gen-strict') }) })); }
 function addGenerationWord() { run(() => request(`/generation-schemes/${num('gen-scheme-id')}/items`, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ generationNo: num('gen-no'), word: val('gen-word') }) })); }
 function listGenerationWords() { run(async () => { const data = await request(`/generation-schemes/${num('gen-scheme-id')}/items`, { headers: authHeaders(false) }); renderList('gen-list', data); return data; }); }
@@ -128,7 +121,7 @@ function treeDepthParam() { const depth = num('tree-depth'); return depth ? `&ma
 function loadFamilyTree() { run(async () => { const data = await request(`/tree/person/${num('tree-person-id')}/family`, { headers: authHeaders(false) }); renderTree(data, 'family'); return data; }); }
 function loadDescendants() { run(async () => { const data = await request(`/tree/descendants?rootPersonId=${num('tree-person-id')}${treeDepthParam()}`, { headers: authHeaders(false) }); renderTree(data, 'descendants'); return data; }); }
 function loadAncestors() { run(async () => { const data = await request(`/tree/ancestors?personId=${num('tree-person-id')}${treeDepthParam()}`, { headers: authHeaders(false) }); renderTree(data, 'ancestors'); return data; }); }
-function renderTree(data, mode) { document.getElementById('tree-result').innerText = JSON.stringify(data, null, 2); const graph = document.getElementById('tree-graph'); const center = data.centerPerson || data.rootPerson || data.person || data; const edges = data.relationships || data.edges || data.items || data.descendants || data.ancestors || []; const centerText = center.name ? `${center.name} #${center.id}` : `人物 #${num('tree-person-id')}`; const rows = Array.isArray(edges) ? edges.slice(0, 60).map(edge => `<div class="tree-row"><span class="tree-node">${edge.fromPersonId || edge.parentId || edge.sourceId || ''}</span><span class="tree-edge">${edge.relationType || edge.relationLabel || edge.type || mode}</span><span class="tree-node">${edge.toPersonId || edge.childId || edge.targetId || ''}</span></div>`).join('') : ''; graph.innerHTML = `<div class="tree-row"><span class="tree-node center">${escapeHtml(centerText)}</span><span class="tree-edge">${mode}</span></div>${rows || '<p class="hint">暂无关系边，原始 JSON 已展示。</p>'}`; }
+function renderTree(data, mode) { document.getElementById('tree-result').innerText = JSON.stringify(data, null, 2); const graph = document.getElementById('tree-graph'); const center = (data.nodes || []).find(node => node.personId === data.rootPersonId) || (data.nodes || [])[0] || data; const edges = data.edges || data.relationships || []; const centerText = center.name ? `${center.name} #${center.personId || center.id}` : `人物 #${data.rootPersonId || num('tree-person-id')}`; const rows = Array.isArray(edges) ? edges.slice(0, 60).map(edge => `<div class="tree-row"><span class="tree-node">${edge.fromPersonId || edge.parentId || edge.sourceId || ''}</span><span class="tree-edge">${edge.relationType || edge.relationLabel || edge.type || mode}</span><span class="tree-node">${edge.toPersonId || edge.childId || edge.targetId || ''}</span></div>`).join('') : ''; graph.innerHTML = `<div class="tree-row"><span class="tree-node center">${escapeHtml(centerText)}</span><span class="tree-edge">${mode}</span></div>${rows || '<p class="hint">暂无关系边，原始 JSON 已展示。</p>'}`; }
 
 function downloadPersonsTemplate() { downloadUrl('/imports/templates/persons.csv', 'persons-template.csv'); }
 function downloadRelationsTemplate() { downloadUrl('/imports/templates/relations.csv', 'relations-template.csv'); }
