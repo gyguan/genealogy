@@ -52,7 +52,7 @@ public class RelationshipApplicationService {
 
     @Transactional
     public RelationshipResponse create(Long clanId, RelationshipCreateRequest request, Long actorId) {
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        requireRelationshipBranchWriteScope(clanId, actorId, request.fromPersonId(), request.toPersonId());
         validateCreate(clanId, request);
         RelationshipEntity entity = RelationshipMapper.toEntity(clanId, normalizeRequest(request));
         applyDefaults(entity);
@@ -89,7 +89,7 @@ public class RelationshipApplicationService {
     @Transactional
     public RelationshipResponse update(Long id, RelationshipUpdateRequest request, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        requireRelationshipBranchWriteScope(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId());
         String oldType = entity.getRelationType();
         entity.setRelationType(normalizeType(request.relationType()));
         entity.setRelationLabel(normalizeLabel(request.relationLabel(), entity.getRelationType(), entity.getFromPersonId()));
@@ -117,11 +117,21 @@ public class RelationshipApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        requireRelationshipBranchWriteScope(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId());
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         relationshipRepository.save(entity);
         operationLogApplicationService.record(entity.getClanId(), actorId, "relationship_delete", "relationship", entity.getId(), "删除人物关系", null);
+    }
+
+    private void requireRelationshipBranchWriteScope(Long clanId, Long actorId, Long fromPersonId, Long toPersonId) {
+        PersonEntity from = getActivePerson(fromPersonId);
+        PersonEntity to = getActivePerson(toPersonId);
+        if (!from.getClanId().equals(clanId) || !to.getClanId().equals(clanId)) {
+            throw new BusinessException("RELATIONSHIP_CLAN_MISMATCH", "persons must belong to the clan");
+        }
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, from.getBranchId());
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, to.getBranchId());
     }
 
     private void validateCreate(Long clanId, RelationshipCreateRequest request) {
