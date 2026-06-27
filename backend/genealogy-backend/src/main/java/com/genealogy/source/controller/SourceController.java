@@ -1,6 +1,6 @@
 package com.genealogy.source.controller;
 
-import com.genealogy.auth.application.AuthApplicationService;
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
@@ -24,11 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class SourceController {
 
     private final SourceApplicationService sourceApplicationService;
-    private final AuthApplicationService authApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public SourceController(SourceApplicationService sourceApplicationService, AuthApplicationService authApplicationService) {
+    public SourceController(SourceApplicationService sourceApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.sourceApplicationService = sourceApplicationService;
-        this.authApplicationService = authApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/sources")
@@ -37,11 +37,8 @@ public class SourceController {
             @Valid @RequestBody SourceCreateRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(sourceApplicationService.create(
-                clanId,
-                request,
-                authApplicationService.currentUserIdOrNull(authorization)
-        ));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(sourceApplicationService.create(clanId, request, actorId));
     }
 
     @GetMapping("/sources/{id}")
