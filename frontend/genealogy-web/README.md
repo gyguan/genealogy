@@ -86,9 +86,13 @@ http://localhost:8080/api/v1
 当前宗族ID
 当前支派ID
 当前人物ID
+当前关系ID
+当前来源ID
+当前附件ID
+当前审核任务ID
 ```
 
-这些值会保存到浏览器 localStorage，并被人物、关系、世系等高频页面复用，避免在每个页面反复输入 ID。
+这些值会保存到浏览器 localStorage，并被人物、关系、来源、审核、世系等高频页面复用，避免在每个页面反复输入 ID。
 
 ## 五、构建
 
@@ -136,3 +140,7 @@ frontend/genealogy-web  商用化前端工程，后续主推演进
 ```
 
 后续新增前端能力应优先进入 `frontend/genealogy-web/src/features/*`。
+
+## 八、CI 验证
+
+本段用于触发商用版前端构建验证。
