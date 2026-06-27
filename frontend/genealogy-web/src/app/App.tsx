@@ -40,6 +40,12 @@ export function App() {
 
   useEffect(() => {
     void healthCheck('应用加载');
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      event.preventDefault();
+      setStatus({ error: true, message: event.reason?.message || String(event.reason) });
+    };
+    window.addEventListener('unhandledrejection', onUnhandled);
+    return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
   async function healthCheck(context: string) {
