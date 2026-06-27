@@ -16,8 +16,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class RelationshipApplicationService {
@@ -118,9 +122,13 @@ public class RelationshipApplicationService {
     public void delete(Long id, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
         requireRelationshipBranchWriteScope(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId());
-        entity.setDeletedAt(LocalDateTime.now());
-        entity.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        entity.setDeletedAt(now);
+        entity.setUpdatedAt(now);
         relationshipRepository.save(entity);
+        if (TYPE_SPOUSE.equals(entity.getRelationType())) {
+            softDeleteReverseSpouse(entity, now);
+        }
         operationLogApplicationService.record(entity.getClanId(), actorId, "relationship_delete", "relationship", entity.getId(), "删除人物关系", null);
     }
 
@@ -159,6 +167,9 @@ public class RelationshipApplicationService {
             }
             return;
         }
+        if (isLineageType(relationType)) {
+            validateNoAncestryCycle(clanId, fromPersonId, toPersonId, currentId);
+        }
         if (TYPE_PARENT_CHILD.equals(relationType) && (LABEL_FATHER.equals(relationLabel) || LABEL_MOTHER.equals(relationLabel))) {
             long count = relationshipRepository.findActiveToRelations(clanId, toPersonId, TYPE_PARENT_CHILD).stream()
                     .filter(item -> currentId == null || !item.getId().equals(currentId))
@@ -176,12 +187,37 @@ public class RelationshipApplicationService {
     }
 
     private void validateGenerationOrder(PersonEntity from, PersonEntity to, String relationType) {
-        if (!TYPE_PARENT_CHILD.equals(relationType) && !TYPE_ADOPTIVE.equals(relationType)) {
+        if (!isLineageType(relationType)) {
             return;
         }
         if (from.getGenerationNo() != null && to.getGenerationNo() != null && from.getGenerationNo() >= to.getGenerationNo()) {
             throw new BusinessException("RELATIONSHIP_GENERATION_CONFLICT", "亲子关系中父辈代次必须小于子辈代次");
         }
+    }
+
+    private void validateNoAncestryCycle(Long clanId, Long parentId, Long childId, Long currentId) {
+        Deque<Long> queue = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+        queue.add(childId);
+        while (!queue.isEmpty()) {
+            Long current = queue.removeFirst();
+            if (!visited.add(current)) {
+                continue;
+            }
+            if (current.equals(parentId)) {
+                throw new BusinessException("RELATIONSHIP_CYCLE_DETECTED", "关系会造成祖先/后代循环");
+            }
+            relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(current).stream()
+                    .filter(item -> currentId == null || !item.getId().equals(currentId))
+                    .filter(item -> clanId.equals(item.getClanId()))
+                    .filter(item -> isLineageType(item.getRelationType()))
+                    .map(RelationshipEntity::getToPersonId)
+                    .forEach(queue::addLast);
+        }
+    }
+
+    private boolean isLineageType(String relationType) {
+        return TYPE_PARENT_CHILD.equals(relationType) || TYPE_ADOPTIVE.equals(relationType);
     }
 
     private RelationshipCreateRequest normalizeRequest(RelationshipCreateRequest request) {
@@ -236,6 +272,15 @@ public class RelationshipApplicationService {
         reverse.setCreatedAt(now);
         reverse.setUpdatedAt(now);
         relationshipRepository.save(reverse);
+    }
+
+    private void softDeleteReverseSpouse(RelationshipEntity deleted, LocalDateTime now) {
+        relationshipRepository.findActiveSameRelation(deleted.getClanId(), deleted.getToPersonId(), deleted.getFromPersonId(), TYPE_SPOUSE)
+                .forEach(reverse -> {
+                    reverse.setDeletedAt(now);
+                    reverse.setUpdatedAt(now);
+                    relationshipRepository.save(reverse);
+                });
     }
 
     private PersonEntity getActivePerson(Long personId) {
