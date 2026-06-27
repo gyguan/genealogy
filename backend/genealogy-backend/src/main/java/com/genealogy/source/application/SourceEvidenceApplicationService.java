@@ -1,5 +1,6 @@
 package com.genealogy.source.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -35,6 +36,7 @@ public class SourceEvidenceApplicationService {
     private final RelationshipRepository relationshipRepository;
     private final BranchRepository branchRepository;
     private final OperationLogApplicationService operationLogApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
     public SourceEvidenceApplicationService(
             SourceRepository sourceRepository,
@@ -43,7 +45,8 @@ public class SourceEvidenceApplicationService {
             PersonRepository personRepository,
             RelationshipRepository relationshipRepository,
             BranchRepository branchRepository,
-            OperationLogApplicationService operationLogApplicationService
+            OperationLogApplicationService operationLogApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.sourceRepository = sourceRepository;
         this.sourceBindingRepository = sourceBindingRepository;
@@ -52,12 +55,14 @@ public class SourceEvidenceApplicationService {
         this.relationshipRepository = relationshipRepository;
         this.branchRepository = branchRepository;
         this.operationLogApplicationService = operationLogApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
     public SourceBindingResponse bind(SourceBindingCreateRequest request) {
         String targetType = normalizeTargetType(request.targetType());
         SourceEntity source = getSource(request.sourceId());
+        authorizationApplicationService.requireClanMember(source.getClanId(), request.createdBy());
         validateTargetExists(source, targetType, request.targetId());
         if (sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetId(source.getId(), targetType, request.targetId())) {
             throw new BusinessException("SOURCE_BINDING_DUPLICATED", "该来源已绑定到目标对象");
@@ -110,6 +115,7 @@ public class SourceEvidenceApplicationService {
     public void unbind(Long bindingId, Long actorId) {
         SourceBindingEntity binding = sourceBindingRepository.findById(bindingId)
                 .orElseThrow(() -> new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在"));
+        authorizationApplicationService.requireClanMember(binding.getClanId(), actorId);
         SourceEntity source = getSource(binding.getSourceId());
         sourceBindingRepository.deleteById(bindingId);
         operationLogApplicationService.record(
@@ -125,6 +131,7 @@ public class SourceEvidenceApplicationService {
 
     @Transactional
     public AttachmentResponse createAttachment(AttachmentCreateRequest request) {
+        authorizationApplicationService.requireClanMember(request.clanId(), request.uploadedBy());
         SourceEntity source = null;
         if (request.sourceId() != null) {
             source = getSource(request.sourceId());
