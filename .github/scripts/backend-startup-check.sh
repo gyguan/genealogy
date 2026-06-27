@@ -3,7 +3,7 @@ set -euo pipefail
 
 export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:postgresql://localhost:5432/genealogy}"
 export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-genealogy}"
-export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-genealogy}"
+export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-123456}"
 
 cleanup() {
   if [ -f /tmp/genealogy-backend.pid ]; then
@@ -32,7 +32,7 @@ docker run -d \
   --name genealogy-postgres \
   -e POSTGRES_DB=genealogy \
   -e POSTGRES_USER=genealogy \
-  -e POSTGRES_PASSWORD=genealogy \
+  -e POSTGRES_PASSWORD=123456 \
   -p 5432:5432 \
   postgres:16 >/dev/null
 
