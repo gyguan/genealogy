@@ -24,29 +24,59 @@ public class OperationLogApplicationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail) {
-        OperationLogEntity entity = new OperationLogEntity();
-        entity.setClanId(clanId);
-        entity.setActorId(actorId);
-        entity.setActionType(actionType);
-        entity.setTargetType(targetType);
-        entity.setTargetId(targetId);
-        entity.setSummary(trim(summary, 500));
-        entity.setDetail(detail);
-        entity.setCreatedAt(LocalDateTime.now());
-        operationLogRepository.save(entity);
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail, String requestId, String clientIp) {
+        try {
+            OperationLogEntity entity = new OperationLogEntity();
+            entity.setClanId(clanId);
+            entity.setActorId(actorId);
+            entity.setActionType(normalize(actionType));
+            entity.setTargetType(normalize(targetType));
+            entity.setTargetId(targetId);
+            entity.setSummary(trim(summary, 500));
+            entity.setDetail(detail);
+            entity.setRequestId(trim(requestId, 128));
+            entity.setClientIp(trim(clientIp, 64));
+            entity.setCreatedAt(LocalDateTime.now());
+            operationLogRepository.save(entity);
+        } catch (Exception ignored) {
+            // 审计日志失败不能阻塞主业务链路。
+        }
     }
 
     @Transactional(readOnly = true)
     public PageResponse<OperationLogResponse> list(Long clanId, String targetType, Long targetId, int pageNo, int pageSize) {
+        return search(clanId, null, null, targetType, targetId, null, null, null, pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OperationLogResponse> search(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword,
+            int pageNo,
+            int pageSize
+    ) {
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<OperationLogEntity> page;
-        if (targetType != null && !targetType.isBlank() && targetId != null) {
-            page = operationLogRepository.findByTargetTypeAndTargetId(targetType.trim().toLowerCase(), targetId, pageRequest);
-        } else if (clanId != null) {
-            page = operationLogRepository.findByClanId(clanId, pageRequest);
-        } else {
-            page = operationLogRepository.findAll(pageRequest);
-        }
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                clanId,
+                actorId,
+                normalize(actionType),
+                normalize(targetType),
+                targetId,
+                startTime,
+                endTime,
+                trimToNull(keyword),
+                pageRequest
+        );
         return PageResponse.of(page.map(this::toResponse).getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
@@ -64,6 +94,18 @@ public class OperationLogApplicationService {
                 entity.getClientIp(),
                 entity.getCreatedAt()
         );
+    }
+
+    private String normalize(String value) {
+        String trimmed = trimToNull(value);
+        return trimmed == null ? null : trimmed.toLowerCase();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     private String trim(String value, int maxLength) {
