@@ -1,6 +1,6 @@
 package com.genealogy.importexport.controller;
 
-import com.genealogy.auth.application.AuthApplicationService;
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.importexport.application.PersonCsvApplicationService;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
@@ -28,11 +28,14 @@ import java.util.Map;
 public class ImportExportController {
 
     private final PersonCsvApplicationService personCsvApplicationService;
-    private final AuthApplicationService authApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ImportExportController(PersonCsvApplicationService personCsvApplicationService, AuthApplicationService authApplicationService) {
+    public ImportExportController(
+            PersonCsvApplicationService personCsvApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.personCsvApplicationService = personCsvApplicationService;
-        this.authApplicationService = authApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @GetMapping("/imports/templates/persons.csv")
@@ -46,8 +49,7 @@ public class ImportExportController {
             @RequestParam("file") MultipartFile file,
             @RequestHeader HttpHeaders headers
     ) {
-        String authorization = headers.getFirst(HttpHeaders.AUTHORIZATION);
-        Long actorId = authApplicationService.currentUserIdOrNull(authorization);
+        Long actorId = authorizationApplicationService.requireClanMember(clanId, headers.getFirst(HttpHeaders.AUTHORIZATION));
         return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId));
     }
 
