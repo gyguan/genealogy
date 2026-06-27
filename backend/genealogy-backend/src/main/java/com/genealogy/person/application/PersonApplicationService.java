@@ -58,6 +58,11 @@ public class PersonApplicationService {
 
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request) {
+        return create(clanId, request, null);
+    }
+
+    @Transactional
+    public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
@@ -69,7 +74,7 @@ public class PersonApplicationService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         PersonEntity saved = personRepository.save(entity);
-        operationLogApplicationService.record(clanId, null, "person_create", "person", saved.getId(), "新增人物：" + saved.getName(), null);
+        operationLogApplicationService.record(clanId, actorId, "person_create", "person", saved.getId(), "新增人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
 
@@ -99,6 +104,11 @@ public class PersonApplicationService {
 
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request) {
+        return update(id, request, null);
+    }
+
+    @Transactional
+    public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
@@ -108,17 +118,22 @@ public class PersonApplicationService {
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
         PersonEntity saved = personRepository.save(entity);
-        operationLogApplicationService.record(saved.getClanId(), null, "person_update", "person", saved.getId(), "更新人物：" + saved.getName(), null);
+        operationLogApplicationService.record(saved.getClanId(), actorId, "person_update", "person", saved.getId(), "更新人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
+        delete(id, null);
+    }
+
+    @Transactional
+    public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
-        operationLogApplicationService.record(entity.getClanId(), null, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
+        operationLogApplicationService.record(entity.getClanId(), actorId, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
     }
 
     private PersonEntity getActiveEntity(Long id) {
