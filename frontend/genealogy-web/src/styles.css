@@ -9,7 +9,7 @@ body { margin: 0; min-width: 1180px; }
 button, input, select { font: inherit; }
 
 .admin-layout { display: flex; min-height: 100vh; }
-.sidebar { width: 280px; background: linear-gradient(180deg, #101828 0%, #1d2939 100%); color: #fff; padding: 24px 18px; }
+.sidebar { width: 280px; background: linear-gradient(180deg, #101828 0%, #1d2939 100%); color: #fff; padding: 24px 18px; overflow: auto; }
 .brand { display: grid; gap: 4px; margin-bottom: 24px; }
 .brand strong { font-size: 24px; letter-spacing: .2px; }
 .brand span { color: #98a2b3; font-size: 13px; }
@@ -45,5 +45,9 @@ button.secondary { background: #eff8ff; color: #175cd3; }
 button.danger { background: #d92d20; }
 .data-block { background: #101828; color: #d0d5dd; padding: 14px; border-radius: 14px; overflow: auto; max-height: 520px; line-height: 1.5; font-size: 12px; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.metric { background: linear-gradient(135deg, #eff8ff, #f5f8ff); border: 1px solid #b2ddff; border-radius: 16px; padding: 14px; }
+.metric span { color: #475467; font-size: 13px; }
+.metric strong { display: block; margin-top: 6px; font-size: 24px; color: #175cd3; }
 .tree-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .tree-preview span { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
