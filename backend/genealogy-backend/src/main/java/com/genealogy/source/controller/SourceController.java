@@ -1,5 +1,6 @@
 package com.genealogy.source.controller;
 
+import com.genealogy.auth.application.AuthApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,14 +24,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class SourceController {
 
     private final SourceApplicationService sourceApplicationService;
+    private final AuthApplicationService authApplicationService;
 
-    public SourceController(SourceApplicationService sourceApplicationService) {
+    public SourceController(SourceApplicationService sourceApplicationService, AuthApplicationService authApplicationService) {
         this.sourceApplicationService = sourceApplicationService;
+        this.authApplicationService = authApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/sources")
-    public ApiResponse<SourceResponse> create(@Positive @PathVariable Long clanId, @Valid @RequestBody SourceCreateRequest request) {
-        return ApiResponse.success(sourceApplicationService.create(clanId, request));
+    public ApiResponse<SourceResponse> create(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody SourceCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return ApiResponse.success(sourceApplicationService.create(
+                clanId,
+                request,
+                authApplicationService.currentUserIdOrNull(authorization)
+        ));
     }
 
     @GetMapping("/sources/{id}")
