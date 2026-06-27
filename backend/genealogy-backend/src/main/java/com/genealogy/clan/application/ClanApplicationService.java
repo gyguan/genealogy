@@ -1,5 +1,6 @@
 package com.genealogy.clan.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.dto.ClanCreateRequest;
 import com.genealogy.clan.dto.ClanResponse;
@@ -10,6 +11,12 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.member.entity.ClanMemberEntity;
+import com.genealogy.member.entity.RoleEntity;
+import com.genealogy.member.enums.MemberScopeType;
+import com.genealogy.member.enums.MemberStatus;
+import com.genealogy.member.repository.ClanMemberRepository;
+import com.genealogy.member.repository.RoleRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -21,23 +28,47 @@ import java.time.LocalDateTime;
 @Service
 public class ClanApplicationService {
 
+    private static final String ROLE_CLAN_ADMIN = "clan_admin";
+
     private final ClanRepository clanRepository;
     private final BranchRepository branchRepository;
+    private final ClanMemberRepository clanMemberRepository;
+    private final RoleRepository roleRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ClanApplicationService(ClanRepository clanRepository, BranchRepository branchRepository) {
+    public ClanApplicationService(
+            ClanRepository clanRepository,
+            BranchRepository branchRepository,
+            ClanMemberRepository clanMemberRepository,
+            RoleRepository roleRepository,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.clanRepository = clanRepository;
         this.branchRepository = branchRepository;
+        this.clanMemberRepository = clanMemberRepository;
+        this.roleRepository = roleRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
     public ClanResponse create(ClanCreateRequest request) {
+        return create(request, null);
+    }
+
+    @Transactional
+    public ClanResponse create(ClanCreateRequest request, Long creatorUserId) {
+        if (creatorUserId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
+        }
         validateClanCodeForCreate(request.clanCode());
         ClanEntity entity = ClanMapper.toEntity(request);
         LocalDateTime now = LocalDateTime.now();
         entity.setStatus("draft");
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
-        return ClanMapper.toResponse(clanRepository.save(entity));
+        ClanEntity saved = clanRepository.save(entity);
+        createAdminMember(saved.getId(), creatorUserId, request.clanName(), now);
+        return ClanMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +85,13 @@ public class ClanApplicationService {
 
     @Transactional
     public void delete(Long id) {
+        delete(id, null);
+    }
+
+    @Transactional
+    public void delete(Long id, Long actorId) {
         ClanEntity entity = getEntity(id);
+        authorizationApplicationService.requireClanMember(id, actorId);
         if (branchRepository.existsByClanId(id)) {
             throw new BusinessException("CLAN_HAS_BRANCHES", "宗族下存在支派，不能删除");
         }
@@ -63,7 +100,13 @@ public class ClanApplicationService {
 
     @Transactional
     public ClanResponse update(Long id, ClanUpdateRequest request) {
+        return update(id, request, null);
+    }
+
+    @Transactional
+    public ClanResponse update(Long id, ClanUpdateRequest request, Long actorId) {
         ClanEntity entity = getEntity(id);
+        authorizationApplicationService.requireClanMember(id, actorId);
         validateClanCodeForUpdate(id, request.clanCode());
         ClanMapper.updateEntity(entity, request);
         if (entity.getStatus() == null) {
@@ -71,6 +114,22 @@ public class ClanApplicationService {
         }
         entity.setUpdatedAt(LocalDateTime.now());
         return ClanMapper.toResponse(clanRepository.save(entity));
+    }
+
+    private void createAdminMember(Long clanId, Long creatorUserId, String memberName, LocalDateTime now) {
+        RoleEntity adminRole = roleRepository.findByRoleCode(ROLE_CLAN_ADMIN)
+                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "clan admin role not found"));
+        ClanMemberEntity member = new ClanMemberEntity();
+        member.setClanId(clanId);
+        member.setUserId(creatorUserId);
+        member.setRoleId(adminRole.getId());
+        member.setMemberName(memberName == null || memberName.isBlank() ? "宗族管理员" : memberName.trim() + "管理员");
+        member.setMemberStatus(MemberStatus.active);
+        member.setScopeType(MemberScopeType.clan);
+        member.setJoinedAt(now);
+        member.setCreatedAt(now);
+        member.setUpdatedAt(now);
+        clanMemberRepository.save(member);
     }
 
     private ClanEntity getEntity(Long id) {
