@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { DataBlock } from '../shared/ui/DataBlock';
+import { WorkspaceBar } from '../shared/ui/WorkspaceBar';
 import { AuthPage } from '../features/auth/AuthPage';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
@@ -132,6 +133,7 @@ function AppShell() {
             <input value={token} onChange={e => saveToken(e.target.value)} placeholder="登录后自动填充" />
           </div>
         </header>
+        <WorkspaceBar />
         <section className="status-card"><DataBlock data={status} /></section>
         {renderPage()}
       </main>
