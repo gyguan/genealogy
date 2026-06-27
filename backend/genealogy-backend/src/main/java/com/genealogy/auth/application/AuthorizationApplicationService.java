@@ -3,6 +3,7 @@ package com.genealogy.auth.application;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMemberEntity;
 import com.genealogy.member.entity.RoleEntity;
+import com.genealogy.member.enums.MemberScopeType;
 import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMemberRepository;
 import com.genealogy.member.repository.RoleRepository;
@@ -15,6 +16,10 @@ import java.util.stream.Collectors;
 
 @Service
 public class AuthorizationApplicationService {
+
+    private static final String ROLE_CLAN_ADMIN = "clan_admin";
+    private static final String ROLE_BRANCH_ADMIN = "branch_admin";
+    private static final String ROLE_EDITOR = "editor";
 
     private final AuthApplicationService authApplicationService;
     private final ClanMemberRepository clanMemberRepository;
@@ -67,12 +72,30 @@ public class AuthorizationApplicationService {
     @Transactional(readOnly = true)
     public ClanMemberEntity requireAnyRole(Long clanId, Long userId, String... roleCodes) {
         ClanMemberEntity member = requireClanMember(clanId, userId);
-        String actualRoleCode = roleRepository.findById(member.getRoleId())
-                .map(RoleEntity::getRoleCode)
-                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "成员角色不存在"));
+        String actualRoleCode = roleCode(member);
         Set<String> allowed = Arrays.stream(roleCodes).collect(Collectors.toSet());
         if (!allowed.contains(actualRoleCode)) {
             throw new BusinessException("AUTH_FORBIDDEN", "当前角色无权执行该操作");
+        }
+        return member;
+    }
+
+    @Transactional(readOnly = true)
+    public ClanMemberEntity requireBranchWriteScope(Long clanId, Long userId, Long branchId) {
+        ClanMemberEntity member = requireClanMember(clanId, userId);
+        String roleCode = roleCode(member);
+        if (ROLE_CLAN_ADMIN.equals(roleCode)) {
+            return member;
+        }
+        if (!ROLE_BRANCH_ADMIN.equals(roleCode) && !ROLE_EDITOR.equals(roleCode)) {
+            throw new BusinessException("AUTH_FORBIDDEN", "当前角色无权维护该支派数据");
+        }
+        if (member.getScopeType() == MemberScopeType.clan) {
+            return member;
+        }
+        Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
+        if (allowedBranchId == null || branchId == null || !allowedBranchId.equals(branchId)) {
+            throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
         }
         return member;
     }
@@ -85,5 +108,11 @@ public class AuthorizationApplicationService {
         return clanMemberRepository.findByClanIdAndUserId(clanId, userId)
                 .filter(member -> member.getMemberStatus() == MemberStatus.active)
                 .isPresent();
+    }
+
+    private String roleCode(ClanMemberEntity member) {
+        return roleRepository.findById(member.getRoleId())
+                .map(RoleEntity::getRoleCode)
+                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "成员角色不存在"));
     }
 }
