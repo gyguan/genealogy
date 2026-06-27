@@ -44,19 +44,42 @@ Backend CI → mvn -B clean test
 ```text
 数据库名：genealogy
 用户名：genealogy
-密码：genealogy
+密码：123456
 ```
 
-启动：
+当前默认配置位于：
+
+```text
+src/main/resources/application.yml
+```
+
+默认连接串：
+
+```text
+jdbc:postgresql://localhost:5432/genealogy
+```
+
+从 GitHub 拉取后启动：
 
 ```bash
+git pull
+cd backend/genealogy-backend
 mvn spring-boot:run
 ```
+
+启动时 Flyway 会自动执行 `src/main/resources/db/migration` 下的建表和系统预置脚本。
 
 健康检查：
 
 ```text
-GET /api/v1/health
+GET http://localhost:8080/api/v1/health
+```
+
+Swagger/OpenAPI：
+
+```text
+http://localhost:8080/swagger-ui.html
+http://localhost:8080/api-docs
 ```
 
 ## 认证登录接口
