@@ -1,6 +1,6 @@
 package com.genealogy.person.controller;
 
-import com.genealogy.auth.application.AuthApplicationService;
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
@@ -27,11 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PersonController {
 
     private final PersonApplicationService personApplicationService;
-    private final AuthApplicationService authApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public PersonController(PersonApplicationService personApplicationService, AuthApplicationService authApplicationService) {
+    public PersonController(PersonApplicationService personApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.personApplicationService = personApplicationService;
-        this.authApplicationService = authApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/persons")
@@ -40,7 +40,8 @@ public class PersonController {
             @Valid @RequestBody PersonCreateRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(personApplicationService.create(clanId, request, authApplicationService.currentUserIdOrNull(authorization)));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(personApplicationService.create(clanId, request, actorId));
     }
 
     @GetMapping("/persons/{id}")
@@ -77,7 +78,8 @@ public class PersonController {
             @Valid @RequestBody PersonUpdateRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(personApplicationService.update(id, request, authApplicationService.currentUserIdOrNull(authorization)));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(personApplicationService.update(id, request, actorId));
     }
 
     @DeleteMapping("/persons/{id}")
@@ -85,7 +87,8 @@ public class PersonController {
             @Positive @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        personApplicationService.delete(id, authApplicationService.currentUserIdOrNull(authorization));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        personApplicationService.delete(id, actorId);
         return ApiResponse.success();
     }
 }
