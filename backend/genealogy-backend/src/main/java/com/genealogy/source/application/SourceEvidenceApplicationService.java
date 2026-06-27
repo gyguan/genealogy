@@ -1,11 +1,14 @@
 package com.genealogy.source.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.source.dto.AttachmentCreateRequest;
 import com.genealogy.source.dto.AttachmentResponse;
@@ -63,7 +66,7 @@ public class SourceEvidenceApplicationService {
         String targetType = normalizeTargetType(request.targetType());
         SourceEntity source = getSource(request.sourceId());
         authorizationApplicationService.requireClanMember(source.getClanId(), request.createdBy());
-        validateTargetExists(source, targetType, request.targetId());
+        validateTargetAndScope(source, targetType, request.targetId(), request.createdBy());
         if (sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetId(source.getId(), targetType, request.targetId())) {
             throw new BusinessException("SOURCE_BINDING_DUPLICATED", "该来源已绑定到目标对象");
         }
@@ -78,15 +81,7 @@ public class SourceEvidenceApplicationService {
         entity.setCreatedBy(request.createdBy());
         entity.setCreatedAt(LocalDateTime.now());
         SourceBindingEntity saved = sourceBindingRepository.save(entity);
-        operationLogApplicationService.record(
-                saved.getClanId(),
-                saved.getCreatedBy(),
-                "source_binding_create",
-                saved.getTargetType(),
-                saved.getTargetId(),
-                "绑定资料来源：" + source.getSourceName(),
-                "sourceId=" + saved.getSourceId() + ", bindingId=" + saved.getId()
-        );
+        operationLogApplicationService.record(saved.getClanId(), saved.getCreatedBy(), "source_binding_create", saved.getTargetType(), saved.getTargetId(), "绑定资料来源：" + source.getSourceName(), "sourceId=" + saved.getSourceId() + ", bindingId=" + saved.getId());
         return toBindingResponse(saved);
     }
 
@@ -115,18 +110,11 @@ public class SourceEvidenceApplicationService {
     public void unbind(Long bindingId, Long actorId) {
         SourceBindingEntity binding = sourceBindingRepository.findById(bindingId)
                 .orElseThrow(() -> new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在"));
-        authorizationApplicationService.requireClanMember(binding.getClanId(), actorId);
         SourceEntity source = getSource(binding.getSourceId());
+        authorizationApplicationService.requireClanMember(binding.getClanId(), actorId);
+        validateTargetAndScope(source, binding.getTargetType(), binding.getTargetId(), actorId);
         sourceBindingRepository.deleteById(bindingId);
-        operationLogApplicationService.record(
-                binding.getClanId(),
-                actorId,
-                "source_binding_delete",
-                binding.getTargetType(),
-                binding.getTargetId(),
-                "解除资料来源绑定：" + source.getSourceName(),
-                "sourceId=" + binding.getSourceId() + ", bindingId=" + binding.getId()
-        );
+        operationLogApplicationService.record(binding.getClanId(), actorId, "source_binding_delete", binding.getTargetType(), binding.getTargetId(), "解除资料来源绑定：" + source.getSourceName(), "sourceId=" + binding.getSourceId() + ", bindingId=" + binding.getId());
     }
 
     @Transactional
@@ -153,15 +141,7 @@ public class SourceEvidenceApplicationService {
         entity.setUploadedAt(LocalDateTime.now());
         entity.setAccessLevel(defaultIfBlank(request.accessLevel(), "clan_only"));
         AttachmentEntity saved = attachmentRepository.save(entity);
-        operationLogApplicationService.record(
-                saved.getClanId(),
-                saved.getUploadedBy(),
-                "attachment_create",
-                saved.getSourceId() == null ? "attachment" : "source",
-                saved.getSourceId() == null ? saved.getId() : saved.getSourceId(),
-                "登记附件：" + saved.getFileName(),
-                source == null ? "attachmentId=" + saved.getId() : "sourceId=" + source.getId() + ", attachmentId=" + saved.getId()
-        );
+        operationLogApplicationService.record(saved.getClanId(), saved.getUploadedBy(), "attachment_create", saved.getSourceId() == null ? "attachment" : "source", saved.getSourceId() == null ? saved.getId() : saved.getSourceId(), "登记附件：" + saved.getFileName(), source == null ? "attachmentId=" + saved.getId() : "sourceId=" + source.getId() + ", attachmentId=" + saved.getId());
         return toAttachmentResponse(saved);
     }
 
@@ -178,25 +158,37 @@ public class SourceEvidenceApplicationService {
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
     }
 
-    private void validateTargetExists(SourceEntity source, String targetType, Long targetId) {
+    private void validateTargetAndScope(SourceEntity source, String targetType, Long targetId, Long actorId) {
         if (targetId == null) {
             throw new BusinessException("SOURCE_BINDING_TARGET_REQUIRED", "绑定目标ID不能为空");
         }
         switch (targetType) {
             case "person" -> {
-                if (!personRepository.existsById(targetId)) {
-                    throw new BusinessException(ErrorCode.PERSON_NOT_FOUND);
+                PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(targetId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+                if (!source.getClanId().equals(person.getClanId())) {
+                    throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源与目标人物不属于同一宗族");
                 }
+                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, person.getBranchId());
             }
             case "relationship" -> {
-                if (!relationshipRepository.existsById(targetId)) {
-                    throw new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND);
+                RelationshipEntity relationship = relationshipRepository.findById(targetId)
+                        .filter(item -> item.getDeletedAt() == null)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND));
+                if (!source.getClanId().equals(relationship.getClanId())) {
+                    throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源与目标关系不属于同一宗族");
                 }
+                PersonEntity from = personRepository.findByIdAndDeletedAtIsNull(relationship.getFromPersonId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+                PersonEntity to = personRepository.findByIdAndDeletedAtIsNull(relationship.getToPersonId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, from.getBranchId());
+                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, to.getBranchId());
             }
             case "branch" -> {
-                if (!branchRepository.existsById(targetId)) {
-                    throw new BusinessException(ErrorCode.BRANCH_NOT_FOUND);
-                }
+                BranchEntity branch = branchRepository.findByIdAndClanId(targetId, source.getClanId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, branch.getId());
             }
             case "clan" -> {
                 if (!source.getClanId().equals(targetId)) {
@@ -220,34 +212,11 @@ public class SourceEvidenceApplicationService {
     }
 
     private SourceBindingResponse toBindingResponse(SourceBindingEntity entity) {
-        return new SourceBindingResponse(
-                entity.getId(),
-                entity.getClanId(),
-                entity.getSourceId(),
-                entity.getTargetType(),
-                entity.getTargetId(),
-                entity.getBindingReason(),
-                entity.getExcerpt(),
-                entity.getCreatedBy(),
-                entity.getCreatedAt()
-        );
+        return new SourceBindingResponse(entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getTargetType(), entity.getTargetId(), entity.getBindingReason(), entity.getExcerpt(), entity.getCreatedBy(), entity.getCreatedAt());
     }
 
     private AttachmentResponse toAttachmentResponse(AttachmentEntity entity) {
-        return new AttachmentResponse(
-                entity.getId(),
-                entity.getClanId(),
-                entity.getSourceId(),
-                entity.getFileName(),
-                entity.getFileType(),
-                entity.getFileSize(),
-                entity.getStoragePath(),
-                entity.getThumbnailPath(),
-                entity.getChecksum(),
-                entity.getUploadedBy(),
-                entity.getUploadedAt(),
-                entity.getAccessLevel()
-        );
+        return new AttachmentResponse(entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getFileName(), entity.getFileType(), entity.getFileSize(), entity.getStoragePath(), entity.getThumbnailPath(), entity.getChecksum(), entity.getUploadedBy(), entity.getUploadedAt(), entity.getAccessLevel());
     }
 
     private String trimToNull(String value) {
