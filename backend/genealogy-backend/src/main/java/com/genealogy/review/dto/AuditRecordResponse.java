@@ -8,6 +8,8 @@ public record AuditRecordResponse(
         String targetType,
         Long targetId,
         String changeType,
+        String oldPayload,
+        String newPayload,
         String diffSummary,
         Long submitterId,
         LocalDateTime submitTime,
