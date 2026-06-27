@@ -1,5 +1,6 @@
 package com.genealogy.review.controller;
 
+import com.genealogy.auth.application.AuthApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.review.application.ApprovalApplicationService;
 import com.genealogy.review.dto.AuditRecordResponse;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,16 +26,23 @@ import java.util.List;
 public class ApprovalController {
 
     private final ApprovalApplicationService approvalApplicationService;
+    private final AuthApplicationService authApplicationService;
 
-    public ApprovalController(ApprovalApplicationService approvalApplicationService) {
+    public ApprovalController(ApprovalApplicationService approvalApplicationService, AuthApplicationService authApplicationService) {
         this.approvalApplicationService = approvalApplicationService;
+        this.authApplicationService = authApplicationService;
     }
 
     @PostMapping("/persons/{personId}/submit-review")
     public ApiResponse<CheckTaskResponse> submitPersonReview(
             @Positive @PathVariable Long personId,
-            @Valid @RequestBody PersonSubmitReviewRequest request
+            @Valid @RequestBody PersonSubmitReviewRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long userId = authApplicationService.currentUserIdOrNull(authorization);
+        if (userId != null) {
+            request = new PersonSubmitReviewRequest(userId, request.diffSummary());
+        }
         return ApiResponse.success(approvalApplicationService.submitPerson(personId, request));
     }
 
@@ -50,16 +59,26 @@ public class ApprovalController {
     @PostMapping("/review-tasks/{taskId}/approve")
     public ApiResponse<CheckTaskResponse> approve(
             @Positive @PathVariable Long taskId,
-            @Valid @RequestBody ReviewDecisionRequest request
+            @Valid @RequestBody ReviewDecisionRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long userId = authApplicationService.currentUserIdOrNull(authorization);
+        if (userId != null) {
+            request = new ReviewDecisionRequest(userId, request.comment());
+        }
         return ApiResponse.success(approvalApplicationService.approve(taskId, request));
     }
 
     @PostMapping("/review-tasks/{taskId}/reject")
     public ApiResponse<CheckTaskResponse> reject(
             @Positive @PathVariable Long taskId,
-            @Valid @RequestBody ReviewDecisionRequest request
+            @Valid @RequestBody ReviewDecisionRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long userId = authApplicationService.currentUserIdOrNull(authorization);
+        if (userId != null) {
+            request = new ReviewDecisionRequest(userId, request.comment());
+        }
         return ApiResponse.success(approvalApplicationService.reject(taskId, request));
     }
 
