@@ -2,20 +2,32 @@ package com.genealogy.auth.application;
 
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMemberEntity;
+import com.genealogy.member.entity.RoleEntity;
 import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMemberRepository;
+import com.genealogy.member.repository.RoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AuthorizationApplicationService {
 
     private final AuthApplicationService authApplicationService;
     private final ClanMemberRepository clanMemberRepository;
+    private final RoleRepository roleRepository;
 
-    public AuthorizationApplicationService(AuthApplicationService authApplicationService, ClanMemberRepository clanMemberRepository) {
+    public AuthorizationApplicationService(
+            AuthApplicationService authApplicationService,
+            ClanMemberRepository clanMemberRepository,
+            RoleRepository roleRepository
+    ) {
         this.authApplicationService = authApplicationService;
         this.clanMemberRepository = clanMemberRepository;
+        this.roleRepository = roleRepository;
     }
 
     @Transactional(readOnly = true)
@@ -48,6 +60,19 @@ public class AuthorizationApplicationService {
                 .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
         if (member.getMemberStatus() != MemberStatus.active) {
             throw new BusinessException("AUTH_FORBIDDEN", "当前用户不是有效宗族成员");
+        }
+        return member;
+    }
+
+    @Transactional(readOnly = true)
+    public ClanMemberEntity requireAnyRole(Long clanId, Long userId, String... roleCodes) {
+        ClanMemberEntity member = requireClanMember(clanId, userId);
+        String actualRoleCode = roleRepository.findById(member.getRoleId())
+                .map(RoleEntity::getRoleCode)
+                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "成员角色不存在"));
+        Set<String> allowed = Arrays.stream(roleCodes).collect(Collectors.toSet());
+        if (!allowed.contains(actualRoleCode)) {
+            throw new BusinessException("AUTH_FORBIDDEN", "当前角色无权执行该操作");
         }
         return member;
     }
