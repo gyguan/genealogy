@@ -63,8 +63,11 @@ public class SourceEvidenceController {
     }
 
     @DeleteMapping("/source-bindings/{bindingId}")
-    public ApiResponse<Void> unbind(@Positive @PathVariable Long bindingId) {
-        sourceEvidenceApplicationService.unbind(bindingId);
+    public ApiResponse<Void> unbind(
+            @Positive @PathVariable Long bindingId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        sourceEvidenceApplicationService.unbind(bindingId, authApplicationService.currentUserIdOrNull(authorization));
         return ApiResponse.success();
     }
 
