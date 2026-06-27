@@ -100,6 +100,14 @@ public class AuthApplicationService {
         return toUserResponse(user);
     }
 
+    @Transactional(readOnly = true)
+    public Long currentUserIdOrNull(String authorization) {
+        if (authorization == null || authorization.isBlank()) {
+            return null;
+        }
+        return getActiveSession(authorization).getUserId();
+    }
+
     @Transactional
     public void logout(String authorization) {
         AuthSessionEntity session = getActiveSession(authorization);
