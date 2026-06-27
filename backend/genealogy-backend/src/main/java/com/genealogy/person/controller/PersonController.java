@@ -1,5 +1,6 @@
 package com.genealogy.person.controller;
 
+import com.genealogy.auth.application.AuthApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,14 +27,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class PersonController {
 
     private final PersonApplicationService personApplicationService;
+    private final AuthApplicationService authApplicationService;
 
-    public PersonController(PersonApplicationService personApplicationService) {
+    public PersonController(PersonApplicationService personApplicationService, AuthApplicationService authApplicationService) {
         this.personApplicationService = personApplicationService;
+        this.authApplicationService = authApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/persons")
-    public ApiResponse<PersonResponse> create(@Positive @PathVariable Long clanId, @Valid @RequestBody PersonCreateRequest request) {
-        return ApiResponse.success(personApplicationService.create(clanId, request));
+    public ApiResponse<PersonResponse> create(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody PersonCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return ApiResponse.success(personApplicationService.create(clanId, request, authApplicationService.currentUserIdOrNull(authorization)));
     }
 
     @GetMapping("/persons/{id}")
@@ -64,13 +72,20 @@ public class PersonController {
     }
 
     @PutMapping("/persons/{id}")
-    public ApiResponse<PersonResponse> update(@Positive @PathVariable Long id, @Valid @RequestBody PersonUpdateRequest request) {
-        return ApiResponse.success(personApplicationService.update(id, request));
+    public ApiResponse<PersonResponse> update(
+            @Positive @PathVariable Long id,
+            @Valid @RequestBody PersonUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return ApiResponse.success(personApplicationService.update(id, request, authApplicationService.currentUserIdOrNull(authorization)));
     }
 
     @DeleteMapping("/persons/{id}")
-    public ApiResponse<Void> delete(@Positive @PathVariable Long id) {
-        personApplicationService.delete(id);
+    public ApiResponse<Void> delete(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        personApplicationService.delete(id, authApplicationService.currentUserIdOrNull(authorization));
         return ApiResponse.success();
     }
 }
