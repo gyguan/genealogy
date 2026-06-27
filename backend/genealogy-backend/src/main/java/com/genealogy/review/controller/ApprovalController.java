@@ -7,6 +7,7 @@ import com.genealogy.review.dto.AuditRecordResponse;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.dto.PersonSubmitReviewRequest;
 import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.dto.TargetSubmitRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
@@ -42,6 +43,50 @@ public class ApprovalController {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         request = new PersonSubmitReviewRequest(userId, request.diffSummary());
         return ApiResponse.success(approvalApplicationService.submitPerson(personId, request));
+    }
+
+    @PostMapping("/relationships/{relationshipId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitRelationshipReview(
+            @Positive @PathVariable Long relationshipId,
+            @Valid @RequestBody TargetSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new TargetSubmitRequest(userId, request.diffSummary());
+        return ApiResponse.success(approvalApplicationService.submitRelationship(relationshipId, request));
+    }
+
+    @PostMapping("/sources/{sourceId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitSourceReview(
+            @Positive @PathVariable Long sourceId,
+            @Valid @RequestBody TargetSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new TargetSubmitRequest(userId, request.diffSummary());
+        return ApiResponse.success(approvalApplicationService.submitSource(sourceId, request));
+    }
+
+    @PostMapping("/branches/{branchId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitBranchReview(
+            @Positive @PathVariable Long branchId,
+            @Valid @RequestBody TargetSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new TargetSubmitRequest(userId, request.diffSummary());
+        return ApiResponse.success(approvalApplicationService.submitBranch(branchId, request));
+    }
+
+    @PostMapping("/generation-schemes/{schemeId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitGenerationSchemeReview(
+            @Positive @PathVariable Long schemeId,
+            @Valid @RequestBody TargetSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new TargetSubmitRequest(userId, request.diffSummary());
+        return ApiResponse.success(approvalApplicationService.submitGenerationScheme(schemeId, request));
     }
 
     @GetMapping("/clans/{clanId}/review-tasks/pending")
