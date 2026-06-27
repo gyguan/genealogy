@@ -7,11 +7,16 @@ import com.genealogy.operationlog.repository.OperationLogRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 @Service
 public class OperationLogApplicationService {
@@ -66,7 +71,7 @@ public class OperationLogApplicationService {
             int pageSize
     ) {
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<OperationLogEntity> page = operationLogRepository.search(
+        Page<OperationLogEntity> page = operationLogRepository.findAll(buildSpecification(
                 clanId,
                 actorId,
                 normalize(actionType),
@@ -74,10 +79,53 @@ public class OperationLogApplicationService {
                 targetId,
                 startTime,
                 endTime,
-                trimToNull(keyword),
-                pageRequest
-        );
+                trimToNull(keyword)
+        ), pageRequest);
         return PageResponse.of(page.map(this::toResponse).getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    private Specification<OperationLogEntity> buildSpecification(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword
+    ) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (clanId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
+            }
+            if (actorId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("actorId"), actorId));
+            }
+            if (actionType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("actionType"), actionType));
+            }
+            if (targetType != null) {
+                predicates.add(criteriaBuilder.equal(root.get("targetType"), targetType));
+            }
+            if (targetId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("targetId"), targetId));
+            }
+            if (startTime != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
+            }
+            if (endTime != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
+            }
+            if (keyword != null) {
+                String likeValue = "%" + keyword.toLowerCase(Locale.ROOT) + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), likeValue),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("detail")), likeValue)
+                ));
+            }
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
     }
 
     private OperationLogResponse toResponse(OperationLogEntity entity) {
@@ -98,7 +146,7 @@ public class OperationLogApplicationService {
 
     private String normalize(String value) {
         String trimmed = trimToNull(value);
-        return trimmed == null ? null : trimmed.toLowerCase();
+        return trimmed == null ? null : trimmed.toLowerCase(Locale.ROOT);
     }
 
     private String trimToNull(String value) {
