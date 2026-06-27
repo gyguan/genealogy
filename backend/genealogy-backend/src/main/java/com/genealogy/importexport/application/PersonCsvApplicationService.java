@@ -92,6 +92,10 @@ public class PersonCsvApplicationService {
     }
 
     public CsvImportResultResponse importPersons(Long clanId, MultipartFile file) {
+        return importPersons(clanId, file, null);
+    }
+
+    public CsvImportResultResponse importPersons(Long clanId, MultipartFile file, Long actorId) {
         ensureClanExists(clanId);
         if (file == null || file.isEmpty()) {
             throw new BusinessException("CSV_FILE_EMPTY", "CSV文件不能为空");
@@ -119,14 +123,14 @@ public class PersonCsvApplicationService {
             try {
                 List<String> cells = parseCsvLine(line);
                 PersonCreateRequest request = toCreateRequest(headerIndex, cells);
-                personApplicationService.create(clanId, request);
+                personApplicationService.create(clanId, request, actorId);
                 success++;
             } catch (Exception ex) {
                 errors.add("第" + (i + 1) + "行导入失败：" + ex.getMessage());
             }
         }
         CsvImportResultResponse result = new CsvImportResultResponse(total, success, total - success, errors);
-        operationLogApplicationService.record(clanId, null, "person_csv_import", "clan", clanId, "导入人物CSV：成功" + success + "条，失败" + (total - success) + "条", String.join("\n", errors));
+        operationLogApplicationService.record(clanId, actorId, "person_csv_import", "clan", clanId, "导入人物CSV：成功" + success + "条，失败" + (total - success) + "条", String.join("\n", errors));
         return result;
     }
 
@@ -284,6 +288,6 @@ public class PersonCsvApplicationService {
         if (value != null && value.startsWith("\uFEFF")) {
             return value.substring(1);
         }
-        return value;
+        return value.substring(0);
     }
 }
