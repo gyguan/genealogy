@@ -86,6 +86,7 @@ GET  /api/v1/persons/{personId}/review-records
 ## 来源证据链接口
 
 ```text
+POST   /api/v1/clans/{clanId}/sources
 POST   /api/v1/source-bindings
 GET    /api/v1/source-bindings?targetType=person&targetId={id}
 GET    /api/v1/sources/{sourceId}/bindings
@@ -94,7 +95,7 @@ POST   /api/v1/attachments
 GET    /api/v1/sources/{sourceId}/attachments
 ```
 
-当前支持将资料来源绑定到 `person`、`relationship`、`branch`、`clan` 等目标对象；附件接口先登记文件元数据，不处理真实文件上传。
+来源创建、来源绑定、解除绑定、附件登记均会记录操作日志；绑定 `clan` 类型目标时会校验目标宗族与来源所属宗族一致。
 
 ## 字辈明细接口
 
@@ -140,7 +141,7 @@ GET /api/v1/logs/operations?clanId={clanId}
 GET /api/v1/logs/operations?targetType=person&targetId={personId}
 ```
 
-当前会记录人物新增、人物更新、人物删除、人物审核提交、审核通过、审核驳回、人物 CSV 导入等关键动作。
+当前会记录人物、审核、来源证据、附件登记、CSV 导入等关键动作。
 
 ## 模块规划
 
