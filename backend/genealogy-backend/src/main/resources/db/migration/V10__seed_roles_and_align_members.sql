@@ -65,10 +65,10 @@ alter table clan_member alter column updated_at set default now();
 do $$
 begin
     if not exists (select 1 from pg_constraint where conname = 'clan_member_user_id_app_user_fkey') then
-        alter table clan_member add constraint clan_member_user_id_app_user_fkey foreign key (user_id) references app_user(id);
+        alter table clan_member add constraint clan_member_user_id_app_user_fkey foreign key (user_id) references app_user(id) not valid;
     end if;
     if not exists (select 1 from pg_constraint where conname = 'clan_member_role_id_app_role_fkey') then
-        alter table clan_member add constraint clan_member_role_id_app_role_fkey foreign key (role_id) references app_role(id);
+        alter table clan_member add constraint clan_member_role_id_app_role_fkey foreign key (role_id) references app_role(id) not valid;
     end if;
 end $$;
 
