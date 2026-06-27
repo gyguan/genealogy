@@ -1,5 +1,6 @@
 package com.genealogy.source.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
@@ -23,15 +24,18 @@ public class SourceApplicationService {
     private final SourceRepository sourceRepository;
     private final ClanRepository clanRepository;
     private final OperationLogApplicationService operationLogApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
     public SourceApplicationService(
             SourceRepository sourceRepository,
             ClanRepository clanRepository,
-            OperationLogApplicationService operationLogApplicationService
+            OperationLogApplicationService operationLogApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.sourceRepository = sourceRepository;
         this.clanRepository = clanRepository;
         this.operationLogApplicationService = operationLogApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
@@ -44,6 +48,7 @@ public class SourceApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         SourceEntity entity = new SourceEntity();
         entity.setClanId(clanId);
         entity.setSourceName(request.sourceName());
