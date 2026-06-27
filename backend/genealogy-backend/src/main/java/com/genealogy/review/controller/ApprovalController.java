@@ -1,6 +1,6 @@
 package com.genealogy.review.controller;
 
-import com.genealogy.auth.application.AuthApplicationService;
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.review.application.ApprovalApplicationService;
 import com.genealogy.review.dto.AuditRecordResponse;
@@ -26,11 +26,11 @@ import java.util.List;
 public class ApprovalController {
 
     private final ApprovalApplicationService approvalApplicationService;
-    private final AuthApplicationService authApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ApprovalController(ApprovalApplicationService approvalApplicationService, AuthApplicationService authApplicationService) {
+    public ApprovalController(ApprovalApplicationService approvalApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.approvalApplicationService = approvalApplicationService;
-        this.authApplicationService = authApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping("/persons/{personId}/submit-review")
@@ -39,10 +39,8 @@ public class ApprovalController {
             @Valid @RequestBody PersonSubmitReviewRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        Long userId = authApplicationService.currentUserIdOrNull(authorization);
-        if (userId != null) {
-            request = new PersonSubmitReviewRequest(userId, request.diffSummary());
-        }
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new PersonSubmitReviewRequest(userId, request.diffSummary());
         return ApiResponse.success(approvalApplicationService.submitPerson(personId, request));
     }
 
@@ -62,10 +60,8 @@ public class ApprovalController {
             @Valid @RequestBody ReviewDecisionRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        Long userId = authApplicationService.currentUserIdOrNull(authorization);
-        if (userId != null) {
-            request = new ReviewDecisionRequest(userId, request.comment());
-        }
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new ReviewDecisionRequest(userId, request.comment());
         return ApiResponse.success(approvalApplicationService.approve(taskId, request));
     }
 
@@ -75,10 +71,8 @@ public class ApprovalController {
             @Valid @RequestBody ReviewDecisionRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        Long userId = authApplicationService.currentUserIdOrNull(authorization);
-        if (userId != null) {
-            request = new ReviewDecisionRequest(userId, request.comment());
-        }
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        request = new ReviewDecisionRequest(userId, request.comment());
         return ApiResponse.success(approvalApplicationService.reject(taskId, request));
     }
 
