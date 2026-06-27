@@ -13,16 +13,16 @@ backend/genealogy-backend/src/main/resources/db/migration
 后端启动时由 Flyway 自动执行，当前包含：
 
 ```text
-V1__init_schema.sql                              宗族、支派、人物、关系主表
-V2__add_support_tables.sql                       来源、附件、来源绑定、审核、早期成员/角色表
-V3__add_generation_tables.sql                    字辈方案、字辈明细
-V4__align_member_entity.sql                      对齐成员实体字段
-V5__add_app_role_table.sql                       当前成员角色表 app_role
-V6__add_operation_log_table.sql                  操作日志表
-V7__add_permission_tables.sql                    权限与角色权限表
-V8__add_app_user_table.sql                       当前认证用户表 app_user
-V9__add_auth_session_table.sql                   登录会话表
-V10__align_auth_member_and_seed_system_data.sql  认证/成员结构修正与系统数据预置
+V1__init_schema.sql                                宗族、支派、人物、关系主表
+V2__add_support_tables.sql                         来源、附件、来源绑定、审核、早期成员/角色表
+V3__add_generation_tables.sql                      字辈方案、字辈明细
+V4__align_member_entity.sql                        对齐成员实体字段
+V5__add_app_role_table.sql                         当前成员角色表 app_role
+V6__add_operation_log_table.sql                    操作日志表
+V7__add_permission_tables.sql                      权限与角色权限表
+V8__add_app_user_table.sql                         当前认证用户表 app_user
+V9__add_auth_session_table.sql                     登录会话表
+V100__align_auth_member_and_seed_system_data.sql   认证/成员结构修正与系统数据预置
 ```
 
 ## 二、系统数据预置
@@ -30,7 +30,7 @@ V10__align_auth_member_and_seed_system_data.sql  认证/成员结构修正与系
 系统级预置数据由 Flyway 自动执行：
 
 ```text
-V10__align_auth_member_and_seed_system_data.sql
+V100__align_auth_member_and_seed_system_data.sql
 ```
 
 当前会预置以下数据：
@@ -74,7 +74,7 @@ viewer        拥有导出和世系查看权限
 
 ### 4. 结构修正
 
-`V10` 同时修正历史脚本中的兼容问题：
+`V100` 同时修正历史脚本中的兼容问题：
 
 ```text
 clan_member.user_id 外键从旧 user_account 对齐到当前 app_user
