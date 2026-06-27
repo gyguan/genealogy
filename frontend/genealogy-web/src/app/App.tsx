@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../shared/api/client';
+import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { DataBlock } from '../shared/ui/DataBlock';
 import { AuthPage } from '../features/auth/AuthPage';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
 import { GenerationPage } from '../features/generations/GenerationPage';
 import { ImportExportPage } from '../features/importExport/ImportExportPage';
 import { LogPage } from '../features/logs/LogPage';
@@ -15,6 +17,7 @@ import { SourcePage } from '../features/sources/SourcePage';
 import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
+  ['dashboard', '工作台', '健康状态、当前上下文和关键数据汇总'],
   ['auth', '登录认证', '用户注册、登录和会话管理'],
   ['clans', '宗族管理', '宗族创建、列表和管理员自举'],
   ['members', '成员权限', '成员角色和支派范围权限'],
@@ -32,7 +35,15 @@ const navItems = [
 type ViewKey = typeof navItems[number][0];
 
 export function App() {
-  const [active, setActive] = useState<ViewKey>('auth');
+  return (
+    <WorkspaceProvider>
+      <AppShell />
+    </WorkspaceProvider>
+  );
+}
+
+function AppShell() {
+  const [active, setActive] = useState<ViewKey>('dashboard');
   const [apiBase, setApiBase] = useState(apiClient.getBaseUrl());
   const [token, setToken] = useState(apiClient.getToken());
   const [status, setStatus] = useState<unknown>('等待操作');
@@ -79,6 +90,7 @@ export function App() {
   function renderPage() {
     const props = { notify };
     switch (active) {
+      case 'dashboard': return <DashboardPage {...props} />;
       case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
       case 'clans': return <ClanPage {...props} />;
       case 'members': return <MemberPage {...props} />;
