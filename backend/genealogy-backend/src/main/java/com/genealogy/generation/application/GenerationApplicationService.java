@@ -28,12 +28,7 @@ public class GenerationApplicationService {
     private final ClanRepository clanRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public GenerationApplicationService(
-            GenSchemeRepository schemeRepository,
-            GenWordRepository wordRepository,
-            ClanRepository clanRepository,
-            AuthorizationApplicationService authorizationApplicationService
-    ) {
+    public GenerationApplicationService(GenSchemeRepository schemeRepository, GenWordRepository wordRepository, ClanRepository clanRepository, AuthorizationApplicationService authorizationApplicationService) {
         this.schemeRepository = schemeRepository;
         this.wordRepository = wordRepository;
         this.clanRepository = clanRepository;
@@ -50,7 +45,7 @@ public class GenerationApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.branchId());
         GenerationSchemeEntity entity = new GenerationSchemeEntity();
         entity.setClanId(clanId);
         entity.setBranchId(request.branchId());
@@ -70,9 +65,7 @@ public class GenerationApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
-        return schemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId).stream()
-                .map(this::toSchemeResponse)
-                .toList();
+        return schemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId).stream().map(this::toSchemeResponse).toList();
     }
 
     @Transactional
@@ -83,15 +76,11 @@ public class GenerationApplicationService {
     @Transactional
     public List<GenItemResponse> replaceItems(Long schemeId, List<GenItemRequest> requests, Long actorId) {
         GenerationSchemeEntity scheme = getScheme(schemeId);
-        authorizationApplicationService.requireClanMember(scheme.getClanId(), actorId);
+        authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), actorId, scheme.getBranchId());
         validateItems(requests);
         wordRepository.deleteBySchemeId(schemeId);
-        List<GenerationWordEntity> entities = requests.stream()
-                .map(request -> toWordEntity(schemeId, request))
-                .toList();
-        return wordRepository.saveAll(entities).stream()
-                .map(this::toItemResponse)
-                .toList();
+        List<GenerationWordEntity> entities = requests.stream().map(request -> toWordEntity(schemeId, request)).toList();
+        return wordRepository.saveAll(entities).stream().map(this::toItemResponse).toList();
     }
 
     @Transactional
@@ -102,7 +91,7 @@ public class GenerationApplicationService {
     @Transactional
     public GenItemResponse addItem(Long schemeId, GenItemRequest request, Long actorId) {
         GenerationSchemeEntity scheme = getScheme(schemeId);
-        authorizationApplicationService.requireClanMember(scheme.getClanId(), actorId);
+        authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), actorId, scheme.getBranchId());
         if (wordRepository.existsBySchemeIdAndGenerationNo(schemeId, request.generationNo())) {
             throw new BusinessException("GENERATION_WORD_DUPLICATED", "该代次字辈已存在");
         }
@@ -112,9 +101,7 @@ public class GenerationApplicationService {
     @Transactional(readOnly = true)
     public List<GenItemResponse> listItems(Long schemeId) {
         getScheme(schemeId);
-        return wordRepository.findBySchemeIdOrderByGenerationNoAsc(schemeId).stream()
-                .map(this::toItemResponse)
-                .toList();
+        return wordRepository.findBySchemeIdOrderByGenerationNoAsc(schemeId).stream().map(this::toItemResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -126,8 +113,7 @@ public class GenerationApplicationService {
     }
 
     private GenerationSchemeEntity getScheme(Long schemeId) {
-        return schemeRepository.findById(schemeId)
-                .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "字辈方案不存在"));
+        return schemeRepository.findById(schemeId).orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "字辈方案不存在"));
     }
 
     private void validateItems(List<GenItemRequest> requests) {
@@ -165,21 +151,11 @@ public class GenerationApplicationService {
     }
 
     private GenSchemeResponse toSchemeResponse(GenerationSchemeEntity entity) {
-        return new GenSchemeResponse(
-                entity.getId(), entity.getClanId(), entity.getBranchId(), entity.getSchemeName(), entity.getPoemText(),
-                entity.getStartGeneration(), entity.getIsDefault(), entity.getValidationEnabled(), entity.getStrictMode(),
-                entity.getStatus(), entity.getCreatedAt()
-        );
+        return new GenSchemeResponse(entity.getId(), entity.getClanId(), entity.getBranchId(), entity.getSchemeName(), entity.getPoemText(), entity.getStartGeneration(), entity.getIsDefault(), entity.getValidationEnabled(), entity.getStrictMode(), entity.getStatus(), entity.getCreatedAt());
     }
 
     private GenItemResponse toItemResponse(GenerationWordEntity entity) {
-        return new GenItemResponse(
-                entity.getId(),
-                entity.getGenerationNo(),
-                entity.getWord(),
-                entity.getDescription(),
-                entity.getSortOrder()
-        );
+        return new GenItemResponse(entity.getId(), entity.getGenerationNo(), entity.getWord(), entity.getDescription(), entity.getSortOrder());
     }
 
     private String trimToNull(String value) {
