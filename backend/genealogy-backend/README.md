@@ -37,6 +37,8 @@ OpenAPI 预留
 Backend CI → mvn -B clean test
 ```
 
+本分支用于验证来源审计一致性修复。
+
 ## 本地启动
 
 准备 PostgreSQL：
