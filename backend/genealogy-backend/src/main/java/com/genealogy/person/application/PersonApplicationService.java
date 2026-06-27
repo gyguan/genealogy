@@ -68,7 +68,7 @@ public class PersonApplicationService {
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.branchId());
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -139,11 +139,12 @@ public class PersonApplicationService {
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        Long effectiveBranchId = request.branchId() == null ? entity.getBranchId() : request.branchId();
+        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, effectiveBranchId);
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
-        validateGenerationWord(entity.getClanId(), request.branchId(), request.generationNo(), request.generationWord());
+        validateGenerationWord(entity.getClanId(), effectiveBranchId, request.generationNo(), request.generationWord());
         PersonMapper.updateEntity(entity, request);
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
@@ -160,7 +161,7 @@ public class PersonApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, entity.getBranchId());
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
