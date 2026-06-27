@@ -1,3 +1,17 @@
+# 10. 数据库建表与数据预置说明
+
+本文说明 Genealogy MVP 后端数据库脚本的执行方式、脚本职责和数据预置范围。
+
+## 一、自动建表脚本
+
+自动建表脚本位于：
+
+```text
+backend/genealogy-backend/src/main/resources/db/migration
+```
+
+后端启动时由 Flyway 自动执行，当前包含：
+
 ```text
 V1__init_schema.sql                                宗族、支派、人物、关系主表
 V2__add_support_tables.sql                         来源、附件、来源绑定、审核、早期成员/角色表
@@ -73,3 +87,68 @@ role_id 移除无效默认值 0
 ## 三、演示数据脚本
 
 演示数据脚本位于：
+
+```text
+backend/genealogy-backend/src/main/resources/db/seed/demo-data.sql
+```
+
+该脚本不会被 Flyway 自动执行，避免生产环境默认写入演示数据。
+
+本地演示时，可在数据库初始化完成后手动执行：
+
+```bash
+psql -h localhost -p 5432 -U genealogy -d genealogy -f backend/genealogy-backend/src/main/resources/db/seed/demo-data.sql
+```
+
+演示账号：
+
+```text
+用户名：demo_admin
+密码：Demo@123456
+```
+
+演示数据包括：
+
+```text
+演示张氏宗族
+长沙支派
+演示字辈方案与字辈明细
+三位演示人物
+两条亲子关系
+一条资料来源
+一条来源绑定
+```
+
+## 四、本地初始化流程
+
+### 1. 启动数据库
+
+```bash
+cd backend/genealogy-backend
+docker compose up -d
+```
+
+### 2. 启动后端并自动执行 Flyway
+
+```bash
+mvn spring-boot:run
+```
+
+### 3. 可选：导入演示数据
+
+```bash
+psql -h localhost -p 5432 -U genealogy -d genealogy -f src/main/resources/db/seed/demo-data.sql
+```
+
+### 4. 验证健康检查
+
+```text
+GET /api/v1/health
+```
+
+## 五、注意事项
+
+- `db/migration` 下的脚本会自动执行，适合放结构变更和系统基础数据。
+- `db/seed` 下的脚本不会自动执行，适合放演示数据或一次性手工数据。
+- 已执行过的 Flyway 版本脚本不要修改历史文件，应新增新的 `Vxx__*.sql`。
+- 当前 MVP 使用 PostgreSQL，脚本中包含 `jsonb`、`bigserial`、`on conflict` 等 PostgreSQL 特性。
