@@ -2,10 +2,16 @@
 -- This migration is idempotent and safe for environments that already applied V1-V9.
 
 -- clan_member.user_id was created against legacy user_account in V2, while current auth uses app_user.
+-- Use NOT VALID to avoid blocking upgrades from old demo data; new rows are still checked.
 alter table clan_member drop constraint if exists clan_member_user_id_fkey;
-alter table clan_member
-    add constraint fk_clan_member_app_user
-    foreign key (user_id) references app_user(id);
+do $$
+begin
+    if not exists (select 1 from pg_constraint where conname = 'fk_clan_member_app_user') then
+        alter table clan_member
+            add constraint fk_clan_member_app_user
+            foreign key (user_id) references app_user(id) not valid;
+    end if;
+end $$;
 
 -- Align enum defaults with Java enum names: active/inactive/invited/removed and clan/branch.
 alter table clan_member alter column member_status set default 'active';
