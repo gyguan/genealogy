@@ -2,15 +2,15 @@
 
 本文说明 Genealogy MVP 后端数据库脚本的执行方式、脚本职责和数据预置范围。
 
-## 一、自动建表脚本
+## 一、自动执行脚本目录
 
-自动建表脚本位于：
+Flyway 自动执行脚本位于：
 
 ```text
 backend/genealogy-backend/src/main/resources/db/migration
 ```
 
-后端启动时由 Flyway 自动执行，当前包含：
+后端启动时会自动执行，当前包含：
 
 ```text
 V1__init_schema.sql                                宗族、支派、人物、关系主表
@@ -22,18 +22,47 @@ V6__add_operation_log_table.sql                    操作日志表
 V7__add_permission_tables.sql                      权限与角色权限表
 V8__add_app_user_table.sql                         当前认证用户表 app_user
 V9__add_auth_session_table.sql                     登录会话表
-V11__align_auth_member_and_seed_system_data.sql    认证/成员结构修正与系统数据预置
+V11__align_auth_member_and_seed_system_data.sql    认证/成员结构修正与基础种子兜底
+V12__add_schema_comments.sql                       数据库表与字段注释
+V13__seed_system_reference_data.sql                系统基础数据预置
 ```
 
-## 二、系统数据预置
+## 二、建表脚本覆盖范围
+
+当前建表脚本已覆盖 MVP 后端运行所需的核心表：
+
+```text
+clan                    宗族主表
+branch                  支派表
+person                  人物表
+relationship            人物关系表
+source                  资料来源表
+attachment              附件元数据表
+source_binding          来源绑定表
+revision                审核记录表
+review_task             审核任务表
+generation_scheme       字辈方案表
+generation_word         字辈明细表
+app_user                当前认证用户表
+app_auth_session        登录会话表
+clan_member             宗族成员表
+app_role                当前角色表
+app_permission          权限表
+app_role_permission     角色权限关系表
+operation_log           操作日志表
+```
+
+`V12__add_schema_comments.sql` 已对上述主要表和字段补充 `COMMENT ON TABLE/COLUMN` 注释，便于数据库工具中直接查看表含义和字段用途。
+
+## 三、系统数据预置
 
 系统级预置数据由 Flyway 自动执行：
 
 ```text
-V11__align_auth_member_and_seed_system_data.sql
+V13__seed_system_reference_data.sql
 ```
 
-当前会预置以下数据：
+当前会预置以下数据。
 
 ### 1. 系统角色
 
@@ -72,9 +101,11 @@ editor        拥有人物、关系、来源、附件、提交审核、导入导
 viewer        拥有导出和世系查看权限
 ```
 
-### 4. 结构修正
+说明：`V11` 保留了结构修正和基础种子兜底，`V13` 是更明确的系统基础数据预置脚本。两者均使用 `on conflict` 幂等写法，不会重复插入脏数据。
 
-`V11` 同时修正历史脚本中的兼容问题：
+## 四、结构修正脚本
+
+`V11__align_auth_member_and_seed_system_data.sql` 修正历史脚本中的兼容问题：
 
 ```text
 clan_member.user_id 外键从旧 user_account 对齐到当前 app_user
@@ -84,7 +115,7 @@ role_id 移除无效默认值 0
 补充成员、角色、权限、日志、关系、附件等常用索引
 ```
 
-## 三、演示数据脚本
+## 五、演示数据脚本
 
 演示数据脚本位于：
 
@@ -119,18 +150,20 @@ psql -h localhost -p 5432 -U genealogy -d genealogy -f backend/genealogy-backend
 一条来源绑定
 ```
 
-## 四、本地初始化流程
+## 六、本地初始化流程
 
-### 1. 启动数据库
+### 1. 确认数据库
 
-```bash
-cd backend/genealogy-backend
-docker compose up -d
+```text
+数据库名：genealogy
+用户名：genealogy
+密码：123456
 ```
 
 ### 2. 启动后端并自动执行 Flyway
 
 ```bash
+cd backend/genealogy-backend
 mvn spring-boot:run
 ```
 
@@ -143,12 +176,12 @@ psql -h localhost -p 5432 -U genealogy -d genealogy -f src/main/resources/db/see
 ### 4. 验证健康检查
 
 ```text
-GET /api/v1/health
+GET http://localhost:8080/api/v1/health
 ```
 
-## 五、注意事项
+## 七、注意事项
 
-- `db/migration` 下的脚本会自动执行，适合放结构变更和系统基础数据。
+- `db/migration` 下的脚本会自动执行，适合放结构变更、注释和系统基础数据。
 - `db/seed` 下的脚本不会自动执行，适合放演示数据或一次性手工数据。
 - 已执行过的 Flyway 版本脚本不要修改历史文件，应新增新的 `Vxx__*.sql`。
-- 当前 MVP 使用 PostgreSQL，脚本中包含 `jsonb`、`bigserial`、`on conflict` 等 PostgreSQL 特性。
+- 当前 MVP 使用 PostgreSQL，脚本中包含 `jsonb`、`bigserial`、`on conflict`、`comment on` 等 PostgreSQL 特性。
