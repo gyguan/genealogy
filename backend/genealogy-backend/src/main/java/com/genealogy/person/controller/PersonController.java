@@ -45,16 +45,24 @@ public class PersonController {
     }
 
     @GetMapping("/persons/{id}")
-    public ApiResponse<PersonResponse> get(@Positive @PathVariable Long id) {
-        return ApiResponse.success(personApplicationService.get(id));
+    public ApiResponse<PersonResponse> get(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return ApiResponse.success(personApplicationService.get(id, authorizationApplicationService.currentUserIdOrNull(authorization)));
     }
 
     @GetMapping("/clans/{clanId}/persons")
-    public ApiResponse<PageResponse<PersonResponse>> listByClan(@Positive @PathVariable Long clanId, PageQuery pageQuery) {
+    public ApiResponse<PageResponse<PersonResponse>> listByClan(
+            @Positive @PathVariable Long clanId,
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
         return ApiResponse.success(personApplicationService.listByClan(
                 clanId,
                 pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize()
+                pageQuery.normalizedPageSize(),
+                authorizationApplicationService.currentUserIdOrNull(authorization)
         ));
     }
 
@@ -62,13 +70,15 @@ public class PersonController {
     public ApiResponse<PageResponse<PersonResponse>> listByClanAndBranch(
             @Positive @PathVariable Long clanId,
             @Positive @PathVariable Long branchId,
-            PageQuery pageQuery
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         return ApiResponse.success(personApplicationService.listByClanAndBranch(
                 clanId,
                 branchId,
                 pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize()
+                pageQuery.normalizedPageSize(),
+                authorizationApplicationService.currentUserIdOrNull(authorization)
         ));
     }
 
