@@ -24,7 +24,7 @@ public interface OperationLogRepository extends JpaRepository<OperationLogEntity
               and (:targetId is null or log.targetId = :targetId)
               and (:startTime is null or log.createdAt >= :startTime)
               and (:endTime is null or log.createdAt <= :endTime)
-              and (:keyword is null or lower(log.summary) like lower(concat('%', :keyword, '%')) or lower(log.detail) like lower(concat('%', :keyword, '%')))
+              and (:keyword is null or lower(coalesce(log.summary, '')) like lower(concat('%', :keyword, '%')) or lower(coalesce(log.detail, '')) like lower(concat('%', :keyword, '%')))
             """)
     Page<OperationLogEntity> search(
             @Param("clanId") Long clanId,
