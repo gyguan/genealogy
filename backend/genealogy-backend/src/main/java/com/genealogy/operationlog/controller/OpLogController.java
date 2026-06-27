@@ -4,15 +4,21 @@ import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.dto.OperationLogResponse;
+import com.genealogy.operationlog.dto.OperationLogStatsResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 @Validated
@@ -42,5 +48,40 @@ public class OpLogController {
         return ApiResponse.success(operationLogApplicationService.search(
                 clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword, pageNo, pageSize
         ));
+    }
+
+    @GetMapping("/operations/export.csv")
+    public ResponseEntity<byte[]> exportOperations(
+            @RequestParam(required = false) Long clanId,
+            @RequestParam(required = false) Long actorId,
+            @RequestParam(required = false) String actionType,
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Long targetId,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
+            @RequestParam(required = false) String keyword
+    ) {
+        byte[] content = operationLogApplicationService.exportCsv(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword);
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("operation-logs.csv", StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(content);
+    }
+
+    @GetMapping("/operations/stats")
+    public ApiResponse<OperationLogStatsResponse> operationStats(
+            @RequestParam(required = false) Long clanId,
+            @RequestParam(required = false) Long actorId,
+            @RequestParam(required = false) String actionType,
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Long targetId,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ApiResponse.success(operationLogApplicationService.stats(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword));
     }
 }
