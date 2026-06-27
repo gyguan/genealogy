@@ -23,8 +23,9 @@ V7__add_permission_tables.sql                      权限与角色权限表
 V8__add_app_user_table.sql                         当前认证用户表 app_user
 V9__add_auth_session_table.sql                     登录会话表
 V11__align_auth_member_and_seed_system_data.sql    认证/成员结构修正与基础种子兜底
-V12__add_schema_comments.sql                       数据库表与字段注释
+V12__add_schema_comments.sql                       数据库表与字段注释，第一部分
 V13__seed_system_reference_data.sql                系统基础数据预置
+V14__add_schema_comments_part2.sql                 数据库表与字段注释，第二部分
 ```
 
 ## 二、建表脚本覆盖范围
@@ -52,7 +53,7 @@ app_role_permission     角色权限关系表
 operation_log           操作日志表
 ```
 
-`V12__add_schema_comments.sql` 已对上述主要表和字段补充 `COMMENT ON TABLE/COLUMN` 注释，便于数据库工具中直接查看表含义和字段用途。
+`V12__add_schema_comments.sql` 和 `V14__add_schema_comments_part2.sql` 已对主要表和字段补充 `COMMENT ON TABLE/COLUMN` 注释，便于数据库工具中直接查看表含义和字段用途。
 
 ## 三、系统数据预置
 
