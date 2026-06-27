@@ -10,11 +10,21 @@ const fields = [
   ['reviewTaskId', '审核任务ID']
 ] as const;
 
+type WorkspaceField = typeof fields[number][0];
+
 export function WorkspaceBar() {
   const workspace = useWorkspace();
 
-  function update(key: typeof fields[number][0], value: string) {
-    workspace.patch({ [key]: value });
+  function update(key: WorkspaceField, value: string) {
+    switch (key) {
+      case 'clanId': workspace.setClanId(value); break;
+      case 'branchId': workspace.setBranchId(value); break;
+      case 'personId': workspace.setPersonId(value); break;
+      case 'relationshipId': workspace.setRelationshipId(value); break;
+      case 'sourceId': workspace.setSourceId(value); break;
+      case 'attachmentId': workspace.setAttachmentId(value); break;
+      case 'reviewTaskId': workspace.setReviewTaskId(value); break;
+    }
   }
 
   return (
