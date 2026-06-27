@@ -1,5 +1,6 @@
 package com.genealogy.member.application;
 
+import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
@@ -11,7 +12,6 @@ import com.genealogy.member.enums.MemberScopeType;
 import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMemberRepository;
 import com.genealogy.member.repository.RoleRepository;
-import com.genealogy.member.repository.UserAccountRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,20 +24,20 @@ public class MemberApplicationService {
     private final ClanMemberRepository clanMemberRepository;
     private final ClanRepository clanRepository;
     private final BranchRepository branchRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
 
     public MemberApplicationService(
             ClanMemberRepository clanMemberRepository,
             ClanRepository clanRepository,
             BranchRepository branchRepository,
-            UserAccountRepository userAccountRepository,
+            AppUserRepository appUserRepository,
             RoleRepository roleRepository
     ) {
         this.clanMemberRepository = clanMemberRepository;
         this.clanRepository = clanRepository;
         this.branchRepository = branchRepository;
-        this.userAccountRepository = userAccountRepository;
+        this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
     }
 
@@ -46,11 +46,14 @@ public class MemberApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
-        if (!userAccountRepository.existsById(request.userId())) {
+        if (!appUserRepository.existsById(request.userId())) {
             throw new BusinessException("USER_NOT_FOUND", "user not found");
         }
         if (!roleRepository.existsById(request.roleId())) {
             throw new BusinessException("ROLE_NOT_FOUND", "role not found");
+        }
+        if (clanMemberRepository.findByClanIdAndUserId(clanId, request.userId()).isPresent()) {
+            throw new BusinessException("CLAN_MEMBER_DUPLICATED", "user already joined this clan");
         }
         if (request.branchId() != null && branchRepository.findByIdAndClanId(request.branchId(), clanId).isEmpty()) {
             throw new BusinessException("BRANCH_CLAN_MISMATCH", "branch not found in clan");
