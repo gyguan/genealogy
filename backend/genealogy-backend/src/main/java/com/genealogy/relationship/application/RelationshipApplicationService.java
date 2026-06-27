@@ -6,6 +6,7 @@ import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.dto.RelationshipConflictCheckResponse;
 import com.genealogy.relationship.dto.RelationshipCreateRequest;
 import com.genealogy.relationship.dto.RelationshipResponse;
 import com.genealogy.relationship.dto.RelationshipUpdateRequest;
@@ -37,12 +38,7 @@ public class RelationshipApplicationService {
     private final AuthorizationApplicationService authorizationApplicationService;
     private final OperationLogApplicationService operationLogApplicationService;
 
-    public RelationshipApplicationService(
-            RelationshipRepository relationshipRepository,
-            PersonRepository personRepository,
-            AuthorizationApplicationService authorizationApplicationService,
-            OperationLogApplicationService operationLogApplicationService
-    ) {
+    public RelationshipApplicationService(RelationshipRepository relationshipRepository, PersonRepository personRepository, AuthorizationApplicationService authorizationApplicationService, OperationLogApplicationService operationLogApplicationService) {
         this.relationshipRepository = relationshipRepository;
         this.personRepository = personRepository;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -69,6 +65,17 @@ public class RelationshipApplicationService {
         }
         operationLogApplicationService.record(clanId, actorId, "relationship_create", "relationship", saved.getId(), "新增人物关系", null);
         return RelationshipMapper.toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public RelationshipConflictCheckResponse checkConflict(Long clanId, RelationshipCreateRequest request, Long actorId) {
+        try {
+            requireRelationshipBranchWriteScope(clanId, actorId, request.fromPersonId(), request.toPersonId());
+            validateCreate(clanId, request);
+            return RelationshipConflictCheckResponse.passed();
+        } catch (BusinessException ex) {
+            return RelationshipConflictCheckResponse.failed(ex.getCode(), ex.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)
