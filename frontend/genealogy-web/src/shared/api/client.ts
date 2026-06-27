@@ -43,11 +43,11 @@ export class ApiClient {
     this.setToken('');
   }
 
-  async get<T>(path: string): Promise<T> {
+  async get<T = unknown>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'GET' });
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,7 +55,7 @@ export class ApiClient {
     });
   }
 
-  async put<T>(path: string, body?: unknown): Promise<T> {
+  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -63,11 +63,11 @@ export class ApiClient {
     });
   }
 
-  async delete<T>(path: string): Promise<T> {
+  async delete<T = unknown>(path: string): Promise<T> {
     return this.request<T>(path, { method: 'DELETE' });
   }
 
-  async upload<T>(path: string, formData: FormData): Promise<T> {
+  async upload<T = unknown>(path: string, formData: FormData): Promise<T> {
     return this.request<T>(path, { method: 'POST', body: formData });
   }
 
@@ -78,10 +78,10 @@ export class ApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
-    const res = await fetch(this.resolve(path), {
-      ...init,
-      headers: { ...this.authHeaders(), ...(init.headers || {}) }
-    });
+    const headers = new Headers(init.headers || undefined);
+    const auth = this.authHeaders();
+    Object.entries(auth).forEach(([key, value]) => headers.set(key, value));
+    const res = await fetch(this.resolve(path), { ...init, headers });
     const type = res.headers.get('content-type') || '';
     const payload = type.includes('application/json') ? await res.json() : await res.text();
     if (!res.ok || payload?.success === false) {
@@ -95,7 +95,7 @@ export class ApiClient {
     return `${this.baseUrl}${path}`;
   }
 
-  private authHeaders() {
+  private authHeaders(): Record<string, string> {
     return this.token ? { Authorization: `Bearer ${this.token}` } : {};
   }
 }
