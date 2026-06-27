@@ -78,6 +78,8 @@ http://localhost:8080/swagger-ui.html
 http://localhost:8080/api-docs
 ```
 
+本分支用于验证 MVP1 Todo 补齐后的 Backend CI。
+
 ## 常见启动问题
 
 ### 1. Flyway 报 schema 非空但没有 history 表
