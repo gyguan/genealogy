@@ -32,7 +32,7 @@ docker run -d \
   --name genealogy-postgres \
   -e POSTGRES_DB=genealogy \
   -e POSTGRES_USER=genealogy \
-  -e POSTGRES_PASSWORD=123456 \
+  -e POSTGRES_PASSWORD="${SPRING_DATASOURCE_PASSWORD}" \
   -p 5432:5432 \
   postgres:16 >/dev/null
 
