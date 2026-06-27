@@ -7,6 +7,7 @@ import com.genealogy.review.dto.AuditRecordResponse;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.dto.PersonSubmitReviewRequest;
 import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.dto.ReviewTaskDetailResponse;
 import com.genealogy.review.dto.TargetSubmitRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -95,8 +96,8 @@ public class ApprovalController {
     }
 
     @GetMapping("/review-tasks/{taskId}")
-    public ApiResponse<CheckTaskResponse> getTask(@Positive @PathVariable Long taskId) {
-        return ApiResponse.success(approvalApplicationService.getTask(taskId));
+    public ApiResponse<ReviewTaskDetailResponse> getTask(@Positive @PathVariable Long taskId) {
+        return ApiResponse.success(approvalApplicationService.getTaskDetail(taskId));
     }
 
     @PostMapping("/review-tasks/{taskId}/approve")
