@@ -28,6 +28,11 @@ button.danger { background: #dc2626; }
 .hidden { display: none; }
 .list { margin-top: 12px; display: grid; gap: 10px; }
 .item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 10px; background: #f9fafb; }
+.tree-graph { margin-top: 14px; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; overflow: auto; }
+.tree-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; flex-wrap: wrap; }
+.tree-node { min-width: 110px; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 999px; padding: 9px 13px; text-align: center; font-weight: 700; }
+.tree-node.center { background: #2563eb; color: #fff; }
+.tree-edge { color: #64748b; font-size: 13px; }
 pre { background: #0f172a; color: #e5e7eb; padding: 14px; border-radius: 12px; overflow: auto; }
 hr { border: 0; border-top: 1px solid #e5e7eb; margin: 16px 0; }
 @media (max-width: 960px) { .app { flex-direction: column; } .sidebar { width: 100%; height: auto; position: static; } .grid.two { grid-template-columns: 1fr; } .topbar { flex-direction: column; } .token-box { min-width: 0; width: 100%; } }
