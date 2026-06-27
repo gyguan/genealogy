@@ -1,5 +1,6 @@
 package com.genealogy.generation.controller;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.generation.application.GenerationApplicationService;
 import com.genealogy.generation.dto.GenItemRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,17 +27,24 @@ import java.util.List;
 public class GenerationController {
 
     private final GenerationApplicationService generationApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public GenerationController(GenerationApplicationService generationApplicationService) {
+    public GenerationController(
+            GenerationApplicationService generationApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.generationApplicationService = generationApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/generation-schemes")
     public ApiResponse<GenSchemeResponse> createScheme(
             @Positive @PathVariable Long clanId,
-            @Valid @RequestBody GenSchemeCreateRequest request
+            @Valid @RequestBody GenSchemeCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(generationApplicationService.createScheme(clanId, request));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(generationApplicationService.createScheme(clanId, request, actorId));
     }
 
     @GetMapping("/clans/{clanId}/generation-schemes")
@@ -46,17 +55,21 @@ public class GenerationController {
     @PutMapping("/generation-schemes/{schemeId}/items")
     public ApiResponse<List<GenItemResponse>> replaceItems(
             @Positive @PathVariable Long schemeId,
-            @Valid @RequestBody List<GenItemRequest> requests
+            @Valid @RequestBody List<GenItemRequest> requests,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(generationApplicationService.replaceItems(schemeId, requests));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(generationApplicationService.replaceItems(schemeId, requests, actorId));
     }
 
     @PostMapping("/generation-schemes/{schemeId}/items")
     public ApiResponse<GenItemResponse> addItem(
             @Positive @PathVariable Long schemeId,
-            @Valid @RequestBody GenItemRequest request
+            @Valid @RequestBody GenItemRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(generationApplicationService.addItem(schemeId, request));
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(generationApplicationService.addItem(schemeId, request, actorId));
     }
 
     @GetMapping("/generation-schemes/{schemeId}/items")
