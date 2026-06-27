@@ -31,7 +31,8 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
   }
 
   async function create() {
-    const res = await apiClient.post(`/clans/${workspace.clanId}/relationships`, body());
+    const res: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, body());
+    if (res?.id) workspace.patch({ relationshipId: String(res.id), personId: toPersonId || fromPersonId });
     setData(res);
     notify(res);
   }
@@ -44,7 +45,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
 
   return (
     <div className="page-grid two">
-      <Panel title="关系维护" description="创建前先做冲突预检，避免重复关系、父母冲突和祖先循环。宗族ID来自工作台。">
+      <Panel title="关系维护" description="创建前先做冲突预检，创建成功后自动回填关系ID和当前人物ID。">
         <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="fromPersonId"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} /></Field>
         <Field label="toPersonId"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} /></Field>
