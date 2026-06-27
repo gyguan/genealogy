@@ -23,11 +23,7 @@ public class BranchApplicationService {
     private final ClanRepository clanRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public BranchApplicationService(
-            BranchRepository branchRepository,
-            ClanRepository clanRepository,
-            AuthorizationApplicationService authorizationApplicationService
-    ) {
+    public BranchApplicationService(BranchRepository branchRepository, ClanRepository clanRepository, AuthorizationApplicationService authorizationApplicationService) {
         this.branchRepository = branchRepository;
         this.clanRepository = clanRepository;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -41,7 +37,7 @@ public class BranchApplicationService {
     @Transactional
     public BranchResponse create(Long clanId, BranchCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.parentId());
         validateBranchNameForCreate(clanId, request.branchName());
         BranchEntity parent = getParentBranch(clanId, request.parentId());
         BranchEntity entity = BranchMapper.toEntity(clanId, request);
@@ -63,9 +59,7 @@ public class BranchApplicationService {
     @Transactional(readOnly = true)
     public List<BranchResponse> listByClan(Long clanId) {
         ensureClanExists(clanId);
-        return branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream()
-                .map(BranchMapper::toResponse)
-                .toList();
+        return branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream().map(BranchMapper::toResponse).toList();
     }
 
     @Transactional
@@ -76,7 +70,7 @@ public class BranchApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         BranchEntity entity = getEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, entity.getId());
         if (branchRepository.existsByParentId(id)) {
             throw new BusinessException("BRANCH_HAS_CHILDREN", "支派下存在下级支派，不能删除");
         }
@@ -91,7 +85,10 @@ public class BranchApplicationService {
     @Transactional
     public BranchResponse update(Long id, BranchUpdateRequest request, Long actorId) {
         BranchEntity entity = getEntity(id);
-        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
+        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, entity.getId());
+        if (request.parentId() != null) {
+            authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, request.parentId());
+        }
         validateParentIsNotSelf(id, request.parentId());
         validateBranchNameForUpdate(entity.getClanId(), id, request.branchName());
         BranchEntity parent = getParentBranch(entity.getClanId(), request.parentId());
@@ -113,8 +110,7 @@ public class BranchApplicationService {
     }
 
     private BranchEntity getEntity(Long id) {
-        return branchRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+        return branchRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
     }
 
     private BranchEntity getParentBranch(Long clanId, Long parentId) {
