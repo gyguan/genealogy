@@ -1,5 +1,6 @@
 package com.genealogy.person.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
@@ -39,6 +40,7 @@ public class PersonApplicationService {
     private final GenSchemeRepository genSchemeRepository;
     private final GenWordRepository genWordRepository;
     private final OperationLogApplicationService operationLogApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
     public PersonApplicationService(
             PersonRepository personRepository,
@@ -46,7 +48,8 @@ public class PersonApplicationService {
             BranchRepository branchRepository,
             GenSchemeRepository genSchemeRepository,
             GenWordRepository genWordRepository,
-            OperationLogApplicationService operationLogApplicationService
+            OperationLogApplicationService operationLogApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.personRepository = personRepository;
         this.clanRepository = clanRepository;
@@ -54,6 +57,7 @@ public class PersonApplicationService {
         this.genSchemeRepository = genSchemeRepository;
         this.genWordRepository = genWordRepository;
         this.operationLogApplicationService = operationLogApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
@@ -64,6 +68,7 @@ public class PersonApplicationService {
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -110,6 +115,7 @@ public class PersonApplicationService {
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -130,6 +136,7 @@ public class PersonApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
