@@ -18,6 +18,7 @@ import com.genealogy.review.dto.AuditRecordResponse;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.dto.PersonSubmitReviewRequest;
 import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.dto.ReviewTaskDetailResponse;
 import com.genealogy.review.dto.TargetSubmitRequest;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.review.entity.CheckTaskEntity;
@@ -192,7 +193,14 @@ public class ApprovalApplicationService {
 
     @Transactional(readOnly = true)
     public CheckTaskResponse getTask(Long taskId) {
-        return toTaskResponse(getTaskEntity(taskId));
+        return toTaskResponse(getActiveTask(taskId));
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewTaskDetailResponse getTaskDetail(Long taskId) {
+        CheckTaskEntity task = getActiveTask(taskId);
+        AuditRecordEntity record = getRecord(task.getRevisionId());
+        return new ReviewTaskDetailResponse(toTaskResponse(task), toRecordResponse(record));
     }
 
     @Transactional(readOnly = true)
@@ -204,7 +212,7 @@ public class ApprovalApplicationService {
 
     @Transactional
     public CheckTaskResponse approve(Long taskId, ReviewDecisionRequest request) {
-        CheckTaskEntity task = getTaskEntity(taskId);
+        CheckTaskEntity task = getActiveTask(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
@@ -224,7 +232,7 @@ public class ApprovalApplicationService {
 
     @Transactional
     public CheckTaskResponse reject(Long taskId, ReviewDecisionRequest request) {
-        CheckTaskEntity task = getTaskEntity(taskId);
+        CheckTaskEntity task = getActiveTask(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
@@ -248,7 +256,7 @@ public class ApprovalApplicationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
     }
 
-    private CheckTaskEntity getTaskEntity(Long taskId) {
+    private CheckTaskEntity getActiveTask(Long taskId) {
         return checkTaskRepository.findById(taskId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_TASK_NOT_FOUND));
     }
