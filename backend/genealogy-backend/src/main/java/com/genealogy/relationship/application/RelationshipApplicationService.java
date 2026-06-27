@@ -1,7 +1,9 @@
 package com.genealogy.relationship.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.dto.RelationshipCreateRequest;
@@ -22,21 +24,38 @@ public class RelationshipApplicationService {
 
     private final RelationshipRepository relationshipRepository;
     private final PersonRepository personRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
+    private final OperationLogApplicationService operationLogApplicationService;
 
-    public RelationshipApplicationService(RelationshipRepository relationshipRepository, PersonRepository personRepository) {
+    public RelationshipApplicationService(
+            RelationshipRepository relationshipRepository,
+            PersonRepository personRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            OperationLogApplicationService operationLogApplicationService
+    ) {
         this.relationshipRepository = relationshipRepository;
         this.personRepository = personRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional
     public RelationshipResponse create(Long clanId, RelationshipCreateRequest request) {
+        return create(clanId, request, null);
+    }
+
+    @Transactional
+    public RelationshipResponse create(Long clanId, RelationshipCreateRequest request, Long actorId) {
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         validateCreate(clanId, request);
         RelationshipEntity entity = RelationshipMapper.toEntity(clanId, request);
         applyDefaults(entity);
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
-        return RelationshipMapper.toResponse(relationshipRepository.save(entity));
+        RelationshipEntity saved = relationshipRepository.save(entity);
+        operationLogApplicationService.record(clanId, actorId, "relationship_create", "relationship", saved.getId(), "新增人物关系", null);
+        return RelationshipMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +74,13 @@ public class RelationshipApplicationService {
 
     @Transactional
     public RelationshipResponse update(Long id, RelationshipUpdateRequest request) {
+        return update(id, request, null);
+    }
+
+    @Transactional
+    public RelationshipResponse update(Long id, RelationshipUpdateRequest request, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         entity.setRelationType(request.relationType());
         entity.setRelationLabel(request.relationLabel());
         entity.setIsLineageRelation(request.isLineageRelation());
@@ -65,15 +90,24 @@ public class RelationshipApplicationService {
         entity.setConfidenceLevel(request.confidenceLevel());
         entity.setDataStatus(request.dataStatus() == null ? entity.getDataStatus() : request.dataStatus());
         entity.setUpdatedAt(LocalDateTime.now());
-        return RelationshipMapper.toResponse(relationshipRepository.save(entity));
+        RelationshipEntity saved = relationshipRepository.save(entity);
+        operationLogApplicationService.record(saved.getClanId(), actorId, "relationship_update", "relationship", saved.getId(), "更新人物关系", null);
+        return RelationshipMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
+        delete(id, null);
+    }
+
+    @Transactional
+    public void delete(Long id, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
+        authorizationApplicationService.requireClanMember(entity.getClanId(), actorId);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         relationshipRepository.save(entity);
+        operationLogApplicationService.record(entity.getClanId(), actorId, "relationship_delete", "relationship", entity.getId(), "删除人物关系", null);
     }
 
     private void validateCreate(Long clanId, RelationshipCreateRequest request) {
