@@ -1,5 +1,6 @@
 package com.genealogy.review.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -35,22 +36,26 @@ public class ApprovalApplicationService {
     private final AuditRecordRepository auditRecordRepository;
     private final CheckTaskRepository checkTaskRepository;
     private final OperationLogApplicationService operationLogApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
     public ApprovalApplicationService(
             PersonRepository personRepository,
             AuditRecordRepository auditRecordRepository,
             CheckTaskRepository checkTaskRepository,
-            OperationLogApplicationService operationLogApplicationService
+            OperationLogApplicationService operationLogApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.personRepository = personRepository;
         this.auditRecordRepository = auditRecordRepository;
         this.checkTaskRepository = checkTaskRepository;
         this.operationLogApplicationService = operationLogApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional
     public CheckTaskResponse submitPerson(Long personId, PersonSubmitReviewRequest request) {
         PersonEntity person = getPerson(personId);
+        authorizationApplicationService.requireClanMember(person.getClanId(), request.submitterId());
         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(TARGET_PERSON, personId, STATUS_PENDING)) {
             throw new BusinessException("REVIEW_ALREADY_PENDING", "该人物已存在待审核任务");
         }
@@ -109,6 +114,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getTaskEntity(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
+        authorizationApplicationService.requireClanMember(record.getClanId(), request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
 
         record.setStatus(STATUS_APPROVED);
@@ -131,6 +137,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getTaskEntity(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
+        authorizationApplicationService.requireClanMember(record.getClanId(), request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
 
         String comment = trimToNull(request.comment());
