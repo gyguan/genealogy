@@ -27,11 +27,20 @@ spring:
     default-property-inclusion: non_null
     time-zone: Asia/Shanghai
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
 springdoc:
   api-docs:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+genealogy:
+  attachment:
+    storage-root: ./data/attachments
 
 logging:
   level:
