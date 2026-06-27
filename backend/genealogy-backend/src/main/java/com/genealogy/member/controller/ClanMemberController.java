@@ -37,7 +37,8 @@ public class ClanMemberController {
             @Valid @RequestBody MemberCreateRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        authorizationApplicationService.requireClanMember(clanId, authorization);
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireAnyRole(clanId, actorId, "clan_admin");
         return ApiResponse.success(memberApplicationService.create(clanId, request));
     }
 
@@ -46,7 +47,8 @@ public class ClanMemberController {
             @Positive @PathVariable Long clanId,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        authorizationApplicationService.requireClanMember(clanId, authorization);
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireAnyRole(clanId, actorId, "clan_admin");
         return ApiResponse.success(memberApplicationService.listActiveByClan(clanId));
     }
 }
