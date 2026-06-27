@@ -1,5 +1,6 @@
 package com.genealogy.source.controller;
 
+import com.genealogy.auth.application.AuthApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.source.application.SourceEvidenceApplicationService;
 import com.genealogy.source.dto.AttachmentCreateRequest;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,13 +28,24 @@ import java.util.List;
 public class SourceEvidenceController {
 
     private final SourceEvidenceApplicationService sourceEvidenceApplicationService;
+    private final AuthApplicationService authApplicationService;
 
-    public SourceEvidenceController(SourceEvidenceApplicationService sourceEvidenceApplicationService) {
+    public SourceEvidenceController(SourceEvidenceApplicationService sourceEvidenceApplicationService, AuthApplicationService authApplicationService) {
         this.sourceEvidenceApplicationService = sourceEvidenceApplicationService;
+        this.authApplicationService = authApplicationService;
     }
 
     @PostMapping("/source-bindings")
-    public ApiResponse<SourceBindingResponse> bind(@Valid @RequestBody SourceBindingCreateRequest request) {
+    public ApiResponse<SourceBindingResponse> bind(
+            @Valid @RequestBody SourceBindingCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authApplicationService.currentUserIdOrNull(authorization);
+        if (userId != null) {
+            request = new SourceBindingCreateRequest(
+                    request.sourceId(), request.targetType(), request.targetId(), request.bindingReason(), request.excerpt(), userId
+            );
+        }
         return ApiResponse.success(sourceEvidenceApplicationService.bind(request));
     }
 
@@ -56,7 +69,17 @@ public class SourceEvidenceController {
     }
 
     @PostMapping("/attachments")
-    public ApiResponse<AttachmentResponse> createAttachment(@Valid @RequestBody AttachmentCreateRequest request) {
+    public ApiResponse<AttachmentResponse> createAttachment(
+            @Valid @RequestBody AttachmentCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authApplicationService.currentUserIdOrNull(authorization);
+        if (userId != null) {
+            request = new AttachmentCreateRequest(
+                    request.clanId(), request.sourceId(), request.fileName(), request.fileType(), request.fileSize(),
+                    request.storagePath(), request.thumbnailPath(), request.checksum(), userId, request.accessLevel()
+            );
+        }
         return ApiResponse.success(sourceEvidenceApplicationService.createAttachment(request));
     }
 
