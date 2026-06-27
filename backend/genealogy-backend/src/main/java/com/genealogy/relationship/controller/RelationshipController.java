@@ -3,6 +3,7 @@ package com.genealogy.relationship.controller;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.relationship.application.RelationshipApplicationService;
+import com.genealogy.relationship.dto.RelationshipConflictCheckResponse;
 import com.genealogy.relationship.dto.RelationshipCreateRequest;
 import com.genealogy.relationship.dto.RelationshipResponse;
 import com.genealogy.relationship.dto.RelationshipUpdateRequest;
@@ -45,6 +46,16 @@ public class RelationshipController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(relationshipApplicationService.create(clanId, request, actorId));
+    }
+
+    @PostMapping("/clans/{clanId}/relationships/check-conflict")
+    public ApiResponse<RelationshipConflictCheckResponse> checkConflict(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody RelationshipCreateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipApplicationService.checkConflict(clanId, request, actorId));
     }
 
     @GetMapping("/relationships/{id}")
