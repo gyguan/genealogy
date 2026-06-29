@@ -38,6 +38,7 @@ button, input, select { font: inherit; }
 .actions button, button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
 button.secondary { background: #eff8ff; color: #175cd3; }
 button.danger { background: #d92d20; }
+button.ghost { background: #f2f4f7; color: #344054; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
 .result-notice { margin-top: 16px; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; border-radius: 14px; }
 .result-notice strong { font-size: 14px; }
@@ -65,3 +66,8 @@ button.danger { background: #d92d20; }
 .detail-grid strong { color: #1d2939; font-size: 14px; word-break: break-word; }
 .tree-preview { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 14px; background: #f8fbff; border: 1px solid #d1e9ff; border-radius: 16px; }
 .tree-preview span { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
+.modal-mask { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 32px; background: rgba(16, 24, 40, .58); z-index: 1000; }
+.modal-panel { width: 100%; max-height: calc(100vh - 64px); overflow: auto; background: #fff; border-radius: 20px; box-shadow: 0 24px 64px rgba(16, 24, 40, .32); }
+.modal-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 18px 22px; border-bottom: 1px solid #e4e7ec; background: #fff; border-radius: 20px 20px 0 0; }
+.modal-header h2 { margin: 0; font-size: 20px; }
+.modal-body { padding: 20px 22px 24px; }
