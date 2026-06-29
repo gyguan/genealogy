@@ -47,14 +47,14 @@
 .person-archive-search textarea { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; resize: vertical; min-height: 110px; }
 .person-archive-search input[type="date"] { min-height: 40px; }
 
-.archive-drawer-mask { position: fixed; inset: 0; z-index: 80; display: flex; justify-content: flex-end; background: rgba(15, 23, 42, .36); backdrop-filter: blur(2px); }
-.archive-drawer { width: min(920px, calc(100vw - 72px)); height: 100vh; background: #fff; box-shadow: -24px 0 60px rgba(15, 23, 42, .24); overflow-y: auto; animation: archiveDrawerIn .18s ease-out; }
-.archive-drawer-header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid #e4e7ec; background: rgba(255, 255, 255, .96); backdrop-filter: blur(10px); }
+.archive-drawer-mask { position: fixed; inset: 0; z-index: 80; display: flex; justify-content: flex-end; overflow: hidden; background: rgba(15, 23, 42, .36); backdrop-filter: blur(2px); }
+.archive-drawer { display: flex; flex-direction: column; width: min(920px, calc(100vw - 72px)); height: 100vh; background: #fff; box-shadow: -24px 0 60px rgba(15, 23, 42, .24); overflow: hidden; animation: archiveDrawerIn .18s ease-out; }
+.archive-drawer-header { flex: 0 0 auto; position: relative; z-index: 3; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid #e4e7ec; background: rgba(255, 255, 255, .98); }
 .archive-drawer-actions { display: flex; gap: 8px; align-items: center; }
-.archive-mode-tabs { position: sticky; top: 99px; z-index: 2; display: flex; gap: 8px; padding: 12px 24px; border-bottom: 1px solid #e4e7ec; background: rgba(248, 250, 252, .96); backdrop-filter: blur(10px); }
+.archive-mode-tabs { flex: 0 0 auto; display: flex; gap: 8px; padding: 12px 24px; border-bottom: 1px solid #e4e7ec; background: rgba(248, 250, 252, .98); }
 .archive-mode-tabs button { background: #f2f4f7; color: #344054; padding: 8px 12px; border-radius: 999px; }
 .archive-mode-tabs button.active { background: #1570ef; color: #fff; }
-.archive-drawer-body { display: grid; gap: 18px; padding: 20px 24px 28px; }
+.archive-drawer-body { flex: 1 1 auto; min-height: 0; display: grid; gap: 18px; padding: 20px 24px 28px; overflow-y: auto; overscroll-behavior: contain; }
 .archive-drawer-section { border: 1px solid #e4e7ec; border-radius: 18px; background: #fcfcfd; padding: 16px; }
 .archive-edit-section { background: #fff; border-color: #b2ddff; }
 .archive-drawer-section h3 { margin: 0 0 14px; font-size: 16px; }
@@ -65,7 +65,8 @@
 .archive-view-grid span { display: block; margin-bottom: 5px; color: #667085; font-size: 12px; font-weight: 800; }
 .archive-view-grid strong { color: #1d2939; word-break: break-word; }
 .archive-story-text { margin: 0; color: #475467; line-height: 1.75; white-space: pre-wrap; }
-.drawer-close { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; border: 1px solid #d0d5dd; background: #fff; color: #344054; font-size: 24px; line-height: 1; cursor: pointer; }
+.drawer-close { flex: 0 0 auto; position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 999px; border: 1px solid #d0d5dd; background: #fff; color: transparent; font-size: 0; line-height: 1; cursor: pointer; }
+.drawer-close::before { content: '×'; color: #344054; font-size: 24px; font-weight: 500; line-height: 1; transform: translateY(-1px); }
 .drawer-close:hover { background: #f2f4f7; }
 @keyframes archiveDrawerIn { from { transform: translateX(32px); opacity: .72; } to { transform: translateX(0); opacity: 1; } }
 
@@ -79,7 +80,7 @@
 @media (max-width: 760px) {
   .archive-drawer { width: 100vw; }
   .archive-drawer-header { padding: 18px; }
-  .archive-mode-tabs { top: 94px; padding: 10px 18px; }
+  .archive-mode-tabs { padding: 10px 18px; }
   .archive-drawer-body { padding: 16px; }
   .archive-search-grid, .archive-edit-grid, .archive-view-grid { grid-template-columns: 1fr; }
 }
