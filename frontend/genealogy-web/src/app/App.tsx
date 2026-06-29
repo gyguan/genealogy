@@ -28,6 +28,7 @@ const navItems = [
   ['relationshipCreate', '关系创建', '关系预检和创建'],
   ['relationshipQuery', '关系查询', '查询人物关系'],
   ['sourceCreate', '来源创建', '创建资料来源'],
+  ['sourceQuery', '来源查询', '查询资料来源和审核状态'],
   ['sourceBind', '来源绑定', '绑定证据到业务对象'],
   ['attachmentManage', '附件管理', '上传和下载附件'],
   ['reviewSubmit', '提交审核', '提交变更进入审核流'],
@@ -70,6 +71,7 @@ function AppShell() {
       case 'relationshipCreate': return <RelationshipPage {...props} mode="create" />;
       case 'relationshipQuery': return <RelationshipPage {...props} mode="query" />;
       case 'sourceCreate': return <SourcePage {...props} mode="sourceCreate" />;
+      case 'sourceQuery': return <SourcePage {...props} mode="query" />;
       case 'sourceBind': return <SourcePage {...props} mode="bind" />;
       case 'attachmentManage': return <SourcePage {...props} mode="attachment" />;
       case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
