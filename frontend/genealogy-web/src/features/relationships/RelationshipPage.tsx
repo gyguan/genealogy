@@ -47,8 +47,8 @@ export function RelationshipPage({ notify, mode = 'create' }: { notify: (data: u
 
   if (mode === 'query') {
     return (
-      <Panel title="关系查询" description="查询当前人物的关系记录。点击表格行可设置当前关系ID。">
-        <Field label="当前人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
+      <Panel title="关系查询" description="查询人物的关系记录。点击表格行可选中关系。">
+        <Field label="人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
         <Actions><button onClick={list}>查询人物关系</button></Actions>
         <DataTable
           data={data}
@@ -67,10 +67,10 @@ export function RelationshipPage({ notify, mode = 'create' }: { notify: (data: u
   }
 
   return (
-    <Panel title="关系创建" description="创建前先做冲突预检；创建成功后自动回填关系ID和当前人物ID。">
-      <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
-      <Field label="fromPersonId"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} /></Field>
-      <Field label="toPersonId"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} /></Field>
+    <Panel title="关系创建" description="创建前先做冲突预检；创建成功后可继续提交审核。">
+      <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+      <Field label="关系起点人物ID"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} /></Field>
+      <Field label="关系终点人物ID"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} /></Field>
       <Field label="关系类型"><select value={relationType} onChange={e => setRelationType(e.target.value)}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option></select></Field>
       <Field label="关系标签"><input value={relationLabel} onChange={e => setRelationLabel(e.target.value)} /></Field>
       <Actions><button className="secondary" onClick={check}>冲突预检</button><button onClick={create}>创建关系</button></Actions>
