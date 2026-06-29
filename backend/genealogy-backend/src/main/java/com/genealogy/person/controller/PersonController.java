@@ -7,6 +7,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
+import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.dto.PersonUpdateRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -42,6 +44,28 @@ public class PersonController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(personApplicationService.create(clanId, request, actorId));
+    }
+
+    @GetMapping("/persons/search")
+    public ApiResponse<PageResponse<PersonResponse>> search(
+            @RequestParam Long clanId,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Integer generationNo,
+            @RequestParam(required = false) String generationWord,
+            @RequestParam(required = false) String dataStatus,
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        PersonSearchQuery query = new PersonSearchQuery(clanId, branchId, keyword, name, gender, generationNo, generationWord, dataStatus);
+        return ApiResponse.success(personApplicationService.search(
+                query,
+                pageQuery.normalizedPageNo(),
+                pageQuery.normalizedPageSize(),
+                authorizationApplicationService.currentUserIdOrNull(authorization)
+        ));
     }
 
     @GetMapping("/persons/{id}")

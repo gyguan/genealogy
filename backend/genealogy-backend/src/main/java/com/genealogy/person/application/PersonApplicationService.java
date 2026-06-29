@@ -13,18 +13,22 @@ import com.genealogy.generation.repository.GenWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
+import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.dto.PersonUpdateRequest;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.person.repository.PersonRepository;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -131,6 +135,19 @@ public class PersonApplicationService {
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<PersonResponse> search(PersonSearchQuery query, int pageNo, int pageSize, Long viewerId) {
+        if (query.clanId() == null) {
+            throw new BusinessException("PERSON_SEARCH_CLAN_REQUIRED", "搜索人物必须指定宗族ID");
+        }
+        ensureClanExists(query.clanId());
+        ensureBranchBelongsToClan(query.clanId(), query.branchId());
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+        Page<PersonResponse> page = personRepository.findAll(buildSearchSpecification(query), pageRequest)
+                .map(person -> toPrivacyAwareResponse(person, viewerId));
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request) {
         return update(id, request, null);
@@ -166,6 +183,50 @@ public class PersonApplicationService {
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
         operationLogApplicationService.record(entity.getClanId(), actorId, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
+    }
+
+    private Specification<PersonEntity> buildSearchSpecification(PersonSearchQuery query) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("clanId"), query.clanId()));
+            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
+
+            if (query.branchId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("branchId"), query.branchId()));
+            }
+            if (hasText(query.name())) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern(query.name())));
+            }
+            if (hasText(query.gender())) {
+                predicates.add(criteriaBuilder.equal(root.get("gender"), normalize(query.gender())));
+            }
+            if (query.generationNo() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("generationNo"), query.generationNo()));
+            }
+            if (hasText(query.generationWord())) {
+                predicates.add(criteriaBuilder.equal(root.get("generationWord"), query.generationWord().trim()));
+            }
+            if (hasText(query.dataStatus())) {
+                predicates.add(criteriaBuilder.equal(root.get("dataStatus"), normalize(query.dataStatus())));
+            }
+            if (hasText(query.keyword())) {
+                String pattern = likePattern(query.keyword());
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("genealogyName")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("courtesyName")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("aliasName")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("generationWord")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("rankInFamily")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("birthPlace")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("residencePlace")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("biography")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("tombPlace")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("epitaph")), pattern)
+                ));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private PersonResponse toPrivacyAwareResponse(PersonEntity entity, Long viewerId) {
@@ -292,5 +353,17 @@ public class PersonApplicationService {
         if (entity.getLineageStatus() == null) {
             entity.setLineageStatus("normal");
         }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String normalize(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String likePattern(String value) {
+        return "%" + normalize(value).toLowerCase() + "%";
     }
 }
