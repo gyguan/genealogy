@@ -5,6 +5,7 @@ import './styles.css';
 import './experience.css';
 import './mvp1-wizard.css';
 import './lineage-tree.css';
+import './compact-ui.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
