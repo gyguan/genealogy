@@ -1,6 +1,6 @@
 # Genealogy Web 商用版前端
 
-该目录是 MVP1 的正式前端工程，用于替代早期 `frontend/mvp` 静态演示页。当前采用 React + TypeScript + Vite，实现特性化目录组织、统一 API Client 和商用后台布局。
+该目录是 MVP1 的正式前端工程。当前采用 React + TypeScript + Vite，实现特性化目录组织、统一 API Client 和商用后台布局。
 
 ## 一、技术栈
 
@@ -46,7 +46,7 @@ docker compose up -d
 mvn spring-boot:run
 ```
 
-启动商用版前端：
+启动前端：
 
 ```bash
 cd frontend/genealogy-web
@@ -97,7 +97,7 @@ npm run typecheck
 
 ## 六、覆盖范围
 
-当前商用版前端已覆盖 MVP1 主流程：
+当前前端已覆盖 MVP1 主流程：
 
 ```text
 工作台：宗族概览、待审核和日志摘要
@@ -113,13 +113,6 @@ npm run typecheck
 世系家庭图、上溯、下延
 人物/关系 CSV 导入导出
 操作日志查询、统计和导出
-```
-
-## 七、与静态 MVP 页的关系
-
-```text
-frontend/mvp            早期静态演示页，保留用于快速验证
-frontend/genealogy-web  商用化前端工程，后续主推演进
 ```
 
 后续新增前端能力应优先进入 `frontend/genealogy-web/src/features/*`。
