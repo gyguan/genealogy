@@ -17,19 +17,13 @@ import { TreePage } from '../features/tree/TreePage';
 const navItems = [
   ['dashboard', '工作台', '宗族概览、待办审核和运营数据'],
   ['auth', '登录认证', '账号登录和会话管理'],
-  ['clanCreate', '宗族创建', '创建宗族档案'],
-  ['clanQuery', '宗族查询', '查看宗族列表'],
+  ['clans', '宗族管理', '查询宗族、创建和维护宗族档案'],
   ['memberManage', '成员权限', '成员角色和支派范围权限'],
-  ['branchCreate', '支派创建', '新增支派'],
-  ['branchQuery', '支派查询', '查询支派树'],
+  ['branches', '支派管理', '查询支派树、创建和维护支派'],
   ['generations', '字辈管理', '字辈方案和代次字辈'],
-  ['personCreate', '人物创建', '录入人物档案'],
-  ['personQuery', '人物查询', '查询人物列表和详情'],
-  ['relationshipCreate', '关系创建', '关系预检和创建'],
-  ['relationshipQuery', '关系查询', '查询人物关系'],
-  ['sourceCreate', '来源创建', '创建资料来源'],
-  ['sourceQuery', '来源查询', '查询资料来源和审核状态'],
-  ['sourceBind', '来源绑定', '绑定证据到业务对象'],
+  ['persons', '人物管理', '查询人物、创建和维护人物档案'],
+  ['relationships', '关系管理', '查询关系、预检和维护亲缘关系'],
+  ['sources', '来源管理', '查询来源、创建来源和维护绑定'],
   ['attachmentManage', '附件管理', '上传和下载附件'],
   ['reviewSubmit', '提交审核', '提交变更进入审核流'],
   ['reviewProcess', '审核处理', '待审核任务查询和审批'],
@@ -60,19 +54,13 @@ function AppShell() {
     switch (active) {
       case 'dashboard': return <DashboardPage {...props} />;
       case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
-      case 'clanCreate': return <ClanPage {...props} mode="create" />;
-      case 'clanQuery': return <ClanPage {...props} mode="query" />;
+      case 'clans': return <ClanPage {...props} />;
       case 'memberManage': return <MemberPage {...props} />;
-      case 'branchCreate': return <BranchPage {...props} mode="create" />;
-      case 'branchQuery': return <BranchPage {...props} mode="query" />;
+      case 'branches': return <BranchPage {...props} />;
       case 'generations': return <GenerationPage {...props} />;
-      case 'personCreate': return <PersonPage {...props} mode="create" />;
-      case 'personQuery': return <PersonPage {...props} mode="query" />;
-      case 'relationshipCreate': return <RelationshipPage {...props} mode="create" />;
-      case 'relationshipQuery': return <RelationshipPage {...props} mode="query" />;
-      case 'sourceCreate': return <SourcePage {...props} mode="sourceCreate" />;
-      case 'sourceQuery': return <SourcePage {...props} mode="query" />;
-      case 'sourceBind': return <SourcePage {...props} mode="bind" />;
+      case 'persons': return <PersonPage {...props} />;
+      case 'relationships': return <RelationshipPage {...props} />;
+      case 'sources': return <SourcePage {...props} />;
       case 'attachmentManage': return <SourcePage {...props} mode="attachment" />;
       case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
       case 'reviewProcess': return <ReviewPage {...props} mode="process" />;
