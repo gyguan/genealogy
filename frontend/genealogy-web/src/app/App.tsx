@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import { ToastItem, ToastStack } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
@@ -34,6 +35,15 @@ const navItems = [
 
 type ViewKey = typeof navItems[number][0];
 
+function getMessage(data: unknown, fallback: string) {
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, any>;
+    return record.message || record.errorMessage || record.status || fallback;
+  }
+  return fallback;
+}
+
 export function App() {
   return (
     <WorkspaceProvider>
@@ -44,9 +54,24 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('dashboard');
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
-  function notify(_data?: unknown, _error?: boolean) {}
+  function closeToast(id: number) {
+    setToasts(prev => prev.filter(item => item.id !== id));
+  }
+
+  function notify(data?: unknown, error = false) {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    const item: ToastItem = {
+      id,
+      message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'),
+      type: error ? 'error' : 'success'
+    };
+    setToasts(prev => [...prev.slice(-3), item]);
+    window.setTimeout(() => closeToast(id), 3200);
+  }
+
   function onChanged() {}
 
   function renderPage() {
@@ -92,6 +117,7 @@ function AppShell() {
         </header>
         {renderPage()}
       </main>
+      <ToastStack items={toasts} onClose={closeToast} />
     </div>
   );
 }
