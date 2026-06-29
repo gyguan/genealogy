@@ -8,15 +8,29 @@ import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
-  const [clanId, setClanId] = useState(workspace.clanId);
-  const [actionType, setActionType] = useState('');
+  const [filters, setFilters] = useState({
+    clanId: workspace.clanId,
+    actorId: '',
+    actionType: '',
+    targetType: '',
+    targetId: '',
+    keyword: '',
+    startTime: '',
+    endTime: '',
+    pageSize: '20'
+  });
   const [data, setData] = useState<unknown>();
   const [result, setResult] = useState<unknown>();
 
+  function set(key: keyof typeof filters, value: string) {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  }
+
   function query() {
     const params = new URLSearchParams();
-    if (clanId) params.set('clanId', clanId);
-    if (actionType) params.set('actionType', actionType);
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
     return params.toString();
   }
 
@@ -48,9 +62,16 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   return (
     <div className="page-grid two">
-      <Panel title="日志审计查询" description="支持按宗族和动作类型查询、统计和导出。">
-        <Field label="宗族ID"><input value={clanId} onChange={e => setClanId(e.target.value)} /></Field>
-        <Field label="动作类型"><input value={actionType} onChange={e => setActionType(e.target.value)} placeholder="person_create" /></Field>
+      <Panel title="日志审计查询" description="支持按宗族、操作者、对象、动作和时间范围查询。">
+        <Field label="宗族ID"><input value={filters.clanId} onChange={e => set('clanId', e.target.value)} /></Field>
+        <Field label="操作者ID"><input value={filters.actorId} onChange={e => set('actorId', e.target.value)} /></Field>
+        <Field label="动作类型"><input value={filters.actionType} onChange={e => set('actionType', e.target.value)} placeholder="person_create" /></Field>
+        <Field label="对象类型"><input value={filters.targetType} onChange={e => set('targetType', e.target.value)} placeholder="person" /></Field>
+        <Field label="对象ID"><input value={filters.targetId} onChange={e => set('targetId', e.target.value)} /></Field>
+        <Field label="关键词"><input value={filters.keyword} onChange={e => set('keyword', e.target.value)} /></Field>
+        <Field label="开始时间"><input value={filters.startTime} onChange={e => set('startTime', e.target.value)} placeholder="2026-06-01T00:00:00" /></Field>
+        <Field label="结束时间"><input value={filters.endTime} onChange={e => set('endTime', e.target.value)} placeholder="2026-06-30T23:59:59" /></Field>
+        <Field label="每页数量"><input value={filters.pageSize} onChange={e => set('pageSize', e.target.value)} /></Field>
         <Actions><button onClick={list}>查询</button><button className="secondary" onClick={stats}>统计</button><button className="secondary" onClick={exportCsv}>导出CSV</button></Actions>
         <ResultNotice result={result} />
       </Panel>
@@ -63,6 +84,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             { key: 'targetType', title: '对象类型' },
             { key: 'targetId', title: '对象ID' },
             { key: 'actorId', title: '操作者' },
+            { key: 'summary', title: '摘要' },
             { key: 'createdAt', title: '时间' }
           ]}
         />
