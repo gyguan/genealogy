@@ -10,6 +10,7 @@ export function ImportExportPage({ notify }: { notify: (data: unknown, error?: b
   const workspace = useWorkspace();
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState('persons');
+  const [exportScope, setExportScope] = useState('clan');
   const [previewRows, setPreviewRows] = useState<unknown>();
   const [result, setResult] = useState<unknown>();
 
@@ -38,17 +39,27 @@ export function ImportExportPage({ notify }: { notify: (data: unknown, error?: b
     notify(next);
   }
 
+  function exportCsv() {
+    if (mode === 'persons' && exportScope === 'branch') {
+      download(`/clans/${workspace.clanId}/branches/${workspace.branchId}/exports/persons.csv`, 'branch-persons.csv');
+      return;
+    }
+    download(`/clans/${workspace.clanId}/exports/${mode}.csv`, `${mode}.csv`);
+  }
+
   return (
     <div className="page-grid two">
       <Panel title="导入导出" description="当前以 Excel 可打开的 UTF-8 BOM CSV 作为 MVP1 格式。">
         <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="类型"><select value={mode} onChange={e => setMode(e.target.value)}><option value="persons">人物</option><option value="relations">关系</option></select></Field>
+        <Field label="导出范围"><select value={exportScope} onChange={e => setExportScope(e.target.value)}><option value="clan">宗族全部</option><option value="branch">指定支派人物</option></select></Field>
+        {exportScope === 'branch' ? <Field label="支派ID"><input value={workspace.branchId} onChange={e => workspace.setBranchId(e.target.value)} /></Field> : null}
         <Field label="CSV 文件"><input type="file" onChange={e => setFile(e.target.files?.[0] || null)} /></Field>
         <Actions>
           <button className="secondary" onClick={() => download(`/imports/templates/${mode}.csv`, `${mode}-template.csv`)}>下载模板</button>
           <button onClick={() => upload('preview')}>预校验</button>
           <button onClick={() => upload('import')}>导入</button>
-          <button className="secondary" onClick={() => download(`/clans/${workspace.clanId}/exports/${mode}.csv`, `${mode}.csv`)}>导出</button>
+          <button className="secondary" onClick={exportCsv}>导出</button>
         </Actions>
         <ResultNotice result={result} />
       </Panel>
