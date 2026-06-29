@@ -51,13 +51,8 @@ function AppShell() {
   const [active, setActive] = useState<ViewKey>('dashboard');
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
-  function notify() {
-    // Page-level result components handle user-facing feedback.
-  }
-
-  function onChanged() {
-    // Login state is persisted by the API client; no developer token panel is shown in the UI.
-  }
+  function notify(_data?: unknown, _error?: boolean) {}
+  function onChanged() {}
 
   function renderPage() {
     const props = { notify };
