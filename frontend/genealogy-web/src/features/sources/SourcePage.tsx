@@ -51,7 +51,7 @@ export function SourcePage({ notify, mode = 'sourceCreate' }: { notify: (data: u
   if (mode === 'bind') {
     return (
       <Panel title="来源绑定" description="把来源绑定到人物、关系、支派或宗族。">
-        <Field label="当前来源ID"><input value={workspace.sourceId} onChange={e => workspace.setSourceId(e.target.value)} /></Field>
+        <Field label="来源ID"><input value={workspace.sourceId} onChange={e => workspace.setSourceId(e.target.value)} /></Field>
         <Field label="目标类型"><select value={targetType} onChange={e => setTargetType(e.target.value)}><option value="person">人物</option><option value="relationship">关系</option><option value="branch">支派</option><option value="clan">宗族</option></select></Field>
         <Field label="目标ID"><input value={targetId} onChange={e => setTargetId(e.target.value)} /></Field>
         <Actions><button onClick={bind}>绑定来源</button></Actions>
@@ -62,12 +62,12 @@ export function SourcePage({ notify, mode = 'sourceCreate' }: { notify: (data: u
 
   if (mode === 'attachment') {
     return (
-      <Panel title="附件上传下载" description="附件上传成功后自动回填附件ID，下载时不展示接口内容。">
-        <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
-        <Field label="当前来源ID"><input value={workspace.sourceId} onChange={e => workspace.setSourceId(e.target.value)} /></Field>
+      <Panel title="附件上传下载" description="上传族谱、图片或 PDF 等资料附件。">
+        <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+        <Field label="来源ID"><input value={workspace.sourceId} onChange={e => workspace.setSourceId(e.target.value)} /></Field>
         <Field label="选择文件"><input type="file" onChange={e => setFile(e.target.files?.[0] || null)} /></Field>
         <Actions><button onClick={upload}>上传附件</button></Actions>
-        <Field label="当前附件ID"><input value={workspace.attachmentId} onChange={e => workspace.setAttachmentId(e.target.value)} /></Field>
+        <Field label="附件ID"><input value={workspace.attachmentId} onChange={e => workspace.setAttachmentId(e.target.value)} /></Field>
         <Actions><button className="secondary" onClick={download}>下载附件</button></Actions>
         <ResultNotice result={result} />
       </Panel>
@@ -75,8 +75,8 @@ export function SourcePage({ notify, mode = 'sourceCreate' }: { notify: (data: u
   }
 
   return (
-    <Panel title="来源创建" description="默认使用工作区宗族ID，创建来源后自动回填来源ID。">
-      <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+    <Panel title="来源创建" description="创建族谱书、图片、口述记录等资料来源。">
+      <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
       <Field label="来源名称"><input value={sourceName} onChange={e => setSourceName(e.target.value)} /></Field>
       <Actions><button onClick={createSource}>创建来源</button></Actions>
       <ResultNotice result={result} successText="来源创建成功" />
