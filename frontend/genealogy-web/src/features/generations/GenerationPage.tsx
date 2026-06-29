@@ -43,8 +43,8 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
   return (
     <div className="page-grid two">
       <Panel title="字辈方案" description="控制人物代次和字辈校验规则。">
-        <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
-        <Field label="当前支派ID"><input value={workspace.branchId} onChange={e => workspace.setBranchId(e.target.value)} /></Field>
+        <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+        <Field label="支派ID"><input value={workspace.branchId} onChange={e => workspace.setBranchId(e.target.value)} /></Field>
         <Field label="方案名称"><input value={schemeName} onChange={e => setSchemeName(e.target.value)} /></Field>
         <Actions><button onClick={createScheme}>创建方案</button></Actions>
         <ResultNotice result={result} />
