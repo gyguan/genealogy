@@ -11,12 +11,14 @@ import { ImportExportPage } from '../features/importExport/ImportExportPage';
 import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
 import { PersonPage } from '../features/persons/PersonPage';
+import { GenealogyProductPrototype } from '../features/prototype/GenealogyProductPrototype';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { ReviewPage } from '../features/reviews/ReviewPage';
 import { SourcePage } from '../features/sources/SourcePage';
 import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
+  ['prototype', '新版原型', '树谱优先的人物档案、证据和审核体验'],
   ['dashboard', '工作台', '宗族概览、待办审核和运营数据'],
   ['auth', '登录认证', '账号登录和会话管理'],
   ['clans', '宗族管理', '查询宗族、创建和维护宗族档案'],
@@ -54,7 +56,7 @@ export function App() {
 }
 
 function AppShell() {
-  const [active, setActive] = useState<ViewKey>('dashboard');
+  const [active, setActive] = useState<ViewKey>('prototype');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
@@ -87,6 +89,7 @@ function AppShell() {
   function renderPage() {
     const props = { notify };
     switch (active) {
+      case 'prototype': return <GenealogyProductPrototype />;
       case 'dashboard': return <DashboardPage {...props} />;
       case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
       case 'clans': return <ClanPage {...props} />;
