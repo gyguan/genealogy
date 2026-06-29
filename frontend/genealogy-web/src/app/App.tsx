@@ -1,8 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { apiClient } from '../shared/api/client';
+import { useMemo, useState } from 'react';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
-import { ResultNotice } from '../shared/ui/ResultNotice';
-import { WorkspaceBar } from '../shared/ui/WorkspaceBar';
 import { AuthPage } from '../features/auth/AuthPage';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
@@ -18,10 +15,10 @@ import { SourcePage } from '../features/sources/SourcePage';
 import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
-  ['dashboard', '工作台', '健康状态、当前上下文和关键数据汇总'],
-  ['auth', '登录认证', '用户注册、登录和会话管理'],
-  ['clanCreate', '宗族创建', '创建宗族并自动设置工作区'],
-  ['clanQuery', '宗族查询', '查询宗族列表'],
+  ['dashboard', '工作台', '宗族概览、待办审核和运营数据'],
+  ['auth', '登录认证', '账号登录和会话管理'],
+  ['clanCreate', '宗族创建', '创建宗族档案'],
+  ['clanQuery', '宗族查询', '查看宗族列表'],
   ['memberManage', '成员权限', '成员角色和支派范围权限'],
   ['branchCreate', '支派创建', '新增支派'],
   ['branchQuery', '支派查询', '查询支派树'],
@@ -52,51 +49,14 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('dashboard');
-  const [apiBase, setApiBase] = useState(apiClient.getBaseUrl());
-  const [token, setToken] = useState(apiClient.getToken());
-  const [status, setStatus] = useState<unknown>({ message: '等待操作' });
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
-  useEffect(() => {
-    void healthCheck('应用加载');
-    const onUnhandled = (event: PromiseRejectionEvent) => {
-      event.preventDefault();
-      setStatus({ error: true, message: event.reason?.message || String(event.reason) });
-    };
-    window.addEventListener('unhandledrejection', onUnhandled);
-    return () => window.removeEventListener('unhandledrejection', onUnhandled);
-  }, []);
-
-  async function healthCheck(context: string) {
-    try {
-      await apiClient.get('/health');
-      setStatus({ message: '后端连接正常', context });
-    } catch (error) {
-      setStatus({ error: true, message: '后端连接失败', context, errorMessage: String((error as Error).message || error) });
-    }
-  }
-
-  function notify(data: unknown, error = false) {
-    if (typeof data === 'string') {
-      setStatus({ error, message: data });
-      return;
-    }
-    setStatus(error ? { error: true, data } : data);
-  }
-
-  function saveApiBase(value: string) {
-    apiClient.setBaseUrl(value);
-    setApiBase(apiClient.getBaseUrl());
-    void healthCheck('切换 API 地址');
-  }
-
-  function saveToken(value: string) {
-    apiClient.setToken(value);
-    setToken(apiClient.getToken());
+  function notify() {
+    // Page-level result components handle user-facing feedback.
   }
 
   function onChanged() {
-    setToken(apiClient.getToken());
+    // Login state is persisted by the API client; no developer token panel is shown in the UI.
   }
 
   function renderPage() {
@@ -129,30 +89,22 @@ function AppShell() {
   return (
     <div className="admin-layout">
       <aside className="sidebar">
-        <div className="brand"><strong>Genealogy</strong><span>MVP1 Console</span></div>
+        <div className="brand"><strong>Genealogy</strong><span>族谱管理平台</span></div>
         <nav>
           {navItems.map(item => (
-            <button key={item[0]} className={active === item[0] ? 'active' : ''} onClick={() => { setActive(item[0]); void healthCheck(`进入${item[1]}`); }}>
+            <button key={item[0]} className={active === item[0] ? 'active' : ''} onClick={() => setActive(item[0])}>
               <span>{item[1]}</span><small>{item[2]}</small>
             </button>
           ))}
         </nav>
       </aside>
       <main className="content">
-        <header className="topbar">
+        <header className="topbar topbar--simple">
           <div>
             <h1>{activeMeta[1]}</h1>
             <p>{activeMeta[2]}</p>
           </div>
-          <div className="env-card">
-            <label>API Base</label>
-            <input value={apiBase} onChange={e => saveApiBase(e.target.value)} />
-            <label>Token</label>
-            <input value={token} onChange={e => saveToken(e.target.value)} placeholder="登录后自动填充" />
-          </div>
         </header>
-        <WorkspaceBar />
-        <section className="status-card"><ResultNotice result={status} title="系统提示" /></section>
         {renderPage()}
       </main>
     </div>
