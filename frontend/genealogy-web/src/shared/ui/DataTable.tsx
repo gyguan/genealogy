@@ -13,19 +13,20 @@ export function toRecordList<T = any>(data: any): T[] {
   return [];
 }
 
-export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
+export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const rows = toRecordList<T>(data);
   if (!rows.length) return <div className="empty">{empty}</div>;
 
   return (
     <div className="table-wrap">
+      {onSelect ? <div className="table-hint">点击列表行可查看详情或执行后续操作</div> : null}
       <table className="data-table">
         <thead>
           <tr>{columns.map(column => <th key={column.key}>{column.title}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={row.id || index} onClick={() => onSelect?.(row)} className={onSelect ? 'clickable' : ''}>
+            <tr key={row.id || index} onClick={() => onSelect?.(row)} className={onSelect ? 'clickable' : ''} title={onSelect ? '点击查看详情' : undefined}>
               {columns.map(column => <td key={column.key}>{String(column.render ? column.render(row) ?? '' : row[column.key] ?? '')}</td>)}
             </tr>
           ))}
