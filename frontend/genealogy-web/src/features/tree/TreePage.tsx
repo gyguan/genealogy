@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
-import { DataBlock } from '../../shared/ui/DataBlock';
+import { DataTable } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 
 export function TreePage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
@@ -13,33 +13,46 @@ export function TreePage({ notify }: { notify: (data: unknown, error?: boolean) 
   async function family() {
     const res = await apiClient.get(`/tree/person/${workspace.personId}/family`);
     setData(res);
-    notify(res);
+    notify({ message: '家庭图查询完成' });
   }
 
   async function descendants() {
     const res = await apiClient.get(`/tree/descendants?rootPersonId=${workspace.personId}&maxDepth=${depth || 5}`);
     setData(res);
-    notify(res);
+    notify({ message: '下延世系查询完成' });
   }
 
   async function ancestors() {
     const res = await apiClient.get(`/tree/ancestors?personId=${workspace.personId}&maxDepth=${depth || 5}`);
     setData(res);
-    notify(res);
+    notify({ message: '上溯世系查询完成' });
   }
 
   return (
     <div className="page-grid two">
-      <Panel title="世系查询" description="后端返回 rootPersonId / nodes / edges，前端展示核心节点和边。人物ID来自工作台上下文。">
+      <Panel title="世系查询" description="人物ID来自工作区，只展示节点和关系边，不展示接口原文。">
         <Field label="当前人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
         <Field label="深度"><input value={depth} onChange={e => setDepth(e.target.value)} /></Field>
         <Actions><button onClick={family}>家庭图</button><button onClick={descendants}>下延</button><button onClick={ancestors}>上溯</button></Actions>
+        <div className="summary-card">
+          <div><span>节点数</span><strong>{data?.nodes?.length ?? '-'}</strong></div>
+          <div><span>关系边</span><strong>{data?.edges?.length ?? '-'}</strong></div>
+          <div><span>根人物</span><strong>{data?.rootPersonId ?? workspace.personId || '-'}</strong></div>
+        </div>
       </Panel>
-      <Panel title="世系结果">
+      <Panel title="世系节点与关系">
         <div className="tree-preview">
           {(data?.nodes || []).slice(0, 8).map((node: any) => <span key={node.personId || node.id}>{node.name || node.personId}</span>)}
         </div>
-        <DataBlock data={data} />
+        <DataTable
+          data={data?.edges || []}
+          columns={[
+            { key: 'fromPersonId', title: 'From' },
+            { key: 'toPersonId', title: 'To' },
+            { key: 'relationType', title: '关系类型' },
+            { key: 'relationLabel', title: '标签' }
+          ]}
+        />
       </Panel>
     </div>
   );
