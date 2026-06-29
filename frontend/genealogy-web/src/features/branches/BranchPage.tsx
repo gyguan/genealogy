@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
+import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
 import { DataTable } from '../../shared/ui/DataTable';
 import { DetailCard } from '../../shared/ui/DetailCard';
 import { Modal } from '../../shared/ui/Modal';
@@ -17,18 +18,34 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   const [selected, setSelected] = useState<any>();
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<unknown>();
 
+  async function run(action: () => Promise<void>) {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await action();
+    } catch (error) {
+      notify({ message: (error as Error).message || '操作失败' }, true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function createBranch() {
-    const data: any = await apiClient.post(`/clans/${clanId}/branches`, {
-      branchName,
-      parentId: parentId ? Number(parentId) : null
+    await run(async () => {
+      const data: any = await apiClient.post(`/clans/${clanId}/branches`, {
+        branchName,
+        parentId: parentId ? Number(parentId) : null
+      });
+      if (data?.id) workspace.patch({ clanId, branchId: String(data.id) });
+      setResult({ message: '支派创建成功', id: data?.id });
+      setCreateOpen(false);
+      notify({ message: '支派创建成功', id: data?.id });
+      await load();
     });
-    if (data?.id) workspace.patch({ clanId, branchId: String(data.id) });
-    setResult({ message: '支派创建成功', id: data?.id });
-    setCreateOpen(false);
-    notify({ message: '支派创建成功', id: data?.id });
-    await load();
   }
 
   async function load() {
@@ -40,40 +57,47 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   }
 
   async function detail(id: string) {
-    const data: any = await apiClient.get(`/branches/${id}`);
-    setSelected(data);
-    workspace.setBranchId(String(data?.id || id));
-    setDetailOpen(true);
-    notify({ message: '支派详情查询完成' });
+    await run(async () => {
+      const data: any = await apiClient.get(`/branches/${id}`);
+      setSelected(data);
+      workspace.setBranchId(String(data?.id || id));
+      setDetailOpen(true);
+      notify({ message: '支派详情查询完成' });
+    });
   }
 
   async function update() {
-    if (!selected?.id) throw new Error('请选择支派');
-    const data = await apiClient.put(`/branches/${selected.id}`, {
-      branchName: selected.branchName,
-      parentId: selected.parentId || null,
-      description: selected.description || ''
+    await run(async () => {
+      if (!selected?.id) throw new Error('请选择支派');
+      const data = await apiClient.put(`/branches/${selected.id}`, {
+        branchName: selected.branchName,
+        parentId: selected.parentId || null,
+        description: selected.description || ''
+      });
+      setSelected(data);
+      setResult({ message: '支派信息已更新', id: selected.id });
+      notify({ message: '支派信息已更新' });
+      await load();
     });
-    setSelected(data);
-    setResult({ message: '支派信息已更新', id: selected.id });
-    notify({ message: '支派信息已更新' });
-    await load();
   }
 
   async function remove() {
-    if (!selected?.id) throw new Error('请选择支派');
-    await apiClient.delete(`/branches/${selected.id}`);
-    setDetailOpen(false);
-    setSelected(undefined);
-    setResult({ message: '支派已删除' });
-    notify({ message: '支派已删除' });
-    await load();
+    await run(async () => {
+      if (!selected?.id) throw new Error('请选择支派');
+      await apiClient.delete(`/branches/${selected.id}`);
+      setDeleteOpen(false);
+      setDetailOpen(false);
+      setSelected(undefined);
+      setResult({ message: '支派已删除' });
+      notify({ message: '支派已删除' });
+      await load();
+    });
   }
 
   return (
     <Panel title="支派管理" description="按宗族查询支派树，新增和详情维护通过弹框完成。">
       <Field label="宗族ID"><input value={clanId} onChange={e => setClanId(e.target.value)} /></Field>
-      <Actions><button onClick={load}>查询支派</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建支派</button></Actions>
+      <Actions><button disabled={loading} onClick={() => run(load)}>{loading ? '处理中...' : '查询支派'}</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建支派</button></Actions>
       <DataTable
         data={list}
         columns={[
@@ -89,7 +113,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       <Modal open={createOpen} title="新建支派" onClose={() => setCreateOpen(false)}>
         <Field label="支派名称"><input value={branchName} onChange={e => setBranchName(e.target.value)} /></Field>
         <Field label="父支派ID"><input value={parentId} onChange={e => setParentId(e.target.value)} /></Field>
-        <Actions><button onClick={createBranch}>保存</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
+        <Actions><button disabled={loading} onClick={createBranch}>{loading ? '保存中...' : '保存'}</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
       </Modal>
 
       <Modal open={detailOpen} title="支派详情" onClose={() => setDetailOpen(false)}>
@@ -107,9 +131,19 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
           <Field label="支派名称"><input value={selected.branchName || ''} onChange={e => setSelected({ ...selected, branchName: e.target.value })} /></Field>
           <Field label="父支派ID"><input value={selected.parentId || ''} onChange={e => setSelected({ ...selected, parentId: e.target.value })} /></Field>
           <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
-          <Actions><button onClick={update}>保存修改</button><button className="danger" onClick={remove}>删除支派</button></Actions>
+          <Actions><button disabled={loading} onClick={update}>保存修改</button><button className="danger" onClick={() => setDeleteOpen(true)}>删除支派</button></Actions>
         </> : null}
       </Modal>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="删除支派"
+        description="删除支派可能影响该支派下的人物归属和后续查询，请确认后继续。"
+        confirmText="确认删除"
+        danger
+        onConfirm={remove}
+        onClose={() => setDeleteOpen(false)}
+      />
     </Panel>
   );
 }
