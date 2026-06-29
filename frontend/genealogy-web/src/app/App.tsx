@@ -17,19 +17,19 @@ import {
   CultureProductPage,
   EditingWorkspaceProductPage,
   GenealogyHomePage,
-  GenealogyTreeProductPage,
   ReviewCenterProductPage,
   SourceLibraryProductPage
 } from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { ReviewPage } from '../features/reviews/ReviewPage';
 import { SourcePage } from '../features/sources/SourcePage';
+import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
 import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
   ['home', '族谱首页', '家族概览、智能线索和最近维护'],
   ['mvp1Wizard', 'MVP1建谱向导', '创建宗族、支派、字辈、人物、关系、来源、审核和世系'],
-  ['treeProduct', '世系图谱', '围绕族谱树查看、编辑和补充亲属'],
+  ['treeProduct', '世系图谱', '按上溯祖先、中心人物、下延后代查看世系'],
   ['personArchive', '人物档案', '按姓名、字辈、性别、支派检索人物并查看档案'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
@@ -134,7 +134,7 @@ function AppShell() {
     switch (active) {
       case 'home': return <GenealogyHomePage />;
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
-      case 'treeProduct': return <GenealogyTreeProductPage />;
+      case 'treeProduct': return <LineageTreeProductPage notify={notify} />;
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
