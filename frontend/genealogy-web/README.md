@@ -118,3 +118,7 @@ npm run typecheck
 ```
 
 后续新增前端能力应优先进入 `frontend/genealogy-web/src/features/*`。
+
+## 七、CI 验证
+
+本段用于触发 MVP 规划前端增强后的构建验证。
