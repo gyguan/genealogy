@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
+
 export type Column<T> = {
   key: string;
   title: string;
-  render?: (row: T) => string | number | null | undefined;
+  render?: (row: T) => ReactNode;
 };
 
 export function toRecordList<T = any>(data: any): T[] {
@@ -27,7 +29,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         <tbody>
           {rows.map((row, index) => (
             <tr key={row.id || index} onClick={() => onSelect?.(row)} className={onSelect ? 'clickable' : ''} title={onSelect ? '点击查看详情' : undefined}>
-              {columns.map(column => <td key={column.key}>{String(column.render ? column.render(row) ?? '' : row[column.key] ?? '')}</td>)}
+              {columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '')}</td>)}
             </tr>
           ))}
         </tbody>
