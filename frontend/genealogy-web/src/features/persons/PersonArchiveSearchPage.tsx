@@ -53,10 +53,6 @@ type EditForm = {
 
 const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '', pageNo: '1', pageSize: '20' };
 
-function text(value: unknown) {
-  return String(value ?? '').trim().toLowerCase();
-}
-
 function personName(row: any) {
   return row.name || row.personName || row.displayName || row.fullName || '';
 }
@@ -220,10 +216,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     await run(async () => {
       const data = await apiClient.get(buildSearchPath(nextPageNo));
       setRawData(data);
-      setSelected(undefined);
-      setEditForm(null);
-      setRelationships(undefined);
-      setSources(undefined);
+      closeDetail();
       setForm(prev => ({ ...prev, pageNo: nextPageNo }));
       const total = (data as any)?.total ?? toRecordList(data).length;
       const notice = { message: `已搜索到 ${total} 条人物记录` };
@@ -257,20 +250,23 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       if (!selected?.id || !editForm) throw new Error('请先选择人物');
       if (!editForm.name.trim()) throw new Error('姓名不能为空');
       const saved: any = await apiClient.put(`/persons/${selected.id}`, toUpdatePayload(editForm));
+      const data = await apiClient.get(buildSearchPath(form.pageNo));
+      setRawData(data);
       setSelected(saved);
       setEditForm(toEditForm(saved));
       const notice = { message: '人物档案已保存', id: saved?.id || selected.id };
       setResult(notice);
       notify(notice);
-      await search(form.pageNo);
-      setSelected(saved);
-      setEditForm(toEditForm(saved));
     });
   }
 
   function reset() {
     setForm(emptySearch);
     setRawData(undefined);
+    closeDetail();
+  }
+
+  function closeDetail() {
     setSelected(undefined);
     setEditForm(null);
     setRelationships(undefined);
@@ -306,7 +302,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
 
   return (
     <div className="person-archive-search">
-      <Panel title="人物档案检索" description="按姓名、字辈、性别、代次、支派等条件分页搜索人物；点击搜索结果后查看和编辑完整人物档案。">
+      <Panel title="人物档案检索" description="按姓名、字辈、性别、代次、支派等条件分页搜索人物；点击搜索结果后从右侧打开详情和编辑抽屉。">
         <div className="archive-search-grid">
           <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="必填" /></Field>
           <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名、谱名、字号、籍贯、传记、墓葬" /></Field>
@@ -353,10 +349,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         <ResultNotice result={result} />
       </Panel>
 
-      <div className="archive-detail-layout">
-        <Panel title="人物详情与编辑" description="支持编辑谱名、字号、排行、生卒、墓葬、传记、隐私级别等完整人物字段。">
-          {selected && editForm ? (
-            <>
+      {selected && editForm ? (
+        <div className="archive-drawer-mask" onClick={closeDetail}>
+          <aside className="archive-drawer" onClick={event => event.stopPropagation()}>
+            <div className="archive-drawer-header">
               <div className="archive-profile-head">
                 <span className="archive-avatar">{String(selected.name || '谱').slice(0, 1)}</span>
                 <div>
@@ -364,6 +360,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                   <p>{selected.gender || '未知'} · {selected.generationNo ? `${selected.generationNo}世` : '世次未维护'} · {selected.generationWord || '-'}字辈</p>
                 </div>
               </div>
+              <button className="drawer-close" onClick={closeDetail} aria-label="关闭详情">×</button>
+            </div>
+
+            <div className="archive-drawer-body">
               <div className="archive-completion"><span>资料完整度</span><strong>{completeness}%</strong><div><i style={{ width: `${completeness}%` }} /></div></div>
               <DetailCard
                 title="基础摘要"
@@ -379,7 +379,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                   { label: '隐私级别', value: row => row.privacyLevel }
                 ]}
               />
-              <div className="archive-edit-form">
+
+              <section className="archive-drawer-section">
                 <h3>编辑人物档案</h3>
                 <div className="archive-edit-grid">
                   <Field label="支派ID"><input value={editForm.branchId} onChange={e => patchEdit('branchId', e.target.value)} /></Field>
@@ -411,37 +412,40 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                 <Field label="人物传记"><textarea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={5} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
                 <Field label="墓志铭"><textarea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={4} placeholder="记录墓志、碑文或相关摘录" /></Field>
                 <Actions><button disabled={loading} onClick={saveDetail}>{loading ? '保存中...' : '保存人物档案'}</button></Actions>
-              </div>
-            </>
-          ) : <div className="empty">请先在上方搜索并点击一条人物记录。</div>}
-        </Panel>
+              </section>
 
-        <Panel title="亲属关系与来源证据" description="辅助判断人物档案是否完整、是否具备可追溯来源。">
-          <h3>亲属关系</h3>
-          <DataTable
-            data={relationships}
-            empty="暂无亲属关系，或尚未点击人物记录。"
-            columns={[
-              { key: 'id', title: '关系ID' },
-              { key: 'fromPersonId', title: '起点' },
-              { key: 'toPersonId', title: '终点' },
-              { key: 'relationType', title: '类型' },
-              { key: 'relationLabel', title: '标签' }
-            ]}
-          />
-          <h3>来源证据</h3>
-          <DataTable
-            data={sources}
-            empty="暂无来源绑定，或尚未点击人物记录。"
-            columns={[
-              { key: 'id', title: '绑定ID' },
-              { key: 'sourceId', title: '来源ID' },
-              { key: 'targetType', title: '对象类型' },
-              { key: 'targetId', title: '对象ID' }
-            ]}
-          />
-        </Panel>
-      </div>
+              <section className="archive-drawer-section">
+                <h3>亲属关系</h3>
+                <DataTable
+                  data={relationships}
+                  empty="暂无亲属关系，或尚未点击人物记录。"
+                  columns={[
+                    { key: 'id', title: '关系ID' },
+                    { key: 'fromPersonId', title: '起点' },
+                    { key: 'toPersonId', title: '终点' },
+                    { key: 'relationType', title: '类型' },
+                    { key: 'relationLabel', title: '标签' }
+                  ]}
+                />
+              </section>
+
+              <section className="archive-drawer-section">
+                <h3>来源证据</h3>
+                <DataTable
+                  data={sources}
+                  empty="暂无来源绑定，或尚未点击人物记录。"
+                  columns={[
+                    { key: 'id', title: '绑定ID' },
+                    { key: 'sourceId', title: '来源ID' },
+                    { key: 'targetType', title: '对象类型' },
+                    { key: 'targetId', title: '对象ID' }
+                  ]}
+                />
+              </section>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
