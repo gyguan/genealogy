@@ -33,29 +33,29 @@ const navItems = [
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['admin', '后台管理', '系统配置、基础数据和旧版接口验证']
+  ['system', '基础数据管理', '登录、宗族、人物、关系、导入导出等旧版能力']
 ] as const;
 
-const legacyTabs = [
-  ['dashboard', '工作台'],
+type ViewKey = typeof navItems[number][0];
+type LegacyKey = 'dashboard' | 'auth' | 'clans' | 'memberManage' | 'branches' | 'generations' | 'persons' | 'relationships' | 'sources' | 'attachmentManage' | 'reviewSubmit' | 'reviewProcess' | 'tree' | 'importExport' | 'logs';
+
+const legacyTabs: [LegacyKey, string][] = [
+  ['dashboard', '旧版工作台'],
   ['auth', '登录认证'],
   ['clans', '宗族'],
-  ['members', '成员权限'],
+  ['memberManage', '成员权限'],
   ['branches', '支派'],
   ['generations', '字辈'],
   ['persons', '人物'],
   ['relationships', '关系'],
   ['sources', '来源'],
-  ['attachments', '附件'],
+  ['attachmentManage', '附件'],
   ['reviewSubmit', '提交审核'],
   ['reviewProcess', '审核处理'],
   ['tree', '旧版世系'],
   ['importExport', '导入导出'],
-  ['logs', '日志审计']
-] as const;
-
-type ViewKey = typeof navItems[number][0];
-type LegacyKey = typeof legacyTabs[number][0];
+  ['logs', '日志']
+];
 
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
@@ -76,6 +76,7 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
+  const [legacyActive, setLegacyActive] = useState<LegacyKey>('auth');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
@@ -103,8 +104,31 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
-  function renderPage() {
+  function onChanged() {}
+
+  function renderLegacyPage() {
     const props = { notify };
+    switch (legacyActive) {
+      case 'dashboard': return <DashboardPage {...props} />;
+      case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
+      case 'clans': return <ClanPage {...props} />;
+      case 'memberManage': return <MemberPage {...props} />;
+      case 'branches': return <BranchPage {...props} />;
+      case 'generations': return <GenerationPage {...props} />;
+      case 'persons': return <PersonPage {...props} />;
+      case 'relationships': return <RelationshipPage {...props} />;
+      case 'sources': return <SourcePage {...props} />;
+      case 'attachmentManage': return <SourcePage {...props} mode="attachment" />;
+      case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
+      case 'reviewProcess': return <ReviewPage {...props} mode="process" />;
+      case 'tree': return <TreePage {...props} />;
+      case 'importExport': return <ImportExportPage {...props} />;
+      case 'logs': return <LogPage {...props} />;
+      default: return null;
+    }
+  }
+
+  function renderPage() {
     switch (active) {
       case 'home': return <GenealogyHomePage />;
       case 'treeProduct': return <GenealogyTreeProductPage />;
@@ -113,7 +137,14 @@ function AppShell() {
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
       case 'reviewCenter': return <ReviewCenterProductPage />;
       case 'culture': return <CultureProductPage />;
-      case 'admin': return <LegacyAdminPage notify={notify} />;
+      case 'system': return (
+        <div className="system-management">
+          <div className="system-tabs">
+            {legacyTabs.map(tab => <button key={tab[0]} className={legacyActive === tab[0] ? 'active' : ''} onClick={() => setLegacyActive(tab[0])}>{tab[1]}</button>)}
+          </div>
+          {renderLegacyPage()}
+        </div>
+      );
       default: return null;
     }
   }
@@ -140,42 +171,6 @@ function AppShell() {
         {renderPage()}
       </main>
       <ToastStack items={toasts} onClose={closeToast} />
-    </div>
-  );
-}
-
-function LegacyAdminPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
-  const [active, setActive] = useState<LegacyKey>('dashboard');
-  const props = { notify };
-
-  function onChanged() {}
-  function renderLegacy() {
-    switch (active) {
-      case 'dashboard': return <DashboardPage {...props} />;
-      case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
-      case 'clans': return <ClanPage {...props} />;
-      case 'members': return <MemberPage {...props} />;
-      case 'branches': return <BranchPage {...props} />;
-      case 'generations': return <GenerationPage {...props} />;
-      case 'persons': return <PersonPage {...props} />;
-      case 'relationships': return <RelationshipPage {...props} />;
-      case 'sources': return <SourcePage {...props} />;
-      case 'attachments': return <SourcePage {...props} mode="attachment" />;
-      case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
-      case 'reviewProcess': return <ReviewPage {...props} mode="process" />;
-      case 'tree': return <TreePage {...props} />;
-      case 'importExport': return <ImportExportPage {...props} />;
-      case 'logs': return <LogPage {...props} />;
-      default: return null;
-    }
-  }
-
-  return (
-    <div className="legacy-admin-page">
-      <div className="legacy-tabs">
-        {legacyTabs.map(item => <button key={item[0]} className={active === item[0] ? 'active' : ''} onClick={() => setActive(item[0])}>{item[1]}</button>)}
-      </div>
-      {renderLegacy()}
     </div>
   );
 }
