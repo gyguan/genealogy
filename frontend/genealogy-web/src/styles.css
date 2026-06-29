@@ -39,6 +39,7 @@ button, input, select { font: inherit; }
 button.secondary { background: #eff8ff; color: #175cd3; }
 button.danger { background: #d92d20; }
 button.ghost { background: #f2f4f7; color: #344054; }
+button:disabled { cursor: not-allowed; opacity: .58; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
 .result-notice { margin-top: 16px; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; border-radius: 14px; }
 .result-notice strong { font-size: 14px; }
@@ -71,3 +72,9 @@ button.ghost { background: #f2f4f7; color: #344054; }
 .modal-header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 18px 22px; border-bottom: 1px solid #e4e7ec; background: #fff; border-radius: 20px 20px 0 0; }
 .modal-header h2 { margin: 0; font-size: 20px; }
 .modal-body { padding: 20px 22px 24px; }
+.confirm-description { margin: 0 0 12px; color: #475467; line-height: 1.7; }
+.toast-stack { position: fixed; top: 22px; right: 24px; display: grid; gap: 10px; z-index: 1200; width: 360px; }
+.toast { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; box-shadow: 0 14px 34px rgba(16, 24, 40, .18); }
+.toast--error { border-color: #fecaca; background: #fef2f2; color: #b42318; }
+.toast--info { border-color: #b2ddff; background: #eff8ff; color: #175cd3; }
+.toast__close { padding: 0 4px; background: transparent; color: inherit; font-size: 18px; line-height: 1; }
