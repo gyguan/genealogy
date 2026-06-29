@@ -53,9 +53,9 @@ export function ReviewPage({ notify, mode = 'submit' }: { notify: (data: unknown
     const record = detailData?.auditRecord || {};
     return (
       <div className="page-grid two">
-        <Panel title="审核任务查询" description="查询待审核任务；点击任务行可设置当前审核任务ID。">
-          <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
-          <Field label="当前任务ID"><input value={workspace.reviewTaskId} onChange={e => workspace.setReviewTaskId(e.target.value)} /></Field>
+        <Panel title="审核任务查询" description="查询待审核任务；点击任务行可选中审核任务。">
+          <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+          <Field label="审核任务ID"><input value={workspace.reviewTaskId} onChange={e => workspace.setReviewTaskId(e.target.value)} /></Field>
           <Actions><button onClick={list}>查询待审核</button><button className="secondary" onClick={detail}>查看详情</button></Actions>
           <DataTable
             data={tasks}
@@ -69,7 +69,7 @@ export function ReviewPage({ notify, mode = 'submit' }: { notify: (data: unknown
             onSelect={row => workspace.setReviewTaskId(String(row.id))}
           />
         </Panel>
-        <Panel title="审核处理" description="页面只展示业务摘要，不暴露接口原文。">
+        <Panel title="审核处理" description="展示审核摘要并完成通过或驳回。">
           <div className="summary-card">
             <div><span>审核任务</span><strong>{workspace.reviewTaskId || '-'}</strong></div>
             <div><span>变更说明</span><strong>{record.diffSummary || detailData?.diffSummary || '-'}</strong></div>
@@ -84,7 +84,7 @@ export function ReviewPage({ notify, mode = 'submit' }: { notify: (data: unknown
   }
 
   return (
-    <Panel title="提交审核" description="默认使用工作区人物ID，可切换为关系、来源、支派、字辈方案。提交成功后自动回填审核任务ID。">
+    <Panel title="提交审核" description="选择业务对象并提交审核。">
       <Field label="对象类型"><select value={targetType} onChange={e => setTargetType(e.target.value)}><option value="persons">人物</option><option value="relationships">关系</option><option value="sources">来源</option><option value="branches">支派</option><option value="generation-schemes">字辈方案</option></select></Field>
       <Field label="对象ID"><input value={targetId} onChange={e => setTargetId(e.target.value)} /></Field>
       <Actions><button onClick={submit}>提交审核</button></Actions>
