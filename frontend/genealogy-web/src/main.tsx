@@ -4,6 +4,7 @@ import { App } from './app/App';
 import './styles.css';
 import './experience.css';
 import './mvp1-wizard.css';
+import './lineage-tree.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
