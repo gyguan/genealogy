@@ -84,7 +84,7 @@
 .xp-empty-guide { display: grid; place-items: center; gap: 8px; min-height: 160px; padding: 24px; text-align: center; color: #667085; border: 1px dashed #d0d5dd; border-radius: 18px; background: rgba(255,255,255,.72); }
 .xp-empty-guide strong { color: #344054; font-size: 16px; }
 .xp-empty-guide p { margin: 0; line-height: 1.6; }
-.legacy-admin-page { display: grid; gap: 16px; }
-.legacy-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; border: 1px solid #e4e7ec; border-radius: 18px; background: #fff; box-shadow: 0 12px 28px rgba(16, 24, 40, .05); }
-.legacy-tabs button { background: #f2f4f7; color: #344054; padding: 9px 12px; }
-.legacy-tabs button.active { background: #1570ef; color: #fff; }
+.legacy-admin-page, .system-management { display: grid; gap: 16px; }
+.legacy-tabs, .system-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; border: 1px solid #e4e7ec; border-radius: 18px; background: #fff; box-shadow: 0 12px 28px rgba(16, 24, 40, .05); }
+.legacy-tabs button, .system-tabs button { background: #f2f4f7; color: #344054; padding: 9px 12px; }
+.legacy-tabs button.active, .system-tabs button.active { background: #1570ef; color: #fff; }
