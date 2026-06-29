@@ -16,8 +16,6 @@ type SearchForm = {
   generationNo: string;
   branchId: string;
   dataStatus: string;
-  pageNo: string;
-  pageSize: string;
 };
 
 type EditForm = {
@@ -50,7 +48,8 @@ type EditForm = {
   dataStatus: string;
 };
 
-const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '', pageNo: '1', pageSize: '20' };
+const PAGE_SIZE = 20;
+const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '' };
 
 function personName(row: any) {
   return row.name || row.personName || row.displayName || row.fullName || '';
@@ -176,6 +175,7 @@ function toUpdatePayload(form: EditForm) {
 export function PersonArchiveSearchPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<SearchForm>(emptySearch);
+  const [pageNo, setPageNo] = useState(1);
   const [rawData, setRawData] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -214,12 +214,12 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     }
   }
 
-  function buildSearchPath(nextPageNo = form.pageNo) {
+  function buildSearchPath(nextPageNo = pageNo) {
     if (!workspace.clanId) throw new Error('请先选择或输入宗族ID');
     const params = new URLSearchParams();
     params.set('clanId', workspace.clanId);
-    params.set('pageNo', nextPageNo || '1');
-    params.set('pageSize', form.pageSize || '20');
+    params.set('pageNo', String(nextPageNo || 1));
+    params.set('pageSize', String(PAGE_SIZE));
     if (form.branchId.trim()) params.set('branchId', form.branchId.trim());
     if (form.keyword.trim()) params.set('keyword', form.keyword.trim());
     if (form.name.trim()) params.set('name', form.name.trim());
@@ -230,14 +230,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     return `/persons/search?${params.toString()}`;
   }
 
-  async function search(nextPageNo = '1') {
+  async function search(nextPageNo = 1) {
     setQuerying(true);
     try {
       await run(async () => {
         const data = await apiClient.get(buildSearchPath(nextPageNo));
         setRawData(data);
         closeDetail();
-        setForm(prev => ({ ...prev, pageNo: nextPageNo }));
+        setPageNo(nextPageNo);
         const total = (data as any)?.total ?? toRecordList(data).length;
         notify({ message: `已搜索到 ${total} 条人物记录` });
       });
@@ -270,7 +270,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       if (!selected?.id || !editForm) throw new Error('请先选择人物');
       if (!editForm.name.trim()) throw new Error('姓名不能为空');
       const saved: any = await apiClient.put(`/persons/${selected.id}`, toUpdatePayload(editForm));
-      const data = await apiClient.get(buildSearchPath(form.pageNo));
+      const data = await apiClient.get(buildSearchPath(pageNo));
       setRawData(data);
       setSelected(saved);
       setEditForm(toEditForm(saved));
@@ -282,6 +282,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   function reset() {
     setForm(emptySearch);
     setRawData(undefined);
+    setPageNo(1);
     closeDetail();
   }
 
@@ -304,11 +305,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setDrawerMode('view');
   }
 
-  const rows = useMemo(() => toRecordList<any>(rawData), [rawData]);
+  const rows = useMemo(() => toRecordList(rawData) as any[], [rawData]);
   const total = (rawData as any)?.total ?? rows.length;
-  const pageNo = Number((rawData as any)?.pageNo ?? form.pageNo ?? 1);
-  const pageSize = Number((rawData as any)?.pageSize ?? form.pageSize ?? 20);
-  const totalPages = Number((rawData as any)?.totalPages ?? Math.max(1, Math.ceil(total / pageSize)));
+  const currentPage = Number((rawData as any)?.pageNo ?? pageNo ?? 1);
+  const totalPages = Number((rawData as any)?.totalPages ?? Math.max(1, Math.ceil(total / PAGE_SIZE)));
 
   const completeness = selected ? Math.min(100, [
     selected.name,
@@ -335,26 +335,19 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     <div className="person-archive-search">
       <section className="panel archive-search-panel archive-search-panel--compact">
         {querying ? <div className="archive-loading-mask"><div><span />查询中...</div></div> : null}
-        <div className="archive-search-toolbar">
+        <div className="archive-search-form">
           <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="必填" /></Field>
           <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" /></Field>
           <Field label="姓名"><input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" /></Field>
           <Field label="性别"><select value={form.gender} onChange={e => patch('gender', e.target.value)}><option value="">全部</option><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-          <Actions>
-            <button disabled={loading} onClick={() => search('1')}>搜索</button>
-            <button className="secondary" onClick={reset}>重置</button>
-          </Actions>
-        </div>
-        <div className="archive-search-more">
           <Field label="字辈"><input value={form.generationWord} onChange={e => patch('generationWord', e.target.value)} placeholder="如：德" /></Field>
           <Field label="代次"><input value={form.generationNo} onChange={e => patch('generationNo', e.target.value)} placeholder="如：20" /></Field>
           <Field label="支派ID"><input value={form.branchId} onChange={e => patch('branchId', e.target.value)} placeholder="可空" /></Field>
           <Field label="状态"><select value={form.dataStatus} onChange={e => patch('dataStatus', e.target.value)}><option value="">全部</option><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
-          <Field label="页码"><input value={form.pageNo} onChange={e => patch('pageNo', e.target.value)} /></Field>
-          <Field label="每页"><select value={form.pageSize} onChange={e => patch('pageSize', e.target.value)}><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></Field>
+          <Actions><button disabled={loading} onClick={() => search(1)}>搜索</button><button className="secondary" onClick={reset}>重置</button></Actions>
         </div>
         <div className="archive-search-summary archive-search-summary--compact">
-          <span>第 {pageNo} / {totalPages} 页</span>
+          <span>第 {currentPage} / {totalPages} 页</span>
           <span>本页 {rows.length} 条</span>
           <span>共 {total} 条</span>
           <span>当前人物：{workspace.personId || '-'}</span>
@@ -377,8 +370,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           onSelect={row => openDetail(row, 'view')}
         />
         <Actions>
-          <button className="secondary" disabled={pageNo <= 1 || loading} onClick={() => search(String(pageNo - 1))}>上一页</button>
-          <button className="secondary" disabled={pageNo >= totalPages || loading} onClick={() => search(String(pageNo + 1))}>下一页</button>
+          <button className="secondary" disabled={currentPage <= 1 || loading} onClick={() => search(currentPage - 1)}>上一页</button>
+          <button className="secondary" disabled={currentPage >= totalPages || loading} onClick={() => search(currentPage + 1)}>下一页</button>
         </Actions>
       </section>
 
