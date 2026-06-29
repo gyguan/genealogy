@@ -41,7 +41,7 @@ export function ImportExportPage({ notify }: { notify: (data: unknown, error?: b
   return (
     <div className="page-grid two">
       <Panel title="导入导出" description="当前以 Excel 可打开的 UTF-8 BOM CSV 作为 MVP1 格式。">
-        <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+        <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="类型"><select value={mode} onChange={e => setMode(e.target.value)}><option value="persons">人物</option><option value="relations">关系</option></select></Field>
         <Field label="CSV 文件"><input type="file" onChange={e => setFile(e.target.files?.[0] || null)} /></Field>
         <Actions>
