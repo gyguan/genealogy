@@ -33,24 +33,29 @@ const navItems = [
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['dashboard', '旧版工作台', '保留 MVP 已接 API 的管理能力'],
-  ['auth', '登录认证', '账号登录和会话管理'],
-  ['clans', '宗族管理', '查询宗族、创建和维护宗族档案'],
-  ['memberManage', '成员权限', '成员角色和支派范围权限'],
-  ['branches', '支派管理', '查询支派树、创建和维护支派'],
-  ['generations', '字辈管理', '字辈方案和代次字辈'],
-  ['persons', '人物管理', '查询人物、创建和维护人物档案'],
-  ['relationships', '关系管理', '查询关系、预检和维护亲缘关系'],
-  ['sources', '来源管理', '查询来源、创建来源和维护绑定'],
-  ['attachmentManage', '附件管理', '上传和下载附件'],
-  ['reviewSubmit', '提交审核', '提交变更进入审核流'],
-  ['reviewProcess', '审核处理', '待审核任务查询和审批'],
-  ['tree', '旧版世系查询', '家庭图、上溯、下延'],
-  ['importExport', '导入导出', '人物/关系 CSV'],
-  ['logs', '日志审计', '查询、统计和导出']
+  ['admin', '后台管理', '系统配置、基础数据和旧版接口验证']
+] as const;
+
+const legacyTabs = [
+  ['dashboard', '工作台'],
+  ['auth', '登录认证'],
+  ['clans', '宗族'],
+  ['members', '成员权限'],
+  ['branches', '支派'],
+  ['generations', '字辈'],
+  ['persons', '人物'],
+  ['relationships', '关系'],
+  ['sources', '来源'],
+  ['attachments', '附件'],
+  ['reviewSubmit', '提交审核'],
+  ['reviewProcess', '审核处理'],
+  ['tree', '旧版世系'],
+  ['importExport', '导入导出'],
+  ['logs', '日志审计']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
+type LegacyKey = typeof legacyTabs[number][0];
 
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
@@ -98,8 +103,6 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
-  function onChanged() {}
-
   function renderPage() {
     const props = { notify };
     switch (active) {
@@ -110,21 +113,7 @@ function AppShell() {
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
       case 'reviewCenter': return <ReviewCenterProductPage />;
       case 'culture': return <CultureProductPage />;
-      case 'dashboard': return <DashboardPage {...props} />;
-      case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
-      case 'clans': return <ClanPage {...props} />;
-      case 'memberManage': return <MemberPage {...props} />;
-      case 'branches': return <BranchPage {...props} />;
-      case 'generations': return <GenerationPage {...props} />;
-      case 'persons': return <PersonPage {...props} />;
-      case 'relationships': return <RelationshipPage {...props} />;
-      case 'sources': return <SourcePage {...props} />;
-      case 'attachmentManage': return <SourcePage {...props} mode="attachment" />;
-      case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
-      case 'reviewProcess': return <ReviewPage {...props} mode="process" />;
-      case 'tree': return <TreePage {...props} />;
-      case 'importExport': return <ImportExportPage {...props} />;
-      case 'logs': return <LogPage {...props} />;
+      case 'admin': return <LegacyAdminPage notify={notify} />;
       default: return null;
     }
   }
@@ -151,6 +140,42 @@ function AppShell() {
         {renderPage()}
       </main>
       <ToastStack items={toasts} onClose={closeToast} />
+    </div>
+  );
+}
+
+function LegacyAdminPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+  const [active, setActive] = useState<LegacyKey>('dashboard');
+  const props = { notify };
+
+  function onChanged() {}
+  function renderLegacy() {
+    switch (active) {
+      case 'dashboard': return <DashboardPage {...props} />;
+      case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
+      case 'clans': return <ClanPage {...props} />;
+      case 'members': return <MemberPage {...props} />;
+      case 'branches': return <BranchPage {...props} />;
+      case 'generations': return <GenerationPage {...props} />;
+      case 'persons': return <PersonPage {...props} />;
+      case 'relationships': return <RelationshipPage {...props} />;
+      case 'sources': return <SourcePage {...props} />;
+      case 'attachments': return <SourcePage {...props} mode="attachment" />;
+      case 'reviewSubmit': return <ReviewPage {...props} mode="submit" />;
+      case 'reviewProcess': return <ReviewPage {...props} mode="process" />;
+      case 'tree': return <TreePage {...props} />;
+      case 'importExport': return <ImportExportPage {...props} />;
+      case 'logs': return <LogPage {...props} />;
+      default: return null;
+    }
+  }
+
+  return (
+    <div className="legacy-admin-page">
+      <div className="legacy-tabs">
+        {legacyTabs.map(item => <button key={item[0]} className={active === item[0] ? 'active' : ''} onClick={() => setActive(item[0])}>{item[1]}</button>)}
+      </div>
+      {renderLegacy()}
     </div>
   );
 }
