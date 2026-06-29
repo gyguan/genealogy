@@ -31,8 +31,8 @@ export function TreePage({ notify }: { notify: (data: unknown, error?: boolean) 
 
   return (
     <div className="page-grid two">
-      <Panel title="世系查询" description="人物ID来自工作区，只展示节点和关系边，不展示接口原文。">
-        <Field label="当前人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
+      <Panel title="世系查询" description="查询家庭图、下延世系和上溯世系。">
+        <Field label="人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
         <Field label="深度"><input value={depth} onChange={e => setDepth(e.target.value)} /></Field>
         <Actions><button onClick={family}>家庭图</button><button onClick={descendants}>下延</button><button onClick={ancestors}>上溯</button></Actions>
         <div className="summary-card">
