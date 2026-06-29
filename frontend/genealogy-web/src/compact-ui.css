@@ -57,3 +57,12 @@
 .xp-page { gap: 14px; }
 .lineage-page { gap: 14px; }
 .mvp1-wizard { gap: 14px; }
+
+.stats-only-home { display: block; }
+.stats-only-grid { margin: 0; grid-template-columns: repeat(6, minmax(120px, 1fr)); }
+.stats-only-grid .xp-stat { min-height: 112px; }
+.stats-only-grid .xp-stat strong { margin-top: 10px; }
+
+@media (max-width: 1400px) {
+  .stats-only-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
