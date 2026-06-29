@@ -51,11 +51,24 @@ button, input, select { font: inherit; }
 .actions button, button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
 button.secondary { background: #eff8ff; color: #175cd3; }
 button.danger { background: #d92d20; }
-.data-block { background: #101828; color: #d0d5dd; padding: 14px; border-radius: 14px; overflow: auto; max-height: 520px; line-height: 1.5; font-size: 12px; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
+.result-notice { margin-top: 16px; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; border-radius: 14px; }
+.result-notice strong { font-size: 14px; }
+.result-notice span, .result-notice em { font-style: normal; font-size: 13px; }
+.result-notice--error { border-color: #fecaca; background: #fef2f2; color: #b42318; }
+.table-wrap { overflow: auto; border: 1px solid #e4e7ec; border-radius: 14px; }
+.data-table { width: 100%; border-collapse: collapse; background: #fff; }
+.data-table th { text-align: left; font-size: 12px; color: #667085; background: #f9fafb; padding: 11px 12px; border-bottom: 1px solid #e4e7ec; white-space: nowrap; }
+.data-table td { padding: 12px; border-bottom: 1px solid #f2f4f7; color: #344054; font-size: 14px; white-space: nowrap; }
+.data-table tr.clickable { cursor: pointer; }
+.data-table tr.clickable:hover { background: #eff8ff; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .metric { background: linear-gradient(135deg, #eff8ff, #f5f8ff); border: 1px solid #b2ddff; border-radius: 16px; padding: 14px; }
 .metric span { color: #475467; font-size: 13px; }
 .metric strong { display: block; margin-top: 6px; font-size: 24px; color: #175cd3; }
+.summary-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.summary-card div { border: 1px solid #e4e7ec; border-radius: 14px; padding: 12px; background: #f9fafb; }
+.summary-card span { display: block; color: #667085; font-size: 12px; }
+.summary-card strong { display: block; color: #1d2939; margin-top: 5px; }
 .tree-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .tree-preview span { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
