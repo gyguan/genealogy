@@ -5,10 +5,17 @@ import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
+type DashboardSummary = {
+  clanCount: string | number;
+  pendingReviewCount: string | number;
+  logCount: string | number;
+  treeNodeCount: string | number;
+};
+
 export function DashboardPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [health, setHealth] = useState<unknown>();
-  const [summary, setSummary] = useState({ clanCount: '-', pendingReviewCount: '-', logCount: '-', treeNodeCount: '-' });
+  const [summary, setSummary] = useState<DashboardSummary>({ clanCount: '-', pendingReviewCount: '-', logCount: '-', treeNodeCount: '-' });
 
   async function checkHealth() {
     await apiClient.get('/health');
@@ -33,7 +40,7 @@ export function DashboardPage({ notify }: { notify: (data: unknown, error?: bool
         treeNodeCount = tree?.nodes?.length ?? '-';
       }
     }
-    const next = {
+    const next: DashboardSummary = {
       clanCount: clans?.total ?? clans?.records?.length ?? 0,
       pendingReviewCount,
       logCount,
