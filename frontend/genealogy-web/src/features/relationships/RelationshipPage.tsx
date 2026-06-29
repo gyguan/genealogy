@@ -3,6 +3,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
 import { DataTable } from '../../shared/ui/DataTable';
+import { DetailCard } from '../../shared/ui/DetailCard';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
@@ -13,6 +14,7 @@ export function RelationshipPage({ notify, mode = 'create' }: { notify: (data: u
   const [relationType, setRelationType] = useState('parent_child');
   const [relationLabel, setRelationLabel] = useState('father');
   const [data, setData] = useState<unknown>();
+  const [selected, setSelected] = useState<any>();
   const [result, setResult] = useState<unknown>();
 
   const body = () => ({
@@ -45,24 +47,83 @@ export function RelationshipPage({ notify, mode = 'create' }: { notify: (data: u
     notify({ message: '关系查询完成' });
   }
 
+  async function detail(id = workspace.relationshipId) {
+    if (!id) throw new Error('请选择关系');
+    const res: any = await apiClient.get(`/relationships/${id}`);
+    setSelected(res);
+    workspace.setRelationshipId(String(res?.id || id));
+    notify({ message: '关系详情查询完成' });
+  }
+
+  async function update() {
+    if (!selected?.id) throw new Error('请选择关系');
+    const res: any = await apiClient.put(`/relationships/${selected.id}`, {
+      relationType: selected.relationType,
+      relationLabel: selected.relationLabel,
+      isLineageRelation: selected.isLineageRelation !== false,
+      isBiological: selected.isBiological !== false,
+      isPrimary: selected.isPrimary !== false,
+      description: selected.description || '',
+      confidenceLevel: selected.confidenceLevel || 'high'
+    });
+    setSelected(res);
+    setResult({ message: '关系信息已更新', id: selected.id });
+    notify({ message: '关系信息已更新' });
+    await list();
+  }
+
+  async function remove() {
+    if (!selected?.id) throw new Error('请选择关系');
+    await apiClient.delete(`/relationships/${selected.id}`);
+    setSelected(undefined);
+    setResult({ message: '关系已删除' });
+    notify({ message: '关系已删除' });
+    await list();
+  }
+
   if (mode === 'query') {
     return (
-      <Panel title="关系查询" description="查询人物的关系记录。点击表格行可选中关系。">
-        <Field label="人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
-        <Actions><button onClick={list}>查询人物关系</button></Actions>
-        <DataTable
-          data={data}
-          columns={[
-            { key: 'id', title: 'ID' },
-            { key: 'fromPersonId', title: 'From' },
-            { key: 'toPersonId', title: 'To' },
-            { key: 'relationType', title: '关系类型' },
-            { key: 'relationLabel', title: '标签' },
-            { key: 'dataStatus', title: '状态' }
-          ]}
-          onSelect={row => workspace.setRelationshipId(String(row.id))}
-        />
-      </Panel>
+      <div className="page-grid two">
+        <Panel title="关系查询" description="查询人物的关系记录。点击表格行可查看详情。">
+          <Field label="人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
+          <Field label="关系ID"><input value={workspace.relationshipId} onChange={e => workspace.setRelationshipId(e.target.value)} /></Field>
+          <Actions><button onClick={list}>查询人物关系</button><button className="secondary" onClick={() => detail()}>查询详情</button></Actions>
+          <DataTable
+            data={data}
+            columns={[
+              { key: 'id', title: 'ID' },
+              { key: 'fromPersonId', title: '起点人物' },
+              { key: 'toPersonId', title: '终点人物' },
+              { key: 'relationType', title: '关系类型' },
+              { key: 'relationLabel', title: '标签' },
+              { key: 'dataStatus', title: '状态' }
+            ]}
+            onSelect={row => detail(String(row.id))}
+          />
+        </Panel>
+        <Panel title="关系详情" description="维护关系标签、主线关系和可信度。">
+          <DetailCard
+            title="基础信息"
+            data={selected}
+            fields={[
+              { label: '关系ID', value: row => row.id },
+              { label: '起点人物', value: row => row.fromPersonId },
+              { label: '终点人物', value: row => row.toPersonId },
+              { label: '关系类型', value: row => row.relationType },
+              { label: '关系标签', value: row => row.relationLabel },
+              { label: '状态', value: row => row.dataStatus }
+            ]}
+          />
+          {selected ? <>
+            <Field label="关系类型"><select value={selected.relationType || 'parent_child'} onChange={e => setSelected({ ...selected, relationType: e.target.value })}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option></select></Field>
+            <Field label="关系标签"><input value={selected.relationLabel || ''} onChange={e => setSelected({ ...selected, relationLabel: e.target.value })} /></Field>
+            <Field label="可信度"><select value={selected.confidenceLevel || 'high'} onChange={e => setSelected({ ...selected, confidenceLevel: e.target.value })}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></Field>
+            <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
+            <Actions><button onClick={update}>保存修改</button><button className="danger" onClick={remove}>删除关系</button></Actions>
+          </> : null}
+          <ResultNotice result={result} />
+        </Panel>
+      </div>
     );
   }
 
