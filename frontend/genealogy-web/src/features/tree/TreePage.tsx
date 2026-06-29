@@ -9,6 +9,7 @@ export function TreePage({ notify }: { notify: (data: unknown, error?: boolean) 
   const workspace = useWorkspace();
   const [depth, setDepth] = useState('5');
   const [data, setData] = useState<any>();
+  const rootPersonId = data?.rootPersonId ?? (workspace.personId || '-');
 
   async function family() {
     const res = await apiClient.get(`/tree/person/${workspace.personId}/family`);
@@ -37,7 +38,7 @@ export function TreePage({ notify }: { notify: (data: unknown, error?: boolean) 
         <div className="summary-card">
           <div><span>节点数</span><strong>{data?.nodes?.length ?? '-'}</strong></div>
           <div><span>关系边</span><strong>{data?.edges?.length ?? '-'}</strong></div>
-          <div><span>根人物</span><strong>{data?.rootPersonId ?? workspace.personId || '-'}</strong></div>
+          <div><span>根人物</span><strong>{rootPersonId}</strong></div>
         </div>
       </Panel>
       <Panel title="世系节点与关系">
