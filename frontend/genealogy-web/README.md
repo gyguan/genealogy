@@ -68,7 +68,7 @@ http://localhost:5174
 
 ## 四、产品化页面设计
 
-默认入口已调整为“族谱首页”，并按照国内族谱产品应具备的核心体验重新组织页面：
+默认入口为“族谱首页”，并按照国内族谱产品应具备的核心体验重新组织页面：
 
 ```text
 族谱首页：家族概览、最近维护、智能线索、待审核
@@ -86,9 +86,28 @@ http://localhost:5174
 src/features/experience/GenealogyExperiencePages.tsx
 ```
 
-这套页面用于作为后续正式产品体验骨架。当前已接 API 的旧 MVP 管理页仍保留在导航后半部分，便于逐步把真实接口迁移到新的产品化页面中。
+## 五、真实接口迁移情况
 
-## 五、商用展示原则
+产品化页面已从纯静态原型升级为“真实接口优先 + 空态/示例态兜底”的模式，当前已接入：
+
+```text
+GET  /clans
+GET  /clans/{clanId}/branches
+GET  /clans/{clanId}/persons
+GET  /clans/{clanId}/sources
+GET  /clans/{clanId}/review-tasks/pending
+GET  /logs/operations/stats
+GET  /persons/{personId}/relationships
+GET  /tree/person/{personId}/family
+POST /persons/{personId}/submit-review
+POST /review-tasks/{taskId}/approve
+POST /review-tasks/{taskId}/reject
+POST /clans/{clanId}/relationships/check-conflict
+```
+
+后端暂无专用接口的内容，例如宗族文化、迁徙路线、祠堂、家训等，当前先以宗族基础信息和示例内容展示，后续需要补充文化资料相关后端能力。
+
+## 六、商用展示原则
 
 商用版前端不直接展示接口响应 JSON，而是按业务视角展示：
 
@@ -106,7 +125,7 @@ src/features/experience/GenealogyExperiencePages.tsx
 
 主数据菜单采用“管理页”模式，不再拆成创建菜单和查询菜单。列表查询作为主页面，新建、详情、编辑等操作通过弹框完成。
 
-## 六、构建
+## 七、构建
 
 ```bash
 npm run build
@@ -124,7 +143,7 @@ dist/
 npm run typecheck
 ```
 
-## 七、覆盖范围
+## 八、覆盖范围
 
 当前前端覆盖范围：
 
