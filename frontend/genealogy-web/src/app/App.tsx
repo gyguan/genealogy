@@ -11,15 +11,29 @@ import { ImportExportPage } from '../features/importExport/ImportExportPage';
 import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
 import { PersonPage } from '../features/persons/PersonPage';
-import { GenealogyProductPrototype } from '../features/prototype/GenealogyProductPrototype';
+import {
+  CultureProductPage,
+  EditingWorkspaceProductPage,
+  GenealogyHomePage,
+  GenealogyTreeProductPage,
+  PersonArchiveProductPage,
+  ReviewCenterProductPage,
+  SourceLibraryProductPage
+} from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { ReviewPage } from '../features/reviews/ReviewPage';
 import { SourcePage } from '../features/sources/SourcePage';
 import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
-  ['prototype', '新版原型', '树谱优先的人物档案、证据和审核体验'],
-  ['dashboard', '工作台', '宗族概览、待办审核和运营数据'],
+  ['home', '族谱首页', '家族概览、智能线索和最近维护'],
+  ['treeProduct', '世系图谱', '围绕族谱树查看、编辑和补充亲属'],
+  ['personArchive', '人物档案', '人物资料、生命事件、亲属和来源'],
+  ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
+  ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
+  ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
+  ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
+  ['dashboard', '旧版工作台', '保留 MVP 已接 API 的管理能力'],
   ['auth', '登录认证', '账号登录和会话管理'],
   ['clans', '宗族管理', '查询宗族、创建和维护宗族档案'],
   ['memberManage', '成员权限', '成员角色和支派范围权限'],
@@ -31,7 +45,7 @@ const navItems = [
   ['attachmentManage', '附件管理', '上传和下载附件'],
   ['reviewSubmit', '提交审核', '提交变更进入审核流'],
   ['reviewProcess', '审核处理', '待审核任务查询和审批'],
-  ['tree', '世系图谱', '家庭图、上溯、下延'],
+  ['tree', '旧版世系查询', '家庭图、上溯、下延'],
   ['importExport', '导入导出', '人物/关系 CSV'],
   ['logs', '日志审计', '查询、统计和导出']
 ] as const;
@@ -56,7 +70,7 @@ export function App() {
 }
 
 function AppShell() {
-  const [active, setActive] = useState<ViewKey>('prototype');
+  const [active, setActive] = useState<ViewKey>('home');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
@@ -89,7 +103,13 @@ function AppShell() {
   function renderPage() {
     const props = { notify };
     switch (active) {
-      case 'prototype': return <GenealogyProductPrototype />;
+      case 'home': return <GenealogyHomePage />;
+      case 'treeProduct': return <GenealogyTreeProductPage />;
+      case 'personArchive': return <PersonArchiveProductPage />;
+      case 'sourceLibrary': return <SourceLibraryProductPage />;
+      case 'editingWorkspace': return <EditingWorkspaceProductPage />;
+      case 'reviewCenter': return <ReviewCenterProductPage />;
+      case 'culture': return <CultureProductPage />;
       case 'dashboard': return <DashboardPage {...props} />;
       case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
       case 'clans': return <ClanPage {...props} />;
