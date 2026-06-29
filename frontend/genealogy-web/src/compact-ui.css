@@ -1,0 +1,59 @@
+/* Global compact mode: remove top introduction copy and keep operation-heavy pages concise. */
+.content--compact { padding-top: 18px; }
+
+.topbar,
+.topbar--simple { display: none !important; }
+
+.panel__header p,
+.xp-section-header p,
+.confirm-description,
+.prototype-hero p,
+.xp-hero p,
+.wizard-hero p,
+.lineage-hero p { display: none !important; }
+
+.panel__header { margin-bottom: 12px; align-items: center; }
+.panel h2 { margin-bottom: 0; }
+
+.xp-section-header { margin-bottom: 12px; align-items: center; }
+.xp-section-header h2 { margin: 0; font-size: 22px; }
+.xp-section-header span { display: none; }
+
+.xp-hero,
+.wizard-hero,
+.lineage-hero,
+.prototype-hero {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  align-items: center;
+  margin: 0;
+}
+
+.xp-hero > div:first-child,
+.wizard-hero > div:first-child,
+.lineage-hero > div:first-child,
+.prototype-hero > div:first-child { display: none; }
+
+.xp-hero-actions,
+.prototype-actions { margin-left: auto; }
+
+.wizard-hero:empty,
+.lineage-hero:empty,
+.prototype-hero:empty { display: none; }
+
+.wizard-hero h2,
+.lineage-hero h2,
+.prototype-hero h1,
+.xp-hero h1 { margin: 0; font-size: 0; }
+
+.sidebar button small { display: none; }
+.sidebar button { padding: 11px 14px; }
+.brand { margin-bottom: 18px; }
+
+.panel { padding: 16px; }
+.page-grid { gap: 14px; }
+.xp-page { gap: 14px; }
+.lineage-page { gap: 14px; }
+.mvp1-wizard { gap: 14px; }
