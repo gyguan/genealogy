@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
@@ -80,7 +80,6 @@ function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
   const [legacyActive, setLegacyActive] = useState<LegacyKey>('auth');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const activeMeta = useMemo(() => navItems.find(item => item[0] === active)!, [active]);
 
   function closeToast(id: number) {
     setToasts(prev => prev.filter(item => item.id !== id));
@@ -164,13 +163,7 @@ function AppShell() {
           ))}
         </nav>
       </aside>
-      <main className="content">
-        <header className="topbar topbar--simple">
-          <div>
-            <h1>{activeMeta[1]}</h1>
-            <p>{activeMeta[2]}</p>
-          </div>
-        </header>
+      <main className="content content--compact">
         {renderPage()}
       </main>
       <ToastStack items={toasts} onClose={closeToast} />
