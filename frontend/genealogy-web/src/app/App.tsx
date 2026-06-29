@@ -10,6 +10,7 @@ import { GenerationPage } from '../features/generations/GenerationPage';
 import { ImportExportPage } from '../features/importExport/ImportExportPage';
 import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
+import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonPage } from '../features/persons/PersonPage';
 import {
   CultureProductPage,
@@ -27,6 +28,7 @@ import { TreePage } from '../features/tree/TreePage';
 
 const navItems = [
   ['home', '族谱首页', '家族概览、智能线索和最近维护'],
+  ['mvp1Wizard', 'MVP1建谱向导', '创建宗族、支派、字辈、人物、关系、来源、审核和世系'],
   ['treeProduct', '世系图谱', '围绕族谱树查看、编辑和补充亲属'],
   ['personArchive', '人物档案', '人物资料、生命事件、亲属和来源'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
@@ -131,6 +133,7 @@ function AppShell() {
   function renderPage() {
     switch (active) {
       case 'home': return <GenealogyHomePage />;
+      case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
       case 'treeProduct': return <GenealogyTreeProductPage />;
       case 'personArchive': return <PersonArchiveProductPage />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
