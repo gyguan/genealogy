@@ -11,7 +11,7 @@
 .wizard-steps button.active { border-color: #1570ef; background: #eff8ff; color: #175cd3; box-shadow: 0 14px 30px rgba(21, 112, 239, .14); }
 .wizard-steps button span { color: #667085; font-weight: 500; font-size: 12px; line-height: 1.5; }
 .wizard-steps button em { justify-self: start; font-style: normal; font-size: 11px; border-radius: 999px; padding: 4px 8px; background: #f2f4f7; color: #475467; }
-.wizard-steps button.active em, .wizard-steps button em:first-letter { background: #d1fadf; color: #027a48; }
+.wizard-steps button.active em { background: #d1fadf; color: #027a48; }
 
 .wizard-main { min-width: 0; }
 .wizard-context { display: grid; gap: 14px; position: sticky; top: 24px; }
