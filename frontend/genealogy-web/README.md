@@ -155,3 +155,7 @@ frontend/genealogy-web  商用化前端工程，后续主推演进
 ```
 
 后续新增前端能力应优先进入 `frontend/genealogy-web/src/features/*`。
+
+## 九、CI 验证
+
+本段用于触发创建/查询拆分后的前端构建验证。
