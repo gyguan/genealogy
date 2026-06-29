@@ -3,7 +3,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 
-type DrillKey = 'clans' | 'branches' | 'people' | 'sources' | 'pendingReviews' | 'logs' | `gender:${string}` | `status:${string}` | `generation:${string}` | `sourceType:${string}`;
+type DrillKey = 'clans' | 'branches' | 'people' | 'sources' | 'pendingReviews' | 'logs' | `gender:${string}` | `status:${string}` | `generation:${string}` | `sourceType:${string}` | `living:${string}`;
 
 type HomeSnapshot = {
   clans: any[];
@@ -49,6 +49,12 @@ function genderText(value: string) {
 function statusText(value: string) {
   const dict: Record<string, string> = { draft: '草稿', pending_review: '待审核', official: '正式', rejected: '已驳回', archived: '已归档' };
   return dict[value] || value || '未维护';
+}
+
+function livingText(value: unknown) {
+  if (value === true) return '在世';
+  if (value === false) return '已故';
+  return '未维护';
 }
 
 function sourceTypeText(value: string) {
@@ -150,8 +156,8 @@ export function StatisticsHomePage() {
   ];
 
   const officialCount = snapshot.people.filter(row => statusText(row.dataStatus || row.status || row.reviewStatus) === '正式').length;
-  const livingCount = snapshot.people.filter(row => row.isLiving === true).length;
-  const deceasedCount = snapshot.people.filter(row => row.isLiving === false).length;
+  const livingCount = snapshot.people.filter(row => livingText(row.isLiving) === '在世').length;
+  const deceasedCount = snapshot.people.filter(row => livingText(row.isLiving) === '已故').length;
   const logCount = snapshot.logStats?.totalCount ?? snapshot.logStats?.total ?? '-';
 
   const cards: { key: DrillKey; label: string; value: number | string; hint: string }[] = [
@@ -160,11 +166,11 @@ export function StatisticsHomePage() {
     { key: 'sources', label: '资料来源', value: snapshot.sources.length, hint: '点击查看资料' },
     { key: 'pendingReviews', label: '待审核', value: snapshot.pendingReviews.length, hint: '点击查看任务' },
     { key: 'clans', label: '宗族空间', value: snapshot.clans.length, hint: '点击查看宗族' },
-    { key: 'people', label: '正式入谱', value: officialCount, hint: '基于已加载人物统计' },
+    { key: 'status:正式', label: '正式入谱', value: officialCount, hint: '点击查看正式人物' },
     { key: 'gender:男', label: '男性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '男').length, hint: '点击按性别下钻' },
     { key: 'gender:女', label: '女性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '女').length, hint: '点击按性别下钻' },
-    { key: 'people', label: '在世人员', value: livingCount, hint: '基于已加载人物统计' },
-    { key: 'people', label: '已故人员', value: deceasedCount, hint: '基于已加载人物统计' },
+    { key: 'living:在世', label: '在世人员', value: livingCount, hint: '点击查看在世人员' },
+    { key: 'living:已故', label: '已故人员', value: deceasedCount, hint: '点击查看已故人员' },
     { key: 'logs', label: '操作日志', value: logCount, hint: '点击查看日志统计' }
   ];
 
@@ -191,6 +197,10 @@ export function StatisticsHomePage() {
       const target = activeDrill.replace('sourceType:', '');
       return snapshot.sources.filter(row => sourceTypeText(row.sourceType || row.category) === target);
     }
+    if (activeDrill.startsWith('living:')) {
+      const target = activeDrill.replace('living:', '');
+      return snapshot.people.filter(row => livingText(row.isLiving) === target);
+    }
     return [];
   }
 
@@ -201,7 +211,7 @@ export function StatisticsHomePage() {
     if (activeDrill === 'sources') return '资料明细';
     if (activeDrill === 'pendingReviews') return '待审核明细';
     if (activeDrill === 'logs') return '日志统计';
-    return activeDrill.replace('gender:', '性别：').replace('status:', '状态：').replace('generation:', '代次：').replace('sourceType:', '资料类型：');
+    return activeDrill.replace('gender:', '性别：').replace('status:', '状态：').replace('generation:', '代次：').replace('sourceType:', '资料类型：').replace('living:', '在世状态：');
   }
 
   function detailColumns() {
@@ -210,7 +220,7 @@ export function StatisticsHomePage() {
     if (activeDrill === 'sources' || activeDrill.startsWith('sourceType:')) return [{ key: 'id', title: 'ID' }, { key: 'sourceName', title: '资料名称' }, { key: 'sourceType', title: '类型', render: (row: any) => sourceTypeText(row.sourceType || row.category) }, { key: 'verificationStatus', title: '状态' }];
     if (activeDrill === 'pendingReviews') return [{ key: 'id', title: '任务ID' }, { key: 'targetType', title: '对象类型' }, { key: 'targetId', title: '对象ID' }, { key: 'status', title: '状态' }];
     if (activeDrill === 'logs') return [{ key: 'totalCount', title: '总数', render: (row: any) => display(row.totalCount ?? row.total) }, { key: 'todayCount', title: '今日', render: (row: any) => display(row.todayCount) }, { key: 'successCount', title: '成功', render: (row: any) => display(row.successCount) }, { key: 'failureCount', title: '失败', render: (row: any) => display(row.failureCount) }];
-    return [{ key: 'id', title: 'ID' }, { key: 'name', title: '姓名', render: (row: any) => display(row.name || row.personName) }, { key: 'gender', title: '性别', render: (row: any) => genderText(row.gender || row.sex) }, { key: 'generationNo', title: '代次', render: (row: any) => row.generationNo ? `${row.generationNo}世` : '-' }, { key: 'generationWord', title: '字辈' }, { key: 'dataStatus', title: '状态', render: (row: any) => statusText(row.dataStatus || row.status || row.reviewStatus) }];
+    return [{ key: 'id', title: 'ID' }, { key: 'name', title: '姓名', render: (row: any) => display(row.name || row.personName) }, { key: 'gender', title: '性别', render: (row: any) => genderText(row.gender || row.sex) }, { key: 'generationNo', title: '代次', render: (row: any) => row.generationNo ? `${row.generationNo}世` : '-' }, { key: 'generationWord', title: '字辈' }, { key: 'isLiving', title: '在世状态', render: (row: any) => livingText(row.isLiving) }, { key: 'dataStatus', title: '状态', render: (row: any) => statusText(row.dataStatus || row.status || row.reviewStatus) }];
   }
 
   return (
