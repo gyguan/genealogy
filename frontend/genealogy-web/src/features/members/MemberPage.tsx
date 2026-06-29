@@ -37,7 +37,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   return (
     <div className="page-grid two">
       <Panel title="成员授权" description="用于维护 clan_admin、branch_admin、editor、viewer 等角色。">
-        <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
+        <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="用户ID"><input value={userId} onChange={e => setUserId(e.target.value)} /></Field>
         <Field label="角色ID"><input value={roleId} onChange={e => setRoleId(e.target.value)} /></Field>
         <Field label="成员姓名"><input value={memberName} onChange={e => setMemberName(e.target.value)} /></Field>
