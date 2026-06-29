@@ -36,7 +36,7 @@
 .archive-search-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 14px; }
 .archive-search-summary { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
 .archive-search-summary span { border-radius: 999px; background: #f2f4f7; color: #475467; padding: 6px 10px; font-size: 12px; font-weight: 700; }
-.archive-detail-layout { display: grid; grid-template-columns: minmax(460px, 1fr) minmax(460px, 1fr); gap: 18px; align-items: start; }
+.archive-detail-layout { display: grid; grid-template-columns: minmax(520px, 1fr) minmax(460px, .8fr); gap: 18px; align-items: start; }
 .archive-profile-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .archive-profile-head h2 { margin: 0 0 6px; }
 .archive-profile-head p { margin: 0; color: #667085; }
@@ -47,10 +47,15 @@
 .archive-long-text { margin-top: 14px; padding: 14px; border: 1px solid #e4e7ec; border-radius: 14px; background: #fcfcfd; }
 .archive-long-text p { margin: 8px 0 0; color: #475467; line-height: 1.7; }
 .archive-detail-layout h3 { margin: 18px 0 10px; font-size: 15px; }
+.archive-edit-form { margin-top: 16px; padding-top: 6px; }
+.archive-edit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; }
+.person-archive-search textarea { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; resize: vertical; min-height: 110px; }
+.person-archive-search input[type="date"] { min-height: 40px; }
 
 @media (max-width: 1400px) {
   .wizard-layout { grid-template-columns: 260px minmax(480px, 1fr); }
   .wizard-context { grid-column: 1 / -1; position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .archive-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .archive-detail-layout { grid-template-columns: 1fr; }
+  .archive-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
