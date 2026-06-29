@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { Actions, Field } from '../../shared/ui/Form';
 import { Panel } from '../../shared/ui/Panel';
+import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 type Props = { onChanged: () => void; notify: (data: unknown, error?: boolean) => void };
 
@@ -11,21 +12,22 @@ export function AuthPage({ onChanged, notify }: Props) {
   const [password, setPassword] = useState('Mvp1@123456');
   const [loginName, setLoginName] = useState('');
   const [loginPassword, setLoginPassword] = useState('Mvp1@123456');
+  const [result, setResult] = useState<unknown>();
 
   async function register() {
-    const data = await apiClient.post('/auth/register', { username, displayName, password });
-    notify(data);
+    const data: any = await apiClient.post('/auth/register', { username, displayName, password });
+    const notice = { message: '账号注册成功', id: data?.id };
+    setResult(notice);
+    notify(notice);
   }
 
   async function login() {
     const data: any = await apiClient.post('/auth/login', { username: loginName, password: loginPassword });
     apiClient.setToken(data.accessToken);
     onChanged();
-    notify(data);
-  }
-
-  async function me() {
-    notify(await apiClient.get('/auth/me'));
+    const notice = { message: '登录成功' };
+    setResult(notice);
+    notify(notice);
   }
 
   return (
@@ -36,10 +38,11 @@ export function AuthPage({ onChanged, notify }: Props) {
         <Field label="密码"><input type="password" value={password} onChange={e => setPassword(e.target.value)} /></Field>
         <Actions><button onClick={register}>注册</button></Actions>
       </Panel>
-      <Panel title="登录会话" description="登录成功后 Token 会自动保存，后续请求自动携带 Authorization。">
+      <Panel title="账号登录" description="登录后即可访问宗族、人物、审核等业务功能。">
         <Field label="用户名"><input value={loginName} onChange={e => setLoginName(e.target.value)} /></Field>
         <Field label="密码"><input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} /></Field>
-        <Actions><button onClick={login}>登录</button><button className="secondary" onClick={me}>当前用户</button></Actions>
+        <Actions><button onClick={login}>登录</button></Actions>
+        <ResultNotice result={result} />
       </Panel>
     </div>
   );
