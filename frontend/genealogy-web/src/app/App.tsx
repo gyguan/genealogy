@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
-import { ToastItem, ToastStack } from '../shared/ui/ToastStack';
+import { ToastStack } from '../shared/ui/ToastStack';
+import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
@@ -71,6 +72,15 @@ function AppShell() {
     setToasts(prev => [...prev.slice(-3), item]);
     window.setTimeout(() => closeToast(id), 3200);
   }
+
+  useEffect(() => {
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      event.preventDefault();
+      notify({ message: event.reason?.message || '操作失败，请检查输入后重试' }, true);
+    };
+    window.addEventListener('unhandledrejection', onUnhandled);
+    return () => window.removeEventListener('unhandledrejection', onUnhandled);
+  }, []);
 
   function onChanged() {}
 
