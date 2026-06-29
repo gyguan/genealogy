@@ -4,8 +4,6 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { DetailCard } from '../../shared/ui/DetailCard';
-import { Panel } from '../../shared/ui/Panel';
-import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type DrawerMode = 'view' | 'edit';
@@ -185,7 +183,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const [sources, setSources] = useState<unknown>();
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<unknown>();
+  const [querying, setQuerying] = useState(false);
 
   useEffect(() => {
     if (!selected) return;
@@ -210,9 +208,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     try {
       await action();
     } catch (error) {
-      const notice = { message: (error as Error).message || '操作失败' };
-      setResult(notice);
-      notify(notice, true);
+      notify({ message: (error as Error).message || '操作失败' }, true);
     } finally {
       setLoading(false);
     }
@@ -235,19 +231,22 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   }
 
   async function search(nextPageNo = '1') {
-    await run(async () => {
-      const data = await apiClient.get(buildSearchPath(nextPageNo));
-      setRawData(data);
-      closeDetail();
-      setForm(prev => ({ ...prev, pageNo: nextPageNo }));
-      const total = (data as any)?.total ?? toRecordList(data).length;
-      const notice = { message: `已搜索到 ${total} 条人物记录` };
-      setResult(notice);
-      notify(notice);
-    });
+    setQuerying(true);
+    try {
+      await run(async () => {
+        const data = await apiClient.get(buildSearchPath(nextPageNo));
+        setRawData(data);
+        closeDetail();
+        setForm(prev => ({ ...prev, pageNo: nextPageNo }));
+        const total = (data as any)?.total ?? toRecordList(data).length;
+        notify({ message: `已搜索到 ${total} 条人物记录` });
+      });
+    } finally {
+      setQuerying(false);
+    }
   }
 
-  async function openDetail(row: any) {
+  async function openDetail(row: any, mode: DrawerMode = 'view') {
     await run(async () => {
       const id = row.id || row.personId;
       if (!id) throw new Error('人物记录缺少ID');
@@ -255,16 +254,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       workspace.setPersonId(String(id));
       setSelected(detail);
       setEditForm(toEditForm(detail));
-      setDrawerMode('view');
+      setDrawerMode(mode);
       const [relationRes, sourceRes] = await Promise.all([
         apiClient.get(`/persons/${id}/relationships`).catch(() => []),
         apiClient.get(`/source-bindings?targetType=person&targetId=${id}`).catch(() => [])
       ]);
       setRelationships(relationRes);
       setSources(sourceRes);
-      const notice = { message: '人物详情已打开', id };
-      setResult(notice);
-      notify(notice);
+      notify({ message: mode === 'edit' ? '人物编辑已打开' : '人物详情已打开', id });
     });
   }
 
@@ -278,9 +275,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       setSelected(saved);
       setEditForm(toEditForm(saved));
       setDrawerMode('view');
-      const notice = { message: '人物档案已保存', id: saved?.id || selected.id };
-      setResult(notice);
-      notify(notice);
+      notify({ message: '人物档案已保存', id: saved?.id || selected.id });
     });
   }
 
@@ -338,33 +333,35 @@ export function PersonArchiveSearchPage({ notify }: Props) {
 
   return (
     <div className="person-archive-search">
-      <Panel title="人物档案检索" description="按姓名、字辈、性别、代次、支派等条件分页搜索人物；点击搜索结果后从右侧打开只读详情，需要修改时再进入编辑模式。">
-        <div className="archive-search-grid">
+      <section className="panel archive-search-panel archive-search-panel--compact">
+        {querying ? <div className="archive-loading-mask"><div><span />查询中...</div></div> : null}
+        <div className="archive-search-toolbar">
           <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="必填" /></Field>
-          <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名、谱名、字号、籍贯、传记、墓葬" /></Field>
-          <Field label="姓名"><input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="按姓名模糊查询" /></Field>
+          <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" /></Field>
+          <Field label="姓名"><input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" /></Field>
           <Field label="性别"><select value={form.gender} onChange={e => patch('gender', e.target.value)}><option value="">全部</option><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-          <Field label="字辈"><input value={form.generationWord} onChange={e => patch('generationWord', e.target.value)} placeholder="例如：德" /></Field>
-          <Field label="代次"><input value={form.generationNo} onChange={e => patch('generationNo', e.target.value)} placeholder="例如：20" /></Field>
-          <Field label="支派ID"><input value={form.branchId} onChange={e => patch('branchId', e.target.value)} placeholder="可空" /></Field>
-          <Field label="入谱状态"><select value={form.dataStatus} onChange={e => patch('dataStatus', e.target.value)}><option value="">全部</option><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
-          <Field label="页码"><input value={form.pageNo} onChange={e => patch('pageNo', e.target.value)} /></Field>
-          <Field label="每页数量"><select value={form.pageSize} onChange={e => patch('pageSize', e.target.value)}><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></Field>
+          <Actions>
+            <button disabled={loading} onClick={() => search('1')}>搜索</button>
+            <button className="secondary" onClick={reset}>重置</button>
+          </Actions>
         </div>
-        <Actions>
-          <button disabled={loading} onClick={() => search('1')}>{loading ? '查询中...' : '搜索人物'}</button>
-          <button className="secondary" onClick={reset}>重置条件</button>
-          <button className="secondary" disabled={!selected?.id} onClick={() => selected?.id && workspace.setPersonId(String(selected.id))}>设为当前人物</button>
-        </Actions>
-        <div className="archive-search-summary">
-          <span>当前页：{pageNo} / {totalPages}</span>
-          <span>本页记录：{rows.length} 条</span>
-          <span>总记录：{total} 条</span>
+        <div className="archive-search-more">
+          <Field label="字辈"><input value={form.generationWord} onChange={e => patch('generationWord', e.target.value)} placeholder="如：德" /></Field>
+          <Field label="代次"><input value={form.generationNo} onChange={e => patch('generationNo', e.target.value)} placeholder="如：20" /></Field>
+          <Field label="支派ID"><input value={form.branchId} onChange={e => patch('branchId', e.target.value)} placeholder="可空" /></Field>
+          <Field label="状态"><select value={form.dataStatus} onChange={e => patch('dataStatus', e.target.value)}><option value="">全部</option><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
+          <Field label="页码"><input value={form.pageNo} onChange={e => patch('pageNo', e.target.value)} /></Field>
+          <Field label="每页"><select value={form.pageSize} onChange={e => patch('pageSize', e.target.value)}><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></Field>
+        </div>
+        <div className="archive-search-summary archive-search-summary--compact">
+          <span>第 {pageNo} / {totalPages} 页</span>
+          <span>本页 {rows.length} 条</span>
+          <span>共 {total} 条</span>
           <span>当前人物：{workspace.personId || '-'}</span>
         </div>
         <DataTable
           data={rows}
-          empty="暂无人物记录，请先点击搜索或调整筛选条件。"
+          empty="暂无人物记录，请先搜索或调整筛选条件。"
           columns={[
             { key: 'id', title: 'ID', render: row => row.id || row.personId },
             { key: 'name', title: '姓名', render: row => personName(row) },
@@ -374,16 +371,16 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             { key: 'branchId', title: '支派ID', render: row => personBranchId(row) },
             { key: 'generationNo', title: '代次', render: row => personGenerationNo(row) },
             { key: 'generationWord', title: '字辈', render: row => personGenerationWord(row) },
-            { key: 'dataStatus', title: '状态', render: row => personStatus(row) }
+            { key: 'dataStatus', title: '状态', render: row => personStatus(row) },
+            { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button onClick={event => { event.stopPropagation(); void openDetail(row, 'view'); }}>查看</button><button className="secondary" onClick={event => { event.stopPropagation(); void openDetail(row, 'edit'); }}>编辑</button></div> }
           ]}
-          onSelect={openDetail}
+          onSelect={row => openDetail(row, 'view')}
         />
         <Actions>
           <button className="secondary" disabled={pageNo <= 1 || loading} onClick={() => search(String(pageNo - 1))}>上一页</button>
           <button className="secondary" disabled={pageNo >= totalPages || loading} onClick={() => search(String(pageNo + 1))}>下一页</button>
         </Actions>
-        <ResultNotice result={result} />
-      </Panel>
+      </section>
 
       {selected && editForm ? (
         <div className="archive-drawer-mask" onClick={closeDetail}>
