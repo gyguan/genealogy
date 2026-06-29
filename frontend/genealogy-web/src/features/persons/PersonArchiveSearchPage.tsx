@@ -8,6 +8,7 @@ import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
+type DrawerMode = 'view' | 'edit';
 
 type SearchForm = {
   keyword: string;
@@ -75,6 +76,17 @@ function personBranchId(row: any) {
 
 function personStatus(row: any) {
   return row.dataStatus || row.status || row.verificationStatus || row.reviewStatus || '';
+}
+
+function display(value: unknown, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+function boolText(value: unknown) {
+  if (value === true) return '是';
+  if (value === false) return '否';
+  return '-';
 }
 
 function asString(value: unknown) {
@@ -171,6 +183,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [relationships, setRelationships] = useState<unknown>();
   const [sources, setSources] = useState<unknown>();
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<unknown>();
 
@@ -233,6 +246,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       workspace.setPersonId(String(id));
       setSelected(detail);
       setEditForm(toEditForm(detail));
+      setDrawerMode('view');
       const [relationRes, sourceRes] = await Promise.all([
         apiClient.get(`/persons/${id}/relationships`).catch(() => []),
         apiClient.get(`/source-bindings?targetType=person&targetId=${id}`).catch(() => [])
@@ -254,6 +268,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       setRawData(data);
       setSelected(saved);
       setEditForm(toEditForm(saved));
+      setDrawerMode('view');
       const notice = { message: '人物档案已保存', id: saved?.id || selected.id };
       setResult(notice);
       notify(notice);
@@ -271,6 +286,18 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setEditForm(null);
     setRelationships(undefined);
     setSources(undefined);
+    setDrawerMode('view');
+  }
+
+  function startEdit() {
+    if (!selected) return;
+    setEditForm(toEditForm(selected));
+    setDrawerMode('edit');
+  }
+
+  function cancelEdit() {
+    if (selected) setEditForm(toEditForm(selected));
+    setDrawerMode('view');
   }
 
   const rows = useMemo(() => toRecordList<any>(rawData), [rawData]);
@@ -302,7 +329,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
 
   return (
     <div className="person-archive-search">
-      <Panel title="人物档案检索" description="按姓名、字辈、性别、代次、支派等条件分页搜索人物；点击搜索结果后从右侧打开详情和编辑抽屉。">
+      <Panel title="人物档案检索" description="按姓名、字辈、性别、代次、支派等条件分页搜索人物；点击搜索结果后从右侧打开只读详情，需要修改时再进入编辑模式。">
         <div className="archive-search-grid">
           <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="必填" /></Field>
           <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名、谱名、字号、籍贯、传记、墓葬" /></Field>
@@ -360,88 +387,126 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                   <p>{selected.gender || '未知'} · {selected.generationNo ? `${selected.generationNo}世` : '世次未维护'} · {selected.generationWord || '-'}字辈</p>
                 </div>
               </div>
-              <button className="drawer-close" onClick={closeDetail} aria-label="关闭详情">×</button>
+              <div className="archive-drawer-actions">
+                {drawerMode === 'view' ? <button className="secondary" onClick={startEdit}>编辑档案</button> : <button className="secondary" onClick={cancelEdit}>取消编辑</button>}
+                <button className="drawer-close" onClick={closeDetail} aria-label="关闭详情">×</button>
+              </div>
+            </div>
+
+            <div className="archive-mode-tabs">
+              <button className={drawerMode === 'view' ? 'active' : ''} onClick={() => setDrawerMode('view')}>查看详情</button>
+              <button className={drawerMode === 'edit' ? 'active' : ''} onClick={startEdit}>编辑档案</button>
             </div>
 
             <div className="archive-drawer-body">
               <div className="archive-completion"><span>资料完整度</span><strong>{completeness}%</strong><div><i style={{ width: `${completeness}%` }} /></div></div>
-              <DetailCard
-                title="基础摘要"
-                data={selected}
-                fields={[
-                  { label: '人物ID', value: row => row.id },
-                  { label: '人物编码', value: row => row.personCode },
-                  { label: '姓名', value: row => row.name || row.personName },
-                  { label: '谱名', value: row => row.genealogyName },
-                  { label: '字号', value: row => row.courtesyName },
-                  { label: '排行', value: row => row.rankInFamily },
-                  { label: '生卒', value: row => `${row.birthDate || '?'} - ${row.deathDate || ''}` },
-                  { label: '隐私级别', value: row => row.privacyLevel }
-                ]}
-              />
 
-              <section className="archive-drawer-section">
-                <h3>编辑人物档案</h3>
-                <div className="archive-edit-grid">
-                  <Field label="支派ID"><input value={editForm.branchId} onChange={e => patchEdit('branchId', e.target.value)} /></Field>
-                  <Field label="人物编码"><input value={editForm.personCode} onChange={e => patchEdit('personCode', e.target.value)} /></Field>
-                  <Field label="姓名"><input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Field>
-                  <Field label="谱名"><input value={editForm.genealogyName} onChange={e => patchEdit('genealogyName', e.target.value)} /></Field>
-                  <Field label="字号"><input value={editForm.courtesyName} onChange={e => patchEdit('courtesyName', e.target.value)} /></Field>
-                  <Field label="别名"><input value={editForm.aliasName} onChange={e => patchEdit('aliasName', e.target.value)} /></Field>
-                  <Field label="性别"><select value={editForm.gender} onChange={e => patchEdit('gender', e.target.value)}><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-                  <Field label="代次"><input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Field>
-                  <Field label="字辈"><input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Field>
-                  <Field label="排行"><input value={editForm.rankInFamily} onChange={e => patchEdit('rankInFamily', e.target.value)} /></Field>
-                  <Field label="出生日期"><input type="date" value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} /></Field>
-                  <Field label="出生日期精度"><select value={editForm.birthDatePrecision} onChange={e => patchEdit('birthDatePrecision', e.target.value)}><option value="day">精确到日</option><option value="month">精确到月</option><option value="year">精确到年</option><option value="unknown">未知</option></select></Field>
-                  <Field label="逝世日期"><input type="date" value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} /></Field>
-                  <Field label="逝世日期精度"><select value={editForm.deathDatePrecision} onChange={e => patchEdit('deathDatePrecision', e.target.value)}><option value="day">精确到日</option><option value="month">精确到月</option><option value="year">精确到年</option><option value="unknown">未知</option></select></Field>
-                  <Field label="是否在世"><select value={editForm.isLiving} onChange={e => patchEdit('isLiving', e.target.value)}><option value="true">在世</option><option value="false">已故</option></select></Field>
-                  <Field label="是否有后裔"><select value={editForm.hasDescendant} onChange={e => patchEdit('hasDescendant', e.target.value)}><option value="">未知</option><option value="true">有</option><option value="false">无</option></select></Field>
-                  <Field label="出生地"><input value={editForm.birthPlace} onChange={e => patchEdit('birthPlace', e.target.value)} /></Field>
-                  <Field label="居住地"><input value={editForm.residencePlace} onChange={e => patchEdit('residencePlace', e.target.value)} /></Field>
-                  <Field label="职业"><input value={editForm.occupation} onChange={e => patchEdit('occupation', e.target.value)} /></Field>
-                  <Field label="教育程度"><input value={editForm.education} onChange={e => patchEdit('education', e.target.value)} /></Field>
-                  <Field label="称号荣誉"><input value={editForm.titleOrHonor} onChange={e => patchEdit('titleOrHonor', e.target.value)} /></Field>
-                  <Field label="墓葬地"><input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Field>
-                  <Field label="世系状态"><select value={editForm.lineageStatus} onChange={e => patchEdit('lineageStatus', e.target.value)}><option value="normal">正常</option><option value="adopted_in">继入</option><option value="adopted_out">出嗣</option><option value="unknown">未知</option></select></Field>
-                  <Field label="隐私级别"><select value={editForm.privacyLevel} onChange={e => patchEdit('privacyLevel', e.target.value)}><option value="public">公开</option><option value="clan_only">宗族内可见</option><option value="branch_only">支派内可见</option><option value="private">私密</option></select></Field>
-                  <Field label="数据状态"><select value={editForm.dataStatus} onChange={e => patchEdit('dataStatus', e.target.value)}><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
-                </div>
-                <Field label="人物传记"><textarea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={5} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
-                <Field label="墓志铭"><textarea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={4} placeholder="记录墓志、碑文或相关摘录" /></Field>
-                <Actions><button disabled={loading} onClick={saveDetail}>{loading ? '保存中...' : '保存人物档案'}</button></Actions>
-              </section>
-
-              <section className="archive-drawer-section">
-                <h3>亲属关系</h3>
-                <DataTable
-                  data={relationships}
-                  empty="暂无亲属关系，或尚未点击人物记录。"
-                  columns={[
-                    { key: 'id', title: '关系ID' },
-                    { key: 'fromPersonId', title: '起点' },
-                    { key: 'toPersonId', title: '终点' },
-                    { key: 'relationType', title: '类型' },
-                    { key: 'relationLabel', title: '标签' }
-                  ]}
-                />
-              </section>
-
-              <section className="archive-drawer-section">
-                <h3>来源证据</h3>
-                <DataTable
-                  data={sources}
-                  empty="暂无来源绑定，或尚未点击人物记录。"
-                  columns={[
-                    { key: 'id', title: '绑定ID' },
-                    { key: 'sourceId', title: '来源ID' },
-                    { key: 'targetType', title: '对象类型' },
-                    { key: 'targetId', title: '对象ID' }
-                  ]}
-                />
-              </section>
+              {drawerMode === 'view' ? (
+                <>
+                  <DetailCard
+                    title="基础摘要"
+                    data={selected}
+                    fields={[
+                      { label: '人物ID', value: row => row.id },
+                      { label: '人物编码', value: row => row.personCode },
+                      { label: '姓名', value: row => row.name || row.personName },
+                      { label: '谱名', value: row => row.genealogyName },
+                      { label: '字号', value: row => row.courtesyName },
+                      { label: '排行', value: row => row.rankInFamily },
+                      { label: '生卒', value: row => `${row.birthDate || '?'} - ${row.deathDate || ''}` },
+                      { label: '隐私级别', value: row => row.privacyLevel }
+                    ]}
+                  />
+                  <section className="archive-drawer-section">
+                    <h3>详细信息</h3>
+                    <div className="archive-view-grid">
+                      <div><span>别名</span><strong>{display(selected.aliasName)}</strong></div>
+                      <div><span>支派ID</span><strong>{display(selected.branchId)}</strong></div>
+                      <div><span>出生日期</span><strong>{display(selected.birthDate)}</strong></div>
+                      <div><span>逝世日期</span><strong>{display(selected.deathDate)}</strong></div>
+                      <div><span>是否在世</span><strong>{boolText(selected.isLiving)}</strong></div>
+                      <div><span>是否有后裔</span><strong>{boolText(selected.hasDescendant)}</strong></div>
+                      <div><span>出生地</span><strong>{display(selected.birthPlace)}</strong></div>
+                      <div><span>居住地</span><strong>{display(selected.residencePlace)}</strong></div>
+                      <div><span>职业</span><strong>{display(selected.occupation)}</strong></div>
+                      <div><span>教育程度</span><strong>{display(selected.education)}</strong></div>
+                      <div><span>称号荣誉</span><strong>{display(selected.titleOrHonor)}</strong></div>
+                      <div><span>墓葬地</span><strong>{display(selected.tombPlace)}</strong></div>
+                      <div><span>世系状态</span><strong>{display(selected.lineageStatus)}</strong></div>
+                      <div><span>数据状态</span><strong>{display(selected.dataStatus)}</strong></div>
+                    </div>
+                  </section>
+                  <section className="archive-drawer-section">
+                    <h3>人物传记</h3>
+                    <p className="archive-story-text">{display(selected.biography, '暂无人物传记。')}</p>
+                  </section>
+                  <section className="archive-drawer-section">
+                    <h3>墓志铭</h3>
+                    <p className="archive-story-text">{display(selected.epitaph, '暂无墓志铭。')}</p>
+                  </section>
+                  <section className="archive-drawer-section">
+                    <h3>亲属关系</h3>
+                    <DataTable
+                      data={relationships}
+                      empty="暂无亲属关系，或尚未点击人物记录。"
+                      columns={[
+                        { key: 'id', title: '关系ID' },
+                        { key: 'fromPersonId', title: '起点' },
+                        { key: 'toPersonId', title: '终点' },
+                        { key: 'relationType', title: '类型' },
+                        { key: 'relationLabel', title: '标签' }
+                      ]}
+                    />
+                  </section>
+                  <section className="archive-drawer-section">
+                    <h3>来源证据</h3>
+                    <DataTable
+                      data={sources}
+                      empty="暂无来源绑定，或尚未点击人物记录。"
+                      columns={[
+                        { key: 'id', title: '绑定ID' },
+                        { key: 'sourceId', title: '来源ID' },
+                        { key: 'targetType', title: '对象类型' },
+                        { key: 'targetId', title: '对象ID' }
+                      ]}
+                    />
+                  </section>
+                </>
+              ) : (
+                <section className="archive-drawer-section archive-edit-section">
+                  <h3>编辑人物档案</h3>
+                  <div className="archive-edit-grid">
+                    <Field label="支派ID"><input value={editForm.branchId} onChange={e => patchEdit('branchId', e.target.value)} /></Field>
+                    <Field label="人物编码"><input value={editForm.personCode} onChange={e => patchEdit('personCode', e.target.value)} /></Field>
+                    <Field label="姓名"><input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Field>
+                    <Field label="谱名"><input value={editForm.genealogyName} onChange={e => patchEdit('genealogyName', e.target.value)} /></Field>
+                    <Field label="字号"><input value={editForm.courtesyName} onChange={e => patchEdit('courtesyName', e.target.value)} /></Field>
+                    <Field label="别名"><input value={editForm.aliasName} onChange={e => patchEdit('aliasName', e.target.value)} /></Field>
+                    <Field label="性别"><select value={editForm.gender} onChange={e => patchEdit('gender', e.target.value)}><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
+                    <Field label="代次"><input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Field>
+                    <Field label="字辈"><input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Field>
+                    <Field label="排行"><input value={editForm.rankInFamily} onChange={e => patchEdit('rankInFamily', e.target.value)} /></Field>
+                    <Field label="出生日期"><input type="date" value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} /></Field>
+                    <Field label="出生日期精度"><select value={editForm.birthDatePrecision} onChange={e => patchEdit('birthDatePrecision', e.target.value)}><option value="day">精确到日</option><option value="month">精确到月</option><option value="year">精确到年</option><option value="unknown">未知</option></select></Field>
+                    <Field label="逝世日期"><input type="date" value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} /></Field>
+                    <Field label="逝世日期精度"><select value={editForm.deathDatePrecision} onChange={e => patchEdit('deathDatePrecision', e.target.value)}><option value="day">精确到日</option><option value="month">精确到月</option><option value="year">精确到年</option><option value="unknown">未知</option></select></Field>
+                    <Field label="是否在世"><select value={editForm.isLiving} onChange={e => patchEdit('isLiving', e.target.value)}><option value="true">在世</option><option value="false">已故</option></select></Field>
+                    <Field label="是否有后裔"><select value={editForm.hasDescendant} onChange={e => patchEdit('hasDescendant', e.target.value)}><option value="">未知</option><option value="true">有</option><option value="false">无</option></select></Field>
+                    <Field label="出生地"><input value={editForm.birthPlace} onChange={e => patchEdit('birthPlace', e.target.value)} /></Field>
+                    <Field label="居住地"><input value={editForm.residencePlace} onChange={e => patchEdit('residencePlace', e.target.value)} /></Field>
+                    <Field label="职业"><input value={editForm.occupation} onChange={e => patchEdit('occupation', e.target.value)} /></Field>
+                    <Field label="教育程度"><input value={editForm.education} onChange={e => patchEdit('education', e.target.value)} /></Field>
+                    <Field label="称号荣誉"><input value={editForm.titleOrHonor} onChange={e => patchEdit('titleOrHonor', e.target.value)} /></Field>
+                    <Field label="墓葬地"><input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Field>
+                    <Field label="世系状态"><select value={editForm.lineageStatus} onChange={e => patchEdit('lineageStatus', e.target.value)}><option value="normal">正常</option><option value="adopted_in">继入</option><option value="adopted_out">出嗣</option><option value="unknown">未知</option></select></Field>
+                    <Field label="隐私级别"><select value={editForm.privacyLevel} onChange={e => patchEdit('privacyLevel', e.target.value)}><option value="public">公开</option><option value="clan_only">宗族内可见</option><option value="branch_only">支派内可见</option><option value="private">私密</option></select></Field>
+                    <Field label="数据状态"><select value={editForm.dataStatus} onChange={e => patchEdit('dataStatus', e.target.value)}><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
+                  </div>
+                  <Field label="人物传记"><textarea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={5} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
+                  <Field label="墓志铭"><textarea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={4} placeholder="记录墓志、碑文或相关摘录" /></Field>
+                  <Actions><button disabled={loading} onClick={saveDetail}>{loading ? '保存中...' : '保存人物档案'}</button><button className="secondary" onClick={cancelEdit}>取消</button></Actions>
+                </section>
+              )}
             </div>
           </aside>
         </div>
