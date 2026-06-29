@@ -1,33 +1,46 @@
 import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { Actions, Field } from '../../shared/ui/Form';
-import { DataBlock } from '../../shared/ui/DataBlock';
 import { Panel } from '../../shared/ui/Panel';
+import { ResultNotice } from '../../shared/ui/ResultNotice';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
 export function DashboardPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [health, setHealth] = useState<unknown>();
-  const [summary, setSummary] = useState<unknown>();
+  const [summary, setSummary] = useState({ clanCount: '-', pendingReviewCount: '-', logCount: '-', treeNodeCount: '-' });
 
   async function checkHealth() {
-    const data = await apiClient.get('/health');
-    setHealth(data);
-    notify(data);
+    await apiClient.get('/health');
+    const result = { message: '后端连接正常' };
+    setHealth(result);
+    notify(result);
   }
 
   async function loadSummary() {
     const clanId = workspace.clanId;
-    const result: Record<string, unknown> = {};
-    result.health = await apiClient.get('/health');
+    const clans: any = await apiClient.get('/clans');
+    let pendingReviewCount: string | number = '-';
+    let logCount: string | number = '-';
+    let treeNodeCount: string | number = '-';
     if (clanId) {
-      result.clans = await apiClient.get('/clans');
-      result.logs = await apiClient.get(`/logs/operations/stats?clanId=${clanId}`);
-      result.pendingReviews = await apiClient.get(`/clans/${clanId}/review-tasks/pending`);
-      if (workspace.personId) result.familyTree = await apiClient.get(`/tree/person/${workspace.personId}/family`);
+      const pending: any = await apiClient.get(`/clans/${clanId}/review-tasks/pending`);
+      const logs: any = await apiClient.get(`/logs/operations/stats?clanId=${clanId}`);
+      pendingReviewCount = Array.isArray(pending) ? pending.length : pending?.records?.length || 0;
+      logCount = logs?.totalCount ?? '-';
+      if (workspace.personId) {
+        const tree: any = await apiClient.get(`/tree/person/${workspace.personId}/family`);
+        treeNodeCount = tree?.nodes?.length ?? '-';
+      }
     }
-    setSummary(result);
-    notify(result);
+    const next = {
+      clanCount: clans?.total ?? clans?.records?.length ?? 0,
+      pendingReviewCount,
+      logCount,
+      treeNodeCount
+    };
+    setSummary(next);
+    notify({ message: '工作台已刷新' });
   }
 
   return (
@@ -38,18 +51,17 @@ export function DashboardPage({ notify }: { notify: (data: unknown, error?: bool
         <Field label="当前人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} placeholder="例如：1" /></Field>
         <Field label="当前来源ID"><input value={workspace.sourceId} onChange={e => workspace.setSourceId(e.target.value)} placeholder="例如：1" /></Field>
         <Actions><button onClick={checkHealth}>检查后端</button><button className="secondary" onClick={loadSummary}>刷新工作台</button></Actions>
-        <DataBlock data={health} />
+        <ResultNotice result={health} />
       </Panel>
       <Panel title="MVP1 工作台" description="汇总健康状态、待审核任务、日志统计和关键对象上下文。">
         <div className="metric-grid">
-          <div className="metric"><span>宗族ID</span><strong>{workspace.clanId || '-'}</strong></div>
-          <div className="metric"><span>支派ID</span><strong>{workspace.branchId || '-'}</strong></div>
-          <div className="metric"><span>人物ID</span><strong>{workspace.personId || '-'}</strong></div>
-          <div className="metric"><span>关系ID</span><strong>{workspace.relationshipId || '-'}</strong></div>
-          <div className="metric"><span>来源ID</span><strong>{workspace.sourceId || '-'}</strong></div>
-          <div className="metric"><span>审核任务ID</span><strong>{workspace.reviewTaskId || '-'}</strong></div>
+          <div className="metric"><span>宗族数</span><strong>{summary.clanCount}</strong></div>
+          <div className="metric"><span>待审核</span><strong>{summary.pendingReviewCount}</strong></div>
+          <div className="metric"><span>日志总数</span><strong>{summary.logCount}</strong></div>
+          <div className="metric"><span>世系节点</span><strong>{summary.treeNodeCount}</strong></div>
+          <div className="metric"><span>当前人物</span><strong>{workspace.personId || '-'}</strong></div>
+          <div className="metric"><span>当前审核任务</span><strong>{workspace.reviewTaskId || '-'}</strong></div>
         </div>
-        <DataBlock data={summary} />
       </Panel>
     </div>
   );
