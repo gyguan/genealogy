@@ -1,5 +1,6 @@
 -- User and role management support.
 -- Adds explicit viewer role and compatible user/member columns for older local schemas.
+-- Account: demo_viewer / Viewer@123456
 
 create table if not exists app_user (
     id bigserial primary key,
@@ -78,9 +79,15 @@ insert into app_user (
 )
 select
     'demo_viewer', null, 'demo_viewer@genealogy.local',
-    'PBKDF2$120000$Z2VuZWFsb2d5LXZpZXdlcg==$dH/IE6TnTYX9KB7RjfwMOW+OUwLx5ByNbeSVF0PaVdc=',
+    'PBKDF2$120000$Z2VuZWFsb2d5LXZpZXdlcg==$WfS44R32Q6Ha47/vAG4ruSU9HDMug+eS0PUUHABE7co=',
     '演示查看者', null, 'active', now(), now()
 where not exists (select 1 from app_user where username = 'demo_viewer' and deleted_at is null);
+
+update app_user
+set password_hash = 'PBKDF2$120000$Z2VuZWFsb2d5LXZpZXdlcg==$WfS44R32Q6Ha47/vAG4ruSU9HDMug+eS0PUUHABE7co=',
+    updated_at = now()
+where username = 'demo_viewer'
+  and deleted_at is null;
 
 insert into clan_member (
     clan_id, user_id, branch_id, role_id, member_name,
