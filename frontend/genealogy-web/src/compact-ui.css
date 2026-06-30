@@ -60,6 +60,15 @@
 
 .stats-only-home { display: block; }
 .stats-dashboard-home { display: grid; gap: 16px; }
+.home-clan-overview { display: grid; grid-template-columns: minmax(280px, 1.15fr) minmax(360px, 1fr); gap: 16px; padding: 18px; border: 1px solid #d6e4ff; border-radius: 14px; background: linear-gradient(135deg, #f5faff 0%, #fff 56%, #fafafa 100%); box-shadow: 0 6px 16px rgba(22,119,255,.06); }
+.home-clan-main { display: grid; align-content: center; gap: 6px; }
+.home-clan-main span { color: #1677ff; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.home-clan-main h2 { margin: 0; color: rgba(0,0,0,.88); font-size: 24px; line-height: 1.25; font-weight: 600; }
+.home-clan-main p { margin: 0; max-width: 760px; color: rgba(0,0,0,.65); line-height: 1.7; }
+.home-clan-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.home-clan-facts div { display: grid; gap: 4px; min-height: 62px; padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 10px; background: rgba(255,255,255,.82); }
+.home-clan-facts span { color: rgba(0,0,0,.45); font-size: 12px; font-weight: 500; }
+.home-clan-facts strong { color: rgba(0,0,0,.88); font-size: 14px; font-weight: 600; word-break: break-word; }
 .home-stat-grid { display: grid; grid-template-columns: repeat(6, minmax(128px, 1fr)); gap: 16px; }
 .home-stat-card { display: grid; gap: 6px; min-height: 108px; padding: 16px; border: 1px solid #f0f0f0; border-radius: 12px; background: #fff; color: rgba(0,0,0,.88); text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,.03); transition: all .2s; }
 .home-stat-card:hover, .home-stat-card.active { border-color: #91caff; background: #f5faff; box-shadow: 0 6px 16px rgba(22, 119, 255, .08); }
@@ -79,17 +88,25 @@
 .home-bar-list em { display: block; height: 100%; border-radius: 999px; background: #1677ff; }
 .home-bar-list strong { text-align: right; font-size: 13px; font-weight: 600; }
 .home-empty-chart { min-height: 96px; display: grid; place-items: center; border: 1px dashed #d9d9d9; border-radius: 8px; color: rgba(0,0,0,.45); }
-.home-drill-panel { border: 1px solid #f0f0f0; border-radius: 12px; background: #fff; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
-.home-drill-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.home-drill-panel { display: none; }
+.home-drill-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .home-drill-title h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .home-drill-title span { border-radius: 999px; padding: 3px 8px; background: #f5f5f5; color: rgba(0,0,0,.65); font-size: 12px; font-weight: 500; }
-.home-drill-panel .table-wrap { margin-top: 0; }
+.home-drill-modal-body .table-wrap { margin-top: 0; }
+.home-drill-modal-body { max-height: 62vh; overflow: auto; padding-top: 4px; }
 
 @media (max-width: 1500px) {
   .home-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .home-clan-overview { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1200px) {
   .home-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .home-chart-grid { grid-template-columns: 1fr; }
+  .home-clan-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .home-stat-grid, .home-clan-facts { grid-template-columns: 1fr; }
+  .home-clan-overview { padding: 14px; }
 }
