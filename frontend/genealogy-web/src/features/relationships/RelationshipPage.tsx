@@ -9,12 +9,25 @@ import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
+const relationshipPresets = [
+  { title: '亲生父亲', type: 'parent_child', label: 'father', lineage: true, biological: true, tip: '起点=父亲，终点=子女' },
+  { title: '亲生母亲', type: 'parent_child', label: 'mother', lineage: true, biological: true, tip: '起点=母亲，终点=子女' },
+  { title: '配偶', type: 'spouse', label: 'spouse', lineage: false, biological: false, tip: '起点/终点互为配偶' },
+  { title: '养父', type: 'adoptive', label: 'adoptive_father', lineage: true, biological: false, tip: '起点=养父，终点=养子女' },
+  { title: '养母', type: 'adoptive', label: 'adoptive_mother', lineage: true, biological: false, tip: '起点=养母，终点=养子女' },
+  { title: '养子女', type: 'adoptive', label: 'adoptive_child', lineage: true, biological: false, tip: '起点=养父母，终点=养子女' },
+  { title: '继嗣', type: 'successor', label: 'heir_successor', lineage: true, biological: false, tip: '用于记录承嗣、继承香火关系' },
+  { title: '出嗣', type: 'out_adoption', label: 'out_adopted', lineage: false, biological: false, tip: '用于记录出继到其他房支/宗族' }
+];
+
 export function RelationshipPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [fromPersonId, setFromPersonId] = useState(workspace.personId);
   const [toPersonId, setToPersonId] = useState('');
   const [relationType, setRelationType] = useState('parent_child');
   const [relationLabel, setRelationLabel] = useState('father');
+  const [lineageRelation, setLineageRelation] = useState(true);
+  const [biological, setBiological] = useState(true);
   const [data, setData] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -28,11 +41,19 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
     toPersonId: Number(toPersonId),
     relationType,
     relationLabel,
-    isLineageRelation: relationType !== 'spouse',
-    isBiological: relationType === 'parent_child',
+    isLineageRelation: lineageRelation,
+    isBiological: biological,
     isPrimary: true,
     confidenceLevel: 'high'
   });
+
+  function applyPreset(preset: typeof relationshipPresets[number]) {
+    setRelationType(preset.type);
+    setRelationLabel(preset.label);
+    setLineageRelation(preset.lineage);
+    setBiological(preset.biological);
+    setResult({ message: `已选择关系模板：${preset.title}。${preset.tip}` });
+  }
 
   async function run(action: () => Promise<void>) {
     if (loading) return;
@@ -49,8 +70,8 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
   async function check() {
     await run(async () => {
       const res: any = await apiClient.post(`/clans/${workspace.clanId}/relationships/check-conflict`, body());
-      setResult({ message: res.conflict ? '存在关系冲突，请检查后再创建' : '预检通过，可以创建关系' });
-      notify({ message: res.conflict ? '关系预检发现冲突' : '关系预检通过' });
+      setResult({ message: res.conflict ? res.message || '存在关系冲突，请检查后再创建' : '预检通过，可以创建关系' });
+      notify({ message: res.conflict ? '关系预检发现冲突' : '关系预检通过' }, Boolean(res.conflict));
     });
   }
 
@@ -131,12 +152,22 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       />
       <ResultNotice result={result} />
 
-      <Modal open={createOpen} title="新建关系" onClose={() => setCreateOpen(false)}>
+      <Modal open={createOpen} title="新建关系" onClose={() => setCreateOpen(false)} width={860}>
+        <div className="relationship-preset-grid">
+          {relationshipPresets.map(preset => (
+            <button key={`${preset.type}-${preset.label}`} type="button" onClick={() => applyPreset(preset)}>
+              <strong>{preset.title}</strong>
+              <span>{preset.tip}</span>
+            </button>
+          ))}
+        </div>
         <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="关系起点人物ID"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} /></Field>
         <Field label="关系终点人物ID"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} /></Field>
-        <Field label="关系类型"><select value={relationType} onChange={e => setRelationType(e.target.value)}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option></select></Field>
+        <Field label="关系类型"><select value={relationType} onChange={e => setRelationType(e.target.value)}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option><option value="successor">继嗣</option><option value="out_adoption">出嗣</option></select></Field>
         <Field label="关系标签"><input value={relationLabel} onChange={e => setRelationLabel(e.target.value)} /></Field>
+        <Field label="是否世系关系"><select value={lineageRelation ? 'true' : 'false'} onChange={e => setLineageRelation(e.target.value === 'true')}><option value="true">是</option><option value="false">否</option></select></Field>
+        <Field label="是否血缘关系"><select value={biological ? 'true' : 'false'} onChange={e => setBiological(e.target.value === 'true')}><option value="true">是</option><option value="false">否</option></select></Field>
         <Actions><button className="secondary" disabled={loading} onClick={check}>冲突预检</button><button disabled={loading} onClick={create}>{loading ? '保存中...' : '保存'}</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
       </Modal>
 
@@ -154,7 +185,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
           ]}
         />
         {selected ? <>
-          <Field label="关系类型"><select value={selected.relationType || 'parent_child'} onChange={e => setSelected({ ...selected, relationType: e.target.value })}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option></select></Field>
+          <Field label="关系类型"><select value={selected.relationType || 'parent_child'} onChange={e => setSelected({ ...selected, relationType: e.target.value })}><option value="parent_child">亲子</option><option value="spouse">配偶</option><option value="adoptive">养育/收养</option><option value="successor">继嗣</option><option value="out_adoption">出嗣</option></select></Field>
           <Field label="关系标签"><input value={selected.relationLabel || ''} onChange={e => setSelected({ ...selected, relationLabel: e.target.value })} /></Field>
           <Field label="可信度"><select value={selected.confidenceLevel || 'high'} onChange={e => setSelected({ ...selected, confidenceLevel: e.target.value })}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></Field>
           <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
