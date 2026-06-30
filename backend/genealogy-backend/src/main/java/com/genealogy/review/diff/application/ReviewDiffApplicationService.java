@@ -94,7 +94,7 @@ public class ReviewDiffApplicationService {
             return Map.of();
         }
         try {
-            return objectMapper.readValue(text, new TypeReference<>() {});
+            return objectMapper.readValue(text, new TypeReference<Map<String, Object>>() {});
         } catch (Exception ex) {
             return Map.of("raw", text);
         }
