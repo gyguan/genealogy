@@ -1,16 +1,15 @@
 import type { ReactNode } from 'react';
+import { Card, Space, Typography } from 'antd';
 
 export function Panel(props: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <section className="panel">
-      <div className="panel__header">
-        <div>
-          <h2>{props.title}</h2>
-          {props.description ? <p>{props.description}</p> : null}
-        </div>
-        {props.actions ? <div className="panel__actions">{props.actions}</div> : null}
-      </div>
+    <Card
+      className="panel antd-panel"
+      title={<Typography.Text strong>{props.title}</Typography.Text>}
+      extra={props.actions ? <Space>{props.actions}</Space> : null}
+    >
+      {props.description ? <Typography.Paragraph className="panel-description" type="secondary">{props.description}</Typography.Paragraph> : null}
       {props.children}
-    </section>
+    </Card>
   );
 }
