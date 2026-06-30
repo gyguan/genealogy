@@ -23,6 +23,7 @@ import java.util.Queue;
 public class TreeApplicationService {
 
     private static final int DEFAULT_DEPTH = 5;
+    private static final String LINEAGE_RELATION_TYPE = "parent_child";
 
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
@@ -59,6 +60,9 @@ public class TreeApplicationService {
             }
             List<RelationshipEntity> outgoing = relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(current.personId());
             for (RelationshipEntity relationship : outgoing) {
+                if (!isLineageRelationship(relationship)) {
+                    continue;
+                }
                 PersonEntity child = personRepository.findByIdAndDeletedAtIsNull(relationship.getToPersonId()).orElse(null);
                 if (child == null) {
                     continue;
@@ -87,6 +91,9 @@ public class TreeApplicationService {
             }
             List<RelationshipEntity> incoming = relationshipRepository.findByToPersonIdAndDeletedAtIsNull(current.personId());
             for (RelationshipEntity relationship : incoming) {
+                if (!isLineageRelationship(relationship)) {
+                    continue;
+                }
                 PersonEntity parent = personRepository.findByIdAndDeletedAtIsNull(relationship.getFromPersonId()).orElse(null);
                 if (parent == null) {
                     continue;
@@ -134,6 +141,11 @@ public class TreeApplicationService {
                 relationship.getRelationType(),
                 relationship.getRelationLabel()
         );
+    }
+
+    private boolean isLineageRelationship(RelationshipEntity relationship) {
+        return LINEAGE_RELATION_TYPE.equals(relationship.getRelationType())
+                || Boolean.TRUE.equals(relationship.getIsLineageRelation());
     }
 
     private int normalizeDepth(Integer maxDepth) {
