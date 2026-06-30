@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Modal } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
@@ -94,6 +95,7 @@ export function StatisticsHomePage() {
   const [snapshot, setSnapshot] = useState<HomeSnapshot>(emptySnapshot);
   const [loading, setLoading] = useState(false);
   const [activeDrill, setActiveDrill] = useState<DrillKey>('people');
+  const [drillOpen, setDrillOpen] = useState(false);
 
   async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     try {
@@ -141,6 +143,11 @@ export function StatisticsHomePage() {
   useEffect(() => {
     void loadStats();
   }, []);
+
+  const currentClan = useMemo(() => {
+    const targetId = String(workspace.clanId || '');
+    return snapshot.clans.find(row => String(row.id) === targetId) || snapshot.clans[0] || null;
+  }, [snapshot.clans, workspace.clanId]);
 
   const genderItems = useMemo(() => countBy(snapshot.people, row => genderText(row.gender || row.sex)).map(item => ({ ...item, key: `gender:${item.label}` as DrillKey })), [snapshot.people]);
   const statusItems = useMemo(() => countBy(snapshot.people, row => statusText(row.dataStatus || row.status || row.reviewStatus)).map(item => ({ ...item, key: `status:${item.label}` as DrillKey })), [snapshot.people]);
@@ -223,11 +230,32 @@ export function StatisticsHomePage() {
     return [{ key: 'id', title: 'ID' }, { key: 'name', title: '姓名', render: (row: any) => display(row.name || row.personName) }, { key: 'gender', title: '性别', render: (row: any) => genderText(row.gender || row.sex) }, { key: 'generationNo', title: '代次', render: (row: any) => row.generationNo ? `${row.generationNo}世` : '-' }, { key: 'generationWord', title: '字辈' }, { key: 'isLiving', title: '在世状态', render: (row: any) => livingText(row.isLiving) }, { key: 'dataStatus', title: '状态', render: (row: any) => statusText(row.dataStatus || row.status || row.reviewStatus) }];
   }
 
+  function openDrill(key: DrillKey) {
+    setActiveDrill(key);
+    setDrillOpen(true);
+  }
+
   return (
     <div className="stats-only-home stats-dashboard-home">
+      <section className="home-clan-overview">
+        <div className="home-clan-main">
+          <span>族谱概览</span>
+          <h2>{display(currentClan?.clanName, '请选择或创建宗族')}</h2>
+          <p>{display(currentClan?.description, `${display(currentClan?.surname, '本')}氏族谱空间，用于统一沉淀宗族成员、支派世系、字辈规则、来源证据与审核记录。`)}</p>
+        </div>
+        <div className="home-clan-facts">
+          <div><span>姓氏</span><strong>{display(currentClan?.surname)}</strong></div>
+          <div><span>堂号</span><strong>{display(currentClan?.hallName)}</strong></div>
+          <div><span>郡望</span><strong>{display(currentClan?.commandery)}</strong></div>
+          <div><span>祖籍/发源地</span><strong>{display(currentClan?.originPlace)}</strong></div>
+          <div><span>宗族编码</span><strong>{display(currentClan?.clanCode)}</strong></div>
+          <div><span>当前宗族ID</span><strong>{display(workspace.clanId)}</strong></div>
+        </div>
+      </section>
+
       <section className="home-stat-grid">
         {cards.map(card => (
-          <button key={`${card.label}-${card.key}`} className={activeDrill === card.key ? 'home-stat-card active' : 'home-stat-card'} onClick={() => setActiveDrill(card.key)}>
+          <button key={`${card.label}-${card.key}`} className={activeDrill === card.key ? 'home-stat-card active' : 'home-stat-card'} onClick={() => openDrill(card.key)}>
             <span>{card.label}</span>
             <strong>{loading ? '...' : card.value}</strong>
             <em>{card.hint}</em>
@@ -241,19 +269,23 @@ export function StatisticsHomePage() {
       </section>
 
       <section className="home-chart-grid">
-        <MiniBarChart title="核心数据分布" items={coreItems} activeKey={activeDrill} onSelect={setActiveDrill} />
-        <MiniBarChart title="人物状态分布" items={statusItems} activeKey={activeDrill} onSelect={setActiveDrill} />
-        <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={setActiveDrill} />
-        <MiniBarChart title="资料类型分布" items={sourceTypeItems} activeKey={activeDrill} onSelect={setActiveDrill} />
+        <MiniBarChart title="核心数据分布" items={coreItems} activeKey={activeDrill} onSelect={openDrill} />
+        <MiniBarChart title="人物状态分布" items={statusItems} activeKey={activeDrill} onSelect={openDrill} />
+        <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={openDrill} />
+        <MiniBarChart title="资料类型分布" items={sourceTypeItems} activeKey={activeDrill} onSelect={openDrill} />
       </section>
 
-      <section className="home-drill-panel">
-        <div className="home-drill-title">
-          <h3>{detailTitle()}</h3>
-          <span>{detailRows().length} 条</span>
+      <Modal
+        title={<div className="home-drill-title"><h3>{detailTitle()}</h3><span>{detailRows().length} 条</span></div>}
+        open={drillOpen}
+        onCancel={() => setDrillOpen(false)}
+        footer={null}
+        width={980}
+      >
+        <div className="home-drill-modal-body">
+          <DataTable data={detailRows()} columns={detailColumns()} empty="暂无下钻数据" />
         </div>
-        <DataTable data={detailRows()} columns={detailColumns()} empty="暂无下钻数据" />
-      </section>
+      </Modal>
     </div>
   );
 }
