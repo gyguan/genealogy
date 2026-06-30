@@ -1,25 +1,25 @@
-body { background: #f4f7fb; }
+body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 
-.antd-admin-layout { min-height: 100vh; background: #f4f7fb; }
-.antd-sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #edf0f5; background: #fff !important; padding: 16px 10px; }
+.antd-admin-layout { min-height: 100vh; background: #f5f5f5; }
+.antd-sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #f0f0f0; background: #fff !important; padding: 16px 8px; }
 .antd-brand { padding: 8px 12px 18px; margin-bottom: 8px; }
 .antd-brand .ant-typography { margin: 0; }
-.antd-content { padding: 18px 22px 28px; min-width: 0; background: #f4f7fb; }
+.antd-content { padding: 24px; min-width: 0; background: #f5f5f5; }
 
 .ant-card.panel,
-.ant-card.antd-panel { padding: 0 !important; border-radius: 14px; box-shadow: 0 8px 22px rgba(16, 24, 40, .05); }
-.ant-card.panel .ant-card-head { min-height: 44px; padding: 0 16px; }
+.ant-card.antd-panel { padding: 0 !important; border-radius: 12px; border-color: #f0f0f0; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.ant-card.panel .ant-card-head { min-height: 44px; padding: 0 16px; border-bottom-color: #f0f0f0; }
 .ant-card.panel .ant-card-body { padding: 16px; }
 .panel-description { margin-bottom: 12px !important; }
 
 /* Isolate Ant Design Form.Item from the old .field span/input/select global styles. */
-.antd-field.ant-form-item { width: 100%; min-width: 0; margin: 0 0 8px !important; }
+.antd-field.ant-form-item { width: 100%; min-width: 0; margin: 0 0 12px !important; }
 .antd-field .ant-form-item-row { display: block !important; width: 100%; }
 .antd-field .ant-form-item-label { display: block !important; width: 100%; max-width: none; padding: 0 0 4px !important; line-height: 1.2; text-align: left; }
-.antd-field .ant-form-item-label > label { display: inline-flex; height: 18px; color: #344054; font-size: 12px; font-weight: 700; line-height: 18px; }
+.antd-field .ant-form-item-label > label { display: inline-flex; height: 18px; color: rgba(0,0,0,.65); font-size: 12px; font-weight: 500; line-height: 18px; }
 .antd-field .ant-form-item-control { display: block; width: 100%; max-width: none; }
-.antd-field .ant-form-item-control-input { min-height: 36px; }
-.antd-field .ant-form-item-extra { font-size: 12px; color: #667085; }
+.antd-field .ant-form-item-control-input { min-height: 32px; }
+.antd-field .ant-form-item-extra { font-size: 12px; color: rgba(0,0,0,.45); }
 .antd-field span { display: inline-flex; margin-bottom: 0; font-size: inherit; font-weight: inherit; line-height: inherit; }
 .antd-field .ant-input,
 .antd-field .ant-input-affix-wrapper,
@@ -28,7 +28,7 @@ body { background: #f4f7fb; }
 .antd-field .ant-input,
 .antd-field .ant-input-affix-wrapper,
 .antd-field .ant-select-selector,
-.antd-field .ant-picker { min-height: 36px !important; height: 36px !important; border-radius: 10px !important; }
+.antd-field .ant-picker { min-height: 32px !important; height: 32px !important; border-radius: 8px !important; }
 .antd-field textarea.ant-input { height: auto !important; min-height: 96px !important; }
 .antd-field .ant-select-selection-item,
 .antd-field .ant-select-selection-placeholder { display: flex; align-items: center; margin-bottom: 0; }
@@ -41,25 +41,25 @@ body { background: #f4f7fb; }
 .archive-search-form .ant-form-item,
 .lineage-search-grid .ant-form-item { margin: 0 !important; }
 .archive-search-form .antd-actions,
-.lineage-search-grid .antd-actions { align-items: end; justify-content: flex-start; min-height: 36px; margin: 0 !important; white-space: nowrap; }
+.lineage-search-grid .antd-actions { align-items: end; justify-content: flex-start; min-height: 32px; margin: 0 !important; white-space: nowrap; }
 .archive-search-form .ant-btn,
-.lineage-search-grid .ant-btn { height: 36px !important; }
+.lineage-search-grid .ant-btn { height: 32px !important; }
 
 .lineage-search-results button { border: 1px solid #d9d9d9 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; }
-.lineage-search-results button.active { border-color: #1570ef !important; background: #eff8ff !important; color: #175cd3 !important; }
+.lineage-search-results button.active { border-color: #91caff !important; background: #f5faff !important; color: #1677ff !important; }
 
-button.ant-btn { border-radius: 8px !important; padding: 4px 15px !important; font-weight: 500 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; border: 1px solid #d9d9d9 !important; box-shadow: none !important; }
-button.ant-btn-primary { background: #1570ef !important; color: #fff !important; border-color: #1570ef !important; }
-button.ant-btn-primary:hover { background: #175cd3 !important; border-color: #175cd3 !important; color: #fff !important; }
-button.ant-btn-default:hover { color: #1570ef !important; border-color: #1570ef !important; }
+button.ant-btn { border-radius: 8px !important; padding: 4px 15px !important; font-weight: 400 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; border: 1px solid #d9d9d9 !important; box-shadow: none !important; }
+button.ant-btn-primary { background: #1677ff !important; color: #fff !important; border-color: #1677ff !important; }
+button.ant-btn-primary:hover { background: #4096ff !important; border-color: #4096ff !important; color: #fff !important; }
+button.ant-btn-default:hover { color: #1677ff !important; border-color: #4096ff !important; }
 button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-.antd-table-wrap { border: 0; border-radius: 12px; overflow: auto; }
+.antd-table-wrap { border: 0; border-radius: 8px; overflow: auto; }
 .antd-table-wrap .table-hint { display: block; padding: 0 0 8px; background: transparent; border-bottom: 0; }
-.antd-table-wrap .ant-table { border-radius: 12px; overflow: hidden; }
+.antd-table-wrap .ant-table { border-radius: 8px; overflow: hidden; }
 .antd-table-wrap .ant-table-tbody > tr.clickable { cursor: pointer; }
-.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td { background: #eff8ff; }
-.antd-empty { border: 1px dashed #d0d5dd; background: #f9fafb; border-radius: 12px; padding: 18px; }
+.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td { background: #f5faff; }
+.antd-empty { border: 1px dashed #d9d9d9; background: #fafafa; border-radius: 8px; padding: 18px; }
 
 .antd-detail-card { margin-top: 0; padding: 0 !important; background: #fff; }
 .antd-detail-card .ant-card-body { padding: 12px; }
