@@ -18,10 +18,10 @@ import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearch
 import {
   CultureProductPage,
   EditingWorkspaceProductPage,
-  ReviewCenterProductPage,
   SourceLibraryProductPage
 } from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
+import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { ReviewDiffPage } from '../features/reviews/ReviewDiffPage';
 import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
@@ -191,7 +191,7 @@ function AppShell() {
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
-      case 'reviewCenter': return <ReviewCenterProductPage />;
+      case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
       case 'culture': return <CultureProductPage />;
       case 'system': return (
         <div className="system-management">
