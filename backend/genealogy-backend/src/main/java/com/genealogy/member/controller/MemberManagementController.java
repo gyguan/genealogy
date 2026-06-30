@@ -1,5 +1,6 @@
 package com.genealogy.member.controller;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.member.application.MemberManagementApplicationService;
 import com.genealogy.member.dto.ClanMemberResponse;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,32 +27,49 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class MemberManagementController {
 
-    private final MemberManagementApplicationService memberManagementApplicationService;
+    private static final String ROLE_CLAN_ADMIN = "clan_admin";
 
-    public MemberManagementController(MemberManagementApplicationService memberManagementApplicationService) {
+    private final MemberManagementApplicationService memberManagementApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
+
+    public MemberManagementController(
+            MemberManagementApplicationService memberManagementApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.memberManagementApplicationService = memberManagementApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @GetMapping("/users")
-    public ApiResponse<List<UserSummaryResponse>> users() {
+    public ApiResponse<List<UserSummaryResponse>> users(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(memberManagementApplicationService.users());
     }
 
     @GetMapping("/roles")
-    public ApiResponse<List<RoleResponse>> roles() {
+    public ApiResponse<List<RoleResponse>> roles(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(memberManagementApplicationService.roles());
     }
 
     @GetMapping("/clans/{clanId}/members")
-    public ApiResponse<List<ClanMemberResponse>> members(@Positive @PathVariable Long clanId) {
+    public ApiResponse<List<ClanMemberResponse>> members(
+            @Positive @PathVariable Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
         return ApiResponse.success(memberManagementApplicationService.members(clanId));
     }
 
     @PostMapping("/clans/{clanId}/members")
     public ApiResponse<ClanMemberResponse> createMember(
             @Positive @PathVariable Long clanId,
-            @Valid @RequestBody CreateClanMemberRequest request
+            @Valid @RequestBody CreateClanMemberRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
         return ApiResponse.success(memberManagementApplicationService.createMember(clanId, request));
     }
 
@@ -58,8 +77,11 @@ public class MemberManagementController {
     public ApiResponse<ClanMemberResponse> updateMember(
             @Positive @PathVariable Long clanId,
             @Positive @PathVariable Long memberId,
-            @Valid @RequestBody UpdateClanMemberRoleRequest request
+            @Valid @RequestBody UpdateClanMemberRoleRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
         return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request));
     }
 }
