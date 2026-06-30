@@ -235,6 +235,8 @@ export function StatisticsHomePage() {
     setDrillOpen(true);
   }
 
+  const rows = detailRows();
+
   return (
     <div className="stats-only-home stats-dashboard-home">
       <section className="home-clan-overview">
@@ -276,14 +278,15 @@ export function StatisticsHomePage() {
       </section>
 
       <Modal
-        title={<div className="home-drill-title"><h3>{detailTitle()}</h3><span>{detailRows().length} 条</span></div>}
+        title={detailTitle()}
         open={drillOpen}
         onCancel={() => setDrillOpen(false)}
         footer={null}
         width={980}
       >
         <div className="home-drill-modal-body">
-          <DataTable data={detailRows()} columns={detailColumns()} empty="暂无下钻数据" />
+          <div className="home-drill-summary"><span>共 {rows.length} 条记录</span></div>
+          <DataTable data={rows} columns={detailColumns()} empty="暂无下钻数据" />
         </div>
       </Modal>
     </div>
