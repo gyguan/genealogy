@@ -1,0 +1,47 @@
+package com.genealogy.source.attachment.controller;
+
+import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.common.api.ApiResponse;
+import com.genealogy.source.attachment.application.SourceAttachmentApplicationService;
+import com.genealogy.source.attachment.dto.SourceAttachmentResponse;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+@Validated
+@RestController
+@RequestMapping("/api/v1")
+public class SourceAttachmentController {
+
+    private final SourceAttachmentApplicationService sourceAttachmentApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
+
+    public SourceAttachmentController(SourceAttachmentApplicationService sourceAttachmentApplicationService, AuthorizationApplicationService authorizationApplicationService) {
+        this.sourceAttachmentApplicationService = sourceAttachmentApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
+    }
+
+    @PostMapping("/sources/{sourceId}/attachments")
+    public ApiResponse<SourceAttachmentResponse> upload(
+            @Positive @PathVariable Long sourceId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(sourceAttachmentApplicationService.upload(sourceId, file, actorId));
+    }
+
+    @GetMapping("/sources/{sourceId}/attachments")
+    public ApiResponse<List<SourceAttachmentResponse>> list(@Positive @PathVariable Long sourceId) {
+        return ApiResponse.success(sourceAttachmentApplicationService.list(sourceId));
+    }
+}
