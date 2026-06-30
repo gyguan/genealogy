@@ -27,7 +27,7 @@ import java.util.UUID;
 @Service
 public class SourceAttachmentApplicationService {
 
-    private static final Path ROOT = Path.of("data", "uploads", "sources");
+    private static final Path ROOT = Path.of("data", "uploads", "sources").toAbsolutePath().normalize();
 
     private final SourceRepository sourceRepository;
     private final SourceAttachmentRepository sourceAttachmentRepository;
@@ -47,8 +47,11 @@ public class SourceAttachmentApplicationService {
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "attachment" : file.getOriginalFilename());
         String ext = extension(originalFilename);
         String storedFilename = UUID.randomUUID() + ext;
-        Path dir = ROOT.resolve(String.valueOf(sourceId));
-        Path target = dir.resolve(storedFilename);
+        Path dir = ROOT.resolve(String.valueOf(sourceId)).normalize();
+        Path target = dir.resolve(storedFilename).normalize();
+        if (!target.startsWith(ROOT)) {
+            throw new BusinessException("SOURCE_ATTACHMENT_PATH_INVALID", "附件存储路径非法");
+        }
         try {
             Files.createDirectories(dir);
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
@@ -79,6 +82,33 @@ public class SourceAttachmentApplicationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public AttachmentFile readFile(Long attachmentId) {
+        SourceAttachmentEntity entity = getActive(attachmentId);
+        Path path = Path.of(entity.getStoragePath()).toAbsolutePath().normalize();
+        if (!path.startsWith(ROOT) || !Files.exists(path)) {
+            throw new BusinessException("SOURCE_ATTACHMENT_FILE_NOT_FOUND", "附件文件不存在");
+        }
+        try {
+            return new AttachmentFile(Files.readAllBytes(path), entity.getOriginalFilename(), entity.getContentType());
+        } catch (IOException ex) {
+            throw new BusinessException("SOURCE_ATTACHMENT_READ_FAILED", "附件读取失败");
+        }
+    }
+
+    @Transactional
+    public void remove(Long attachmentId) {
+        SourceAttachmentEntity entity = getActive(attachmentId);
+        entity.setDeletedAt(LocalDateTime.now());
+        entity.setUploadStatus("deleted");
+        sourceAttachmentRepository.save(entity);
+    }
+
+    private SourceAttachmentEntity getActive(Long attachmentId) {
+        return sourceAttachmentRepository.findByIdAndDeletedAtIsNull(attachmentId)
+                .orElseThrow(() -> new BusinessException("SOURCE_ATTACHMENT_NOT_FOUND", "附件不存在或已删除"));
+    }
+
     private String extension(String filename) {
         int index = filename.lastIndexOf('.');
         if (index < 0 || index == filename.length() - 1) {
@@ -105,6 +135,8 @@ public class SourceAttachmentApplicationService {
                 entity.getContentType(), entity.getFileSize(), entity.getStoragePath(), entity.getChecksum(), entity.getUploadStatus(), entity.getCreatedAt()
         );
     }
+
+    public record AttachmentFile(byte[] content, String filename, String contentType) {}
 
     private static final class OutputStreamSink extends java.io.OutputStream {
         private static final OutputStreamSink INSTANCE = new OutputStreamSink();
