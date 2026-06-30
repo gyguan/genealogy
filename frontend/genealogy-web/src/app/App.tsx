@@ -34,14 +34,13 @@ const navItems = [
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['system', '基础数据管理', '认证、宗族、权限、字辈、关系和日志']
+  ['system', '基础数据管理', '宗族、权限、字辈、关系和日志']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
-type LegacyKey = 'auth' | 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'logs';
+type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'logs';
 
 const legacyTabs: [LegacyKey, string][] = [
-  ['auth', '登录认证'],
   ['clans', '宗族'],
   ['memberManage', '成员权限'],
   ['branches', '支派'],
@@ -122,7 +121,7 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
-  const [legacyActive, setLegacyActive] = useState<LegacyKey>('auth');
+  const [legacyActive, setLegacyActive] = useState<LegacyKey>('clans');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(apiClient.getToken()));
 
@@ -165,7 +164,6 @@ function AppShell() {
   function renderLegacyPage() {
     const props = { notify };
     switch (legacyActive) {
-      case 'auth': return <AuthPage notify={notify} onChanged={onLoginChanged} />;
       case 'clans': return <ClanPage {...props} />;
       case 'memberManage': return <MemberPage {...props} />;
       case 'branches': return <BranchPage {...props} />;
