@@ -22,6 +22,7 @@ import {
   SourceLibraryProductPage
 } from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
+import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
 
 const { Sider, Content, Header } = Layout;
@@ -35,11 +36,11 @@ const navItems = [
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入和日志']
+  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入、附件和日志']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
-type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'logs';
+type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'sourceAttachments' | 'logs';
 
 const legacyTabs: [LegacyKey, string][] = [
   ['clans', '宗族'],
@@ -48,6 +49,7 @@ const legacyTabs: [LegacyKey, string][] = [
   ['generations', '字辈'],
   ['relationships', '关系'],
   ['imports', '导入管理'],
+  ['sourceAttachments', '来源附件'],
   ['logs', '日志']
 ];
 
@@ -172,6 +174,7 @@ function AppShell() {
       case 'generations': return <GenerationPage {...props} />;
       case 'relationships': return <RelationshipPage {...props} />;
       case 'imports': return <ImportPage {...props} />;
+      case 'sourceAttachments': return <SourceAttachmentPage {...props} />;
       case 'logs': return <LogPage {...props} />;
       default: return null;
     }
