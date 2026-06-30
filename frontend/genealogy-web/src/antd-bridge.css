@@ -1,11 +1,25 @@
 body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 
 .antd-admin-layout { min-height: 100vh; background: #f5f5f5; }
+.antd-main-layout { min-width: 0; min-height: 100vh; background: #f5f5f5; }
 .antd-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; overflow: auto; border-right: 1px solid #f0f0f0; background: #fff !important; padding: 16px 8px; }
 .antd-brand { padding: 8px 12px 18px; margin-bottom: 8px; }
 .antd-brand .ant-typography { margin: 0; }
 .antd-sidebar .ant-menu { flex: 1 1 auto; }
-.antd-sidebar-footer { flex: 0 0 auto; padding: 12px; margin-top: 12px; border-top: 1px solid #f0f0f0; }
+.antd-sidebar-footer { display: none !important; }
+.github-like-header { position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 24px; border-bottom: 1px solid #f0f0f0; background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.github-like-header-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.github-like-header-title .ant-typography:last-child { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.github-user-trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 2px 6px 2px 4px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: rgba(0,0,0,.88); box-shadow: none; cursor: pointer; }
+.github-user-trigger:hover { border-color: #d9d9d9; background: #f5f5f5; }
+.github-user-trigger span:not(.ant-avatar-string) { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.github-user-trigger em { color: rgba(0,0,0,.45); font-size: 12px; font-style: normal; transform: translateY(-1px); }
+.github-user-menu-summary { display: grid; gap: 2px; min-width: 180px; }
+.github-user-menu-summary strong { color: rgba(0,0,0,.88); font-weight: 600; }
+.github-user-menu-summary span { color: rgba(0,0,0,.45); font-size: 12px; }
+.profile-center-card { display: grid; gap: 16px; }
+.profile-center-card h5.ant-typography { margin: 0 0 2px; }
+.profile-center-descriptions { margin-top: 4px; }
 .antd-content { padding: 24px; min-width: 0; background: #f5f5f5; }
 
 .auth-page-shell { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; background: linear-gradient(135deg, #f5faff 0%, #f5f5f5 48%, #ffffff 100%); }
@@ -106,11 +120,14 @@ button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-al
   .auth-layout { grid-template-columns: 1fr; }
   .auth-hero-card { grid-row: auto; min-height: auto; padding: 24px; }
   .role-card-grid { grid-template-columns: 1fr; }
+  .github-user-trigger span:not(.ant-avatar-string) { display: none; }
 }
 
 @media (max-width: 760px) {
   body { min-width: 0; }
   .antd-content { padding: 12px; }
+  .github-like-header { padding: 0 12px; }
+  .github-like-header-title .ant-typography:last-child { max-width: 180px; }
   .archive-search-form,
   .lineage-search-grid { grid-template-columns: 1fr !important; }
   .auth-page-shell { padding: 16px; }
