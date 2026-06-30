@@ -1,10 +1,31 @@
 body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 
 .antd-admin-layout { min-height: 100vh; background: #f5f5f5; }
-.antd-sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #f0f0f0; background: #fff !important; padding: 16px 8px; }
+.antd-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; overflow: auto; border-right: 1px solid #f0f0f0; background: #fff !important; padding: 16px 8px; }
 .antd-brand { padding: 8px 12px 18px; margin-bottom: 8px; }
 .antd-brand .ant-typography { margin: 0; }
+.antd-sidebar .ant-menu { flex: 1 1 auto; }
+.antd-sidebar-footer { flex: 0 0 auto; padding: 12px; margin-top: 12px; border-top: 1px solid #f0f0f0; }
 .antd-content { padding: 24px; min-width: 0; background: #f5f5f5; }
+
+.auth-page-shell { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; background: linear-gradient(135deg, #f5faff 0%, #f5f5f5 48%, #ffffff 100%); }
+.auth-page-inner { width: min(1180px, 100%); }
+.auth-layout { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(320px, .9fr); gap: 16px; align-items: stretch; }
+.auth-hero-card { grid-row: span 2; display: flex; flex-direction: column; justify-content: center; min-height: 520px; padding: 36px; border: 1px solid #d6e4ff; border-radius: 16px; background: radial-gradient(circle at 20% 20%, #e6f4ff 0, #fff 42%, #f5faff 100%); box-shadow: 0 6px 16px rgba(22,119,255,.08); }
+.auth-hero-card .ant-typography { margin-bottom: 8px; }
+.auth-hero-card h2.ant-typography { margin-top: 4px; font-size: 32px; }
+.auth-demo-list { display: grid; gap: 10px; margin-top: 24px; }
+.auth-demo-list button { display: grid; gap: 4px; width: 100%; padding: 12px 14px; border: 1px solid #91caff; border-radius: 12px; background: rgba(255,255,255,.88); color: rgba(0,0,0,.88); text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,.03); cursor: pointer; }
+.auth-demo-list button:hover { border-color: #1677ff; background: #f5faff; }
+.auth-demo-list strong { color: #1677ff; }
+.auth-demo-list span { color: rgba(0,0,0,.88); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.auth-demo-list em { color: rgba(0,0,0,.45); font-style: normal; font-size: 12px; }
+.auth-card { border-color: #f0f0f0; border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.auth-card .ant-card-head { border-bottom-color: #f0f0f0; }
+.auth-tip, .auth-result { margin-top: 12px; }
+.auth-register-card { align-self: start; }
+.auth-inline-title { width: 100%; }
+.auth-inline-title .ant-typography { margin: 0; }
 
 .ant-card.panel,
 .ant-card.antd-panel { padding: 0 !important; border-radius: 12px; border-color: #f0f0f0; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
@@ -73,9 +94,15 @@ button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-al
   .lineage-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
+@media (max-width: 900px) {
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-hero-card { grid-row: auto; min-height: auto; padding: 24px; }
+}
+
 @media (max-width: 760px) {
   body { min-width: 0; }
   .antd-content { padding: 12px; }
   .archive-search-form,
   .lineage-search-grid { grid-template-columns: 1fr !important; }
+  .auth-page-shell { padding: 16px; }
 }
