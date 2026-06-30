@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Tabs, Typography, theme } from 'antd';
+import { Button, ConfigProvider, Layout, Menu, Space, Tabs, Typography, theme } from 'antd';
+import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
@@ -121,6 +122,7 @@ function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
   const [legacyActive, setLegacyActive] = useState<LegacyKey>('auth');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(apiClient.getToken()));
 
   function closeToast(id: number) {
     setToasts(prev => prev.filter(item => item.id !== id));
@@ -137,6 +139,18 @@ function AppShell() {
     window.setTimeout(() => closeToast(id), 3200);
   }
 
+  function onLoginChanged() {
+    setIsAuthenticated(Boolean(apiClient.getToken()));
+  }
+
+  function logout() {
+    apiClient.post('/auth/logout').catch(() => undefined).finally(() => {
+      apiClient.clearToken();
+      setIsAuthenticated(false);
+      notify({ message: '已退出登录' });
+    });
+  }
+
   useEffect(() => {
     const onUnhandled = (event: PromiseRejectionEvent) => {
       event.preventDefault();
@@ -151,7 +165,7 @@ function AppShell() {
   function renderLegacyPage() {
     const props = { notify };
     switch (legacyActive) {
-      case 'auth': return <AuthPage notify={notify} onChanged={onChanged} />;
+      case 'auth': return <AuthPage notify={notify} onChanged={onLoginChanged} />;
       case 'clans': return <ClanPage {...props} />;
       case 'memberManage': return <MemberPage {...props} />;
       case 'branches': return <BranchPage {...props} />;
@@ -185,6 +199,15 @@ function AppShell() {
     }
   }
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <AuthPage notify={notify} onChanged={onLoginChanged} standalone />
+        <ToastStack items={toasts} onClose={closeToast} />
+      </>
+    );
+  }
+
   return (
     <Layout className="admin-layout antd-admin-layout">
       <Sider className="sidebar antd-sidebar" width={248} breakpoint="lg" collapsedWidth={0}>
@@ -196,6 +219,10 @@ function AppShell() {
           onClick={info => setActive(info.key as ViewKey)}
           items={navItems.map(([key, label]) => ({ key, label }))}
         />
+        <Space className="antd-sidebar-footer" direction="vertical" size={8}>
+          <Typography.Text type="secondary">当前已登录</Typography.Text>
+          <Button block onClick={logout}>退出登录</Button>
+        </Space>
       </Sider>
       <Content className="content content--compact antd-content">
         {renderPage()}
