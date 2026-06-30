@@ -56,15 +56,27 @@ create table if not exists source_binding (
 create table if not exists operation_log (
     id bigserial primary key,
     clan_id bigint,
-    operator_id bigint,
-    operation_type varchar(100) not null,
+    actor_id bigint,
+    action_type varchar(100),
     target_type varchar(50),
     target_id bigint,
-    operation_summary varchar(500),
-    request_ip varchar(64),
-    user_agent varchar(500),
+    summary varchar(500),
+    detail text,
+    request_id varchar(100),
+    client_ip varchar(64),
     created_at timestamp not null default now()
 );
+
+alter table operation_log add column if not exists clan_id bigint;
+alter table operation_log add column if not exists actor_id bigint;
+alter table operation_log add column if not exists action_type varchar(100);
+alter table operation_log add column if not exists target_type varchar(50);
+alter table operation_log add column if not exists target_id bigint;
+alter table operation_log add column if not exists summary varchar(500);
+alter table operation_log add column if not exists detail text;
+alter table operation_log add column if not exists request_id varchar(100);
+alter table operation_log add column if not exists client_ip varchar(64);
+alter table operation_log add column if not exists created_at timestamp default now();
 
 create index if not exists idx_generation_scheme_clan on generation_scheme(clan_id);
 create index if not exists idx_generation_word_scheme on generation_word(scheme_id);
@@ -98,7 +110,6 @@ declare
     v_source_book_id bigint;
     v_source_oral_id bigint;
     v_person_id bigint;
-    v_rel_id bigint;
     v_line_a_ids bigint[] := array[]::bigint[];
     v_line_b_ids bigint[] := array[]::bigint[];
     v_spouse_a_ids bigint[] := array[]::bigint[];
@@ -112,8 +123,6 @@ declare
     v_tomb_place text;
     v_epitaph text;
     v_person_code text;
-    v_branch_label text;
-    v_branch_to text;
 begin
     if exists (select 1 from clan where clan_code = p_clan_code) then
         return;
@@ -124,7 +133,7 @@ begin
         description, status, created_by, created_at, updated_at
     ) values (
         p_clan_code, p_clan_name, p_surname, p_hall_name, p_commandery, p_origin_place,
-        p_clan_name || '演示宗族，包含两条支派、七代字辈、十二个三人以上家庭，数据用于首页统计、人物档案、建谱向导和世系图谱联调。',
+        p_clan_name || '演示宗族，包含两条支派、八代字辈、十四个三人以上家庭，数据用于首页统计、人物档案、建谱向导和世系图谱联调。',
         'active', 1, now(), now()
     ) returning id into v_clan_id;
 
@@ -134,7 +143,7 @@ begin
     ) values (
         v_clan_id, null, p_branch_a_name, '/' || p_branch_a_name, 1, 1,
         p_origin_place, p_branch_a_to,
-        p_branch_a_name || '为' || p_clan_name || '演示长支，连续维护七代人物与配偶资料。',
+        p_branch_a_name || '为' || p_clan_name || '演示长支，连续维护八代人物与配偶资料。',
         'active', now(), now()
     ) returning id into v_branch_a_id;
 
@@ -144,7 +153,7 @@ begin
     ) values (
         v_clan_id, null, p_branch_b_name, '/' || p_branch_b_name, 1, 2,
         p_origin_place, p_branch_b_to,
-        p_branch_b_name || '为' || p_clan_name || '演示二支，连续维护七代人物与配偶资料。',
+        p_branch_b_name || '为' || p_clan_name || '演示二支，连续维护八代人物与配偶资料。',
         'active', now(), now()
     ) returning id into v_branch_b_id;
 
@@ -166,7 +175,7 @@ begin
 
     for g in 1..v_generation_count loop
         v_birth_year := p_base_year + (g - 1) * 24;
-        v_is_living := g >= 4;
+        v_is_living := g >= 5;
         v_death_date := case when v_is_living then null else make_date(v_birth_year + 76, 9, 18) end;
         v_tomb_place := case when v_is_living then '在世人员暂未维护墓葬地' else p_branch_a_to || '祖茔' end;
         v_epitaph := case when v_is_living then '在世人员，暂未立墓志；已完成生平、职业、居住地和来源记录。' else p_line_a_names[g] || '墓志记载其修身齐家、敦亲睦族，支派后裔绵延。' end;
@@ -196,7 +205,7 @@ begin
         v_line_a_ids := array_append(v_line_a_ids, v_person_id);
 
         v_birth_year := p_base_year + (g - 1) * 24 + 1;
-        v_is_living := g >= 4;
+        v_is_living := g >= 5;
         v_death_date := case when v_is_living then null else make_date(v_birth_year + 74, 10, 21) end;
         v_tomb_place := case when v_is_living then '在世人员暂未维护墓葬地' else p_branch_b_to || '祖茔' end;
         v_epitaph := case when v_is_living then '在世人员，暂未立墓志；已完成生平、职业、居住地和来源记录。' else p_line_b_names[g] || '墓志记载其勤俭持家、重视宗族教育。' end;
@@ -228,7 +237,7 @@ begin
 
     for g in 1..v_family_generation_count loop
         v_birth_year := p_base_year + (g - 1) * 24 + 2;
-        v_is_living := g >= 4;
+        v_is_living := g >= 5;
         v_death_date := case when v_is_living then null else make_date(v_birth_year + 73, 11, 8) end;
         v_tomb_place := case when v_is_living then '在世人员暂未维护墓葬地' else p_branch_a_to || '合葬墓区' end;
         v_epitaph := case when v_is_living then '在世人员，已记录家庭关系、居住地和来源信息。' else p_spouse_a_names[g] || '墓志记载其持家有方、教子有成。' end;
@@ -258,7 +267,7 @@ begin
         v_spouse_a_ids := array_append(v_spouse_a_ids, v_person_id);
 
         v_birth_year := p_base_year + (g - 1) * 24 + 3;
-        v_is_living := g >= 4;
+        v_is_living := g >= 5;
         v_death_date := case when v_is_living then null else make_date(v_birth_year + 72, 12, 6) end;
         v_tomb_place := case when v_is_living then '在世人员暂未维护墓葬地' else p_branch_b_to || '合葬墓区' end;
         v_epitaph := case when v_is_living then '在世人员，已记录家庭关系、居住地和来源信息。' else p_spouse_b_names[g] || '墓志记载其和睦宗亲、抚育后人。' end;
@@ -297,7 +306,7 @@ begin
             v_clan_id, v_line_a_ids[g], v_spouse_a_ids[g], 'spouse', 'spouse',
             false, false, true, p_line_a_names[g] || '与' || p_spouse_a_names[g] || '婚配关系。',
             'high', 'official', 1, now(), now()
-        ) returning id into v_rel_id;
+        );
 
         insert into relationship (
             clan_id, from_person_id, to_person_id, relation_type, relation_label,
@@ -359,8 +368,8 @@ begin
         excerpt, verification_status, description, created_by, created_at
     ) values (
         v_clan_id, p_clan_name || '演示族谱原文', 'genealogy_book', '修谱委员会',
-        p_clan_name || '七代世系演示谱', '卷一', '1-36',
-        p_clan_name || '两支七代人物、配偶、亲子关系均据演示族谱原文录入。',
+        p_clan_name || '八代世系演示谱', '卷一', '1-42',
+        p_clan_name || '两支八代人物、配偶、亲子关系均据演示族谱原文录入。',
         'verified', '用于人物档案、来源资料库、世系图谱和审核演示的族谱原文来源。', 1, now()
     ) returning id into v_source_book_id;
 
@@ -395,14 +404,14 @@ begin
     where r.clan_id = v_clan_id;
 
     insert into operation_log (
-        clan_id, operator_id, operation_type, target_type, target_id,
-        operation_summary, request_ip, user_agent, created_at
+        clan_id, actor_id, action_type, target_type, target_id,
+        summary, detail, request_id, client_ip, created_at
     ) values
-        (v_clan_id, 1, 'DEMO_SEED_CLAN', 'clan', v_clan_id, '预置演示宗族：' || p_clan_name, '127.0.0.1', 'flyway-demo-seed', now()),
-        (v_clan_id, 1, 'DEMO_SEED_BRANCH', 'branch', v_branch_a_id, '预置演示支派：' || p_branch_a_name, '127.0.0.1', 'flyway-demo-seed', now()),
-        (v_clan_id, 1, 'DEMO_SEED_BRANCH', 'branch', v_branch_b_id, '预置演示支派：' || p_branch_b_name, '127.0.0.1', 'flyway-demo-seed', now()),
-        (v_clan_id, 1, 'DEMO_SEED_PERSON', 'person', v_line_a_ids[1], '预置七代人物与家庭关系数据', '127.0.0.1', 'flyway-demo-seed', now()),
-        (v_clan_id, 1, 'DEMO_SEED_SOURCE', 'source', v_source_book_id, '预置族谱来源与人物绑定', '127.0.0.1', 'flyway-demo-seed', now());
+        (v_clan_id, 1, 'DEMO_SEED_CLAN', 'clan', v_clan_id, '预置演示宗族：' || p_clan_name, 'Flyway 预置演示宗族主数据。', 'flyway-demo-seed', '127.0.0.1', now()),
+        (v_clan_id, 1, 'DEMO_SEED_BRANCH', 'branch', v_branch_a_id, '预置演示支派：' || p_branch_a_name, 'Flyway 预置长支支派资料。', 'flyway-demo-seed', '127.0.0.1', now()),
+        (v_clan_id, 1, 'DEMO_SEED_BRANCH', 'branch', v_branch_b_id, '预置演示支派：' || p_branch_b_name, 'Flyway 预置二支支派资料。', 'flyway-demo-seed', '127.0.0.1', now()),
+        (v_clan_id, 1, 'DEMO_SEED_PERSON', 'person', v_line_a_ids[1], '预置八代人物与家庭关系数据', 'Flyway 预置两支八代人物、配偶和亲子关系。', 'flyway-demo-seed', '127.0.0.1', now()),
+        (v_clan_id, 1, 'DEMO_SEED_SOURCE', 'source', v_source_book_id, '预置族谱来源与人物绑定', 'Flyway 预置族谱原文、口述访谈及证据绑定。', 'flyway-demo-seed', '127.0.0.1', now());
 end;
 $$ language plpgsql;
 
@@ -417,11 +426,11 @@ select seed_demo_clan(
     '二房西支',
     '安徽省合肥市肥西县',
     '江苏省苏州市吴中区',
-    array['明','承','德','宏','家','业','昌'],
-    array['张明远','张承志','张德安','张宏毅','张家瑞','张业宁','张昌泰'],
-    array['张明德','张承礼','张德华','张宏文','张家诚','张业航','张昌泽'],
-    array['王雅兰','李淑芳','陈慧敏','周婉清','郑思雨','黄若琳'],
-    array['刘素琴','赵秀梅','孙丽君','吴静怡','林晓月','何雨欣'],
+    array['明','承','德','宏','家','业','昌','盛'],
+    array['张明远','张承志','张德安','张宏毅','张家瑞','张业宁','张昌泰','张盛泽'],
+    array['张明德','张承礼','张德华','张宏文','张家诚','张业航','张昌泽','张盛宇'],
+    array['王雅兰','李淑芳','陈慧敏','周婉清','郑思雨','黄若琳','郭诗涵'],
+    array['刘素琴','赵秀梅','孙丽君','吴静怡','林晓月','何雨欣','唐雨桐'],
     1865
 );
 
@@ -436,11 +445,11 @@ select seed_demo_clan(
     '北望二支',
     '湖北省武汉市黄陂区',
     '陕西省西安市长安区',
-    array['世','泽','长','荣','启','瑞','祥'],
-    array['李世安','李泽民','李长青','李荣轩','李启明','李瑞霖','李祥宇'],
-    array['李世昌','李泽华','李长林','李荣泽','李启航','李瑞峰','李祥宁'],
-    array['周秀英','郑芳华','王静雯','赵婉婷','陈诗涵','许梦瑶'],
-    array['马桂兰','罗春梅','刘慧娟','孙雅琪','林雨婷','高欣怡'],
+    array['世','泽','长','荣','启','瑞','祥','和'],
+    array['李世安','李泽民','李长青','李荣轩','李启明','李瑞霖','李祥宇','李和宁'],
+    array['李世昌','李泽华','李长林','李荣泽','李启航','李瑞峰','李祥宁','李和远'],
+    array['周秀英','郑芳华','王静雯','赵婉婷','陈诗涵','许梦瑶','沈若溪'],
+    array['马桂兰','罗春梅','刘慧娟','孙雅琪','林雨婷','高欣怡','梁诗雨'],
     1870
 );
 
