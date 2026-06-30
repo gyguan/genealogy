@@ -285,15 +285,17 @@ export function LineageTreeProductPage({ notify }: Props) {
     return { parents: uniquePeople(parents), spouses: uniquePeople(spouses), children: uniquePeople(children), others };
   }, [relationships, center, personMap, branches]);
 
+  const spousePersonIds = useMemo(() => new Set(relationshipDerived.spouses.map(person => person.id)), [relationshipDerived.spouses]);
+
   const ancestorLane = useMemo(() => {
-    const source = ancestors.length ? ancestors : relationshipDerived.parents;
+    const source = ancestors.length ? ancestors.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.parents;
     return sortByGeneration(uniquePeople(source), 'asc').slice(-10);
-  }, [ancestors, relationshipDerived.parents]);
+  }, [ancestors, relationshipDerived.parents, spousePersonIds]);
 
   const descendantGroups = useMemo(() => {
-    const source = descendants.length ? descendants : relationshipDerived.children;
+    const source = descendants.length ? descendants.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.children;
     return groupDescendants(uniquePeople(source));
-  }, [descendants, relationshipDerived.children]);
+  }, [descendants, relationshipDerived.children, spousePersonIds]);
 
   function setAsCenter(personId: string) {
     workspace.setPersonId(personId);
