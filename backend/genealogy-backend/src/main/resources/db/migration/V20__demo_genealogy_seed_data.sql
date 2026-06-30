@@ -1,5 +1,5 @@
 -- Rich demo data for genealogy MVP1.
--- This migration intentionally seeds complete, realistic data for local demo and UI validation.
+-- Idempotent by demo clan_code: if demo clans already exist, this script removes and rebuilds only those demo clans.
 
 create table if not exists generation_scheme (
     id bigserial primary key,
@@ -14,6 +14,16 @@ create table if not exists generation_scheme (
     status varchar(32) not null default 'active',
     created_at timestamp not null default now()
 );
+alter table generation_scheme add column if not exists clan_id bigint;
+alter table generation_scheme add column if not exists branch_id bigint;
+alter table generation_scheme add column if not exists scheme_name varchar(200);
+alter table generation_scheme add column if not exists poem_text text;
+alter table generation_scheme add column if not exists start_generation int;
+alter table generation_scheme add column if not exists is_default boolean default false;
+alter table generation_scheme add column if not exists validation_enabled boolean default true;
+alter table generation_scheme add column if not exists strict_mode boolean default false;
+alter table generation_scheme add column if not exists status varchar(32) default 'active';
+alter table generation_scheme add column if not exists created_at timestamp default now();
 
 create table if not exists generation_word (
     id bigserial primary key,
@@ -24,6 +34,11 @@ create table if not exists generation_word (
     sort_order int not null default 0,
     unique (scheme_id, generation_no)
 );
+alter table generation_word add column if not exists scheme_id bigint;
+alter table generation_word add column if not exists generation_no int;
+alter table generation_word add column if not exists word varchar(20);
+alter table generation_word add column if not exists description varchar(255);
+alter table generation_word add column if not exists sort_order int default 0;
 
 create table if not exists source (
     id bigserial primary key,
@@ -40,6 +55,18 @@ create table if not exists source (
     created_by bigint,
     created_at timestamp not null default now()
 );
+alter table source add column if not exists clan_id bigint;
+alter table source add column if not exists source_name varchar(200);
+alter table source add column if not exists source_type varchar(50);
+alter table source add column if not exists provider_name varchar(100);
+alter table source add column if not exists book_title varchar(200);
+alter table source add column if not exists volume_no varchar(100);
+alter table source add column if not exists page_no varchar(100);
+alter table source add column if not exists excerpt text;
+alter table source add column if not exists verification_status varchar(32) default 'unverified';
+alter table source add column if not exists description text;
+alter table source add column if not exists created_by bigint;
+alter table source add column if not exists created_at timestamp default now();
 
 create table if not exists source_binding (
     id bigserial primary key,
@@ -52,6 +79,14 @@ create table if not exists source_binding (
     created_by bigint,
     created_at timestamp not null default now()
 );
+alter table source_binding add column if not exists clan_id bigint;
+alter table source_binding add column if not exists source_id bigint;
+alter table source_binding add column if not exists target_type varchar(50);
+alter table source_binding add column if not exists target_id bigint;
+alter table source_binding add column if not exists binding_reason varchar(255);
+alter table source_binding add column if not exists excerpt text;
+alter table source_binding add column if not exists created_by bigint;
+alter table source_binding add column if not exists created_at timestamp default now();
 
 create table if not exists operation_log (
     id bigserial primary key,
@@ -66,7 +101,6 @@ create table if not exists operation_log (
     client_ip varchar(64),
     created_at timestamp not null default now()
 );
-
 alter table operation_log add column if not exists clan_id bigint;
 alter table operation_log add column if not exists actor_id bigint;
 alter table operation_log add column if not exists action_type varchar(100);
@@ -77,6 +111,25 @@ alter table operation_log add column if not exists detail text;
 alter table operation_log add column if not exists request_id varchar(100);
 alter table operation_log add column if not exists client_ip varchar(64);
 alter table operation_log add column if not exists created_at timestamp default now();
+
+do $$
+begin
+    if exists (select 1 from information_schema.columns where table_name = 'operation_log' and column_name = 'operation_type') then
+        execute 'alter table operation_log alter column operation_type drop not null';
+    end if;
+    if exists (select 1 from information_schema.columns where table_name = 'operation_log' and column_name = 'operator_id') then
+        execute 'alter table operation_log alter column operator_id drop not null';
+    end if;
+    if exists (select 1 from information_schema.columns where table_name = 'operation_log' and column_name = 'operation_summary') then
+        execute 'alter table operation_log alter column operation_summary drop not null';
+    end if;
+    if exists (select 1 from information_schema.columns where table_name = 'operation_log' and column_name = 'request_ip') then
+        execute 'alter table operation_log alter column request_ip drop not null';
+    end if;
+    if exists (select 1 from information_schema.columns where table_name = 'operation_log' and column_name = 'user_agent') then
+        execute 'alter table operation_log alter column user_agent drop not null';
+    end if;
+end $$;
 
 create index if not exists idx_generation_scheme_clan on generation_scheme(clan_id);
 create index if not exists idx_generation_word_scheme on generation_word(scheme_id);
@@ -103,6 +156,7 @@ create or replace function seed_demo_clan(
     p_base_year int
 ) returns void as $$
 declare
+    v_existing_clan_id bigint;
     v_clan_id bigint;
     v_branch_a_id bigint;
     v_branch_b_id bigint;
@@ -115,7 +169,7 @@ declare
     v_spouse_a_ids bigint[] := array[]::bigint[];
     v_spouse_b_ids bigint[] := array[]::bigint[];
     v_generation_count int := array_length(p_words, 1);
-    v_family_generation_count int := array_length(p_spouse_a_names, 1);
+    v_family_generation_count int := least(array_length(p_spouse_a_names, 1), v_generation_count - 1);
     g int;
     v_birth_year int;
     v_is_living boolean;
@@ -124,8 +178,36 @@ declare
     v_epitaph text;
     v_person_code text;
 begin
-    if exists (select 1 from clan where clan_code = p_clan_code) then
-        return;
+    select id into v_existing_clan_id from clan where clan_code = p_clan_code;
+    if v_existing_clan_id is not null then
+        update clan set ancestor_person_id = null where id = v_existing_clan_id;
+        update branch set founder_person_id = null where clan_id = v_existing_clan_id;
+
+        if to_regclass('public.member_role') is not null and to_regclass('public.clan_member') is not null then
+            execute 'delete from member_role where member_id in (select id from clan_member where clan_id = $1)' using v_existing_clan_id;
+        end if;
+        if to_regclass('public.clan_member') is not null then
+            execute 'delete from clan_member where clan_id = $1' using v_existing_clan_id;
+        end if;
+        if to_regclass('public.review_task') is not null then
+            execute 'delete from review_task where clan_id = $1' using v_existing_clan_id;
+        end if;
+        if to_regclass('public.revision') is not null then
+            execute 'delete from revision where clan_id = $1' using v_existing_clan_id;
+        end if;
+        if to_regclass('public.attachment') is not null then
+            execute 'delete from attachment where clan_id = $1' using v_existing_clan_id;
+        end if;
+
+        delete from source_binding where clan_id = v_existing_clan_id;
+        delete from source where clan_id = v_existing_clan_id;
+        delete from operation_log where clan_id = v_existing_clan_id;
+        delete from relationship where clan_id = v_existing_clan_id;
+        delete from generation_word where scheme_id in (select id from generation_scheme where clan_id = v_existing_clan_id);
+        delete from generation_scheme where clan_id = v_existing_clan_id;
+        delete from person where clan_id = v_existing_clan_id;
+        delete from branch where clan_id = v_existing_clan_id;
+        delete from clan where id = v_existing_clan_id;
     end if;
 
     insert into clan (
