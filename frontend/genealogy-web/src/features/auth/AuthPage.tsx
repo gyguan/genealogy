@@ -6,7 +6,8 @@ type Props = { onChanged: () => void; notify: (data: unknown, error?: boolean) =
 
 const demoAccounts = [
   { username: 'demo_admin', password: 'Admin@123456', label: '演示管理员', desc: '拥有两个演示宗族的宗族管理员权限' },
-  { username: 'demo_editor', password: 'Demo@123456', label: '演示编辑', desc: '拥有两个演示宗族的编辑权限' }
+  { username: 'demo_editor', password: 'Demo@123456', label: '演示编辑', desc: '拥有两个演示宗族的编辑权限' },
+  { username: 'demo_viewer', password: 'Viewer@123456', label: '演示查看者', desc: '仅查看族谱、人物档案、世系图谱和来源资料' }
 ];
 
 export function AuthPage({ onChanged, notify, standalone = false }: Props) {
@@ -87,7 +88,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
           type="info"
           showIcon
           message="测试账号"
-          description="推荐使用 demo_admin / Admin@123456 登录，可直接维护两个预置演示宗族。"
+          description="推荐使用 demo_admin / Admin@123456 登录管理；使用 demo_viewer / Viewer@123456 验证查看角色。"
         />
         {result ? <Alert className="auth-result" type="success" showIcon message={(result as any)?.message || '操作成功'} /> : null}
       </Card>
