@@ -308,7 +308,6 @@ export function LineageTreeProductPage({ notify }: Props) {
         <div className="lineage-search-grid">
           <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="宗族ID" /></Field>
           <Field label="搜索人物"><input value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="输入姓名、谱名、字号" /></Field>
-          <Field label="中心人物"><select value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)}><option value="">请选择</option>{people.map(person => <option key={person.id} value={person.id}>{person.name} · {person.generation} · {person.branchName}</option>)}</select></Field>
           <Field label="展开深度"><select value={depth} onChange={e => setDepth(e.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
           <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button></Actions>
         </div>
