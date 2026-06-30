@@ -1,49 +1,135 @@
 import { useState } from 'react';
+import { Alert, Button, Card, Divider, Form, Input, Space, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
-import { Actions, Field } from '../../shared/ui/Form';
-import { Panel } from '../../shared/ui/Panel';
-import { ResultNotice } from '../../shared/ui/ResultNotice';
 
-type Props = { onChanged: () => void; notify: (data: unknown, error?: boolean) => void };
+type Props = { onChanged: () => void; notify: (data: unknown, error?: boolean) => void; standalone?: boolean };
 
-export function AuthPage({ onChanged, notify }: Props) {
-  const [username, setUsername] = useState('');
+const demoAccounts = [
+  { username: 'demo_admin', password: 'Admin@123456', label: '演示管理员', desc: '拥有两个演示宗族的宗族管理员权限' },
+  { username: 'demo_editor', password: 'Demo@123456', label: '演示编辑', desc: '拥有两个演示宗族的编辑权限' }
+];
+
+export function AuthPage({ onChanged, notify, standalone = false }: Props) {
+  const [username, setUsername] = useState('demo_admin');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('Mvp1@123456');
-  const [loginName, setLoginName] = useState('');
-  const [loginPassword, setLoginPassword] = useState('Mvp1@123456');
+  const [loginName, setLoginName] = useState('demo_admin');
+  const [loginPassword, setLoginPassword] = useState('Admin@123456');
   const [result, setResult] = useState<unknown>();
+  const [loading, setLoading] = useState(false);
 
   async function register() {
-    const data: any = await apiClient.post('/auth/register', { username, displayName, password });
-    const notice = { message: '账号注册成功', id: data?.id };
-    setResult(notice);
-    notify(notice);
+    setLoading(true);
+    try {
+      const data: any = await apiClient.post('/auth/register', { username, displayName, password });
+      const notice = { message: '账号注册成功', id: data?.id };
+      setResult(notice);
+      notify(notice);
+    } catch (error) {
+      notify({ message: (error as Error).message || '注册失败' }, true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function login() {
-    const data: any = await apiClient.post('/auth/login', { username: loginName, password: loginPassword });
-    apiClient.setToken(data.accessToken);
-    onChanged();
-    const notice = { message: '登录成功' };
-    setResult(notice);
-    notify(notice);
+    setLoading(true);
+    try {
+      const data: any = await apiClient.post('/auth/login', { username: loginName, password: loginPassword });
+      apiClient.setToken(data.accessToken);
+      onChanged();
+      const notice = { message: `登录成功：${data.user?.displayName || loginName}` };
+      setResult(notice);
+      notify(notice);
+    } catch (error) {
+      notify({ message: (error as Error).message || '登录失败' }, true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function useDemo(account: typeof demoAccounts[number]) {
+    setLoginName(account.username);
+    setLoginPassword(account.password);
+  }
+
+  const content = (
+    <div className="auth-layout">
+      <div className="auth-hero-card">
+        <Typography.Text type="secondary">Genealogy</Typography.Text>
+        <Typography.Title level={2}>族谱管理平台</Typography.Title>
+        <Typography.Paragraph type="secondary">
+          登录后可维护宗族、人物档案、世系关系、来源证据、审核任务和关键事件时间轴。
+        </Typography.Paragraph>
+        <div className="auth-demo-list">
+          {demoAccounts.map(account => (
+            <button key={account.username} onClick={() => useDemo(account)}>
+              <strong>{account.label}</strong>
+              <span>{account.username} / {account.password}</span>
+              <em>{account.desc}</em>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Card className="auth-card" title="账号登录">
+        <Form layout="vertical">
+          <Form.Item label="用户名">
+            <Input value={loginName} onChange={e => setLoginName(e.target.value)} placeholder="请输入用户名" />
+          </Form.Item>
+          <Form.Item label="密码">
+            <Input.Password value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="请输入密码" onPressEnter={login} />
+          </Form.Item>
+          <Button type="primary" block loading={loading} onClick={login}>登录系统</Button>
+        </Form>
+        <Alert
+          className="auth-tip"
+          type="info"
+          showIcon
+          message="测试账号"
+          description="推荐使用 demo_admin / Admin@123456 登录，可直接维护两个预置演示宗族。"
+        />
+        {result ? <Alert className="auth-result" type="success" showIcon message={(result as any)?.message || '操作成功'} /> : null}
+      </Card>
+
+      <Card className="auth-card auth-register-card" title="注册账号">
+        <Form layout="vertical">
+          <Form.Item label="用户名">
+            <Input value={username} onChange={e => setUsername(e.target.value)} placeholder="如 zhang_admin" />
+          </Form.Item>
+          <Form.Item label="显示名">
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="如 张氏修谱管理员" />
+          </Form.Item>
+          <Form.Item label="密码">
+            <Input.Password value={password} onChange={e => setPassword(e.target.value)} placeholder="不少于 8 位" />
+          </Form.Item>
+          <Space>
+            <Button loading={loading} onClick={register}>注册</Button>
+            <Typography.Text type="secondary">注册后可创建新宗族并成为管理员</Typography.Text>
+          </Space>
+        </Form>
+      </Card>
+    </div>
+  );
+
+  if (standalone) {
+    return (
+      <div className="auth-page-shell">
+        <div className="auth-page-inner">
+          {content}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="page-grid two">
-      <Panel title="注册账号" description="注册后可登录创建宗族，创建者会自动成为宗族管理员。">
-        <Field label="用户名"><input value={username} onChange={e => setUsername(e.target.value)} /></Field>
-        <Field label="显示名"><input value={displayName} onChange={e => setDisplayName(e.target.value)} /></Field>
-        <Field label="密码"><input type="password" value={password} onChange={e => setPassword(e.target.value)} /></Field>
-        <Actions><button onClick={register}>注册</button></Actions>
-      </Panel>
-      <Panel title="账号登录" description="登录后即可访问宗族、人物、审核等业务功能。">
-        <Field label="用户名"><input value={loginName} onChange={e => setLoginName(e.target.value)} /></Field>
-        <Field label="密码"><input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} /></Field>
-        <Actions><button onClick={login}>登录</button></Actions>
-        <ResultNotice result={result} />
-      </Panel>
-    </div>
+    <>
+      <Space direction="vertical" size={4} className="auth-inline-title">
+        <Typography.Title level={4}>登录认证</Typography.Title>
+        <Typography.Text type="secondary">可使用演示账号登录，也可注册新账号。</Typography.Text>
+      </Space>
+      <Divider />
+      {content}
+    </>
   );
 }
