@@ -4,13 +4,18 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
 import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.dto.PersonUpdateRequest;
+import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.repository.PersonRepository;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +28,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/v1")
@@ -30,10 +38,12 @@ public class PersonController {
 
     private final PersonApplicationService personApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final PersonRepository personRepository;
 
-    public PersonController(PersonApplicationService personApplicationService, AuthorizationApplicationService authorizationApplicationService) {
+    public PersonController(PersonApplicationService personApplicationService, AuthorizationApplicationService authorizationApplicationService, PersonRepository personRepository) {
         this.personApplicationService = personApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.personRepository = personRepository;
     }
 
     @PostMapping("/clans/{clanId}/persons")
@@ -43,6 +53,9 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
+        if (!Boolean.TRUE.equals(request.confirmDuplicate()) && duplicateCount(clanId, request) > 0) {
+            throw new BusinessException("PERSON_DUPLICATE_CONFIRM_REQUIRED", "发现疑似重复人物，请确认后再创建");
+        }
         return ApiResponse.success(personApplicationService.create(clanId, request, actorId));
     }
 
@@ -124,5 +137,20 @@ public class PersonController {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         personApplicationService.delete(id, actorId);
         return ApiResponse.success();
+    }
+
+    private long duplicateCount(Long clanId, PersonCreateRequest request) {
+        Specification<PersonEntity> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
+            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), request.name().trim().toLowerCase()));
+            if (request.branchId() != null) predicates.add(criteriaBuilder.equal(root.get("branchId"), request.branchId()));
+            if (request.generationNo() != null) predicates.add(criteriaBuilder.equal(root.get("generationNo"), request.generationNo()));
+            if (request.generationWord() != null && !request.generationWord().isBlank()) predicates.add(criteriaBuilder.equal(root.get("generationWord"), request.generationWord().trim()));
+            if (request.birthDate() != null) predicates.add(criteriaBuilder.equal(root.get("birthDate"), request.birthDate()));
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+        return personRepository.count(spec);
     }
 }
