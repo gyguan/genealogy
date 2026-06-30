@@ -33,11 +33,13 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 ```text
 后端：Java 17 + Spring Boot 3.x
 数据库：PostgreSQL
-ORM：MyBatis Plus / Spring Data JPA
+ORM：Spring Data JPA，按模块需要可补充 MyBatis / MyBatis Plus
 认证：JWT
 文件：本地存储起步，预留 MinIO
-前端：Vue 3 / React
-原型：原生 HTML + CSS + JavaScript
+前端：React + TypeScript + Vite
+前端设计体系：Ant Design 5.x
+前端组件原则：统一优先使用 Ant Design 组件和设计模式；仅当 Ant Design 无法满足图谱、树谱画布、族谱业务可视化等特殊场景时，才允许自定义组件或样式扩展
+原型：prototype 目录保留早期 HTML 原型；正式前端以 React + Ant Design 为准
 ```
 
 ## MVP 1 建设原则
