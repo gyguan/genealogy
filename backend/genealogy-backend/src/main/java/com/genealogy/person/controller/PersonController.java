@@ -72,7 +72,8 @@ public class PersonController {
             PageQuery pageQuery,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        PersonSearchQuery query = new PersonSearchQuery(clanId, branchId, keyword, name, gender, generationNo, generationWord, dataStatus);
+        String effectiveDataStatus = dataStatus == null || dataStatus.isBlank() ? "official" : dataStatus;
+        PersonSearchQuery query = new PersonSearchQuery(clanId, branchId, keyword, name, gender, generationNo, generationWord, effectiveDataStatus);
         return ApiResponse.success(personApplicationService.search(
                 query,
                 pageQuery.normalizedPageNo(),
