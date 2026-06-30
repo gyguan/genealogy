@@ -258,7 +258,7 @@ public class PersonCsvApplicationService {
                 read(headerIndex, cells, "birthPlace"), read(headerIndex, cells, "residencePlace"), read(headerIndex, cells, "occupation"),
                 read(headerIndex, cells, "education"), read(headerIndex, cells, "titleOrHonor"), read(headerIndex, cells, "biography"),
                 read(headerIndex, cells, "tombPlace"), read(headerIndex, cells, "epitaph"), parseBoolean(read(headerIndex, cells, "hasDescendant")),
-                read(headerIndex, cells, "lineageStatus"), read(headerIndex, cells, "privacyLevel")
+                read(headerIndex, cells, "lineageStatus"), read(headerIndex, cells, "privacyLevel"), true
         );
     }
 
