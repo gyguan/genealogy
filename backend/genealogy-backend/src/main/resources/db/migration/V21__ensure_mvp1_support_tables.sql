@@ -97,8 +97,8 @@ alter table clan_member add column if not exists created_at timestamp default no
 
 create table if not exists role (
     id bigserial primary key,
-    role_code varchar(64) not null unique,
-    role_name varchar(100) not null,
+    role_code varchar(64),
+    role_name varchar(100),
     description varchar(255)
 );
 alter table role add column if not exists role_code varchar(64);
@@ -107,8 +107,8 @@ alter table role add column if not exists description varchar(255);
 
 create table if not exists member_role (
     id bigserial primary key,
-    member_id bigint not null references clan_member(id),
-    role_id bigint not null references role(id),
+    member_id bigint references clan_member(id),
+    role_id bigint references role(id),
     scope_type varchar(32) not null default 'clan',
     scope_id bigint,
     created_at timestamp not null default now()
@@ -154,8 +154,7 @@ create index if not exists idx_revision_target on revision(target_type, target_i
 create index if not exists idx_review_task_reviewer on review_task(reviewer_id, status);
 create index if not exists idx_clan_member_clan on clan_member(clan_id);
 create index if not exists idx_member_role_member on member_role(member_id);
-
-create unique index if not exists uk_role_code on role(role_code) where role_code is not null;
+create index if not exists idx_role_code on role(role_code);
 
 insert into role (role_code, role_name, description)
 select 'clan_admin', '宗族管理员', '管理宗族空间、成员权限、主数据和审核配置'
