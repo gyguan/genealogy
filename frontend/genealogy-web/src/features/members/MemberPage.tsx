@@ -38,6 +38,7 @@ type MemberRow = {
 };
 
 const manageRoleCodes = ['clan_admin', 'branch_admin', 'editor', 'reviewer'];
+const memberManagementBase = '/member-management';
 
 function roleTypeText(roleType?: string) {
   return roleType === 'view' ? '查看角色' : '管理角色';
@@ -83,8 +84,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   async function loadBase() {
     await run(async () => {
       const [userRes, roleRes] = await Promise.all([
-        apiClient.get('/users').catch(() => []),
-        apiClient.get('/roles').catch(() => [])
+        apiClient.get(`${memberManagementBase}/users`).catch(() => []),
+        apiClient.get(`${memberManagementBase}/roles`).catch(() => [])
       ]);
       const nextUsers = toRecordList(userRes) as UserRow[];
       const nextRoles = toRecordList(roleRes) as RoleRow[];
@@ -104,7 +105,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       notify({ message: '请先输入宗族ID' }, true);
       return;
     }
-    const res = await apiClient.get(`/clans/${workspace.clanId}/members`);
+    const res = await apiClient.get(`${memberManagementBase}/clans/${workspace.clanId}/members`);
     setMembers(toRecordList(res) as MemberRow[]);
   }
 
@@ -114,7 +115,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!userId) throw new Error('请选择用户');
       if (!roleCode) throw new Error('请选择角色');
       const selectedUser = users.find(user => String(user.id) === userId);
-      const res: any = await apiClient.post(`/clans/${workspace.clanId}/members`, {
+      const res: any = await apiClient.post(`${memberManagementBase}/clans/${workspace.clanId}/members`, {
         userId: Number(userId),
         roleCode,
         memberName: memberName.trim() || selectedUser?.displayName || selectedUser?.username || `用户${userId}`,
@@ -129,7 +130,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function updateRole(member: MemberRow, nextRoleCode: string) {
     await run(async () => {
-      await apiClient.put(`/clans/${workspace.clanId}/members/${member.id}`, {
+      await apiClient.put(`${memberManagementBase}/clans/${workspace.clanId}/members/${member.id}`, {
         roleCode: nextRoleCode,
         memberStatus: member.memberStatus || 'active',
         scopeType: member.scopeType || 'clan',
