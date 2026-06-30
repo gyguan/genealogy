@@ -1,0 +1,46 @@
+body { background: #f4f7fb; }
+
+.antd-admin-layout { min-height: 100vh; background: #f4f7fb; }
+.antd-sidebar { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid #edf0f5; background: #fff !important; padding: 16px 10px; }
+.antd-brand { padding: 8px 12px 18px; margin-bottom: 8px; }
+.antd-brand .ant-typography { margin: 0; }
+.antd-content { padding: 18px 22px 28px; min-width: 0; background: #f4f7fb; }
+
+.ant-card.panel,
+.ant-card.antd-panel { padding: 0 !important; border-radius: 14px; box-shadow: 0 8px 22px rgba(16, 24, 40, .05); }
+.ant-card.panel .ant-card-head { min-height: 44px; padding: 0 16px; }
+.ant-card.panel .ant-card-body { padding: 16px; }
+.panel-description { margin-bottom: 12px !important; }
+
+.antd-field.ant-form-item { margin-bottom: 8px; }
+.antd-field .ant-form-item-label { padding-bottom: 4px; }
+.antd-field .ant-form-item-label > label { height: auto; color: #344054; font-size: 12px; font-weight: 700; }
+.antd-field .ant-form-item-extra { font-size: 12px; color: #667085; }
+.antd-field .ant-input,
+.antd-field .ant-select-selector { min-height: 36px; }
+.antd-actions { margin-top: 0; }
+
+button.ant-btn { border-radius: 8px !important; padding: 4px 15px !important; font-weight: 500 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; border: 1px solid #d9d9d9 !important; box-shadow: none !important; }
+button.ant-btn-primary { background: #1570ef !important; color: #fff !important; border-color: #1570ef !important; }
+button.ant-btn-primary:hover { background: #175cd3 !important; border-color: #175cd3 !important; color: #fff !important; }
+button.ant-btn-default:hover { color: #1570ef !important; border-color: #1570ef !important; }
+button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.antd-table-wrap { border: 0; border-radius: 12px; overflow: auto; }
+.antd-table-wrap .table-hint { display: block; padding: 0 0 8px; background: transparent; border-bottom: 0; }
+.antd-table-wrap .ant-table { border-radius: 12px; overflow: hidden; }
+.antd-table-wrap .ant-table-tbody > tr.clickable { cursor: pointer; }
+.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td { background: #eff8ff; }
+.antd-empty { border: 1px dashed #d0d5dd; background: #f9fafb; border-radius: 12px; padding: 18px; }
+
+.antd-detail-card { margin-top: 0; padding: 0 !important; background: #fff; }
+.antd-detail-card .ant-card-body { padding: 12px; }
+
+.antd-toast-stack { position: fixed; top: 22px; right: 24px; z-index: 1200; width: 360px; }
+
+.system-management .ant-tabs-nav { margin-bottom: 14px; }
+
+@media (max-width: 760px) {
+  body { min-width: 0; }
+  .antd-content { padding: 12px; }
+}
