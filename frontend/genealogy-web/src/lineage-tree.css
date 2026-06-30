@@ -1,57 +1,57 @@
-.lineage-page { display: grid; gap: 14px; }
+.lineage-page { display: grid; gap: 16px; }
 
-.lineage-search-grid { display: grid; grid-template-columns: 130px minmax(220px, 1fr) minmax(260px, 1.2fr) 120px auto; gap: 10px 12px; align-items: end; }
+.lineage-search-grid { display: grid; grid-template-columns: 130px minmax(220px, 1fr) minmax(260px, 1.2fr) 120px auto; gap: 12px; align-items: end; }
 .lineage-search-grid .field { margin-bottom: 0; }
 .lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }
-.lineage-search-grid input, .lineage-search-grid select { min-height: 36px; padding: 8px 10px; border-radius: 10px; }
+.lineage-search-grid input, .lineage-search-grid select { min-height: 36px; padding: 8px 10px; border-radius: 8px; }
 .lineage-search-grid .actions { margin: 0; align-items: end; }
 .lineage-search-grid .actions button { min-height: 36px; padding: 8px 14px; }
 .lineage-search-results { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.lineage-search-results button { display: grid; gap: 3px; padding: 8px 10px; border-radius: 12px; background: #f2f4f7; color: #344054; text-align: left; }
-.lineage-search-results button.active { background: #1570ef; color: #fff; }
-.lineage-search-results span { font-size: 11px; opacity: .78; }
+.lineage-search-results button { display: grid; gap: 3px; padding: 7px 12px; border-radius: 8px; background: #fff; color: rgba(0,0,0,.88); text-align: left; box-shadow: none; transition: all .2s; }
+.lineage-search-results button.active { background: #f5faff; color: #1677ff; }
+.lineage-search-results span { font-size: 12px; color: rgba(0,0,0,.45); opacity: 1; }
 
-.lineage-tree-card { background: #fff; border: 1px solid #e4e7ec; border-radius: 22px; box-shadow: 0 14px 34px rgba(16, 24, 40, .06); padding: 18px; overflow-x: auto; }
+.lineage-tree-card { background: #fff; border: 1px solid #f0f0f0; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.03); padding: 16px; overflow-x: auto; }
 .lineage-tree-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
-.lineage-tree-title span { color: #175cd3; font-weight: 900; font-size: 12px; }
-.lineage-tree-title h3 { margin: 6px 0 0; font-size: 22px; }
-.lineage-tree-canvas { min-width: 780px; display: grid; justify-items: center; gap: 10px; padding: 12px; border-radius: 20px; background: linear-gradient(180deg, #f8fafc, #fff); }
+.lineage-tree-title span { color: #1677ff; font-weight: 500; font-size: 12px; }
+.lineage-tree-title h3 { margin: 4px 0 0; font-size: 18px; font-weight: 600; color: rgba(0,0,0,.88); }
+.lineage-tree-canvas { min-width: 780px; display: grid; justify-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: #fafafa; border: 1px solid #f0f0f0; }
 .lineage-tree-layer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; }
 .lineage-tree-layer--ancestors { max-width: 900px; }
-.lineage-tree-layer--center { align-items: center; gap: 18px; }
-.lineage-tree-line { width: 2px; height: 34px; background: #b2ccff; position: relative; }
-.lineage-tree-line::before, .lineage-tree-line::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 150px; height: 1px; background: #d1e0ff; }
+.lineage-tree-layer--center { align-items: center; gap: 16px; }
+.lineage-tree-line { width: 1px; height: 32px; background: #91caff; position: relative; }
+.lineage-tree-line::before, .lineage-tree-line::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 150px; height: 1px; background: #d6e4ff; }
 .lineage-tree-line::before { top: 0; }
 .lineage-tree-line::after { bottom: 0; }
-.lineage-tree-node { flex: 0 0 156px; min-height: 132px; display: grid; justify-items: center; gap: 6px; padding: 13px; border: 2px solid #e4e7ec; border-radius: 18px; background: #fff; color: #1d2939; box-shadow: 0 12px 26px rgba(16, 24, 40, .07); text-align: center; }
-.lineage-tree-node:hover { border-color: #84caff; transform: translateY(-1px); }
-.lineage-tree-node.active { border-color: #1570ef; background: #eff8ff; box-shadow: 0 18px 42px rgba(21,112,239,.2); }
-.lineage-tree-node strong { font-size: 16px; }
-.lineage-tree-node em, .lineage-tree-node small { font-style: normal; color: #667085; font-size: 12px; }
-.lineage-avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #1570ef, #7c3aed); font-weight: 900; }
-.lineage-empty { display: grid; place-items: center; min-height: 96px; width: 100%; padding: 18px; text-align: center; border: 1px dashed #d0d5dd; border-radius: 18px; background: rgba(255,255,255,.72); color: #667085; line-height: 1.6; }
-.lineage-spouse-tree { display: grid; gap: 8px; padding: 12px; border: 1px dashed #b2ddff; border-radius: 18px; background: #fff; }
-.lineage-spouse-tree b { color: #475467; font-size: 13px; }
+.lineage-tree-node { flex: 0 0 156px; min-height: 124px; display: grid; justify-items: center; gap: 6px; padding: 12px; border: 1px solid #f0f0f0; border-radius: 12px; background: #fff; color: rgba(0,0,0,.88); box-shadow: 0 1px 2px rgba(0,0,0,.03); text-align: center; transition: all .2s; }
+.lineage-tree-node:hover { border-color: #91caff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(22,119,255,.08); }
+.lineage-tree-node.active { border-color: #1677ff; background: #f5faff; box-shadow: 0 6px 16px rgba(22,119,255,.10); }
+.lineage-tree-node strong { font-size: 15px; font-weight: 600; }
+.lineage-tree-node em, .lineage-tree-node small { font-style: normal; color: rgba(0,0,0,.45); font-size: 12px; }
+.lineage-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; color: #fff; background: #1677ff; font-weight: 600; }
+.lineage-empty { display: grid; place-items: center; min-height: 88px; width: 100%; padding: 16px; text-align: center; border: 1px dashed #d9d9d9; border-radius: 8px; background: #fff; color: rgba(0,0,0,.45); line-height: 1.6; }
+.lineage-spouse-tree { display: grid; gap: 8px; padding: 12px; border: 1px dashed #91caff; border-radius: 12px; background: #fff; }
+.lineage-spouse-tree b { color: rgba(0,0,0,.65); font-size: 13px; font-weight: 500; }
 .lineage-tree-children { display: grid; justify-items: center; gap: 16px; width: 100%; }
 .lineage-tree-generation { display: grid; gap: 10px; justify-items: center; width: 100%; }
-.lineage-tree-generation > b { display: inline-grid; place-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; background: #dcfae6; color: #027a48; }
+.lineage-tree-generation > b { display: inline-grid; place-items: center; min-height: 28px; padding: 0 12px; border-radius: 999px; background: #f6ffed; color: #52c41a; font-size: 12px; font-weight: 500; }
 .lineage-tree-generation > div { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; position: relative; }
-.lineage-tree-generation > div::before { content: ''; position: absolute; top: -9px; left: 12%; right: 12%; height: 1px; background: #d1e0ff; }
+.lineage-tree-generation > div::before { content: ''; position: absolute; top: -9px; left: 12%; right: 12%; height: 1px; background: #d6e4ff; }
 
-.lineage-person-pop-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(15, 23, 42, .36); backdrop-filter: blur(2px); }
-.lineage-person-pop { position: relative; width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border-radius: 22px; border: 1px solid #e4e7ec; background: #fff; padding: 20px; box-shadow: 0 24px 64px rgba(15, 23, 42, .24); }
-.lineage-pop-close { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 999px; background: #f2f4f7; color: #344054; font-size: 20px; }
+.lineage-person-pop-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .45); }
+.lineage-person-pop { position: relative; width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border-radius: 12px; border: 1px solid #f0f0f0; background: #fff; padding: 20px; box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.lineage-pop-close { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: #f5f5f5; color: rgba(0,0,0,.65); font-size: 18px; }
 .lineage-pop-head { display: flex; gap: 14px; align-items: center; padding-right: 40px; margin-bottom: 16px; }
-.lineage-pop-head .lineage-avatar { width: 56px; height: 56px; font-size: 22px; }
-.lineage-pop-head h3 { margin: 0 0 6px; font-size: 22px; }
-.lineage-pop-head p { margin: 0; color: #667085; }
-.lineage-pop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.lineage-pop-grid div { padding: 12px; border: 1px solid #eef2f6; border-radius: 14px; background: #fcfcfd; }
-.lineage-pop-grid span { display: block; margin-bottom: 5px; color: #667085; font-size: 12px; font-weight: 800; }
-.lineage-pop-grid strong { color: #1d2939; word-break: break-word; }
-.lineage-pop-relations { margin-top: 14px; padding: 14px; border: 1px solid #eef2f6; border-radius: 16px; background: #fcfcfd; }
-.lineage-pop-relations h4 { margin: 0 0 8px; }
-.lineage-pop-relations p { margin: 6px 0; color: #475467; line-height: 1.55; }
+.lineage-pop-head .lineage-avatar { width: 48px; height: 48px; font-size: 20px; }
+.lineage-pop-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.lineage-pop-head p { margin: 0; color: rgba(0,0,0,.45); }
+.lineage-pop-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lineage-pop-grid div { padding: 12px; border: 1px solid #f0f0f0; border-radius: 8px; background: #fafafa; }
+.lineage-pop-grid span { display: block; margin-bottom: 4px; color: rgba(0,0,0,.45); font-size: 12px; font-weight: 500; }
+.lineage-pop-grid strong { color: rgba(0,0,0,.88); word-break: break-word; }
+.lineage-pop-relations { margin-top: 14px; padding: 14px; border: 1px solid #f0f0f0; border-radius: 8px; background: #fafafa; }
+.lineage-pop-relations h4 { margin: 0 0 8px; font-weight: 600; }
+.lineage-pop-relations p { margin: 6px 0; color: rgba(0,0,0,.65); line-height: 1.55; }
 .lineage-person-pop .actions { margin-top: 14px; }
 
 @media (max-width: 1200px) {
