@@ -17,6 +17,7 @@
 .wizard-context { display: none !important; }
 .wizard-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; margin-bottom: 8px; }
 .wizard-form-grid .field { margin-bottom: 4px; }
+.wizard-form-grid:has(input[placeholder="例如：江夏堂黄氏宗族"]) + .actions .secondary { display: none; }
 .wizard-current { margin: 10px 0 16px; padding: 12px; border-radius: 8px; background: #fafafa; border: 1px solid #f0f0f0; color: rgba(0,0,0,.65); }
 .wizard-current strong { color: #1677ff; }
 
