@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Empty, Table, Typography } from 'antd';
 
 export type Column<T> = {
   key: string;
@@ -17,23 +18,29 @@ export function toRecordList<T = any>(data: any): T[] {
 
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const rows = toRecordList<T>(data);
-  if (!rows.length) return <div className="empty">{empty}</div>;
+  if (!rows.length) return <Empty className="empty antd-empty" description={empty} />;
 
   return (
-    <div className="table-wrap">
-      {onSelect ? <div className="table-hint">点击列表行可查看详情或执行后续操作</div> : null}
-      <table className="data-table">
-        <thead>
-          <tr>{columns.map(column => <th key={column.key}>{column.title}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id || index} onClick={() => onSelect?.(row)} className={onSelect ? 'clickable' : ''} title={onSelect ? '点击查看详情' : undefined}>
-              {columns.map(column => <td key={column.key}>{column.render ? column.render(row) : String(row[column.key] ?? '')}</td>)}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="table-wrap antd-table-wrap">
+      {onSelect ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
+      <Table<T>
+        size="small"
+        bordered
+        rowKey={(row, index) => String(row.id || row.personId || index)}
+        dataSource={rows}
+        pagination={false}
+        columns={columns.map(column => ({
+          key: column.key,
+          dataIndex: column.key,
+          title: column.title,
+          render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
+        }))}
+        onRow={row => ({
+          onClick: () => onSelect?.(row),
+          className: onSelect ? 'clickable' : '',
+          title: onSelect ? '点击查看详情' : undefined
+        })}
+      />
     </div>
   );
 }
