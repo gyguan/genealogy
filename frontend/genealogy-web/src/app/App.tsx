@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ConfigProvider, Layout, Menu, Tabs, Typography, theme } from 'antd';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
@@ -19,6 +20,8 @@ import {
 } from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
+
+const { Sider, Content } = Layout;
 
 const navItems = [
   ['home', '族谱首页', '统计概览'],
@@ -56,9 +59,20 @@ function getMessage(data: unknown, fallback: string) {
 
 export function App() {
   return (
-    <WorkspaceProvider>
-      <AppShell />
-    </WorkspaceProvider>
+    <ConfigProvider
+      theme={{
+        algorithm: theme.defaultAlgorithm,
+        token: {
+          colorPrimary: '#1570ef',
+          borderRadius: 10,
+          fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif'
+        }
+      }}
+    >
+      <WorkspaceProvider>
+        <AppShell />
+      </WorkspaceProvider>
+    </ConfigProvider>
   );
 }
 
@@ -119,10 +133,11 @@ function AppShell() {
       case 'culture': return <CultureProductPage />;
       case 'system': return (
         <div className="system-management">
-          <div className="system-tabs">
-            {legacyTabs.map(tab => <button key={tab[0]} className={legacyActive === tab[0] ? 'active' : ''} onClick={() => setLegacyActive(tab[0])}>{tab[1]}</button>)}
-          </div>
-          {renderLegacyPage()}
+          <Tabs
+            activeKey={legacyActive}
+            onChange={key => setLegacyActive(key as LegacyKey)}
+            items={legacyTabs.map(([key, label]) => ({ key, label, children: key === legacyActive ? renderLegacyPage() : null }))}
+          />
         </div>
       );
       default: return null;
@@ -130,21 +145,21 @@ function AppShell() {
   }
 
   return (
-    <div className="admin-layout">
-      <aside className="sidebar">
-        <div className="brand"><strong>Genealogy</strong><span>族谱管理平台</span></div>
-        <nav>
-          {navItems.map(item => (
-            <button key={item[0]} className={active === item[0] ? 'active' : ''} onClick={() => setActive(item[0])}>
-              <span>{item[1]}</span><small>{item[2]}</small>
-            </button>
-          ))}
-        </nav>
-      </aside>
-      <main className="content content--compact">
+    <Layout className="admin-layout antd-admin-layout">
+      <Sider className="sidebar antd-sidebar" width={248} breakpoint="lg" collapsedWidth={0}>
+        <div className="brand antd-brand"><Typography.Title level={4}>Genealogy</Typography.Title><Typography.Text type="secondary">族谱管理平台</Typography.Text></div>
+        <Menu
+          mode="inline"
+          theme="light"
+          selectedKeys={[active]}
+          onClick={info => setActive(info.key as ViewKey)}
+          items={navItems.map(([key, label]) => ({ key, label }))}
+        />
+      </Sider>
+      <Content className="content content--compact antd-content">
         {renderPage()}
-      </main>
+      </Content>
       <ToastStack items={toasts} onClose={closeToast} />
-    </div>
+    </Layout>
   );
 }
