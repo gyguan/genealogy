@@ -5,7 +5,7 @@
 MVP 1 建议采用模块化单体架构，先保证领域模型、审核流程、权限模型和数据可信链路稳定，再考虑微服务拆分。
 
 ```text
-Web / H5
+React + Ant Design Web
   ↓
 REST API
   ↓
@@ -20,13 +20,23 @@ PostgreSQL + 文件存储
 |---|---|
 | 后端 | Java 17 + Spring Boot 3.x |
 | 数据库 | PostgreSQL |
-| ORM | MyBatis Plus 或 Spring Data JPA |
+| ORM | Spring Data JPA，按模块需要可补充 MyBatis / MyBatis Plus |
 | 认证 | JWT |
 | 数据迁移 | Flyway |
 | 文件存储 | 本地存储起步，预留 MinIO |
 | API 文档 | springdoc-openapi |
 | Excel | EasyExcel |
-| 前端 | Vue 3 或 React |
+| 前端框架 | React + TypeScript + Vite |
+| 前端设计体系 | Ant Design 5.x |
+| 前端组件原则 | 统一优先使用 Ant Design 的 Layout、Menu、Tabs、Card、Form、Input、Select、Button、Table、Descriptions、Alert、Empty 等组件；除 Ant Design 无法满足的树谱画布、族谱关系可视化、特殊图表交互外，不自研基础 UI 组件 |
+
+## 前端架构原则
+
+1. **Ant Design 优先**：业务页面必须优先使用 Ant Design 组件和官方设计模式，保持中后台产品的一致性、确定性和低学习成本。
+2. **共享组件轻封装**：`shared/ui` 只做薄封装，例如统一 `Panel`、`DataTable`、`Field`、`Actions`、`DetailCard`、`ToastStack`，底层仍基于 Ant Design。
+3. **自定义组件受控**：仅在 Ant Design 无法直接满足时允许自定义，如世系树节点、树谱画布、族谱关系连线、统计条形图等业务可视化场景。
+4. **样式扩展收敛**：页面样式只补充业务布局和可视化表达，不覆盖 Ant Design 基础交互语义；全局兼容样式统一放在 `antd-bridge.css`。
+5. **组件风格一致**：统一使用白底容器、弱边框、轻阴影、标准圆角、Ant Design 默认主色和语义色。
 
 ## 后端模块
 
