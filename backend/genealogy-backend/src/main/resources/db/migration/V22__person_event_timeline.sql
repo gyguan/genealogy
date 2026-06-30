@@ -1,10 +1,11 @@
 -- Person key event timeline for archive detail pages.
 -- Idempotent schema plus derived demo events from existing person and relationship data.
+-- Keep person_event without hard foreign keys so V20 demo seed can be safely re-run and rebuild demo persons.
 
 create table if not exists person_event (
     id bigserial primary key,
-    clan_id bigint references clan(id),
-    person_id bigint references person(id),
+    clan_id bigint,
+    person_id bigint,
     event_type varchar(50),
     event_title varchar(200),
     event_date date,
@@ -37,6 +38,20 @@ alter table person_event add column if not exists created_by bigint;
 alter table person_event add column if not exists created_at timestamp default now();
 alter table person_event add column if not exists updated_at timestamp default now();
 alter table person_event add column if not exists deleted_at timestamp;
+
+do $$
+declare
+    constraint_name text;
+begin
+    for constraint_name in
+        select conname
+        from pg_constraint
+        where conrelid = 'person_event'::regclass
+          and contype = 'f'
+    loop
+        execute format('alter table person_event drop constraint if exists %I', constraint_name);
+    end loop;
+end $$;
 
 create index if not exists idx_person_event_person_date on person_event(person_id, event_date, sort_order);
 create index if not exists idx_person_event_clan on person_event(clan_id);
@@ -86,7 +101,7 @@ select
     p.id,
     'education',
     '教育经历',
-    p.birth_date + interval '18 years',
+    (p.birth_date + interval '18 years')::date,
     'year',
     p.residence_place,
     p.name || '接受' || p.education || '教育。',
@@ -121,7 +136,7 @@ select
     p.id,
     'career',
     '职业经历',
-    p.birth_date + interval '28 years',
+    (p.birth_date + interval '28 years')::date,
     'year',
     p.residence_place,
     p.name || '从事' || p.occupation || coalesce('，' || nullif(p.title_or_honor, ''), '') || '。',
@@ -156,7 +171,7 @@ select
     p.id,
     'migration',
     '居住迁徙',
-    p.birth_date + interval '30 years',
+    (p.birth_date + interval '30 years')::date,
     'year',
     p.residence_place,
     p.name || '长期居住于' || p.residence_place || '。',
@@ -192,7 +207,7 @@ select
     p.id,
     'marriage',
     '婚配',
-    coalesce(p.birth_date, other.birth_date) + interval '24 years',
+    (coalesce(p.birth_date, other.birth_date) + interval '24 years')::date,
     'year',
     coalesce(p.residence_place, other.residence_place),
     p.name || '与' || other.name || '结为配偶。',
