@@ -80,6 +80,8 @@ public record PersonCreateRequest(
         String lineageStatus,
 
         @Size(max = 32, message = "隐私级别长度不能超过32")
-        String privacyLevel
+        String privacyLevel,
+
+        Boolean confirmDuplicate
 ) {
 }
