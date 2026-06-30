@@ -9,6 +9,7 @@ import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
 import { GenerationPage } from '../features/generations/GenerationPage';
+import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
@@ -34,11 +35,11 @@ const navItems = [
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['system', '基础数据管理', '宗族、权限、字辈、关系和日志']
+  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入和日志']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
-type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'logs';
+type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'logs';
 
 const legacyTabs: [LegacyKey, string][] = [
   ['clans', '宗族'],
@@ -46,6 +47,7 @@ const legacyTabs: [LegacyKey, string][] = [
   ['branches', '支派'],
   ['generations', '字辈'],
   ['relationships', '关系'],
+  ['imports', '导入管理'],
   ['logs', '日志']
 ];
 
@@ -169,6 +171,7 @@ function AppShell() {
       case 'branches': return <BranchPage {...props} />;
       case 'generations': return <GenerationPage {...props} />;
       case 'relationships': return <RelationshipPage {...props} />;
+      case 'imports': return <ImportPage {...props} />;
       case 'logs': return <LogPage {...props} />;
       default: return null;
     }
