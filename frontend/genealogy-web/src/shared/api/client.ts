@@ -48,11 +48,25 @@ export class ApiClient {
   }
 
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body)
-    });
+    try {
+      return await this.request<T>(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body)
+      });
+    } catch (error) {
+      if (this.shouldConfirmDuplicatePerson(path, body, error)) {
+        const ok = window.confirm('发现疑似重复人物。确认仍要创建这条人物记录吗？');
+        if (ok) {
+          return this.request<T>(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...(body as Record<string, unknown>), confirmDuplicate: true })
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
@@ -75,6 +89,14 @@ export class ApiClient {
     const res = await fetch(this.resolve(path), { headers: this.authHeaders() });
     if (!res.ok) throw new Error(`下载失败：HTTP ${res.status}`);
     return res.blob();
+  }
+
+  private shouldConfirmDuplicatePerson(path: string, body: unknown, error: unknown) {
+    if (!/^\/clans\/\d+\/persons$/.test(path)) return false;
+    if (!body || typeof body !== 'object') return false;
+    if ((body as Record<string, unknown>).confirmDuplicate === true) return false;
+    const message = (error as Error)?.message || '';
+    return message.includes('疑似重复') || message.includes('PERSON_DUPLICATE_CONFIRM_REQUIRED');
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
