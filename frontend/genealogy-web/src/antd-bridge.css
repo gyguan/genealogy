@@ -27,6 +27,14 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 .auth-inline-title { width: 100%; }
 .auth-inline-title .ant-typography { margin: 0; }
 
+.member-role-page { display: grid; gap: 16px; }
+.member-role-tip { border-color: #91caff; background: #f5faff; }
+.role-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.role-card-grid .ant-card { border-color: #f0f0f0; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.role-card-grid .ant-card-head { min-height: 42px; border-bottom-color: #f0f0f0; }
+.role-card-grid .ant-card-body { display: grid; gap: 8px; }
+.role-card-grid .ant-typography { margin-bottom: 0; }
+
 .ant-card.panel,
 .ant-card.antd-panel { padding: 0 !important; border-radius: 12px; border-color: #f0f0f0; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
 .ant-card.panel .ant-card-head { min-height: 44px; padding: 0 16px; border-bottom-color: #f0f0f0; }
@@ -97,6 +105,7 @@ button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-al
 @media (max-width: 900px) {
   .auth-layout { grid-template-columns: 1fr; }
   .auth-hero-card { grid-row: auto; min-height: auto; padding: 24px; }
+  .role-card-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 760px) {
