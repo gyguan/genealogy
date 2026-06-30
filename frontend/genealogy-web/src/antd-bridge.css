@@ -112,8 +112,8 @@ button.ant-btn[disabled], button.ant-btn:disabled { opacity: .55; cursor: not-al
 .system-management .ant-tabs-nav { margin-bottom: 14px; }
 
 @media (max-width: 1400px) {
-  .archive-search-form { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-  .lineage-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .archive-search-form { grid-template-columns: 140px minmax(260px, 1fr) 140px 120px !important; }
+  .lineage-search-grid { grid-template-columns: 140px minmax(260px, 1fr) 120px auto !important; }
 }
 
 @media (max-width: 900px) {
