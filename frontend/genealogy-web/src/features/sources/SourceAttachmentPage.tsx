@@ -55,6 +55,33 @@ export function SourceAttachmentPage({ notify }: Props) {
     }
   }
 
+  async function downloadAttachment(row: Attachment) {
+    if (!row.id) return;
+    try {
+      const blob = await apiClient.download(`/source-attachments/${row.id}/content`);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = row.originalFilename || `attachment-${row.id}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      notify({ message: '附件下载已开始' });
+    } catch (error) {
+      notify({ message: (error as Error).message || '附件下载失败' }, true);
+    }
+  }
+
+  async function removeAttachment(row: Attachment) {
+    if (!row.id) return;
+    if (!window.confirm(`确认删除附件「${row.originalFilename || row.id}」吗？`)) return;
+    try {
+      await apiClient.delete(`/source-attachments/${row.id}`);
+      notify({ message: '附件已删除' });
+      await loadAttachments();
+    } catch (error) {
+      notify({ message: (error as Error).message || '附件删除失败' }, true);
+    }
+  }
+
   return (
     <div className="source-attachment-page">
       <Panel title="来源附件上传" description="为族谱原文、照片、墓碑、地方志、口述资料等来源上传原始附件，作为审核和入谱证据。">
@@ -78,7 +105,8 @@ export function SourceAttachmentPage({ notify }: Props) {
             { key: 'fileSize', title: '大小' },
             { key: 'uploadStatus', title: '状态' },
             { key: 'checksum', title: 'SHA-256' },
-            { key: 'createdAt', title: '上传时间' }
+            { key: 'createdAt', title: '上传时间' },
+            { key: 'actions', title: '操作', render: row => <span className="row-action-buttons"><button onClick={() => void downloadAttachment(row)}>下载</button><button className="danger" onClick={() => void removeAttachment(row)}>删除</button></span> }
           ]}
           empty="暂无附件"
         />
