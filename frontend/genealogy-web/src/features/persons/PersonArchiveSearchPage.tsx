@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Empty, Timeline, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
@@ -48,6 +49,19 @@ type EditForm = {
   dataStatus: string;
 };
 
+type PersonEvent = {
+  id: number | string;
+  eventType?: string;
+  eventTitle?: string;
+  eventDate?: string;
+  eventDatePrecision?: string;
+  eventPlace?: string;
+  eventDescription?: string;
+  sourceType?: string;
+  sourceId?: number | string;
+  dataStatus?: string;
+};
+
 const PAGE_SIZE = 20;
 const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '' };
 
@@ -92,6 +106,28 @@ function asString(value: unknown) {
 
 function asDate(value: unknown) {
   return asString(value).slice(0, 10);
+}
+
+function eventTypeText(type?: string) {
+  const dict: Record<string, string> = {
+    birth: '出生',
+    education: '教育',
+    career: '职业',
+    migration: '迁徙',
+    marriage: '婚配',
+    child_birth: '子女',
+    death: '逝世',
+    burial: '墓葬'
+  };
+  return dict[type || ''] || type || '事件';
+}
+
+function eventDateText(event: PersonEvent) {
+  const date = display(event.eventDate, '时间未详');
+  const precision = event.eventDatePrecision;
+  if (precision === 'year') return `${date.slice(0, 4)}年`;
+  if (precision === 'month') return `${date.slice(0, 7)}`;
+  return date;
 }
 
 function toEditForm(person: any): EditForm {
@@ -181,6 +217,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [relationships, setRelationships] = useState<unknown>();
   const [sources, setSources] = useState<unknown>();
+  const [events, setEvents] = useState<unknown>();
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [loading, setLoading] = useState(false);
   const [querying, setQuerying] = useState(false);
@@ -255,12 +292,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       setSelected(detail);
       setEditForm(toEditForm(detail));
       setDrawerMode(mode);
-      const [relationRes, sourceRes] = await Promise.all([
+      const [relationRes, sourceRes, eventRes] = await Promise.all([
         apiClient.get(`/persons/${id}/relationships`).catch(() => []),
-        apiClient.get(`/source-bindings?targetType=person&targetId=${id}`).catch(() => [])
+        apiClient.get(`/source-bindings?targetType=person&targetId=${id}`).catch(() => []),
+        apiClient.get(`/persons/${id}/events`).catch(() => [])
       ]);
       setRelationships(relationRes);
       setSources(sourceRes);
+      setEvents(eventRes);
       notify({ message: mode === 'edit' ? '人物编辑已打开' : '人物详情已打开', id });
     });
   }
@@ -275,6 +314,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       setSelected(saved);
       setEditForm(toEditForm(saved));
       setDrawerMode('view');
+      const eventRes = await apiClient.get(`/persons/${selected.id}/events`).catch(() => []);
+      setEvents(eventRes);
       notify({ message: '人物档案已保存', id: saved?.id || selected.id });
     });
   }
@@ -291,6 +332,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setEditForm(null);
     setRelationships(undefined);
     setSources(undefined);
+    setEvents(undefined);
     setDrawerMode('view');
   }
 
@@ -309,6 +351,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const total = (rawData as any)?.total ?? rows.length;
   const currentPage = Number((rawData as any)?.pageNo ?? pageNo ?? 1);
   const totalPages = Number((rawData as any)?.totalPages ?? Math.max(1, Math.ceil(total / PAGE_SIZE)));
+  const eventRows = useMemo(() => toRecordList(events) as PersonEvent[], [events]);
 
   const completeness = selected ? Math.min(100, [
     selected.name,
@@ -328,8 +371,27 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     selected.epitaph,
     selected.privacyLevel,
     toRecordList(relationships).length,
-    toRecordList(sources).length
-  ].filter(Boolean).length * 6) : 0;
+    toRecordList(sources).length,
+    eventRows.length
+  ].filter(Boolean).length * 5) : 0;
+
+  const timelineItems = eventRows.map(event => ({
+    key: String(event.id),
+    children: (
+      <div className="archive-event-item">
+        <div className="archive-event-head">
+          <Typography.Text strong>{display(event.eventTitle, eventTypeText(event.eventType))}</Typography.Text>
+          <span>{eventDateText(event)}</span>
+        </div>
+        <p>{display(event.eventDescription, '暂无事件说明。')}</p>
+        <div className="archive-event-meta">
+          <span>{eventTypeText(event.eventType)}</span>
+          <span>{display(event.eventPlace, '地点未详')}</span>
+          {event.sourceType ? <span>来源：{event.sourceType}{event.sourceId ? ` #${event.sourceId}` : ''}</span> : null}
+        </div>
+      </div>
+    )
+  }));
 
   return (
     <div className="person-archive-search">
@@ -434,6 +496,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                       <div><span>世系状态</span><strong>{display(selected.lineageStatus)}</strong></div>
                       <div><span>数据状态</span><strong>{display(selected.dataStatus)}</strong></div>
                     </div>
+                  </section>
+                  <section className="archive-drawer-section archive-event-section">
+                    <h3>关键事件时间轴</h3>
+                    {timelineItems.length ? <Timeline items={timelineItems} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键事件记录。" />}
                   </section>
                   <section className="archive-drawer-section">
                     <h3>人物传记</h3>
