@@ -263,11 +263,6 @@ export function StatisticsHomePage() {
             <em>{card.hint}</em>
           </button>
         ))}
-        <button className="home-stat-card home-stat-card--refresh" onClick={() => void loadStats()}>
-          <span>刷新</span>
-          <strong>{loading ? '...' : '↻'}</strong>
-          <em>重新加载统计</em>
-        </button>
       </section>
 
       <section className="home-chart-grid">
