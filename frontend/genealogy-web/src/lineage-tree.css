@@ -1,6 +1,6 @@
 .lineage-page { display: grid; gap: 16px; }
 
-.lineage-search-grid { display: grid; grid-template-columns: 130px minmax(220px, 1fr) minmax(260px, 1.2fr) 120px auto; gap: 12px; align-items: end; }
+.lineage-search-grid { display: grid; grid-template-columns: 140px minmax(260px, 1fr) 120px auto; gap: 12px; align-items: end; }
 .lineage-search-grid .field { margin-bottom: 0; }
 .lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }
 .lineage-search-grid input, .lineage-search-grid select { min-height: 36px; padding: 8px 10px; border-radius: 8px; }
