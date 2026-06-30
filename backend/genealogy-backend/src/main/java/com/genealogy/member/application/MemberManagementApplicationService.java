@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,16 +66,17 @@ public class MemberManagementApplicationService {
 
     @Transactional(readOnly = true)
     public List<ClanMemberResponse> members(Long clanId) {
+        List<ClanMemberEntity> memberRows = clanMemberRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active);
         Map<Long, AppUserEntity> users = appUserRepository.findAllById(
-                        clanMemberRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active)
-                                .stream()
+                        memberRows.stream()
                                 .map(ClanMemberEntity::getUserId)
+                                .filter(Objects::nonNull)
                                 .toList()
                 ).stream()
                 .collect(Collectors.toMap(AppUserEntity::getId, Function.identity()));
         Map<Long, RoleEntity> roles = roleRepository.findAll().stream()
-                .collect(Collectors.toMap(RoleEntity::getId, Function.identity()));
-        return clanMemberRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active)
+                .collect(Collectors.toMap(RoleEntity::getId, Function.identity(), (first, second) -> first));
+        return memberRows
                 .stream()
                 .sorted(Comparator.comparing(ClanMemberEntity::getId))
                 .map(member -> toMemberResponse(member, users.get(member.getUserId()), roles.get(member.getRoleId())))
@@ -122,7 +124,7 @@ public class MemberManagementApplicationService {
             member.setMemberStatus(MemberStatus.valueOf(request.memberStatus()));
         }
         member.setUpdatedAt(LocalDateTime.now());
-        AppUserEntity user = appUserRepository.findById(member.getUserId()).orElse(null);
+        AppUserEntity user = member.getUserId() == null ? null : appUserRepository.findById(member.getUserId()).orElse(null);
         return toMemberResponse(clanMemberRepository.save(member), user, role);
     }
 
