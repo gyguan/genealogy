@@ -72,6 +72,6 @@ public class SourceAttachmentController {
     ) {
         authorizationApplicationService.requireLogin(authorization);
         sourceAttachmentApplicationService.remove(attachmentId);
-        return ApiResponse.success(null);
+        return ApiResponse.success();
     }
 }
