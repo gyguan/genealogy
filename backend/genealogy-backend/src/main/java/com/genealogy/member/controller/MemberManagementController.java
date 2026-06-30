@@ -24,7 +24,7 @@ import java.util.List;
 
 @Validated
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/member-management")
 public class MemberManagementController {
 
     private static final String ROLE_CLAN_ADMIN = "clan_admin";
