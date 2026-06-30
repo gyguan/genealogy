@@ -1,3 +1,5 @@
+import { Alert, Space } from 'antd';
+
 export type ToastItem = {
   id: number;
   message: string;
@@ -7,13 +9,17 @@ export type ToastItem = {
 export function ToastStack({ items, onClose }: { items: ToastItem[]; onClose: (id: number) => void }) {
   if (!items.length) return null;
   return (
-    <div className="toast-stack">
+    <Space className="toast-stack antd-toast-stack" direction="vertical" size="small">
       {items.map(item => (
-        <div key={item.id} className={`toast toast--${item.type || 'success'}`}>
-          <span>{item.message}</span>
-          <button className="toast__close" onClick={() => onClose(item.id)}>×</button>
-        </div>
+        <Alert
+          key={item.id}
+          showIcon
+          closable
+          type={item.type || 'success'}
+          message={item.message}
+          onClose={() => onClose(item.id)}
+        />
       ))}
-    </div>
+    </Space>
   );
 }
