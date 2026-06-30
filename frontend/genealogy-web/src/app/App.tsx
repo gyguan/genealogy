@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, ConfigProvider, Layout, Menu, Space, Tabs, Typography, theme } from 'antd';
+import { ConfigProvider, Layout, Menu, Tabs, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
+import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
 import { BranchPage } from '../features/branches/BranchPage';
 import { ClanPage } from '../features/clans/ClanPage';
 import { GenerationPage } from '../features/generations/GenerationPage';
@@ -22,7 +23,7 @@ import {
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
 
-const { Sider, Content } = Layout;
+const { Sider, Content, Header } = Layout;
 
 const navItems = [
   ['home', '族谱首页', '统计概览'],
@@ -85,7 +86,8 @@ export function App() {
         components: {
           Layout: {
             bodyBg: '#f5f5f5',
-            siderBg: '#ffffff'
+            siderBg: '#ffffff',
+            headerBg: '#ffffff'
           },
           Menu: {
             itemBorderRadius: 8,
@@ -160,8 +162,6 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
-  function onChanged() {}
-
   function renderLegacyPage() {
     const props = { notify };
     switch (legacyActive) {
@@ -219,14 +219,19 @@ function AppShell() {
           onClick={info => setActive(info.key as ViewKey)}
           items={navItems.map(([key, label]) => ({ key, label }))}
         />
-        <Space className="antd-sidebar-footer" direction="vertical" size={8}>
-          <Typography.Text type="secondary">当前已登录</Typography.Text>
-          <Button block onClick={logout}>退出登录</Button>
-        </Space>
       </Sider>
-      <Content className="content content--compact antd-content">
-        {renderPage()}
-      </Content>
+      <Layout className="antd-main-layout">
+        <Header className="github-like-header">
+          <div className="github-like-header-title">
+            <Typography.Text type="secondary">当前模块</Typography.Text>
+            <Typography.Text strong>{navItems.find(([key]) => key === active)?.[1] || '族谱管理'}</Typography.Text>
+          </div>
+          <CurrentUserMenu onLogout={logout} />
+        </Header>
+        <Content className="content content--compact antd-content">
+          {renderPage()}
+        </Content>
+      </Layout>
       <ToastStack items={toasts} onClose={closeToast} />
     </Layout>
   );
