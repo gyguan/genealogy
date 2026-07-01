@@ -1,5 +1,5 @@
 -- Consolidated Genealogy MVP1 schema.
--- Keep schema-only DDL here. Seed/demo data lives in V2__init_data.sql and V99__full_realistic_seed_data.sql.
+-- Keep schema-only DDL here. Seed/demo data lives in V2__init_data.sql.
 
 create table if not exists clan (
     id bigserial primary key,
@@ -204,7 +204,7 @@ create table if not exists review_task (
     created_at timestamp default now()
 );
 
--- Legacy member tables retained for compatibility with older screens/scripts.
+-- Compatibility member tables retained for existing screens/scripts.
 create table if not exists user_account (
     id bigserial primary key,
     username varchar(100),
@@ -494,7 +494,7 @@ comment on column source_binding.excerpt is '与该对象相关的来源摘录';
 comment on column source_binding.created_by is '创建人用户ID';
 comment on column source_binding.created_at is '创建时间';
 
-comment on table attachment is '旧版附件表，保留用于兼容老页面和脚本';
+comment on table attachment is '通用附件表，记录来源资料或宗族资料关联的文件元数据';
 comment on column attachment.id is '附件主键ID';
 comment on column attachment.clan_id is '所属宗族ID';
 comment on column attachment.source_id is '关联来源ID';
@@ -549,7 +549,7 @@ comment on column review_task.review_comment is '审核意见';
 comment on column review_task.reviewed_at is '审核处理时间';
 comment on column review_task.created_at is '任务创建时间';
 
-comment on table user_account is '旧版用户账号表，保留用于兼容历史脚本和页面';
+comment on table user_account is '兼容用户账号表，用于历史页面、脚本和当前演示数据的账号映射';
 comment on column user_account.id is '用户账号主键ID';
 comment on column user_account.username is '用户名';
 comment on column user_account.phone is '手机号';
@@ -560,13 +560,13 @@ comment on column user_account.status is '账号状态';
 comment on column user_account.created_at is '创建时间';
 comment on column user_account.last_login_at is '最近登录时间';
 
-comment on table "role" is '旧版角色表，保留用于兼容历史成员角色关系';
+comment on table "role" is '基础角色表，记录兼容授权模型中的角色编码、角色名称和角色说明';
 comment on column "role".id is '角色主键ID';
 comment on column "role".role_code is '角色编码';
 comment on column "role".role_name is '角色名称';
 comment on column "role".description is '角色描述';
 
-comment on table member_role is '旧版成员角色授权表，记录成员在宗族或支派范围内的角色';
+comment on table member_role is '成员角色授权表，记录成员在宗族或支派范围内的角色';
 comment on column member_role.id is '成员角色主键ID';
 comment on column member_role.member_id is '宗族成员ID';
 comment on column member_role.role_id is '角色ID';
