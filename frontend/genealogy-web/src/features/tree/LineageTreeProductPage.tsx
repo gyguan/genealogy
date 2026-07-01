@@ -41,6 +41,11 @@ function rows(data: any): any[] {
   return [];
 }
 
+function edgeRows(data: any): any[] {
+  if (Array.isArray(data?.edges)) return data.edges;
+  return [];
+}
+
 function firstChar(name?: string) {
   return (name || '谱').slice(0, 1);
 }
@@ -69,7 +74,14 @@ function relationCn(label: string) {
     parent_child: '亲子',
     child: '子女',
     son: '子',
-    daughter: '女'
+    daughter: '女',
+    adoptive: '收养',
+    adoptive_father: '养父',
+    adoptive_mother: '养母',
+    heir_successor: '继嗣',
+    successor: '继嗣',
+    out_adoption: '出嗣',
+    out_adopted: '出嗣'
   };
   return dict[label] || label || '亲属';
 }
@@ -106,7 +118,7 @@ function toRelationship(row: any): RelationshipCard {
   const fromPersonId = String(row.fromPersonId || row.sourcePersonId || row.from?.id || '');
   const toPersonId = String(row.toPersonId || row.targetPersonId || row.to?.id || '');
   return {
-    id: String(row.id || `${fromPersonId}-${toPersonId}-${row.relationLabel || row.relationType}`),
+    id: String(row.id || row.relationshipId || `${fromPersonId}-${toPersonId}-${row.relationLabel || row.relationType}`),
     fromPersonId,
     toPersonId,
     relationType: row.relationType || '',
@@ -139,6 +151,21 @@ function groupDescendants(list: PersonCard[]) {
   return Array.from(groups.entries()).sort((a, b) => Number(a[0].replace(/\D/g, '') || 9999) - Number(b[0].replace(/\D/g, '') || 9999));
 }
 
+function branchPath(branches: any[], branchId: string) {
+  const current = branches.find(item => String(item.id) === branchId);
+  if (!current) return '未选择支派';
+  const idToBranch = new Map(branches.map(item => [String(item.id), item]));
+  const chain: string[] = [];
+  let node: any = current;
+  const guard = new Set<string>();
+  while (node && !guard.has(String(node.id))) {
+    guard.add(String(node.id));
+    chain.unshift(node.branchName || `支派#${node.id}`);
+    node = node.parentId ? idToBranch.get(String(node.parentId)) : null;
+  }
+  return chain.join(' / ');
+}
+
 function TreeNode({ person, active, hint, onClick }: { person: PersonCard; active?: boolean; hint?: string; onClick?: () => void }) {
   return (
     <button className={`lineage-tree-node ${active ? 'active' : ''}`} onClick={onClick}>
@@ -168,6 +195,10 @@ export function LineageTreeProductPage({ notify }: Props) {
   const [descendants, setDescendants] = useState<PersonCard[]>([]);
   const [selectedNode, setSelectedNode] = useState<PersonCard | null>(null);
   const [depth, setDepth] = useState('3');
+  const [selectedBranchId, setSelectedBranchId] = useState(workspace.branchId || '');
+  const [branchNodes, setBranchNodes] = useState<PersonCard[]>([]);
+  const [branchEdges, setBranchEdges] = useState<RelationshipCard[]>([]);
+  const [branchRootPersonId, setBranchRootPersonId] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function run(action: () => Promise<void>) {
@@ -191,10 +222,17 @@ export function LineageTreeProductPage({ notify }: Props) {
       if (!nextClanId) {
         setPeople([]);
         setSearchResults([]);
+        setBranchNodes([]);
+        setBranchEdges([]);
         return;
       }
       const branchRows = rows(await apiClient.get(`/clans/${nextClanId}/branches`).catch(() => []));
       setBranches(branchRows);
+      const nextBranchId = selectedBranchId || workspace.branchId || String(branchRows[0]?.id || '');
+      if (nextBranchId) {
+        setSelectedBranchId(nextBranchId);
+        if (!workspace.branchId) workspace.setBranchId(nextBranchId);
+      }
       const personRes = await apiClient.get(`/persons/search?clanId=${nextClanId}&pageNo=1&pageSize=120`).catch(() => apiClient.get(`/clans/${nextClanId}/persons`));
       const personRows = rows(personRes);
       const nextPeople = personRows.map(row => toPerson(row, branchRows));
@@ -203,6 +241,7 @@ export function LineageTreeProductPage({ notify }: Props) {
       const nextPersonId = workspace.personId || nextPeople[0]?.id || '';
       if (nextPersonId && !workspace.personId) workspace.setPersonId(nextPersonId);
       if (nextPersonId) await loadLineage(nextPersonId, branchRows, nextPeople);
+      if (nextBranchId) await loadBranchLineage(nextBranchId, branchRows);
     });
   }
 
@@ -248,14 +287,27 @@ export function LineageTreeProductPage({ notify }: Props) {
     setDescendants(nextDescendants);
   }
 
+  async function loadBranchLineage(branchId = selectedBranchId, branchRows = branches) {
+    if (!workspace.clanId) throw new Error('请先选择宗族');
+    if (!branchId) throw new Error('请选择支派');
+    const data: any = await apiClient.get(`/tree/clans/${workspace.clanId}/branches/${branchId}/lineage`);
+    const nextNodes = rows(data).map(row => toPerson(row, branchRows));
+    const nextEdges = edgeRows(data).map(toRelationship);
+    setBranchNodes(nextNodes);
+    setBranchEdges(nextEdges);
+    setBranchRootPersonId(String(data?.rootPersonId || ''));
+    workspace.setBranchId(branchId);
+    notify({ message: `支派世系图已生成：${nextNodes.length} 位人物，${nextEdges.length} 条世系关系` });
+  }
+
   useEffect(() => { void loadBase(); }, []);
   useEffect(() => { if (workspace.personId) void run(() => loadLineage(workspace.personId)); }, [workspace.personId, depth]);
 
   const personMap = useMemo(() => {
     const map = new Map<string, PersonCard>();
-    [...people, ...familyNodes, ...ancestors, ...descendants, ...(center ? [center] : [])].forEach(item => item.id && map.set(item.id, item));
+    [...people, ...familyNodes, ...ancestors, ...descendants, ...branchNodes, ...(center ? [center] : [])].forEach(item => item.id && map.set(item.id, item));
     return map;
-  }, [people, familyNodes, ancestors, descendants, center]);
+  }, [people, familyNodes, ancestors, descendants, branchNodes, center]);
 
   function findPerson(id: string, fallback?: any) {
     return personMap.get(id) || toPerson(fallback || { id }, branches, id);
@@ -274,9 +326,9 @@ export function LineageTreeProductPage({ notify }: Props) {
         else others.push(rel);
         return;
       }
-      if (rel.relationType === 'parent_child') {
-        if (rel.toPersonId === center.id) parents.push({ ...findPerson(rel.fromPersonId), relation: relationCn(rel.relationLabel) });
-        else if (rel.fromPersonId === center.id) children.push({ ...findPerson(rel.toPersonId), relation: '子女' });
+      if (rel.relationType === 'parent_child' || rel.relationType === 'adoptive' || rel.relationType === 'successor') {
+        if (rel.toPersonId === center.id) parents.push({ ...findPerson(rel.fromPersonId), relation: relationCn(rel.relationLabel || rel.relationType) });
+        else if (rel.fromPersonId === center.id) children.push({ ...findPerson(rel.toPersonId), relation: relationCn(rel.relationLabel || rel.relationType) });
         else others.push(rel);
         return;
       }
@@ -297,6 +349,10 @@ export function LineageTreeProductPage({ notify }: Props) {
     return groupDescendants(uniquePeople(source));
   }, [descendants, relationshipDerived.children, spousePersonIds]);
 
+  const branchGroups = useMemo(() => groupDescendants(sortByGeneration(uniquePeople(branchNodes))), [branchNodes]);
+  const branchRoot = useMemo(() => branchNodes.find(person => person.id === branchRootPersonId) || branchNodes[0], [branchNodes, branchRootPersonId]);
+  const branchName = branches.find(item => String(item.id) === selectedBranchId)?.branchName || '支派';
+
   function setAsCenter(personId: string) {
     workspace.setPersonId(personId);
     setSelectedNode(null);
@@ -314,6 +370,34 @@ export function LineageTreeProductPage({ notify }: Props) {
         <div className="lineage-search-results">
           {searchResults.slice(0, 10).map(person => <button key={person.id} className={workspace.personId === person.id ? 'active' : ''} onClick={() => setAsCenter(person.id)}>{person.name}<span>{person.generation} · {person.branchName}</span></button>)}
         </div>
+      </Panel>
+
+      <Panel title="支派世系图" description="按支派聚合展示当前支派及下级支派的人物世系关系，适合快速检查某一房支的谱系完整性。">
+        <div className="lineage-search-grid">
+          <Field label="支派范围"><select value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}（ID:{branch.id}）</option>)}</select></Field>
+          <Field label="支派路径"><input value={branchPath(branches, selectedBranchId)} readOnly /></Field>
+          <Actions><button disabled={loading || !selectedBranchId} onClick={() => void run(() => loadBranchLineage(selectedBranchId))}>{loading ? '生成中...' : '生成支派世系图'}</button></Actions>
+        </div>
+        <div className="summary-card">
+          <div><span>支派人物</span><strong>{branchNodes.length || '-'}</strong></div>
+          <div><span>世系关系</span><strong>{branchEdges.length || '-'}</strong></div>
+          <div><span>根人物</span><strong>{branchRoot?.name || '-'}</strong></div>
+        </div>
+        <section className="lineage-tree-card branch-lineage-card">
+          <div className="lineage-tree-title">
+            <div><span>{branchPath(branches, selectedBranchId)}</span><h3>{branchName} 世系图</h3></div>
+            <small>{branchEdges.length} 条内部世系关系</small>
+          </div>
+          <div className="branch-lineage-canvas">
+            {branchGroups.length ? branchGroups.map(([label, group], index) => (
+              <div className="branch-lineage-column" key={label}>
+                <b>{label}</b>
+                <div>{group.map(person => <TreeNode key={person.id} person={person} active={person.id === branchRootPersonId} hint={person.id === branchRootPersonId ? '支派根人物' : label} onClick={() => setSelectedNode(person)} />)}</div>
+                {index < branchGroups.length - 1 ? <span className="branch-lineage-arrow">→</span> : null}
+              </div>
+            )) : <EmptyLane text="暂无支派世系数据，请选择支派后生成。" />}
+          </div>
+        </section>
       </Panel>
 
       <section className="lineage-tree-card">
@@ -364,7 +448,7 @@ export function LineageTreeProductPage({ notify }: Props) {
             </div>
             <div className="lineage-pop-relations">
               <h4>相关关系</h4>
-              {relationships.filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).length ? relationships.filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).map(rel => <p key={rel.id}>{relationCn(rel.relationLabel || rel.relationType)}：{findPerson(rel.fromPersonId).name} → {findPerson(rel.toPersonId).name}</p>) : <p>暂无关系记录。</p>}
+              {[...relationships, ...branchEdges].filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).length ? [...relationships, ...branchEdges].filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).map(rel => <p key={rel.id}>{relationCn(rel.relationLabel || rel.relationType)}：{findPerson(rel.fromPersonId).name} → {findPerson(rel.toPersonId).name}</p>) : <p>暂无关系记录。</p>}
             </div>
             <Actions><button onClick={() => setAsCenter(selectedNode.id)}>设为中心人物</button><button className="secondary" onClick={() => setSelectedNode(null)}>关闭</button></Actions>
           </aside>
