@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -30,8 +31,22 @@ public class RelationshipApplicationService {
     private static final String TYPE_PARENT_CHILD = "parent_child";
     private static final String TYPE_SPOUSE = "spouse";
     private static final String TYPE_ADOPTIVE = "adoptive";
+    private static final String TYPE_SUCCESSOR = "successor";
+    private static final String TYPE_OUT_ADOPTION = "out_adoption";
+
     private static final String LABEL_FATHER = "father";
     private static final String LABEL_MOTHER = "mother";
+    private static final String LABEL_PARENT = "parent";
+    private static final String LABEL_SPOUSE = "spouse";
+    private static final String LABEL_ADOPTIVE_FATHER = "adoptive_father";
+    private static final String LABEL_ADOPTIVE_MOTHER = "adoptive_mother";
+    private static final String LABEL_ADOPTIVE_PARENT = "adoptive_parent";
+    private static final String LABEL_HEIR_SUCCESSOR = "heir_successor";
+    private static final String LABEL_OUT_ADOPTED = "out_adopted";
+
+    private static final Set<String> ALLOWED_RELATION_TYPES = Set.of(
+            TYPE_PARENT_CHILD, TYPE_SPOUSE, TYPE_ADOPTIVE, TYPE_SUCCESSOR, TYPE_OUT_ADOPTION
+    );
 
     private final RelationshipRepository relationshipRepository;
     private final PersonRepository personRepository;
@@ -53,8 +68,9 @@ public class RelationshipApplicationService {
     @Transactional
     public RelationshipResponse create(Long clanId, RelationshipCreateRequest request, Long actorId) {
         requireRelationshipBranchWriteScope(clanId, actorId, request.fromPersonId(), request.toPersonId());
-        validateCreate(clanId, request);
-        RelationshipEntity entity = RelationshipMapper.toEntity(clanId, normalizeRequest(request));
+        RelationshipCreateRequest normalizedRequest = normalizeRequest(request);
+        validateCreate(clanId, normalizedRequest);
+        RelationshipEntity entity = RelationshipMapper.toEntity(clanId, normalizedRequest);
         applyDefaults(entity);
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedAt(now);
@@ -71,7 +87,7 @@ public class RelationshipApplicationService {
     public RelationshipConflictCheckResponse checkConflict(Long clanId, RelationshipCreateRequest request, Long actorId) {
         try {
             requireRelationshipBranchWriteScope(clanId, actorId, request.fromPersonId(), request.toPersonId());
-            validateCreate(clanId, request);
+            validateCreate(clanId, normalizeRequest(request));
             return RelationshipConflictCheckResponse.passed();
         } catch (BusinessException ex) {
             return RelationshipConflictCheckResponse.failed(ex.getCode(), ex.getMessage());
@@ -102,15 +118,20 @@ public class RelationshipApplicationService {
         RelationshipEntity entity = getActiveEntity(id);
         requireRelationshipBranchWriteScope(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId());
         String oldType = entity.getRelationType();
-        entity.setRelationType(normalizeType(request.relationType()));
-        entity.setRelationLabel(normalizeLabel(request.relationLabel(), entity.getRelationType(), entity.getFromPersonId()));
-        entity.setIsLineageRelation(request.isLineageRelation());
-        entity.setIsBiological(request.isBiological());
+        String relationType = normalizeType(request.relationType());
+        String relationLabel = normalizeLabel(request.relationLabel(), relationType, entity.getFromPersonId());
+        entity.setRelationType(relationType);
+        entity.setRelationLabel(relationLabel);
+        entity.setIsLineageRelation(normalizeLineageRelation(relationType, request.isLineageRelation()));
+        entity.setIsBiological(normalizeBiological(relationType, request.isBiological()));
         entity.setIsPrimary(request.isPrimary());
         entity.setDescription(request.description());
         entity.setConfidenceLevel(request.confidenceLevel());
         entity.setDataStatus(request.dataStatus() == null ? entity.getDataStatus() : request.dataStatus());
-        validateRelationshipRules(entity.getClanId(), entity.getFromPersonId(), entity.getToPersonId(), entity.getRelationType(), entity.getRelationLabel(), entity.getId());
+        PersonEntity from = getActivePerson(entity.getFromPersonId());
+        PersonEntity to = getActivePerson(entity.getToPersonId());
+        validateGenerationOrder(from, to, relationType);
+        validateRelationshipRules(entity.getClanId(), entity.getFromPersonId(), entity.getToPersonId(), relationType, relationLabel, entity.getId());
         entity.setUpdatedAt(LocalDateTime.now());
         RelationshipEntity saved = relationshipRepository.save(entity);
         if (TYPE_SPOUSE.equals(saved.getRelationType()) && !TYPE_SPOUSE.equals(oldType)) {
@@ -177,14 +198,21 @@ public class RelationshipApplicationService {
         if (isLineageType(relationType)) {
             validateNoAncestryCycle(clanId, fromPersonId, toPersonId, currentId);
         }
-        if (TYPE_PARENT_CHILD.equals(relationType) && (LABEL_FATHER.equals(relationLabel) || LABEL_MOTHER.equals(relationLabel))) {
-            long count = relationshipRepository.findActiveToRelations(clanId, toPersonId, TYPE_PARENT_CHILD).stream()
-                    .filter(item -> currentId == null || !item.getId().equals(currentId))
-                    .filter(item -> relationLabel.equals(item.getRelationLabel()))
-                    .count();
-            if (count > 0) {
-                throw new BusinessException("RELATIONSHIP_PARENT_DUPLICATED", "父亲或母亲关系已存在");
-            }
+        if (TYPE_PARENT_CHILD.equals(relationType) && isPrimaryParentLabel(relationLabel)) {
+            validateUniqueParentByLabel(clanId, toPersonId, TYPE_PARENT_CHILD, relationLabel, currentId, "父亲或母亲关系已存在");
+        }
+        if (TYPE_ADOPTIVE.equals(relationType) && isAdoptiveParentLabel(relationLabel)) {
+            validateUniqueParentByLabel(clanId, toPersonId, TYPE_ADOPTIVE, relationLabel, currentId, "养父或养母关系已存在");
+        }
+    }
+
+    private void validateUniqueParentByLabel(Long clanId, Long toPersonId, String relationType, String relationLabel, Long currentId, String message) {
+        long count = relationshipRepository.findActiveToRelations(clanId, toPersonId, relationType).stream()
+                .filter(item -> currentId == null || !item.getId().equals(currentId))
+                .filter(item -> relationLabel.equals(item.getRelationLabel()))
+                .count();
+        if (count > 0) {
+            throw new BusinessException("RELATIONSHIP_PARENT_DUPLICATED", message);
         }
     }
 
@@ -198,7 +226,7 @@ public class RelationshipApplicationService {
             return;
         }
         if (from.getGenerationNo() != null && to.getGenerationNo() != null && from.getGenerationNo() >= to.getGenerationNo()) {
-            throw new BusinessException("RELATIONSHIP_GENERATION_CONFLICT", "亲子关系中父辈代次必须小于子辈代次");
+            throw new BusinessException("RELATIONSHIP_GENERATION_CONFLICT", "世系关系中上辈代次必须小于下辈代次");
         }
     }
 
@@ -224,7 +252,7 @@ public class RelationshipApplicationService {
     }
 
     private boolean isLineageType(String relationType) {
-        return TYPE_PARENT_CHILD.equals(relationType) || TYPE_ADOPTIVE.equals(relationType);
+        return TYPE_PARENT_CHILD.equals(relationType) || TYPE_ADOPTIVE.equals(relationType) || TYPE_SUCCESSOR.equals(relationType);
     }
 
     private RelationshipCreateRequest normalizeRequest(RelationshipCreateRequest request) {
@@ -232,7 +260,9 @@ public class RelationshipApplicationService {
         return new RelationshipCreateRequest(
                 request.fromPersonId(), request.toPersonId(), relationType,
                 normalizeLabel(request.relationLabel(), relationType, request.fromPersonId()),
-                request.isLineageRelation(), request.isBiological(), request.isPrimary(), request.description(), request.confidenceLevel()
+                normalizeLineageRelation(relationType, request.isLineageRelation()),
+                normalizeBiological(relationType, request.isBiological()),
+                request.isPrimary(), request.description(), request.confidenceLevel()
         );
     }
 
@@ -240,24 +270,114 @@ public class RelationshipApplicationService {
         if (relationType == null || relationType.isBlank()) {
             throw new BusinessException("RELATIONSHIP_TYPE_REQUIRED", "关系类型不能为空");
         }
-        return relationType.trim().toLowerCase();
+        String normalized = relationType.trim().toLowerCase(Locale.ROOT).replace('-', '_');
+        if (!ALLOWED_RELATION_TYPES.contains(normalized)) {
+            throw new BusinessException("RELATIONSHIP_TYPE_UNSUPPORTED", "暂不支持的关系类型：" + relationType);
+        }
+        return normalized;
     }
 
     private String normalizeLabel(String relationLabel, String relationType, Long fromPersonId) {
-        if (relationLabel != null && !relationLabel.isBlank()) {
-            return relationLabel.trim().toLowerCase();
-        }
+        String normalized = normalizeLabelText(relationLabel);
         if (TYPE_PARENT_CHILD.equals(relationType)) {
-            PersonEntity from = getActivePerson(fromPersonId);
-            if ("female".equalsIgnoreCase(from.getGender())) {
-                return LABEL_MOTHER;
-            }
-            if ("male".equalsIgnoreCase(from.getGender())) {
-                return LABEL_FATHER;
-            }
-            return "parent";
+            return normalized == null ? defaultParentLabel(fromPersonId) : normalizeParentLabel(normalized);
         }
-        return relationLabel;
+        if (TYPE_SPOUSE.equals(relationType)) {
+            return normalized == null ? LABEL_SPOUSE : normalized;
+        }
+        if (TYPE_ADOPTIVE.equals(relationType)) {
+            return normalized == null ? defaultAdoptiveLabel(fromPersonId) : normalizeAdoptiveLabel(normalized);
+        }
+        if (TYPE_SUCCESSOR.equals(relationType)) {
+            return normalized == null ? LABEL_HEIR_SUCCESSOR : normalizeSuccessorLabel(normalized);
+        }
+        if (TYPE_OUT_ADOPTION.equals(relationType)) {
+            return normalized == null ? LABEL_OUT_ADOPTED : normalizeOutAdoptionLabel(normalized);
+        }
+        return normalized;
+    }
+
+    private String normalizeLabelText(String relationLabel) {
+        if (relationLabel == null || relationLabel.isBlank()) {
+            return null;
+        }
+        return relationLabel.trim().toLowerCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
+    }
+
+    private String defaultParentLabel(Long fromPersonId) {
+        PersonEntity from = getActivePerson(fromPersonId);
+        if ("female".equalsIgnoreCase(from.getGender())) {
+            return LABEL_MOTHER;
+        }
+        if ("male".equalsIgnoreCase(from.getGender())) {
+            return LABEL_FATHER;
+        }
+        return LABEL_PARENT;
+    }
+
+    private String defaultAdoptiveLabel(Long fromPersonId) {
+        PersonEntity from = getActivePerson(fromPersonId);
+        if ("female".equalsIgnoreCase(from.getGender())) {
+            return LABEL_ADOPTIVE_MOTHER;
+        }
+        if ("male".equalsIgnoreCase(from.getGender())) {
+            return LABEL_ADOPTIVE_FATHER;
+        }
+        return LABEL_ADOPTIVE_PARENT;
+    }
+
+    private String normalizeParentLabel(String label) {
+        return switch (label) {
+            case "father", "父", "父亲", "生父" -> LABEL_FATHER;
+            case "mother", "母", "母亲", "生母" -> LABEL_MOTHER;
+            case "parent", "父母" -> LABEL_PARENT;
+            default -> label;
+        };
+    }
+
+    private String normalizeAdoptiveLabel(String label) {
+        return switch (label) {
+            case "adoptive_father", "养父", "嗣父" -> LABEL_ADOPTIVE_FATHER;
+            case "adoptive_mother", "养母", "嗣母" -> LABEL_ADOPTIVE_MOTHER;
+            case "adoptive_parent", "adoptive_child", "养父母", "养子女", "收养" -> LABEL_ADOPTIVE_PARENT;
+            default -> label;
+        };
+    }
+
+    private String normalizeSuccessorLabel(String label) {
+        return switch (label) {
+            case "successor", "heir", "heir_successor", "继嗣", "承嗣", "嗣子" -> LABEL_HEIR_SUCCESSOR;
+            default -> label;
+        };
+    }
+
+    private String normalizeOutAdoptionLabel(String label) {
+        return switch (label) {
+            case "out_adoption", "out_adopted", "出嗣", "出继" -> LABEL_OUT_ADOPTED;
+            default -> label;
+        };
+    }
+
+    private Boolean normalizeLineageRelation(String relationType, Boolean value) {
+        if (value != null) {
+            return value;
+        }
+        return isLineageType(relationType);
+    }
+
+    private Boolean normalizeBiological(String relationType, Boolean value) {
+        if (TYPE_ADOPTIVE.equals(relationType) || TYPE_SUCCESSOR.equals(relationType) || TYPE_OUT_ADOPTION.equals(relationType)) {
+            return false;
+        }
+        return value;
+    }
+
+    private boolean isPrimaryParentLabel(String label) {
+        return LABEL_FATHER.equals(label) || LABEL_MOTHER.equals(label);
+    }
+
+    private boolean isAdoptiveParentLabel(String label) {
+        return LABEL_ADOPTIVE_FATHER.equals(label) || LABEL_ADOPTIVE_MOTHER.equals(label);
     }
 
     private void ensureReverseSpouse(RelationshipEntity saved, LocalDateTime now) {
