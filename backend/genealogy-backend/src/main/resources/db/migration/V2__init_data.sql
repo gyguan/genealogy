@@ -18,9 +18,10 @@ set role_name = excluded.role_name,
 insert into app_user (username, phone, email, password_hash, display_name, avatar_url, status, last_login_at, created_at, updated_at, deleted_at)
 values
     ('demo_admin', '13800000001', 'demo_admin@genealogy.local', md5('demo_admin_seed_password'), '演示管理员', null, 'active', now() - interval '1 day', now(), now(), null),
-    ('demo_editor', '13800000002', 'demo_editor@genealogy.local', md5('demo_editor_seed_password'), '演示编辑', null, 'active', now() - interval '2 days', now(), now(), null),
-    ('demo_reviewer', '13800000003', 'demo_reviewer@genealogy.local', md5('demo_reviewer_seed_password'), '演示审核员', null, 'active', now() - interval '3 days', now(), now(), null),
-    ('demo_viewer', '13800000004', 'demo_viewer@genealogy.local', md5('demo_viewer_seed_password'), '演示查看者', null, 'active', now() - interval '4 days', now(), now(), null)
+    ('demo_branch_admin', '13800000002', 'demo_branch_admin@genealogy.local', md5('demo_branch_admin_seed_password'), '演示支派管理员', null, 'active', now() - interval '2 days', now(), now(), null),
+    ('demo_editor', '13800000003', 'demo_editor@genealogy.local', md5('demo_editor_seed_password'), '演示编辑', null, 'active', now() - interval '3 days', now(), now(), null),
+    ('demo_reviewer', '13800000004', 'demo_reviewer@genealogy.local', md5('demo_reviewer_seed_password'), '演示审核员', null, 'active', now() - interval '4 days', now(), now(), null),
+    ('demo_viewer', '13800000005', 'demo_viewer@genealogy.local', md5('demo_viewer_seed_password'), '演示查看者', null, 'active', now() - interval '5 days', now(), now(), null)
 on conflict (username) do update
 set phone = excluded.phone,
     email = excluded.email,
@@ -41,7 +42,7 @@ select id,
        '127.0.0.1',
        'Flyway seed initializer'
 from app_user
-where username in ('demo_admin', 'demo_editor', 'demo_reviewer', 'demo_viewer');
+where username in ('demo_admin', 'demo_branch_admin', 'demo_editor', 'demo_reviewer', 'demo_viewer');
 
 -- 2. Realistic clan seed generator.
 create or replace function seed_realistic_clan(
@@ -61,6 +62,7 @@ create or replace function seed_realistic_clan(
 ) returns void as $$
 declare
     v_admin_user_id bigint;
+    v_branch_admin_user_id bigint;
     v_editor_user_id bigint;
     v_reviewer_user_id bigint;
     v_viewer_user_id bigint;
@@ -91,6 +93,7 @@ declare
     v_spouse_name text;
     v_word text;
     v_admin_member_id bigint;
+    v_branch_admin_member_id bigint;
     v_editor_member_id bigint;
     v_viewer_member_id bigint;
     v_reviewer_member_id bigint;
@@ -99,6 +102,7 @@ declare
     v_import_job_id bigint;
 begin
     select id into v_admin_user_id from app_user where username = 'demo_admin';
+    select id into v_branch_admin_user_id from app_user where username = 'demo_branch_admin';
     select id into v_editor_user_id from app_user where username = 'demo_editor';
     select id into v_reviewer_user_id from app_user where username = 'demo_reviewer';
     select id into v_viewer_user_id from app_user where username = 'demo_viewer';
@@ -183,7 +187,7 @@ begin
     select v_clan_id, v_book_source_id, 'generation_word', gw.id, '字辈方案来源', '第' || gw.generation_no || '代字辈“' || gw.word || '”据老谱卷首字派录入。', v_admin_user_id, now() - interval '55 days' from generation_word gw where gw.scheme_id = v_scheme_id;
 
     insert into source_attachment (source_id, clan_id, original_filename, stored_filename, content_type, file_size, storage_path, checksum, upload_status, created_by, created_at, deleted_at)
-    values (v_book_source_id, v_clan_id, p_clan_code || '_老谱影印样例.pdf', lower(p_clan_code) || '_old_book_seed.pdf', 'application/pdf', 524288, 'data/uploads/sources/seed/' || lower(p_clan_code) || '_old_book_seed.pdf', md5(p_clan_code || '-source-attachment'), 'metadata_only', v_admin_user_id, now() - interval '54 days', now() - interval '53 days');
+    values (v_book_source_id, v_clan_id, p_clan_code || '_老谱影印样例.pdf', lower(p_clan_code) || '_old_book_seed.pdf', 'application/pdf', 524288, 'data/uploads/sources/seed/' || lower(p_clan_code) || '_old_book_seed.pdf', md5(p_clan_code || '-source-attachment'), 'metadata_only', v_admin_user_id, now() - interval '54 days', null);
 
     insert into person_event (clan_id, person_id, event_type, event_title, event_date, event_date_precision, event_place, event_description, source_type, source_id, sort_order, data_status, created_by, created_at, updated_at, deleted_at)
     select p.clan_id, p.id, 'birth', '出生', p.birth_date, coalesce(nullif(p.birth_date_precision, ''), 'day'), p.birth_place, p.name || '出生于' || coalesce(p.birth_place, '未详地点') || '。', 'source', v_book_source_id, 10, coalesce(p.data_status, 'official'), coalesce(p.created_by, v_admin_user_id), now() - interval '52 days', now(), null from person p where p.clan_id = v_clan_id and p.deleted_at is null and p.birth_date is not null;
@@ -193,6 +197,10 @@ begin
     select r.clan_id, r.from_person_id, 'marriage', '婚配', (p.birth_date + interval '24 years')::date, 'year', p.residence_place, p.name || '与' || s.name || '结为配偶。', 'relationship', r.id, 50, r.data_status, r.created_by, now() - interval '51 days', now(), null
     from relationship r join person p on p.id = r.from_person_id join person s on s.id = r.to_person_id
     where r.clan_id = v_clan_id and r.relation_type = 'spouse' and r.deleted_at is null;
+    insert into person_event (clan_id, person_id, event_type, event_title, event_date, event_date_precision, event_place, event_description, source_type, source_id, sort_order, data_status, created_by, created_at, updated_at, deleted_at)
+    select r.clan_id, r.from_person_id, 'child_birth', '子女出生', child.birth_date, coalesce(nullif(child.birth_date_precision, ''), 'day'), child.birth_place, p.name || '之子' || child.name || '出生。', 'relationship', r.id, 60, r.data_status, r.created_by, now() - interval '50 days', now(), null
+    from relationship r join person p on p.id = r.from_person_id join person child on child.id = r.to_person_id
+    where r.clan_id = v_clan_id and r.relation_type = 'parent_child' and r.relation_label = 'father' and r.deleted_at is null;
 
     insert into revision (clan_id, target_type, target_id, change_type, before_data, after_data, diff_summary, submitter_id, submit_time, status, approved_at, rejected_reason)
     values (v_clan_id, 'person', v_core_ids[1], 'modified', jsonb_build_object('dataStatus','draft','name',(select name from person where id = v_core_ids[1])), jsonb_build_object('dataStatus','official','name',(select name from person where id = v_core_ids[1])), '初始化样例：始祖人物由草稿转为正式入谱。', v_editor_user_id, now() - interval '45 days', 'approved', now() - interval '44 days', null)
@@ -235,9 +243,13 @@ begin
 
     for b in 1..v_branch_count loop
         insert into clan_member (clan_id, user_id, person_id, branch_id, role_id, member_name, join_status, invited_by, member_status, scope_type, scope_id, joined_at, created_at, updated_at)
-        select v_clan_id, u.id, v_core_ids[(b - 1) * v_generation_count + 4], v_branch_ids[b], r.id, u.display_name || ' - ' || p_branch_names[b], 'joined', v_admin_user_id, 'active', 'branch', v_branch_ids[b], now() - interval '36 days', now() - interval '36 days', now()
+        select v_clan_id, u.id, v_core_ids[(b - 1) * v_generation_count + 3], v_branch_ids[b], r.id, u.display_name || ' - ' || p_branch_names[b], 'joined', v_admin_user_id, 'active', 'branch', v_branch_ids[b], now() - interval '36 days', now() - interval '36 days', now()
+        from app_user u join app_role r on r.role_code = 'branch_admin' where u.username = 'demo_branch_admin' returning id into v_branch_admin_member_id;
+        update branch set manager_member_id = v_branch_admin_member_id, updated_at = now() where id = v_branch_ids[b];
+
+        insert into clan_member (clan_id, user_id, person_id, branch_id, role_id, member_name, join_status, invited_by, member_status, scope_type, scope_id, joined_at, created_at, updated_at)
+        select v_clan_id, u.id, v_core_ids[(b - 1) * v_generation_count + 4], v_branch_ids[b], r.id, u.display_name || ' - ' || p_branch_names[b], 'joined', v_admin_user_id, 'active', 'branch', v_branch_ids[b], now() - interval '35 days', now() - interval '35 days', now()
         from app_user u join app_role r on r.role_code = 'editor' where u.username = 'demo_editor' returning id into v_editor_member_id;
-        update branch set manager_member_id = v_editor_member_id, updated_at = now() where id = v_branch_ids[b];
     end loop;
 end;
 $$ language plpgsql;
