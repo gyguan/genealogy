@@ -36,6 +36,7 @@ const navItems = [
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
+  ['auditTrace', '追踪中心', '操作日志、审核流和字段Diff完整追踪'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
   ['system', '基础数据管理', '宗族、权限、字辈、关系、导入、附件、审核Diff和日志']
 ] as const;
@@ -192,6 +193,7 @@ function AppShell() {
       case 'sourceLibrary': return <SourceLibraryProductPage />;
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
+      case 'auditTrace': return <LogPage notify={notify} />;
       case 'culture': return <CultureProductPage />;
       case 'system': return (
         <div className="system-management">
