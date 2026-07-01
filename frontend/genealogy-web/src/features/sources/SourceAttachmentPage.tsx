@@ -22,32 +22,30 @@ type Attachment = {
 
 export function SourceAttachmentPage({ notify }: Props) {
   const workspace = useWorkspace();
-  const [sourceId, setSourceId] = useState(workspace.sourceId || '');
   const [file, setFile] = useState<File | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  async function loadAttachments(nextSourceId = sourceId) {
-    if (!nextSourceId) return;
-    const data = await apiClient.get(`/source-attachments/sources/${nextSourceId}`);
+  async function loadAttachments() {
+    if (!workspace.sourceId) return;
+    const data = await apiClient.get(`/source-attachments/sources/${workspace.sourceId}`);
     setAttachments(toRecordList<Attachment>(data));
   }
 
-  useEffect(() => { if (sourceId) void loadAttachments(sourceId); }, [sourceId]);
+  useEffect(() => { if (workspace.sourceId) void loadAttachments(); }, [workspace.sourceId]);
 
   async function upload() {
     if (loading) return;
-    if (!sourceId) { notify({ message: '请先输入来源ID' }, true); return; }
+    if (!workspace.sourceId) { notify({ message: '请先在来源资料库中选择来源资料' }, true); return; }
     if (!file) { notify({ message: '请选择要上传的附件' }, true); return; }
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const result: any = await apiClient.upload(`/sources/${sourceId}/attachments`, formData);
-      workspace.setSourceId(sourceId);
-      notify({ message: '附件上传成功', id: result?.id });
+      await apiClient.upload(`/sources/${workspace.sourceId}/attachments`, formData);
+      notify({ message: '附件上传成功' });
       setFile(null);
-      await loadAttachments(sourceId);
+      await loadAttachments();
     } catch (error) {
       notify({ message: (error as Error).message || '附件上传失败' }, true);
     } finally {
@@ -80,7 +78,7 @@ export function SourceAttachmentPage({ notify }: Props) {
       const blob = await apiClient.download(`/source-attachments/${row.id}/content`);
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = row.originalFilename || `attachment-${row.id}`;
+      link.download = row.originalFilename || 'attachment';
       link.click();
       URL.revokeObjectURL(link.href);
       notify({ message: '附件下载已开始' });
@@ -91,7 +89,7 @@ export function SourceAttachmentPage({ notify }: Props) {
 
   async function removeAttachment(row: Attachment) {
     if (!row.id) return;
-    if (!window.confirm(`确认删除附件「${row.originalFilename || row.id}」吗？`)) return;
+    if (!window.confirm(`确认删除附件「${row.originalFilename || '当前附件'}」吗？`)) return;
     try {
       await apiClient.delete(`/source-attachments/${row.id}`);
       notify({ message: '附件已删除' });
@@ -103,22 +101,20 @@ export function SourceAttachmentPage({ notify }: Props) {
 
   return (
     <div className="source-attachment-page">
-      <Panel title="来源附件上传" description="为族谱原文、照片、墓碑、地方志、口述资料等来源上传原始附件，作为审核和入谱证据。">
+      <Panel title="来源附件上传" description="为族谱原文、照片、墓碑、地方志、口述资料等来源上传原始附件。请先在来源资料库中选择来源资料，再上传附件。">
         <div className="wizard-form-grid">
-          <Field label="来源ID"><input value={sourceId} onChange={e => setSourceId(e.target.value)} placeholder="请输入来源资料ID" /></Field>
           <Field label="附件文件"><input type="file" onChange={e => setFile(e.target.files?.[0] || null)} /></Field>
         </div>
         <Actions>
-          <button disabled={loading} onClick={upload}>{loading ? '上传中...' : '上传附件'}</button>
-          <button className="secondary" onClick={() => void loadAttachments()}>刷新附件</button>
+          <button disabled={loading || !workspace.sourceId} onClick={upload}>{loading ? '上传中...' : '上传到当前来源'}</button>
+          <button className="secondary" disabled={!workspace.sourceId} onClick={() => void loadAttachments()}>刷新附件</button>
         </Actions>
       </Panel>
 
-      <Panel title="附件列表" description="展示附件原始文件名、大小、存储路径和 SHA-256 校验值，支持图片、PDF、文本等浏览器可识别格式在线预览。">
+      <Panel title="附件列表" description="展示当前来源的附件原始文件名、大小、校验值，支持浏览器可识别格式在线预览。">
         <DataTable
           data={attachments}
           columns={[
-            { key: 'id', title: '附件ID' },
             { key: 'originalFilename', title: '原始文件名' },
             { key: 'contentType', title: '类型' },
             { key: 'fileSize', title: '大小' },
