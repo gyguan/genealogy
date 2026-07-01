@@ -13,11 +13,17 @@ export default defineConfig(({ mode }) => {
       port,
       strictPort: false,
       allowedHosts: true,
+      cors: true,
       proxy: {
         '/api': {
           target: proxyTarget,
           changeOrigin: true,
-          secure: false
+          secure: false,
+          configure: proxy => {
+            proxy.on('proxyReq', proxyReq => {
+              proxyReq.removeHeader('origin');
+            });
+          }
         }
       }
     }
