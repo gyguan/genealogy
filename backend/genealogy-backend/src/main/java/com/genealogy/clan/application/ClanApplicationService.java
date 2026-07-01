@@ -24,11 +24,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class ClanApplicationService {
 
     private static final String ROLE_CLAN_ADMIN = "clan_admin";
+    private static final DateTimeFormatter CLAN_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final ClanRepository clanRepository;
     private final BranchRepository branchRepository;
@@ -62,6 +66,9 @@ public class ClanApplicationService {
         }
         validateClanCodeForCreate(request.clanCode());
         ClanEntity entity = ClanMapper.toEntity(request);
+        if (entity.getClanCode() == null || entity.getClanCode().isBlank()) {
+            entity.setClanCode(generateClanCode(request.surname()));
+        }
         LocalDateTime now = LocalDateTime.now();
         entity.setStatus("draft");
         entity.setCreatedAt(now);
@@ -147,5 +154,28 @@ public class ClanApplicationService {
         if (clanCode != null && !clanCode.isBlank() && clanRepository.existsByClanCodeAndIdNot(clanCode.trim(), id)) {
             throw new BusinessException("CLAN_CODE_DUPLICATED", "宗族编码已存在");
         }
+    }
+
+    private String generateClanCode(String surname) {
+        String prefix = normalizeSurnamePrefix(surname);
+        for (int i = 0; i < 10; i++) {
+            String candidate = prefix + "-" + LocalDateTime.now().format(CLAN_CODE_TIME_FORMATTER) + "-" + randomSuffix();
+            if (!clanRepository.existsByClanCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new BusinessException("CLAN_CODE_GENERATE_FAILED", "宗族编码生成失败，请稍后重试");
+    }
+
+    private String normalizeSurnamePrefix(String surname) {
+        if (surname == null || surname.isBlank()) {
+            return "CLAN";
+        }
+        String value = surname.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+        return value.isBlank() ? "CLAN" : "CLAN" + value;
+    }
+
+    private String randomSuffix() {
+        return String.format("%04d", ThreadLocalRandom.current().nextInt(10_000));
     }
 }
