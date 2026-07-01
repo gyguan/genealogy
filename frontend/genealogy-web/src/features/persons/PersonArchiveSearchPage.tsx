@@ -108,6 +108,18 @@ function asDate(value: unknown) {
   return asString(value).slice(0, 10);
 }
 
+function clanLabel(clan: any) {
+  return clan.clanName || clan.name || clan.surname || `宗族 #${clan.id}`;
+}
+
+function branchLabel(branch: any) {
+  return branch.branchName || branch.name || `支派 #${branch.id}`;
+}
+
+function generationNoLabel(value: string) {
+  return value ? `${value} 世` : '';
+}
+
 function eventTypeText(type?: string) {
   const dict: Record<string, string> = {
     birth: '出生',
@@ -208,6 +220,19 @@ function toUpdatePayload(form: EditForm) {
   };
 }
 
+function uniqueTexts(values: unknown[]) {
+  return Array.from(new Set(values.map(value => String(value ?? '').trim()).filter(Boolean)));
+}
+
+function sortGenerationNos(values: string[]) {
+  return [...values].sort((left, right) => {
+    const leftNo = Number(left);
+    const rightNo = Number(right);
+    if (Number.isFinite(leftNo) && Number.isFinite(rightNo)) return leftNo - rightNo;
+    return left.localeCompare(right);
+  });
+}
+
 export function PersonArchiveSearchPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<SearchForm>(emptySearch);
@@ -221,6 +246,23 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [loading, setLoading] = useState(false);
   const [querying, setQuerying] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [clans, setClans] = useState<unknown>([]);
+  const [branches, setBranches] = useState<unknown>([]);
+  const [generationItems, setGenerationItems] = useState<any[]>([]);
+
+  const clanOptions = useMemo(() => toRecordList<any>(clans), [clans]);
+  const branchOptions = useMemo(() => toRecordList<any>(branches), [branches]);
+  const generationWordOptions = useMemo(() => uniqueTexts(generationItems.map(item => item.word || item.generationWord)), [generationItems]);
+  const generationNoOptions = useMemo(() => sortGenerationNos(uniqueTexts(generationItems.map(item => item.generationNo))), [generationItems]);
+
+  useEffect(() => {
+    void loadClans();
+  }, []);
+
+  useEffect(() => {
+    void loadClanFilterOptions(workspace.clanId);
+  }, [workspace.clanId]);
 
   useEffect(() => {
     if (!selected) return;
@@ -251,8 +293,55 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     }
   }
 
+  async function loadClans() {
+    try {
+      const data = await apiClient.get('/clans');
+      setClans(data);
+    } catch (error) {
+      notify({ message: `宗族列表加载失败：${(error as Error).message}` }, true);
+    }
+  }
+
+  async function loadClanFilterOptions(clanId: string) {
+    if (!clanId) {
+      setBranches([]);
+      setGenerationItems([]);
+      return;
+    }
+    setFilterLoading(true);
+    try {
+      const [branchRes, schemeRes] = await Promise.all([
+        apiClient.get(`/clans/${clanId}/branches`).catch(() => []),
+        apiClient.get(`/clans/${clanId}/generation-schemes`).catch(() => [])
+      ]);
+      setBranches(branchRes);
+      const schemes = toRecordList<any>(schemeRes);
+      const itemGroups = await Promise.all(schemes.map(scheme => scheme.id ? apiClient.get(`/generation-schemes/${scheme.id}/items`).catch(() => []) : []));
+      setGenerationItems(itemGroups.flatMap(group => toRecordList<any>(group)));
+    } catch (error) {
+      notify({ message: `宗族筛选项加载失败：${(error as Error).message}` }, true);
+      setBranches([]);
+      setGenerationItems([]);
+    } finally {
+      setFilterLoading(false);
+    }
+  }
+
+  function changeClan(clanId: string) {
+    workspace.patch({ clanId, branchId: '', personId: '' });
+    setForm(prev => ({ ...prev, branchId: '', generationNo: '', generationWord: '' }));
+    setRawData(undefined);
+    setPageNo(1);
+    closeDetail();
+  }
+
+  function changeBranch(branchId: string) {
+    patch('branchId', branchId);
+    workspace.setBranchId(branchId);
+  }
+
   function buildSearchPath(nextPageNo = pageNo) {
-    if (!workspace.clanId) throw new Error('请先选择或输入宗族ID');
+    if (!workspace.clanId) throw new Error('请先选择宗族');
     const params = new URLSearchParams();
     params.set('clanId', workspace.clanId);
     params.set('pageNo', String(nextPageNo || 1));
@@ -347,6 +436,12 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setDrawerMode('view');
   }
 
+  function branchText(row: any) {
+    const branchId = String(personBranchId(row) || '');
+    const branch = branchOptions.find(item => String(item.id) === branchId);
+    return row.branchName || row.branch?.branchName || branch?.branchName || branchId || '-';
+  }
+
   const rows = useMemo(() => toRecordList(rawData) as any[], [rawData]);
   const total = (rawData as any)?.total ?? rows.length;
   const currentPage = Number((rawData as any)?.pageNo ?? pageNo ?? 1);
@@ -396,17 +491,37 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   return (
     <div className="person-archive-search">
       <section className="panel archive-search-panel archive-search-panel--compact">
-        {querying ? <div className="archive-loading-mask"><div><span />查询中...</div></div> : null}
+        {querying || filterLoading ? <div className="archive-loading-mask"><div><span />{querying ? '查询中...' : '加载筛选项...'}</div></div> : null}
         <div className="archive-search-form">
-          <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="必填" /></Field>
+          <Field label="宗族名称">
+            <select value={workspace.clanId} onChange={e => changeClan(e.target.value)}>
+              <option value="">请选择宗族</option>
+              {clanOptions.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
+            </select>
+          </Field>
           <Field label="关键词"><input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" /></Field>
           <Field label="姓名"><input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" /></Field>
           <Field label="性别"><select value={form.gender} onChange={e => patch('gender', e.target.value)}><option value="">全部</option><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-          <Field label="字辈"><input value={form.generationWord} onChange={e => patch('generationWord', e.target.value)} placeholder="如：德" /></Field>
-          <Field label="代次"><input value={form.generationNo} onChange={e => patch('generationNo', e.target.value)} placeholder="如：20" /></Field>
-          <Field label="支派ID"><input value={form.branchId} onChange={e => patch('branchId', e.target.value)} placeholder="可空" /></Field>
+          <Field label="字辈">
+            <select value={form.generationWord} disabled={!workspace.clanId || filterLoading} onChange={e => patch('generationWord', e.target.value)}>
+              <option value="">全部</option>
+              {generationWordOptions.map(word => <option key={word} value={word}>{word}</option>)}
+            </select>
+          </Field>
+          <Field label="代次">
+            <select value={form.generationNo} disabled={!workspace.clanId || filterLoading} onChange={e => patch('generationNo', e.target.value)}>
+              <option value="">全部</option>
+              {generationNoOptions.map(no => <option key={no} value={no}>{generationNoLabel(no)}</option>)}
+            </select>
+          </Field>
+          <Field label="支派">
+            <select value={form.branchId} disabled={!workspace.clanId || filterLoading} onChange={e => changeBranch(e.target.value)}>
+              <option value="">全部</option>
+              {branchOptions.map(branch => <option key={branch.id} value={String(branch.id)}>{branchLabel(branch)}</option>)}
+            </select>
+          </Field>
           <Field label="状态"><select value={form.dataStatus} onChange={e => patch('dataStatus', e.target.value)}><option value="">全部</option><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
-          <Actions><button disabled={loading} onClick={() => search(1)}>搜索</button><button className="secondary" onClick={reset}>重置</button></Actions>
+          <Actions><button disabled={loading || !workspace.clanId} onClick={() => search(1)}>搜索</button><button className="secondary" onClick={reset}>重置</button><button className="secondary" disabled={filterLoading} onClick={() => workspace.clanId ? loadClanFilterOptions(workspace.clanId) : loadClans()}>刷新选项</button></Actions>
         </div>
         <div className="archive-search-summary archive-search-summary--compact">
           <span>第 {currentPage} / {totalPages} 页</span>
@@ -416,14 +531,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         </div>
         <DataTable
           data={rows}
-          empty="暂无人物记录，请先搜索或调整筛选条件。"
+          empty="暂无人物记录，请先选择宗族并搜索，或调整筛选条件。"
           columns={[
             { key: 'id', title: 'ID', render: row => row.id || row.personId },
             { key: 'name', title: '姓名', render: row => personName(row) },
             { key: 'genealogyName', title: '谱名' },
             { key: 'courtesyName', title: '字号' },
             { key: 'gender', title: '性别', render: row => personGender(row) },
-            { key: 'branchId', title: '支派ID', render: row => personBranchId(row) },
+            { key: 'branchName', title: '支派', render: row => branchText(row) },
             { key: 'generationNo', title: '代次', render: row => personGenerationNo(row) },
             { key: 'generationWord', title: '字辈', render: row => personGenerationWord(row) },
             { key: 'dataStatus', title: '状态', render: row => personStatus(row) },
@@ -482,7 +597,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                     <h3>详细信息</h3>
                     <div className="archive-view-grid">
                       <div><span>别名</span><strong>{display(selected.aliasName)}</strong></div>
-                      <div><span>支派ID</span><strong>{display(selected.branchId)}</strong></div>
+                      <div><span>支派</span><strong>{branchText(selected)}</strong></div>
                       <div><span>出生日期</span><strong>{display(selected.birthDate)}</strong></div>
                       <div><span>逝世日期</span><strong>{display(selected.deathDate)}</strong></div>
                       <div><span>是否在世</span><strong>{boolText(selected.isLiving)}</strong></div>
@@ -541,15 +656,15 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                 <section className="archive-drawer-section archive-edit-section">
                   <h3>编辑人物档案</h3>
                   <div className="archive-edit-grid">
-                    <Field label="支派ID"><input value={editForm.branchId} onChange={e => patchEdit('branchId', e.target.value)} /></Field>
+                    <Field label="支派"><select value={editForm.branchId} onChange={e => patchEdit('branchId', e.target.value)}><option value="">请选择支派</option>{branchOptions.map(branch => <option key={branch.id} value={String(branch.id)}>{branchLabel(branch)}</option>)}</select></Field>
                     <Field label="人物编码"><input value={editForm.personCode} onChange={e => patchEdit('personCode', e.target.value)} /></Field>
                     <Field label="姓名"><input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Field>
                     <Field label="谱名"><input value={editForm.genealogyName} onChange={e => patchEdit('genealogyName', e.target.value)} /></Field>
                     <Field label="字号"><input value={editForm.courtesyName} onChange={e => patchEdit('courtesyName', e.target.value)} /></Field>
                     <Field label="别名"><input value={editForm.aliasName} onChange={e => patchEdit('aliasName', e.target.value)} /></Field>
                     <Field label="性别"><select value={editForm.gender} onChange={e => patchEdit('gender', e.target.value)}><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-                    <Field label="代次"><input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Field>
-                    <Field label="字辈"><input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Field>
+                    <Field label="代次"><select value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)}><option value="">请选择代次</option>{generationNoOptions.map(no => <option key={no} value={no}>{generationNoLabel(no)}</option>)}</select></Field>
+                    <Field label="字辈"><select value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)}><option value="">请选择字辈</option>{generationWordOptions.map(word => <option key={word} value={word}>{word}</option>)}</select></Field>
                     <Field label="排行"><input value={editForm.rankInFamily} onChange={e => patchEdit('rankInFamily', e.target.value)} /></Field>
                     <Field label="出生日期"><input type="date" value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} /></Field>
                     <Field label="出生日期精度"><select value={editForm.birthDatePrecision} onChange={e => patchEdit('birthDatePrecision', e.target.value)}><option value="day">精确到日</option><option value="month">精确到月</option><option value="year">精确到年</option><option value="unknown">未知</option></select></Field>
