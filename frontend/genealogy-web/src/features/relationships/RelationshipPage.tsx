@@ -24,120 +24,25 @@ type RelationshipPreset = {
 };
 
 const relationshipPresets: RelationshipPreset[] = [
-  {
-    title: '亲生父亲',
-    group: '基础关系',
-    type: 'parent_child',
-    label: 'father',
-    lineage: true,
-    biological: true,
-    primary: true,
-    direction: '起点=父亲，终点=子女',
-    tip: '用于正常血缘父子/父女世系。',
-    description: '亲生父亲关系，参与世系校验和代次校验。'
-  },
-  {
-    title: '亲生母亲',
-    group: '基础关系',
-    type: 'parent_child',
-    label: 'mother',
-    lineage: true,
-    biological: true,
-    primary: true,
-    direction: '起点=母亲，终点=子女',
-    tip: '用于正常血缘母子/母女世系。',
-    description: '亲生母亲关系，参与世系校验和代次校验。'
-  },
-  {
-    title: '配偶',
-    group: '基础关系',
-    type: 'spouse',
-    label: 'spouse',
-    lineage: false,
-    biological: false,
-    primary: false,
-    direction: '起点/终点互为配偶',
-    tip: '保存后后端会自动生成反向配偶关系。',
-    description: '配偶关系，非世系关系。'
-  },
-  {
-    title: '养父',
-    group: '收养关系',
-    type: 'adoptive',
-    label: 'adoptive_father',
-    lineage: true,
-    biological: false,
-    primary: true,
-    direction: '起点=养父，终点=养子女',
-    tip: '用于记录非血缘但纳入本支派世系的养父关系。',
-    description: '养父关系，非血缘，参与世系循环和代次校验。'
-  },
-  {
-    title: '养母',
-    group: '收养关系',
-    type: 'adoptive',
-    label: 'adoptive_mother',
-    lineage: true,
-    biological: false,
-    primary: true,
-    direction: '起点=养母，终点=养子女',
-    tip: '用于记录非血缘但纳入本支派世系的养母关系。',
-    description: '养母关系，非血缘，参与世系循环和代次校验。'
-  },
-  {
-    title: '养父母/收养',
-    group: '收养关系',
-    type: 'adoptive',
-    label: 'adoptive_parent',
-    lineage: true,
-    biological: false,
-    primary: true,
-    direction: '起点=收养方，终点=被收养人',
-    tip: '适合性别未知或不区分养父/养母的收养关系。',
-    description: '收养关系，非血缘，参与世系循环和代次校验。'
-  },
-  {
-    title: '继嗣/承嗣',
-    group: '承嗣关系',
-    type: 'successor',
-    label: 'heir_successor',
-    lineage: true,
-    biological: false,
-    primary: true,
-    direction: '起点=嗣父/被承嗣方，终点=继嗣人/承嗣人',
-    tip: '用于记录承嗣、继承香火、嗣子入谱等关系。',
-    description: '继嗣关系，非血缘，作为世系关系参与循环和代次校验。'
-  },
-  {
-    title: '出嗣/出继',
-    group: '承嗣关系',
-    type: 'out_adoption',
-    label: 'out_adopted',
-    lineage: false,
-    biological: false,
-    primary: false,
-    direction: '起点=出嗣人，终点=承接方/入继对象',
-    tip: '用于记录从本支派出继到其他房支或宗族的事实。',
-    description: '出嗣关系，作为事实记录保存，不参与本支派世系循环。'
-  }
+  { title: '亲生父亲', group: '基础关系', type: 'parent_child', label: 'father', lineage: true, biological: true, primary: true, direction: '起点=父亲，终点=子女', tip: '用于正常血缘父子/父女世系。', description: '亲生父亲关系，参与世系校验和代次校验。' },
+  { title: '亲生母亲', group: '基础关系', type: 'parent_child', label: 'mother', lineage: true, biological: true, primary: true, direction: '起点=母亲，终点=子女', tip: '用于正常血缘母子/母女世系。', description: '亲生母亲关系，参与世系校验和代次校验。' },
+  { title: '配偶', group: '基础关系', type: 'spouse', label: 'spouse', lineage: false, biological: false, primary: false, direction: '起点/终点互为配偶', tip: '保存后后端会自动生成反向配偶关系。', description: '配偶关系，非世系关系。' },
+  { title: '养父', group: '收养关系', type: 'adoptive', label: 'adoptive_father', lineage: true, biological: false, primary: true, direction: '起点=养父，终点=养子女', tip: '用于记录非血缘但纳入本支派世系的养父关系。', description: '养父关系，非血缘，参与世系循环和代次校验。' },
+  { title: '养母', group: '收养关系', type: 'adoptive', label: 'adoptive_mother', lineage: true, biological: false, primary: true, direction: '起点=养母，终点=养子女', tip: '用于记录非血缘但纳入本支派世系的养母关系。', description: '养母关系，非血缘，参与世系循环和代次校验。' },
+  { title: '继嗣/承嗣', group: '承嗣关系', type: 'successor', label: 'heir_successor', lineage: true, biological: false, primary: true, direction: '起点=嗣父/被承嗣方，终点=继嗣人/承嗣人', tip: '用于记录承嗣、继承香火、嗣子入谱等关系。', description: '继嗣关系，非血缘，作为世系关系参与循环和代次校验。' },
+  { title: '出嗣/出继', group: '承嗣关系', type: 'out_adoption', label: 'out_adopted', lineage: false, biological: false, primary: false, direction: '起点=出嗣人，终点=承接方/入继对象', tip: '用于记录从本支派出继到其他房支或宗族的事实。', description: '出嗣关系，作为事实记录保存，不参与本支派世系循环。' }
 ];
 
 const relationTypeOptions = [
-  { value: 'parent_child', label: '亲子 parent_child' },
-  { value: 'spouse', label: '配偶 spouse' },
-  { value: 'adoptive', label: '养育/收养 adoptive' },
-  { value: 'successor', label: '继嗣/承嗣 successor' },
-  { value: 'out_adoption', label: '出嗣/出继 out_adoption' }
+  { value: 'parent_child', label: '亲子' },
+  { value: 'spouse', label: '配偶' },
+  { value: 'adoptive', label: '养育/收养' },
+  { value: 'successor', label: '继嗣/承嗣' },
+  { value: 'out_adoption', label: '出嗣/出继' }
 ];
 
 function changeText(value?: string) {
-  const dict: Record<string, string> = {
-    parent_child: '亲子',
-    spouse: '配偶',
-    adoptive: '收养',
-    successor: '继嗣',
-    out_adoption: '出嗣'
-  };
+  const dict: Record<string, string> = { parent_child: '亲子', spouse: '配偶', adoptive: '收养', successor: '继嗣', out_adoption: '出嗣' };
   return dict[value || ''] || value || '-';
 }
 
@@ -160,17 +65,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<unknown>();
 
-  const body = () => ({
-    fromPersonId: Number(fromPersonId),
-    toPersonId: Number(toPersonId),
-    relationType,
-    relationLabel,
-    isLineageRelation: lineageRelation,
-    isBiological: biological,
-    isPrimary: primary,
-    description,
-    confidenceLevel
-  });
+  const body = () => ({ fromPersonId: Number(fromPersonId), toPersonId: Number(toPersonId), relationType, relationLabel, isLineageRelation: lineageRelation, isBiological: biological, isPrimary: primary, description, confidenceLevel });
 
   function applyPreset(preset: RelationshipPreset) {
     setRelationType(preset.type);
@@ -206,9 +101,9 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
     await run(async () => {
       const res: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, body());
       if (res?.id) workspace.patch({ relationshipId: String(res.id), personId: toPersonId || fromPersonId });
-      setResult({ message: '关系创建成功', id: res?.id });
+      setResult({ message: '关系创建成功' });
       setCreateOpen(false);
-      notify({ message: '关系创建成功', id: res?.id });
+      notify({ message: '关系创建成功' });
       await list();
     });
   }
@@ -242,7 +137,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
         confidenceLevel: selected.confidenceLevel || 'high'
       });
       setSelected(res);
-      setResult({ message: '关系信息已更新', id: selected.id });
+      setResult({ message: '关系信息已更新' });
       notify({ message: '关系信息已更新' });
       await list();
     });
@@ -263,45 +158,16 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
 
   return (
     <Panel title="关系管理" description="支持亲子、配偶、养父母、继嗣、出嗣等复杂关系；创建前可先做冲突预检。">
-      <Alert
-        type="info"
-        showIcon
-        className="member-role-tip"
-        message="复杂关系录入方向"
-        description="亲子/养育/继嗣类关系建议保持“起点=上一代或承接方，终点=下一代或承嗣人”；出嗣关系建议记录“起点=出嗣人，终点=承接方/入继对象”。"
-      />
-      <Field label="人物ID"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
+      <Alert type="info" showIcon className="member-role-tip" message="复杂关系录入方向" description="亲子/养育/继嗣类关系建议保持“起点=上一代或承接方，终点=下一代或承嗣人”；出嗣关系建议记录“起点=出嗣人，终点=承接方/入继对象”。" />
+      <Field label="当前人物"><input value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)} /></Field>
       <Actions><button disabled={loading} onClick={() => run(list)}>{loading ? '处理中...' : '查询关系'}</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建关系</button></Actions>
-      <DataTable
-        data={data}
-        columns={[
-          { key: 'id', title: 'ID' },
-          { key: 'fromPersonId', title: '起点人物' },
-          { key: 'toPersonId', title: '终点人物' },
-          { key: 'relationType', title: '关系类型', render: row => changeText(row.relationType) },
-          { key: 'relationLabel', title: '标签' },
-          { key: 'isLineageRelation', title: '世系', render: row => row.isLineageRelation ? '是' : '否' },
-          { key: 'isBiological', title: '血缘', render: row => row.isBiological ? '是' : '否' },
-          { key: 'dataStatus', title: '状态' }
-        ]}
-        onSelect={row => detail(String(row.id))}
-      />
+      <DataTable data={data} columns={[{ key: 'fromPersonId', title: '起点人物' }, { key: 'toPersonId', title: '终点人物' }, { key: 'relationType', title: '关系类型', render: row => changeText(row.relationType) }, { key: 'relationLabel', title: '标签' }, { key: 'isLineageRelation', title: '世系', render: row => row.isLineageRelation ? '是' : '否' }, { key: 'isBiological', title: '血缘', render: row => row.isBiological ? '是' : '否' }, { key: 'dataStatus', title: '状态' }]} onSelect={row => detail(String(row.id))} />
       <ResultNotice result={result} />
 
       <Modal open={createOpen} title="新建关系" onClose={() => setCreateOpen(false)} width={960}>
-        <div className="relationship-preset-grid">
-          {relationshipPresets.map(preset => (
-            <button key={`${preset.type}-${preset.label}`} type="button" onClick={() => applyPreset(preset)}>
-              <strong>{preset.title}</strong>
-              <Tag>{preset.group}</Tag>
-              <span>{preset.direction}</span>
-              <em>{preset.tip}</em>
-            </button>
-          ))}
-        </div>
-        <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
-        <Field label="关系起点人物ID"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} /></Field>
-        <Field label="关系终点人物ID"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} /></Field>
+        <div className="relationship-preset-grid">{relationshipPresets.map(preset => <button key={`${preset.type}-${preset.label}`} type="button" onClick={() => applyPreset(preset)}><strong>{preset.title}</strong><Tag>{preset.group}</Tag><span>{preset.direction}</span><em>{preset.tip}</em></button>)}</div>
+        <Field label="关系起点人物"><input value={fromPersonId} onChange={e => setFromPersonId(e.target.value)} placeholder="选择或输入起点人物" /></Field>
+        <Field label="关系终点人物"><input value={toPersonId} onChange={e => setToPersonId(e.target.value)} placeholder="选择或输入终点人物" /></Field>
         <Field label="关系类型"><select value={relationType} onChange={e => setRelationType(e.target.value)}>{relationTypeOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
         <Field label="关系标签"><input value={relationLabel} onChange={e => setRelationLabel(e.target.value)} placeholder="如 father / adoptive_father / heir_successor / out_adopted" /></Field>
         <Field label="是否世系关系"><select value={lineageRelation ? 'true' : 'false'} onChange={e => setLineageRelation(e.target.value === 'true')}><option value="true">是</option><option value="false">否</option></select></Field>
@@ -313,39 +179,11 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       </Modal>
 
       <Modal open={detailOpen} title="关系详情" onClose={() => setDetailOpen(false)} width={820}>
-        <DetailCard
-          title="基础信息"
-          data={selected}
-          fields={[
-            { label: '关系ID', value: row => row.id },
-            { label: '起点人物', value: row => row.fromPersonId },
-            { label: '终点人物', value: row => row.toPersonId },
-            { label: '关系类型', value: row => changeText(row.relationType) },
-            { label: '关系标签', value: row => row.relationLabel },
-            { label: '状态', value: row => row.dataStatus }
-          ]}
-        />
-        {selected ? <>
-          <Field label="关系类型"><select value={selected.relationType || 'parent_child'} onChange={e => setSelected({ ...selected, relationType: e.target.value })}>{relationTypeOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-          <Field label="关系标签"><input value={selected.relationLabel || ''} onChange={e => setSelected({ ...selected, relationLabel: e.target.value })} /></Field>
-          <Field label="是否世系关系"><select value={selected.isLineageRelation !== false ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isLineageRelation: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field>
-          <Field label="是否血缘关系"><select value={selected.isBiological === true ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isBiological: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field>
-          <Field label="是否主关系"><select value={selected.isPrimary !== false ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isPrimary: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field>
-          <Field label="可信度"><select value={selected.confidenceLevel || 'high'} onChange={e => setSelected({ ...selected, confidenceLevel: e.target.value })}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></Field>
-          <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
-          <Actions><button disabled={loading} onClick={update}>保存修改</button><button className="danger" onClick={() => setDeleteOpen(true)}>删除关系</button></Actions>
-        </> : null}
+        <DetailCard title="基础信息" data={selected} fields={[{ label: '关系类型', value: row => changeText(row.relationType) }, { label: '关系标签', value: row => row.relationLabel }, { label: '状态', value: row => row.dataStatus }]} />
+        {selected ? <><Field label="关系类型"><select value={selected.relationType || 'parent_child'} onChange={e => setSelected({ ...selected, relationType: e.target.value })}>{relationTypeOptions.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field><Field label="关系标签"><input value={selected.relationLabel || ''} onChange={e => setSelected({ ...selected, relationLabel: e.target.value })} /></Field><Field label="是否世系关系"><select value={selected.isLineageRelation !== false ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isLineageRelation: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field><Field label="是否血缘关系"><select value={selected.isBiological === true ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isBiological: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field><Field label="是否主关系"><select value={selected.isPrimary !== false ? 'true' : 'false'} onChange={e => setSelected({ ...selected, isPrimary: e.target.value === 'true' })}><option value="true">是</option><option value="false">否</option></select></Field><Field label="可信度"><select value={selected.confidenceLevel || 'high'} onChange={e => setSelected({ ...selected, confidenceLevel: e.target.value })}><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select></Field><Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field><Actions><button disabled={loading} onClick={update}>保存修改</button><button className="danger" onClick={() => setDeleteOpen(true)}>删除关系</button></Actions></> : null}
       </Modal>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title="删除关系"
-        description="删除关系会影响世系图和亲缘关系查询，请确认后继续。"
-        confirmText="确认删除"
-        danger
-        onConfirm={remove}
-        onClose={() => setDeleteOpen(false)}
-      />
+      <ConfirmDialog open={deleteOpen} title="删除关系" description="删除关系会影响世系图和亲缘关系查询，请确认后继续。" confirmText="确认删除" danger onConfirm={remove} onClose={() => setDeleteOpen(false)} />
     </Panel>
   );
 }
