@@ -102,6 +102,15 @@ function nullableBoolean(value: string) {
   return null;
 }
 
+function relationName(type?: string, label?: string) {
+  if (type === 'spouse') return '配偶';
+  if (label === 'father') return '父亲';
+  if (label === 'mother') return '母亲';
+  if (label === 'child') return '子女';
+  if (type === 'parent_child') return '亲子';
+  return label || type || '关系';
+}
+
 export function Mvp1WizardPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [active, setActive] = useState<StepKey>('clan');
@@ -131,10 +140,20 @@ export function Mvp1WizardPage({ notify }: Props) {
   const treeNodes = toRecordList<any>(snapshot.tree?.nodes || []);
   const treeEdges = toRecordList<any>(snapshot.tree?.edges || []);
   const selectedPerson = useMemo(() => persons.find(item => String(item.id) === workspace.personId), [persons, workspace.personId]);
+  const selectedPersonName = useMemo(() => selectedPerson?.name || selectedPerson?.genealogyName || (workspace.personId ? `人物 #${workspace.personId}` : ''), [selectedPerson, workspace.personId]);
   const selectedClan = useMemo(() => clans.find(item => String(item.id) === selectedClanId), [clans, selectedClanId]);
   const selectedClanName = useMemo(() => selectedClan?.clanName || selectedClan?.surname || '', [selectedClan]);
   const selectedBranch = useMemo(() => branches.find(item => String(item.id) === workspace.branchId), [branches, workspace.branchId]);
   const selectedBranchName = useMemo(() => selectedBranch?.branchName || '', [selectedBranch]);
+  const relativeTypeOptions = useMemo(() => {
+    const targetName = selectedPersonName || '中心人物';
+    return [
+      { value: 'father', label: `为${targetName}添加父亲` },
+      { value: 'mother', label: `为${targetName}添加母亲` },
+      { value: 'spouse', label: `为${targetName}添加配偶` },
+      { value: 'child', label: `为${targetName}添加子女` }
+    ];
+  }, [selectedPersonName]);
 
   const steps = useMemo(() => [
     { ...stepOrder[0], ready: Boolean(selectedClanId || workspace.clanId) },
@@ -233,6 +252,19 @@ export function Mvp1WizardPage({ notify }: Props) {
   function patchPerson(key: keyof typeof personForm, value: string) { setPersonForm(prev => ({ ...prev, [key]: value })); }
   function patchRelative(key: keyof typeof relativeForm, value: string) { setRelativeForm(prev => ({ ...prev, [key]: value })); }
   function patchSource(key: keyof typeof sourceForm, value: string) { setSourceForm(prev => ({ ...prev, [key]: value })); }
+
+  function personNameById(id: unknown) {
+    const personId = String(id || '');
+    const person = persons.find(item => String(item.id) === personId);
+    return person?.name || person?.genealogyName || (personId ? `人物 #${personId}` : '-');
+  }
+
+  function relationshipSummary(row: any) {
+    const relation = relationName(row.relationType, row.relationLabel);
+    if (row.relationType === 'spouse') return `${personNameById(row.fromPersonId)} 的${relation}：${personNameById(row.toPersonId)}`;
+    if (row.relationLabel === 'father' || row.relationLabel === 'mother') return `${personNameById(row.toPersonId)} 的${relation}：${personNameById(row.fromPersonId)}`;
+    return `${personNameById(row.fromPersonId)} 与 ${personNameById(row.toPersonId)}：${relation}`;
+  }
 
   function buildPersonPayload(form = personForm) {
     return {
@@ -580,7 +612,33 @@ export function Mvp1WizardPage({ notify }: Props) {
           </Panel>
         );
       case 'relationship':
-        return <Panel title="建立亲属关系" description="围绕当前中心人物添加父母、配偶或子女，不再要求用户手工组织关系方向。"><div className="wizard-current">中心人物：<strong>{selectedPerson?.name || workspace.personId || '未选择'}</strong></div><div className="wizard-form-grid"><Field label="关系类型"><select value={relativeForm.mode} onChange={e => patchRelative('mode', e.target.value)}><option value="father">添加父亲</option><option value="mother">添加母亲</option><option value="spouse">添加配偶</option><option value="child">添加子女</option></select></Field><Field label="亲属姓名"><input value={relativeForm.name} onChange={e => patchRelative('name', e.target.value)} /></Field><Field label="亲属性别"><select value={relativeForm.gender} onChange={e => patchRelative('gender', e.target.value)}><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field><Field label="亲属代次"><input value={relativeForm.generationNo} onChange={e => patchRelative('generationNo', e.target.value)} /></Field><Field label="亲属字辈"><input value={relativeForm.generationWord} onChange={e => patchRelative('generationWord', e.target.value)} /></Field></div><Actions><button disabled={loading} onClick={createRelative}>创建亲属关系并进入来源</button></Actions><DataTable data={snapshot.relationships} columns={[{ key: 'fromPersonId', title: '起点' }, { key: 'toPersonId', title: '终点' }, { key: 'relationType', title: '类型' }, { key: 'relationLabel', title: '标签' }]} onSelect={row => workspace.setRelationshipId(String(row.id))} /></Panel>;
+        return (
+          <Panel title="建立亲属关系" description={selectedPersonName ? `围绕${selectedPersonName}添加父母、配偶或子女，不再要求用户手工组织关系方向。` : '请先在人物列表中选择中心人物，再添加父母、配偶或子女。'}>
+            <div className="wizard-current">中心人物：<strong>{selectedPersonName || '未选择'}</strong></div>
+            <div className="wizard-form-grid">
+              <Field label="关系类型">
+                <select value={relativeForm.mode} onChange={e => patchRelative('mode', e.target.value)} disabled={!selectedPersonName}>
+                  {relativeTypeOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </Field>
+              <Field label="亲属姓名"><input value={relativeForm.name} onChange={e => patchRelative('name', e.target.value)} /></Field>
+              <Field label="亲属性别"><select value={relativeForm.gender} onChange={e => patchRelative('gender', e.target.value)}><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
+              <Field label="亲属代次"><input value={relativeForm.generationNo} onChange={e => patchRelative('generationNo', e.target.value)} /></Field>
+              <Field label="亲属字辈"><input value={relativeForm.generationWord} onChange={e => patchRelative('generationWord', e.target.value)} /></Field>
+            </div>
+            <Actions><button disabled={loading || !selectedPersonName} onClick={createRelative}>创建亲属关系并进入来源</button></Actions>
+            <DataTable
+              data={snapshot.relationships}
+              columns={[
+                { key: 'relationSummary', title: '类型', render: row => relationshipSummary(row) },
+                { key: 'fromPersonId', title: '起点人物', render: row => personNameById(row.fromPersonId) },
+                { key: 'toPersonId', title: '终点人物', render: row => personNameById(row.toPersonId) },
+                { key: 'relationLabel', title: '标签' }
+              ]}
+              onSelect={row => workspace.setRelationshipId(String(row.id))}
+            />
+          </Panel>
+        );
       case 'source':
         return <Panel title="绑定来源证据" description="创建来源资料，并将其绑定到人物或关系，保证入谱数据可追溯。"><div className="wizard-form-grid"><Field label="来源名称"><input value={sourceForm.sourceName} onChange={e => patchSource('sourceName', e.target.value)} placeholder="例如：老谱第3卷第28页" /></Field><Field label="来源类型"><select value={sourceForm.sourceType} onChange={e => patchSource('sourceType', e.target.value)}><option value="genealogy_book">族谱原文</option><option value="oral_record">口述记录</option><option value="tombstone">墓碑/墓志</option><option value="photo">照片</option><option value="local_chronicle">地方志</option><option value="other">其他</option></select></Field><Field label="绑定对象"><select value={sourceForm.targetType} onChange={e => patchSource('targetType', e.target.value)}><option value="person">人物</option><option value="relationship">关系</option><option value="branch">支派</option><option value="clan">宗族</option></select></Field><Field label="对象ID"><input value={sourceForm.targetId || (sourceForm.targetType === 'relationship' ? workspace.relationshipId : workspace.personId)} onChange={e => patchSource('targetId', e.target.value)} /></Field></div><Actions><button disabled={loading} onClick={createSource}>创建来源</button><button disabled={loading} onClick={bindSource}>绑定来源并进入审核</button></Actions><DataTable data={snapshot.sources} columns={[{ key: 'sourceName', title: '来源名称' }, { key: 'sourceType', title: '类型' }, { key: 'verificationStatus', title: '状态' }]} onSelect={row => workspace.setSourceId(String(row.id))} /></Panel>;
       case 'review':
@@ -615,7 +673,7 @@ export function Mvp1WizardPage({ notify }: Props) {
               <div><span>宗族</span><strong>{selectedClanName || workspace.clanId || '-'}</strong></div>
               <div><span>支派</span><strong>{selectedBranchName || '-'}</strong></div>
               <div><span>字辈方案</span><strong>{schemeForm.schemeId || '-'}</strong></div>
-              <div><span>人物ID</span><strong>{workspace.personId || '-'}</strong></div>
+              <div><span>人物</span><strong>{selectedPersonName || workspace.personId || '-'}</strong></div>
               <div><span>关系ID</span><strong>{workspace.relationshipId || '-'}</strong></div>
               <div><span>来源ID</span><strong>{workspace.sourceId || '-'}</strong></div>
               <div><span>审核任务</span><strong>{workspace.reviewTaskId || '-'}</strong></div>
