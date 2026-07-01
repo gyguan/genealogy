@@ -83,6 +83,11 @@ public class PersonApplicationService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         PersonEntity saved = personRepository.save(entity);
+        if (!hasText(saved.getPersonCode())) {
+            saved.setPersonCode(generatePersonCode(saved.getId()));
+            saved.setUpdatedAt(LocalDateTime.now());
+            saved = personRepository.save(saved);
+        }
         operationLogApplicationService.record(clanId, actorId, "person_create", "person", saved.getId(), "新增人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
@@ -166,7 +171,6 @@ public class PersonApplicationService {
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
         PersonEntity saved = personRepository.save(entity);
-        operationLogApplicationService.record(saved.getClanId(), actorId, "person_update", "person", saved.getId(), "更新人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
 
@@ -353,6 +357,10 @@ public class PersonApplicationService {
         if (entity.getLineageStatus() == null) {
             entity.setLineageStatus("normal");
         }
+    }
+
+    private String generatePersonCode(Long id) {
+        return String.format("P%06d", id);
     }
 
     private boolean hasText(String value) {
