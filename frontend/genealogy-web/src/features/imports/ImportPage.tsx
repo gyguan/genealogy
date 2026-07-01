@@ -50,12 +50,13 @@ const defaultMapping = {
   genderIndex: '2',
   generationNoIndex: '3',
   generationWordIndex: '4',
-  branchIdIndex: '5',
-  birthDateIndex: '6',
-  isLivingIndex: '7'
+  branchIdIndex: '',
+  birthDateIndex: '5',
+  isLivingIndex: '6'
 };
 
-function toZeroBased(value: string) {
+function toZeroBased(value: string, allowEmpty = false) {
+  if (allowEmpty && !String(value || '').trim()) return -1;
   const parsed = Number(value || '1');
   return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
 }
@@ -71,8 +72,7 @@ function saveBlob(blob: Blob, filename: string) {
 
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
-  const [branchId, setBranchId] = useState(workspace.branchId || '');
-  const [exportBranchId, setExportBranchId] = useState(workspace.branchId || '');
+  const [branchId] = useState(workspace.branchId || '');
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState(defaultMapping);
   const [autoMapping, setAutoMapping] = useState(true);
@@ -85,7 +85,7 @@ export function ImportPage({ notify }: Props) {
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
     params.set('autoMapping', String(autoMapping));
-    Object.entries(mapping).forEach(([key, value]) => params.set(key, String(toZeroBased(value))));
+    Object.entries(mapping).forEach(([key, value]) => params.set(key, String(toZeroBased(value, key === 'branchIdIndex'))));
     if (branchId) params.set('branchId', branchId);
     return params.toString();
   }, [mapping, branchId, autoMapping]);
@@ -113,7 +113,7 @@ export function ImportPage({ notify }: Props) {
   useEffect(() => { void loadJobs(); }, [workspace.clanId]);
 
   function downloadTemplate() {
-    const content = '姓名,性别,代次,字辈,支派ID,出生日期,是否在世\n张明远,male,1,明,,1940-01-01,否\n张承志,male,2,承,,1965-05-12,是\n';
+    const content = '姓名,性别,代次,字辈,出生日期,是否在世\n张明远,male,1,明,1940-01-01,否\n张承志,male,2,承,1965-05-12,是\n';
     const blob = new Blob(['\ufeff', content], { type: 'text/csv;charset=utf-8' });
     saveBlob(blob, 'person-import-template.csv');
     notify({ message: '导入模板已生成' });
@@ -133,27 +133,19 @@ export function ImportPage({ notify }: Props) {
     }
   }
 
-  async function exportBranchPersons() {
-    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
-    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/persons.csv`, `branch-${exportBranchId}-persons.csv`);
-  }
-
-  async function exportBranchRelations() {
-    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
-    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/relations.csv`, `branch-${exportBranchId}-relations.csv`);
-  }
-
-  async function exportBranchBooklet() {
-    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
-    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/booklet.html`, `branch-${exportBranchId}-booklet.html`);
+  async function exportCurrentBranch(pathType: 'persons' | 'relations' | 'booklet') {
+    if (!workspace.clanId) { notify({ message: '请先在宗族管理中选择宗族' }, true); return; }
+    if (!workspace.branchId) { notify({ message: '请先在支派管理中选择支派' }, true); return; }
+    const path = pathType === 'booklet'
+      ? `/clans/${workspace.clanId}/branches/${workspace.branchId}/exports/booklet.html`
+      : `/clans/${workspace.clanId}/branches/${workspace.branchId}/exports/${pathType}.csv`;
+    const filename = pathType === 'booklet' ? 'branch-booklet.html' : `branch-${pathType}.csv`;
+    await downloadCsv(path, filename);
   }
 
   async function previewFile() {
     if (loading) return null;
-    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return null; }
+    if (!workspace.clanId) { notify({ message: '请先在宗族管理中选择宗族' }, true); return null; }
     if (!file) { notify({ message: '请选择 CSV 或 XLSX 文件' }, true); return null; }
     setLoading(true);
     try {
@@ -173,7 +165,7 @@ export function ImportPage({ notify }: Props) {
 
   async function upload() {
     if (loading) return;
-    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
+    if (!workspace.clanId) { notify({ message: '请先在宗族管理中选择宗族' }, true); return; }
     if (!file) { notify({ message: '请选择 CSV 或 XLSX 文件' }, true); return; }
     const effectivePreview = preview || await previewFile();
     if (!effectivePreview) return;
@@ -202,8 +194,6 @@ export function ImportPage({ notify }: Props) {
     <div className="import-page">
       <Panel title="人物导入" description="支持 CSV / XLSX 导入。导入人物默认进入 draft 草稿状态，需要审核通过后正式入谱。">
         <div className="wizard-form-grid">
-          <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
-          <Field label="默认支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="可空；文件映射列可覆盖" /></Field>
           <Field label="导入文件"><input type="file" accept=".csv,.xlsx" onChange={e => { setFile(e.target.files?.[0] || null); setPreview(null); }} /></Field>
         </div>
         <label className="import-confirm-line"><input type="checkbox" checked={autoMapping} onChange={e => { setAutoMapping(e.target.checked); setPreview(null); }} /> 自动识别表头字段；识别失败时使用下方列号兜底</label>
@@ -212,7 +202,6 @@ export function ImportPage({ notify }: Props) {
           <Field label="性别列"><input value={mapping.genderIndex} onChange={e => patchMapping('genderIndex', e.target.value)} /></Field>
           <Field label="代次列"><input value={mapping.generationNoIndex} onChange={e => patchMapping('generationNoIndex', e.target.value)} /></Field>
           <Field label="字辈列"><input value={mapping.generationWordIndex} onChange={e => patchMapping('generationWordIndex', e.target.value)} /></Field>
-          <Field label="支派ID列"><input value={mapping.branchIdIndex} onChange={e => patchMapping('branchIdIndex', e.target.value)} /></Field>
           <Field label="出生日期列"><input value={mapping.birthDateIndex} onChange={e => patchMapping('birthDateIndex', e.target.value)} /></Field>
           <Field label="是否在世列"><input value={mapping.isLivingIndex} onChange={e => patchMapping('isLivingIndex', e.target.value)} /></Field>
         </div>
@@ -225,25 +214,21 @@ export function ImportPage({ notify }: Props) {
           <button className="secondary" onClick={() => void loadJobs()}>刷新导入任务</button>
         </Actions>
         <div className="import-template-tip">
-          <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 支派ID, 出生日期, 是否在世。默认会按表头自动识别；手工映射使用从 1 开始的列号。
+          <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 出生日期, 是否在世。支派不在文件中填写系统 ID；需要按支派导入时，请先在支派管理中选择支派作为当前支派。
         </div>
       </Panel>
 
-      <Panel title="人物/关系/成册导出" description="支持全宗族导出，也支持按支派导出当前支派及其下级支派的人物、关系和简版族谱成册。">
-        <div className="wizard-form-grid">
-          <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
-          <Field label="导出支派ID"><input value={exportBranchId} onChange={e => setExportBranchId(e.target.value)} placeholder="填写支派ID，导出该支派及下级支派" /></Field>
-        </div>
+      <Panel title="人物/关系/成册导出" description="支持全宗族导出，也支持按当前已选支派导出人物、关系和简版族谱成册。">
         <Actions>
           <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</button>
           <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</button>
-          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, `clan-${workspace.clanId}-booklet.html`)}>导出全宗族成册</button>
-          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchPersons()}>按支派导出人物</button>
-          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchRelations()}>按支派导出关系</button>
-          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchBooklet()}>按支派导出成册</button>
+          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, 'clan-booklet.html')}>导出全宗族成册</button>
+          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('persons')}>按当前支派导出人物</button>
+          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('relations')}>按当前支派导出关系</button>
+          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('booklet')}>按当前支派导出成册</button>
         </Actions>
         <div className="import-template-tip">
-          <strong>成册导出规则：</strong>生成可打印 HTML 册子，包含封面、卷首概览、支派目录、人物世录和关系索引；浏览器打开后可直接打印或另存为 PDF。
+          <strong>成册导出规则：</strong>生成可打印 HTML 册子，包含封面、卷首概览、支派目录、人物世录和关系索引；按支派导出前请先在支派管理中选择支派。
         </div>
       </Panel>
 
@@ -257,7 +242,6 @@ export function ImportPage({ notify }: Props) {
               { key: 'gender', title: '性别' },
               { key: 'generationNo', title: '代次' },
               { key: 'generationWord', title: '字辈' },
-              { key: 'branchId', title: '支派ID' },
               { key: 'birthDate', title: '出生日期' },
               { key: 'duplicated', title: '查重', render: row => row.errorMessage ? '错误行' : row.duplicated ? `疑似重复(${row.duplicateCount})` : '未重复' },
               { key: 'errorMessage', title: '错误' }
@@ -271,7 +255,6 @@ export function ImportPage({ notify }: Props) {
         <DataTable
           data={jobs}
           columns={[
-            { key: 'id', title: '任务ID' },
             { key: 'importType', title: '类型' },
             { key: 'originalFilename', title: '文件名' },
             { key: 'totalCount', title: '总数' },
@@ -286,7 +269,7 @@ export function ImportPage({ notify }: Props) {
       </Panel>
 
       {selectedJob ? (
-        <Panel title={`错误明细 #${selectedJob.id || '-'}`} description={selectedJob.errorSummary || '当前任务无错误明细。'}>
+        <Panel title="错误明细" description={selectedJob.errorSummary || '当前任务无错误明细。'}>
           <DataTable
             data={selectedJob.errors || []}
             columns={[
