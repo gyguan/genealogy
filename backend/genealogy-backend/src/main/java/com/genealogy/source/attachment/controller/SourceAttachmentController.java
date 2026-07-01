@@ -46,7 +46,7 @@ public class SourceAttachmentController {
         return ApiResponse.success(sourceAttachmentApplicationService.upload(sourceId, file, actorId));
     }
 
-    @GetMapping("/sources/{sourceId}/attachments")
+    @GetMapping("/source-attachments/sources/{sourceId}")
     public ApiResponse<List<SourceAttachmentResponse>> list(@Positive @PathVariable Long sourceId) {
         return ApiResponse.success(sourceAttachmentApplicationService.list(sourceId));
     }
