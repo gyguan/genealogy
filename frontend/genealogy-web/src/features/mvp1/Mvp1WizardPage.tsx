@@ -36,7 +36,7 @@ const stepOrder: { key: StepKey; title: string; desc: string }[] = [
   { key: 'clan', title: '1. 创建宗族', desc: '建立宗族空间，确定姓氏、堂号、祖籍等主数据。' },
   { key: 'branch', title: '2. 建立支派', desc: '创建房支/支派，后续人物和权限都围绕支派展开。' },
   { key: 'generation', title: '3. 维护字辈', desc: '创建字辈方案，并录入世次与字辈映射。' },
-  { key: 'person', title: '4. 录入人物', desc: '录入中心人物或始祖，并补全完整人物档案。' },
+  { key: 'person', title: '4. 录入人物', desc: '支持连续录入多个人物，并可选择中心人物进入关系维护。' },
   { key: 'relationship', title: '5. 建立关系', desc: '围绕中心人物添加父母、配偶、子女等关系。' },
   { key: 'source', title: '6. 绑定来源', desc: '创建老谱、口述、墓碑等资料来源，并绑定到人物或关系。' },
   { key: 'review', title: '7. 提交审核', desc: '将草稿提交审核，审核通过后进入正式谱库。' },
@@ -134,12 +134,12 @@ export function Mvp1WizardPage({ notify }: Props) {
     { ...stepOrder[0], ready: Boolean(workspace.clanId) },
     { ...stepOrder[1], ready: Boolean(workspace.branchId) },
     { ...stepOrder[2], ready: Boolean(schemeForm.schemeId || firstId(snapshot.schemes)) },
-    { ...stepOrder[3], ready: Boolean(workspace.personId) },
+    { ...stepOrder[3], ready: Boolean(workspace.personId || persons.length) },
     { ...stepOrder[4], ready: Boolean(workspace.relationshipId || relationships.length) },
     { ...stepOrder[5], ready: Boolean(workspace.sourceId) },
     { ...stepOrder[6], ready: Boolean(workspace.reviewTaskId || tasks.length) },
     { ...stepOrder[7], ready: Boolean(treeNodes.length) }
-  ], [workspace.clanId, workspace.branchId, workspace.personId, workspace.relationshipId, workspace.sourceId, workspace.reviewTaskId, schemeForm.schemeId, snapshot.schemes, relationships.length, tasks.length, treeNodes.length]);
+  ], [workspace.clanId, workspace.branchId, workspace.personId, workspace.relationshipId, workspace.sourceId, workspace.reviewTaskId, schemeForm.schemeId, snapshot.schemes, persons.length, relationships.length, tasks.length, treeNodes.length]);
 
   async function safe<T>(label: string, fn: () => Promise<T>, fallback: T) {
     try {
@@ -256,6 +256,17 @@ export function Mvp1WizardPage({ notify }: Props) {
     };
   }
 
+  function resetPersonFormForNext() {
+    setPersonForm(prev => ({
+      ...defaultPersonForm,
+      branchId: prev.branchId || workspace.branchId,
+      generationNo: prev.generationNo,
+      generationWord: prev.generationWord,
+      privacyLevel: prev.privacyLevel,
+      dataStatus: prev.dataStatus
+    }));
+  }
+
   async function createClan() {
     await run(async () => {
       const data: any = await apiClient.post('/clans', clanForm);
@@ -331,12 +342,18 @@ export function Mvp1WizardPage({ notify }: Props) {
     setSnapshot(prev => ({ ...prev, generationItems: items }));
   }
 
-  async function createPerson() {
+  async function createPerson(continueAdding = false) {
     await run(async () => {
       if (!workspace.clanId) throw new Error('请先创建或选择宗族');
       if (!personForm.name.trim()) throw new Error('请填写人物姓名');
       const data: any = await apiClient.post(`/clans/${workspace.clanId}/persons`, buildPersonPayload());
-      await refresh({ clanId: workspace.clanId, personId: String(data?.id || '') });
+      const createdPersonId = String(data?.id || '');
+      await refresh({ clanId: workspace.clanId, personId: createdPersonId });
+      if (continueAdding) {
+        resetPersonFormForNext();
+        setActive('person');
+        return makeNotice('人物档案创建成功，可继续录入下一个人物', data?.id);
+      }
       setActive('relationship');
       return makeNotice('人物档案创建成功，已进入关系维护', data?.id);
     });
@@ -480,7 +497,7 @@ export function Mvp1WizardPage({ notify }: Props) {
         );
       case 'person':
         return (
-          <Panel title="录入中心人物" description="补齐人物档案字段：身份、世系、生卒、地域、履历、墓葬、隐私和数据状态。">
+          <Panel title="录入人物" description="支持连续录入多个人物。创建后可继续录入，也可选择某个人物作为中心人物进入关系维护。">
             <div className="wizard-form-grid">
               <Field label="支派ID"><input value={personForm.branchId || workspace.branchId} onChange={e => patchPerson('branchId', e.target.value)} /></Field>
               <Field label="人物编码"><input value={personForm.personCode} onChange={e => patchPerson('personCode', e.target.value)} placeholder="如 P001，可空" /></Field>
@@ -504,8 +521,13 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Field label="人物传记"><textarea value={personForm.biography} onChange={e => patchPerson('biography', e.target.value)} rows={4} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
             <Field label="墓志铭"><textarea value={personForm.epitaph} onChange={e => patchPerson('epitaph', e.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Field>
-            <Actions><button disabled={loading} onClick={createPerson}>创建人物并进入关系</button><button className="secondary" onClick={() => setPersonForm(defaultPersonForm)}>清空人物表单</button><button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('人物已刷新'); })}>刷新人物</button></Actions>
-            <DataTable data={snapshot.persons} columns={[{ key: 'name', title: '姓名' }, { key: 'genealogyName', title: '谱名' }, { key: 'gender', title: '性别' }, { key: 'generationNo', title: '代次' }, { key: 'generationWord', title: '字辈' }, { key: 'dataStatus', title: '状态' }]} onSelect={row => workspace.setPersonId(String(row.id))} />
+            <Actions>
+              <button disabled={loading} onClick={() => void createPerson(true)}>创建人物，继续录入</button>
+              <button className="secondary" disabled={loading} onClick={() => void createPerson(false)}>创建人物并进入关系</button>
+              <button className="secondary" onClick={() => setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId })}>清空人物表单</button>
+              <button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('人物已刷新'); })}>刷新人物</button>
+            </Actions>
+            <DataTable data={snapshot.persons} columns={[{ key: 'id', title: '人物ID' }, { key: 'name', title: '姓名' }, { key: 'genealogyName', title: '谱名' }, { key: 'gender', title: '性别' }, { key: 'generationNo', title: '代次' }, { key: 'generationWord', title: '字辈' }, { key: 'dataStatus', title: '状态' }]} onSelect={row => workspace.setPersonId(String(row.id))} />
           </Panel>
         );
       case 'relationship':
