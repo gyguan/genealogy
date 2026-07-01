@@ -127,12 +127,17 @@ export function StatisticsHomePage() {
     }
   }
 
-  async function loadStats() {
+  async function loadStats(clanIdOverride?: string) {
     setLoading(true);
     try {
       const clans = toRecordList(await safe(() => apiClient.get('/clans'), []));
-      const clanId = workspace.clanId || String((clans[0] as any)?.id || '');
-      if (clanId && !workspace.clanId) workspace.setClanId(clanId);
+      const requestedClanId = String(clanIdOverride || workspace.clanId || '').trim();
+      const fallbackClanId = String((clans[0] as any)?.id || '');
+      const clanId = requestedClanId && clans.some(clan => String(clan.id) === requestedClanId)
+        ? requestedClanId
+        : fallbackClanId;
+
+      if (clanId && workspace.clanId !== clanId) workspace.setClanId(clanId);
 
       if (!clanId) {
         setSnapshot({ ...emptySnapshot, clans });
@@ -162,6 +167,23 @@ export function StatisticsHomePage() {
     }
   }
 
+  async function switchClan(nextClanId: string) {
+    const clanId = String(nextClanId || '').trim();
+    if (!clanId || clanId === workspace.clanId) return;
+    workspace.patch({
+      clanId,
+      branchId: '',
+      personId: '',
+      relationshipId: '',
+      sourceId: '',
+      attachmentId: '',
+      reviewTaskId: ''
+    });
+    setActiveDrill('people');
+    setDrillOpen(false);
+    await loadStats(clanId);
+  }
+
   useEffect(() => {
     void loadStats();
   }, []);
@@ -170,6 +192,8 @@ export function StatisticsHomePage() {
     const targetId = String(workspace.clanId || '');
     return snapshot.clans.find(row => String(row.id) === targetId) || snapshot.clans[0] || null;
   }, [snapshot.clans, workspace.clanId]);
+
+  const selectedClanId = String(currentClan?.id || workspace.clanId || '');
 
   const ancestorName = useMemo(() => {
     const ancestorId = currentClan?.ancestorPersonId;
@@ -354,6 +378,18 @@ export function StatisticsHomePage() {
       <section className="home-clan-overview home-clan-overview--culture">
         <div className="home-clan-main">
           <span>族谱概览</span>
+          <div className="home-clan-switcher">
+            <label htmlFor="home-clan-switch">当前宗族</label>
+            <select id="home-clan-switch" value={selectedClanId} disabled={loading || !snapshot.clans.length} onChange={event => void switchClan(event.target.value)}>
+              <option value="">请选择宗族</option>
+              {snapshot.clans.map(clan => (
+                <option key={clan.id} value={String(clan.id)}>
+                  {display(clan.clanName, `宗族#${clan.id}`)}
+                </option>
+              ))}
+            </select>
+            <small>{snapshot.clans.length > 1 ? `当前账号可切换 ${snapshot.clans.length} 个宗族空间` : '当前账号仅有一个宗族空间'}</small>
+          </div>
           <h2>{display(currentClan?.clanName, '请选择或创建宗族')}</h2>
           <p>{display(currentClan?.description, `${display(currentClan?.surname, '本')}氏族谱空间，用于统一沉淀宗族成员、支派世系、字辈规则、来源证据与审核记录。`)}</p>
           <div className="home-clan-storyline">
