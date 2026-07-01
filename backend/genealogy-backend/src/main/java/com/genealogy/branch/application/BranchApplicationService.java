@@ -48,6 +48,9 @@ public class BranchApplicationService {
         entity.setUpdatedAt(now);
         BranchEntity saved = branchRepository.save(entity);
         saved.setBranchPath(buildBranchPath(parent, saved.getId()));
+        if (saved.getManagerMemberId() != null) {
+            authorizationApplicationService.requireBranchManagerCandidate(clanId, saved.getManagerMemberId(), saved.getId());
+        }
         return BranchMapper.toResponse(branchRepository.save(saved));
     }
 
@@ -96,6 +99,9 @@ public class BranchApplicationService {
         BranchMapper.updateEntity(entity, request);
         applyHierarchy(entity, parent);
         entity.setBranchPath(buildBranchPath(parent, entity.getId()));
+        if (entity.getManagerMemberId() != null) {
+            authorizationApplicationService.requireBranchManagerCandidate(entity.getClanId(), entity.getManagerMemberId(), entity.getId());
+        }
         if (entity.getStatus() == null) {
             entity.setStatus("active");
         }
