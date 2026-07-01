@@ -14,6 +14,7 @@ type Snapshot = {
   clans?: unknown;
   branches?: unknown;
   schemes?: unknown;
+  generationItems?: unknown;
   persons?: unknown;
   relationships?: unknown;
   sources?: unknown;
@@ -27,6 +28,7 @@ type RefreshOptions = {
   personId?: string;
   sourceId?: string;
   reviewTaskId?: string;
+  schemeId?: string;
   resetSelection?: boolean;
 };
 
@@ -119,6 +121,7 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   const branches = toRecordList<any>(snapshot.branches);
   const schemes = toRecordList<any>(snapshot.schemes);
+  const generationItems = toRecordList<any>(snapshot.generationItems);
   const persons = toRecordList<any>(snapshot.persons);
   const sources = toRecordList<any>(snapshot.sources);
   const relationships = toRecordList<any>(snapshot.relationships);
@@ -165,6 +168,11 @@ export function Mvp1WizardPage({ notify }: Props) {
     }
   }
 
+  async function loadGenerationItems(schemeId?: string) {
+    if (!schemeId) return [];
+    return safe('查询字辈明细', () => apiClient.get(`/generation-schemes/${schemeId}/items`), []);
+  }
+
   async function refresh(options: RefreshOptions = {}) {
     const clanRes = await safe('查询宗族', () => apiClient.get('/clans'), []);
     const nextClanId = options.clanId || workspace.clanId || firstId(clanRes);
@@ -173,7 +181,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     const branchRes = nextClanId ? await safe('查询支派', () => apiClient.get(`/clans/${nextClanId}/branches`), []) : [];
     const personRes = nextClanId ? await safe('查询人物', () => apiClient.get(`/clans/${nextClanId}/persons`), []) : [];
     const sourceRes = nextClanId ? await safe('查询来源', () => apiClient.get(`/clans/${nextClanId}/sources`), []) : [];
-    const schemeRes = nextClanId ? await safe('查询字辈', () => apiClient.get(`/clans/${nextClanId}/generation-schemes`), []) : [];
+    const schemeRes = nextClanId ? await safe('查询字辈方案', () => apiClient.get(`/clans/${nextClanId}/generation-schemes`), []) : [];
     const taskRes = nextClanId ? await safe('查询审核任务', () => apiClient.get(`/clans/${nextClanId}/review-tasks/pending`), []) : [];
 
     const nextBranchId = options.resetSelection
@@ -188,7 +196,11 @@ export function Mvp1WizardPage({ notify }: Props) {
     const nextReviewTaskId = options.resetSelection
       ? ''
       : options.reviewTaskId || (hasId(taskRes, workspace.reviewTaskId) ? workspace.reviewTaskId : firstId(taskRes));
+    const nextSchemeId = options.resetSelection
+      ? ''
+      : options.schemeId || (hasId(schemeRes, schemeForm.schemeId) ? schemeForm.schemeId : firstId(schemeRes));
 
+    const generationItemRes = nextSchemeId ? await loadGenerationItems(nextSchemeId) : [];
     const relationRes = nextPersonId ? await safe('查询关系', () => apiClient.get(`/persons/${nextPersonId}/relationships`), []) : [];
     const treeRes = nextPersonId ? await safe('查询世系', () => apiClient.get(`/tree/person/${nextPersonId}/family`), null) : null;
 
@@ -201,13 +213,8 @@ export function Mvp1WizardPage({ notify }: Props) {
       relationshipId: options.resetSelection ? '' : workspace.relationshipId
     });
 
-    if (options.resetSelection) {
-      setSchemeForm(prev => ({ ...prev, schemeId: '' }));
-    } else if (!schemeForm.schemeId && firstId(schemeRes)) {
-      setSchemeForm(prev => ({ ...prev, schemeId: firstId(schemeRes) }));
-    }
-
-    setSnapshot({ clans: clanRes, branches: branchRes, persons: personRes, sources: sourceRes, schemes: schemeRes, tasks: taskRes, relationships: relationRes, tree: treeRes });
+    setSchemeForm(prev => ({ ...prev, schemeId: nextSchemeId || '' }));
+    setSnapshot({ clans: clanRes, branches: branchRes, persons: personRes, sources: sourceRes, schemes: schemeRes, generationItems: generationItemRes, tasks: taskRes, relationships: relationRes, tree: treeRes });
   }
 
   useEffect(() => { void refresh(); }, []);
@@ -296,8 +303,9 @@ export function Mvp1WizardPage({ notify }: Props) {
         validationEnabled: true,
         strictMode: false
       });
-      if (data?.id) setSchemeForm(prev => ({ ...prev, schemeId: String(data.id) }));
-      await refresh({ clanId: workspace.clanId });
+      const nextSchemeId = String(data?.id || '');
+      setSchemeForm(prev => ({ ...prev, schemeId: nextSchemeId }));
+      await refresh({ clanId: workspace.clanId, schemeId: nextSchemeId });
       return makeNotice('字辈方案创建成功', data?.id);
     });
   }
@@ -305,14 +313,22 @@ export function Mvp1WizardPage({ notify }: Props) {
   async function addGenerationWord() {
     await run(async () => {
       if (!schemeForm.schemeId) throw new Error('请先创建或选择字辈方案');
+      if (!schemeForm.word.trim()) throw new Error('请填写字辈');
       const data: any = await apiClient.post(`/generation-schemes/${schemeForm.schemeId}/items`, {
         generationNo: Number(schemeForm.generationNo),
-        word: schemeForm.word
+        word: schemeForm.word.trim()
       });
-      await refresh({ clanId: workspace.clanId });
-      setActive('person');
-      return makeNotice('字辈明细已追加，已进入人物录入', data?.id);
+      setSchemeForm(prev => ({ ...prev, generationNo: String(Number(prev.generationNo || '0') + 1), word: '' }));
+      await refresh({ clanId: workspace.clanId, schemeId: schemeForm.schemeId });
+      return makeNotice('字辈明细已追加，可继续维护字辈', data?.id);
     });
+  }
+
+  async function selectScheme(row: any) {
+    const nextSchemeId = String(row.id || '');
+    setSchemeForm(prev => ({ ...prev, schemeId: nextSchemeId, schemeName: row.schemeName || prev.schemeName }));
+    const items = await loadGenerationItems(nextSchemeId);
+    setSnapshot(prev => ({ ...prev, generationItems: items }));
   }
 
   async function createPerson() {
@@ -447,7 +463,21 @@ export function Mvp1WizardPage({ notify }: Props) {
       case 'branch':
         return <Panel title="建立支派" description="可连续创建多个支派，例如长房、二房、三房；创建完后选中要继续维护的支派，再进入字辈维护。"><div className="wizard-form-grid"><Field label="当前宗族"><input value={workspace.clanId ? `宗族 #${workspace.clanId}` : '未选择宗族'} readOnly /></Field><Field label="支派名称"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" /></Field><Field label="父支派ID"><input value={branchForm.parentId} onChange={e => setBranchForm(prev => ({ ...prev, parentId: e.target.value }))} placeholder="可空" /></Field></div><Actions><button disabled={loading} onClick={() => void createBranch(false)}>创建支派，继续添加</button><button className="secondary" disabled={loading} onClick={() => void createBranch(true)}>创建支派并进入下一步</button><button className="secondary" disabled={!workspace.branchId} onClick={() => setActive('generation')}>选中支派，进入下一步</button><button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('支派已刷新'); })}>刷新支派</button></Actions><DataTable data={snapshot.branches} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => workspace.setBranchId(String(row.id))} /></Panel>;
       case 'generation':
-        return <Panel title="维护字辈" description="先创建字辈方案，再追加世次与字辈。"><div className="wizard-form-grid"><Field label="方案名称"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} /></Field><Field label="方案ID"><input value={schemeForm.schemeId} onChange={e => setSchemeForm(prev => ({ ...prev, schemeId: e.target.value }))} /></Field><Field label="代次"><input value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))} /></Field><Field label="字辈"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" /></Field></div><Actions><button disabled={loading} onClick={createScheme}>创建字辈方案</button><button disabled={loading} onClick={addGenerationWord}>追加字辈并进入人物</button></Actions><DataTable data={snapshot.schemes} columns={[{ key: 'schemeName', title: '方案名称' }, { key: 'branchId', title: '支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => setSchemeForm(prev => ({ ...prev, schemeId: String(row.id) }))} /></Panel>;
+        return (
+          <Panel title="维护字辈" description="先创建字辈方案，再追加世次与字辈；下方会展示当前方案的字辈明细。">
+            <div className="wizard-form-grid">
+              <Field label="方案名称"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} /></Field>
+              <Field label="方案ID"><input value={schemeForm.schemeId} onChange={e => setSchemeForm(prev => ({ ...prev, schemeId: e.target.value }))} /></Field>
+              <Field label="代次"><input value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))} /></Field>
+              <Field label="字辈"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" /></Field>
+            </div>
+            <Actions><button disabled={loading} onClick={createScheme}>创建字辈方案</button><button disabled={loading} onClick={addGenerationWord}>追加字辈</button><button className="secondary" disabled={!schemeForm.schemeId} onClick={() => setActive('person')}>进入人物录入</button><button className="secondary" disabled={!schemeForm.schemeId} onClick={() => void run(async () => { const items = await loadGenerationItems(schemeForm.schemeId); setSnapshot(prev => ({ ...prev, generationItems: items })); return makeNotice('字辈明细已刷新'); })}>刷新字辈</button></Actions>
+            <h4>字辈方案</h4>
+            <DataTable data={snapshot.schemes} columns={[{ key: 'schemeName', title: '方案名称' }, { key: 'branchId', title: '支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => void selectScheme(row)} />
+            <h4>字辈明细</h4>
+            <DataTable data={snapshot.generationItems} empty="暂无字辈明细，请先创建方案并追加字辈" columns={[{ key: 'generationNo', title: '代次' }, { key: 'word', title: '字辈' }, { key: 'description', title: '说明' }, { key: 'sortOrder', title: '排序' }]} />
+          </Panel>
+        );
       case 'person':
         return (
           <Panel title="录入中心人物" description="补齐人物档案字段：身份、世系、生卒、地域、履历、墓葬、隐私和数据状态。">
@@ -513,6 +543,7 @@ export function Mvp1WizardPage({ notify }: Props) {
             <div className="wizard-id-list">
               <div><span>宗族ID</span><strong>{workspace.clanId || '-'}</strong></div>
               <div><span>支派ID</span><strong>{workspace.branchId || '-'}</strong></div>
+              <div><span>字辈方案</span><strong>{schemeForm.schemeId || '-'}</strong></div>
               <div><span>人物ID</span><strong>{workspace.personId || '-'}</strong></div>
               <div><span>关系ID</span><strong>{workspace.relationshipId || '-'}</strong></div>
               <div><span>来源ID</span><strong>{workspace.sourceId || '-'}</strong></div>
@@ -524,6 +555,7 @@ export function Mvp1WizardPage({ notify }: Props) {
               <div><span>宗族</span><strong>{toRecordList(snapshot.clans).length}</strong></div>
               <div><span>支派</span><strong>{branches.length}</strong></div>
               <div><span>字辈方案</span><strong>{schemes.length}</strong></div>
+              <div><span>字辈明细</span><strong>{generationItems.length}</strong></div>
               <div><span>人物</span><strong>{persons.length}</strong></div>
               <div><span>关系</span><strong>{relationships.length}</strong></div>
               <div><span>来源</span><strong>{sources.length}</strong></div>
