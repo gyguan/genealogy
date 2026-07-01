@@ -55,6 +55,25 @@ export function SourceAttachmentPage({ notify }: Props) {
     }
   }
 
+  async function previewAttachment(row: Attachment) {
+    if (!row.id) return;
+    const previewWindow = window.open('', '_blank');
+    if (!previewWindow) {
+      notify({ message: '浏览器拦截了预览窗口，请允许弹窗后重试' }, true);
+      return;
+    }
+    try {
+      const blob = await apiClient.download(`/source-attachments/${row.id}/content`);
+      const url = URL.createObjectURL(blob);
+      previewWindow.location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      notify({ message: '附件预览已打开' });
+    } catch (error) {
+      previewWindow.close();
+      notify({ message: (error as Error).message || '附件预览失败' }, true);
+    }
+  }
+
   async function downloadAttachment(row: Attachment) {
     if (!row.id) return;
     try {
@@ -95,7 +114,7 @@ export function SourceAttachmentPage({ notify }: Props) {
         </Actions>
       </Panel>
 
-      <Panel title="附件列表" description="展示附件原始文件名、大小、存储路径和 SHA-256 校验值。">
+      <Panel title="附件列表" description="展示附件原始文件名、大小、存储路径和 SHA-256 校验值，支持图片、PDF、文本等浏览器可识别格式在线预览。">
         <DataTable
           data={attachments}
           columns={[
@@ -106,7 +125,7 @@ export function SourceAttachmentPage({ notify }: Props) {
             { key: 'uploadStatus', title: '状态' },
             { key: 'checksum', title: 'SHA-256' },
             { key: 'createdAt', title: '上传时间' },
-            { key: 'actions', title: '操作', render: row => <span className="row-action-buttons"><button onClick={() => void downloadAttachment(row)}>下载</button><button className="danger" onClick={() => void removeAttachment(row)}>删除</button></span> }
+            { key: 'actions', title: '操作', render: row => <span className="row-action-buttons"><button onClick={() => void previewAttachment(row)}>预览</button><button onClick={() => void downloadAttachment(row)}>下载</button><button className="danger" onClick={() => void removeAttachment(row)}>删除</button></span> }
           ]}
           empty="暂无附件"
         />
