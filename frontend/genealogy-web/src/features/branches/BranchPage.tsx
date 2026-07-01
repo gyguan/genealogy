@@ -9,11 +9,17 @@ import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
+function optionalNumber(value: unknown) {
+  const text = String(value ?? '').trim();
+  return text ? Number(text) : null;
+}
+
 export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [clanId, setClanId] = useState(workspace.clanId);
   const [branchName, setBranchName] = useState('');
   const [parentId, setParentId] = useState(workspace.branchId);
+  const [managerMemberId, setManagerMemberId] = useState('');
   const [list, setList] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -38,11 +44,14 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
     await run(async () => {
       const data: any = await apiClient.post(`/clans/${clanId}/branches`, {
         branchName,
-        parentId: parentId ? Number(parentId) : null
+        parentId: optionalNumber(parentId),
+        managerMemberId: optionalNumber(managerMemberId)
       });
       if (data?.id) workspace.patch({ clanId, branchId: String(data.id) });
       setResult({ message: '支派创建成功', id: data?.id });
       setCreateOpen(false);
+      setBranchName('');
+      setManagerMemberId('');
       notify({ message: '支派创建成功', id: data?.id });
       await load();
     });
@@ -71,8 +80,14 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!selected?.id) throw new Error('请选择支派');
       const data = await apiClient.put(`/branches/${selected.id}`, {
         branchName: selected.branchName,
-        parentId: selected.parentId || null,
-        description: selected.description || ''
+        parentId: optionalNumber(selected.parentId),
+        sortOrder: selected.sortOrder ?? 0,
+        founderPersonId: optionalNumber(selected.founderPersonId),
+        migrationFrom: selected.migrationFrom || '',
+        migrationTo: selected.migrationTo || '',
+        managerMemberId: optionalNumber(selected.managerMemberId),
+        description: selected.description || '',
+        status: selected.status || 'active'
       });
       setSelected(data);
       setResult({ message: '支派信息已更新', id: selected.id });
@@ -95,7 +110,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   }
 
   return (
-    <Panel title="支派管理" description="按宗族查询支派树，新增和详情维护通过弹框完成。">
+    <Panel title="支派管理" description="按宗族查询支派树，可维护支派负责人。负责人必须是当前宗族有效成员，并具备该支派范围维护权限。">
       <Field label="宗族ID"><input value={clanId} onChange={e => setClanId(e.target.value)} /></Field>
       <Actions><button disabled={loading} onClick={() => run(load)}>{loading ? '处理中...' : '查询支派'}</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建支派</button></Actions>
       <DataTable
@@ -104,6 +119,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
           { key: 'id', title: 'ID' },
           { key: 'branchName', title: '支派名称' },
           { key: 'parentId', title: '父支派ID' },
+          { key: 'managerMemberId', title: '负责人成员ID' },
           { key: 'status', title: '状态' }
         ]}
         onSelect={row => detail(String(row.id))}
@@ -112,7 +128,8 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
 
       <Modal open={createOpen} title="新建支派" onClose={() => setCreateOpen(false)}>
         <Field label="支派名称"><input value={branchName} onChange={e => setBranchName(e.target.value)} /></Field>
-        <Field label="父支派ID"><input value={parentId} onChange={e => setParentId(e.target.value)} /></Field>
+        <Field label="父支派ID"><input value={parentId} onChange={e => setParentId(e.target.value)} placeholder="根支派可空" /></Field>
+        <Field label="负责人成员ID"><input value={managerMemberId} onChange={e => setManagerMemberId(e.target.value)} placeholder="可空；需先在成员授权中添加成员" /></Field>
         <Actions><button disabled={loading} onClick={createBranch}>{loading ? '保存中...' : '保存'}</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
       </Modal>
 
@@ -123,13 +140,16 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
           fields={[
             { label: '支派ID', value: row => row.id },
             { label: '支派名称', value: row => row.branchName },
-            { label: '父支派ID', value: row => row.parentId },
+            { label: '父支派ID', value: row => row.parentId || '-' },
+            { label: '负责人成员ID', value: row => row.managerMemberId || '-' },
             { label: '状态', value: row => row.status }
           ]}
         />
         {selected ? <>
           <Field label="支派名称"><input value={selected.branchName || ''} onChange={e => setSelected({ ...selected, branchName: e.target.value })} /></Field>
           <Field label="父支派ID"><input value={selected.parentId || ''} onChange={e => setSelected({ ...selected, parentId: e.target.value })} /></Field>
+          <Field label="负责人成员ID"><input value={selected.managerMemberId || ''} onChange={e => setSelected({ ...selected, managerMemberId: e.target.value })} placeholder="留空表示暂不指定" /></Field>
+          <Field label="排序"><input value={selected.sortOrder ?? 0} onChange={e => setSelected({ ...selected, sortOrder: Number(e.target.value || 0) })} /></Field>
           <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
           <Actions><button disabled={loading} onClick={update}>保存修改</button><button className="danger" onClick={() => setDeleteOpen(true)}>删除支派</button></Actions>
         </> : null}
