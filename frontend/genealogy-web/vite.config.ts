@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
             proxy.on('proxyReq', proxyReq => {
               proxyReq.removeHeader('origin');
             });
+            proxy.on('proxyRes', proxyRes => {
+              delete proxyRes.headers['x-frame-options'];
+              delete proxyRes.headers['content-security-policy'];
+            });
           }
         }
       }
