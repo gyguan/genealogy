@@ -32,6 +32,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class ImportApplicationService {
@@ -54,14 +56,15 @@ public class ImportApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public ImportPreviewResponse previewPersons(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, Long actorId) {
+    public ImportPreviewResponse previewPersons(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, boolean autoMapping, Long actorId) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
         }
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
-        List<ImportRow> importRows = readRows(file);
-        List<ImportPreviewRowResponse> previewRows = importRows.stream()
-                .map(row -> previewRow(clanId, branchId, mapping, row))
+        ImportReadResult importData = readImport(file);
+        FieldMapping effectiveMapping = autoMapping ? mapping.withDetected(importData.detectedMapping()) : mapping;
+        List<ImportPreviewRowResponse> previewRows = importData.rows().stream()
+                .map(row -> previewRow(clanId, branchId, effectiveMapping, row))
                 .toList();
         int validCount = (int) previewRows.stream().filter(row -> row.errorMessage() == null || row.errorMessage().isBlank()).count();
         int duplicateCount = (int) previewRows.stream().filter(ImportPreviewRowResponse::duplicated).count();
@@ -70,7 +73,7 @@ public class ImportApplicationService {
     }
 
     @Transactional
-    public ImportJobResponse importPersonsCsv(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, boolean confirmDuplicates, Long actorId) {
+    public ImportJobResponse importPersonsCsv(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, boolean autoMapping, boolean confirmDuplicates, Long actorId) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
         }
@@ -78,9 +81,10 @@ public class ImportApplicationService {
 
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
         boolean xlsx = filename.toLowerCase().endsWith(".xlsx");
-        List<ImportRow> importRows = readRows(file);
-        List<ImportPreviewRowResponse> previewRows = importRows.stream()
-                .map(row -> previewRow(clanId, branchId, mapping, row))
+        ImportReadResult importData = readImport(file);
+        FieldMapping effectiveMapping = autoMapping ? mapping.withDetected(importData.detectedMapping()) : mapping;
+        List<ImportPreviewRowResponse> previewRows = importData.rows().stream()
+                .map(row -> previewRow(clanId, branchId, effectiveMapping, row))
                 .toList();
         boolean hasDuplicate = previewRows.stream().anyMatch(ImportPreviewRowResponse::duplicated);
         if (hasDuplicate && !confirmDuplicates) {
@@ -93,14 +97,14 @@ public class ImportApplicationService {
         int failure = 0;
         List<ImportJobErrorEntity> errors = new ArrayList<>();
 
-        for (ImportRow row : importRows) {
+        for (ImportRow row : importData.rows()) {
             total++;
             try {
-                ImportPreviewRowResponse preview = previewRow(clanId, branchId, mapping, row);
+                ImportPreviewRowResponse preview = previewRow(clanId, branchId, effectiveMapping, row);
                 if (preview.errorMessage() != null && !preview.errorMessage().isBlank()) {
                     throw new BusinessException("IMPORT_ROW_INVALID", preview.errorMessage());
                 }
-                personRepository.save(toPerson(clanId, branchId, actorId, mapping, row.cells()));
+                personRepository.save(toPerson(clanId, branchId, actorId, effectiveMapping, row.cells()));
                 success++;
             } catch (RuntimeException ex) {
                 failure++;
@@ -127,7 +131,7 @@ public class ImportApplicationService {
                 .toList();
     }
 
-    private List<ImportRow> readRows(MultipartFile file) {
+    private ImportReadResult readImport(MultipartFile file) {
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
         try {
             return filename.toLowerCase().endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);
@@ -136,23 +140,29 @@ public class ImportApplicationService {
         }
     }
 
-    private List<ImportRow> readCsvRows(MultipartFile file) throws IOException {
+    private ImportReadResult readCsvRows(MultipartFile file) throws IOException {
         List<ImportRow> importRows = new ArrayList<>();
+        FieldMapping detectedMapping = null;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             int rowNo = 0;
             while ((line = reader.readLine()) != null) {
                 rowNo++;
-                if (rowNo == 1 && looksLikeHeader(line)) continue;
+                List<String> cells = parseCsv(line);
+                if (rowNo == 1 && looksLikeHeader(cells)) {
+                    detectedMapping = detectMapping(cells);
+                    continue;
+                }
                 if (line.isBlank()) continue;
-                importRows.add(new ImportRow(rowNo, parseCsv(line), line));
+                importRows.add(new ImportRow(rowNo, cells, line));
             }
         }
-        return importRows;
+        return new ImportReadResult(importRows, detectedMapping);
     }
 
-    private List<ImportRow> readXlsxRows(MultipartFile file) throws IOException {
+    private ImportReadResult readXlsxRows(MultipartFile file) throws IOException {
         List<ImportRow> importRows = new ArrayList<>();
+        FieldMapping detectedMapping = null;
         DataFormatter formatter = new DataFormatter();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
@@ -163,7 +173,10 @@ public class ImportApplicationService {
                 int rowNo = row.getRowNum() + 1;
                 List<String> cells = rowToCells(row, formatter);
                 String rawData = String.join(",", cells);
-                if (rowNo == 1 && looksLikeHeader(rawData)) continue;
+                if (rowNo == 1 && looksLikeHeader(cells)) {
+                    detectedMapping = detectMapping(cells);
+                    continue;
+                }
                 if (cells.stream().allMatch(String::isBlank)) continue;
                 importRows.add(new ImportRow(rowNo, cells, rawData));
             }
@@ -172,7 +185,7 @@ public class ImportApplicationService {
         } catch (Exception ex) {
             throw new BusinessException("IMPORT_XLSX_PARSE_FAILED", "Excel 解析失败，请确认文件格式为 .xlsx");
         }
-        return importRows;
+        return new ImportReadResult(importRows, detectedMapping);
     }
 
     private ImportJobEntity createJob(Long clanId, Long branchId, String filename, String importType, Long actorId) {
@@ -260,9 +273,61 @@ public class ImportApplicationService {
         return cells;
     }
 
-    private boolean looksLikeHeader(String line) {
-        String lower = line.toLowerCase();
-        return lower.contains("name") || lower.contains("姓名");
+    private boolean looksLikeHeader(List<String> cells) {
+        return cells.stream().map(this::normalizeHeader).anyMatch(value -> headerField(value) != null);
+    }
+
+    private FieldMapping detectMapping(List<String> headerCells) {
+        int nameIndex = -1;
+        int genderIndex = -1;
+        int generationNoIndex = -1;
+        int generationWordIndex = -1;
+        int branchIdIndex = -1;
+        int birthDateIndex = -1;
+        int isLivingIndex = -1;
+        for (int i = 0; i < headerCells.size(); i++) {
+            String field = headerField(normalizeHeader(headerCells.get(i)));
+            if (field == null) continue;
+            switch (field) {
+                case "name" -> nameIndex = firstIndex(nameIndex, i);
+                case "gender" -> genderIndex = firstIndex(genderIndex, i);
+                case "generationNo" -> generationNoIndex = firstIndex(generationNoIndex, i);
+                case "generationWord" -> generationWordIndex = firstIndex(generationWordIndex, i);
+                case "branchId" -> branchIdIndex = firstIndex(branchIdIndex, i);
+                case "birthDate" -> birthDateIndex = firstIndex(birthDateIndex, i);
+                case "isLiving" -> isLivingIndex = firstIndex(isLivingIndex, i);
+                default -> { }
+            }
+        }
+        return new FieldMapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex);
+    }
+
+    private int firstIndex(int current, int candidate) {
+        return current >= 0 ? current : candidate;
+    }
+
+    private String headerField(String normalized) {
+        if (Set.of("name", "personname", "姓名", "名字", "名讳").contains(normalized)) return "name";
+        if (Set.of("gender", "sex", "性别").contains(normalized)) return "gender";
+        if (Set.of("generation", "generationno", "generationnumber", "genno", "代次", "世代", "第几代").contains(normalized)) return "generationNo";
+        if (Set.of("generationword", "generationname", "字辈", "字派", "派语", "行辈").contains(normalized)) return "generationWord";
+        if (Set.of("branchid", "branch", "支派id", "分支id", "房支id").contains(normalized)) return "branchId";
+        if (Set.of("birthdate", "birthday", "出生日期", "出生时间", "生辰").contains(normalized)) return "birthDate";
+        if (Set.of("isliving", "living", "alive", "是否在世", "在世", "健在").contains(normalized)) return "isLiving";
+        return null;
+    }
+
+    private String normalizeHeader(String value) {
+        if (value == null) return "";
+        return value.trim()
+                .toLowerCase(Locale.ROOT)
+                .replace("\ufeff", "")
+                .replace(" ", "")
+                .replace("_", "")
+                .replace("-", "")
+                .replace("/", "")
+                .replace(":", "")
+                .replace("：", "");
     }
 
     private List<String> parseCsv(String line) {
@@ -352,7 +417,28 @@ public class ImportApplicationService {
         public static FieldMapping defaults() {
             return new FieldMapping(0, 1, 2, 3, 4, 5, 6);
         }
+
+        public FieldMapping withDetected(FieldMapping detected) {
+            if (detected == null) {
+                return this;
+            }
+            return new FieldMapping(
+                    detectedOrFallback(detected.nameIndex(), nameIndex),
+                    detectedOrFallback(detected.genderIndex(), genderIndex),
+                    detectedOrFallback(detected.generationNoIndex(), generationNoIndex),
+                    detectedOrFallback(detected.generationWordIndex(), generationWordIndex),
+                    detectedOrFallback(detected.branchIdIndex(), branchIdIndex),
+                    detectedOrFallback(detected.birthDateIndex(), birthDateIndex),
+                    detectedOrFallback(detected.isLivingIndex(), isLivingIndex)
+            );
+        }
+
+        private static int detectedOrFallback(int detectedIndex, int fallbackIndex) {
+            return detectedIndex >= 0 ? detectedIndex : fallbackIndex;
+        }
     }
+
+    private record ImportReadResult(List<ImportRow> rows, FieldMapping detectedMapping) {}
 
     private record ImportRow(int rowNo, List<String> cells, String rawData) {}
 }
