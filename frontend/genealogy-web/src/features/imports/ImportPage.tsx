@@ -145,6 +145,12 @@ export function ImportPage({ notify }: Props) {
     await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/relations.csv`, `branch-${exportBranchId}-relations.csv`);
   }
 
+  async function exportBranchBooklet() {
+    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
+    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
+    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/booklet.html`, `branch-${exportBranchId}-booklet.html`);
+  }
+
   async function previewFile() {
     if (loading) return null;
     if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return null; }
@@ -223,7 +229,7 @@ export function ImportPage({ notify }: Props) {
         </div>
       </Panel>
 
-      <Panel title="人物/关系导出" description="支持全宗族导出，也支持按支派导出当前支派及其下级支派的人物和内部关系。">
+      <Panel title="人物/关系/成册导出" description="支持全宗族导出，也支持按支派导出当前支派及其下级支派的人物、关系和简版族谱成册。">
         <div className="wizard-form-grid">
           <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
           <Field label="导出支派ID"><input value={exportBranchId} onChange={e => setExportBranchId(e.target.value)} placeholder="填写支派ID，导出该支派及下级支派" /></Field>
@@ -231,11 +237,13 @@ export function ImportPage({ notify }: Props) {
         <Actions>
           <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</button>
           <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</button>
+          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, `clan-${workspace.clanId}-booklet.html`)}>导出全宗族成册</button>
           <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchPersons()}>按支派导出人物</button>
           <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchRelations()}>按支派导出关系</button>
+          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchBooklet()}>按支派导出成册</button>
         </Actions>
         <div className="import-template-tip">
-          <strong>支派导出规则：</strong>人物导出包含当前支派及所有下级支派；关系导出仅包含起点人物和终点人物都在该支派范围内的关系，避免导出悬挂关系。
+          <strong>成册导出规则：</strong>生成可打印 HTML 册子，包含封面、卷首概览、支派目录、人物世录和关系索引；浏览器打开后可直接打印或另存为 PDF。
         </div>
       </Panel>
 
