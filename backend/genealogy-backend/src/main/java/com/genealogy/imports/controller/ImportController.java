@@ -36,6 +36,7 @@ public class ImportController {
             @Positive @PathVariable Long clanId,
             @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "autoMapping", defaultValue = "true") boolean autoMapping,
             @RequestParam(value = "nameIndex", defaultValue = "0") int nameIndex,
             @RequestParam(value = "genderIndex", defaultValue = "1") int genderIndex,
             @RequestParam(value = "generationNoIndex", defaultValue = "2") int generationNoIndex,
@@ -46,7 +47,7 @@ public class ImportController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(importApplicationService.previewPersons(clanId, branchId, file, mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex), actorId));
+        return ApiResponse.success(importApplicationService.previewPersons(clanId, branchId, file, mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex), autoMapping, actorId));
     }
 
     @PostMapping("/clans/{clanId}/imports/persons.csv")
@@ -55,6 +56,7 @@ public class ImportController {
             @RequestParam(value = "branchId", required = false) Long branchId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "confirmDuplicates", defaultValue = "false") boolean confirmDuplicates,
+            @RequestParam(value = "autoMapping", defaultValue = "true") boolean autoMapping,
             @RequestParam(value = "nameIndex", defaultValue = "0") int nameIndex,
             @RequestParam(value = "genderIndex", defaultValue = "1") int genderIndex,
             @RequestParam(value = "generationNoIndex", defaultValue = "2") int generationNoIndex,
@@ -65,7 +67,7 @@ public class ImportController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(importApplicationService.importPersonsCsv(clanId, branchId, file, mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex), confirmDuplicates, actorId));
+        return ApiResponse.success(importApplicationService.importPersonsCsv(clanId, branchId, file, mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex), autoMapping, confirmDuplicates, actorId));
     }
 
     @GetMapping("/clans/{clanId}/imports")
