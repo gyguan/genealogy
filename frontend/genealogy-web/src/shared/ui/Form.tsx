@@ -8,9 +8,9 @@ function emitValue(originalOnChange: any, value: unknown) {
   if (typeof originalOnChange === 'function') originalOnChange({ target: { value } });
 }
 
-function isTechnicalIdLabel(label: string) {
+function isTechnicalLabel(label: string) {
   return /(^|[\s（(])ID([\s）)]|$)/i.test(label)
-    || /主键|技术标识|系统标识/.test(label);
+    || /编码|主键|技术标识|系统标识|校验值|SHA/i.test(label);
 }
 
 function toAntdControl(child: ReactNode): ReactNode {
@@ -42,7 +42,7 @@ function toAntdAction(child: ReactNode): ReactNode {
 }
 
 export function Field(props: { label: string; children: ReactNode; hint?: string }) {
-  if (isTechnicalIdLabel(props.label)) return null;
+  if (isTechnicalLabel(props.label)) return null;
   return (
     <Form.Item className="field antd-field" label={props.label} extra={props.hint} colon={false}>
       {toAntdControl(props.children)}
