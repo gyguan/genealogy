@@ -7,6 +7,7 @@ import './experience.css';
 import './mvp1-wizard.css';
 import './lineage-tree.css';
 import './compact-ui.css';
+import './audit-trace.css';
 import './antd-bridge.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
