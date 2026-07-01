@@ -11,7 +11,7 @@ import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
-  const [form, setForm] = useState({ clanName: '', surname: '', clanCode: '', hallName: '', originPlace: '' });
+  const [form, setForm] = useState({ clanName: '', surname: '', hallName: '', originPlace: '' });
   const [list, setList] = useState<PageResponse<any> | null>(null);
   const [selected, setSelected] = useState<any>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -38,9 +38,9 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
     await run(async () => {
       const data: any = await apiClient.post('/clans', form);
       if (data?.id) workspace.setClanId(String(data.id));
-      setResult({ message: '宗族创建成功', id: data?.id });
+      setResult({ message: '宗族创建成功，编码已自动生成', id: data?.id });
       setCreateOpen(false);
-      notify({ message: '宗族创建成功', id: data?.id });
+      notify({ message: '宗族创建成功，编码已自动生成', id: data?.id });
       await load();
     });
   }
@@ -94,7 +94,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
   }
 
   return (
-    <Panel title="宗族管理" description="查询宗族列表，新增和详情维护通过弹框完成。">
+    <Panel title="宗族管理" description="查询宗族列表，新增和详情维护通过弹框完成。宗族编码由系统自动生成。">
       <Actions><button disabled={loading} onClick={() => run(load)}>{loading ? '处理中...' : '查询宗族'}</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建宗族</button></Actions>
       <DataTable
         data={list}
@@ -102,7 +102,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
           { key: 'id', title: 'ID' },
           { key: 'clanName', title: '宗族名称' },
           { key: 'surname', title: '姓氏' },
-          { key: 'clanCode', title: '编码' },
+          { key: 'clanCode', title: '系统编码' },
           { key: 'hallName', title: '堂号' }
         ]}
         onSelect={row => detail(String(row.id))}
@@ -112,7 +112,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       <Modal open={createOpen} title="新建宗族" onClose={() => setCreateOpen(false)}>
         <Field label="宗族名称"><input value={form.clanName} onChange={e => set('clanName', e.target.value)} /></Field>
         <Field label="姓氏"><input value={form.surname} onChange={e => set('surname', e.target.value)} /></Field>
-        <Field label="编码"><input value={form.clanCode} onChange={e => set('clanCode', e.target.value)} /></Field>
+        <Field label="系统编码"><input value="保存后自动生成" disabled /></Field>
         <Field label="堂号"><input value={form.hallName} onChange={e => set('hallName', e.target.value)} /></Field>
         <Field label="发源地"><input value={form.originPlace} onChange={e => set('originPlace', e.target.value)} /></Field>
         <Actions><button disabled={loading} onClick={create}>{loading ? '保存中...' : '保存'}</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
@@ -126,7 +126,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
             { label: '宗族ID', value: row => row.id },
             { label: '宗族名称', value: row => row.clanName },
             { label: '姓氏', value: row => row.surname },
-            { label: '编码', value: row => row.clanCode },
+            { label: '系统编码', value: row => row.clanCode },
             { label: '堂号', value: row => row.hallName },
             { label: '发源地', value: row => row.originPlace }
           ]}
