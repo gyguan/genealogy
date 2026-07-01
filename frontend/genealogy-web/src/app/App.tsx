@@ -22,7 +22,6 @@ import {
 } from '../features/experience/GenealogyExperiencePages';
 import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
-import { ReviewDiffPage } from '../features/reviews/ReviewDiffPage';
 import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
 
@@ -38,11 +37,11 @@ const navItems = [
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['auditTrace', '追踪中心', '操作日志、审核流和字段Diff完整追踪'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入、附件、审核Diff和日志']
+  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入、附件和日志']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
-type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'sourceAttachments' | 'reviewDiff' | 'logs';
+type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'sourceAttachments' | 'logs';
 
 const legacyTabs: [LegacyKey, string][] = [
   ['clans', '宗族'],
@@ -52,7 +51,6 @@ const legacyTabs: [LegacyKey, string][] = [
   ['relationships', '关系'],
   ['imports', '导入管理'],
   ['sourceAttachments', '来源附件'],
-  ['reviewDiff', '审核Diff'],
   ['logs', '日志']
 ];
 
@@ -90,32 +88,11 @@ export function App() {
           boxShadowTertiary: '0 1px 2px rgba(0, 0, 0, 0.03)'
         },
         components: {
-          Layout: {
-            bodyBg: '#f5f5f5',
-            siderBg: '#ffffff',
-            headerBg: '#ffffff'
-          },
-          Menu: {
-            itemBorderRadius: 8,
-            itemHeight: 40,
-            itemMarginBlock: 4,
-            itemMarginInline: 8
-          },
-          Card: {
-            borderRadiusLG: 12,
-            headerHeight: 48,
-            paddingLG: 16
-          },
-          Table: {
-            headerBg: '#fafafa',
-            rowHoverBg: '#f5faff',
-            cellPaddingBlockSM: 8,
-            cellPaddingInlineSM: 12
-          },
-          Form: {
-            itemMarginBottom: 12,
-            labelColor: 'rgba(0, 0, 0, 0.65)'
-          }
+          Layout: { bodyBg: '#f5f5f5', siderBg: '#ffffff', headerBg: '#ffffff' },
+          Menu: { itemBorderRadius: 8, itemHeight: 40, itemMarginBlock: 4, itemMarginInline: 8 },
+          Card: { borderRadiusLG: 12, headerHeight: 48, paddingLG: 16 },
+          Table: { headerBg: '#fafafa', rowHoverBg: '#f5faff', cellPaddingBlockSM: 8, cellPaddingInlineSM: 12 },
+          Form: { itemMarginBottom: 12, labelColor: 'rgba(0, 0, 0, 0.65)' }
         }
       }}
     >
@@ -178,7 +155,6 @@ function AppShell() {
       case 'relationships': return <RelationshipPage {...props} />;
       case 'imports': return <ImportPage {...props} />;
       case 'sourceAttachments': return <SourceAttachmentPage {...props} />;
-      case 'reviewDiff': return <ReviewDiffPage {...props} />;
       case 'logs': return <LogPage {...props} />;
       default: return null;
     }
