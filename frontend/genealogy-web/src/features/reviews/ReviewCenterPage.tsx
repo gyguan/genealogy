@@ -33,7 +33,7 @@ type ReviewDiff = {
 };
 
 function taskTitle(row: ReviewTask) {
-  return row.title || `${row.targetType || '对象'} #${row.targetId || row.id || '-'}`;
+  return row.title || `${row.targetType || '入谱对象'}变更审核`;
 }
 
 function changeText(value?: string) {
@@ -60,6 +60,7 @@ export function ReviewCenterPage({ notify }: Props) {
 
   async function openDiff(row: ReviewTask) {
     if (!row.id) return;
+    workspace.setReviewTaskId(String(row.id));
     setLoading(true);
     try {
       const data = await apiClient.get<ReviewDiff>(`/review-tasks/${row.id}/diff`);
@@ -107,17 +108,14 @@ export function ReviewCenterPage({ notify }: Props) {
     <div className="review-center-page">
       <Panel title="审核中心" description="待审核任务内嵌字段级 Diff，可直接查看差异后通过或驳回。">
         <div className="wizard-form-grid">
-          <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
           <Field label="审核意见"><input value={comment} onChange={e => setComment(e.target.value)} /></Field>
         </div>
         <Actions><button disabled={loading} onClick={() => void loadTasks()}>{loading ? '处理中...' : '刷新审核任务'}</button></Actions>
         <DataTable
           data={tasks}
           columns={[
-            { key: 'id', title: '任务ID' },
             { key: 'title', title: '标题', render: row => taskTitle(row) },
             { key: 'targetType', title: '对象类型' },
-            { key: 'targetId', title: '对象ID' },
             { key: 'status', title: '状态' },
             { key: 'createdAt', title: '创建时间' },
             { key: 'actions', title: '操作', render: row => <span className="row-action-buttons"><button onClick={() => void openDiff(row)}>查看Diff</button><button onClick={() => void approve(row)}>通过</button><button className="danger" onClick={() => void reject(row)}>驳回</button></span> }
@@ -133,10 +131,7 @@ export function ReviewCenterPage({ notify }: Props) {
               title="变更摘要"
               data={diff}
               fields={[
-                { label: '审核任务ID', value: row => row.reviewTaskId || selected?.id || '-' },
-                { label: '修订ID', value: row => row.revisionId || '-' },
                 { label: '对象类型', value: row => row.targetType || '-' },
-                { label: '对象ID', value: row => row.targetId || '-' },
                 { label: '变更类型', value: row => row.changeType || '-' },
                 { label: '摘要', value: row => row.diffSummary || '-' }
               ]}
