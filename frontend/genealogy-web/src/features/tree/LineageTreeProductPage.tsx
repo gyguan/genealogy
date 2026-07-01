@@ -423,11 +423,23 @@ export function LineageTreeProductPage({ notify }: Props) {
 
   const branchGroups = useMemo(() => groupDescendants(sortByGeneration(uniquePeople(branchNodes))), [branchNodes]);
   const branchRoot = useMemo(() => branchNodes.find(person => person.id === branchRootPersonId) || branchNodes[0], [branchNodes, branchRootPersonId]);
+  const currentRoot = useMemo(() => center || branchRoot, [center, branchRoot]);
   const branchName = branches.find(item => String(item.id) === selectedBranchId)?.branchName || '支派';
 
-  function setAsCenter(personId: string) {
+  async function setAsCenter(personId: string) {
+    const nextCenter = findPerson(personId, selectedNode?.raw);
+    setCenter(nextCenter);
+    setBranchRootPersonId(personId);
     workspace.setPersonId(personId);
     setSelectedNode(null);
+
+    if (nextCenter.branchId && nextCenter.branchId !== selectedBranchId) {
+      setSelectedBranchId(nextCenter.branchId);
+      await run(async () => {
+        await loadBranchLineage(nextCenter.branchId, branches, workspace.clanId, false);
+        setBranchRootPersonId(personId);
+      });
+    }
   }
 
   return (
@@ -440,7 +452,7 @@ export function LineageTreeProductPage({ notify }: Props) {
           <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button></Actions>
         </div>
         <div className="lineage-search-results">
-          {searchResults.slice(0, 10).map(person => <button key={person.id} className={workspace.personId === person.id ? 'active' : ''} onClick={() => setAsCenter(person.id)}>{person.name}<span>{person.generation} · {person.branchName}</span></button>)}
+          {searchResults.slice(0, 10).map(person => <button key={person.id} className={workspace.personId === person.id ? 'active' : ''} onClick={() => void setAsCenter(person.id)}>{person.name}<span>{person.generation} · {person.branchName}</span></button>)}
         </div>
       </Panel>
 
@@ -453,7 +465,7 @@ export function LineageTreeProductPage({ notify }: Props) {
         <div className="summary-card">
           <div><span>支派人物</span><strong>{branchNodes.length || '-'}</strong></div>
           <div><span>世系关系</span><strong>{branchEdges.length || '-'}</strong></div>
-          <div><span>根人物</span><strong>{branchRoot?.name || '-'}</strong></div>
+          <div><span>根人物</span><strong>{currentRoot?.name || '-'}</strong></div>
         </div>
         <section className="lineage-tree-card branch-lineage-card">
           <div className="lineage-tree-title">
@@ -522,7 +534,7 @@ export function LineageTreeProductPage({ notify }: Props) {
               <h4>相关关系</h4>
               {[...relationships, ...branchEdges].filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).length ? [...relationships, ...branchEdges].filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id).map(rel => <p key={rel.id}>{relationCn(rel.relationLabel || rel.relationType)}：{findPerson(rel.fromPersonId).name} → {findPerson(rel.toPersonId).name}</p>) : <p>暂无关系记录。</p>}
             </div>
-            <Actions><button onClick={() => setAsCenter(selectedNode.id)}>设为中心人物</button><button className="secondary" onClick={() => setSelectedNode(null)}>关闭</button></Actions>
+            <Actions><button onClick={() => void setAsCenter(selectedNode.id)}>设为中心人物</button><button className="secondary" onClick={() => setSelectedNode(null)}>关闭</button></Actions>
           </aside>
         </div>
       ) : null}
