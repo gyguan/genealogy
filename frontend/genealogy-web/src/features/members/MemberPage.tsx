@@ -250,7 +250,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           <Field label="范围ID"><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'branch' ? '填写支派ID；不填使用当前支派ID' : '宗族范围自动使用当前宗族'} /></Field>
           <Field label="归属支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="支派负责人/支派管理员建议填写" /></Field>
           {selectedRole ? <Tag color={roleTypeColor(selectedRole.roleType)}>{selectedRole.roleName}：{roleTypeText(selectedRole.roleType)}</Tag> : null}
-          <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={() => void listMembers()}>刷新成员</button></Actions>
+          <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={() => void run(async () => { await listMembers(); })}>刷新成员</button></Actions>
         </Panel>
 
         <Panel title="角色清单">
