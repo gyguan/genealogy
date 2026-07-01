@@ -55,18 +55,18 @@ public class MemberApplicationService {
         if (clanMemberRepository.findByClanIdAndUserId(clanId, request.userId()).isPresent()) {
             throw new BusinessException("CLAN_MEMBER_DUPLICATED", "user already joined this clan");
         }
-        if (request.branchId() != null && branchRepository.findByIdAndClanId(request.branchId(), clanId).isEmpty()) {
-            throw new BusinessException("BRANCH_CLAN_MISMATCH", "branch not found in clan");
-        }
+        MemberScopeType scopeType = request.scopeType() == null ? MemberScopeType.clan : request.scopeType();
+        Long scopeId = normalizeScopeId(clanId, scopeType, request.scopeId(), request.branchId());
+        Long branchId = normalizeBranchId(clanId, scopeType, request.branchId(), scopeId);
         ClanMemberEntity entity = new ClanMemberEntity();
         entity.setClanId(clanId);
         entity.setUserId(request.userId());
-        entity.setBranchId(request.branchId());
+        entity.setBranchId(branchId);
         entity.setRoleId(request.roleId());
         entity.setMemberName(request.memberName());
         entity.setMemberStatus(MemberStatus.active);
-        entity.setScopeType(request.scopeType() == null ? MemberScopeType.clan : request.scopeType());
-        entity.setScopeId(request.scopeId());
+        entity.setScopeType(scopeType);
+        entity.setScopeId(scopeId);
         LocalDateTime now = LocalDateTime.now();
         entity.setJoinedAt(now);
         entity.setCreatedAt(now);
@@ -82,6 +82,31 @@ public class MemberApplicationService {
         return clanMemberRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private Long normalizeScopeId(Long clanId, MemberScopeType scopeType, Long scopeId, Long branchId) {
+        if (scopeType == MemberScopeType.clan) {
+            return clanId;
+        }
+        Long effectiveBranchId = scopeId == null ? branchId : scopeId;
+        if (effectiveBranchId == null || branchRepository.findByIdAndClanId(effectiveBranchId, clanId).isEmpty()) {
+            throw new BusinessException("BRANCH_CLAN_MISMATCH", "授权支派不存在或不属于当前宗族");
+        }
+        return effectiveBranchId;
+    }
+
+    private Long normalizeBranchId(Long clanId, MemberScopeType scopeType, Long branchId, Long scopeId) {
+        if (scopeType == MemberScopeType.branch) {
+            Long effectiveBranchId = branchId == null ? scopeId : branchId;
+            if (branchRepository.findByIdAndClanId(effectiveBranchId, clanId).isEmpty()) {
+                throw new BusinessException("BRANCH_CLAN_MISMATCH", "授权支派不存在或不属于当前宗族");
+            }
+            return effectiveBranchId;
+        }
+        if (branchId != null && branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
+            throw new BusinessException("BRANCH_CLAN_MISMATCH", "branch not found in clan");
+        }
+        return branchId;
     }
 
     private MemberResponse toResponse(ClanMemberEntity entity) {
