@@ -15,6 +15,7 @@
 .lineage-tree-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
 .lineage-tree-title span { color: #1677ff; font-weight: 500; font-size: 12px; }
 .lineage-tree-title h3 { margin: 4px 0 0; font-size: 18px; font-weight: 600; color: rgba(0,0,0,.88); }
+.lineage-tree-title small { color: rgba(0,0,0,.45); }
 .lineage-tree-canvas { min-width: 780px; display: grid; justify-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: #fafafa; border: 1px solid #f0f0f0; }
 .lineage-tree-layer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; }
 .lineage-tree-layer--ancestors { max-width: 900px; }
@@ -37,6 +38,14 @@
 .lineage-tree-generation > b { display: inline-grid; place-items: center; min-height: 28px; padding: 0 12px; border-radius: 999px; background: #f6ffed; color: #52c41a; font-size: 12px; font-weight: 500; }
 .lineage-tree-generation > div { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; position: relative; }
 .lineage-tree-generation > div::before { content: ''; position: absolute; top: -9px; left: 12%; right: 12%; height: 1px; background: #d6e4ff; }
+
+.branch-lineage-card { border-color: #d6e4ff; background: linear-gradient(180deg, #ffffff, #fbfdff); }
+.branch-lineage-canvas { min-width: 900px; display: flex; align-items: stretch; gap: 18px; padding: 18px; border-radius: 12px; background: linear-gradient(90deg, rgba(22,119,255,.05) 1px, transparent 1px), linear-gradient(rgba(22,119,255,.05) 1px, transparent 1px), #f8fbff; background-size: 36px 36px; border: 1px solid #d6e4ff; overflow-x: auto; }
+.branch-lineage-column { position: relative; display: grid; align-content: start; justify-items: center; gap: 12px; min-width: 190px; }
+.branch-lineage-column > b { display: inline-grid; place-items: center; min-height: 28px; padding: 0 14px; border-radius: 999px; background: #e6f4ff; color: #1677ff; font-size: 12px; font-weight: 600; }
+.branch-lineage-column > div { display: grid; gap: 12px; justify-items: center; }
+.branch-lineage-column .lineage-tree-node { flex-basis: auto; width: 164px; }
+.branch-lineage-arrow { position: absolute; top: 72px; right: -18px; width: 36px; height: 24px; display: grid; place-items: center; color: #1677ff; font-size: 22px; font-weight: 700; z-index: 1; }
 
 .lineage-person-pop-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .45); }
 .lineage-person-pop { position: relative; width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border-radius: 12px; border: 1px solid #f0f0f0; background: #fff; padding: 20px; box-shadow: 0 6px 16px rgba(0,0,0,.12); }
@@ -62,4 +71,5 @@
   .lineage-search-grid, .lineage-pop-grid { grid-template-columns: 1fr; }
   .lineage-tree-card { padding: 12px; }
   .lineage-tree-canvas { min-width: 640px; }
+  .branch-lineage-canvas { min-width: 720px; }
 }
