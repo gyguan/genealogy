@@ -129,18 +129,19 @@ export function Mvp1WizardPage({ notify }: Props) {
   const treeNodes = toRecordList<any>(snapshot.tree?.nodes || []);
   const treeEdges = toRecordList<any>(snapshot.tree?.edges || []);
   const selectedPerson = useMemo(() => persons.find(item => String(item.id) === workspace.personId), [persons, workspace.personId]);
-  const selectedBranchName = useMemo(() => branches.find(item => String(item.id) === String(personForm.branchId || workspace.branchId))?.branchName || '', [branches, personForm.branchId, workspace.branchId]);
+  const selectedBranch = useMemo(() => branches.find(item => String(item.id) === workspace.branchId), [branches, workspace.branchId]);
+  const selectedBranchName = useMemo(() => selectedBranch?.branchName || '', [selectedBranch]);
 
   const steps = useMemo(() => [
     { ...stepOrder[0], ready: Boolean(workspace.clanId) },
-    { ...stepOrder[1], ready: Boolean(workspace.branchId) },
+    { ...stepOrder[1], ready: Boolean(selectedBranch) },
     { ...stepOrder[2], ready: Boolean(schemeForm.schemeId || firstId(snapshot.schemes)) },
     { ...stepOrder[3], ready: Boolean(workspace.personId) },
     { ...stepOrder[4], ready: Boolean(workspace.relationshipId || relationships.length) },
     { ...stepOrder[5], ready: Boolean(workspace.sourceId) },
     { ...stepOrder[6], ready: Boolean(workspace.reviewTaskId || tasks.length) },
     { ...stepOrder[7], ready: Boolean(treeNodes.length) }
-  ], [workspace.clanId, workspace.branchId, workspace.personId, workspace.relationshipId, workspace.sourceId, workspace.reviewTaskId, schemeForm.schemeId, snapshot.schemes, relationships.length, tasks.length, treeNodes.length]);
+  ], [workspace.clanId, selectedBranch, workspace.personId, workspace.relationshipId, workspace.sourceId, workspace.reviewTaskId, schemeForm.schemeId, snapshot.schemes, relationships.length, tasks.length, treeNodes.length]);
 
   async function safe<T>(label: string, fn: () => Promise<T>, fallback: T) {
     try {
@@ -187,7 +188,11 @@ export function Mvp1WizardPage({ notify }: Props) {
 
     const nextBranchId = options.resetSelection
       ? ''
-      : options.branchId || (hasId(branchRes, workspace.branchId) ? workspace.branchId : firstId(branchRes));
+      : options.branchId !== undefined
+        ? options.branchId
+        : hasId(branchRes, workspace.branchId)
+          ? workspace.branchId
+          : '';
     const nextPersonId = options.resetSelection
       ? ''
       : options.personId || (hasId(personRes, workspace.personId) ? workspace.personId : firstId(personRes));
@@ -278,7 +283,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     await refresh({ clanId: nextClanId, resetSelection: true });
   }
 
-  async function createBranch(continueNext = true) {
+  async function createBranch() {
     await run(async () => {
       if (!workspace.clanId) throw new Error('请先创建或选择宗族');
       if (!branchForm.branchName.trim()) throw new Error('请填写支派名称');
@@ -286,12 +291,25 @@ export function Mvp1WizardPage({ notify }: Props) {
         branchName: branchForm.branchName.trim(),
         parentId: branchForm.parentId ? Number(branchForm.parentId) : null
       });
-      const nextBranchId = String(data?.id || '');
-      await refresh({ clanId: workspace.clanId, branchId: nextBranchId });
       setBranchForm({ branchName: '', parentId: '' });
-      if (continueNext) setActive('generation');
-      return makeNotice(continueNext ? '支派创建成功，已进入字辈维护' : '支派创建成功，可继续添加支派', data?.id);
+      setPersonForm(prev => ({ ...prev, branchId: '' }));
+      await refresh({ clanId: workspace.clanId, branchId: '' });
+      return makeNotice('支派创建成功，请在下方列表中明确选中要继续维护的支派', data?.id);
     });
+  }
+
+  function selectBranch(row: any) {
+    const nextBranchId = String(row.id || '');
+    workspace.setBranchId(nextBranchId);
+    setPersonForm(prev => ({ ...prev, branchId: nextBranchId }));
+  }
+
+  function enterGenerationWithSelectedBranch() {
+    if (!selectedBranch) {
+      notify({ message: '请先从支派列表中点击选中一个支派' }, true);
+      return;
+    }
+    setActive('generation');
   }
 
   async function createScheme() {
@@ -462,7 +480,31 @@ export function Mvp1WizardPage({ notify }: Props) {
           </Panel>
         );
       case 'branch':
-        return <Panel title="建立支派" description="可连续创建多个支派，例如长房、二房、三房；创建完后选中要继续维护的支派，再进入字辈维护。"><div className="wizard-form-grid"><Field label="当前宗族"><input value={workspace.clanId ? `宗族 #${workspace.clanId}` : '未选择宗族'} readOnly /></Field><Field label="支派名称"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" /></Field><Field label="父支派ID"><input value={branchForm.parentId} onChange={e => setBranchForm(prev => ({ ...prev, parentId: e.target.value }))} placeholder="可空" /></Field></div><Actions><button disabled={loading} onClick={() => void createBranch(false)}>创建支派，继续添加</button><button className="secondary" disabled={loading} onClick={() => void createBranch(true)}>创建支派并进入下一步</button><button className="secondary" disabled={!workspace.branchId} onClick={() => setActive('generation')}>选中支派，进入下一步</button><button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('支派已刷新'); })}>刷新支派</button></Actions><DataTable data={snapshot.branches} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => workspace.setBranchId(String(row.id))} /></Panel>;
+        return (
+          <Panel title="建立支派" description="可连续创建多个支派，例如长房、二房、三房；创建完后必须从下方列表中明确选中一个支派，才能进入字辈维护。">
+            <div className="wizard-form-grid">
+              <Field label="当前宗族"><input value={workspace.clanId ? `宗族 #${workspace.clanId}` : '未选择宗族'} readOnly /></Field>
+              <Field label="支派名称"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" /></Field>
+              <Field label="父支派ID"><input value={branchForm.parentId} onChange={e => setBranchForm(prev => ({ ...prev, parentId: e.target.value }))} placeholder="可空" /></Field>
+            </div>
+            <div className="wizard-current">已选支派：<strong>{selectedBranchName || '请点击下方支派列表选择'}</strong></div>
+            <Actions>
+              <button disabled={loading} onClick={() => void createBranch()}>创建支派，继续添加</button>
+              <button className="secondary" disabled={loading || !selectedBranch} onClick={enterGenerationWithSelectedBranch}>选中支派，进入下一步</button>
+              <button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId, branchId: '' }); return makeNotice('支派已刷新，请重新选中要维护的支派'); })}>刷新支派</button>
+            </Actions>
+            <DataTable
+              data={snapshot.branches}
+              columns={[
+                { key: 'selectedFlag', title: '选择状态', render: row => String(row.id) === workspace.branchId ? '当前选中' : '点击选择' },
+                { key: 'branchName', title: '支派名称' },
+                { key: 'parentId', title: '父支派ID' },
+                { key: 'status', title: '状态' }
+              ]}
+              onSelect={row => selectBranch(row)}
+            />
+          </Panel>
+        );
       case 'generation':
         return (
           <Panel title="维护字辈" description="先创建字辈方案，再追加世次与字辈；下方会展示当前方案的字辈明细。">
