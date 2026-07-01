@@ -38,9 +38,9 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
     await run(async () => {
       const data: any = await apiClient.post('/clans', form);
       if (data?.id) workspace.setClanId(String(data.id));
-      setResult({ message: '宗族创建成功，编码已自动生成', id: data?.id });
+      setResult({ message: '宗族创建成功，编码已自动生成' });
       setCreateOpen(false);
-      notify({ message: '宗族创建成功，编码已自动生成', id: data?.id });
+      notify({ message: '宗族创建成功，编码已自动生成' });
       await load();
     });
   }
@@ -74,7 +74,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
         originPlace: selected.originPlace
       });
       setSelected(data);
-      setResult({ message: '宗族信息已更新', id: selected.id });
+      setResult({ message: '宗族信息已更新' });
       notify({ message: '宗族信息已更新' });
       await load();
     });
@@ -99,7 +99,6 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       <DataTable
         data={list}
         columns={[
-          { key: 'id', title: 'ID' },
           { key: 'clanName', title: '宗族名称' },
           { key: 'surname', title: '姓氏' },
           { key: 'clanCode', title: '系统编码' },
@@ -123,7 +122,6 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
           title="基础信息"
           data={selected}
           fields={[
-            { label: '宗族ID', value: row => row.id },
             { label: '宗族名称', value: row => row.clanName },
             { label: '姓氏', value: row => row.surname },
             { label: '系统编码', value: row => row.clanCode },
