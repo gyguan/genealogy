@@ -1,5 +1,7 @@
 package com.genealogy.importexport.application;
 
+import com.genealogy.branch.entity.BranchEntity;
+import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -20,9 +22,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PersonCsvApplicationService {
@@ -40,6 +44,7 @@ public class PersonCsvApplicationService {
     );
 
     private final ClanRepository clanRepository;
+    private final BranchRepository branchRepository;
     private final PersonRepository personRepository;
     private final PersonApplicationService personApplicationService;
     private final RelationshipRepository relationshipRepository;
@@ -48,6 +53,7 @@ public class PersonCsvApplicationService {
 
     public PersonCsvApplicationService(
             ClanRepository clanRepository,
+            BranchRepository branchRepository,
             PersonRepository personRepository,
             PersonApplicationService personApplicationService,
             RelationshipRepository relationshipRepository,
@@ -55,6 +61,7 @@ public class PersonCsvApplicationService {
             OperationLogApplicationService operationLogApplicationService
     ) {
         this.clanRepository = clanRepository;
+        this.branchRepository = branchRepository;
         this.personRepository = personRepository;
         this.personApplicationService = personApplicationService;
         this.relationshipRepository = relationshipRepository;
@@ -83,21 +90,27 @@ public class PersonCsvApplicationService {
 
     public byte[] exportPersonsByBranch(Long clanId, Long branchId) {
         ensureClanExists(clanId);
-        return exportPersonList(personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId));
+        Set<Long> branchScopeIds = findBranchScopeIds(clanId, branchId);
+        return exportPersonList(personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(person -> person.getBranchId() != null && branchScopeIds.contains(person.getBranchId()))
+                .toList());
     }
 
     public byte[] exportRelations(Long clanId) {
         ensureClanExists(clanId);
-        StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, RELATION_HEADERS);
-        for (RelationshipEntity relation : relationshipRepository.findByClanIdAndDeletedAtIsNull(clanId)) {
-            appendCsvRow(builder, List.of(
-                    value(relation.getFromPersonId()), value(relation.getToPersonId()), value(relation.getRelationType()),
-                    value(relation.getRelationLabel()), value(relation.getIsLineageRelation()), value(relation.getIsBiological()),
-                    value(relation.getIsPrimary()), value(relation.getDescription()), value(relation.getConfidenceLevel())
-            ));
-        }
-        return addUtf8Bom(builder.toString()).getBytes(StandardCharsets.UTF_8);
+        return exportRelationList(relationshipRepository.findByClanIdAndDeletedAtIsNull(clanId));
+    }
+
+    public byte[] exportRelationsByBranch(Long clanId, Long branchId) {
+        ensureClanExists(clanId);
+        Set<Long> branchScopeIds = findBranchScopeIds(clanId, branchId);
+        Set<Long> personIds = personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(person -> person.getBranchId() != null && branchScopeIds.contains(person.getBranchId()))
+                .map(PersonEntity::getId)
+                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
+        return exportRelationList(relationshipRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(relation -> personIds.contains(relation.getFromPersonId()) && personIds.contains(relation.getToPersonId()))
+                .toList());
     }
 
     private byte[] exportPersonList(List<PersonEntity> persons) {
@@ -115,6 +128,42 @@ public class PersonCsvApplicationService {
             ));
         }
         return addUtf8Bom(builder.toString()).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] exportRelationList(List<RelationshipEntity> relations) {
+        StringBuilder builder = new StringBuilder();
+        appendCsvRow(builder, RELATION_HEADERS);
+        for (RelationshipEntity relation : relations) {
+            appendCsvRow(builder, List.of(
+                    value(relation.getFromPersonId()), value(relation.getToPersonId()), value(relation.getRelationType()),
+                    value(relation.getRelationLabel()), value(relation.getIsLineageRelation()), value(relation.getIsBiological()),
+                    value(relation.getIsPrimary()), value(relation.getDescription()), value(relation.getConfidenceLevel())
+            ));
+        }
+        return addUtf8Bom(builder.toString()).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private Set<Long> findBranchScopeIds(Long clanId, Long branchId) {
+        BranchEntity root = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+        String rootPath = root.getBranchPath();
+        Set<Long> result = new HashSet<>();
+        for (BranchEntity branch : branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId)) {
+            if (root.getId().equals(branch.getId()) || isDescendantPath(rootPath, branch.getBranchPath())) {
+                result.add(branch.getId());
+            }
+        }
+        if (result.isEmpty()) {
+            result.add(branchId);
+        }
+        return result;
+    }
+
+    private boolean isDescendantPath(String rootPath, String candidatePath) {
+        if (rootPath == null || rootPath.isBlank() || candidatePath == null || candidatePath.isBlank()) {
+            return false;
+        }
+        return candidatePath.equals(rootPath) || candidatePath.startsWith(rootPath + "/");
     }
 
     public CsvImportResultResponse previewPersons(Long clanId, MultipartFile file) {
