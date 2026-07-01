@@ -270,16 +270,19 @@ export function Mvp1WizardPage({ notify }: Props) {
     await refresh({ clanId: nextClanId, resetSelection: true });
   }
 
-  async function createBranch() {
+  async function createBranch(continueNext = true) {
     await run(async () => {
       if (!workspace.clanId) throw new Error('请先创建或选择宗族');
+      if (!branchForm.branchName.trim()) throw new Error('请填写支派名称');
       const data: any = await apiClient.post(`/clans/${workspace.clanId}/branches`, {
-        branchName: branchForm.branchName,
+        branchName: branchForm.branchName.trim(),
         parentId: branchForm.parentId ? Number(branchForm.parentId) : null
       });
-      await refresh({ clanId: workspace.clanId, branchId: String(data?.id || '') });
-      setActive('generation');
-      return makeNotice('支派创建成功，已进入字辈维护', data?.id);
+      const nextBranchId = String(data?.id || '');
+      await refresh({ clanId: workspace.clanId, branchId: nextBranchId });
+      setBranchForm({ branchName: '', parentId: '' });
+      if (continueNext) setActive('generation');
+      return makeNotice(continueNext ? '支派创建成功，已进入字辈维护' : '支派创建成功，可继续添加支派', data?.id);
     });
   }
 
@@ -442,7 +445,7 @@ export function Mvp1WizardPage({ notify }: Props) {
           </Panel>
         );
       case 'branch':
-        return <Panel title="建立支派" description="新建宗族默认没有支派；请先创建主支派或当前负责维护的房支。"><div className="wizard-form-grid"><Field label="当前宗族"><input value={workspace.clanId ? `宗族 #${workspace.clanId}` : '未选择宗族'} readOnly /></Field><Field label="支派名称"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" /></Field><Field label="父支派ID"><input value={branchForm.parentId} onChange={e => setBranchForm(prev => ({ ...prev, parentId: e.target.value }))} placeholder="可空" /></Field></div><Actions><button disabled={loading} onClick={createBranch}>创建支派并进入下一步</button><button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('支派已刷新'); })}>刷新支派</button></Actions><DataTable data={snapshot.branches} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => workspace.setBranchId(String(row.id))} /></Panel>;
+        return <Panel title="建立支派" description="可连续创建多个支派，例如长房、二房、三房；创建完后选中要继续维护的支派，再进入字辈维护。"><div className="wizard-form-grid"><Field label="当前宗族"><input value={workspace.clanId ? `宗族 #${workspace.clanId}` : '未选择宗族'} readOnly /></Field><Field label="支派名称"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" /></Field><Field label="父支派ID"><input value={branchForm.parentId} onChange={e => setBranchForm(prev => ({ ...prev, parentId: e.target.value }))} placeholder="可空" /></Field></div><Actions><button disabled={loading} onClick={() => void createBranch(false)}>创建支派，继续添加</button><button className="secondary" disabled={loading} onClick={() => void createBranch(true)}>创建支派并进入下一步</button><button className="secondary" disabled={!workspace.branchId} onClick={() => setActive('generation')}>选中支派，进入下一步</button><button className="secondary" onClick={() => void run(async () => { await refresh({ clanId: workspace.clanId }); return makeNotice('支派已刷新'); })}>刷新支派</button></Actions><DataTable data={snapshot.branches} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => workspace.setBranchId(String(row.id))} /></Panel>;
       case 'generation':
         return <Panel title="维护字辈" description="先创建字辈方案，再追加世次与字辈。"><div className="wizard-form-grid"><Field label="方案名称"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} /></Field><Field label="方案ID"><input value={schemeForm.schemeId} onChange={e => setSchemeForm(prev => ({ ...prev, schemeId: e.target.value }))} /></Field><Field label="代次"><input value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))} /></Field><Field label="字辈"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" /></Field></div><Actions><button disabled={loading} onClick={createScheme}>创建字辈方案</button><button disabled={loading} onClick={addGenerationWord}>追加字辈并进入人物</button></Actions><DataTable data={snapshot.schemes} columns={[{ key: 'schemeName', title: '方案名称' }, { key: 'branchId', title: '支派ID' }, { key: 'status', title: '状态' }]} onSelect={row => setSchemeForm(prev => ({ ...prev, schemeId: String(row.id) }))} /></Panel>;
       case 'person':
