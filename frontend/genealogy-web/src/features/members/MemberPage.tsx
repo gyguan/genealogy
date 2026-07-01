@@ -6,7 +6,7 @@ import { Actions, Field } from '../../shared/ui/Form';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 
- type UserRow = {
+type UserRow = {
   id: number;
   username: string;
   displayName: string;
