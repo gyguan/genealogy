@@ -17,11 +17,11 @@ set role_name = excluded.role_name,
 
 insert into app_user (username, phone, email, password_hash, display_name, avatar_url, status, last_login_at, created_at, updated_at, deleted_at)
 values
-    ('demo_admin', '13800000001', 'demo_admin@genealogy.local', md5('demo_admin_seed_password'), '演示管理员', null, 'active', now() - interval '1 day', now(), now(), null),
-    ('demo_branch_admin', '13800000002', 'demo_branch_admin@genealogy.local', md5('demo_branch_admin_seed_password'), '演示支派管理员', null, 'active', now() - interval '2 days', now(), now(), null),
-    ('demo_editor', '13800000003', 'demo_editor@genealogy.local', md5('demo_editor_seed_password'), '演示编辑', null, 'active', now() - interval '3 days', now(), now(), null),
-    ('demo_reviewer', '13800000004', 'demo_reviewer@genealogy.local', md5('demo_reviewer_seed_password'), '演示审核员', null, 'active', now() - interval '4 days', now(), now(), null),
-    ('demo_viewer', '13800000005', 'demo_viewer@genealogy.local', md5('demo_viewer_seed_password'), '演示查看者', null, 'active', now() - interval '5 days', now(), now(), null)
+    ('demo_admin', '13800000001', 'demo_admin@genealogy.local', convert_from(decode('50424b44463224313230303030245a3256755a574673623264354c57466b62576c754d513d3d2444783251365378653746776471636a7275625435356f5276355431496444522f364f446970566e647050303d', 'hex'), 'UTF8'), '演示管理员', null, 'active', now() - interval '1 day', now(), now(), null),
+    ('demo_branch_admin', '13800000002', 'demo_branch_admin@genealogy.local', convert_from(decode('50424b44463224313230303030245a3256755a574673623264354c574a79595752744d513d3d243433316737735976752f39674548667068376c2f79754844356a6278417867566f356c7a4a6a4e7a6e6a593d', 'hex'), 'UTF8'), '演示支派管理员', null, 'active', now() - interval '2 days', now(), now(), null),
+    ('demo_editor', '13800000003', 'demo_editor@genealogy.local', convert_from(decode('50424b44463224313230303030245a3256755a574673623264354c57566b6158527663673d3d247855396846735a786c5a4e46756933575044325763416c36386a794f5059594c375a5738384f634f47696b3d', 'hex'), 'UTF8'), '演示编辑', null, 'active', now() - interval '3 days', now(), now(), null),
+    ('demo_reviewer', '13800000004', 'demo_reviewer@genealogy.local', convert_from(decode('50424b44463224313230303030245a3256755a574673623264354c584a6c646d6c6c64773d3d2458306347774a4574477363443741687138794549634b442f507876427933646674715136385439715772733d', 'hex'), 'UTF8'), '演示审核员', null, 'active', now() - interval '4 days', now(), now(), null),
+    ('demo_viewer', '13800000005', 'demo_viewer@genealogy.local', convert_from(decode('50424b44463224313230303030245a3256755a574673623264354c585a705a58646c63673d3d2471445a6a53466d76645537755046735151624d415252576d32443746383731683742386b427a7050495a593d', 'hex'), 'UTF8'), '演示查看者', null, 'active', now() - interval '5 days', now(), now(), null)
 on conflict (username) do update
 set phone = excluded.phone,
     email = excluded.email,
