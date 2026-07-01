@@ -39,6 +39,7 @@ public final class PersonMapper {
         entity.setHasDescendant(request.hasDescendant());
         entity.setLineageStatus(defaultIfBlank(request.lineageStatus(), "normal"));
         entity.setPrivacyLevel(trimToNull(request.privacyLevel()));
+        entity.setDataStatus(trimToNull(request.dataStatus()));
         return entity;
     }
 
