@@ -1,5 +1,7 @@
 package com.genealogy.tree.application;
 
+import com.genealogy.branch.entity.BranchEntity;
+import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.person.entity.PersonEntity;
@@ -14,10 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class TreeApplicationService {
@@ -27,10 +33,12 @@ public class TreeApplicationService {
 
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
+    private final BranchRepository branchRepository;
 
-    public TreeApplicationService(PersonRepository personRepository, RelationshipRepository relationshipRepository) {
+    public TreeApplicationService(PersonRepository personRepository, RelationshipRepository relationshipRepository, BranchRepository branchRepository) {
         this.personRepository = personRepository;
         this.relationshipRepository = relationshipRepository;
+        this.branchRepository = branchRepository;
     }
 
     @Transactional(readOnly = true)
@@ -104,6 +112,69 @@ public class TreeApplicationService {
             }
         }
         return new TreeGraphResponse(personId, new ArrayList<>(nodes.values()), edges);
+    }
+
+    @Transactional(readOnly = true)
+    public TreeGraphResponse branchLineage(Long clanId, Long branchId) {
+        BranchEntity rootBranch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+        Set<Long> branchScopeIds = findBranchScopeIds(clanId, rootBranch);
+        List<PersonEntity> persons = personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(person -> person.getBranchId() != null && branchScopeIds.contains(person.getBranchId()))
+                .sorted(Comparator
+                        .comparing((PersonEntity person) -> person.getGenerationNo() == null ? Integer.MAX_VALUE : person.getGenerationNo())
+                        .thenComparing(person -> person.getPersonCode() == null ? "" : person.getPersonCode())
+                        .thenComparing(PersonEntity::getId))
+                .toList();
+        Set<Long> personIds = persons.stream().map(PersonEntity::getId).collect(Collectors.toCollection(HashSet::new));
+        Map<Long, TreeNodeResponse> nodes = new LinkedHashMap<>();
+        persons.forEach(person -> addNode(nodes, person));
+        List<TreeEdgeResponse> edges = relationshipRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(this::isLineageRelationship)
+                .filter(relationship -> personIds.contains(relationship.getFromPersonId()) && personIds.contains(relationship.getToPersonId()))
+                .sorted(Comparator
+                        .comparing((RelationshipEntity relationship) -> nodeSortKey(nodes.get(relationship.getFromPersonId())))
+                        .thenComparing(relationship -> nodeSortKey(nodes.get(relationship.getToPersonId())))
+                        .thenComparing(RelationshipEntity::getId))
+                .map(this::toEdge)
+                .toList();
+        Long rootPersonId = rootPersonId(rootBranch, persons, edges);
+        return new TreeGraphResponse(rootPersonId, new ArrayList<>(nodes.values()), edges);
+    }
+
+    private Set<Long> findBranchScopeIds(Long clanId, BranchEntity rootBranch) {
+        String rootPath = rootBranch.getBranchPath();
+        return branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream()
+                .filter(branch -> branch.getId().equals(rootBranch.getId()) || isDescendant(rootPath, branch.getBranchPath()))
+                .map(BranchEntity::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private boolean isDescendant(String rootPath, String candidatePath) {
+        return rootPath != null && !rootPath.isBlank()
+                && candidatePath != null && !candidatePath.isBlank()
+                && (candidatePath.equals(rootPath) || candidatePath.startsWith(rootPath + "/"));
+    }
+
+    private Long rootPersonId(BranchEntity rootBranch, List<PersonEntity> persons, List<TreeEdgeResponse> edges) {
+        if (rootBranch.getFounderPersonId() != null && persons.stream().anyMatch(person -> person.getId().equals(rootBranch.getFounderPersonId()))) {
+            return rootBranch.getFounderPersonId();
+        }
+        Set<Long> childIds = edges.stream().map(TreeEdgeResponse::toPersonId).collect(Collectors.toCollection(HashSet::new));
+        return persons.stream()
+                .filter(person -> !childIds.contains(person.getId()))
+                .findFirst()
+                .or(() -> persons.stream().findFirst())
+                .map(PersonEntity::getId)
+                .orElse(null);
+    }
+
+    private String nodeSortKey(TreeNodeResponse node) {
+        if (node == null) {
+            return "9999-9999999999";
+        }
+        int generation = node.generationNo() == null ? 9999 : node.generationNo();
+        return String.format("%04d-%010d", generation, node.personId());
     }
 
     private void appendRelationships(Long personId, Map<Long, TreeNodeResponse> nodes, List<TreeEdgeResponse> edges, boolean outgoing) {
