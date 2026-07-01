@@ -61,14 +61,51 @@
 .stats-only-home { display: block; }
 .stats-dashboard-home { display: grid; gap: 16px; }
 .home-clan-overview { display: grid; grid-template-columns: minmax(280px, 1.15fr) minmax(360px, 1fr); gap: 16px; padding: 18px; border: 1px solid #d6e4ff; border-radius: 14px; background: linear-gradient(135deg, #f5faff 0%, #fff 56%, #fafafa 100%); box-shadow: 0 6px 16px rgba(22,119,255,.06); }
-.home-clan-main { display: grid; align-content: center; gap: 6px; }
-.home-clan-main span { color: #1677ff; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
-.home-clan-main h2 { margin: 0; color: rgba(0,0,0,.88); font-size: 24px; line-height: 1.25; font-weight: 600; }
+.home-clan-overview--culture { position: relative; overflow: hidden; border-color: #f1d39b; background: radial-gradient(circle at top left, rgba(180,83,9,.16), transparent 32%), linear-gradient(135deg, #fff7ed 0%, #fff 54%, #f5faff 100%); }
+.home-clan-overview--culture::after { content: '谱'; position: absolute; right: 24px; bottom: -38px; color: rgba(180,83,9,.08); font-size: 148px; font-family: Georgia, serif; font-weight: 900; pointer-events: none; }
+.home-clan-main { display: grid; align-content: center; gap: 6px; position: relative; z-index: 1; }
+.home-clan-main span { color: #b45309; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.home-clan-main h2 { margin: 0; color: rgba(0,0,0,.88); font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.2px; }
 .home-clan-main p { margin: 0; max-width: 760px; color: rgba(0,0,0,.65); line-height: 1.7; }
-.home-clan-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.home-clan-storyline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.home-clan-storyline strong { border-radius: 999px; padding: 6px 11px; background: rgba(255,255,255,.82); border: 1px solid #fed7aa; color: #92400e; font-size: 13px; }
+.home-clan-storyline i { width: 24px; height: 1px; background: #f59e0b; }
+.home-clan-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; position: relative; z-index: 1; }
 .home-clan-facts div { display: grid; gap: 4px; min-height: 62px; padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 10px; background: rgba(255,255,255,.82); }
 .home-clan-facts span { color: rgba(0,0,0,.45); font-size: 12px; font-weight: 500; }
 .home-clan-facts strong { color: rgba(0,0,0,.88); font-size: 14px; font-weight: 600; word-break: break-word; }
+.home-culture-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+.home-culture-card { border: 1px solid #f0f0f0; border-radius: 14px; background: #fff; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.03); min-width: 0; }
+.home-culture-card--wide { grid-column: span 2; background: linear-gradient(135deg, #fff, #fff7ed); border-color: #fed7aa; }
+.home-card-title { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 12px; }
+.home-card-title span { color: #b45309; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.home-card-title h3 { margin: 0; font-size: 18px; color: rgba(0,0,0,.88); }
+.home-culture-card-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.home-culture-card-list article { display: grid; gap: 6px; min-height: 152px; padding: 14px; border-radius: 12px; border: 1px solid #fed7aa; background: rgba(255,255,255,.76); }
+.home-culture-card-list em { width: fit-content; border-radius: 999px; padding: 3px 8px; background: #ffedd5; color: #9a3412; font-size: 12px; font-style: normal; font-weight: 700; }
+.home-culture-card-list strong { color: rgba(0,0,0,.65); font-size: 13px; }
+.home-culture-card-list b { color: #7c2d12; font-size: 20px; line-height: 1.25; }
+.home-culture-card-list p, .home-motto-card p, .home-migration-timeline p, .home-branch-story-list p { margin: 0; color: rgba(0,0,0,.58); font-size: 13px; line-height: 1.6; }
+.home-motto-card { background: linear-gradient(180deg, #fff7ed, #fff); border-color: #fed7aa; }
+.home-motto-card blockquote { margin: 8px 0 10px; padding: 14px 16px; border-left: 4px solid #b45309; background: rgba(255,247,237,.9); border-radius: 0 12px 12px 0; color: #7c2d12; font-size: 22px; font-family: Georgia, 'Songti SC', SimSun, serif; font-weight: 700; line-height: 1.55; }
+.home-migration-card { background: linear-gradient(180deg, #f8fbff, #fff); border-color: #d6e4ff; }
+.home-migration-timeline { display: grid; gap: 10px; }
+.home-migration-timeline div { position: relative; display: grid; gap: 3px; padding: 10px 10px 10px 42px; border-radius: 12px; border: 1px solid #e6f4ff; background: #fff; }
+.home-migration-timeline span { position: absolute; left: 10px; top: 11px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #1677ff; color: #fff; font-size: 12px; font-weight: 800; }
+.home-migration-timeline strong { color: rgba(0,0,0,.88); }
+.home-migration-timeline b { color: #175cd3; font-size: 13px; }
+.home-branch-story-card, .home-source-story-card { min-height: 320px; }
+.home-branch-story-list { display: grid; gap: 10px; }
+.home-branch-story-list article { display: grid; gap: 4px; padding: 11px 12px; border: 1px solid #f0f0f0; border-radius: 12px; background: #fafafa; }
+.home-branch-story-list article > div { display: flex; justify-content: space-between; gap: 10px; }
+.home-branch-story-list strong { color: rgba(0,0,0,.88); }
+.home-branch-story-list span { border-radius: 999px; padding: 2px 8px; background: #f6ffed; color: #389e0d; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.home-branch-story-list em { color: #175cd3; font-size: 12px; font-style: normal; }
+.home-source-story-list { display: grid; gap: 9px; }
+.home-source-story-list article { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 12px; background: #fafafa; }
+.home-source-story-list strong { color: rgba(0,0,0,.88); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-source-story-list span { color: #175cd3; font-size: 12px; }
+.home-source-story-list em { border-radius: 999px; padding: 3px 8px; background: #f5f5f5; color: rgba(0,0,0,.65); font-size: 12px; font-style: normal; }
 .home-stat-grid { display: grid; grid-template-columns: repeat(6, minmax(128px, 1fr)); gap: 16px; }
 .home-stat-card { display: grid; gap: 6px; min-height: 108px; padding: 16px; border: 1px solid #f0f0f0; border-radius: 12px; background: #fff; color: rgba(0,0,0,.88); text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,.03); transition: all .2s; }
 .home-stat-card:hover, .home-stat-card.active { border-color: #91caff; background: #f5faff; box-shadow: 0 6px 16px rgba(22, 119, 255, .08); }
@@ -86,7 +123,7 @@
 .home-bar-list i { display: block; height: 8px; border-radius: 999px; background: #f0f0f0; overflow: hidden; }
 .home-bar-list em { display: block; height: 100%; border-radius: 999px; background: #1677ff; }
 .home-bar-list strong { text-align: right; font-size: 13px; font-weight: 600; }
-.home-empty-chart { min-height: 96px; display: grid; place-items: center; border: 1px dashed #d9d9d9; border-radius: 8px; color: rgba(0,0,0,.45); }
+.home-empty-chart { min-height: 96px; display: grid; place-items: center; border: 1px dashed #d9d9d9; border-radius: 8px; color: rgba(0,0,0,.45); text-align: center; padding: 12px; }
 .home-drill-panel { display: none; }
 .home-drill-title { display: flex; justify-content: flex-start; align-items: center; gap: 12px; }
 .home-drill-title h3 { margin: 0; font-size: 16px; font-weight: 600; }
@@ -99,15 +136,18 @@
 @media (max-width: 1500px) {
   .home-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .home-clan-overview { grid-template-columns: 1fr; }
+  .home-culture-card-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1200px) {
   .home-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .home-chart-grid { grid-template-columns: 1fr; }
+  .home-chart-grid, .home-culture-grid { grid-template-columns: 1fr; }
+  .home-culture-card--wide { grid-column: span 1; }
   .home-clan-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
-  .home-stat-grid, .home-clan-facts { grid-template-columns: 1fr; }
+  .home-stat-grid, .home-clan-facts, .home-culture-card-list { grid-template-columns: 1fr; }
   .home-clan-overview { padding: 14px; }
+  .home-source-story-list article { grid-template-columns: 1fr; }
 }
