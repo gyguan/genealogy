@@ -65,6 +65,7 @@ export function ImportPage({ notify }: Props) {
   const [branchId, setBranchId] = useState(workspace.branchId || '');
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState(defaultMapping);
+  const [autoMapping, setAutoMapping] = useState(true);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [jobs, setJobs] = useState<ImportJob[]>([]);
@@ -73,13 +74,21 @@ export function ImportPage({ notify }: Props) {
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
+    params.set('autoMapping', String(autoMapping));
     Object.entries(mapping).forEach(([key, value]) => params.set(key, String(toZeroBased(value))));
     if (branchId) params.set('branchId', branchId);
     return params.toString();
-  }, [mapping, branchId]);
+  }, [mapping, branchId, autoMapping]);
 
   function patchMapping(key: keyof typeof mapping, value: string) {
     setMapping(prev => ({ ...prev, [key]: value }));
+    setAutoMapping(false);
+    setPreview(null);
+  }
+
+  function resetAutoMapping() {
+    setMapping(defaultMapping);
+    setAutoMapping(true);
     setPreview(null);
   }
 
@@ -159,6 +168,7 @@ export function ImportPage({ notify }: Props) {
           <Field label="默认支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="可空；文件映射列可覆盖" /></Field>
           <Field label="导入文件"><input type="file" accept=".csv,.xlsx" onChange={e => { setFile(e.target.files?.[0] || null); setPreview(null); }} /></Field>
         </div>
+        <label className="import-confirm-line"><input type="checkbox" checked={autoMapping} onChange={e => { setAutoMapping(e.target.checked); setPreview(null); }} /> 自动识别表头字段；识别失败时使用下方列号兜底</label>
         <div className="wizard-form-grid">
           <Field label="姓名列"><input value={mapping.nameIndex} onChange={e => patchMapping('nameIndex', e.target.value)} /></Field>
           <Field label="性别列"><input value={mapping.genderIndex} onChange={e => patchMapping('genderIndex', e.target.value)} /></Field>
@@ -171,12 +181,13 @@ export function ImportPage({ notify }: Props) {
         <label className="import-confirm-line"><input type="checkbox" checked={confirmDuplicates} onChange={e => setConfirmDuplicates(e.target.checked)} /> 我已确认疑似重复人物，仍继续导入</label>
         <Actions>
           <button className="secondary" onClick={downloadTemplate}>下载模板</button>
+          <button className="secondary" onClick={resetAutoMapping}>恢复自动识别</button>
           <button className="secondary" disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</button>
           <button disabled={loading} onClick={upload}>{loading ? '导入中...' : '确认导入'}</button>
           <button className="secondary" onClick={() => void loadJobs()}>刷新导入任务</button>
         </Actions>
         <div className="import-template-tip">
-          <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 支派ID, 出生日期, 是否在世。字段映射使用从 1 开始的列号。
+          <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 支派ID, 出生日期, 是否在世。默认会按表头自动识别；手工映射使用从 1 开始的列号。
         </div>
       </Panel>
 
