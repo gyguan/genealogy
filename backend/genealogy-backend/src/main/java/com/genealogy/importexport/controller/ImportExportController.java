@@ -76,12 +76,17 @@ public class ImportExportController {
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/exports/persons.csv")
     public ResponseEntity<byte[]> exportPersonsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
-        return csvResponse("branch-persons.csv", personCsvApplicationService.exportPersonsByBranch(clanId, branchId));
+        return csvResponse("branch-" + branchId + "-persons.csv", personCsvApplicationService.exportPersonsByBranch(clanId, branchId));
     }
 
     @GetMapping("/clans/{clanId}/exports/relations.csv")
     public ResponseEntity<byte[]> exportRelations(@Positive @PathVariable Long clanId) {
         return csvResponse("relations.csv", personCsvApplicationService.exportRelations(clanId));
+    }
+
+    @GetMapping("/clans/{clanId}/branches/{branchId}/exports/relations.csv")
+    public ResponseEntity<byte[]> exportRelationsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
+        return csvResponse("branch-" + branchId + "-relations.csv", personCsvApplicationService.exportRelationsByBranch(clanId, branchId));
     }
 
     @GetMapping("/exports/types")
@@ -90,6 +95,7 @@ public class ImportExportController {
                 "person_csv", "/api/v1/clans/{clanId}/exports/persons.csv",
                 "branch_person_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/persons.csv",
                 "relation_csv", "/api/v1/clans/{clanId}/exports/relations.csv",
+                "branch_relation_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/relations.csv",
                 "person_template_csv", "/api/v1/imports/templates/persons.csv",
                 "relation_template_csv", "/api/v1/imports/templates/relations.csv"
         ));
