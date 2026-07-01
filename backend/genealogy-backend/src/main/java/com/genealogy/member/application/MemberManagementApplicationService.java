@@ -2,6 +2,7 @@ package com.genealogy.member.application;
 
 import com.genealogy.auth.entity.AppUserEntity;
 import com.genealogy.auth.repository.AppUserRepository;
+import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.dto.ClanMemberResponse;
 import com.genealogy.member.dto.CreateClanMemberRequest;
@@ -34,15 +35,18 @@ public class MemberManagementApplicationService {
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final ClanMemberRepository clanMemberRepository;
+    private final BranchRepository branchRepository;
 
     public MemberManagementApplicationService(
             AppUserRepository appUserRepository,
             RoleRepository roleRepository,
-            ClanMemberRepository clanMemberRepository
+            ClanMemberRepository clanMemberRepository,
+            BranchRepository branchRepository
     ) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.clanMemberRepository = clanMemberRepository;
+        this.branchRepository = branchRepository;
     }
 
     @Transactional(readOnly = true)
@@ -94,16 +98,20 @@ public class MemberManagementApplicationService {
                     throw new BusinessException("MEMBER_DUPLICATED", "该用户已经是当前宗族成员");
                 });
 
+        MemberScopeType scopeType = parseScopeType(request.scopeType());
+        Long normalizedScopeId = normalizeScopeId(clanId, scopeType, request.scopeId(), request.branchId());
+        Long normalizedBranchId = normalizeBranchId(clanId, scopeType, request.branchId(), normalizedScopeId);
+
         LocalDateTime now = LocalDateTime.now();
         ClanMemberEntity member = new ClanMemberEntity();
         member.setClanId(clanId);
         member.setUserId(user.getId());
-        member.setBranchId(request.branchId());
+        member.setBranchId(normalizedBranchId);
         member.setRoleId(role.getId());
         member.setMemberName(request.memberName().trim());
         member.setMemberStatus(MemberStatus.active);
-        member.setScopeType(parseScopeType(request.scopeType()));
-        member.setScopeId(request.scopeId() == null ? clanId : request.scopeId());
+        member.setScopeType(scopeType);
+        member.setScopeId(normalizedScopeId);
         member.setJoinedAt(now);
         member.setCreatedAt(now);
         member.setUpdatedAt(now);
@@ -116,16 +124,50 @@ public class MemberManagementApplicationService {
                 .filter(item -> item.getClanId().equals(clanId))
                 .orElseThrow(() -> new BusinessException("MEMBER_NOT_FOUND", "成员不存在"));
         RoleEntity role = findRole(request.roleCode());
+        MemberScopeType scopeType = parseScopeType(request.scopeType() == null ? "clan" : request.scopeType());
+        Long normalizedScopeId = normalizeScopeId(clanId, scopeType, request.scopeId(), request.branchId());
+        Long normalizedBranchId = normalizeBranchId(clanId, scopeType, request.branchId(), normalizedScopeId);
+
         member.setRoleId(role.getId());
-        member.setBranchId(request.branchId());
-        member.setScopeType(parseScopeType(request.scopeType() == null ? "clan" : request.scopeType()));
-        member.setScopeId(request.scopeId() == null ? clanId : request.scopeId());
+        member.setBranchId(normalizedBranchId);
+        member.setScopeType(scopeType);
+        member.setScopeId(normalizedScopeId);
         if (request.memberStatus() != null && !request.memberStatus().isBlank()) {
             member.setMemberStatus(MemberStatus.valueOf(request.memberStatus()));
         }
         member.setUpdatedAt(LocalDateTime.now());
         AppUserEntity user = member.getUserId() == null ? null : appUserRepository.findById(member.getUserId()).orElse(null);
         return toMemberResponse(clanMemberRepository.save(member), user, role);
+    }
+
+    private Long normalizeScopeId(Long clanId, MemberScopeType scopeType, Long scopeId, Long branchId) {
+        if (scopeType == MemberScopeType.clan) {
+            return clanId;
+        }
+        Long effectiveBranchId = scopeId == null ? branchId : scopeId;
+        if (effectiveBranchId == null) {
+            throw new BusinessException("MEMBER_BRANCH_SCOPE_REQUIRED", "支派范围授权必须指定范围ID或支派ID");
+        }
+        requireBranchInClan(clanId, effectiveBranchId);
+        return effectiveBranchId;
+    }
+
+    private Long normalizeBranchId(Long clanId, MemberScopeType scopeType, Long branchId, Long scopeId) {
+        if (scopeType == MemberScopeType.branch) {
+            Long effectiveBranchId = branchId == null ? scopeId : branchId;
+            requireBranchInClan(clanId, effectiveBranchId);
+            return effectiveBranchId;
+        }
+        if (branchId != null) {
+            requireBranchInClan(clanId, branchId);
+        }
+        return branchId;
+    }
+
+    private void requireBranchInClan(Long clanId, Long branchId) {
+        if (branchId == null || branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
+            throw new BusinessException("BRANCH_CLAN_MISMATCH", "授权支派不存在或不属于当前宗族");
+        }
     }
 
     private RoleEntity findRole(String roleCode) {
