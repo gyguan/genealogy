@@ -133,6 +133,14 @@
 .home-drill-modal-body .table-wrap { margin-top: 0; }
 .home-drill-modal-body { max-height: 62vh; overflow: auto; padding-top: 4px; }
 
+/* Hide residual technical identifiers that are rendered as handcrafted summary blocks. */
+.home-clan-facts > div:nth-child(6),
+.archive-search-summary > span:last-child,
+.archive-view-grid > div:nth-child(2),
+.wizard-id-list > div:nth-child(4),
+.wizard-id-list > div:nth-child(5),
+.wizard-id-list > div:nth-child(6) { display: none !important; }
+
 @media (max-width: 1500px) {
   .home-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .home-clan-overview { grid-template-columns: 1fr; }
