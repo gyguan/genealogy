@@ -29,7 +29,7 @@ export function SourceAttachmentPage({ notify }: Props) {
 
   async function loadAttachments(nextSourceId = sourceId) {
     if (!nextSourceId) return;
-    const data = await apiClient.get(`/sources/${nextSourceId}/attachments`);
+    const data = await apiClient.get(`/source-attachments/sources/${nextSourceId}`);
     setAttachments(toRecordList<Attachment>(data));
   }
 
