@@ -6,6 +6,13 @@ import { Actions, Field } from '../../shared/ui/Form';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 
+type ClanRow = {
+  id: number;
+  clanName: string;
+  surname?: string;
+  clanCode?: string;
+};
+
 type UserRow = {
   id: number;
   username: string;
@@ -52,8 +59,14 @@ function defaultRoleCode(roles: RoleRow[]) {
   return roles.find(role => role.roleCode === 'viewer')?.roleCode || roles[0]?.roleCode || '';
 }
 
+function display(value: unknown, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
 export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
+  const [clans, setClans] = useState<ClanRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -68,10 +81,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const manageRoles = useMemo(() => roles.filter(role => role.roleType !== 'view' || manageRoleCodes.includes(role.roleCode)), [roles]);
   const viewRoles = useMemo(() => roles.filter(role => role.roleType === 'view'), [roles]);
   const selectedRole = roles.find(role => role.roleCode === roleCode);
+  const selectedClan = useMemo(() => {
+    const targetId = String(workspace.clanId || '');
+    return clans.find(clan => String(clan.id) === targetId) || clans[0] || null;
+  }, [clans, workspace.clanId]);
+  const selectedClanId = String(selectedClan?.id || workspace.clanId || '');
 
   function effectiveScopeId() {
     if (scopeType === 'branch') return Number(scopeId || branchId || workspace.branchId);
-    return Number(workspace.clanId);
+    return Number(selectedClanId);
   }
 
   function effectiveBranchId() {
@@ -93,40 +111,53 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function loadBase() {
     await run(async () => {
-      const [userRes, roleRes] = await Promise.all([
+      const [clanRes, userRes, roleRes] = await Promise.all([
+        apiClient.get('/clans').catch(() => []),
         apiClient.get(`${memberManagementBase}/users`).catch(() => []),
         apiClient.get(`${memberManagementBase}/roles`).catch(() => [])
       ]);
+      const nextClans = toRecordList(clanRes) as ClanRow[];
       const nextUsers = toRecordList(userRes) as UserRow[];
       const nextRoles = toRecordList(roleRes) as RoleRow[];
+      const nextClanId = workspace.clanId && nextClans.some(clan => String(clan.id) === workspace.clanId)
+        ? workspace.clanId
+        : String(nextClans[0]?.id || '');
+
+      setClans(nextClans);
       setUsers(nextUsers);
       setRoles(nextRoles);
+      if (nextClanId && workspace.clanId !== nextClanId) workspace.setClanId(nextClanId);
       if (!userId && nextUsers[0]?.id) {
         setUserId(String(nextUsers[0].id));
         setMemberName(nextUsers[0].displayName || nextUsers[0].username);
       }
       if (!roleCode) setRoleCode(defaultRoleCode(nextRoles));
-      if (workspace.clanId) await listMembers();
+      if (nextClanId) {
+        const memberRes = await apiClient.get(`${memberManagementBase}/clans/${nextClanId}/members`).catch(() => []);
+        setMembers(toRecordList(memberRes) as MemberRow[]);
+      } else {
+        setMembers([]);
+      }
     });
   }
 
-  async function listMembers() {
-    if (!workspace.clanId) {
-      notify({ message: '请先输入宗族ID' }, true);
+  async function listMembers(clanId = selectedClanId) {
+    if (!clanId) {
+      notify({ message: '请先选择宗族' }, true);
       return;
     }
-    const res = await apiClient.get(`${memberManagementBase}/clans/${workspace.clanId}/members`);
+    const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members`);
     setMembers(toRecordList(res) as MemberRow[]);
   }
 
   async function create() {
     await run(async () => {
-      if (!workspace.clanId) throw new Error('请先输入宗族ID');
+      if (!selectedClanId) throw new Error('请先选择宗族');
       if (!userId) throw new Error('请选择用户');
       if (!roleCode) throw new Error('请选择角色');
       if (scopeType === 'branch' && !scopeId && !branchId && !workspace.branchId) throw new Error('支派范围授权必须填写范围ID或支派ID');
       const selectedUser = users.find(user => String(user.id) === userId);
-      const res: any = await apiClient.post(`${memberManagementBase}/clans/${workspace.clanId}/members`, {
+      const res: any = await apiClient.post(`${memberManagementBase}/clans/${selectedClanId}/members`, {
         userId: Number(userId),
         roleCode,
         memberName: memberName.trim() || selectedUser?.displayName || selectedUser?.username || `用户${userId}`,
@@ -135,15 +166,16 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         branchId: effectiveBranchId()
       });
       notify({ message: '成员授权成功', id: res?.id });
-      await listMembers();
+      await listMembers(selectedClanId);
     });
   }
 
   async function updateRole(member: MemberRow, nextRoleCode: string) {
     await run(async () => {
+      if (!selectedClanId) throw new Error('请先选择宗族');
       const nextScopeType = member.scopeType || 'clan';
-      const nextScopeId = nextScopeType === 'branch' ? (member.scopeId || member.branchId) : Number(workspace.clanId);
-      await apiClient.put(`${memberManagementBase}/clans/${workspace.clanId}/members/${member.id}`, {
+      const nextScopeId = nextScopeType === 'branch' ? (member.scopeId || member.branchId) : Number(selectedClanId);
+      await apiClient.put(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`, {
         roleCode: nextRoleCode,
         memberStatus: member.memberStatus || 'active',
         scopeType: nextScopeType,
@@ -151,11 +183,23 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         branchId: member.branchId || (nextScopeType === 'branch' ? nextScopeId : null)
       });
       notify({ message: '成员角色已更新', id: member.id });
-      await listMembers();
+      await listMembers(selectedClanId);
     });
   }
 
   useEffect(() => { void loadBase(); }, []);
+
+  function onClanChange(nextClanId: string) {
+    const clanId = String(nextClanId || '').trim();
+    workspace.patch({ clanId, branchId: '', personId: '', relationshipId: '', sourceId: '', attachmentId: '', reviewTaskId: '' });
+    setScopeId('');
+    setBranchId('');
+    if (clanId) {
+      void run(async () => { await listMembers(clanId); });
+    } else {
+      setMembers([]);
+    }
+  }
 
   function onUserChange(nextUserId: string) {
     setUserId(nextUserId);
@@ -182,7 +226,12 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       />
       <div className="page-grid two">
         <Panel title="新增用户授权">
-          <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
+          <Field label="宗族名称">
+            <select value={selectedClanId} onChange={e => onClanChange(e.target.value)} disabled={loading || !clans.length}>
+              <option value="">请选择宗族</option>
+              {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{display(clan.clanName, `宗族#${clan.id}`)}{clan.clanCode ? ` · ${clan.clanCode}` : ''}</option>)}
+            </select>
+          </Field>
           <Field label="选择用户">
             <select value={userId} onChange={e => onUserChange(e.target.value)}>
               <option value="">请选择用户</option>
@@ -198,10 +247,10 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
             </select>
           </Field>
           <Field label="授权范围"><select value={scopeType} onChange={e => onScopeTypeChange(e.target.value)}><option value="clan">宗族范围</option><option value="branch">支派范围（含下级支派）</option></select></Field>
-          <Field label="范围ID"><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'branch' ? '填写支派ID；不填使用当前支派ID' : '宗族范围自动使用当前宗族ID'} /></Field>
+          <Field label="范围ID"><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'branch' ? '填写支派ID；不填使用当前支派ID' : '宗族范围自动使用当前宗族'} /></Field>
           <Field label="归属支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="支派负责人/支派管理员建议填写" /></Field>
           {selectedRole ? <Tag color={roleTypeColor(selectedRole.roleType)}>{selectedRole.roleName}：{roleTypeText(selectedRole.roleType)}</Tag> : null}
-          <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={listMembers}>刷新成员</button></Actions>
+          <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={() => void listMembers()}>刷新成员</button></Actions>
         </Panel>
 
         <Panel title="角色清单">
