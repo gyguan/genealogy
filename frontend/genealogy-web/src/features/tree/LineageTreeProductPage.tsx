@@ -213,36 +213,110 @@ export function LineageTreeProductPage({ notify }: Props) {
     }
   }
 
+  function resetLineage() {
+    setCenter(null);
+    setRelationships([]);
+    setFamilyNodes([]);
+    setAncestors([]);
+    setDescendants([]);
+    setSelectedNode(null);
+  }
+
+  function resetBranchLineage() {
+    setBranchNodes([]);
+    setBranchEdges([]);
+    setBranchRootPersonId('');
+  }
+
+  function clearClanScopedData() {
+    setBranches([]);
+    setPeople([]);
+    setSearchResults([]);
+    setSelectedBranchId('');
+    resetLineage();
+    resetBranchLineage();
+  }
+
+  function validIdInRows(id: string, list: any[]) {
+    return Boolean(id) && list.some(item => String(item.id) === String(id));
+  }
+
+  async function loadClanContext(clanId: string, resetSelection = false) {
+    if (!clanId) {
+      clearClanScopedData();
+      workspace.patch({ branchId: '', personId: '', relationshipId: '' });
+      return;
+    }
+
+    const branchRows = rows(await apiClient.get(`/clans/${clanId}/branches`).catch(() => []));
+    setBranches(branchRows);
+
+    const nextBranchId = resetSelection
+      ? String(branchRows[0]?.id || '')
+      : validIdInRows(selectedBranchId, branchRows)
+        ? selectedBranchId
+        : validIdInRows(workspace.branchId, branchRows)
+          ? workspace.branchId
+          : String(branchRows[0]?.id || '');
+
+    setSelectedBranchId(nextBranchId);
+    workspace.setBranchId(nextBranchId || '');
+    resetBranchLineage();
+
+    const personRes = await apiClient.get(`/persons/search?clanId=${clanId}&pageNo=1&pageSize=120`).catch(() => apiClient.get(`/clans/${clanId}/persons`));
+    const personRows = rows(personRes);
+    const nextPeople = personRows.map(row => toPerson(row, branchRows));
+    setPeople(nextPeople);
+    setSearchResults(nextPeople.slice(0, 12));
+
+    const nextPersonId = resetSelection
+      ? nextPeople[0]?.id || ''
+      : nextPeople.some(item => item.id === workspace.personId)
+        ? workspace.personId
+        : nextPeople[0]?.id || '';
+
+    workspace.setPersonId(nextPersonId || '');
+    workspace.setRelationshipId('');
+    setSelectedNode(null);
+
+    if (nextPersonId) {
+      await loadLineage(nextPersonId, branchRows, nextPeople);
+    } else {
+      resetLineage();
+    }
+
+    if (nextBranchId) {
+      await loadBranchLineage(nextBranchId, branchRows, clanId, false);
+    }
+  }
+
   async function loadBase() {
     await run(async () => {
       const clanRows = rows(await apiClient.get('/clans').catch(() => []));
       setClans(clanRows);
       const nextClanId = workspace.clanId || String(clanRows[0]?.id || '');
       if (nextClanId && !workspace.clanId) workspace.setClanId(nextClanId);
-      if (!nextClanId) {
-        setPeople([]);
-        setSearchResults([]);
-        setBranchNodes([]);
-        setBranchEdges([]);
-        return;
-      }
-      const branchRows = rows(await apiClient.get(`/clans/${nextClanId}/branches`).catch(() => []));
-      setBranches(branchRows);
-      const nextBranchId = selectedBranchId || workspace.branchId || String(branchRows[0]?.id || '');
-      if (nextBranchId) {
-        setSelectedBranchId(nextBranchId);
-        if (!workspace.branchId) workspace.setBranchId(nextBranchId);
-      }
-      const personRes = await apiClient.get(`/persons/search?clanId=${nextClanId}&pageNo=1&pageSize=120`).catch(() => apiClient.get(`/clans/${nextClanId}/persons`));
-      const personRows = rows(personRes);
-      const nextPeople = personRows.map(row => toPerson(row, branchRows));
-      setPeople(nextPeople);
-      setSearchResults(nextPeople.slice(0, 12));
-      const nextPersonId = workspace.personId || nextPeople[0]?.id || '';
-      if (nextPersonId && !workspace.personId) workspace.setPersonId(nextPersonId);
-      if (nextPersonId) await loadLineage(nextPersonId, branchRows, nextPeople);
-      if (nextBranchId) await loadBranchLineage(nextBranchId, branchRows);
+      await loadClanContext(nextClanId, !workspace.clanId);
     });
+  }
+
+  async function handleClanChange(nextClanId: string) {
+    await run(async () => {
+      workspace.patch({ clanId: nextClanId, branchId: '', personId: '', relationshipId: '', sourceId: '', reviewTaskId: '' });
+      clearClanScopedData();
+      await loadClanContext(nextClanId, true);
+      notify({ message: nextClanId ? '宗族已切换，支派世系图和世系树已刷新' : '已清空宗族选择' });
+    });
+  }
+
+  async function handleBranchChange(nextBranchId: string) {
+    setSelectedBranchId(nextBranchId);
+    resetBranchLineage();
+    if (!nextBranchId) {
+      workspace.setBranchId('');
+      return;
+    }
+    await run(() => loadBranchLineage(nextBranchId, branches, workspace.clanId, true));
   }
 
   async function searchPeople() {
@@ -261,11 +335,7 @@ export function LineageTreeProductPage({ notify }: Props) {
 
   async function loadLineage(personId = workspace.personId, branchRows = branches, peopleRows = people) {
     if (!personId) {
-      setCenter(null);
-      setRelationships([]);
-      setFamilyNodes([]);
-      setAncestors([]);
-      setDescendants([]);
+      resetLineage();
       return;
     }
     const [detailRes, relationRes, familyRes, ancestorRes, descendantRes] = await Promise.all([
@@ -287,17 +357,19 @@ export function LineageTreeProductPage({ notify }: Props) {
     setDescendants(nextDescendants);
   }
 
-  async function loadBranchLineage(branchId = selectedBranchId, branchRows = branches) {
-    if (!workspace.clanId) throw new Error('请先选择宗族');
+  async function loadBranchLineage(branchId = selectedBranchId, branchRows = branches, clanId = workspace.clanId, showNotice = true) {
+    if (!clanId) throw new Error('请先选择宗族');
     if (!branchId) throw new Error('请选择支派');
-    const data: any = await apiClient.get(`/tree/clans/${workspace.clanId}/branches/${branchId}/lineage`);
+    const data: any = await apiClient.get(`/tree/clans/${clanId}/branches/${branchId}/lineage`);
     const nextNodes = rows(data).map(row => toPerson(row, branchRows));
     const nextEdges = edgeRows(data).map(toRelationship);
     setBranchNodes(nextNodes);
     setBranchEdges(nextEdges);
     setBranchRootPersonId(String(data?.rootPersonId || ''));
     workspace.setBranchId(branchId);
-    notify({ message: `支派世系图已生成：${nextNodes.length} 位人物，${nextEdges.length} 条世系关系` });
+    if (showNotice) {
+      notify({ message: `支派世系图已生成：${nextNodes.length} 位人物，${nextEdges.length} 条世系关系` });
+    }
   }
 
   useEffect(() => { void loadBase(); }, []);
@@ -362,7 +434,7 @@ export function LineageTreeProductPage({ notify }: Props) {
     <div className="lineage-page lineage-tree-page">
       <Panel title="世系图谱">
         <div className="lineage-search-grid">
-          <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="宗族ID" /></Field>
+          <Field label="宗族"><select value={workspace.clanId} onChange={e => void handleClanChange(e.target.value)}><option value="">请选择宗族</option>{clans.map(clan => <option key={clan.id} value={clan.id}>{clan.clanName || clan.surname || `宗族#${clan.id}`}（ID:{clan.id}）</option>)}</select></Field>
           <Field label="搜索人物"><input value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="输入姓名、谱名、字号" /></Field>
           <Field label="展开深度"><select value={depth} onChange={e => setDepth(e.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
           <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button></Actions>
@@ -374,7 +446,7 @@ export function LineageTreeProductPage({ notify }: Props) {
 
       <Panel title="支派世系图" description="按支派聚合展示当前支派及下级支派的人物世系关系，适合快速检查某一房支的谱系完整性。">
         <div className="lineage-search-grid">
-          <Field label="支派范围"><select value={selectedBranchId} onChange={e => setSelectedBranchId(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}（ID:{branch.id}）</option>)}</select></Field>
+          <Field label="支派范围"><select value={selectedBranchId} onChange={e => void handleBranchChange(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}（ID:{branch.id}）</option>)}</select></Field>
           <Field label="支派路径"><input value={branchPath(branches, selectedBranchId)} readOnly /></Field>
           <Actions><button disabled={loading || !selectedBranchId} onClick={() => void run(() => loadBranchLineage(selectedBranchId))}>{loading ? '生成中...' : '生成支派世系图'}</button></Actions>
         </div>
