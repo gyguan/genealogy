@@ -129,6 +129,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   const treeNodes = toRecordList<any>(snapshot.tree?.nodes || []);
   const treeEdges = toRecordList<any>(snapshot.tree?.edges || []);
   const selectedPerson = useMemo(() => persons.find(item => String(item.id) === workspace.personId), [persons, workspace.personId]);
+  const selectedBranchName = useMemo(() => branches.find(item => String(item.id) === String(personForm.branchId || workspace.branchId))?.branchName || '', [branches, personForm.branchId, workspace.branchId]);
 
   const steps = useMemo(() => [
     { ...stepOrder[0], ready: Boolean(workspace.clanId) },
@@ -482,7 +483,7 @@ export function Mvp1WizardPage({ notify }: Props) {
         return (
           <Panel title="录入中心人物" description="补齐人物档案字段：身份、世系、生卒、地域、履历、墓葬、隐私和数据状态。">
             <div className="wizard-form-grid">
-              <Field label="支派ID"><input value={personForm.branchId || workspace.branchId} onChange={e => patchPerson('branchId', e.target.value)} /></Field>
+              <Field label="所属支派"><select value={personForm.branchId || workspace.branchId} onChange={e => patchPerson('branchId', e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={String(branch.id)}>{branch.branchName || `支派#${branch.id}`}</option>)}</select></Field>
               <Field label="人物编码"><input value={personForm.personCode} onChange={e => patchPerson('personCode', e.target.value)} placeholder="如 P001，可空" /></Field>
               <Field label="姓名"><input value={personForm.name} onChange={e => patchPerson('name', e.target.value)} /></Field>
               <Field label="谱名"><input value={personForm.genealogyName} onChange={e => patchPerson('genealogyName', e.target.value)} /></Field>
@@ -542,7 +543,7 @@ export function Mvp1WizardPage({ notify }: Props) {
           <Panel title="当前上下文" description="向导会自动记录最近创建或选择的关键对象。">
             <div className="wizard-id-list">
               <div><span>宗族ID</span><strong>{workspace.clanId || '-'}</strong></div>
-              <div><span>支派ID</span><strong>{workspace.branchId || '-'}</strong></div>
+              <div><span>支派</span><strong>{selectedBranchName || '-'}</strong></div>
               <div><span>字辈方案</span><strong>{schemeForm.schemeId || '-'}</strong></div>
               <div><span>人物ID</span><strong>{workspace.personId || '-'}</strong></div>
               <div><span>关系ID</span><strong>{workspace.relationshipId || '-'}</strong></div>
