@@ -42,4 +42,9 @@ public class TreeController {
     ) {
         return ApiResponse.success(treeApplicationService.ancestors(personId, maxDepth));
     }
+
+    @GetMapping("/clans/{clanId}/branches/{branchId}/lineage")
+    public ApiResponse<TreeGraphResponse> branchLineage(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
+        return ApiResponse.success(treeApplicationService.branchLineage(clanId, branchId));
+    }
 }
