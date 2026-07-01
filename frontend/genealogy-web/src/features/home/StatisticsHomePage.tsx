@@ -22,6 +22,20 @@ type ChartItem = {
   value: number;
 };
 
+type CultureCard = {
+  title: string;
+  value: string;
+  desc: string;
+  tag: string;
+};
+
+type MigrationItem = {
+  branchName: string;
+  from: string;
+  to: string;
+  desc: string;
+};
+
 const emptySnapshot: HomeSnapshot = {
   clans: [],
   branches: [],
@@ -66,6 +80,14 @@ function sourceTypeText(value: string) {
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
   return text || fallback;
+}
+
+function firstNonEmpty(...values: unknown[]) {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text) return text;
+  }
+  return '';
 }
 
 function maxValue(items: ChartItem[]) {
@@ -149,6 +171,96 @@ export function StatisticsHomePage() {
     return snapshot.clans.find(row => String(row.id) === targetId) || snapshot.clans[0] || null;
   }, [snapshot.clans, workspace.clanId]);
 
+  const ancestorName = useMemo(() => {
+    const ancestorId = currentClan?.ancestorPersonId;
+    if (!ancestorId) return '';
+    return display(snapshot.people.find(person => String(person.id) === String(ancestorId))?.name, `人物#${ancestorId}`);
+  }, [currentClan, snapshot.people]);
+
+  const branchPersonCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    snapshot.people.forEach(person => {
+      const branchId = String(person.branchId || '');
+      if (!branchId) return;
+      map.set(branchId, (map.get(branchId) || 0) + 1);
+    });
+    return map;
+  }, [snapshot.people]);
+
+  const migrationItems = useMemo<MigrationItem[]>(() => {
+    const fromBranches = snapshot.branches
+      .filter(branch => branch.migrationFrom || branch.migrationTo)
+      .slice(0, 5)
+      .map(branch => ({
+        branchName: display(branch.branchName, `支派#${branch.id}`),
+        from: display(branch.migrationFrom || currentClan?.originPlace, '发源地待维护'),
+        to: display(branch.migrationTo, '迁徙地待维护'),
+        desc: display(branch.description, '暂无迁徙说明，可在支派详情中补充。')
+      }));
+    if (fromBranches.length) return fromBranches;
+    if (currentClan?.originPlace) {
+      return [{ branchName: '宗族发源', from: display(currentClan.originPlace), to: '各支派', desc: '当前尚未维护支派迁徙路线，先以宗族祖籍/发源地作为迁徙线索。' }];
+    }
+    return [{ branchName: '迁徙线索', from: '待维护', to: '待维护', desc: '可在支派管理中维护迁徙来源地、迁徙目的地和支派简介。' }];
+  }, [snapshot.branches, currentClan]);
+
+  const familyInstruction = firstNonEmpty(
+    currentClan?.familyInstruction,
+    currentClan?.familyInstructions,
+    currentClan?.familyMotto,
+    currentClan?.clanMotto,
+    currentClan?.motto,
+    currentClan?.instruction,
+    currentClan?.familyRules
+  );
+
+  const cultureCards = useMemo<CultureCard[]>(() => [
+    {
+      title: '堂号',
+      value: display(currentClan?.hallName, '待维护'),
+      desc: currentClan?.hallName ? '堂号用于承载宗族认同、祠堂记忆和谱牒封面识别。' : '建议在宗族基础信息中补充堂号，提升族谱封面与成册质感。',
+      tag: '宗族标识'
+    },
+    {
+      title: '郡望',
+      value: display(currentClan?.commandery, '待维护'),
+      desc: currentClan?.commandery ? '郡望可帮助说明姓氏源流、望族地域和历史文化脉络。' : '建议补充郡望信息，用于首页文化卡片和成册卷首。',
+      tag: '姓氏源流'
+    },
+    {
+      title: '家训家风',
+      value: familyInstruction || '待维护',
+      desc: familyInstruction ? '家训已进入首页展示，可作为宗族文化、成册导出和后续分享页核心内容。' : '当前后端暂无专用家训字段时，可先在宗族简介或文化资料中维护。',
+      tag: '文化传承'
+    },
+    {
+      title: '祖籍/发源地',
+      value: display(currentClan?.originPlace, '待维护'),
+      desc: currentClan?.originPlace ? '祖籍信息将与支派迁徙路线联动，形成迁徙脉络展示。' : '建议维护祖籍或发源地，作为迁徙地图和支派故事的起点。',
+      tag: '迁徙起点'
+    }
+  ], [currentClan, familyInstruction]);
+
+  const branchStoryItems = useMemo(() => snapshot.branches
+    .slice()
+    .sort((a, b) => (branchPersonCounts.get(String(b.id)) || 0) - (branchPersonCounts.get(String(a.id)) || 0))
+    .slice(0, 6)
+    .map(branch => ({
+      id: branch.id,
+      name: display(branch.branchName, `支派#${branch.id}`),
+      count: branchPersonCounts.get(String(branch.id)) || 0,
+      path: display(branch.branchPath, '-'),
+      migration: branch.migrationFrom || branch.migrationTo ? `${display(branch.migrationFrom, '未知')} → ${display(branch.migrationTo, '未知')}` : '迁徙待维护',
+      desc: display(branch.description, '暂无支派简介')
+    })), [snapshot.branches, branchPersonCounts]);
+
+  const sourceHighlights = useMemo(() => snapshot.sources.slice(0, 5).map(source => ({
+    id: source.id,
+    title: display(source.sourceName || source.title || source.name, `资料#${source.id || '-'}`),
+    type: sourceTypeText(source.sourceType || source.category),
+    status: display(source.verificationStatus || source.status, '待复核')
+  })), [snapshot.sources]);
+
   const genderItems = useMemo(() => countBy(snapshot.people, row => genderText(row.gender || row.sex)).map(item => ({ ...item, key: `gender:${item.label}` as DrillKey })), [snapshot.people]);
   const statusItems = useMemo(() => countBy(snapshot.people, row => statusText(row.dataStatus || row.status || row.reviewStatus)).map(item => ({ ...item, key: `status:${item.label}` as DrillKey })), [snapshot.people]);
   const generationItems = useMemo(() => countBy(snapshot.people, row => row.generationNo ? `${row.generationNo}世` : '未维护').slice(0, 8).map(item => ({ ...item, key: `generation:${item.label}` as DrillKey })), [snapshot.people]);
@@ -222,8 +334,8 @@ export function StatisticsHomePage() {
   }
 
   function detailColumns() {
-    if (activeDrill === 'clans') return [{ key: 'id', title: 'ID' }, { key: 'clanName', title: '宗族名称' }, { key: 'surname', title: '姓氏' }, { key: 'hallName', title: '堂号' }];
-    if (activeDrill === 'branches') return [{ key: 'id', title: 'ID' }, { key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派' }, { key: 'status', title: '状态' }];
+    if (activeDrill === 'clans') return [{ key: 'id', title: 'ID' }, { key: 'clanName', title: '宗族名称' }, { key: 'surname', title: '姓氏' }, { key: 'hallName', title: '堂号' }, { key: 'commandery', title: '郡望' }, { key: 'originPlace', title: '祖籍/发源地' }];
+    if (activeDrill === 'branches') return [{ key: 'id', title: 'ID' }, { key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派' }, { key: 'migrationFrom', title: '迁徙来源' }, { key: 'migrationTo', title: '迁徙去向' }, { key: 'status', title: '状态' }];
     if (activeDrill === 'sources' || activeDrill.startsWith('sourceType:')) return [{ key: 'id', title: 'ID' }, { key: 'sourceName', title: '资料名称' }, { key: 'sourceType', title: '类型', render: (row: any) => sourceTypeText(row.sourceType || row.category) }, { key: 'verificationStatus', title: '状态' }];
     if (activeDrill === 'pendingReviews') return [{ key: 'id', title: '任务ID' }, { key: 'targetType', title: '对象类型' }, { key: 'targetId', title: '对象ID' }, { key: 'status', title: '状态' }];
     if (activeDrill === 'logs') return [{ key: 'totalCount', title: '总数', render: (row: any) => display(row.totalCount ?? row.total) }, { key: 'todayCount', title: '今日', render: (row: any) => display(row.todayCount) }, { key: 'successCount', title: '成功', render: (row: any) => display(row.successCount) }, { key: 'failureCount', title: '失败', render: (row: any) => display(row.failureCount) }];
@@ -239,19 +351,88 @@ export function StatisticsHomePage() {
 
   return (
     <div className="stats-only-home stats-dashboard-home">
-      <section className="home-clan-overview">
+      <section className="home-clan-overview home-clan-overview--culture">
         <div className="home-clan-main">
           <span>族谱概览</span>
           <h2>{display(currentClan?.clanName, '请选择或创建宗族')}</h2>
           <p>{display(currentClan?.description, `${display(currentClan?.surname, '本')}氏族谱空间，用于统一沉淀宗族成员、支派世系、字辈规则、来源证据与审核记录。`)}</p>
+          <div className="home-clan-storyline">
+            <strong>{display(currentClan?.hallName, '堂号待维护')}</strong>
+            <i />
+            <strong>{display(currentClan?.commandery, '郡望待维护')}</strong>
+            <i />
+            <strong>{display(currentClan?.originPlace, '祖籍待维护')}</strong>
+          </div>
         </div>
         <div className="home-clan-facts">
           <div><span>姓氏</span><strong>{display(currentClan?.surname)}</strong></div>
           <div><span>堂号</span><strong>{display(currentClan?.hallName)}</strong></div>
           <div><span>郡望</span><strong>{display(currentClan?.commandery)}</strong></div>
           <div><span>祖籍/发源地</span><strong>{display(currentClan?.originPlace)}</strong></div>
+          <div><span>始祖/中心祖</span><strong>{ancestorName || display(currentClan?.ancestorPersonId)}</strong></div>
           <div><span>宗族编码</span><strong>{display(currentClan?.clanCode)}</strong></div>
-          <div><span>当前宗族ID</span><strong>{display(workspace.clanId)}</strong></div>
+        </div>
+      </section>
+
+      <section className="home-culture-grid">
+        <div className="home-culture-card home-culture-card--wide">
+          <div className="home-card-title"><span>Clan Culture</span><h3>宗族文化名片</h3></div>
+          <div className="home-culture-card-list">
+            {cultureCards.map(card => (
+              <article key={card.title}>
+                <em>{card.tag}</em>
+                <strong>{card.title}</strong>
+                <b>{card.value}</b>
+                <p>{card.desc}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="home-culture-card home-motto-card">
+          <div className="home-card-title"><span>Family Motto</span><h3>家训家风</h3></div>
+          <blockquote>{familyInstruction || '忠厚传家，诗书继世。'}</blockquote>
+          <p>{familyInstruction ? '已识别到家训内容，可继续用于文化页、成册导出和族谱分享。' : '暂无专用家训字段时，首页先展示占位家风文案；建议后续在宗族文化资料中维护正式家训。'}</p>
+        </div>
+
+        <div className="home-culture-card home-migration-card">
+          <div className="home-card-title"><span>Migration</span><h3>迁徙脉络</h3></div>
+          <div className="home-migration-timeline">
+            {migrationItems.map((item, index) => (
+              <div key={`${item.branchName}-${index}`}>
+                <span>{index + 1}</span>
+                <strong>{item.branchName}</strong>
+                <b>{item.from} → {item.to}</b>
+                <p>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="home-culture-card home-branch-story-card">
+          <div className="home-card-title"><span>Branches</span><h3>支派故事</h3></div>
+          <div className="home-branch-story-list">
+            {branchStoryItems.length ? branchStoryItems.map(branch => (
+              <article key={branch.id}>
+                <div><strong>{branch.name}</strong><span>{branch.count} 人</span></div>
+                <em>{branch.migration}</em>
+                <p>{branch.desc}</p>
+              </article>
+            )) : <div className="home-empty-chart">暂无支派故事，请先创建支派。</div>}
+          </div>
+        </div>
+
+        <div className="home-culture-card home-source-story-card">
+          <div className="home-card-title"><span>Sources</span><h3>文化资料</h3></div>
+          <div className="home-source-story-list">
+            {sourceHighlights.length ? sourceHighlights.map(source => (
+              <article key={`${source.id}-${source.title}`}>
+                <strong>{source.title}</strong>
+                <span>{source.type}</span>
+                <em>{source.status}</em>
+              </article>
+            )) : <div className="home-empty-chart">暂无文化资料，可在来源资料库中补充族谱原文、地方志、照片和口述记录。</div>}
+          </div>
         </div>
       </section>
 
