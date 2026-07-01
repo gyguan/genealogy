@@ -60,9 +60,19 @@ function toZeroBased(value: string) {
   return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
 }
 
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [branchId, setBranchId] = useState(workspace.branchId || '');
+  const [exportBranchId, setExportBranchId] = useState(workspace.branchId || '');
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState(defaultMapping);
   const [autoMapping, setAutoMapping] = useState(true);
@@ -105,12 +115,34 @@ export function ImportPage({ notify }: Props) {
   function downloadTemplate() {
     const content = '姓名,性别,代次,字辈,支派ID,出生日期,是否在世\n张明远,male,1,明,,1940-01-01,否\n张承志,male,2,承,,1965-05-12,是\n';
     const blob = new Blob(['\ufeff', content], { type: 'text/csv;charset=utf-8' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'person-import-template.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
+    saveBlob(blob, 'person-import-template.csv');
     notify({ message: '导入模板已生成' });
+  }
+
+  async function downloadCsv(path: string, filename: string) {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const blob = await apiClient.download(path);
+      saveBlob(blob, filename);
+      notify({ message: `导出完成：${filename}` });
+    } catch (error) {
+      notify({ message: (error as Error).message || '导出失败' }, true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function exportBranchPersons() {
+    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
+    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
+    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/persons.csv`, `branch-${exportBranchId}-persons.csv`);
+  }
+
+  async function exportBranchRelations() {
+    if (!workspace.clanId) { notify({ message: '请先选择宗族' }, true); return; }
+    if (!exportBranchId) { notify({ message: '请填写导出支派ID' }, true); return; }
+    await downloadCsv(`/clans/${workspace.clanId}/branches/${exportBranchId}/exports/relations.csv`, `branch-${exportBranchId}-relations.csv`);
   }
 
   async function previewFile() {
@@ -188,6 +220,22 @@ export function ImportPage({ notify }: Props) {
         </Actions>
         <div className="import-template-tip">
           <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 支派ID, 出生日期, 是否在世。默认会按表头自动识别；手工映射使用从 1 开始的列号。
+        </div>
+      </Panel>
+
+      <Panel title="人物/关系导出" description="支持全宗族导出，也支持按支派导出当前支派及其下级支派的人物和内部关系。">
+        <div className="wizard-form-grid">
+          <Field label="当前宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} placeholder="请输入宗族ID" /></Field>
+          <Field label="导出支派ID"><input value={exportBranchId} onChange={e => setExportBranchId(e.target.value)} placeholder="填写支派ID，导出该支派及下级支派" /></Field>
+        </div>
+        <Actions>
+          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</button>
+          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</button>
+          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchPersons()}>按支派导出人物</button>
+          <button disabled={loading || !workspace.clanId || !exportBranchId} onClick={() => void exportBranchRelations()}>按支派导出关系</button>
+        </Actions>
+        <div className="import-template-tip">
+          <strong>支派导出规则：</strong>人物导出包含当前支派及所有下级支派；关系导出仅包含起点人物和终点人物都在该支派范围内的关系，避免导出悬挂关系。
         </div>
       </Panel>
 
