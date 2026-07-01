@@ -6,7 +6,7 @@ import { Actions, Field } from '../../shared/ui/Form';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 
-type UserRow = {
+ type UserRow = {
   id: number;
   username: string;
   displayName: string;
@@ -69,6 +69,16 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const viewRoles = useMemo(() => roles.filter(role => role.roleType === 'view'), [roles]);
   const selectedRole = roles.find(role => role.roleCode === roleCode);
 
+  function effectiveScopeId() {
+    if (scopeType === 'branch') return Number(scopeId || branchId || workspace.branchId);
+    return Number(workspace.clanId);
+  }
+
+  function effectiveBranchId() {
+    if (scopeType === 'branch') return Number(branchId || scopeId || workspace.branchId);
+    return branchId ? Number(branchId) : null;
+  }
+
   async function run(action: () => Promise<void>) {
     if (loading) return;
     setLoading(true);
@@ -114,14 +124,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!workspace.clanId) throw new Error('请先输入宗族ID');
       if (!userId) throw new Error('请选择用户');
       if (!roleCode) throw new Error('请选择角色');
+      if (scopeType === 'branch' && !scopeId && !branchId && !workspace.branchId) throw new Error('支派范围授权必须填写范围ID或支派ID');
       const selectedUser = users.find(user => String(user.id) === userId);
       const res: any = await apiClient.post(`${memberManagementBase}/clans/${workspace.clanId}/members`, {
         userId: Number(userId),
         roleCode,
         memberName: memberName.trim() || selectedUser?.displayName || selectedUser?.username || `用户${userId}`,
         scopeType,
-        scopeId: scopeId ? Number(scopeId) : Number(workspace.clanId),
-        branchId: branchId ? Number(branchId) : null
+        scopeId: effectiveScopeId(),
+        branchId: effectiveBranchId()
       });
       notify({ message: '成员授权成功', id: res?.id });
       await listMembers();
@@ -130,12 +141,14 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function updateRole(member: MemberRow, nextRoleCode: string) {
     await run(async () => {
+      const nextScopeType = member.scopeType || 'clan';
+      const nextScopeId = nextScopeType === 'branch' ? (member.scopeId || member.branchId) : Number(workspace.clanId);
       await apiClient.put(`${memberManagementBase}/clans/${workspace.clanId}/members/${member.id}`, {
         roleCode: nextRoleCode,
         memberStatus: member.memberStatus || 'active',
-        scopeType: member.scopeType || 'clan',
-        scopeId: member.scopeId || Number(workspace.clanId),
-        branchId: member.branchId || null
+        scopeType: nextScopeType,
+        scopeId: nextScopeId,
+        branchId: member.branchId || (nextScopeType === 'branch' ? nextScopeId : null)
       });
       notify({ message: '成员角色已更新', id: member.id });
       await listMembers();
@@ -150,6 +163,14 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     if (user) setMemberName(user.displayName || user.username);
   }
 
+  function onScopeTypeChange(nextScopeType: string) {
+    setScopeType(nextScopeType);
+    if (nextScopeType === 'branch' && !scopeId && !branchId && workspace.branchId) {
+      setScopeId(workspace.branchId);
+      setBranchId(workspace.branchId);
+    }
+  }
+
   return (
     <div className="member-role-page">
       <Alert
@@ -157,7 +178,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         showIcon
         className="member-role-tip"
         message="用户与角色说明"
-        description="管理角色可以维护宗族数据、人物、关系、来源或审核；查看角色仅用于查看族谱、人物档案、世系图谱和来源资料。"
+        description="管理角色可以维护宗族数据、人物、关系、来源或审核；支派范围授权代表可维护该支派及下级支派数据，查看角色仅用于查看族谱、人物档案、世系图谱和来源资料。"
       />
       <div className="page-grid two">
         <Panel title="新增用户授权">
@@ -176,9 +197,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               {viewRoles.length ? <optgroup label="查看角色">{viewRoles.map(role => <option key={role.roleCode} value={role.roleCode}>{role.roleName} · {role.roleCode}</option>)}</optgroup> : null}
             </select>
           </Field>
-          <Field label="授权范围"><select value={scopeType} onChange={e => setScopeType(e.target.value)}><option value="clan">宗族范围</option><option value="branch">支派范围</option></select></Field>
-          <Field label="范围ID"><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder="不填默认当前宗族ID" /></Field>
-          <Field label="支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="支派管理员可填写" /></Field>
+          <Field label="授权范围"><select value={scopeType} onChange={e => onScopeTypeChange(e.target.value)}><option value="clan">宗族范围</option><option value="branch">支派范围（含下级支派）</option></select></Field>
+          <Field label="范围ID"><input value={scopeId} onChange={e => setScopeId(e.target.value)} placeholder={scopeType === 'branch' ? '填写支派ID；不填使用当前支派ID' : '宗族范围自动使用当前宗族ID'} /></Field>
+          <Field label="归属支派ID"><input value={branchId} onChange={e => setBranchId(e.target.value)} placeholder="支派负责人/支派管理员建议填写" /></Field>
           {selectedRole ? <Tag color={roleTypeColor(selectedRole.roleType)}>{selectedRole.roleName}：{roleTypeText(selectedRole.roleType)}</Tag> : null}
           <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={listMembers}>刷新成员</button></Actions>
         </Panel>
@@ -203,8 +224,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
             { key: 'id', title: '成员ID' },
             { key: 'displayName', title: '用户', render: row => `${row.displayName || row.memberName || '-'}（${row.username || row.userId}）` },
             { key: 'roleName', title: '角色', render: row => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
-            { key: 'scopeType', title: '范围', render: row => row.scopeType === 'branch' ? '支派范围' : '宗族范围' },
+            { key: 'scopeType', title: '范围', render: row => row.scopeType === 'branch' ? '支派范围（含下级）' : '宗族范围' },
             { key: 'scopeId', title: '范围ID' },
+            { key: 'branchId', title: '归属支派ID' },
             { key: 'memberStatus', title: '状态' },
             { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'clan_admin'); }}>设为管理员</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'editor'); }}>设为编辑</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'viewer'); }}>设为查看</button></div> }
           ]}
