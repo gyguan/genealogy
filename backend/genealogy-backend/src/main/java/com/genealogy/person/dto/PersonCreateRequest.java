@@ -82,6 +82,43 @@ public record PersonCreateRequest(
         @Size(max = 32, message = "隐私级别长度不能超过32")
         String privacyLevel,
 
+        @Size(max = 32, message = "数据状态长度不能超过32")
+        String dataStatus,
+
         Boolean confirmDuplicate
 ) {
+        public PersonCreateRequest(
+                Long branchId,
+                String personCode,
+                String name,
+                String genealogyName,
+                String courtesyName,
+                String aliasName,
+                String gender,
+                Integer generationNo,
+                String generationWord,
+                String rankInFamily,
+                LocalDate birthDate,
+                String birthDatePrecision,
+                LocalDate deathDate,
+                String deathDatePrecision,
+                Boolean isLiving,
+                String birthPlace,
+                String residencePlace,
+                String occupation,
+                String education,
+                String titleOrHonor,
+                String biography,
+                String tombPlace,
+                String epitaph,
+                Boolean hasDescendant,
+                String lineageStatus,
+                String privacyLevel,
+                Boolean confirmDuplicate
+        ) {
+                this(branchId, personCode, name, genealogyName, courtesyName, aliasName, gender, generationNo, generationWord,
+                        rankInFamily, birthDate, birthDatePrecision, deathDate, deathDatePrecision, isLiving, birthPlace,
+                        residencePlace, occupation, education, titleOrHonor, biography, tombPlace, epitaph, hasDescendant,
+                        lineageStatus, privacyLevel, null, confirmDuplicate);
+        }
 }
