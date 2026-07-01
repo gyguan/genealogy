@@ -171,6 +171,7 @@ public class PersonApplicationService {
         applyDefaults(entity);
         entity.setUpdatedAt(LocalDateTime.now());
         PersonEntity saved = personRepository.save(entity);
+        operationLogApplicationService.record(saved.getClanId(), actorId, "person_update", "person", saved.getId(), "更新人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
 
