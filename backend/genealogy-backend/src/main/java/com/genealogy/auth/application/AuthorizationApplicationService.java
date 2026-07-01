@@ -1,5 +1,7 @@
 package com.genealogy.auth.application;
 
+import com.genealogy.branch.entity.BranchEntity;
+import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMemberEntity;
 import com.genealogy.member.entity.RoleEntity;
@@ -24,15 +26,18 @@ public class AuthorizationApplicationService {
     private final AuthApplicationService authApplicationService;
     private final ClanMemberRepository clanMemberRepository;
     private final RoleRepository roleRepository;
+    private final BranchRepository branchRepository;
 
     public AuthorizationApplicationService(
             AuthApplicationService authApplicationService,
             ClanMemberRepository clanMemberRepository,
-            RoleRepository roleRepository
+            RoleRepository roleRepository,
+            BranchRepository branchRepository
     ) {
         this.authApplicationService = authApplicationService;
         this.clanMemberRepository = clanMemberRepository;
         this.roleRepository = roleRepository;
+        this.branchRepository = branchRepository;
     }
 
     @Transactional(readOnly = true)
@@ -94,10 +99,25 @@ public class AuthorizationApplicationService {
             return member;
         }
         Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
-        if (allowedBranchId == null || branchId == null || !allowedBranchId.equals(branchId)) {
+        if (!isBranchInScope(clanId, branchId, allowedBranchId)) {
             throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
         }
         return member;
+    }
+
+    @Transactional(readOnly = true)
+    public ClanMemberEntity requireBranchManagerCandidate(Long clanId, Long memberId, Long branchId) {
+        ClanMemberEntity member = clanMemberRepository.findById(memberId)
+                .filter(item -> clanId.equals(item.getClanId()))
+                .orElseThrow(() -> new BusinessException("BRANCH_MANAGER_NOT_FOUND", "支派负责人必须是当前宗族成员"));
+        if (member.getMemberStatus() != MemberStatus.active) {
+            throw new BusinessException("BRANCH_MANAGER_INACTIVE", "支派负责人不是有效宗族成员");
+        }
+        String roleCode = roleCode(member);
+        if (!ROLE_CLAN_ADMIN.equals(roleCode) && !ROLE_BRANCH_ADMIN.equals(roleCode) && !ROLE_EDITOR.equals(roleCode)) {
+            throw new BusinessException("BRANCH_MANAGER_ROLE_FORBIDDEN", "支派负责人必须具备宗族管理员、支派管理员或编辑角色");
+        }
+        return requireBranchWriteScope(clanId, member.getUserId(), branchId);
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +128,25 @@ public class AuthorizationApplicationService {
         return clanMemberRepository.findByClanIdAndUserId(clanId, userId)
                 .filter(member -> member.getMemberStatus() == MemberStatus.active)
                 .isPresent();
+    }
+
+    private boolean isBranchInScope(Long clanId, Long branchId, Long allowedBranchId) {
+        if (branchId == null || allowedBranchId == null) {
+            return false;
+        }
+        if (allowedBranchId.equals(branchId)) {
+            return true;
+        }
+        BranchEntity allowedBranch = branchRepository.findByIdAndClanId(allowedBranchId, clanId)
+                .orElseThrow(() -> new BusinessException("AUTH_BRANCH_SCOPE_INVALID", "授权支派不存在或不属于当前宗族"));
+        BranchEntity targetBranch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException("BRANCH_NOT_FOUND", "目标支派不存在或不属于当前宗族"));
+        String allowedPath = allowedBranch.getBranchPath();
+        String targetPath = targetBranch.getBranchPath();
+        if (allowedPath == null || allowedPath.isBlank() || targetPath == null || targetPath.isBlank()) {
+            return false;
+        }
+        return targetPath.equals(allowedPath) || targetPath.startsWith(allowedPath + "/");
     }
 
     private String roleCode(ClanMemberEntity member) {
