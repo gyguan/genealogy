@@ -18,6 +18,14 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
   const [items, setItems] = useState<unknown>();
   const [result, setResult] = useState<unknown>();
 
+  function requireSelectedScheme() {
+    if (!schemeId) {
+      notify({ message: '请先创建或选择字辈方案，方案ID由系统自动生成' }, true);
+      return false;
+    }
+    return true;
+  }
+
   async function createScheme() {
     const res: any = await apiClient.post(`/clans/${workspace.clanId}/generation-schemes`, {
       branchId: workspace.branchId ? Number(workspace.branchId) : null,
@@ -30,8 +38,8 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
       setSchemeId(String(res.id));
       setSelectedScheme(res);
     }
-    setResult({ message: '字辈方案创建成功', id: res?.id });
-    notify({ message: '字辈方案创建成功', id: res?.id });
+    setResult({ message: '字辈方案创建成功，方案ID由系统自动生成', id: res?.id });
+    notify({ message: '字辈方案创建成功，方案ID由系统自动生成', id: res?.id });
   }
 
   async function listSchemes() {
@@ -48,6 +56,7 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
   }
 
   async function addWord() {
+    if (!requireSelectedScheme()) return;
     const res: any = await apiClient.post(`/generation-schemes/${schemeId}/items`, { generationNo: Number(generationNo), word });
     setResult({ message: '字辈明细已追加', id: res?.id });
     notify({ message: '字辈明细已追加' });
@@ -55,12 +64,14 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
   }
 
   async function listWords() {
+    if (!requireSelectedScheme()) return;
     const res = await apiClient.get(`/generation-schemes/${schemeId}/items`);
     setItems(res);
     notify({ message: '字辈明细查询完成' });
   }
 
   async function queryWord() {
+    if (!requireSelectedScheme()) return;
     const res = await apiClient.get(`/generation-schemes/${schemeId}/items/${generationNo}`);
     setItems([res]);
     notify({ message: '字辈查询完成' });
@@ -68,16 +79,16 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
 
   return (
     <div className="page-grid two">
-      <Panel title="字辈方案" description="创建和查询宗族字辈方案。">
+      <Panel title="字辈方案" description="创建和查询宗族字辈方案，方案ID由系统自动生成。">
         <Field label="宗族ID"><input value={workspace.clanId} onChange={e => workspace.setClanId(e.target.value)} /></Field>
         <Field label="支派ID"><input value={workspace.branchId} onChange={e => workspace.setBranchId(e.target.value)} placeholder="可选" /></Field>
-        <Field label="方案名称"><input value={schemeName} onChange={e => setSchemeName(e.target.value)} /></Field>
+        <Field label="字辈方案名称"><input value={schemeName} onChange={e => setSchemeName(e.target.value)} placeholder="例如：黄氏宗族总派语" /></Field>
         <Actions><button onClick={createScheme}>创建方案</button><button className="secondary" onClick={listSchemes}>查询方案</button></Actions>
         <DataTable
           data={schemes}
           columns={[
-            { key: 'id', title: '方案ID' },
-            { key: 'schemeName', title: '方案名称' },
+            { key: 'id', title: '系统生成ID' },
+            { key: 'schemeName', title: '字辈方案名称' },
             { key: 'branchId', title: '支派ID' },
             { key: 'status', title: '状态' }
           ]}
@@ -85,18 +96,18 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
         />
         <ResultNotice result={result} />
       </Panel>
-      <Panel title="字辈明细" description="维护方案下的代次与字辈。">
+      <Panel title="字辈明细" description="先创建或选择字辈方案，再维护该方案下的代次与字辈。">
         <DetailCard
-          title="方案信息"
+          title="当前字辈方案"
           data={selectedScheme}
           fields={[
-            { label: '方案ID', value: row => row.id },
-            { label: '方案名称', value: row => row.schemeName },
+            { label: '系统生成ID', value: row => row.id },
+            { label: '字辈方案名称', value: row => row.schemeName },
             { label: '支派ID', value: row => row.branchId },
             { label: '状态', value: row => row.status }
           ]}
         />
-        <Field label="方案ID"><input value={schemeId} onChange={e => setSchemeId(e.target.value)} /></Field>
+        <Field label="当前方案"><input value={schemeId ? `系统生成ID：${schemeId}` : '创建或选择方案后自动生成'} disabled readOnly /></Field>
         <Field label="代次"><input value={generationNo} onChange={e => setGenerationNo(e.target.value)} /></Field>
         <Field label="字辈"><input value={word} onChange={e => setWord(e.target.value)} /></Field>
         <Actions><button onClick={addWord}>追加字辈</button><button className="secondary" onClick={listWords}>查看明细</button><button className="secondary" onClick={queryWord}>按代次查询</button></Actions>
