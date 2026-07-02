@@ -63,58 +63,48 @@
   background: #fff;
 }
 
-/* 维护字辈：把“方案”和“字辈明细”拆成两个清晰区域，避免创建方案和追加字辈混在一起。 */
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"]) {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 4px;
+.wizard-generation-section {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
 }
 
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"])::before,
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"])::after {
-  grid-column: 1 / -1;
-  display: block;
-  padding: 10px 12px;
-  border-radius: 10px;
+.wizard-generation-section:first-of-type {
+  margin-top: 0;
+}
+
+.wizard-generation-section h4 {
+  margin: 0 0 12px;
+  color: rgba(0,0,0,.88);
   font-size: 14px;
   font-weight: 600;
 }
 
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"])::before {
-  order: 0;
-  content: '一、创建 / 选择字辈方案';
-  margin-bottom: -2px;
-  background: #f5faff;
-  color: #1677ff;
-  border: 1px solid #d6e4ff;
-}
-
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"])::after {
-  order: 2;
-  content: '二、追加字辈明细';
-  margin: 8px 0 -2px;
-  background: #f6ffed;
-  color: #52c41a;
-  border: 1px solid #d9f7be;
-}
-
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"]) .field:nth-child(-n+5) {
-  order: 1;
-}
-
-.mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"]) .field:nth-child(n+6) {
-  order: 3;
-}
-
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions {
-  margin-top: 12px;
-  padding-top: 12px;
+.wizard-generation-section .actions {
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid #f0f0f0;
 }
 
+.wizard-generation-section--items {
+  background: #fbfffb;
+  border-color: #d9f7be;
+}
+
+.wizard-generation-section--items h4 {
+  color: #52c41a;
+}
+
+.wizard-generation-scheme-grid,
+.wizard-generation-word-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 980px) {
-  .mvp1-wizard .wizard-form-grid:has(input[placeholder="例如：德"]) {
+  .wizard-generation-scheme-grid,
+  .wizard-generation-word-grid {
     grid-template-columns: 1fr;
   }
 }
