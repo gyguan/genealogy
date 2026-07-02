@@ -71,7 +71,7 @@ public class MemberManagementController {
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requirePermission(clanId, userId, MEMBER_INVITE);
-        return ApiResponse.success(memberManagementApplicationService.createMember(clanId, request));
+        return ApiResponse.success(memberManagementApplicationService.createMember(clanId, request, userId));
     }
 
     @PutMapping("/clans/{clanId}/members/{memberId}")
@@ -83,6 +83,6 @@ public class MemberManagementController {
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requirePermission(clanId, userId, MEMBER_UPDATE_ROLE);
-        return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request));
+        return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request, userId));
     }
 }
