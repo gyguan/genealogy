@@ -45,13 +45,24 @@ public class BranchController {
     }
 
     @GetMapping("/clans/{clanId}/branches")
-    public ApiResponse<List<BranchResponse>> listByClan(@Positive @PathVariable Long clanId) {
+    public ApiResponse<List<BranchResponse>> listByClan(
+            @Positive @PathVariable Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         return ApiResponse.success(branchApplicationService.listByClan(clanId));
     }
 
     @GetMapping("/branches/{id}")
-    public ApiResponse<BranchResponse> get(@Positive @PathVariable Long id) {
-        return ApiResponse.success(branchApplicationService.get(id));
+    public ApiResponse<BranchResponse> get(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        BranchResponse response = branchApplicationService.get(id);
+        authorizationApplicationService.requireClanMember(response.clanId(), actorId);
+        return ApiResponse.success(response);
     }
 
     @PutMapping("/branches/{id}")
