@@ -324,52 +324,52 @@ branchId mismatch
 
 目标：让系统具备可上线的基本权限隔离能力。
 
-| 周期 | 任务 | 产出 | 验收标准 |
-|---|---|---|---|
-| W1 | 梳理角色和动作清单 | role、permission、role_permission 初始化脚本 | 内置角色可初始化 |
-| W1 | 完善成员授权模型 | member_role 支持 scope_type、scope_branch_id | 可授权全宗族/支派子树 |
-| W2 | 后端统一鉴权入口 | PermissionService、ScopeResolver | 关键接口接入鉴权 |
-| W2 | 前端权限业务化 | 成员权限页面隐藏技术字段，范围用宗族/支派名称 | 用户不需要填写 ID |
-| W3 | 人物/关系/来源权限校验 | person、relationship、source 关键接口鉴权 | 越权访问被拦截 |
-| W3 | 操作日志 | 权限变更、审核、导出、敏感查看写日志 | 管理员可追溯操作 |
+| 周期 | 任务 | 状态 | 产出 | 验收标准 | 落地说明 |
+|---|---|---|---|---|---|
+| W1 | 梳理角色和动作清单 | 已完成 | 运行时内置 `resource:action` 角色权限矩阵 | 内置角色可初始化并用于鉴权 | 已覆盖 clan/member/branch/person/relationship/source/review/export/operation_log 等动作；`role/permission/role_permission` 持久化脚本转后续自定义角色能力处理 |
+| W1 | 完善成员授权模型 | 已完成 | `ClanMember` 支持 `scopeType/scopeId/branchId`，新增 `branch_subtree` | 可授权全宗族/当前支派/支派子树 | 已修正 `branch` 仅当前支派、`branch_subtree` 当前支派及下级支派的范围语义 |
+| W2 | 后端统一鉴权入口 | 已完成 | `AuthorizationApplicationService.requirePermission`、`requireBranchPermission` | 关键接口接入鉴权 | P0 采用轻量统一鉴权入口，未单独拆 `PermissionService/ScopeResolver` 类，避免 MVP 过度工程化 |
+| W2 | 前端权限业务化 | 已完成 | 成员权限页面隐藏技术字段，范围用宗族/支派名称 | 用户不需要填写 ID | 成员权限页已使用宗族名称、成员姓名、角色名称、支派名称完成授权，并提供权限预览 |
+| W3 | 人物/关系/来源权限校验 | 已完成 | person、relationship、source 关键接口鉴权 | 越权访问被拦截 | 已覆盖 clan/branch/person/relationship/source/review/export 等核心接口；person 列表和搜索按授权支派范围过滤，source 已补 update/delete/bind |
+| W3 | 操作日志 | 已完成 | 权限变更、审核、导出、来源绑定等关键操作写日志 | 管理员可追溯操作 | 已补成员授权、角色/范围变更、source update/delete/bind 等日志；敏感查看日志和附件下载细粒度审计转 P1/P2 增强 |
 
-P0 必须覆盖的接口：
+P0 必须覆盖的接口状态：
 
-```text
-/clans/**
-/clans/{clanId}/branches/**
-/clans/{clanId}/persons/**
-/clans/{clanId}/relationships/**
-/clans/{clanId}/sources/**
-/review-tasks/**
-/member-management/**
-/exports/**
-```
+| 接口范围 | 状态 | 说明 |
+|---|---|---|
+| `/clans/**` | 已完成 | clan view/update/delete 接入动作权限 |
+| `/clans/{clanId}/branches/**` | 已完成 | branch view/create/update/delete 接入动作权限和支派范围校验 |
+| `/clans/{clanId}/persons/**` | 已完成 | person view/create/update/delete 接入动作权限，列表/搜索按支派范围过滤 |
+| `/clans/{clanId}/relationships/**` | 已完成 | relationship view/create/update/delete/check_conflict 接入动作权限和两端人物支派范围校验 |
+| `/clans/{clanId}/sources/**` | 已完成 | source view/create/update/delete/bind 接入动作权限 |
+| `/review-tasks/**` | 已完成 | 待审列表、任务详情、审核记录、通过、驳回均接入权限校验 |
+| `/member-management/**` | 已完成 | 成员列表、新增授权、角色/范围调整接入 member 权限动作 |
+| `/exports/**` | 已完成 | CSV/HTML 导出接入 `export_task:download`，分支导出走支派范围校验 |
 
 ### 8.2 P1：隐私和审核增强
 
 目标：从“角色控制”升级到“角色 + 隐私 + 审核”。
 
-| 周期 | 任务 | 产出 | 验收标准 |
-|---|---|---|---|
-| W4 | 人物隐私规则 | privacyLevel 扩展为 public/clan_only/branch_only/relatives_only/private/sealed | 在世人物默认受保护 |
-| W4 | 敏感字段脱敏 | 出生地、住址、联系方式、生卒、配偶子女按权限脱敏 | 无权限用户只看脱敏摘要 |
-| W5 | 审核策略 | 删除、关系变更、正式人物变更进入审核 | 编辑不能直接改正式谱 |
-| W5 | 附件权限 | 来源附件预览/下载独立鉴权 | 敏感附件不可被普通成员下载 |
-| W6 | 导出审批 | 大规模导出任务需权限/审批 | 导出日志可追溯 |
+| 周期 | 任务 | 状态 | 产出 | 验收标准 | 落地说明 |
+|---|---|---|---|---|---|
+| W4 | 人物隐私规则 | 规划中 | privacyLevel 扩展为 public/clan_only/branch_only/relatives_only/private/sealed | 在世人物默认受保护 | 当前已有基础隐私字段和部分脱敏能力，完整隐私级别策略待增强 |
+| W4 | 敏感字段脱敏 | 规划中 | 出生地、住址、联系方式、生卒、配偶子女按权限脱敏 | 无权限用户只看脱敏摘要 | 当前已有部分人物字段脱敏，细粒度字段级规则待增强 |
+| W5 | 审核策略 | 规划中 | 删除、关系变更、正式人物变更进入审核 | 编辑不能直接改正式谱 | 当前已有 review_task 权限链路，正式谱高风险策略待细化 |
+| W5 | 附件权限 | 规划中 | 来源附件预览/下载独立鉴权 | 敏感附件不可被普通成员下载 | 当前附件具备基础访问入口，敏感附件分级和下载审计待增强 |
+| W6 | 导出审批 | 规划中 | 大规模导出任务需权限/审批 | 导出日志可追溯 | 当前已完成导出下载权限控制，大规模导出审批流待增强 |
 
 ### 8.3 P2：治理和精细化授权
 
 目标：支撑大型宗族、多人协作和长期治理。
 
-| 周期 | 任务 | 产出 | 验收标准 |
-|---|---|---|---|
-| W7 | 对象级临时授权 | resource_acl | 可临时授权查看某人物/来源 |
-| W7 | 权限有效期 | member_role.expire_at | 临时角色到期自动失效 |
-| W8 | 双人复核 | 高风险操作多审核人 | 删除/导出需双人确认 |
-| W8 | 权限变更审计报表 | 权限审计视图 | 可查询谁在何时授权谁 |
-| W9 | 自定义角色 | 宗族可配置角色模板 | 管理员可创建受限自定义角色 |
-| W9 | 权限测试集 | 后端权限单测 + 集成测试 | 常见越权场景自动化覆盖 |
+| 周期 | 任务 | 状态 | 产出 | 验收标准 | 落地说明 |
+|---|---|---|---|---|---|
+| W7 | 对象级临时授权 | 待启动 | resource_acl | 可临时授权查看某人物/来源 | P0 暂缓，待 resource_acl 数据模型和授权入口落地 |
+| W7 | 权限有效期 | 待启动 | member_role.expire_at | 临时角色到期自动失效 | 当前 P0 未实现过期调度与自动失效 |
+| W8 | 双人复核 | 待启动 | 高风险操作多审核人 | 删除/导出需双人确认 | 当前 P0 未实现双人复核策略 |
+| W8 | 权限变更审计报表 | 待启动 | 权限审计视图 | 可查询谁在何时授权谁 | 当前已有操作日志基础数据，报表视图待建设 |
+| W9 | 自定义角色 | 待启动 | 宗族可配置角色模板 | 管理员可创建受限自定义角色 | 当前 P0 使用运行时内置角色权限矩阵 |
+| W9 | 权限测试集 | 已部分完成 | 后端权限单测 + 集成测试 | 常见越权场景自动化覆盖 | 已补最小权限单测；完整集成测试集和接口级越权场景待扩展 |
 
 ## 9. MVP 推荐落地边界
 
