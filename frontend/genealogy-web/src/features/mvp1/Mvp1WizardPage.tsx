@@ -35,7 +35,7 @@ type RefreshOptions = {
 const stepOrder: { key: StepKey; title: string; desc: string }[] = [
   { key: 'clan', title: '1. 创建宗族', desc: '独立创建宗族，创建后自动带入支派步骤。' },
   { key: 'branch', title: '2. 建立支派', desc: '在表单中选择宗族后建立支派，可连续追加创建。' },
-  { key: 'generation', title: '3. 维护字辈', desc: '在表单中选择宗族、支派和字辈方案。' },
+  { key: 'generation', title: '3. 维护字辈', desc: '先创建/选择字辈方案，再追加字辈明细。' },
   { key: 'person', title: '4. 录入人物', desc: '在表单中选择支派和字辈后录入人物。' },
   { key: 'relationship', title: '5. 建立关系', desc: '在表单中选择中心人物后维护亲属关系。' },
   { key: 'source', title: '6. 绑定来源', desc: '在表单中选择来源和绑定对象。' },
@@ -651,20 +651,31 @@ export function Mvp1WizardPage({ notify }: Props) {
         );
       case 'generation':
         return (
-          <Panel title="维护字辈" description="在表单里选择宗族、支派和方案；上一步创建的支派会自动作为默认值。">
-            <div className="wizard-form-grid">
-              {renderClanSelector('适用宗族')}
-              {renderBranchSelector('适用支派')}
-              {renderSchemeSelector('已有方案')}
-              <Field label="字辈方案名称 *"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} required /></Field>
-              <Field label="系统生成编号"><input value={schemeForm.schemeId ? `已生成：${schemeForm.schemeId}` : '创建方案后自动生成'} disabled readOnly /></Field>
-              <Field label="代次 *"><select value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))}>{Array.from({ length: 60 }, (_, index) => String(index + 1)).map(no => <option key={no} value={no}>第{no}世</option>)}</select></Field>
-              <Field label="字辈 *"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" required /></Field>
-            </div>
-            <Actions>
-              <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={createScheme}>创建字辈方案</button>
-              <button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button>
-            </Actions>
+          <Panel title="维护字辈" description="先创建或选择字辈方案，再在该方案下追加字辈明细。">
+            <section className="wizard-generation-section">
+              <h4>一、创建 / 选择字辈方案</h4>
+              <div className="wizard-form-grid wizard-generation-scheme-grid">
+                {renderClanSelector('适用宗族')}
+                {renderBranchSelector('适用支派')}
+                {renderSchemeSelector('已有方案')}
+                <Field label="字辈方案名称 *"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} required /></Field>
+                <Field label="系统生成编号"><input value={schemeForm.schemeId ? `已生成：${schemeForm.schemeId}` : '创建方案后自动生成'} disabled readOnly /></Field>
+              </div>
+              <Actions>
+                <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={createScheme}>创建字辈方案</button>
+              </Actions>
+            </section>
+            <section className="wizard-generation-section wizard-generation-section--items">
+              <h4>二、追加字辈明细</h4>
+              <div className="wizard-form-grid wizard-generation-word-grid">
+                <Field label="当前字辈方案"><input value={schemeForm.schemeId ? schemeForm.schemeName : '请先创建或选择字辈方案'} disabled readOnly /></Field>
+                <Field label="代次 *"><select value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))}>{Array.from({ length: 60 }, (_, index) => String(index + 1)).map(no => <option key={no} value={no}>第{no}世</option>)}</select></Field>
+                <Field label="字辈 *"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" required /></Field>
+              </div>
+              <Actions>
+                <button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button>
+              </Actions>
+            </section>
           </Panel>
         );
       case 'person':
