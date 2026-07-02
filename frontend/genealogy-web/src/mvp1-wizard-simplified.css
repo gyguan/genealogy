@@ -40,3 +40,25 @@
   border-radius: 0;
   background: transparent;
 }
+
+.wizard-branch-list {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.wizard-branch-list h4 {
+  margin: 0 0 10px;
+  color: rgba(0,0,0,.88);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wizard-branch-list .table-wrap {
+  margin-top: 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+}
