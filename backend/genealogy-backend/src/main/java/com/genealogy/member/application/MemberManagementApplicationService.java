@@ -104,14 +104,18 @@ public class MemberManagementApplicationService {
                 .filter(item -> item.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "user not found"));
         RoleEntity role = findRole(request.roleCode());
-        clanMemberRepository.findByClanIdAndUserId(clanId, request.userId())
-                .ifPresent(existing -> {
-                    throw new BusinessException("MEMBER_DUPLICATED", "user is already a clan member");
-                });
-
         MemberScopeType scopeType = parseScopeType(request.scopeType());
         Long normalizedScopeId = normalizeScopeId(clanId, scopeType, request.scopeId(), request.branchId());
         Long normalizedBranchId = normalizeBranchId(clanId, scopeType, request.branchId(), normalizedScopeId);
+
+        boolean duplicatedGrant = clanMemberRepository.findByClanIdAndUserIdAndMemberStatus(clanId, request.userId(), MemberStatus.active)
+                .stream()
+                .anyMatch(existing -> Objects.equals(existing.getRoleId(), role.getId())
+                        && existing.getScopeType() == scopeType
+                        && Objects.equals(existing.getScopeId(), normalizedScopeId));
+        if (duplicatedGrant) {
+            throw new BusinessException("MEMBER_GRANT_DUPLICATED", "user already has the same role and scope grant");
+        }
 
         LocalDateTime now = LocalDateTime.now();
         ClanMemberEntity member = new ClanMemberEntity();
