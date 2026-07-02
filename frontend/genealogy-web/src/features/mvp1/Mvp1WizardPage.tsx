@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
-import { DataTable, toRecordList } from '../../shared/ui/DataTable';
+import { toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
@@ -33,14 +33,14 @@ type RefreshOptions = {
 };
 
 const stepOrder: { key: StepKey; title: string; desc: string }[] = [
-  { key: 'clan', title: '1. 创建宗族', desc: '独立维护宗族主数据；其他步骤可直接选择宗族。' },
-  { key: 'branch', title: '2. 建立支派', desc: '选择宗族后建立支派；只有一个宗族时自动带入。' },
-  { key: 'generation', title: '3. 维护字辈', desc: '选择宗族、支派和字辈方案后维护字辈明细。' },
-  { key: 'person', title: '4. 录入人物', desc: '选择宗族、支派、字辈方案后录入人物。' },
-  { key: 'relationship', title: '5. 建立关系', desc: '选择中心人物后直接维护亲属关系。' },
-  { key: 'source', title: '6. 绑定来源', desc: '选择来源和绑定对象，完成证据关联。' },
-  { key: 'review', title: '7. 提交审核', desc: '选择审核对象或待审任务，提交或处理审核。' },
-  { key: 'tree', title: '8. 查看世系', desc: '选择中心人物，查询世系图并导出数据。' }
+  { key: 'clan', title: '1. 创建宗族', desc: '独立创建宗族，创建后自动带入支派步骤。' },
+  { key: 'branch', title: '2. 建立支派', desc: '在表单中选择宗族后建立支派。' },
+  { key: 'generation', title: '3. 维护字辈', desc: '在表单中选择宗族、支派和字辈方案。' },
+  { key: 'person', title: '4. 录入人物', desc: '在表单中选择支派和字辈后录入人物。' },
+  { key: 'relationship', title: '5. 建立关系', desc: '在表单中选择中心人物后维护亲属关系。' },
+  { key: 'source', title: '6. 绑定来源', desc: '在表单中选择来源和绑定对象。' },
+  { key: 'review', title: '7. 提交审核', desc: '在表单中选择审核对象或待审任务。' },
+  { key: 'tree', title: '8. 查看世系', desc: '在表单中选择中心人物后查看世系。' }
 ];
 
 const defaultPersonForm = {
@@ -231,7 +231,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     });
 
     setSchemeForm(prev => ({ ...prev, schemeId: nextSchemeId || '' }));
-    setPersonForm(prev => ({ ...prev, branchId: prev.branchId || nextBranchId || '' }));
+    setPersonForm(prev => ({ ...prev, branchId: hasId(branchRes, prev.branchId) ? prev.branchId : nextBranchId || '' }));
     setSnapshot({ clans: clanRes, branches: branchRes, persons: personRes, sources: sourceRes, schemes: schemeRes, generationItems: generationItemRes, tasks: taskRes, relationships: relationRes, tree: treeRes });
   }
 
@@ -342,33 +342,25 @@ export function Mvp1WizardPage({ notify }: Props) {
       const data: any = await apiClient.post('/clans', clanForm);
       const nextClanId = String(data?.id || '');
       await refresh({ clanId: nextClanId });
-      return makeNotice('宗族创建成功，可在任意步骤中选择使用', data?.id);
+      setActive('branch');
+      return makeNotice('宗族创建成功，已带入建立支派步骤', data?.id);
     });
-  }
-
-  async function selectClan(row: any) {
-    await refresh({ clanId: String(row.id || '') });
-    notify({ message: '宗族已选中，其他步骤会按该宗族加载可选数据', id: row.id });
   }
 
   async function changeClan(nextClanId: string) {
     await run(async () => {
       await refresh({ clanId: nextClanId });
-      return makeNotice(nextClanId ? '宗族已切换，已刷新该宗族下的支派、人物、来源和审核数据' : '已清空宗族选择');
+      return makeNotice(nextClanId ? '宗族已切换，表单选项已刷新' : '已清空宗族选择');
     });
   }
 
-  async function selectBranch(row: any) {
-    const nextBranchId = String(row.id || '');
-    if (!nextBranchId) return;
+  async function selectBranchId(nextBranchId: string) {
     workspace.setBranchId(nextBranchId);
-    setBranchForm(prev => ({ ...prev, parentId: '' }));
     setPersonForm(prev => ({ ...prev, branchId: nextBranchId }));
     const branchScheme = schemes.find(item => String(item.branchId) === nextBranchId) || (schemes.length === 1 ? schemes[0] : null);
     if (branchScheme?.id) {
       await selectScheme(branchScheme);
     }
-    notify({ message: '支派已选中，可在字辈、人物等步骤直接使用', id: nextBranchId });
   }
 
   async function createBranch() {
@@ -383,7 +375,8 @@ export function Mvp1WizardPage({ notify }: Props) {
       await refresh({ clanId: workspace.clanId, branchId: nextBranchId });
       setBranchForm({ branchName: '', parentId: '' });
       setPersonForm(prev => ({ ...prev, branchId: nextBranchId }));
-      return makeNotice('支派创建成功，可在后续步骤中直接选择使用', data?.id);
+      setActive('generation');
+      return makeNotice('支派创建成功，已带入维护字辈步骤', data?.id);
     });
   }
 
@@ -438,14 +431,15 @@ export function Mvp1WizardPage({ notify }: Props) {
       if (!(personForm.branchId || workspace.branchId)) throw new Error('请选择所属支派');
       if (!personForm.name.trim()) throw new Error('请填写人物姓名');
       if (!personForm.gender) throw new Error('请选择性别');
-      if (generationItems.length && !personForm.generationWord) throw new Error('请选择字辈，代次会自动带出');
       const data: any = await apiClient.post(`/clans/${workspace.clanId}/persons`, buildPersonPayload());
       const nextPersonId = String(data?.id || '');
       await refresh({ clanId: workspace.clanId, branchId: personForm.branchId || workspace.branchId, personId: nextPersonId, schemeId: schemeForm.schemeId });
       if (continueAdding) {
         resetPersonFormForNext();
+      } else {
+        setActive('relationship');
       }
-      return makeNotice(continueAdding ? '人物档案创建成功，可继续录入下一个人物' : '人物档案创建成功，可在关系、来源、审核、世系步骤中选择使用', data?.personCode || data?.id);
+      return makeNotice(continueAdding ? '人物档案创建成功，可继续录入下一个人物' : '人物档案创建成功，已带入建立关系步骤', data?.personCode || data?.id);
     });
   }
 
@@ -479,7 +473,8 @@ export function Mvp1WizardPage({ notify }: Props) {
       const relationship: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, relationBody);
       workspace.setRelationshipId(String(relationship?.id || ''));
       await refresh({ clanId: workspace.clanId, branchId: effectiveBranchId, personId: workspace.personId, schemeId: schemeForm.schemeId });
-      return makeNotice('亲属关系创建成功，可在来源或审核步骤中选择使用', relationship?.id);
+      setActive('source');
+      return makeNotice('亲属关系创建成功，已带入绑定来源步骤', relationship?.id);
     });
   }
 
@@ -493,7 +488,7 @@ export function Mvp1WizardPage({ notify }: Props) {
         sourceType: sourceForm.sourceType
       });
       await refresh({ clanId: workspace.clanId, branchId: workspace.branchId, personId: workspace.personId, sourceId: String(data?.id || ''), schemeId: schemeForm.schemeId });
-      return makeNotice('来源创建成功，可继续选择绑定对象', data?.id);
+      return makeNotice('来源创建成功，已默认选中，可继续绑定对象', data?.id);
     });
   }
 
@@ -509,7 +504,8 @@ export function Mvp1WizardPage({ notify }: Props) {
         targetId: Number(targetId)
       });
       await refresh({ clanId: workspace.clanId, branchId: workspace.branchId, personId: workspace.personId, sourceId, schemeId: schemeForm.schemeId });
-      return makeNotice('来源绑定成功，可在审核步骤中选择对象提交', data?.id);
+      setActive('review');
+      return makeNotice('来源绑定成功，已带入提交审核步骤', data?.id);
     });
   }
 
@@ -529,7 +525,8 @@ export function Mvp1WizardPage({ notify }: Props) {
       if (!reviewForm.comment.trim()) throw new Error('请填写审核意见');
       await apiClient.post(`/review-tasks/${workspace.reviewTaskId}/approve`, { comment: reviewForm.comment.trim() });
       await refresh({ clanId: workspace.clanId, branchId: workspace.branchId, personId: workspace.personId, schemeId: schemeForm.schemeId });
-      return makeNotice('审核已通过，可在世系步骤选择人物查看');
+      setActive('tree');
+      return makeNotice('审核已通过，已带入查看世系步骤');
     });
   }
 
@@ -574,11 +571,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   function renderBranchSelector(label = '支派名称') {
     return (
       <Field label={label}>
-        <select value={workspace.branchId} disabled={loading || !workspace.clanId || !branches.length} onChange={e => {
-          const branch = branches.find(item => String(item.id) === e.target.value);
-          if (branch) void selectBranch(branch);
-          else workspace.setBranchId('');
-        }}>
+        <select value={workspace.branchId} disabled={loading || !workspace.clanId || !branches.length} onChange={e => void selectBranchId(e.target.value)}>
           <option value="">{!workspace.clanId ? '请先选择宗族' : branches.length > 1 ? '请选择支派' : '暂无支派，请先创建'}</option>
           {branches.map(branch => <option key={branch.id} value={String(branch.id)}>{branch.branchName || `支派#${branch.id}`}</option>)}
         </select>
@@ -616,7 +609,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     switch (active) {
       case 'clan':
         return (
-          <Panel title="创建/选择宗族" description="本步骤独立维护宗族主数据。选择宗族只会刷新上下文，不会强制进入下一步。">
+          <Panel title="创建宗族" description="只维护新宗族信息；已有宗族会在后续步骤的下拉框中选择。">
             <div className="wizard-form-grid">
               <Field label="宗族名称 *"><input value={clanForm.clanName} onChange={e => patchClan('clanName', e.target.value)} placeholder="例如：江夏堂黄氏宗族" required /></Field>
               <Field label="姓氏 *"><input value={clanForm.surname} onChange={e => patchClan('surname', e.target.value)} placeholder="例如：黄" required /></Field>
@@ -626,15 +619,13 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Actions>
               <button disabled={loading} onClick={createClan}>创建宗族</button>
-              <button className="secondary" disabled={loading} onClick={() => void refresh()}>刷新宗族</button>
+              <button className="secondary" disabled={loading} onClick={() => void refresh()}>刷新选项</button>
             </Actions>
-            <DataTable data={snapshot.clans} columns={[{ key: 'clanName', title: '宗族名称' }, { key: 'surname', title: '姓氏' }, { key: 'clanCode', title: '系统编码' }, { key: 'hallName', title: '堂号' }]} onSelect={row => void selectClan(row)} />
           </Panel>
         );
       case 'branch':
         return (
-          <Panel title="建立支派" description="本步骤只需要选择宗族即可建立支派。若只有一个宗族，系统会自动默认选中；若有多个宗族，请先选择。">
-            <div className="wizard-current">当前宗族：<strong>{selectedClan?.clanName || (clans.length > 1 ? '请选择宗族' : '暂无宗族')}</strong></div>
+          <Panel title="建立支派" description="如果只有一个宗族会自动默认选中；多个宗族时在表单中选择。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               <Field label="支派名称 *"><input value={branchForm.branchName} onChange={e => setBranchForm(prev => ({ ...prev, branchName: e.target.value }))} placeholder="例如：长沙支" required /></Field>
@@ -643,16 +634,13 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Actions>
               <button disabled={loading || !workspace.clanId} onClick={() => void createBranch()}>创建支派</button>
-              <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId })}>刷新当前宗族支派</button>
+              <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId })}>刷新选项</button>
             </Actions>
-            <section className="wizard-current">当前选中支派：<strong>{selectedBranch?.branchName || '未选择'}</strong></section>
-            <DataTable data={snapshot.branches} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentName', title: '父支派', render: row => branches.find(item => String(item.id) === String(row.parentId))?.branchName || '无' }, { key: 'status', title: '状态' }]} onSelect={row => void selectBranch(row)} />
           </Panel>
         );
       case 'generation':
         return (
-          <Panel title="维护字辈" description="本步骤独立选择宗族、支派和字辈方案。只有一个可选项时系统自动选中，多个可选项时由用户选择。">
-            <div className="wizard-current">当前支派：<strong>{selectedBranch?.branchName || '未选择支派'}</strong>；当前方案：<strong>{schemeForm.schemeId ? schemeForm.schemeName : '未选择方案'}</strong></div>
+          <Panel title="维护字辈" description="在表单里选择宗族、支派和方案；上一步创建的支派会自动作为默认值。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               {renderBranchSelector('适用支派')}
@@ -667,16 +655,11 @@ export function Mvp1WizardPage({ notify }: Props) {
               <button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button>
               <button className="secondary" disabled={!schemeForm.schemeId} onClick={() => void run(async () => { const items = await loadGenerationItems(schemeForm.schemeId); setSnapshot(prev => ({ ...prev, generationItems: items })); return makeNotice('字辈明细已刷新'); })}>刷新字辈</button>
             </Actions>
-            <h4>字辈方案</h4>
-            <DataTable data={snapshot.schemes} columns={[{ key: 'schemeName', title: '方案名称' }, { key: 'branchName', title: '适用支派', render: row => branches.find(item => String(item.id) === String(row.branchId))?.branchName || '宗族通用' }, { key: 'status', title: '状态' }]} onSelect={row => void selectScheme(row)} />
-            <h4>字辈明细</h4>
-            <DataTable data={snapshot.generationItems} empty="暂无字辈明细，请先创建方案并追加字辈" columns={[{ key: 'generationNo', title: '代次' }, { key: 'word', title: '字辈' }, { key: 'description', title: '说明' }, { key: 'sortOrder', title: '排序' }]} />
           </Panel>
         );
       case 'person':
         return (
-          <Panel title="录入人物" description="本步骤独立选择宗族、支派和字辈方案后录入人物，不再要求先完成前序步骤。">
-            <div className="wizard-current">当前支派：<strong>{selectedBranch?.branchName || '未选择支派'}</strong>；当前字辈方案：<strong>{schemeForm.schemeId ? schemeForm.schemeName : '-'}</strong></div>
+          <Panel title="录入人物" description="在表单里选择宗族、支派和字辈方案；上一步创建的支派和方案会自动带入。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               <Field label="所属支派 *"><select value={personForm.branchId || workspace.branchId} onChange={e => { workspace.setBranchId(e.target.value); patchPerson('branchId', e.target.value); }} required><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={String(branch.id)}>{branch.branchName || `支派#${branch.id}`}</option>)}</select></Field>
@@ -706,15 +689,13 @@ export function Mvp1WizardPage({ notify }: Props) {
               <button disabled={loading} onClick={() => void createPerson(true)}>创建人物，继续录入</button>
               <button className="secondary" disabled={loading} onClick={() => void createPerson(false)}>创建人物</button>
               <button className="secondary" onClick={() => setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId })}>清空人物表单</button>
-              <button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, branchId: workspace.branchId, schemeId: schemeForm.schemeId })}>刷新人物</button>
+              <button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, branchId: workspace.branchId, schemeId: schemeForm.schemeId })}>刷新选项</button>
             </Actions>
-            <DataTable data={snapshot.persons} columns={[{ key: 'personCode', title: '系统编码' }, { key: 'name', title: '姓名' }, { key: 'genealogyName', title: '谱名' }, { key: 'gender', title: '性别' }, { key: 'generationNo', title: '代次' }, { key: 'generationWord', title: '字辈' }, { key: 'dataStatus', title: '状态' }]} onSelect={row => void refresh({ clanId: workspace.clanId, branchId: workspace.branchId, personId: String(row.id), schemeId: schemeForm.schemeId })} />
           </Panel>
         );
       case 'relationship':
         return (
-          <Panel title="建立亲属关系" description="本步骤独立选择中心人物，再录入亲属和关系。">
-            <div className="wizard-current">中心人物：<strong>{selectedPerson?.name || '未选择人物'}</strong></div>
+          <Panel title="建立亲属关系" description="在表单里选择中心人物；上一步创建的人物会自动默认选中。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               {renderPersonSelector('中心人物 *')}
@@ -725,14 +706,12 @@ export function Mvp1WizardPage({ notify }: Props) {
               <Field label="亲属字辈"><select value={generationSelectedValue(relativeForm.generationWord, relativeForm.generationNo)} onChange={e => selectGenerationItem(e.target.value, 'relative')} disabled={!generationItems.length}><option value="">{generationItems.length ? '请选择亲属字辈' : '未选择字辈方案'}</option>{generationItems.map(item => <option key={generationOptionValue(item)} value={generationOptionValue(item)}>{generationLabel(item)}</option>)}</select></Field>
               <Field label="亲属代次"><input value={relativeForm.generationNo ? `第${relativeForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Field>
             </div>
-            <Actions><button disabled={loading || !workspace.personId} onClick={createRelative}>创建亲属关系</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, personId: workspace.personId, schemeId: schemeForm.schemeId })}>刷新关系</button></Actions>
-            <DataTable data={snapshot.relationships} columns={[{ key: 'relationPeople', title: '关系对象', render: relationshipLabel }, { key: 'relationType', title: '类型' }, { key: 'relationLabel', title: '标签' }]} onSelect={row => workspace.setRelationshipId(String(row.id))} />
+            <Actions><button disabled={loading || !workspace.personId} onClick={createRelative}>创建亲属关系</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, personId: workspace.personId, schemeId: schemeForm.schemeId })}>刷新选项</button></Actions>
           </Panel>
         );
       case 'source':
         return (
-          <Panel title="绑定来源证据" description="本步骤独立选择宗族、来源和绑定对象。">
-            <div className="wizard-current">当前来源：<strong>{selectedSource?.sourceName || '未选择来源'}</strong>；当前关系：<strong>{selectedRelationship ? relationshipLabel(selectedRelationship) : '未选择关系'}</strong></div>
+          <Panel title="绑定来源证据" description="在表单里选择来源和绑定对象；上一步创建的关系会自动作为可选对象。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               <Field label="已有来源"><select value={workspace.sourceId} disabled={!sources.length} onChange={e => workspace.setSourceId(e.target.value)}><option value="">请选择来源</option>{sources.map(source => <option key={source.id} value={String(source.id)}>{source.sourceName || `来源#${source.id}`}</option>)}</select></Field>
@@ -741,14 +720,12 @@ export function Mvp1WizardPage({ notify }: Props) {
               <Field label="绑定对象类型"><select value={sourceForm.targetType} onChange={e => setSourceForm(prev => ({ ...prev, targetType: e.target.value, targetId: '' }))}><option value="person">人物</option><option value="relationship">关系</option><option value="branch">支派</option><option value="clan">宗族</option></select></Field>
               <Field label="绑定对象 *"><select value={effectiveSourceTargetId()} onChange={e => patchSource('targetId', e.target.value)} required><option value="">请选择绑定对象</option>{sourceTargetOptions().map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
             </div>
-            <Actions><button disabled={loading || !workspace.clanId} onClick={createSource}>创建来源</button><button disabled={loading || !workspace.sourceId} onClick={bindSource}>绑定来源</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, sourceId: workspace.sourceId, personId: workspace.personId, schemeId: schemeForm.schemeId })}>刷新来源</button></Actions>
-            <DataTable data={snapshot.sources} columns={[{ key: 'sourceName', title: '来源名称' }, { key: 'sourceType', title: '类型' }, { key: 'verificationStatus', title: '状态' }]} onSelect={row => workspace.setSourceId(String(row.id))} />
+            <Actions><button disabled={loading || !workspace.clanId} onClick={createSource}>创建来源</button><button disabled={loading || !workspace.sourceId} onClick={bindSource}>绑定来源</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, sourceId: workspace.sourceId, personId: workspace.personId, schemeId: schemeForm.schemeId })}>刷新选项</button></Actions>
           </Panel>
         );
       case 'review':
         return (
-          <Panel title="提交与处理审核" description="本步骤独立选择审核对象或待审任务，不再依赖来源绑定步骤。">
-            <div className="wizard-current">当前审核任务：<strong>{selectedReviewTask ? `${selectedReviewTask.targetType || ''} · ${selectedReviewTask.status || ''}` : '未选择'}</strong></div>
+          <Panel title="提交与处理审核" description="在表单里选择审核对象或审核任务；上一步绑定的对象会作为可选对象。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               <Field label="对象类型"><select value={reviewForm.targetType} onChange={e => setReviewForm(prev => ({ ...prev, targetType: e.target.value, targetId: '' }))}><option value="persons">人物</option><option value="relationships">关系</option><option value="sources">来源</option><option value="branches">支派</option><option value="generation-schemes">字辈方案</option></select></Field>
@@ -756,13 +733,12 @@ export function Mvp1WizardPage({ notify }: Props) {
               <Field label="审核任务"><select value={workspace.reviewTaskId} onChange={e => workspace.setReviewTaskId(e.target.value)}><option value="">请选择待审核任务</option>{tasks.map(task => <option key={task.id} value={String(task.id)}>{task.targetType || '对象'} · {task.status || '待处理'} · {display(task.createdAt)}</option>)}</select></Field>
               <Field label="审核意见 *"><input value={reviewForm.comment} onChange={e => setReviewForm(prev => ({ ...prev, comment: e.target.value }))} required /></Field>
             </div>
-            <Actions><button disabled={loading || !workspace.clanId} onClick={submitReview}>提交审核</button><button className="secondary" disabled={loading || !workspace.reviewTaskId} onClick={approveReview}>通过当前任务</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, reviewTaskId: workspace.reviewTaskId, schemeId: schemeForm.schemeId })}>刷新审核任务</button></Actions>
-            <DataTable data={snapshot.tasks} columns={[{ key: 'targetType', title: '对象类型' }, { key: 'status', title: '状态' }, { key: 'createdAt', title: '创建时间' }]} onSelect={row => workspace.setReviewTaskId(String(row.id))} />
+            <Actions><button disabled={loading || !workspace.clanId} onClick={submitReview}>提交审核</button><button className="secondary" disabled={loading || !workspace.reviewTaskId} onClick={approveReview}>通过当前任务</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, reviewTaskId: workspace.reviewTaskId, schemeId: schemeForm.schemeId })}>刷新选项</button></Actions>
           </Panel>
         );
       case 'tree':
         return (
-          <Panel title="查看世系与导出" description="本步骤独立选择宗族和中心人物后查询世系。">
+          <Panel title="查看世系与导出" description="在表单里选择中心人物后查询世系。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               {renderPersonSelector('中心人物 *')}
@@ -771,7 +747,6 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Actions><button disabled={loading || !workspace.personId} onClick={queryTree}>查询世系图</button><button className="secondary" disabled={!workspace.clanId} onClick={() => downloadExport(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出人物CSV</button><button className="secondary" disabled={!workspace.clanId} onClick={() => downloadExport(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出关系CSV</button></Actions>
             <div className="summary-card"><div><span>节点数</span><strong>{treeNodes.length || '-'}</strong></div><div><span>关系边</span><strong>{treeEdges.length || '-'}</strong></div><div><span>中心人物</span><strong>{selectedPerson?.name || '-'}</strong></div></div>
-            <DataTable data={treeEdges} columns={[{ key: 'relationPeople', title: '关系对象', render: relationshipLabel }, { key: 'relationType', title: '关系类型' }, { key: 'relationLabel', title: '标签' }]} />
           </Panel>
         );
       default:
@@ -785,7 +760,7 @@ export function Mvp1WizardPage({ notify }: Props) {
         <div>
           <span>MVP1 Workflow</span>
           <h2>建谱闭环向导</h2>
-          <p>每个步骤都可独立进入并选择所需信息；只有一个可选对象时自动默认，多对象时由用户选择。</p>
+          <p>每一步都只保留当前表单和必要选择项；上一步创建的数据会自动带入下一步表单。</p>
         </div>
       </section>
       <div className="wizard-layout">
@@ -797,17 +772,6 @@ export function Mvp1WizardPage({ notify }: Props) {
           <ResultNotice result={result} />
         </main>
         <aside className="wizard-context">
-          <Panel title="当前上下文" description="向导只记录最近选择对象，不作为步骤强依赖。">
-            <div className="wizard-id-list">
-              <div><span>宗族</span><strong>{selectedClan?.clanName || '-'}</strong></div>
-              <div><span>支派</span><strong>{selectedBranch?.branchName || '-'}</strong></div>
-              <div><span>字辈方案</span><strong>{schemeForm.schemeId ? schemeForm.schemeName : '-'}</strong></div>
-              <div><span>中心人物</span><strong>{selectedPerson?.name || '-'}</strong></div>
-              <div><span>关系</span><strong>{selectedRelationship ? relationshipLabel(selectedRelationship) : '-'}</strong></div>
-              <div><span>来源</span><strong>{selectedSource?.sourceName || '-'}</strong></div>
-              <div><span>审核任务</span><strong>{selectedReviewTask?.status || '-'}</strong></div>
-            </div>
-          </Panel>
           <Panel title="数据概览">
             <div className="wizard-mini-metrics">
               <div><span>宗族</span><strong>{clans.length}</strong></div>
