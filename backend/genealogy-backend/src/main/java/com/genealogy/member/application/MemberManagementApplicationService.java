@@ -1,5 +1,6 @@
 package com.genealogy.member.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.entity.AppUserEntity;
 import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.branch.repository.BranchRepository;
@@ -63,6 +64,7 @@ public class MemberManagementApplicationService {
     public List<RoleResponse> roles() {
         return roleRepository.findAll()
                 .stream()
+                .filter(role -> !AuthorizationApplicationService.ROLE_CROSS_CLAN_ADMIN.equals(role.getRoleCode()))
                 .sorted(Comparator.comparing(RoleEntity::getId))
                 .map(this::toRoleResponse)
                 .toList();
@@ -171,7 +173,11 @@ public class MemberManagementApplicationService {
     }
 
     private RoleEntity findRole(String roleCode) {
-        return roleRepository.findByRoleCode(roleCode.trim())
+        String normalizedRoleCode = roleCode.trim();
+        if (AuthorizationApplicationService.ROLE_CROSS_CLAN_ADMIN.equals(normalizedRoleCode)) {
+            throw new BusinessException("CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN", "跨宗族管理员不能通过宗族成员管理授予");
+        }
+        return roleRepository.findByRoleCode(normalizedRoleCode)
                 .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "角色不存在"));
     }
 
