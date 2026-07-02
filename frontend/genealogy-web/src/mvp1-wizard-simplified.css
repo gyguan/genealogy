@@ -1,0 +1,42 @@
+/* Simplified MVP1 wizard layout: selections live inside each step form; maintained-data lists and current-selection callouts are no longer shown. */
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body {
+  display: block;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::after,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::after,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::after {
+  display: none;
+  content: none;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-form-grid {
+  grid-column: auto;
+  grid-row: auto;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .actions,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .actions,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions {
+  grid-column: auto;
+  grid-row: auto;
+  justify-content: flex-start;
+  width: auto;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
