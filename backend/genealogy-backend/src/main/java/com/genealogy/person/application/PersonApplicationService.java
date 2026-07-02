@@ -72,6 +72,9 @@ public class PersonApplicationService {
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         ensureClanExists(clanId);
+        if (request.branchId() == null) {
+            throw new BusinessException("PERSON_BRANCH_REQUIRED", "所属支派不能为空");
+        }
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.branchId());
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
@@ -83,6 +86,11 @@ public class PersonApplicationService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         PersonEntity saved = personRepository.save(entity);
+        if (!hasText(saved.getPersonCode())) {
+            saved.setPersonCode(generateUnusedPersonCode(clanId, saved.getId()));
+            saved.setUpdatedAt(LocalDateTime.now());
+            saved = personRepository.save(saved);
+        }
         operationLogApplicationService.record(clanId, actorId, "person_create", "person", saved.getId(), "新增人物：" + saved.getName(), null);
         return PersonMapper.toResponse(saved);
     }
@@ -353,6 +361,17 @@ public class PersonApplicationService {
         if (entity.getLineageStatus() == null) {
             entity.setLineageStatus("normal");
         }
+    }
+
+    private String generateUnusedPersonCode(Long clanId, Long id) {
+        long baseNo = id == null ? 1 : id;
+        for (int offset = 0; offset < 1000; offset++) {
+            String candidate = String.format("P%06d", baseNo + offset);
+            if (!personRepository.existsByClanIdAndPersonCodeAndDeletedAtIsNull(clanId, candidate)) {
+                return candidate;
+            }
+        }
+        throw new BusinessException("PERSON_CODE_GENERATE_FAILED", "人物编码生成失败，请稍后重试");
     }
 
     private boolean hasText(String value) {
