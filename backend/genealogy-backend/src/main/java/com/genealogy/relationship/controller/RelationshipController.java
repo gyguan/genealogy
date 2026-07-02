@@ -30,10 +30,7 @@ public class RelationshipController {
     private final RelationshipApplicationService relationshipApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public RelationshipController(
-            RelationshipApplicationService relationshipApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
-    ) {
+    public RelationshipController(RelationshipApplicationService relationshipApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.relationshipApplicationService = relationshipApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
@@ -59,13 +56,21 @@ public class RelationshipController {
     }
 
     @GetMapping("/relationships/{id}")
-    public ApiResponse<RelationshipResponse> get(@Positive @PathVariable Long id) {
-        return ApiResponse.success(relationshipApplicationService.get(id));
+    public ApiResponse<RelationshipResponse> get(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipApplicationService.get(id, actorId));
     }
 
     @GetMapping("/persons/{personId}/relationships")
-    public ApiResponse<List<RelationshipResponse>> listByPerson(@Positive @PathVariable Long personId) {
-        return ApiResponse.success(relationshipApplicationService.listByPerson(personId));
+    public ApiResponse<List<RelationshipResponse>> listByPerson(
+            @Positive @PathVariable Long personId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipApplicationService.listByPerson(personId, actorId));
     }
 
     @PutMapping("/relationships/{id}")
