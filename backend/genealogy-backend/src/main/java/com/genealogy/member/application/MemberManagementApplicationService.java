@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 @Service
 public class MemberManagementApplicationService {
 
-    private static final String ROLE_VIEWER = "viewer";
+    private static final String ROLE_VIEWER = AuthorizationApplicationService.ROLE_VIEWER;
 
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
@@ -148,14 +148,14 @@ public class MemberManagementApplicationService {
         }
         Long effectiveBranchId = scopeId == null ? branchId : scopeId;
         if (effectiveBranchId == null) {
-            throw new BusinessException("MEMBER_BRANCH_SCOPE_REQUIRED", "支派范围授权必须指定范围ID或支派ID");
+            throw new BusinessException("MEMBER_BRANCH_SCOPE_REQUIRED", "支派范围授权必须选择支派");
         }
         requireBranchInClan(clanId, effectiveBranchId);
         return effectiveBranchId;
     }
 
     private Long normalizeBranchId(Long clanId, MemberScopeType scopeType, Long branchId, Long scopeId) {
-        if (scopeType == MemberScopeType.branch) {
+        if (scopeType == MemberScopeType.branch || scopeType == MemberScopeType.branch_subtree) {
             Long effectiveBranchId = branchId == null ? scopeId : branchId;
             requireBranchInClan(clanId, effectiveBranchId);
             return effectiveBranchId;
