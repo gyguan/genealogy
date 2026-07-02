@@ -187,7 +187,7 @@ export function LineageTreeProductPage({ notify }: Props) {
   const [branches, setBranches] = useState<any[]>([]);
   const [people, setPeople] = useState<PersonCard[]>([]);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchResults, setSearchResults] = useState<PersonCard[]>([]);
+  const [searchNotice, setSearchNotice] = useState('');
   const [center, setCenter] = useState<PersonCard | null>(null);
   const [relationships, setRelationships] = useState<RelationshipCard[]>([]);
   const [familyNodes, setFamilyNodes] = useState<PersonCard[]>([]);
@@ -231,7 +231,7 @@ export function LineageTreeProductPage({ notify }: Props) {
   function clearClanScopedData() {
     setBranches([]);
     setPeople([]);
-    setSearchResults([]);
+    setSearchNotice('');
     setSelectedBranchId('');
     resetLineage();
     resetBranchLineage();
@@ -267,7 +267,7 @@ export function LineageTreeProductPage({ notify }: Props) {
     const personRows = rows(personRes);
     const nextPeople = personRows.map(row => toPerson(row, branchRows));
     setPeople(nextPeople);
-    setSearchResults(nextPeople.slice(0, 12));
+    setSearchNotice('');
 
     const nextPersonId = resetSelection
       ? nextPeople[0]?.id || ''
@@ -326,9 +326,21 @@ export function LineageTreeProductPage({ notify }: Props) {
       const path = `/persons/search?clanId=${workspace.clanId}&pageNo=1&pageSize=50${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
       const data = await apiClient.get(path).catch(() => []);
       const next = rows(data).map(row => toPerson(row, branches));
-      setSearchResults(next);
-      if (next.length) {
-        setPeople(uniquePeople([...next, ...people]));
+      if (!next.length) {
+        setSearchNotice('未找到匹配人物，请调整搜索条件。');
+        return;
+      }
+      const mergedPeople = uniquePeople([...next, ...people]);
+      const first = next[0];
+      setPeople(mergedPeople);
+      setSearchNotice(`已匹配 ${next.length} 位人物，自动定位到：${first.name}`);
+      workspace.setPersonId(first.id);
+      setSelectedNode(null);
+      await loadLineage(first.id, branches, mergedPeople);
+      if (first.branchId && first.branchId !== selectedBranchId) {
+        setSelectedBranchId(first.branchId);
+        await loadBranchLineage(first.branchId, branches, workspace.clanId, false);
+        setBranchRootPersonId(first.id);
       }
     });
   }
@@ -451,9 +463,7 @@ export function LineageTreeProductPage({ notify }: Props) {
           <Field label="展开深度"><select value={depth} onChange={e => setDepth(e.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
           <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button></Actions>
         </div>
-        <div className="lineage-search-results">
-          {searchResults.slice(0, 10).map(person => <button key={person.id} className={workspace.personId === person.id ? 'active' : ''} onClick={() => void setAsCenter(person.id)}>{person.name}<span>{person.generation} · {person.branchName}</span></button>)}
-        </div>
+        {searchNotice ? <div className="lineage-search-hint">{searchNotice}</div> : null}
       </Panel>
 
       <Panel title="支派世系图" description="按支派聚合展示当前支派及下级支派的人物世系关系，适合快速检查某一房支的谱系完整性。">
