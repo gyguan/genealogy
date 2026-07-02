@@ -3,10 +3,12 @@ package com.genealogy.person.dto;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 
 public record PersonCreateRequest(
+        @NotNull(message = "所属支派不能为空")
         Long branchId,
 
         @Size(max = 64, message = "人物编码长度不能超过64")
