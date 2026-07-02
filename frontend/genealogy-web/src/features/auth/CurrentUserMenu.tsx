@@ -70,10 +70,10 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
 
   return (
     <>
-      <Dropdown menu={{ items: userMenuItems, onClick: onUserMenuClick }} trigger={['click']} placement="bottomRight">
+      <Dropdown menu={{ items: userMenuItems, onClick: onUserMenuClick }} trigger={['click']} placement="bottomRight" overlayClassName="github-user-dropdown">
         <button className="github-user-trigger" type="button">
           <Avatar size={32} src={currentUser?.avatarUrl}>{avatarText(currentUser)}</Avatar>
-          <span>{currentUser?.displayName || currentUser?.username || '个人中心'}</span>
+          <span className="github-user-name">{currentUser?.displayName || currentUser?.username || '个人中心'}</span>
           <em>⌄</em>
         </button>
       </Dropdown>
