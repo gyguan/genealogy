@@ -23,6 +23,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [06. Roadmap](docs/06-roadmap.md)
 - [07. 接口模型设计](docs/07-api-design.md)
 - [08. 后端工程结构设计](docs/08-backend-structure.md)
+- [09. 中国式族谱权限管理方案](docs/09-permission-management.md)
 
 ## 可点击原型
 
