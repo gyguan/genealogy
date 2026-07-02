@@ -11,6 +11,7 @@ import './audit-trace.css';
 import './antd-bridge.css';
 import './person-archive-tweaks.css';
 import './home-dashboard-overrides.css';
+import './mvp1-wizard-enhancements';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
