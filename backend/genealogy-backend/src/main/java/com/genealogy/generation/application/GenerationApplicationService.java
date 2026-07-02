@@ -61,6 +61,11 @@ public class GenerationApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public GenSchemeResponse getSchemeResponse(Long schemeId) {
+        return toSchemeResponse(getScheme(schemeId));
+    }
+
+    @Transactional(readOnly = true)
     public List<GenSchemeResponse> listSchemes(Long clanId) {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);

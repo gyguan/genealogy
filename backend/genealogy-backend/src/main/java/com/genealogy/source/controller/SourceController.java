@@ -43,12 +43,16 @@ public class SourceController {
     }
 
     @GetMapping("/sources/{id}")
-    public ApiResponse<SourceResponse> get(@Positive @PathVariable Long id) {
-        return ApiResponse.success(sourceApplicationService.get(id));
+    public ApiResponse<SourceResponse> get(@Positive @PathVariable Long id, HttpServletRequest servletRequest) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        SourceResponse response = sourceApplicationService.get(id);
+        requestContextApplicationService.requireClanMember(response.clanId(), servletRequest);
+        return ApiResponse.success(response);
     }
 
     @GetMapping("/clans/{clanId}/sources")
-    public ApiResponse<PageResponse<SourceResponse>> listByClan(@Positive @PathVariable Long clanId, PageQuery pageQuery) {
+    public ApiResponse<PageResponse<SourceResponse>> listByClan(@Positive @PathVariable Long clanId, PageQuery pageQuery, HttpServletRequest servletRequest) {
+        requestContextApplicationService.requireClanMember(clanId, servletRequest);
         return ApiResponse.success(sourceApplicationService.listByClan(clanId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize()));
     }
 }
