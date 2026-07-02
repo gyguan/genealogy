@@ -1,0 +1,4 @@
+/* 首页保留核心数据、代次、资料类型等族谱概览图表；状态分布下沉到审核/明细场景，不在首页展示。 */
+.stats-dashboard-home .home-chart-grid .home-chart-card:nth-child(2) {
+  display: none;
+}
