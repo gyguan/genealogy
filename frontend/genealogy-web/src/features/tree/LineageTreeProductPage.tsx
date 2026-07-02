@@ -377,7 +377,7 @@ export function LineageTreeProductPage({ notify }: Props) {
     const nextEdges = edgeRows(data).map(toRelationship);
     setBranchNodes(nextNodes);
     setBranchEdges(nextEdges);
-    setBranchRootPersonId(String(data?.rootPersonId || ''));
+    setBranchRootPersonId(nextNodes.length ? String(data?.rootPersonId || nextNodes[0]?.id || '') : '');
     workspace.setBranchId(branchId);
     if (showNotice) {
       notify({ message: `支派世系图已生成：${nextNodes.length} 位人物，${nextEdges.length} 条世系关系` });
@@ -435,7 +435,7 @@ export function LineageTreeProductPage({ notify }: Props) {
 
   const branchGroups = useMemo(() => groupDescendants(sortByGeneration(uniquePeople(branchNodes))), [branchNodes]);
   const branchRoot = useMemo(() => branchNodes.find(person => person.id === branchRootPersonId) || branchNodes[0], [branchNodes, branchRootPersonId]);
-  const currentRoot = useMemo(() => center || branchRoot, [center, branchRoot]);
+  const branchRootName = branchNodes.length ? branchRoot?.name || '-' : '-';
   const branchName = branches.find(item => String(item.id) === selectedBranchId)?.branchName || '支派';
 
   async function setAsCenter(personId: string) {
@@ -475,7 +475,7 @@ export function LineageTreeProductPage({ notify }: Props) {
         <div className="summary-card">
           <div><span>支派人物</span><strong>{branchNodes.length || '-'}</strong></div>
           <div><span>世系关系</span><strong>{branchEdges.length || '-'}</strong></div>
-          <div><span>根人物</span><strong>{currentRoot?.name || '-'}</strong></div>
+          <div><span>根人物</span><strong>{branchRootName}</strong></div>
         </div>
         <section className="lineage-tree-card branch-lineage-card">
           <div className="lineage-tree-title">
