@@ -56,9 +56,10 @@ public class MemberApplicationService {
         }
         RoleEntity role = roleRepository.findById(request.roleId())
                 .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "role not found"));
-        if (!AuthorizationApplicationService.ROLE_CROSS_CLAN_ADMIN.equals(role.getRoleCode())) {
-            authorizationApplicationService.requireSingleClanOrCrossClanAdmin(request.userId(), clanId);
+        if (AuthorizationApplicationService.ROLE_CROSS_CLAN_ADMIN.equals(role.getRoleCode())) {
+            throw new BusinessException("CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN", "跨宗族管理员不能通过宗族成员管理授予");
         }
+        authorizationApplicationService.requireSingleClanOrCrossClanAdmin(request.userId(), clanId);
         if (clanMemberRepository.findByClanIdAndUserId(clanId, request.userId()).isPresent()) {
             throw new BusinessException("CLAN_MEMBER_DUPLICATED", "user already joined this clan");
         }
