@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type WorkspaceState = {
@@ -18,6 +18,12 @@ export type WorkspaceState = {
   setReviewTaskId: (value: string) => void;
   patch: (values: Partial<Pick<WorkspaceState, 'clanId' | 'branchId' | 'personId' | 'relationshipId' | 'sourceId' | 'attachmentId' | 'reviewTaskId'>>) => void;
 };
+
+declare global {
+  interface Window {
+    __genealogyWorkspace?: WorkspaceState;
+  }
+}
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -71,6 +77,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (values.reviewTaskId !== undefined) setReviewTaskId(values.reviewTaskId);
     }
   }), [clanId, branchId, personId, relationshipId, sourceId, attachmentId, reviewTaskId]);
+
+  useEffect(() => {
+    window.__genealogyWorkspace = value;
+    return () => {
+      if (window.__genealogyWorkspace === value) delete window.__genealogyWorkspace;
+    };
+  }, [value]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
