@@ -17,3 +17,8 @@
   margin-left: 0;
   text-align: left;
 }
+
+/* 宗族文化名片内的分类标签信息重复，隐藏“宗族标识 / 姓氏源流 / 文化传承 / 迁徙起点”等标签。 */
+.stats-dashboard-home .home-culture-card-list article em {
+  display: none;
+}
