@@ -11,6 +11,7 @@ type ClanRow = {
   clanName: string;
   surname?: string;
   clanCode?: string;
+  hallName?: string;
 };
 
 type BranchRow = {
@@ -105,7 +106,6 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     return clans.find(clan => String(clan.id) === targetId) || clans[0] || null;
   }, [clans, workspace.clanId]);
   const selectedClanId = String(selectedClan?.id || workspace.clanId || '');
-  const selectedBranch = useMemo(() => branches.find(branch => String(branch.id) === scopeBranchId) || null, [branches, scopeBranchId]);
 
   function branchName(branchId?: number | string) {
     const id = String(branchId || '');
