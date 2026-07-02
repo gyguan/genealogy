@@ -1,0 +1,16 @@
+/* Person archive search query actions.
+   Filter options are loaded automatically on page load and clan switch, so hide the manual refresh action
+   and keep search/reset on a dedicated second row. */
+.person-archive-search .archive-search-form .actions {
+  grid-column: 1 / -1;
+  width: 100%;
+  justify-content: flex-end;
+  align-self: end;
+  margin-top: 0;
+  order: 99;
+}
+
+.person-archive-search .archive-search-form .actions .ant-space-item:nth-child(3),
+.person-archive-search .archive-search-form .actions > button:nth-of-type(3) {
+  display: none !important;
+}
