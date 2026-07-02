@@ -83,7 +83,7 @@ public class GenerationController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        GenSchemeResponse scheme = generationApplicationService.getScheme(schemeId);
+        GenSchemeResponse scheme = generationApplicationService.getSchemeResponse(schemeId);
         authorizationApplicationService.requireClanMember(scheme.clanId(), actorId);
         return ApiResponse.success(generationApplicationService.listItems(schemeId));
     }
@@ -95,7 +95,7 @@ public class GenerationController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        GenSchemeResponse scheme = generationApplicationService.getScheme(schemeId);
+        GenSchemeResponse scheme = generationApplicationService.getSchemeResponse(schemeId);
         authorizationApplicationService.requireClanMember(scheme.clanId(), actorId);
         return ApiResponse.success(generationApplicationService.getItemByGenerationNo(schemeId, generationNo));
     }
