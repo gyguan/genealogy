@@ -31,6 +31,8 @@ import java.util.Set;
 public class SourceEvidenceApplicationService {
 
     private static final Set<String> TARGET_TYPES = Set.of("person", "relationship", "branch", "clan");
+    private static final String SOURCE_VIEW = "source:view";
+    private static final String SOURCE_BIND = "source:bind";
 
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
@@ -65,8 +67,8 @@ public class SourceEvidenceApplicationService {
     public SourceBindingResponse bind(SourceBindingCreateRequest request) {
         String targetType = normalizeTargetType(request.targetType());
         SourceEntity source = getSource(request.sourceId());
-        authorizationApplicationService.requireClanMember(source.getClanId(), request.createdBy());
-        validateTargetAndScope(source, targetType, request.targetId(), request.createdBy());
+        authorizationApplicationService.requirePermission(source.getClanId(), request.createdBy(), SOURCE_BIND);
+        validateTargetAndScope(source, targetType, request.targetId(), request.createdBy(), SOURCE_BIND);
         if (sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetId(source.getId(), targetType, request.targetId())) {
             throw new BusinessException("SOURCE_BINDING_DUPLICATED", "该来源已绑定到目标对象");
         }
@@ -94,8 +96,26 @@ public class SourceEvidenceApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public List<SourceBindingResponse> listByTarget(String targetType, Long targetId, Long actorId) {
+        String normalizedTargetType = normalizeTargetType(targetType);
+        requireTargetViewPermission(normalizedTargetType, targetId, actorId);
+        return sourceBindingRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(normalizedTargetType, targetId).stream()
+                .map(this::toBindingResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<SourceBindingResponse> listBySource(Long sourceId) {
         getSource(sourceId);
+        return sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId).stream()
+                .map(this::toBindingResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SourceBindingResponse> listBySource(Long sourceId, Long actorId) {
+        SourceEntity source = getSource(sourceId);
+        authorizationApplicationService.requirePermission(source.getClanId(), actorId, SOURCE_VIEW);
         return sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId).stream()
                 .map(this::toBindingResponse)
                 .toList();
@@ -111,8 +131,8 @@ public class SourceEvidenceApplicationService {
         SourceBindingEntity binding = sourceBindingRepository.findById(bindingId)
                 .orElseThrow(() -> new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在"));
         SourceEntity source = getSource(binding.getSourceId());
-        authorizationApplicationService.requireClanMember(binding.getClanId(), actorId);
-        validateTargetAndScope(source, binding.getTargetType(), binding.getTargetId(), actorId);
+        authorizationApplicationService.requirePermission(binding.getClanId(), actorId, SOURCE_BIND);
+        validateTargetAndScope(source, binding.getTargetType(), binding.getTargetId(), actorId, SOURCE_BIND);
         sourceBindingRepository.deleteById(bindingId);
         operationLogApplicationService.record(binding.getClanId(), actorId, "source_binding_delete", binding.getTargetType(), binding.getTargetId(), "解除资料来源绑定：" + source.getSourceName(), "sourceId=" + binding.getSourceId() + ", bindingId=" + binding.getId());
     }
@@ -158,7 +178,7 @@ public class SourceEvidenceApplicationService {
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
     }
 
-    private void validateTargetAndScope(SourceEntity source, String targetType, Long targetId, Long actorId) {
+    private void validateTargetAndScope(SourceEntity source, String targetType, Long targetId, Long actorId, String permissionCode) {
         if (targetId == null) {
             throw new BusinessException("SOURCE_BINDING_TARGET_REQUIRED", "绑定目标ID不能为空");
         }
@@ -169,7 +189,7 @@ public class SourceEvidenceApplicationService {
                 if (!source.getClanId().equals(person.getClanId())) {
                     throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源与目标人物不属于同一宗族");
                 }
-                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, person.getBranchId());
+                authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, person.getBranchId(), permissionCode);
             }
             case "relationship" -> {
                 RelationshipEntity relationship = relationshipRepository.findById(targetId)
@@ -182,19 +202,48 @@ public class SourceEvidenceApplicationService {
                         .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
                 PersonEntity to = personRepository.findByIdAndDeletedAtIsNull(relationship.getToPersonId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
-                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, from.getBranchId());
-                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, to.getBranchId());
+                authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, from.getBranchId(), permissionCode);
+                authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, to.getBranchId(), permissionCode);
             }
             case "branch" -> {
                 BranchEntity branch = branchRepository.findByIdAndClanId(targetId, source.getClanId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
-                authorizationApplicationService.requireBranchWriteScope(source.getClanId(), actorId, branch.getId());
+                authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, branch.getId(), permissionCode);
             }
             case "clan" -> {
                 if (!source.getClanId().equals(targetId)) {
                     throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源不属于目标宗族");
                 }
+                authorizationApplicationService.requirePermission(source.getClanId(), actorId, permissionCode);
             }
+            default -> throw new BusinessException("SOURCE_BINDING_TARGET_TYPE_INVALID", "不支持的绑定目标类型");
+        }
+    }
+
+    private void requireTargetViewPermission(String targetType, Long targetId, Long actorId) {
+        if (targetId == null) {
+            throw new BusinessException("SOURCE_BINDING_TARGET_REQUIRED", "绑定目标ID不能为空");
+        }
+        switch (targetType) {
+            case "person" -> {
+                PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(targetId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+                authorizationApplicationService.requireBranchPermission(person.getClanId(), actorId, person.getBranchId(), SOURCE_VIEW);
+            }
+            case "relationship" -> {
+                RelationshipEntity relationship = relationshipRepository.findById(targetId)
+                        .filter(item -> item.getDeletedAt() == null)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND));
+                PersonEntity from = personRepository.findByIdAndDeletedAtIsNull(relationship.getFromPersonId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+                authorizationApplicationService.requireBranchPermission(relationship.getClanId(), actorId, from.getBranchId(), SOURCE_VIEW);
+            }
+            case "branch" -> {
+                BranchEntity branch = branchRepository.findById(targetId)
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+                authorizationApplicationService.requireBranchPermission(branch.getClanId(), actorId, branch.getId(), SOURCE_VIEW);
+            }
+            case "clan" -> authorizationApplicationService.requirePermission(targetId, actorId, SOURCE_VIEW);
             default -> throw new BusinessException("SOURCE_BINDING_TARGET_TYPE_INVALID", "不支持的绑定目标类型");
         }
     }
