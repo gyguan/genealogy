@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +45,7 @@ class MemberManagementApplicationServiceTest {
         BranchEntity branch = branch(1L, 10L);
         when(appUserRepository.findById(2L)).thenReturn(Optional.of(user));
         when(roleRepository.findByRoleCode("branch_admin")).thenReturn(Optional.of(role));
-        when(clanMemberRepository.findByClanIdAndUserId(1L, 2L)).thenReturn(Optional.empty());
+        when(clanMemberRepository.findByClanIdAndUserIdAndMemberStatus(1L, 2L, MemberStatus.active)).thenReturn(List.of());
         when(branchRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(branch));
         when(clanMemberRepository.save(any(ClanMemberEntity.class))).thenAnswer(invocation -> {
             ClanMemberEntity entity = invocation.getArgument(0);
@@ -57,6 +58,29 @@ class MemberManagementApplicationServiceTest {
         ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
         verify(operationLogApplicationService).record(eq(1L), eq(100L), eq("member_invite"), eq("member"), eq(99L), any(), detailCaptor.capture());
         assertThat(detailCaptor.getValue()).contains("role=branch_admin").contains("scopeType=branch_subtree").contains("scopeId=10");
+    }
+
+    @Test
+    void createMemberAllowsAnotherBranchGrantForSameUser() {
+        AppUserEntity user = user(2L);
+        RoleEntity role = role(4L, "editor");
+        ClanMemberEntity existing = member(88L, 1L, 2L, role.getId(), MemberScopeType.branch, 10L, 10L);
+        when(appUserRepository.findById(2L)).thenReturn(Optional.of(user));
+        when(roleRepository.findByRoleCode("editor")).thenReturn(Optional.of(role));
+        when(clanMemberRepository.findByClanIdAndUserIdAndMemberStatus(1L, 2L, MemberStatus.active)).thenReturn(List.of(existing));
+        when(branchRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(branch(1L, 10L)));
+        when(branchRepository.findByIdAndClanId(20L, 1L)).thenReturn(Optional.of(branch(1L, 20L)));
+        when(clanMemberRepository.save(any(ClanMemberEntity.class))).thenAnswer(invocation -> {
+            ClanMemberEntity entity = invocation.getArgument(0);
+            entity.setId(99L);
+            return entity;
+        });
+
+        service.createMember(1L, new CreateClanMemberRequest(2L, 20L, "editor", "Member A", "branch", 20L), 100L);
+
+        ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
+        verify(operationLogApplicationService).record(eq(1L), eq(100L), eq("member_invite"), eq("member"), eq(99L), any(), detailCaptor.capture());
+        assertThat(detailCaptor.getValue()).contains("role=editor").contains("scopeType=branch").contains("scopeId=20");
     }
 
     @Test
