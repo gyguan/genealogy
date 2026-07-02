@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
-import { toRecordList } from '../../shared/ui/DataTable';
+import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
@@ -634,6 +634,19 @@ export function Mvp1WizardPage({ notify }: Props) {
               <button disabled={loading || !workspace.clanId} onClick={() => void createBranch(false)}>创建支派</button>
               <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void createBranch(true)}>追加创建支派</button>
             </Actions>
+            <section className="wizard-branch-list">
+              <h4>该宗族下已有支派</h4>
+              <DataTable
+                data={snapshot.branches}
+                empty={workspace.clanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'}
+                columns={[
+                  { key: 'branchName', title: '支派名称' },
+                  { key: 'parentName', title: '父支派', render: row => branches.find(item => String(item.id) === String(row.parentId))?.branchName || '无' },
+                  { key: 'status', title: '状态' }
+                ]}
+                onSelect={row => void selectBranchId(String(row.id || ''))}
+              />
+            </section>
           </Panel>
         );
       case 'generation':
