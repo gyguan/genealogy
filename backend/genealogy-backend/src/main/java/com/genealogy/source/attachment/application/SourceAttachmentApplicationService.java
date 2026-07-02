@@ -1,6 +1,8 @@
 package com.genealogy.source.attachment.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.source.attachment.dto.SourceAttachmentResponse;
 import com.genealogy.source.attachment.entity.SourceAttachmentEntity;
 import com.genealogy.source.attachment.repository.SourceAttachmentRepository;
@@ -28,13 +30,27 @@ import java.util.UUID;
 public class SourceAttachmentApplicationService {
 
     private static final Path ROOT = Path.of("data", "uploads", "sources").toAbsolutePath().normalize();
+    public static final String ATTACHMENT_VIEW = "attachment:view";
+    public static final String ATTACHMENT_UPLOAD = "attachment:upload";
+    public static final String ATTACHMENT_PREVIEW = "attachment:preview";
+    public static final String ATTACHMENT_DOWNLOAD = "attachment:download";
+    public static final String ATTACHMENT_DELETE = "attachment:delete";
 
     private final SourceRepository sourceRepository;
     private final SourceAttachmentRepository sourceAttachmentRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
+    private final OperationLogApplicationService operationLogApplicationService;
 
-    public SourceAttachmentApplicationService(SourceRepository sourceRepository, SourceAttachmentRepository sourceAttachmentRepository) {
+    public SourceAttachmentApplicationService(
+            SourceRepository sourceRepository,
+            SourceAttachmentRepository sourceAttachmentRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            OperationLogApplicationService operationLogApplicationService
+    ) {
         this.sourceRepository = sourceRepository;
         this.sourceAttachmentRepository = sourceAttachmentRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional
@@ -44,6 +60,7 @@ public class SourceAttachmentApplicationService {
         }
         SourceEntity source = sourceRepository.findById(sourceId)
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
+        authorizationApplicationService.requirePermission(source.getClanId(), actorId, ATTACHMENT_UPLOAD);
         String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() == null ? "attachment" : file.getOriginalFilename());
         String ext = extension(originalFilename);
         String storedFilename = UUID.randomUUID() + ext;
@@ -71,26 +88,42 @@ public class SourceAttachmentApplicationService {
         entity.setUploadStatus("uploaded");
         entity.setCreatedBy(actorId);
         entity.setCreatedAt(LocalDateTime.now());
-        return toResponse(sourceAttachmentRepository.save(entity));
+        SourceAttachmentEntity saved = sourceAttachmentRepository.save(entity);
+        operationLogApplicationService.record(source.getClanId(), actorId, "attachment_upload", "source_attachment", saved.getId(), "上传来源附件：" + saved.getOriginalFilename(), null);
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public List<SourceAttachmentResponse> list(Long sourceId) {
-        return sourceAttachmentRepository.findBySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(sourceId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        SourceEntity source = sourceRepository.findById(sourceId)
+                .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
+        authorizationApplicationService.requirePermission(source.getClanId(), null, ATTACHMENT_VIEW);
+        return listInternal(sourceId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SourceAttachmentResponse> list(Long sourceId, Long actorId) {
+        SourceEntity source = sourceRepository.findById(sourceId)
+                .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
+        authorizationApplicationService.requirePermission(source.getClanId(), actorId, ATTACHMENT_VIEW);
+        return listInternal(sourceId);
     }
 
     @Transactional(readOnly = true)
     public AttachmentFile readFile(Long attachmentId) {
+        return readFile(attachmentId, null, ATTACHMENT_DOWNLOAD);
+    }
+
+    @Transactional(readOnly = true)
+    public AttachmentFile readFile(Long attachmentId, Long actorId, String permissionCode) {
         SourceAttachmentEntity entity = getActive(attachmentId);
+        authorizationApplicationService.requirePermission(entity.getClanId(), actorId, permissionCode == null ? ATTACHMENT_DOWNLOAD : permissionCode);
         Path path = Path.of(entity.getStoragePath()).toAbsolutePath().normalize();
         if (!path.startsWith(ROOT) || !Files.exists(path)) {
             throw new BusinessException("SOURCE_ATTACHMENT_FILE_NOT_FOUND", "附件文件不存在");
         }
         try {
-            return new AttachmentFile(Files.readAllBytes(path), entity.getOriginalFilename(), entity.getContentType());
+            return new AttachmentFile(Files.readAllBytes(path), entity.getOriginalFilename(), entity.getContentType(), entity.getClanId(), entity.getId());
         } catch (IOException ex) {
             throw new BusinessException("SOURCE_ATTACHMENT_READ_FAILED", "附件读取失败");
         }
@@ -98,10 +131,24 @@ public class SourceAttachmentApplicationService {
 
     @Transactional
     public void remove(Long attachmentId) {
+        remove(attachmentId, null);
+    }
+
+    @Transactional
+    public void remove(Long attachmentId, Long actorId) {
         SourceAttachmentEntity entity = getActive(attachmentId);
+        authorizationApplicationService.requirePermission(entity.getClanId(), actorId, ATTACHMENT_DELETE);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUploadStatus("deleted");
         sourceAttachmentRepository.save(entity);
+        operationLogApplicationService.record(entity.getClanId(), actorId, "attachment_delete", "source_attachment", entity.getId(), "删除来源附件：" + entity.getOriginalFilename(), null);
+    }
+
+    private List<SourceAttachmentResponse> listInternal(Long sourceId) {
+        return sourceAttachmentRepository.findBySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(sourceId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private SourceAttachmentEntity getActive(Long attachmentId) {
@@ -136,7 +183,7 @@ public class SourceAttachmentApplicationService {
         );
     }
 
-    public record AttachmentFile(byte[] content, String filename, String contentType) {}
+    public record AttachmentFile(byte[] content, String filename, String contentType, Long clanId, Long attachmentId) {}
 
     private static final class OutputStreamSink extends java.io.OutputStream {
         private static final OutputStreamSink INSTANCE = new OutputStreamSink();
