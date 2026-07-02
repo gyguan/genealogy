@@ -44,13 +44,21 @@ public class ClanController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<ClanResponse> get(@Positive @PathVariable Long id) {
-        return ApiResponse.success(clanApplicationService.get(id));
+    public ApiResponse<ClanResponse> get(
+            @Positive @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(clanApplicationService.get(id, actorId));
     }
 
     @GetMapping
-    public ApiResponse<PageResponse<ClanResponse>> list(PageQuery pageQuery) {
-        return ApiResponse.success(clanApplicationService.list(pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize()));
+    public ApiResponse<PageResponse<ClanResponse>> list(
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(clanApplicationService.listVisible(actorId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize()));
     }
 
     @PutMapping("/{id}")
