@@ -33,6 +33,158 @@
 .mvp1-wizard .table-wrap { margin-top: 16px; }
 .mvp1-wizard .summary-card { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
+/* 建谱向导前三步：左侧列表选择，右侧表单和操作，避免列表在底部、按钮在中部的割裂体验。 */
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body {
+  display: grid;
+  grid-template-columns: minmax(320px, .9fr) minmax(420px, 1.1fr);
+  grid-auto-rows: min-content;
+  gap: 14px 18px;
+  align-items: start;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .panel-description,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .panel-description,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .panel-description {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::before {
+  grid-column: 1;
+  grid-row: 2;
+  content: '已维护数据';
+  display: block;
+  color: rgba(0,0,0,.88);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::after,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::after,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::after {
+  grid-column: 2;
+  grid-row: 2;
+  content: '当前操作';
+  display: block;
+  color: rgba(0,0,0,.88);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-form-grid {
+  grid-column: 2;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-current:first-of-type,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-current {
+  grid-row: 3;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-form-grid {
+  grid-row: 4;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .actions,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .actions,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions {
+  grid-column: 2;
+  justify-content: flex-end;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .actions { grid-row: 4; }
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .actions,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions { grid-row: 5; }
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .table-wrap,
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .empty,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .table-wrap,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .empty {
+  grid-column: 1;
+  grid-row: 3 / span 3;
+  margin: 0;
+  align-self: stretch;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-current {
+  grid-column: 2;
+  margin: 0;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-current:nth-of-type(2) {
+  grid-row: 6;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > h4 {
+  grid-column: 1;
+  margin: 0;
+  color: rgba(0,0,0,.88);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > h4:nth-of-type(1) { grid-row: 3; }
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > h4:nth-of-type(2) { grid-row: 5; }
+
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > .table-wrap:nth-of-type(4),
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > .empty:nth-of-type(4) {
+  grid-column: 1;
+  grid-row: 4;
+  margin: 0;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > .table-wrap:nth-of-type(5),
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > .empty:nth-of-type(5) {
+  grid-column: 1;
+  grid-row: 6;
+  margin: 0;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-current {
+  grid-column: 2;
+  margin: 0;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .table-wrap,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .table-wrap,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .table-wrap {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .empty,
+.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .empty,
+.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  margin: 0;
+  border: 1px dashed #d9d9d9;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
 .person-archive-search { display: grid; gap: 16px; }
 .archive-search-panel { position: relative; overflow: hidden; }
 .archive-search-panel--compact { padding-top: 0; }
@@ -97,6 +249,38 @@
   .wizard-layout { grid-template-columns: 260px minmax(480px, 1fr); }
   .archive-search-form { grid-template-columns: 140px minmax(260px, 1fr) 140px 120px; }
   .archive-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 980px) {
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body {
+    grid-template-columns: 1fr;
+  }
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::before,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::before,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::before,
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::after,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::after,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::after,
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-form-grid,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-form-grid,
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .actions,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .actions,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions,
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .table-wrap,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .table-wrap,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) .table-wrap,
+  .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .empty,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .empty,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) .empty,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body > h4,
+  .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-current,
+  .mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-current {
+    grid-column: 1;
+    grid-row: auto;
+  }
 }
 
 @media (max-width: 760px) {
