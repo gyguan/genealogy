@@ -2,3 +2,18 @@
 .stats-dashboard-home .home-chart-grid .home-chart-card:nth-child(2) {
   display: none;
 }
+
+/* 族谱首页文化模块只保留中文标题，去掉 Clan Culture / Family Motto 等装饰英文。 */
+.stats-dashboard-home .home-card-title {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.stats-dashboard-home .home-card-title span {
+  display: none;
+}
+
+.stats-dashboard-home .home-card-title h3 {
+  margin-left: 0;
+  text-align: left;
+}
