@@ -48,7 +48,12 @@ public class GenerationController {
     }
 
     @GetMapping("/clans/{clanId}/generation-schemes")
-    public ApiResponse<List<GenSchemeResponse>> listSchemes(@Positive @PathVariable Long clanId) {
+    public ApiResponse<List<GenSchemeResponse>> listSchemes(
+            @Positive @PathVariable Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         return ApiResponse.success(generationApplicationService.listSchemes(clanId));
     }
 
@@ -73,15 +78,25 @@ public class GenerationController {
     }
 
     @GetMapping("/generation-schemes/{schemeId}/items")
-    public ApiResponse<List<GenItemResponse>> listItems(@Positive @PathVariable Long schemeId) {
+    public ApiResponse<List<GenItemResponse>> listItems(
+            @Positive @PathVariable Long schemeId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        GenSchemeResponse scheme = generationApplicationService.getScheme(schemeId);
+        authorizationApplicationService.requireClanMember(scheme.clanId(), actorId);
         return ApiResponse.success(generationApplicationService.listItems(schemeId));
     }
 
     @GetMapping("/generation-schemes/{schemeId}/items/{generationNo}")
     public ApiResponse<GenItemResponse> getItemByGenerationNo(
             @Positive @PathVariable Long schemeId,
-            @Positive @PathVariable Integer generationNo
+            @Positive @PathVariable Integer generationNo,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        GenSchemeResponse scheme = generationApplicationService.getScheme(schemeId);
+        authorizationApplicationService.requireClanMember(scheme.clanId(), actorId);
         return ApiResponse.success(generationApplicationService.getItemByGenerationNo(schemeId, generationNo));
     }
 }
