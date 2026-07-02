@@ -61,9 +61,42 @@ class AuthorizationApplicationServiceTest {
                 .hasMessageContaining("范围");
     }
 
+    @Test
+    void editorCanReadClanDataWithMultipleBranchMemberships() {
+        ClanMemberEntity branchOneEditor = member(100L, 1L, 50L, 4L, MemberScopeType.branch, 10L, 10L);
+        ClanMemberEntity branchTwoEditor = member(101L, 1L, 50L, 4L, MemberScopeType.branch, 20L, 20L);
+        givenActiveMembers(50L, List.of(branchOneEditor, branchTwoEditor));
+        givenRole(4L, AuthorizationApplicationService.ROLE_EDITOR);
+
+        ClanMemberEntity member = service.requirePermission(1L, 50L, "source:view");
+
+        assertThat(member.getUserId()).isEqualTo(50L);
+        assertThat(member.getClanId()).isEqualTo(1L);
+    }
+
+    @Test
+    void editorCanUseAnyAuthorizedBranchWhenMultipleBranchMembershipsExist() {
+        ClanMemberEntity branchOneEditor = member(100L, 1L, 50L, 4L, MemberScopeType.branch, 10L, 10L);
+        ClanMemberEntity branchTwoEditor = member(101L, 1L, 50L, 4L, MemberScopeType.branch, 20L, 20L);
+        givenActiveMembers(50L, List.of(branchOneEditor, branchTwoEditor));
+        givenRole(4L, AuthorizationApplicationService.ROLE_EDITOR);
+
+        service.requireBranchPermission(1L, 50L, 20L, "person:update");
+
+        assertThatThrownBy(() -> service.requireBranchPermission(1L, 50L, 30L, "person:update"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("范围");
+    }
+
     private void givenActiveMember(Long clanId, Long userId, Long roleId, String roleCode, MemberScopeType scopeType, Long scopeId, Long branchId) {
+        ClanMemberEntity member = member(userId, clanId, userId, roleId, scopeType, scopeId, branchId);
+        givenActiveMembers(userId, List.of(member));
+        givenRole(roleId, roleCode);
+    }
+
+    private ClanMemberEntity member(Long id, Long clanId, Long userId, Long roleId, MemberScopeType scopeType, Long scopeId, Long branchId) {
         ClanMemberEntity member = new ClanMemberEntity();
-        member.setId(userId);
+        member.setId(id);
         member.setClanId(clanId);
         member.setUserId(userId);
         member.setRoleId(roleId);
@@ -72,15 +105,19 @@ class AuthorizationApplicationServiceTest {
         member.setScopeType(scopeType);
         member.setScopeId(scopeId);
         member.setBranchId(branchId);
-        member.setJoinedAt(LocalDateTime.now());
+        member.setJoinedAt(LocalDateTime.now().plusSeconds(id));
+        return member;
+    }
 
+    private void givenActiveMembers(Long userId, List<ClanMemberEntity> members) {
+        when(clanMemberRepository.findByUserIdAndMemberStatus(userId, MemberStatus.active)).thenReturn(members);
+    }
+
+    private void givenRole(Long roleId, String roleCode) {
         RoleEntity role = new RoleEntity();
         role.setId(roleId);
         role.setRoleCode(roleCode);
         role.setRoleName(roleCode);
-
-        when(clanMemberRepository.findByUserIdAndMemberStatus(userId, MemberStatus.active)).thenReturn(List.of(member));
-        when(clanMemberRepository.findByClanIdAndUserId(clanId, userId)).thenReturn(Optional.of(member));
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(role));
     }
 
