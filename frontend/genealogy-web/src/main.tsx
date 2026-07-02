@@ -10,6 +10,7 @@ import './compact-ui.css';
 import './audit-trace.css';
 import './antd-bridge.css';
 import './person-archive-tweaks.css';
+import './home-dashboard-overrides.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
