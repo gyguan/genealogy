@@ -42,6 +42,7 @@ public class PersonApplicationService {
     private static final String DEFAULT_DATA_STATUS = "draft";
     private static final String DEFAULT_PRIVACY_LEVEL = "clan_only";
     private static final String DEFAULT_LIVING_PRIVACY_LEVEL = "branch_only";
+    private static final String PERSON_STATUS_OFFICIAL = "official";
     private static final String PRIVACY_PUBLIC = "public";
     private static final String PRIVACY_CLAN_ONLY = "clan_only";
     private static final String PRIVACY_BRANCH_ONLY = "branch_only";
@@ -60,6 +61,7 @@ public class PersonApplicationService {
     private static final String PERSON_CREATE = "person:create";
     private static final String PERSON_UPDATE = "person:update";
     private static final String PERSON_DELETE = "person:delete";
+    private static final String REVIEW_APPROVE = "review_task:approve";
 
     private final PersonRepository personRepository;
     private final ClanRepository clanRepository;
@@ -199,6 +201,7 @@ public class PersonApplicationService {
         PersonEntity entity = getActiveEntity(id);
         Long effectiveBranchId = request.branchId() == null ? entity.getBranchId() : request.branchId();
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, effectiveBranchId, PERSON_UPDATE);
+        requireReviewForOfficialPerson(entity, actorId, "PERSON_OFFICIAL_UPDATE_REVIEW_REQUIRED", "正式人物变更需先提交审核");
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -220,6 +223,7 @@ public class PersonApplicationService {
     public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getBranchId(), PERSON_DELETE);
+        requireReviewForOfficialPerson(entity, actorId, "PERSON_OFFICIAL_DELETE_REVIEW_REQUIRED", "正式人物删除需先提交审核");
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
@@ -370,6 +374,16 @@ public class PersonApplicationService {
             return false;
         }
         return viewerId.equals(entity.getCreatedBy()) || viewerId.equals(entity.getUpdatedBy());
+    }
+
+    private void requireReviewForOfficialPerson(PersonEntity entity, Long actorId, String code, String message) {
+        if (!PERSON_STATUS_OFFICIAL.equals(entity.getDataStatus())) {
+            return;
+        }
+        if (authorizationApplicationService.can(entity.getClanId(), actorId, REVIEW_APPROVE)) {
+            return;
+        }
+        throw new BusinessException(code, message);
     }
 
     private String normalizePrivacyLevel(String privacyLevel, Boolean isLiving) {
