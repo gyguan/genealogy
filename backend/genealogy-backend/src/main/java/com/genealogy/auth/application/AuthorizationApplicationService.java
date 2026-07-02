@@ -12,7 +12,9 @@ import com.genealogy.member.repository.RoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -69,9 +71,16 @@ public class AuthorizationApplicationService {
         if (userId == null) {
             throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent()) {
+            return crossClanAdmin.get();
+        }
+        Long primaryClanId = primaryClanId(userId).orElse(null);
+        if (primaryClanId == null || !primaryClanId.equals(clanId)) {
+            throw new BusinessException("AUTH_FORBIDDEN", "当前用户无权访问该宗族");
+        }
         return findActiveMemberInClan(clanId, userId)
-                .or(() -> findActiveCrossClanAdminMember(userId))
-                .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户无权访问该宗族"));
+                .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
     }
 
     @Transactional(readOnly = true)
@@ -128,7 +137,11 @@ public class AuthorizationApplicationService {
         if (clanId == null || userId == null) {
             return false;
         }
-        return findActiveMemberInClan(clanId, userId).isPresent() || isCrossClanAdmin(userId);
+        if (isCrossClanAdmin(userId)) {
+            return true;
+        }
+        return primaryClanId(userId).filter(clanId::equals).isPresent()
+                && findActiveMemberInClan(clanId, userId).isPresent();
     }
 
     @Transactional(readOnly = true)
@@ -141,7 +154,11 @@ public class AuthorizationApplicationService {
         if (userId == null) {
             return List.of();
         }
-        return clanMemberRepository.findByUserIdAndMemberStatus(userId, MemberStatus.active);
+        List<ClanMemberEntity> memberships = rawActiveMemberships(userId);
+        if (findActiveCrossClanAdminMember(userId).isPresent()) {
+            return memberships;
+        }
+        return memberships.stream().findFirst().stream().toList();
     }
 
     @Transactional(readOnly = true)
@@ -149,7 +166,7 @@ public class AuthorizationApplicationService {
         if (userId == null || isCrossClanAdmin(userId)) {
             return;
         }
-        List<ClanMemberEntity> activeMemberships = activeMemberships(userId);
+        List<ClanMemberEntity> activeMemberships = rawActiveMemberships(userId);
         boolean joinedAnotherClan = activeMemberships.stream()
                 .anyMatch(member -> targetClanId == null || !targetClanId.equals(member.getClanId()));
         if (joinedAnotherClan) {
@@ -169,9 +186,23 @@ public class AuthorizationApplicationService {
         if (userId == null) {
             return Optional.empty();
         }
-        return clanMemberRepository.findByUserIdAndMemberStatus(userId, MemberStatus.active).stream()
+        return rawActiveMemberships(userId).stream()
                 .filter(member -> ROLE_CROSS_CLAN_ADMIN.equals(roleCode(member)))
                 .findFirst();
+    }
+
+    private Optional<Long> primaryClanId(Long userId) {
+        return rawActiveMemberships(userId).stream()
+                .findFirst()
+                .map(ClanMemberEntity::getClanId);
+    }
+
+    private List<ClanMemberEntity> rawActiveMemberships(Long userId) {
+        return clanMemberRepository.findByUserIdAndMemberStatus(userId, MemberStatus.active).stream()
+                .sorted(Comparator
+                        .comparing((ClanMemberEntity member) -> member.getJoinedAt() == null ? LocalDateTime.MAX : member.getJoinedAt())
+                        .thenComparing(ClanMemberEntity::getId))
+                .toList();
     }
 
     private boolean isBranchInScope(Long clanId, Long branchId, Long allowedBranchId) {
