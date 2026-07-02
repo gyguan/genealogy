@@ -287,7 +287,13 @@ public class AuthorizationApplicationService {
         if (findActiveCrossClanAdminMember(userId).isPresent()) {
             return memberships;
         }
-        return memberships.stream().findFirst().stream().toList();
+        Long primaryClanId = memberships.stream().findFirst().map(ClanMemberEntity::getClanId).orElse(null);
+        if (primaryClanId == null) {
+            return List.of();
+        }
+        return memberships.stream()
+                .filter(member -> primaryClanId.equals(member.getClanId()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
