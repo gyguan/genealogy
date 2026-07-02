@@ -21,17 +21,15 @@ import java.time.LocalDateTime;
 @Service
 public class SourceApplicationService {
 
+    private static final String SOURCE_VIEW = "source:view";
+    private static final String SOURCE_CREATE = "source:create";
+
     private final SourceRepository sourceRepository;
     private final ClanRepository clanRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public SourceApplicationService(
-            SourceRepository sourceRepository,
-            ClanRepository clanRepository,
-            OperationLogApplicationService operationLogApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
-    ) {
+    public SourceApplicationService(SourceRepository sourceRepository, ClanRepository clanRepository, OperationLogApplicationService operationLogApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.sourceRepository = sourceRepository;
         this.clanRepository = clanRepository;
         this.operationLogApplicationService = operationLogApplicationService;
@@ -53,7 +51,7 @@ public class SourceApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_CREATE);
         SourceEntity entity = new SourceEntity();
         entity.setClanId(clanId);
         entity.setSourceName(request.sourceName());
@@ -68,7 +66,7 @@ public class SourceApplicationService {
         entity.setCreatedBy(actorId);
         entity.setCreatedAt(LocalDateTime.now());
         SourceEntity saved = sourceRepository.save(entity);
-        operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "新增资料来源：" + saved.getSourceName(), null, requestId, clientIp);
+        operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "create source: " + saved.getSourceName(), null, requestId, clientIp);
         return toResponse(saved);
     }
 
@@ -79,10 +77,29 @@ public class SourceApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public SourceResponse get(Long id, Long actorId) {
+        SourceEntity entity = sourceRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "source not found"));
+        authorizationApplicationService.requirePermission(entity.getClanId(), actorId, SOURCE_VIEW);
+        return toResponse(entity);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<SourceResponse> listByClan(Long clanId, int pageNo, int pageSize) {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
+        Page<SourceResponse> page = sourceRepository.findByClanId(clanId, pageRequest).map(this::toResponse);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SourceResponse> listByClan(Long clanId, int pageNo, int pageSize, Long actorId) {
+        if (!clanRepository.existsById(clanId)) {
+            throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
+        }
+        authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_VIEW);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<SourceResponse> page = sourceRepository.findByClanId(clanId, pageRequest).map(this::toResponse);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
