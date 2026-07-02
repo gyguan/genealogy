@@ -16,18 +16,21 @@ export function toRecordList<T = any>(data: any): T[] {
   return [];
 }
 
-function isTechnicalIdColumn(column: Column<any>) {
+function isTechnicalColumn(column: Column<any>) {
   const key = column.key || '';
   const title = column.title || '';
   return key === 'id'
     || key.endsWith('Id')
+    || key.endsWith('Code')
+    || key === 'checksum'
+    || key === 'storagePath'
     || /(^|[\s（(])ID([\s）)]|$)/i.test(title)
-    || /主键|技术标识|系统标识/.test(title);
+    || /编码|主键|技术标识|系统标识|校验值|SHA/i.test(title);
 }
 
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const rows = toRecordList<T>(data);
-  const visibleColumns = columns.filter(column => !isTechnicalIdColumn(column));
+  const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
   return (

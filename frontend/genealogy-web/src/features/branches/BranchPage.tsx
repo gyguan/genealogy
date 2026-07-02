@@ -3,7 +3,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
 import { ConfirmDialog } from '../../shared/ui/ConfirmDialog';
-import { DataTable } from '../../shared/ui/DataTable';
+import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 import { DetailCard } from '../../shared/ui/DetailCard';
 import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
@@ -14,12 +14,15 @@ function optionalNumber(value: unknown) {
   return text ? Number(text) : null;
 }
 
+function display(value: unknown, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
 export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
-  const [clanId, setClanId] = useState(workspace.clanId);
   const [branchName, setBranchName] = useState('');
   const [parentId, setParentId] = useState(workspace.branchId);
-  const [managerMemberId, setManagerMemberId] = useState('');
   const [list, setList] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
   const [createOpen, setCreateOpen] = useState(false);
@@ -27,6 +30,14 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<unknown>();
+
+  const branches = toRecordList<any>(list);
+
+  function branchNameById(id: unknown) {
+    const target = String(id ?? '');
+    if (!target) return '-';
+    return display(branches.find(branch => String(branch.id) === target)?.branchName, '上级支派');
+  }
 
   async function run(action: () => Promise<void>) {
     if (loading) return;
@@ -42,26 +53,27 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function createBranch() {
     await run(async () => {
-      const data: any = await apiClient.post(`/clans/${clanId}/branches`, {
+      if (!workspace.clanId) throw new Error('请先选择宗族');
+      const data: any = await apiClient.post(`/clans/${workspace.clanId}/branches`, {
         branchName,
         parentId: optionalNumber(parentId),
-        managerMemberId: optionalNumber(managerMemberId)
+        managerMemberId: null
       });
-      if (data?.id) workspace.patch({ clanId, branchId: String(data.id) });
-      setResult({ message: '支派创建成功', id: data?.id });
+      if (data?.id) workspace.patch({ branchId: String(data.id) });
+      setResult({ message: '支派创建成功' });
       setCreateOpen(false);
       setBranchName('');
-      setManagerMemberId('');
-      notify({ message: '支派创建成功', id: data?.id });
+      setParentId('');
+      notify({ message: '支派创建成功' });
       await load();
     });
   }
 
   async function load() {
-    const data: any = await apiClient.get(`/clans/${clanId}/branches`);
+    if (!workspace.clanId) throw new Error('请先选择宗族');
+    const data: any = await apiClient.get(`/clans/${workspace.clanId}/branches`);
     setList(data);
     if (!workspace.branchId && Array.isArray(data) && data[0]?.id) workspace.setBranchId(String(data[0].id));
-    workspace.setClanId(clanId);
     notify({ message: '支派查询完成' });
   }
 
@@ -90,7 +102,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
         status: selected.status || 'active'
       });
       setSelected(data);
-      setResult({ message: '支派信息已更新', id: selected.id });
+      setResult({ message: '支派信息已更新' });
       notify({ message: '支派信息已更新' });
       await load();
     });
@@ -110,16 +122,13 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
   }
 
   return (
-    <Panel title="支派管理" description="按宗族查询支派树，可维护支派负责人。负责人必须是当前宗族有效成员，并具备该支派范围维护权限。">
-      <Field label="宗族ID"><input value={clanId} onChange={e => setClanId(e.target.value)} /></Field>
-      <Actions><button disabled={loading} onClick={() => run(load)}>{loading ? '处理中...' : '查询支派'}</button><button className="secondary" onClick={() => setCreateOpen(true)}>新建支派</button></Actions>
+    <Panel title="支派管理" description="按当前宗族查询支派树，可维护支派层级、迁徙信息和基础描述。">
+      <Actions><button disabled={loading || !workspace.clanId} onClick={() => run(load)}>{loading ? '处理中...' : '查询支派'}</button><button className="secondary" disabled={!workspace.clanId} onClick={() => setCreateOpen(true)}>新建支派</button></Actions>
       <DataTable
         data={list}
         columns={[
-          { key: 'id', title: 'ID' },
           { key: 'branchName', title: '支派名称' },
-          { key: 'parentId', title: '父支派ID' },
-          { key: 'managerMemberId', title: '负责人成员ID' },
+          { key: 'parentId', title: '上级支派', render: row => branchNameById(row.parentId) },
           { key: 'status', title: '状态' }
         ]}
         onSelect={row => detail(String(row.id))}
@@ -128,8 +137,12 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
 
       <Modal open={createOpen} title="新建支派" onClose={() => setCreateOpen(false)}>
         <Field label="支派名称"><input value={branchName} onChange={e => setBranchName(e.target.value)} /></Field>
-        <Field label="父支派ID"><input value={parentId} onChange={e => setParentId(e.target.value)} placeholder="根支派可空" /></Field>
-        <Field label="负责人成员ID"><input value={managerMemberId} onChange={e => setManagerMemberId(e.target.value)} placeholder="可空；需先在成员授权中添加成员" /></Field>
+        <Field label="上级支派">
+          <select value={parentId} onChange={e => setParentId(e.target.value)}>
+            <option value="">根支派</option>
+            {branches.map(branch => <option key={branch.id} value={String(branch.id)}>{display(branch.branchName, '未命名支派')}</option>)}
+          </select>
+        </Field>
         <Actions><button disabled={loading} onClick={createBranch}>{loading ? '保存中...' : '保存'}</button><button className="secondary" onClick={() => setCreateOpen(false)}>取消</button></Actions>
       </Modal>
 
@@ -138,17 +151,19 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
           title="基础信息"
           data={selected}
           fields={[
-            { label: '支派ID', value: row => row.id },
             { label: '支派名称', value: row => row.branchName },
-            { label: '父支派ID', value: row => row.parentId || '-' },
-            { label: '负责人成员ID', value: row => row.managerMemberId || '-' },
+            { label: '上级支派', value: row => branchNameById(row.parentId) },
             { label: '状态', value: row => row.status }
           ]}
         />
         {selected ? <>
           <Field label="支派名称"><input value={selected.branchName || ''} onChange={e => setSelected({ ...selected, branchName: e.target.value })} /></Field>
-          <Field label="父支派ID"><input value={selected.parentId || ''} onChange={e => setSelected({ ...selected, parentId: e.target.value })} /></Field>
-          <Field label="负责人成员ID"><input value={selected.managerMemberId || ''} onChange={e => setSelected({ ...selected, managerMemberId: e.target.value })} placeholder="留空表示暂不指定" /></Field>
+          <Field label="上级支派">
+            <select value={selected.parentId || ''} onChange={e => setSelected({ ...selected, parentId: e.target.value })}>
+              <option value="">根支派</option>
+              {branches.filter(branch => String(branch.id) !== String(selected.id)).map(branch => <option key={branch.id} value={String(branch.id)}>{display(branch.branchName, '未命名支派')}</option>)}
+            </select>
+          </Field>
           <Field label="排序"><input value={selected.sortOrder ?? 0} onChange={e => setSelected({ ...selected, sortOrder: Number(e.target.value || 0) })} /></Field>
           <Field label="描述"><input value={selected.description || ''} onChange={e => setSelected({ ...selected, description: e.target.value })} /></Field>
           <Actions><button disabled={loading} onClick={update}>保存修改</button><button className="danger" onClick={() => setDeleteOpen(true)}>删除支派</button></Actions>
