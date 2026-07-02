@@ -20,7 +20,7 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
 
   jackson:
