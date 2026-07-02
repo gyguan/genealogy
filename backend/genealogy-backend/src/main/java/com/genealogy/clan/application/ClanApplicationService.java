@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -64,6 +65,7 @@ public class ClanApplicationService {
         if (creatorUserId == null) {
             throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
+        authorizationApplicationService.requireSingleClanOrCrossClanAdmin(creatorUserId, null);
         validateClanCodeForCreate(request.clanCode());
         ClanEntity entity = ClanMapper.toEntity(request);
         if (entity.getClanCode() == null || entity.getClanCode().isBlank()) {
@@ -84,10 +86,36 @@ public class ClanApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public ClanResponse get(Long id, Long viewerId) {
+        authorizationApplicationService.requireClanMember(id, viewerId);
+        return ClanMapper.toResponse(getEntity(id));
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<ClanResponse> list(int pageNo, int pageSize) {
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<ClanResponse> page = clanRepository.findAll(pageRequest).map(ClanMapper::toResponse);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ClanResponse> listVisible(Long viewerId, int pageNo, int pageSize) {
+        if (authorizationApplicationService.isCrossClanAdmin(viewerId)) {
+            return list(pageNo, pageSize);
+        }
+        List<Long> visibleClanIds = authorizationApplicationService.activeMemberships(viewerId).stream()
+                .map(ClanMemberEntity::getClanId)
+                .distinct()
+                .toList();
+        if (visibleClanIds.isEmpty()) {
+            return PageResponse.of(List.of(), 0, pageNo, pageSize);
+        }
+        List<ClanResponse> records = clanRepository.findByIdInOrderByIdDesc(visibleClanIds).stream()
+                .skip((long) (pageNo - 1) * pageSize)
+                .limit(pageSize)
+                .map(ClanMapper::toResponse)
+                .toList();
+        return PageResponse.of(records, visibleClanIds.size(), pageNo, pageSize);
     }
 
     @Transactional
@@ -98,7 +126,7 @@ public class ClanApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         ClanEntity entity = getEntity(id);
-        authorizationApplicationService.requireClanMember(id, actorId);
+        authorizationApplicationService.requireAnyRole(id, actorId, ROLE_CLAN_ADMIN);
         if (branchRepository.existsByClanId(id)) {
             throw new BusinessException("CLAN_HAS_BRANCHES", "宗族下存在支派，不能删除");
         }
@@ -113,7 +141,7 @@ public class ClanApplicationService {
     @Transactional
     public ClanResponse update(Long id, ClanUpdateRequest request, Long actorId) {
         ClanEntity entity = getEntity(id);
-        authorizationApplicationService.requireClanMember(id, actorId);
+        authorizationApplicationService.requireAnyRole(id, actorId, ROLE_CLAN_ADMIN);
         validateClanCodeForUpdate(id, request.clanCode());
         ClanMapper.updateEntity(entity, request);
         if (entity.getStatus() == null) {
@@ -133,6 +161,7 @@ public class ClanApplicationService {
         member.setMemberName(memberName == null || memberName.isBlank() ? "宗族管理员" : memberName.trim() + "管理员");
         member.setMemberStatus(MemberStatus.active);
         member.setScopeType(MemberScopeType.clan);
+        member.setScopeId(clanId);
         member.setJoinedAt(now);
         member.setCreatedAt(now);
         member.setUpdatedAt(now);
