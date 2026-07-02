@@ -22,3 +22,20 @@
 .stats-dashboard-home .home-culture-card-list article em {
   display: none;
 }
+
+/* 首页统计区强化为一组核心概览卡片，减少散落感。 */
+.stats-dashboard-home .home-stat-grid {
+  padding: 18px;
+  border: 1px solid rgba(120, 90, 48, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 252, 245, 0.86);
+  box-shadow: 0 16px 40px rgba(97, 68, 32, 0.08);
+}
+
+/* 首页仅保留族谱核心统计；待审核、操作日志、正式入谱、资料来源等偏管理/IT指标不在首页展示。 */
+.stats-dashboard-home .home-stat-grid .home-stat-card:nth-child(3),
+.stats-dashboard-home .home-stat-grid .home-stat-card:nth-child(4),
+.stats-dashboard-home .home-stat-grid .home-stat-card:nth-child(6),
+.stats-dashboard-home .home-stat-grid .home-stat-card:nth-child(11) {
+  display: none;
+}
