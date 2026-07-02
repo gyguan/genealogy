@@ -34,12 +34,28 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PersonApplicationService {
 
     private static final String DEFAULT_DATA_STATUS = "draft";
     private static final String DEFAULT_PRIVACY_LEVEL = "clan_only";
+    private static final String DEFAULT_LIVING_PRIVACY_LEVEL = "branch_only";
+    private static final String PRIVACY_PUBLIC = "public";
+    private static final String PRIVACY_CLAN_ONLY = "clan_only";
+    private static final String PRIVACY_BRANCH_ONLY = "branch_only";
+    private static final String PRIVACY_RELATIVES_ONLY = "relatives_only";
+    private static final String PRIVACY_PRIVATE = "private";
+    private static final String PRIVACY_SEALED = "sealed";
+    private static final Set<String> ALLOWED_PRIVACY_LEVELS = Set.of(
+            PRIVACY_PUBLIC,
+            PRIVACY_CLAN_ONLY,
+            PRIVACY_BRANCH_ONLY,
+            PRIVACY_RELATIVES_ONLY,
+            PRIVACY_PRIVATE,
+            PRIVACY_SEALED
+    );
     private static final String PERSON_VIEW = "person:view";
     private static final String PERSON_CREATE = "person:create";
     private static final String PERSON_UPDATE = "person:update";
@@ -300,25 +316,70 @@ public class PersonApplicationService {
         if (!shouldMaskSensitiveFields(entity, viewerId)) {
             return response;
         }
+        String privacyLevel = normalizePrivacyLevel(entity.getPrivacyLevel(), entity.getIsLiving());
+        String maskedName = PRIVACY_SEALED.equals(privacyLevel)
+                ? "已封存人物"
+                : PRIVACY_PRIVATE.equals(privacyLevel) || PRIVACY_RELATIVES_ONLY.equals(privacyLevel)
+                    ? "受保护人物"
+                    : response.name();
         return new PersonResponse(
-                response.id(), response.clanId(), response.branchId(), response.personCode(), response.name(),
-                response.genealogyName(), response.courtesyName(), response.aliasName(), response.gender(),
-                response.generationNo(), response.generationWord(), response.rankInFamily(), null, null,
-                response.deathDate(), response.deathDatePrecision(), response.isLiving(), null, null,
-                response.occupation(), response.education(), response.titleOrHonor(), null, null, null,
-                response.hasDescendant(), response.lineageStatus(), response.privacyLevel(), response.dataStatus(),
+                response.id(), response.clanId(), response.branchId(), null, maskedName,
+                null, null, null, response.gender(),
+                response.generationNo(), response.generationWord(), null, null, null,
+                null, null, response.isLiving(), null, null,
+                null, null, null, null, null, null,
+                null, response.lineageStatus(), response.privacyLevel(), response.dataStatus(),
                 response.createdBy(), response.createdAt(), response.updatedBy(), response.updatedAt()
         );
     }
 
     private boolean shouldMaskSensitiveFields(PersonEntity entity, Long viewerId) {
-        if (!Boolean.TRUE.equals(entity.getIsLiving())) {
+        String privacyLevel = normalizePrivacyLevel(entity.getPrivacyLevel(), entity.getIsLiving());
+        if (PRIVACY_PUBLIC.equals(privacyLevel)) {
             return false;
         }
-        if (!DEFAULT_PRIVACY_LEVEL.equals(entity.getPrivacyLevel()) && !"private".equals(entity.getPrivacyLevel())) {
+        if (viewerOwnsRecord(entity, viewerId)) {
             return false;
         }
-        return !authorizationApplicationService.isActiveClanMember(entity.getClanId(), viewerId);
+        if (PRIVACY_SEALED.equals(privacyLevel)) {
+            return !authorizationApplicationService.can(entity.getClanId(), viewerId, PERSON_DELETE);
+        }
+        if (PRIVACY_PRIVATE.equals(privacyLevel) || PRIVACY_RELATIVES_ONLY.equals(privacyLevel)) {
+            return !authorizationApplicationService.can(entity.getClanId(), viewerId, PERSON_UPDATE);
+        }
+        if (PRIVACY_BRANCH_ONLY.equals(privacyLevel)) {
+            return !hasBranchViewAccess(entity, viewerId);
+        }
+        if (PRIVACY_CLAN_ONLY.equals(privacyLevel)) {
+            return !authorizationApplicationService.isActiveClanMember(entity.getClanId(), viewerId);
+        }
+        return Boolean.TRUE.equals(entity.getIsLiving()) && !authorizationApplicationService.isActiveClanMember(entity.getClanId(), viewerId);
+    }
+
+    private boolean hasBranchViewAccess(PersonEntity entity, Long viewerId) {
+        try {
+            authorizationApplicationService.requireBranchPermission(entity.getClanId(), viewerId, entity.getBranchId(), PERSON_VIEW);
+            return true;
+        } catch (BusinessException ignored) {
+            return false;
+        }
+    }
+
+    private boolean viewerOwnsRecord(PersonEntity entity, Long viewerId) {
+        if (viewerId == null) {
+            return false;
+        }
+        return viewerId.equals(entity.getCreatedBy()) || viewerId.equals(entity.getUpdatedBy());
+    }
+
+    private String normalizePrivacyLevel(String privacyLevel, Boolean isLiving) {
+        String normalized = privacyLevel == null || privacyLevel.isBlank()
+                ? (Boolean.TRUE.equals(isLiving) ? DEFAULT_LIVING_PRIVACY_LEVEL : DEFAULT_PRIVACY_LEVEL)
+                : privacyLevel.trim().toLowerCase();
+        if (!ALLOWED_PRIVACY_LEVELS.contains(normalized)) {
+            throw new BusinessException("PERSON_PRIVACY_LEVEL_INVALID", "人物隐私级别无效");
+        }
+        return normalized;
     }
 
     private PersonEntity getActiveEntity(Long id) {
@@ -410,9 +471,7 @@ public class PersonApplicationService {
     }
 
     private void applyDefaults(PersonEntity entity) {
-        if (entity.getPrivacyLevel() == null) {
-            entity.setPrivacyLevel(DEFAULT_PRIVACY_LEVEL);
-        }
+        entity.setPrivacyLevel(normalizePrivacyLevel(entity.getPrivacyLevel(), entity.getIsLiving()));
         if (entity.getDataStatus() == null) {
             entity.setDataStatus(DEFAULT_DATA_STATUS);
         }
