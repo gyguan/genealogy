@@ -64,6 +64,18 @@ type PersonEvent = {
 
 const PAGE_SIZE = 20;
 const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '' };
+const privacyOptions = [
+  ['public', '公开'],
+  ['clan_only', '宗族内可见'],
+  ['branch_only', '支派内可见'],
+  ['relatives_only', '亲属可见'],
+  ['private', '私密'],
+  ['sealed', '封存']
+] as const;
+
+function privacyText(value?: string) {
+  return privacyOptions.find(([code]) => code === value)?.[1] || value || '-';
+}
 
 function personName(row: any) {
   return row.name || row.personName || row.displayName || row.fullName || '';
@@ -294,11 +306,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   }
 
   async function loadClans() {
+    setFilterLoading(true);
     try {
-      const data = await apiClient.get('/clans');
+      const data = await apiClient.get('/clans').catch(() => []);
       setClans(data);
-    } catch (error) {
-      notify({ message: `宗族列表加载失败：${(error as Error).message}` }, true);
+      const list = toRecordList<any>(data);
+      if (!workspace.clanId && list[0]?.id) workspace.setClanId(String(list[0].id));
+    } finally {
+      setFilterLoading(false);
     }
   }
 
@@ -310,110 +325,82 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     }
     setFilterLoading(true);
     try {
-      const [branchRes, schemeRes] = await Promise.all([
+      const [branchData, schemeData] = await Promise.all([
         apiClient.get(`/clans/${clanId}/branches`).catch(() => []),
         apiClient.get(`/clans/${clanId}/generation-schemes`).catch(() => [])
       ]);
-      setBranches(branchRes);
-      const schemes = toRecordList<any>(schemeRes);
-      const itemGroups = await Promise.all(schemes.map(scheme => scheme.id ? apiClient.get(`/generation-schemes/${scheme.id}/items`).catch(() => []) : []));
-      setGenerationItems(itemGroups.flatMap(group => toRecordList<any>(group)));
-    } catch (error) {
-      notify({ message: `宗族筛选项加载失败：${(error as Error).message}` }, true);
-      setBranches([]);
-      setGenerationItems([]);
+      setBranches(branchData);
+      const schemes = toRecordList<any>(schemeData);
+      const defaultScheme = schemes.find(item => item.isDefault) || schemes[0];
+      if (defaultScheme?.id) {
+        const items = await apiClient.get(`/generation-schemes/${defaultScheme.id}/items`).catch(() => []);
+        setGenerationItems(toRecordList<any>(items));
+      } else {
+        setGenerationItems([]);
+      }
     } finally {
       setFilterLoading(false);
     }
   }
 
-  function changeClan(clanId: string) {
-    workspace.patch({ clanId, branchId: '', personId: '' });
-    setForm(prev => ({ ...prev, branchId: '', generationNo: '', generationWord: '' }));
+  async function changeClan(nextClanId: string) {
+    workspace.setClanId(nextClanId);
+    workspace.setBranchId('');
+    setForm({ ...emptySearch });
     setRawData(undefined);
-    setPageNo(1);
-    closeDetail();
+    await loadClanFilterOptions(nextClanId);
   }
 
-  function changeBranch(branchId: string) {
-    patch('branchId', branchId);
-    workspace.setBranchId(branchId);
+  function changeBranch(nextBranchId: string) {
+    workspace.setBranchId(nextBranchId);
+    patch('branchId', nextBranchId);
   }
 
-  function buildSearchPath(nextPageNo = pageNo) {
-    if (!workspace.clanId) throw new Error('请先选择宗族');
-    const params = new URLSearchParams();
-    params.set('clanId', workspace.clanId);
-    params.set('pageNo', String(nextPageNo || 1));
-    params.set('pageSize', String(PAGE_SIZE));
-    if (form.branchId.trim()) params.set('branchId', form.branchId.trim());
-    if (form.keyword.trim()) params.set('keyword', form.keyword.trim());
-    if (form.name.trim()) params.set('name', form.name.trim());
-    if (form.gender.trim()) params.set('gender', form.gender.trim());
-    if (form.generationWord.trim()) params.set('generationWord', form.generationWord.trim());
-    if (form.generationNo.trim()) params.set('generationNo', form.generationNo.trim());
-    if (form.dataStatus.trim()) params.set('dataStatus', form.dataStatus.trim());
-    return `/persons/search?${params.toString()}`;
-  }
-
-  async function search(nextPageNo = 1) {
+  async function search(nextPage = 1) {
+    if (!workspace.clanId) return;
     setQuerying(true);
     try {
-      await run(async () => {
-        const data = await apiClient.get(buildSearchPath(nextPageNo));
-        setRawData(data);
-        closeDetail();
-        setPageNo(nextPageNo);
-        const total = (data as any)?.total ?? toRecordList(data).length;
-        notify({ message: `已搜索到 ${total} 条人物记录` });
-      });
+      const params = new URLSearchParams({ clanId: workspace.clanId, pageNo: String(nextPage), pageSize: String(PAGE_SIZE) });
+      if (form.branchId) params.set('branchId', form.branchId);
+      if (form.keyword.trim()) params.set('keyword', form.keyword.trim());
+      if (form.name.trim()) params.set('name', form.name.trim());
+      if (form.gender) params.set('gender', form.gender);
+      if (form.generationNo) params.set('generationNo', form.generationNo);
+      if (form.generationWord) params.set('generationWord', form.generationWord);
+      if (form.dataStatus) params.set('dataStatus', form.dataStatus);
+      const data = await apiClient.get(`/persons/search?${params.toString()}`);
+      setRawData(data);
+      setPageNo(nextPage);
+    } catch (error) {
+      notify({ message: (error as Error).message || '查询失败' }, true);
     } finally {
       setQuerying(false);
     }
   }
 
+  function reset() {
+    setForm({ ...emptySearch });
+    setPageNo(1);
+    setRawData(undefined);
+  }
+
   async function openDetail(row: any, mode: DrawerMode = 'view') {
     await run(async () => {
       const id = row.id || row.personId;
-      if (!id) throw new Error('人物记录缺少ID');
-      const detail: any = await apiClient.get(`/persons/${id}`);
-      workspace.setPersonId(String(id));
+      const detail = await apiClient.get(`/persons/${id}`);
       setSelected(detail);
       setEditForm(toEditForm(detail));
       setDrawerMode(mode);
-      const [relationRes, sourceRes, eventRes] = await Promise.all([
+      workspace.setPersonId(String(id));
+      const [relationshipData, sourceData, eventData] = await Promise.all([
         apiClient.get(`/persons/${id}/relationships`).catch(() => []),
-        apiClient.get(`/source-bindings?targetType=person&targetId=${id}`).catch(() => []),
+        apiClient.get(`/source-bindings/target/person/${id}`).catch(() => []),
         apiClient.get(`/persons/${id}/events`).catch(() => [])
       ]);
-      setRelationships(relationRes);
-      setSources(sourceRes);
-      setEvents(eventRes);
-      notify({ message: mode === 'edit' ? '人物编辑已打开' : '人物详情已打开', id });
+      setRelationships(relationshipData);
+      setSources(sourceData);
+      setEvents(eventData);
     });
-  }
-
-  async function saveDetail() {
-    await run(async () => {
-      if (!selected?.id || !editForm) throw new Error('请先选择人物');
-      if (!editForm.name.trim()) throw new Error('姓名不能为空');
-      const saved: any = await apiClient.put(`/persons/${selected.id}`, toUpdatePayload(editForm));
-      const data = await apiClient.get(buildSearchPath(pageNo));
-      setRawData(data);
-      setSelected(saved);
-      setEditForm(toEditForm(saved));
-      setDrawerMode('view');
-      const eventRes = await apiClient.get(`/persons/${selected.id}/events`).catch(() => []);
-      setEvents(eventRes);
-      notify({ message: '人物档案已保存', id: saved?.id || selected.id });
-    });
-  }
-
-  function reset() {
-    setForm(emptySearch);
-    setRawData(undefined);
-    setPageNo(1);
-    closeDetail();
   }
 
   function closeDetail() {
@@ -423,6 +410,19 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setSources(undefined);
     setEvents(undefined);
     setDrawerMode('view');
+  }
+
+  async function saveDetail() {
+    if (!selected || !editForm) return;
+    await run(async () => {
+      if (!editForm.name.trim()) throw new Error('姓名不能为空');
+      const data = await apiClient.put(`/persons/${selected.id}`, toUpdatePayload(editForm));
+      setSelected(data);
+      setEditForm(toEditForm(data));
+      setDrawerMode('view');
+      notify({ message: '人物档案已保存' });
+      void search(currentPage);
+    });
   }
 
   function startEdit() {
@@ -541,6 +541,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             { key: 'branchName', title: '支派', render: row => branchText(row) },
             { key: 'generationNo', title: '代次', render: row => personGenerationNo(row) },
             { key: 'generationWord', title: '字辈', render: row => personGenerationWord(row) },
+            { key: 'privacyLevel', title: '隐私', render: row => privacyText(row.privacyLevel) },
             { key: 'dataStatus', title: '状态', render: row => personStatus(row) },
             { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button onClick={event => { event.stopPropagation(); void openDetail(row, 'view'); }}>查看</button><button className="secondary" onClick={event => { event.stopPropagation(); void openDetail(row, 'edit'); }}>编辑</button></div> }
           ]}
@@ -590,7 +591,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                       { label: '字号', value: row => row.courtesyName },
                       { label: '排行', value: row => row.rankInFamily },
                       { label: '生卒', value: row => `${row.birthDate || '?'} - ${row.deathDate || ''}` },
-                      { label: '隐私级别', value: row => row.privacyLevel }
+                      { label: '隐私级别', value: row => privacyText(row.privacyLevel) }
                     ]}
                   />
                   <section className="archive-drawer-section">
@@ -679,7 +680,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                     <Field label="称号荣誉"><input value={editForm.titleOrHonor} onChange={e => patchEdit('titleOrHonor', e.target.value)} /></Field>
                     <Field label="墓葬地"><input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Field>
                     <Field label="世系状态"><select value={editForm.lineageStatus} onChange={e => patchEdit('lineageStatus', e.target.value)}><option value="normal">正常</option><option value="adopted_in">继入</option><option value="adopted_out">出嗣</option><option value="unknown">未知</option></select></Field>
-                    <Field label="隐私级别"><select value={editForm.privacyLevel} onChange={e => patchEdit('privacyLevel', e.target.value)}><option value="public">公开</option><option value="clan_only">宗族内可见</option><option value="branch_only">支派内可见</option><option value="private">私密</option></select></Field>
+                    <Field label="隐私级别"><select value={editForm.privacyLevel} onChange={e => patchEdit('privacyLevel', e.target.value)}>{privacyOptions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></Field>
                     <Field label="数据状态"><select value={editForm.dataStatus} onChange={e => patchEdit('dataStatus', e.target.value)}><option value="draft">草稿</option><option value="pending_review">待审核</option><option value="official">正式</option><option value="rejected">已驳回</option><option value="archived">已归档</option></select></Field>
                   </div>
                   <Field label="人物传记"><textarea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={5} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
