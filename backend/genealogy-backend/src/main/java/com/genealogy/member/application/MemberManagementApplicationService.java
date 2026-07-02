@@ -16,6 +16,7 @@ import com.genealogy.member.enums.MemberScopeType;
 import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMemberRepository;
 import com.genealogy.member.repository.RoleRepository;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,23 +32,26 @@ import java.util.stream.Collectors;
 @Service
 public class MemberManagementApplicationService {
 
-    private static final String ROLE_VIEWER = "viewer";
+    private static final String ROLE_VIEWER = AuthorizationApplicationService.ROLE_VIEWER;
 
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final ClanMemberRepository clanMemberRepository;
     private final BranchRepository branchRepository;
+    private final OperationLogApplicationService operationLogApplicationService;
 
     public MemberManagementApplicationService(
             AppUserRepository appUserRepository,
             RoleRepository roleRepository,
             ClanMemberRepository clanMemberRepository,
-            BranchRepository branchRepository
+            BranchRepository branchRepository,
+            OperationLogApplicationService operationLogApplicationService
     ) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.clanMemberRepository = clanMemberRepository;
         this.branchRepository = branchRepository;
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional(readOnly = true)
@@ -91,13 +95,18 @@ public class MemberManagementApplicationService {
 
     @Transactional
     public ClanMemberResponse createMember(Long clanId, CreateClanMemberRequest request) {
+        return createMember(clanId, request, null);
+    }
+
+    @Transactional
+    public ClanMemberResponse createMember(Long clanId, CreateClanMemberRequest request, Long actorId) {
         AppUserEntity user = appUserRepository.findById(request.userId())
                 .filter(item -> item.getDeletedAt() == null)
-                .orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "用户不存在"));
+                .orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "user not found"));
         RoleEntity role = findRole(request.roleCode());
         clanMemberRepository.findByClanIdAndUserId(clanId, request.userId())
                 .ifPresent(existing -> {
-                    throw new BusinessException("MEMBER_DUPLICATED", "该用户已经是当前宗族成员");
+                    throw new BusinessException("MEMBER_DUPLICATED", "user is already a clan member");
                 });
 
         MemberScopeType scopeType = parseScopeType(request.scopeType());
@@ -117,14 +126,23 @@ public class MemberManagementApplicationService {
         member.setJoinedAt(now);
         member.setCreatedAt(now);
         member.setUpdatedAt(now);
-        return toMemberResponse(clanMemberRepository.save(member), user, role);
+        ClanMemberEntity saved = clanMemberRepository.save(member);
+        recordMemberPermissionChange(clanId, actorId, "member_invite", saved, role, null, permissionSnapshot(saved, role));
+        return toMemberResponse(saved, user, role);
     }
 
     @Transactional
     public ClanMemberResponse updateMember(Long clanId, Long memberId, UpdateClanMemberRoleRequest request) {
+        return updateMember(clanId, memberId, request, null);
+    }
+
+    @Transactional
+    public ClanMemberResponse updateMember(Long clanId, Long memberId, UpdateClanMemberRoleRequest request, Long actorId) {
         ClanMemberEntity member = clanMemberRepository.findById(memberId)
                 .filter(item -> item.getClanId().equals(clanId))
-                .orElseThrow(() -> new BusinessException("MEMBER_NOT_FOUND", "成员不存在"));
+                .orElseThrow(() -> new BusinessException("MEMBER_NOT_FOUND", "member not found"));
+        RoleEntity oldRole = member.getRoleId() == null ? null : roleRepository.findById(member.getRoleId()).orElse(null);
+        String before = permissionSnapshot(member, oldRole);
         RoleEntity role = findRole(request.roleCode());
         MemberScopeType scopeType = parseScopeType(request.scopeType() == null ? "clan" : request.scopeType());
         Long normalizedScopeId = normalizeScopeId(clanId, scopeType, request.scopeId(), request.branchId());
@@ -138,8 +156,10 @@ public class MemberManagementApplicationService {
             member.setMemberStatus(MemberStatus.valueOf(request.memberStatus()));
         }
         member.setUpdatedAt(LocalDateTime.now());
-        AppUserEntity user = member.getUserId() == null ? null : appUserRepository.findById(member.getUserId()).orElse(null);
-        return toMemberResponse(clanMemberRepository.save(member), user, role);
+        ClanMemberEntity saved = clanMemberRepository.save(member);
+        AppUserEntity user = saved.getUserId() == null ? null : appUserRepository.findById(saved.getUserId()).orElse(null);
+        recordMemberPermissionChange(clanId, actorId, "member_update_role", saved, role, before, permissionSnapshot(saved, role));
+        return toMemberResponse(saved, user, role);
     }
 
     private Long normalizeScopeId(Long clanId, MemberScopeType scopeType, Long scopeId, Long branchId) {
@@ -148,14 +168,14 @@ public class MemberManagementApplicationService {
         }
         Long effectiveBranchId = scopeId == null ? branchId : scopeId;
         if (effectiveBranchId == null) {
-            throw new BusinessException("MEMBER_BRANCH_SCOPE_REQUIRED", "支派范围授权必须指定范围ID或支派ID");
+            throw new BusinessException("MEMBER_BRANCH_SCOPE_REQUIRED", "branch scope requires branch");
         }
         requireBranchInClan(clanId, effectiveBranchId);
         return effectiveBranchId;
     }
 
     private Long normalizeBranchId(Long clanId, MemberScopeType scopeType, Long branchId, Long scopeId) {
-        if (scopeType == MemberScopeType.branch) {
+        if (scopeType == MemberScopeType.branch || scopeType == MemberScopeType.branch_subtree) {
             Long effectiveBranchId = branchId == null ? scopeId : branchId;
             requireBranchInClan(clanId, effectiveBranchId);
             return effectiveBranchId;
@@ -168,22 +188,46 @@ public class MemberManagementApplicationService {
 
     private void requireBranchInClan(Long clanId, Long branchId) {
         if (branchId == null || branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
-            throw new BusinessException("BRANCH_CLAN_MISMATCH", "授权支派不存在或不属于当前宗族");
+            throw new BusinessException("BRANCH_CLAN_MISMATCH", "branch is not in clan");
         }
     }
 
     private RoleEntity findRole(String roleCode) {
         String normalizedRoleCode = roleCode.trim();
         if (AuthorizationApplicationService.ROLE_CROSS_CLAN_ADMIN.equals(normalizedRoleCode)) {
-            throw new BusinessException("CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN", "跨宗族管理员不能通过宗族成员管理授予");
+            throw new BusinessException("CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN", "cross clan admin cannot be assigned here");
         }
         return roleRepository.findByRoleCode(normalizedRoleCode)
-                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "角色不存在"));
+                .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "role not found"));
     }
 
     private MemberScopeType parseScopeType(String scopeType) {
         String normalized = scopeType == null ? "clan" : scopeType.trim().toLowerCase(Locale.ROOT);
         return MemberScopeType.valueOf(normalized);
+    }
+
+    private void recordMemberPermissionChange(Long clanId, Long actorId, String actionType, ClanMemberEntity member, RoleEntity role, String before, String after) {
+        operationLogApplicationService.record(
+                clanId,
+                actorId,
+                actionType,
+                "member",
+                member.getId(),
+                "member permission changed for user " + member.getUserId(),
+                "before=" + value(before) + "; after=" + value(after)
+        );
+    }
+
+    private String permissionSnapshot(ClanMemberEntity member, RoleEntity role) {
+        return "role=" + (role == null ? null : role.getRoleCode())
+                + ",status=" + member.getMemberStatus()
+                + ",scopeType=" + member.getScopeType()
+                + ",scopeId=" + member.getScopeId()
+                + ",branchId=" + member.getBranchId();
+    }
+
+    private String value(String value) {
+        return value == null ? "" : value;
     }
 
     private UserSummaryResponse toUserResponse(AppUserEntity user) {

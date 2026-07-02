@@ -91,13 +91,21 @@ public class ApprovalController {
     }
 
     @GetMapping("/clans/{clanId}/review-tasks/pending")
-    public ApiResponse<List<CheckTaskResponse>> listPending(@Positive @PathVariable Long clanId) {
-        return ApiResponse.success(approvalApplicationService.listPending(clanId));
+    public ApiResponse<List<CheckTaskResponse>> listPending(
+            @Positive @PathVariable Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.listPending(clanId, userId));
     }
 
     @GetMapping("/review-tasks/{taskId}")
-    public ApiResponse<ReviewTaskDetailResponse> getTask(@Positive @PathVariable Long taskId) {
-        return ApiResponse.success(approvalApplicationService.getTaskDetail(taskId));
+    public ApiResponse<ReviewTaskDetailResponse> getTask(
+            @Positive @PathVariable Long taskId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.getTaskDetail(taskId, userId));
     }
 
     @PostMapping("/review-tasks/{taskId}/approve")
@@ -123,7 +131,11 @@ public class ApprovalController {
     }
 
     @GetMapping("/persons/{personId}/review-records")
-    public ApiResponse<List<AuditRecordResponse>> listPersonRecords(@Positive @PathVariable Long personId) {
-        return ApiResponse.success(approvalApplicationService.listPersonRecords(personId));
+    public ApiResponse<List<AuditRecordResponse>> listPersonRecords(
+            @Positive @PathVariable Long personId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.listPersonRecords(personId, userId));
     }
 }

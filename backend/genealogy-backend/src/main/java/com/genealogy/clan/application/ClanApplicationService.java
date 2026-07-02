@@ -33,6 +33,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class ClanApplicationService {
 
     private static final String ROLE_CLAN_ADMIN = "clan_admin";
+    private static final String CLAN_VIEW = "clan:view";
+    private static final String CLAN_UPDATE = "clan:update";
+    private static final String CLAN_DELETE = "clan:delete";
     private static final DateTimeFormatter CLAN_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final ClanRepository clanRepository;
@@ -87,7 +90,7 @@ public class ClanApplicationService {
 
     @Transactional(readOnly = true)
     public ClanResponse get(Long id, Long viewerId) {
-        authorizationApplicationService.requireClanMember(id, viewerId);
+        authorizationApplicationService.requirePermission(id, viewerId, CLAN_VIEW);
         return ClanMapper.toResponse(getEntity(id));
     }
 
@@ -106,6 +109,7 @@ public class ClanApplicationService {
         List<Long> visibleClanIds = authorizationApplicationService.activeMemberships(viewerId).stream()
                 .map(ClanMemberEntity::getClanId)
                 .distinct()
+                .filter(clanId -> authorizationApplicationService.can(clanId, viewerId, CLAN_VIEW))
                 .toList();
         if (visibleClanIds.isEmpty()) {
             return PageResponse.of(List.of(), 0, pageNo, pageSize);
@@ -126,7 +130,7 @@ public class ClanApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         ClanEntity entity = getEntity(id);
-        authorizationApplicationService.requireAnyRole(id, actorId, ROLE_CLAN_ADMIN);
+        authorizationApplicationService.requirePermission(id, actorId, CLAN_DELETE);
         if (branchRepository.existsByClanId(id)) {
             throw new BusinessException("CLAN_HAS_BRANCHES", "宗族下存在支派，不能删除");
         }
@@ -141,7 +145,7 @@ public class ClanApplicationService {
     @Transactional
     public ClanResponse update(Long id, ClanUpdateRequest request, Long actorId) {
         ClanEntity entity = getEntity(id);
-        authorizationApplicationService.requireAnyRole(id, actorId, ROLE_CLAN_ADMIN);
+        authorizationApplicationService.requirePermission(id, actorId, CLAN_UPDATE);
         validateClanCodeForUpdate(id, request.clanCode());
         ClanMapper.updateEntity(entity, request);
         if (entity.getStatus() == null) {

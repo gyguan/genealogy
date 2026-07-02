@@ -49,6 +49,14 @@ public class ApprovalApplicationService {
     private static final String PERSON_STATUS_PENDING_REVIEW = "pending_review";
     private static final String PERSON_STATUS_OFFICIAL = "official";
 
+    private static final String REVIEW_VIEW = "review_task:view";
+    private static final String REVIEW_APPROVE = "review_task:approve";
+    private static final String REVIEW_REJECT = "review_task:reject";
+    private static final String PERSON_SUBMIT_REVIEW = "person:submit_review";
+    private static final String RELATIONSHIP_SUBMIT_REVIEW = "relationship:submit_review";
+    private static final String SOURCE_UPDATE = "source:update";
+    private static final String BRANCH_UPDATE = "branch:update";
+
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
     private final SourceRepository sourceRepository;
@@ -87,13 +95,13 @@ public class ApprovalApplicationService {
     @Transactional
     public CheckTaskResponse submitPerson(Long personId, PersonSubmitReviewRequest request) {
         PersonEntity person = getPerson(personId);
-        authorizationApplicationService.requireBranchWriteScope(person.getClanId(), request.submitterId(), person.getBranchId());
+        authorizationApplicationService.requireBranchPermission(person.getClanId(), request.submitterId(), person.getBranchId(), PERSON_SUBMIT_REVIEW);
         String beforePayload = toJson(person);
         LocalDateTime now = LocalDateTime.now();
         person.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
         person.setUpdatedAt(now);
         String afterPayload = toJson(person);
-        CheckTaskResponse response = submitTarget(person.getClanId(), TARGET_PERSON, personId, person.getBranchId(), request.submitterId(), request.diffSummary(), "提交人物审核：" + person.getName(), beforePayload, afterPayload);
+        CheckTaskResponse response = submitTarget(person.getClanId(), TARGET_PERSON, personId, person.getBranchId(), request.submitterId(), request.diffSummary(), "submit person review: " + person.getName(), beforePayload, afterPayload);
         personRepository.save(person);
         return response;
     }
@@ -103,12 +111,13 @@ public class ApprovalApplicationService {
         RelationshipEntity relationship = relationshipRepository.findById(relationshipId)
                 .filter(entity -> entity.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND));
-        authorizationApplicationService.requireClanMember(relationship.getClanId(), request.submitterId());
+        Long branchId = relationshipBranchId(relationship);
+        authorizationApplicationService.requireBranchPermission(relationship.getClanId(), request.submitterId(), branchId, RELATIONSHIP_SUBMIT_REVIEW);
         String beforePayload = toJson(relationship);
         relationship.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
         relationship.setUpdatedAt(LocalDateTime.now());
         String afterPayload = toJson(relationship);
-        CheckTaskResponse response = submitTarget(relationship.getClanId(), TARGET_RELATIONSHIP, relationshipId, null, request.submitterId(), request.diffSummary(), "提交关系审核", beforePayload, afterPayload);
+        CheckTaskResponse response = submitTarget(relationship.getClanId(), TARGET_RELATIONSHIP, relationshipId, branchId, request.submitterId(), request.diffSummary(), "submit relationship review", beforePayload, afterPayload);
         relationshipRepository.save(relationship);
         return response;
     }
@@ -116,12 +125,12 @@ public class ApprovalApplicationService {
     @Transactional
     public CheckTaskResponse submitSource(Long sourceId, TargetSubmitRequest request) {
         SourceEntity source = sourceRepository.findById(sourceId)
-                .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "资料来源不存在"));
-        authorizationApplicationService.requireClanMember(source.getClanId(), request.submitterId());
+                .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "source not found"));
+        authorizationApplicationService.requirePermission(source.getClanId(), request.submitterId(), SOURCE_UPDATE);
         String beforePayload = toJson(source);
         source.setVerificationStatus(PERSON_STATUS_PENDING_REVIEW);
         String afterPayload = toJson(source);
-        CheckTaskResponse response = submitTarget(source.getClanId(), TARGET_SOURCE, sourceId, null, request.submitterId(), request.diffSummary(), "提交资料来源审核：" + source.getSourceName(), beforePayload, afterPayload);
+        CheckTaskResponse response = submitTarget(source.getClanId(), TARGET_SOURCE, sourceId, null, request.submitterId(), request.diffSummary(), "submit source review: " + source.getSourceName(), beforePayload, afterPayload);
         sourceRepository.save(source);
         return response;
     }
@@ -130,12 +139,12 @@ public class ApprovalApplicationService {
     public CheckTaskResponse submitBranch(Long branchId, TargetSubmitRequest request) {
         BranchEntity branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
-        authorizationApplicationService.requireBranchWriteScope(branch.getClanId(), request.submitterId(), branch.getId());
+        authorizationApplicationService.requireBranchPermission(branch.getClanId(), request.submitterId(), branch.getId(), BRANCH_UPDATE);
         String beforePayload = toJson(branch);
         branch.setStatus(PERSON_STATUS_PENDING_REVIEW);
         branch.setUpdatedAt(LocalDateTime.now());
         String afterPayload = toJson(branch);
-        CheckTaskResponse response = submitTarget(branch.getClanId(), TARGET_BRANCH, branchId, branchId, request.submitterId(), request.diffSummary(), "提交支派审核：" + branch.getBranchName(), beforePayload, afterPayload);
+        CheckTaskResponse response = submitTarget(branch.getClanId(), TARGET_BRANCH, branchId, branchId, request.submitterId(), request.diffSummary(), "submit branch review: " + branch.getBranchName(), beforePayload, afterPayload);
         branchRepository.save(branch);
         return response;
     }
@@ -143,19 +152,19 @@ public class ApprovalApplicationService {
     @Transactional
     public CheckTaskResponse submitGenerationScheme(Long schemeId, TargetSubmitRequest request) {
         GenerationSchemeEntity scheme = genSchemeRepository.findById(schemeId)
-                .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "字辈方案不存在"));
-        authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), request.submitterId(), scheme.getBranchId());
+                .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "generation scheme not found"));
+        authorizationApplicationService.requireBranchPermission(scheme.getClanId(), request.submitterId(), scheme.getBranchId(), BRANCH_UPDATE);
         String beforePayload = toJson(scheme);
         scheme.setStatus(PERSON_STATUS_PENDING_REVIEW);
         String afterPayload = toJson(scheme);
-        CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "提交字辈方案审核：" + scheme.getSchemeName(), beforePayload, afterPayload);
+        CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "submit generation scheme review: " + scheme.getSchemeName(), beforePayload, afterPayload);
         genSchemeRepository.save(scheme);
         return response;
     }
 
     private CheckTaskResponse submitTarget(Long clanId, String targetType, Long targetId, Long branchId, Long submitterId, String diffSummary, String logSummary, String beforePayload, String afterPayload) {
         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(targetType, targetId, STATUS_PENDING)) {
-            throw new BusinessException("REVIEW_ALREADY_PENDING", "目标对象已存在待审核任务");
+            throw new BusinessException("REVIEW_ALREADY_PENDING", "target already has pending review task");
         }
         LocalDateTime now = LocalDateTime.now();
         AuditRecordEntity record = new AuditRecordEntity();
@@ -186,9 +195,13 @@ public class ApprovalApplicationService {
 
     @Transactional(readOnly = true)
     public List<CheckTaskResponse> listPending(Long clanId) {
-        return checkTaskRepository.findByClanIdAndStatus(clanId, STATUS_PENDING).stream()
-                .map(this::toTaskResponse)
-                .toList();
+        return checkTaskRepository.findByClanIdAndStatus(clanId, STATUS_PENDING).stream().map(this::toTaskResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CheckTaskResponse> listPending(Long clanId, Long actorId) {
+        authorizationApplicationService.requirePermission(clanId, actorId, REVIEW_VIEW);
+        return listPending(clanId);
     }
 
     @Transactional(readOnly = true)
@@ -204,10 +217,23 @@ public class ApprovalApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public ReviewTaskDetailResponse getTaskDetail(Long taskId, Long actorId) {
+        CheckTaskEntity task = getActiveTask(taskId);
+        authorizationApplicationService.requirePermission(task.getClanId(), actorId, REVIEW_VIEW);
+        AuditRecordEntity record = getRecord(task.getRevisionId());
+        return new ReviewTaskDetailResponse(toTaskResponse(task), toRecordResponse(record));
+    }
+
+    @Transactional(readOnly = true)
     public List<AuditRecordResponse> listPersonRecords(Long personId) {
-        return auditRecordRepository.findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(TARGET_PERSON, personId).stream()
-                .map(this::toRecordResponse)
-                .toList();
+        return auditRecordRepository.findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(TARGET_PERSON, personId).stream().map(this::toRecordResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditRecordResponse> listPersonRecords(Long personId, Long actorId) {
+        PersonEntity person = getPerson(personId);
+        authorizationApplicationService.requireBranchPermission(person.getClanId(), actorId, person.getBranchId(), REVIEW_VIEW);
+        return listPersonRecords(personId);
     }
 
     @Transactional
@@ -215,7 +241,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getActiveTask(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
+        authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_APPROVE);
         LocalDateTime now = LocalDateTime.now();
         record.setStatus(STATUS_APPROVED);
         record.setApprovedAt(now);
@@ -226,7 +252,7 @@ public class ApprovalApplicationService {
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         applyTargetAfterApproval(record, now);
-        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "审核通过", request.comment());
+        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "approve review", request.comment());
         return toTaskResponse(savedTask);
     }
 
@@ -235,7 +261,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getActiveTask(taskId);
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        authorizationApplicationService.requireAnyRole(record.getClanId(), request.reviewerId(), "clan_admin");
+        authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_REJECT);
         LocalDateTime now = LocalDateTime.now();
         String comment = trimToNull(request.comment());
         record.setStatus(STATUS_REJECTED);
@@ -247,28 +273,30 @@ public class ApprovalApplicationService {
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         rollbackTargetAfterReject(record, now);
-        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "审核驳回", comment);
+        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "reject review", comment);
         return toTaskResponse(savedTask);
     }
 
+    private Long relationshipBranchId(RelationshipEntity relationship) {
+        PersonEntity from = getPerson(relationship.getFromPersonId());
+        return from.getBranchId();
+    }
+
     private PersonEntity getPerson(Long personId) {
-        return personRepository.findByIdAndDeletedAtIsNull(personId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
+        return personRepository.findByIdAndDeletedAtIsNull(personId).orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
     }
 
     private CheckTaskEntity getActiveTask(Long taskId) {
-        return checkTaskRepository.findById(taskId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_TASK_NOT_FOUND));
+        return checkTaskRepository.findById(taskId).orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_TASK_NOT_FOUND));
     }
 
     private AuditRecordEntity getRecord(Long recordId) {
-        return auditRecordRepository.findById(recordId)
-                .orElseThrow(() -> new BusinessException("REVIEW_RECORD_NOT_FOUND", "审核记录不存在"));
+        return auditRecordRepository.findById(recordId).orElseThrow(() -> new BusinessException("REVIEW_RECORD_NOT_FOUND", "review record not found"));
     }
 
     private void ensurePending(CheckTaskEntity task) {
         if (!STATUS_PENDING.equals(task.getStatus())) {
-            throw new BusinessException("REVIEW_TASK_ALREADY_HANDLED", "审核任务已处理，不能重复操作");
+            throw new BusinessException("REVIEW_TASK_ALREADY_HANDLED", "review task already handled");
         }
     }
 
@@ -333,19 +361,11 @@ public class ApprovalApplicationService {
     }
 
     private CheckTaskResponse toTaskResponse(CheckTaskEntity task) {
-        return new CheckTaskResponse(
-                task.getId(), task.getClanId(), task.getRevisionId(), task.getReviewLevel(), task.getReviewerId(),
-                task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(),
-                task.getReviewedAt(), task.getCreatedAt()
-        );
+        return new CheckTaskResponse(task.getId(), task.getClanId(), task.getRevisionId(), task.getReviewLevel(), task.getReviewerId(), task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(), task.getReviewedAt(), task.getCreatedAt());
     }
 
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {
-        return new AuditRecordResponse(
-                record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(),
-                record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(),
-                record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason()
-        );
+        return new AuditRecordResponse(record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(), record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason());
     }
 
     private String toJson(Object value) {

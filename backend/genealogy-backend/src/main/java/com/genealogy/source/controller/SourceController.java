@@ -12,9 +12,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,21 +40,32 @@ public class SourceController {
             @Valid @RequestBody SourceCreateRequest request,
             HttpServletRequest servletRequest
     ) {
-        RequestUserContext context = requestContextApplicationService.requireClanMember(clanId, servletRequest);
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(sourceApplicationService.create(clanId, request, context.userId(), context.requestId(), context.clientIp()));
     }
 
     @GetMapping("/sources/{id}")
     public ApiResponse<SourceResponse> get(@Positive @PathVariable Long id, HttpServletRequest servletRequest) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        SourceResponse response = sourceApplicationService.get(id);
-        requestContextApplicationService.requireClanMember(response.clanId(), servletRequest);
-        return ApiResponse.success(response);
+        return ApiResponse.success(sourceApplicationService.get(id, context.userId()));
+    }
+
+    @PutMapping("/sources/{id}")
+    public ApiResponse<SourceResponse> update(@Positive @PathVariable Long id, @Valid @RequestBody SourceCreateRequest request, HttpServletRequest servletRequest) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceApplicationService.update(id, request, context.userId()));
+    }
+
+    @DeleteMapping("/sources/{id}")
+    public ApiResponse<Void> delete(@Positive @PathVariable Long id, HttpServletRequest servletRequest) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        sourceApplicationService.delete(id, context.userId());
+        return ApiResponse.success();
     }
 
     @GetMapping("/clans/{clanId}/sources")
     public ApiResponse<PageResponse<SourceResponse>> listByClan(@Positive @PathVariable Long clanId, PageQuery pageQuery, HttpServletRequest servletRequest) {
-        requestContextApplicationService.requireClanMember(clanId, servletRequest);
-        return ApiResponse.success(sourceApplicationService.listByClan(clanId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize()));
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceApplicationService.listByClan(clanId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), context.userId()));
     }
 }

@@ -28,6 +28,10 @@ import java.util.Map;
 @RequestMapping("/api/v1")
 public class ImportExportController {
 
+    private static final String PERSON_CREATE = "person:create";
+    private static final String RELATIONSHIP_CREATE = "relationship:create";
+    private static final String EXPORT_DOWNLOAD = "export_task:download";
+
     private final PersonCsvApplicationService personCsvApplicationService;
     private final BookletExportApplicationService bookletExportApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -54,55 +58,71 @@ public class ImportExportController {
 
     @PostMapping(value = "/clans/{clanId}/imports/persons.csv/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> previewPersons(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
-        authorizationApplicationService.requireClanMember(clanId, headers.getFirst(HttpHeaders.AUTHORIZATION));
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
         return ApiResponse.success(personCsvApplicationService.previewPersons(clanId, file));
     }
 
     @PostMapping(value = "/clans/{clanId}/imports/persons.csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> importPersons(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
-        Long actorId = authorizationApplicationService.requireClanMember(clanId, headers.getFirst(HttpHeaders.AUTHORIZATION));
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
         return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId));
     }
 
     @PostMapping(value = "/clans/{clanId}/imports/relations.csv/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> previewRelations(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
-        authorizationApplicationService.requireClanMember(clanId, headers.getFirst(HttpHeaders.AUTHORIZATION));
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, RELATIONSHIP_CREATE);
         return ApiResponse.success(personCsvApplicationService.previewRelations(clanId, file));
     }
 
     @PostMapping(value = "/clans/{clanId}/imports/relations.csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> importRelations(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
-        Long actorId = authorizationApplicationService.requireClanMember(clanId, headers.getFirst(HttpHeaders.AUTHORIZATION));
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, RELATIONSHIP_CREATE);
         return ApiResponse.success(personCsvApplicationService.importRelations(clanId, file, actorId));
     }
 
     @GetMapping("/clans/{clanId}/exports/persons.csv")
-    public ResponseEntity<byte[]> exportPersons(@Positive @PathVariable Long clanId) {
+    public ResponseEntity<byte[]> exportPersons(@Positive @PathVariable Long clanId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, EXPORT_DOWNLOAD);
         return csvResponse("persons.csv", personCsvApplicationService.exportPersons(clanId));
     }
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/exports/persons.csv")
-    public ResponseEntity<byte[]> exportPersonsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
+    public ResponseEntity<byte[]> exportPersonsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, branchId, EXPORT_DOWNLOAD);
         return csvResponse("branch-" + branchId + "-persons.csv", personCsvApplicationService.exportPersonsByBranch(clanId, branchId));
     }
 
     @GetMapping("/clans/{clanId}/exports/relations.csv")
-    public ResponseEntity<byte[]> exportRelations(@Positive @PathVariable Long clanId) {
+    public ResponseEntity<byte[]> exportRelations(@Positive @PathVariable Long clanId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, EXPORT_DOWNLOAD);
         return csvResponse("relations.csv", personCsvApplicationService.exportRelations(clanId));
     }
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/exports/relations.csv")
-    public ResponseEntity<byte[]> exportRelationsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
+    public ResponseEntity<byte[]> exportRelationsByBranch(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, branchId, EXPORT_DOWNLOAD);
         return csvResponse("branch-" + branchId + "-relations.csv", personCsvApplicationService.exportRelationsByBranch(clanId, branchId));
     }
 
     @GetMapping("/clans/{clanId}/exports/booklet.html")
-    public ResponseEntity<byte[]> exportClanBooklet(@Positive @PathVariable Long clanId) {
+    public ResponseEntity<byte[]> exportClanBooklet(@Positive @PathVariable Long clanId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requirePermission(clanId, actorId, EXPORT_DOWNLOAD);
         return htmlResponse("clan-" + clanId + "-booklet.html", bookletExportApplicationService.buildClanBooklet(clanId));
     }
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/exports/booklet.html")
-    public ResponseEntity<byte[]> exportBranchBooklet(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId) {
+    public ResponseEntity<byte[]> exportBranchBooklet(@Positive @PathVariable Long clanId, @Positive @PathVariable Long branchId, @RequestHeader HttpHeaders headers) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, branchId, EXPORT_DOWNLOAD);
         return htmlResponse("branch-" + branchId + "-booklet.html", bookletExportApplicationService.buildBranchBooklet(clanId, branchId));
     }
 

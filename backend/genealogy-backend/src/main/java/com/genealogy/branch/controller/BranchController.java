@@ -50,8 +50,7 @@ public class BranchController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
-        return ApiResponse.success(branchApplicationService.listByClan(clanId));
+        return ApiResponse.success(branchApplicationService.listByClan(clanId, actorId));
     }
 
     @GetMapping("/branches/{id}")
@@ -60,9 +59,7 @@ public class BranchController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        BranchResponse response = branchApplicationService.get(id);
-        authorizationApplicationService.requireClanMember(response.clanId(), actorId);
-        return ApiResponse.success(response);
+        return ApiResponse.success(branchApplicationService.get(id, actorId));
     }
 
     @PutMapping("/branches/{id}")

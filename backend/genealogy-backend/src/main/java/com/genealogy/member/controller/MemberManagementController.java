@@ -27,7 +27,8 @@ import java.util.List;
 @RequestMapping("/api/v1/member-management")
 public class MemberManagementController {
 
-    private static final String ROLE_CLAN_ADMIN = "clan_admin";
+    private static final String MEMBER_INVITE = "member:invite";
+    private static final String MEMBER_UPDATE_ROLE = "member:update_role";
 
     private final MemberManagementApplicationService memberManagementApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -58,7 +59,7 @@ public class MemberManagementController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_UPDATE_ROLE);
         return ApiResponse.success(memberManagementApplicationService.members(clanId));
     }
 
@@ -69,8 +70,8 @@ public class MemberManagementController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
-        return ApiResponse.success(memberManagementApplicationService.createMember(clanId, request));
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_INVITE);
+        return ApiResponse.success(memberManagementApplicationService.createMember(clanId, request, userId));
     }
 
     @PutMapping("/clans/{clanId}/members/{memberId}")
@@ -81,7 +82,7 @@ public class MemberManagementController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireAnyRole(clanId, userId, ROLE_CLAN_ADMIN);
-        return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request));
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_UPDATE_ROLE);
+        return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request, userId));
     }
 }

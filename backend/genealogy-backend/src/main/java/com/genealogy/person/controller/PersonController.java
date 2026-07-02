@@ -36,6 +36,8 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class PersonController {
 
+    private static final String PERSON_CREATE = "person:create";
+
     private final PersonApplicationService personApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final PersonRepository personRepository;
@@ -53,7 +55,7 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.branchId());
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
         if (!Boolean.TRUE.equals(request.confirmDuplicate()) && duplicateCount(clanId, request) > 0) {
             throw new BusinessException("PERSON_DUPLICATE_CONFIRM_REQUIRED", "发现疑似重复人物，请确认后再创建");
         }
@@ -74,7 +76,6 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
         String effectiveDataStatus = dataStatus == null || dataStatus.isBlank() ? "official" : dataStatus;
         PersonSearchQuery query = new PersonSearchQuery(clanId, branchId, keyword, name, gender, generationNo, generationWord, effectiveDataStatus);
         return ApiResponse.success(personApplicationService.search(
@@ -91,8 +92,6 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        PersonResponse raw = personApplicationService.get(id);
-        authorizationApplicationService.requireClanMember(raw.clanId(), actorId);
         return ApiResponse.success(personApplicationService.get(id, actorId));
     }
 
@@ -103,7 +102,6 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
         return ApiResponse.success(personApplicationService.listByClan(
                 clanId,
                 pageQuery.normalizedPageNo(),
@@ -120,7 +118,6 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requireClanMember(clanId, actorId);
         return ApiResponse.success(personApplicationService.listByClanAndBranch(
                 clanId,
                 branchId,

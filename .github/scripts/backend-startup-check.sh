@@ -4,6 +4,7 @@ set -euo pipefail
 export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL:-jdbc:postgresql://localhost:5432/genealogy}"
 export SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-genealogy}"
 export SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-123456}"
+export SPRING_FLYWAY_ENABLED="${SPRING_FLYWAY_ENABLED:-true}"
 
 cleanup() {
   if [ -f /tmp/genealogy-backend.pid ]; then

@@ -1,6 +1,7 @@
 package com.genealogy.person.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
@@ -10,6 +11,8 @@ import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
 import com.genealogy.generation.repository.GenWordRepository;
+import com.genealogy.member.entity.ClanMemberEntity;
+import com.genealogy.member.enums.MemberScopeType;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
@@ -37,6 +40,10 @@ public class PersonApplicationService {
 
     private static final String DEFAULT_DATA_STATUS = "draft";
     private static final String DEFAULT_PRIVACY_LEVEL = "clan_only";
+    private static final String PERSON_VIEW = "person:view";
+    private static final String PERSON_CREATE = "person:create";
+    private static final String PERSON_UPDATE = "person:update";
+    private static final String PERSON_DELETE = "person:delete";
 
     private final PersonRepository personRepository;
     private final ClanRepository clanRepository;
@@ -75,7 +82,7 @@ public class PersonApplicationService {
         if (request.branchId() == null) {
             throw new BusinessException("PERSON_BRANCH_REQUIRED", "所属支派不能为空");
         }
-        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, request.branchId());
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
         ensureBranchBelongsToClan(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -102,7 +109,9 @@ public class PersonApplicationService {
 
     @Transactional(readOnly = true)
     public PersonResponse get(Long id, Long viewerId) {
-        return toPrivacyAwareResponse(getActiveEntity(id), viewerId);
+        PersonEntity entity = getActiveEntity(id);
+        authorizationApplicationService.requireBranchPermission(entity.getClanId(), viewerId, entity.getBranchId(), PERSON_VIEW);
+        return toPrivacyAwareResponse(entity, viewerId);
     }
 
     @Transactional(readOnly = true)
@@ -117,8 +126,9 @@ public class PersonApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> listByClan(Long clanId, int pageNo, int pageSize, Long viewerId) {
         ensureClanExists(clanId);
+        ClanMemberEntity member = authorizationApplicationService.requirePermission(clanId, viewerId, PERSON_VIEW);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findByClanIdAndDeletedAtIsNull(clanId, pageRequest)
+        Page<PersonResponse> page = personRepository.findAll(buildVisibleSpecification(clanId, member), pageRequest)
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
@@ -137,6 +147,7 @@ public class PersonApplicationService {
     public PageResponse<PersonResponse> listByClanAndBranch(Long clanId, Long branchId, int pageNo, int pageSize, Long viewerId) {
         ensureClanExists(clanId);
         ensureBranchBelongsToClan(clanId, branchId);
+        authorizationApplicationService.requireBranchPermission(clanId, viewerId, branchId, PERSON_VIEW);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
         Page<PersonResponse> page = personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId, pageRequest)
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
@@ -150,8 +161,14 @@ public class PersonApplicationService {
         }
         ensureClanExists(query.clanId());
         ensureBranchBelongsToClan(query.clanId(), query.branchId());
+        ClanMemberEntity member;
+        if (query.branchId() == null) {
+            member = authorizationApplicationService.requirePermission(query.clanId(), viewerId, PERSON_VIEW);
+        } else {
+            member = authorizationApplicationService.requireBranchPermission(query.clanId(), viewerId, query.branchId(), PERSON_VIEW);
+        }
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findAll(buildSearchSpecification(query), pageRequest)
+        Page<PersonResponse> page = personRepository.findAll(and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId(), member)), pageRequest)
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
@@ -165,7 +182,7 @@ public class PersonApplicationService {
     public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
         Long effectiveBranchId = request.branchId() == null ? entity.getBranchId() : request.branchId();
-        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, effectiveBranchId);
+        authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, effectiveBranchId, PERSON_UPDATE);
         ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
@@ -186,7 +203,7 @@ public class PersonApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
-        authorizationApplicationService.requireBranchWriteScope(entity.getClanId(), actorId, entity.getBranchId());
+        authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getBranchId(), PERSON_DELETE);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
@@ -235,6 +252,47 @@ public class PersonApplicationService {
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    private Specification<PersonEntity> buildVisibleSpecification(Long clanId, ClanMemberEntity member) {
+        return (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
+            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
+            if (member.getScopeType() != MemberScopeType.clan) {
+                List<Long> visibleBranchIds = visibleBranchIds(clanId, member);
+                if (visibleBranchIds.isEmpty()) {
+                    predicates.add(criteriaBuilder.disjunction());
+                } else {
+                    predicates.add(root.get("branchId").in(visibleBranchIds));
+                }
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    private Specification<PersonEntity> and(Specification<PersonEntity> first, Specification<PersonEntity> second) {
+        return first.and(second);
+    }
+
+    private List<Long> visibleBranchIds(Long clanId, ClanMemberEntity member) {
+        Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
+        if (allowedBranchId == null) {
+            return List.of();
+        }
+        if (member.getScopeType() == MemberScopeType.branch) {
+            return List.of(allowedBranchId);
+        }
+        if (member.getScopeType() != MemberScopeType.branch_subtree) {
+            return List.of();
+        }
+        BranchEntity allowedBranch = branchRepository.findByIdAndClanId(allowedBranchId, clanId)
+                .orElseThrow(() -> new BusinessException("AUTH_BRANCH_SCOPE_INVALID", "授权支派不存在或不属于当前宗族"));
+        String allowedPath = allowedBranch.getBranchPath();
+        return branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream()
+                .filter(branch -> branch.getBranchPath() != null && (branch.getBranchPath().equals(allowedPath) || branch.getBranchPath().startsWith(allowedPath + "/")))
+                .map(BranchEntity::getId)
+                .toList();
     }
 
     private PersonResponse toPrivacyAwareResponse(PersonEntity entity, Long viewerId) {

@@ -64,14 +64,20 @@ public class SourceEvidenceController {
     @GetMapping("/source-bindings")
     public ApiResponse<List<SourceBindingResponse>> listByTarget(
             @RequestParam String targetType,
-            @Positive @RequestParam Long targetId
+            @Positive @RequestParam Long targetId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
-        return ApiResponse.success(sourceEvidenceApplicationService.listByTarget(targetType, targetId));
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(sourceEvidenceApplicationService.listByTarget(targetType, targetId, userId));
     }
 
     @GetMapping("/sources/{sourceId}/bindings")
-    public ApiResponse<List<SourceBindingResponse>> listBySource(@Positive @PathVariable Long sourceId) {
-        return ApiResponse.success(sourceEvidenceApplicationService.listBySource(sourceId));
+    public ApiResponse<List<SourceBindingResponse>> listBySource(
+            @Positive @PathVariable Long sourceId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(sourceEvidenceApplicationService.listBySource(sourceId, userId));
     }
 
     @DeleteMapping("/source-bindings/{bindingId}")
