@@ -122,39 +122,57 @@ public class AuthorizationApplicationService {
         if (crossClanAdmin.isPresent()) {
             return crossClanAdmin.get();
         }
-        Long primaryClanId = primaryClanId(userId).orElse(null);
-        if (primaryClanId == null || !primaryClanId.equals(clanId)) {
-            throw new BusinessException("AUTH_FORBIDDEN", "当前用户无权访问该宗族");
-        }
-        return findActiveMemberInClan(clanId, userId)
+        requirePrimaryClan(clanId, userId);
+        return activeMembersInClan(clanId, userId).stream()
+                .findFirst()
                 .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
     }
 
     @Transactional(readOnly = true)
     public ClanMemberEntity requirePermission(Long clanId, Long userId, String permissionCode) {
-        ClanMemberEntity member = requireClanMember(clanId, userId);
-        String actualRoleCode = roleCode(member);
-        if (!roleAllows(actualRoleCode, permissionCode)) {
-            throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限执行该操作");
+        if (userId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
-        return member;
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent() && roleAllows(roleCode(crossClanAdmin.get()), permissionCode)) {
+            return crossClanAdmin.get();
+        }
+        requirePrimaryClan(clanId, userId);
+        return activeMembersInClan(clanId, userId).stream()
+                .filter(member -> roleAllows(roleCode(member), permissionCode))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "您暂无权限执行该操作"));
     }
 
     @Transactional(readOnly = true)
     public ClanMemberEntity requireBranchPermission(Long clanId, Long userId, Long branchId, String permissionCode) {
-        ClanMemberEntity member = requirePermission(clanId, userId, permissionCode);
-        String actualRoleCode = roleCode(member);
-        if (ROLE_CROSS_CLAN_ADMIN.equals(actualRoleCode) || member.getScopeType() == MemberScopeType.clan) {
-            return member;
+        if (userId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
+        }
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent() && roleAllows(roleCode(crossClanAdmin.get()), permissionCode)) {
+            return crossClanAdmin.get();
+        }
+        requirePrimaryClan(clanId, userId);
+        List<ClanMemberEntity> candidates = activeMembersInClan(clanId, userId).stream()
+                .filter(member -> roleAllows(roleCode(member), permissionCode))
+                .toList();
+        if (candidates.isEmpty()) {
+            throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限执行该操作");
+        }
+        Optional<ClanMemberEntity> clanScoped = candidates.stream()
+                .filter(member -> member.getScopeType() == MemberScopeType.clan)
+                .findFirst();
+        if (clanScoped.isPresent()) {
+            return clanScoped.get();
         }
         if (branchId == null) {
             throw new BusinessException("AUTH_BRANCH_SCOPE_REQUIRED", "该操作需要明确授权支派范围");
         }
-        Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
-        if (!isBranchInScope(clanId, branchId, allowedBranchId, member.getScopeType())) {
-            throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
-        }
-        return member;
+        return candidates.stream()
+                .filter(member -> isMemberBranchInScope(clanId, member, branchId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据"));
     }
 
     @Transactional(readOnly = true)
@@ -173,39 +191,59 @@ public class AuthorizationApplicationService {
 
     @Transactional(readOnly = true)
     public ClanMemberEntity requireAnyRole(Long clanId, Long userId, String... roleCodes) {
-        ClanMemberEntity member = requireClanMember(clanId, userId);
-        String actualRoleCode = roleCode(member);
-        if (ROLE_CROSS_CLAN_ADMIN.equals(actualRoleCode)) {
-            return member;
+        if (userId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent()) {
+            return crossClanAdmin.get();
+        }
+        requirePrimaryClan(clanId, userId);
         Set<String> allowed = Arrays.stream(roleCodes).collect(Collectors.toSet());
-        if (!allowed.contains(actualRoleCode)) {
-            throw new BusinessException("AUTH_FORBIDDEN", "当前角色无权执行该操作");
-        }
-        return member;
+        return activeMembersInClan(clanId, userId).stream()
+                .filter(member -> allowed.contains(roleCode(member)))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前角色无权执行该操作"));
     }
 
     @Transactional(readOnly = true)
     public ClanMemberEntity requireBranchWriteScope(Long clanId, Long userId, Long branchId) {
-        ClanMemberEntity member = requireClanMember(clanId, userId);
-        String actualRoleCode = roleCode(member);
-        if (ROLE_CROSS_CLAN_ADMIN.equals(actualRoleCode) || ROLE_CLAN_ADMIN.equals(actualRoleCode)) {
-            return member;
+        if (userId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
-        if (!ROLE_BRANCH_ADMIN.equals(actualRoleCode) && !ROLE_EDITOR.equals(actualRoleCode)) {
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent()) {
+            return crossClanAdmin.get();
+        }
+        requirePrimaryClan(clanId, userId);
+        Optional<ClanMemberEntity> clanAdmin = activeMembersInClan(clanId, userId).stream()
+                .filter(member -> ROLE_CLAN_ADMIN.equals(roleCode(member)))
+                .findFirst();
+        if (clanAdmin.isPresent()) {
+            return clanAdmin.get();
+        }
+        List<ClanMemberEntity> candidates = activeMembersInClan(clanId, userId).stream()
+                .filter(member -> {
+                    String actualRoleCode = roleCode(member);
+                    return ROLE_BRANCH_ADMIN.equals(actualRoleCode) || ROLE_EDITOR.equals(actualRoleCode);
+                })
+                .toList();
+        if (candidates.isEmpty()) {
             throw new BusinessException("AUTH_FORBIDDEN", "当前角色无权维护该支派数据");
         }
-        if (member.getScopeType() == MemberScopeType.clan) {
-            return member;
+        Optional<ClanMemberEntity> clanScoped = candidates.stream()
+                .filter(member -> member.getScopeType() == MemberScopeType.clan)
+                .findFirst();
+        if (clanScoped.isPresent()) {
+            return clanScoped.get();
         }
         if (branchId == null) {
             throw new BusinessException("AUTH_BRANCH_SCOPE_REQUIRED", "该操作需要明确授权支派范围");
         }
-        Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
-        if (!isBranchInScope(clanId, branchId, allowedBranchId, member.getScopeType())) {
-            throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
-        }
-        return member;
+        return candidates.stream()
+                .filter(member -> isMemberBranchInScope(clanId, member, branchId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据"));
     }
 
     @Transactional(readOnly = true)
@@ -232,7 +270,7 @@ public class AuthorizationApplicationService {
             return true;
         }
         return primaryClanId(userId).filter(clanId::equals).isPresent()
-                && findActiveMemberInClan(clanId, userId).isPresent();
+                && !activeMembersInClan(clanId, userId).isEmpty();
     }
 
     @Transactional(readOnly = true)
@@ -265,12 +303,20 @@ public class AuthorizationApplicationService {
         }
     }
 
-    private Optional<ClanMemberEntity> findActiveMemberInClan(Long clanId, Long userId) {
-        if (clanId == null || userId == null) {
-            return Optional.empty();
+    private void requirePrimaryClan(Long clanId, Long userId) {
+        Long primaryClanId = primaryClanId(userId).orElse(null);
+        if (primaryClanId == null || !primaryClanId.equals(clanId)) {
+            throw new BusinessException("AUTH_FORBIDDEN", "当前用户无权访问该宗族");
         }
-        return clanMemberRepository.findByClanIdAndUserId(clanId, userId)
-                .filter(member -> member.getMemberStatus() == MemberStatus.active);
+    }
+
+    private List<ClanMemberEntity> activeMembersInClan(Long clanId, Long userId) {
+        if (clanId == null || userId == null) {
+            return List.of();
+        }
+        return rawActiveMemberships(userId).stream()
+                .filter(member -> clanId.equals(member.getClanId()))
+                .toList();
     }
 
     private Optional<ClanMemberEntity> findActiveCrossClanAdminMember(Long userId) {
@@ -294,6 +340,11 @@ public class AuthorizationApplicationService {
                         .comparing((ClanMemberEntity member) -> member.getJoinedAt() == null ? LocalDateTime.MAX : member.getJoinedAt())
                         .thenComparing(ClanMemberEntity::getId))
                 .toList();
+    }
+
+    private boolean isMemberBranchInScope(Long clanId, ClanMemberEntity member, Long branchId) {
+        Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
+        return isBranchInScope(clanId, branchId, allowedBranchId, member.getScopeType());
     }
 
     private boolean isBranchInScope(Long clanId, Long branchId, Long allowedBranchId, MemberScopeType scopeType) {
