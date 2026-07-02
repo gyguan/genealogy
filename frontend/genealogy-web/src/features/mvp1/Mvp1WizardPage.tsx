@@ -34,7 +34,7 @@ type RefreshOptions = {
 
 const stepOrder: { key: StepKey; title: string; desc: string }[] = [
   { key: 'clan', title: '1. 创建宗族', desc: '独立创建宗族，创建后自动带入支派步骤。' },
-  { key: 'branch', title: '2. 建立支派', desc: '在表单中选择宗族后建立支派。' },
+  { key: 'branch', title: '2. 建立支派', desc: '在表单中选择宗族后建立支派，可连续追加创建。' },
   { key: 'generation', title: '3. 维护字辈', desc: '在表单中选择宗族、支派和字辈方案。' },
   { key: 'person', title: '4. 录入人物', desc: '在表单中选择支派和字辈后录入人物。' },
   { key: 'relationship', title: '5. 建立关系', desc: '在表单中选择中心人物后维护亲属关系。' },
@@ -151,11 +151,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   const treeEdges = toRecordList<any>(snapshot.tree?.edges || []);
 
   const selectedClan = useMemo(() => clans.find(item => String(item.id) === workspace.clanId), [clans, workspace.clanId]);
-  const selectedBranch = useMemo(() => branches.find(item => String(item.id) === String(personForm.branchId || workspace.branchId)), [branches, personForm.branchId, workspace.branchId]);
   const selectedPerson = useMemo(() => persons.find(item => String(item.id) === workspace.personId), [persons, workspace.personId]);
-  const selectedSource = useMemo(() => sources.find(item => String(item.id) === workspace.sourceId), [sources, workspace.sourceId]);
-  const selectedRelationship = useMemo(() => relationships.find(item => String(item.id) === workspace.relationshipId), [relationships, workspace.relationshipId]);
-  const selectedReviewTask = useMemo(() => tasks.find(item => String(item.id) === workspace.reviewTaskId), [tasks, workspace.reviewTaskId]);
 
   const steps = useMemo(() => [
     { ...stepOrder[0], ready: Boolean(workspace.clanId) },
@@ -363,20 +359,23 @@ export function Mvp1WizardPage({ notify }: Props) {
     }
   }
 
-  async function createBranch() {
+  async function createBranch(append = false) {
     await run(async () => {
       if (!workspace.clanId) throw new Error(clans.length > 1 ? '请选择宗族' : '请先创建或选择宗族');
       if (!branchForm.branchName.trim()) throw new Error('请填写支派名称');
+      const parentId = branchForm.parentId;
       const data: any = await apiClient.post(`/clans/${workspace.clanId}/branches`, {
         branchName: branchForm.branchName.trim(),
-        parentId: branchForm.parentId ? Number(branchForm.parentId) : null
+        parentId: parentId ? Number(parentId) : null
       });
       const nextBranchId = String(data?.id || '');
       await refresh({ clanId: workspace.clanId, branchId: nextBranchId });
-      setBranchForm({ branchName: '', parentId: '' });
+      setBranchForm({ branchName: '', parentId: append ? parentId : '' });
       setPersonForm(prev => ({ ...prev, branchId: nextBranchId }));
-      setActive('generation');
-      return makeNotice('支派创建成功，已带入维护字辈步骤', data?.id);
+      if (!append) {
+        setActive('generation');
+      }
+      return makeNotice(append ? '支派创建成功，可继续追加创建支派' : '支派创建成功，已带入维护字辈步骤', data?.id);
     });
   }
 
@@ -619,7 +618,6 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Actions>
               <button disabled={loading} onClick={createClan}>创建宗族</button>
-              <button className="secondary" disabled={loading} onClick={() => void refresh()}>刷新选项</button>
             </Actions>
           </Panel>
         );
@@ -633,8 +631,8 @@ export function Mvp1WizardPage({ notify }: Props) {
               <Field label="系统生成编号"><input value="保存后自动生成" disabled readOnly /></Field>
             </div>
             <Actions>
-              <button disabled={loading || !workspace.clanId} onClick={() => void createBranch()}>创建支派</button>
-              <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId })}>刷新选项</button>
+              <button disabled={loading || !workspace.clanId} onClick={() => void createBranch(false)}>创建支派</button>
+              <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void createBranch(true)}>追加创建支派</button>
             </Actions>
           </Panel>
         );
@@ -653,7 +651,6 @@ export function Mvp1WizardPage({ notify }: Props) {
             <Actions>
               <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={createScheme}>创建字辈方案</button>
               <button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button>
-              <button className="secondary" disabled={!schemeForm.schemeId} onClick={() => void run(async () => { const items = await loadGenerationItems(schemeForm.schemeId); setSnapshot(prev => ({ ...prev, generationItems: items })); return makeNotice('字辈明细已刷新'); })}>刷新字辈</button>
             </Actions>
           </Panel>
         );
