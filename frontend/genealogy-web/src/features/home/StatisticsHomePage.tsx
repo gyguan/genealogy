@@ -4,7 +4,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { DataTable, toRecordList } from '../../shared/ui/DataTable';
 
-type DrillKey = 'clans' | 'branches' | 'people' | 'sources' | 'pendingReviews' | 'logs' | `gender:${string}` | `status:${string}` | `generation:${string}` | `sourceType:${string}` | `living:${string}`;
+type DrillKey = 'clans' | 'branches' | 'people' | 'sources' | 'pendingReviews' | 'logs' | 'generationReady' | 'vitalReady' | 'biographyReady' | 'migrationBranches' | 'branchCovered' | `gender:${string}` | `status:${string}` | `generation:${string}` | `sourceType:${string}` | `living:${string}`;
 
 type HomeSnapshot = {
   clans: any[];
@@ -88,6 +88,10 @@ function firstNonEmpty(...values: unknown[]) {
     if (text) return text;
   }
   return '';
+}
+
+function hasText(value: unknown) {
+  return Boolean(String(value ?? '').trim());
 }
 
 function maxValue(items: ChartItem[]) {
@@ -285,36 +289,29 @@ export function StatisticsHomePage() {
     status: display(source.verificationStatus || source.status, '待复核')
   })), [snapshot.sources]);
 
-  const genderItems = useMemo(() => countBy(snapshot.people, row => genderText(row.gender || row.sex)).map(item => ({ ...item, key: `gender:${item.label}` as DrillKey })), [snapshot.people]);
-  const statusItems = useMemo(() => countBy(snapshot.people, row => statusText(row.dataStatus || row.status || row.reviewStatus)).map(item => ({ ...item, key: `status:${item.label}` as DrillKey })), [snapshot.people]);
   const generationItems = useMemo(() => countBy(snapshot.people, row => row.generationNo ? `${row.generationNo}世` : '未维护').slice(0, 8).map(item => ({ ...item, key: `generation:${item.label}` as DrillKey })), [snapshot.people]);
-  const sourceTypeItems = useMemo(() => countBy(snapshot.sources, row => sourceTypeText(row.sourceType || row.category)).map(item => ({ ...item, key: `sourceType:${item.label}` as DrillKey })), [snapshot.sources]);
 
-  const coreItems: ChartItem[] = [
-    { key: 'people', label: '族人', value: snapshot.peopleTotal },
-    { key: 'branches', label: '支派', value: snapshot.branches.length },
-    { key: 'sources', label: '资料', value: snapshot.sources.length },
-    { key: 'pendingReviews', label: '待审核', value: snapshot.pendingReviews.length },
-    { key: 'clans', label: '宗族', value: snapshot.clans.length }
-  ];
-
-  const officialCount = snapshot.people.filter(row => statusText(row.dataStatus || row.status || row.reviewStatus) === '正式').length;
   const livingCount = snapshot.people.filter(row => livingText(row.isLiving) === '在世').length;
   const deceasedCount = snapshot.people.filter(row => livingText(row.isLiving) === '已故').length;
-  const logCount = snapshot.logStats?.totalCount ?? snapshot.logStats?.total ?? '-';
+  const generationReadyCount = snapshot.people.filter(row => row.generationNo || row.generationWord).length;
+  const vitalReadyCount = snapshot.people.filter(row => row.birthDate || row.deathDate).length;
+  const biographyReadyCount = snapshot.people.filter(row => hasText(row.biography) || hasText(row.epitaph) || hasText(row.titleOrHonor)).length;
+  const migrationBranchCount = snapshot.branches.filter(row => row.migrationFrom || row.migrationTo).length;
+  const coveredBranchCount = snapshot.branches.filter(row => branchPersonCounts.get(String(row.id))).length;
 
   const cards: { key: DrillKey; label: string; value: number | string; hint: string }[] = [
-    { key: 'people', label: '族人总数', value: snapshot.peopleTotal, hint: '点击查看人物明细' },
-    { key: 'branches', label: '支派数量', value: snapshot.branches.length, hint: '点击查看支派' },
-    { key: 'sources', label: '资料来源', value: snapshot.sources.length, hint: '点击查看资料' },
-    { key: 'pendingReviews', label: '待审核', value: snapshot.pendingReviews.length, hint: '点击查看任务' },
-    { key: 'clans', label: '宗族空间', value: snapshot.clans.length, hint: '点击查看宗族' },
-    { key: 'status:正式', label: '正式入谱', value: officialCount, hint: '点击查看正式人物' },
-    { key: 'gender:男', label: '男性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '男').length, hint: '点击按性别下钻' },
-    { key: 'gender:女', label: '女性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '女').length, hint: '点击按性别下钻' },
-    { key: 'living:在世', label: '在世人员', value: livingCount, hint: '点击查看在世人员' },
-    { key: 'living:已故', label: '已故人员', value: deceasedCount, hint: '点击查看已故人员' },
-    { key: 'logs', label: '操作日志', value: logCount, hint: '点击查看日志统计' }
+    { key: 'people', label: '族人总数', value: snapshot.peopleTotal, hint: '查看人物明细' },
+    { key: 'branches', label: '支派数量', value: snapshot.branches.length, hint: '查看支派' },
+    { key: 'clans', label: '宗族空间', value: snapshot.clans.length, hint: '查看宗族' },
+    { key: 'gender:男', label: '男性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '男').length, hint: '查看男性族人' },
+    { key: 'gender:女', label: '女性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '女').length, hint: '查看女性族人' },
+    { key: 'living:在世', label: '在世人员', value: livingCount, hint: '查看在世人员' },
+    { key: 'living:已故', label: '已故人员', value: deceasedCount, hint: '查看已故人员' },
+    { key: 'generationReady', label: '已维护字辈', value: generationReadyCount, hint: '查看已维护字辈人物' },
+    { key: 'vitalReady', label: '已维护生卒', value: vitalReadyCount, hint: '查看有生卒信息人物' },
+    { key: 'biographyReady', label: '有传记人物', value: biographyReadyCount, hint: '查看已维护传记人物' },
+    { key: 'migrationBranches', label: '有迁徙支派', value: migrationBranchCount, hint: '查看迁徙支派' },
+    { key: 'branchCovered', label: '已覆盖支派', value: `${coveredBranchCount}/${snapshot.branches.length}`, hint: '查看已有族人的支派' }
   ];
 
   function detailRows() {
@@ -324,6 +321,11 @@ export function StatisticsHomePage() {
     if (activeDrill === 'sources') return snapshot.sources;
     if (activeDrill === 'pendingReviews') return snapshot.pendingReviews;
     if (activeDrill === 'logs') return snapshot.logStats ? [snapshot.logStats] : [];
+    if (activeDrill === 'generationReady') return snapshot.people.filter(row => row.generationNo || row.generationWord);
+    if (activeDrill === 'vitalReady') return snapshot.people.filter(row => row.birthDate || row.deathDate);
+    if (activeDrill === 'biographyReady') return snapshot.people.filter(row => hasText(row.biography) || hasText(row.epitaph) || hasText(row.titleOrHonor));
+    if (activeDrill === 'migrationBranches') return snapshot.branches.filter(row => row.migrationFrom || row.migrationTo);
+    if (activeDrill === 'branchCovered') return snapshot.branches.filter(row => branchPersonCounts.get(String(row.id)));
     if (activeDrill.startsWith('gender:')) {
       const target = activeDrill.replace('gender:', '');
       return snapshot.people.filter(row => genderText(row.gender || row.sex) === target);
@@ -354,16 +356,21 @@ export function StatisticsHomePage() {
     if (activeDrill === 'sources') return '资料明细';
     if (activeDrill === 'pendingReviews') return '待审核明细';
     if (activeDrill === 'logs') return '日志统计';
+    if (activeDrill === 'generationReady') return '已维护字辈人物';
+    if (activeDrill === 'vitalReady') return '已维护生卒人物';
+    if (activeDrill === 'biographyReady') return '有传记人物';
+    if (activeDrill === 'migrationBranches') return '有迁徙信息支派';
+    if (activeDrill === 'branchCovered') return '已有族人的支派';
     return activeDrill.replace('gender:', '性别：').replace('status:', '状态：').replace('generation:', '代次：').replace('sourceType:', '资料类型：').replace('living:', '在世状态：');
   }
 
   function detailColumns() {
     if (activeDrill === 'clans') return [{ key: 'id', title: 'ID' }, { key: 'clanName', title: '宗族名称' }, { key: 'surname', title: '姓氏' }, { key: 'hallName', title: '堂号' }, { key: 'commandery', title: '郡望' }, { key: 'originPlace', title: '祖籍/发源地' }];
-    if (activeDrill === 'branches') return [{ key: 'id', title: 'ID' }, { key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派' }, { key: 'migrationFrom', title: '迁徙来源' }, { key: 'migrationTo', title: '迁徙去向' }, { key: 'status', title: '状态' }];
+    if (activeDrill === 'branches' || activeDrill === 'migrationBranches' || activeDrill === 'branchCovered') return [{ key: 'id', title: 'ID' }, { key: 'branchName', title: '支派名称' }, { key: 'parentId', title: '父支派' }, { key: 'migrationFrom', title: '迁徙来源' }, { key: 'migrationTo', title: '迁徙去向' }, { key: 'status', title: '状态' }];
     if (activeDrill === 'sources' || activeDrill.startsWith('sourceType:')) return [{ key: 'id', title: 'ID' }, { key: 'sourceName', title: '资料名称' }, { key: 'sourceType', title: '类型', render: (row: any) => sourceTypeText(row.sourceType || row.category) }, { key: 'verificationStatus', title: '状态' }];
     if (activeDrill === 'pendingReviews') return [{ key: 'id', title: '任务ID' }, { key: 'targetType', title: '对象类型' }, { key: 'targetId', title: '对象ID' }, { key: 'status', title: '状态' }];
     if (activeDrill === 'logs') return [{ key: 'totalCount', title: '总数', render: (row: any) => display(row.totalCount ?? row.total) }, { key: 'todayCount', title: '今日', render: (row: any) => display(row.todayCount) }, { key: 'successCount', title: '成功', render: (row: any) => display(row.successCount) }, { key: 'failureCount', title: '失败', render: (row: any) => display(row.failureCount) }];
-    return [{ key: 'id', title: 'ID' }, { key: 'name', title: '姓名', render: (row: any) => display(row.name || row.personName) }, { key: 'gender', title: '性别', render: (row: any) => genderText(row.gender || row.sex) }, { key: 'generationNo', title: '代次', render: (row: any) => row.generationNo ? `${row.generationNo}世` : '-' }, { key: 'generationWord', title: '字辈' }, { key: 'isLiving', title: '在世状态', render: (row: any) => livingText(row.isLiving) }, { key: 'dataStatus', title: '状态', render: (row: any) => statusText(row.dataStatus || row.status || row.reviewStatus) }];
+    return [{ key: 'id', title: 'ID' }, { key: 'name', title: '姓名', render: (row: any) => display(row.name || row.personName) }, { key: 'gender', title: '性别', render: (row: any) => genderText(row.gender || row.sex) }, { key: 'generationNo', title: '代次', render: (row: any) => row.generationNo ? `${row.generationNo}世` : '-' }, { key: 'generationWord', title: '字辈' }, { key: 'isLiving', title: '在世状态', render: (row: any) => livingText(row.isLiving) }, { key: 'birthDate', title: '出生日期' }, { key: 'deathDate', title: '逝世日期' }];
   }
 
   function openDrill(key: DrillKey) {
@@ -482,11 +489,8 @@ export function StatisticsHomePage() {
         ))}
       </section>
 
-      <section className="home-chart-grid">
-        <MiniBarChart title="核心数据分布" items={coreItems} activeKey={activeDrill} onSelect={openDrill} />
-        <MiniBarChart title="人物状态分布" items={statusItems} activeKey={activeDrill} onSelect={openDrill} />
+      <section className="home-chart-grid home-chart-grid--business">
         <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={openDrill} />
-        <MiniBarChart title="资料类型分布" items={sourceTypeItems} activeKey={activeDrill} onSelect={openDrill} />
       </section>
 
       <Modal
