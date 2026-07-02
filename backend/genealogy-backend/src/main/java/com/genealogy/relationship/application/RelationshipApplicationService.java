@@ -44,11 +44,23 @@ public class RelationshipApplicationService {
     private static final String LABEL_HEIR_SUCCESSOR = "heir_successor";
     private static final String LABEL_OUT_ADOPTED = "out_adopted";
 
+    private static final String PRIVACY_PUBLIC = "public";
+    private static final String PRIVACY_CLAN_ONLY = "clan_only";
+    private static final String PRIVACY_BRANCH_ONLY = "branch_only";
+    private static final String PRIVACY_RELATIVES_ONLY = "relatives_only";
+    private static final String PRIVACY_PRIVATE = "private";
+    private static final String PRIVACY_SEALED = "sealed";
+    private static final String DEFAULT_PRIVACY_LEVEL = "clan_only";
+    private static final String DEFAULT_LIVING_PRIVACY_LEVEL = "branch_only";
+
     private static final String RELATIONSHIP_VIEW = "relationship:view";
     private static final String RELATIONSHIP_CREATE = "relationship:create";
     private static final String RELATIONSHIP_UPDATE = "relationship:update";
     private static final String RELATIONSHIP_DELETE = "relationship:delete";
     private static final String RELATIONSHIP_CHECK_CONFLICT = "relationship:check_conflict";
+    private static final String PERSON_VIEW = "person:view";
+    private static final String PERSON_UPDATE = "person:update";
+    private static final String PERSON_DELETE = "person:delete";
 
     private static final Set<String> ALLOWED_RELATION_TYPES = Set.of(
             TYPE_PARENT_CHILD, TYPE_SPOUSE, TYPE_ADOPTIVE, TYPE_SUCCESSOR, TYPE_OUT_ADOPTION
@@ -110,6 +122,9 @@ public class RelationshipApplicationService {
         RelationshipEntity entity = getActiveEntity(id);
         PersonEntity from = getActivePerson(entity.getFromPersonId());
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, from.getBranchId(), RELATIONSHIP_VIEW);
+        if (!canExposeRelationship(entity, actorId)) {
+            throw new BusinessException("RELATIONSHIP_PRIVACY_FORBIDDEN", "该亲属关系涉及受保护人物，当前用户无权查看");
+        }
         return RelationshipMapper.toResponse(entity);
     }
 
@@ -123,7 +138,10 @@ public class RelationshipApplicationService {
     public List<RelationshipResponse> listByPerson(Long personId, Long actorId) {
         PersonEntity person = getActivePerson(personId);
         authorizationApplicationService.requireBranchPermission(person.getClanId(), actorId, person.getBranchId(), RELATIONSHIP_VIEW);
-        return listActiveRelationships(personId).stream().map(RelationshipMapper::toResponse).toList();
+        return listActiveRelationships(personId).stream()
+                .filter(relationship -> canExposeRelationship(relationship, actorId))
+                .map(RelationshipMapper::toResponse)
+                .toList();
     }
 
     @Transactional
@@ -183,6 +201,59 @@ public class RelationshipApplicationService {
         relationships.addAll(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(personId));
         relationships.addAll(relationshipRepository.findByToPersonIdAndDeletedAtIsNull(personId));
         return relationships;
+    }
+
+    private boolean canExposeRelationship(RelationshipEntity relationship, Long actorId) {
+        if (!isSensitiveFamilyRelation(relationship)) {
+            return true;
+        }
+        PersonEntity from = getActivePerson(relationship.getFromPersonId());
+        PersonEntity to = getActivePerson(relationship.getToPersonId());
+        return canViewFamilyRelationForPerson(from, actorId) && canViewFamilyRelationForPerson(to, actorId);
+    }
+
+    private boolean isSensitiveFamilyRelation(RelationshipEntity relationship) {
+        return TYPE_SPOUSE.equals(relationship.getRelationType())
+                || TYPE_PARENT_CHILD.equals(relationship.getRelationType())
+                || TYPE_ADOPTIVE.equals(relationship.getRelationType())
+                || TYPE_SUCCESSOR.equals(relationship.getRelationType());
+    }
+
+    private boolean canViewFamilyRelationForPerson(PersonEntity person, Long actorId) {
+        String privacyLevel = normalizePrivacyLevel(person);
+        if (PRIVACY_PUBLIC.equals(privacyLevel)) {
+            return true;
+        }
+        if (actorOwnsRecord(person, actorId)) {
+            return true;
+        }
+        if (PRIVACY_SEALED.equals(privacyLevel)) {
+            return authorizationApplicationService.can(person.getClanId(), actorId, PERSON_DELETE);
+        }
+        if (PRIVACY_PRIVATE.equals(privacyLevel) || PRIVACY_RELATIVES_ONLY.equals(privacyLevel)) {
+            return authorizationApplicationService.can(person.getClanId(), actorId, PERSON_UPDATE);
+        }
+        if (PRIVACY_BRANCH_ONLY.equals(privacyLevel)) {
+            try {
+                authorizationApplicationService.requireBranchPermission(person.getClanId(), actorId, person.getBranchId(), PERSON_VIEW);
+                return true;
+            } catch (BusinessException ignored) {
+                return false;
+            }
+        }
+        return PRIVACY_CLAN_ONLY.equals(privacyLevel) && authorizationApplicationService.isActiveClanMember(person.getClanId(), actorId);
+    }
+
+    private String normalizePrivacyLevel(PersonEntity person) {
+        String privacyLevel = person.getPrivacyLevel();
+        if (privacyLevel == null || privacyLevel.isBlank()) {
+            return Boolean.TRUE.equals(person.getIsLiving()) ? DEFAULT_LIVING_PRIVACY_LEVEL : DEFAULT_PRIVACY_LEVEL;
+        }
+        return privacyLevel.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean actorOwnsRecord(PersonEntity person, Long actorId) {
+        return actorId != null && (actorId.equals(person.getCreatedBy()) || actorId.equals(person.getUpdatedBy()));
     }
 
     private void requireRelationshipBranchPermission(Long clanId, Long actorId, Long fromPersonId, Long toPersonId, String permissionCode) {
@@ -418,6 +489,7 @@ public class RelationshipApplicationService {
         reverse.setIsLineageRelation(false);
         reverse.setIsBiological(false);
         reverse.setIsPrimary(false);
+        reverse.setDescription("auto reverse spouse relationship");
         reverse.setConfidenceLevel(saved.getConfidenceLevel());
         reverse.setDataStatus(saved.getDataStatus());
         reverse.setDescription("auto reverse spouse relationship");
