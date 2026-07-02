@@ -151,7 +151,7 @@ public class AuthorizationApplicationService {
             throw new BusinessException("AUTH_BRANCH_SCOPE_REQUIRED", "该操作需要明确授权支派范围");
         }
         Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
-        if (!isBranchInScope(clanId, branchId, allowedBranchId)) {
+        if (!isBranchInScope(clanId, branchId, allowedBranchId, member.getScopeType())) {
             throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
         }
         return member;
@@ -202,7 +202,7 @@ public class AuthorizationApplicationService {
             throw new BusinessException("AUTH_BRANCH_SCOPE_REQUIRED", "该操作需要明确授权支派范围");
         }
         Long allowedBranchId = member.getScopeId() == null ? member.getBranchId() : member.getScopeId();
-        if (!isBranchInScope(clanId, branchId, allowedBranchId)) {
+        if (!isBranchInScope(clanId, branchId, allowedBranchId, member.getScopeType())) {
             throw new BusinessException("AUTH_BRANCH_SCOPE_FORBIDDEN", "当前用户无权维护该支派范围的数据");
         }
         return member;
@@ -296,12 +296,15 @@ public class AuthorizationApplicationService {
                 .toList();
     }
 
-    private boolean isBranchInScope(Long clanId, Long branchId, Long allowedBranchId) {
+    private boolean isBranchInScope(Long clanId, Long branchId, Long allowedBranchId, MemberScopeType scopeType) {
         if (branchId == null || allowedBranchId == null) {
             return false;
         }
         if (allowedBranchId.equals(branchId)) {
             return true;
+        }
+        if (scopeType != MemberScopeType.branch_subtree) {
+            return false;
         }
         BranchEntity allowedBranch = branchRepository.findByIdAndClanId(allowedBranchId, clanId)
                 .orElseThrow(() -> new BusinessException("AUTH_BRANCH_SCOPE_INVALID", "授权支派不存在或不属于当前宗族"));
