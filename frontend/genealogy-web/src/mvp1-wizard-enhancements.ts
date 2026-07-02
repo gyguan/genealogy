@@ -6,6 +6,14 @@ function findClanWizardPanel() {
   }) || null;
 }
 
+function findPersonWizardPanel() {
+  const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
+  return panels.find(panel => {
+    const text = panel.textContent || '';
+    return text.includes('录入人物') && text.includes('创建人物，继续录入') && text.includes('创建人物并进入关系');
+  }) || null;
+}
+
 function selectedClanName(panel: HTMLElement) {
   const clanId = localStorage.getItem('genealogy.workspace.clanId') || '';
   if (!clanId) return '';
@@ -38,8 +46,29 @@ function ensureSelectedClanBanner() {
   if (strong) strong.textContent = selectedClanName(panel) || '未选择';
 }
 
+function simplifyPersonEntryStep() {
+  const panel = findPersonWizardPanel();
+  if (!panel) return;
+
+  const buttons = Array.from(panel.querySelectorAll<HTMLButtonElement>('button'));
+  buttons.forEach(button => {
+    if ((button.textContent || '').includes('刷新人物')) {
+      button.style.display = 'none';
+    }
+  });
+
+  panel.querySelectorAll<HTMLElement>('.antd-table-wrap, .table-wrap').forEach(table => {
+    table.style.display = 'none';
+  });
+}
+
+function syncMvp1WizardEnhancements() {
+  ensureSelectedClanBanner();
+  simplifyPersonEntryStep();
+}
+
 function installMvp1WizardEnhancements() {
-  const sync = () => requestAnimationFrame(ensureSelectedClanBanner);
+  const sync = () => requestAnimationFrame(syncMvp1WizardEnhancements);
 
   sync();
 
