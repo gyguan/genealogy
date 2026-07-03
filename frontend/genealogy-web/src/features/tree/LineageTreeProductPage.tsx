@@ -236,6 +236,13 @@ export function LineageTreeProductPage({ notify }: Props) {
     resetBranchLineage();
   }
 
+  function resetSearch() {
+    setSearchKeyword('');
+    setSearchNotice('');
+    workspace.patch({ personId: '', relationshipId: '' });
+    resetLineage();
+  }
+
   function validIdInRows(id: string, list: any[]) {
     return Boolean(id) && list.some(item => String(item.id) === String(id));
   }
@@ -443,7 +450,7 @@ export function LineageTreeProductPage({ notify }: Props) {
           <Field label="支派范围"><select value={selectedBranchId} onChange={e => void handleBranchChange(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}</option>)}</select></Field>
           <Field label="搜索人物"><input value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="输入姓名、谱名、字号" /></Field>
           <Field label="展开深度"><select value={depth} onChange={e => setDepth(e.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
-          <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索人物'}</button><button className="secondary" disabled={loading || !selectedBranchId} onClick={() => void run(() => loadBranchLineage(selectedBranchId))}>{loading ? '生成中...' : '刷新支派'}</button></Actions>
+          <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button><button className="secondary" disabled={loading && !searchKeyword && !center} onClick={resetSearch}>重置</button></Actions>
         </div>
         {searchNotice ? <div className="lineage-search-hint">{searchNotice}</div> : null}
       </Panel>
