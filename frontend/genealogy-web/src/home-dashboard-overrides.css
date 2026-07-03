@@ -26,3 +26,64 @@
   background: rgba(255, 252, 245, 0.86);
   box-shadow: 0 16px 40px rgba(97, 68, 32, 0.08);
 }
+
+/* MVP 建谱向导：维护字辈步骤增强。 */
+.wizard-generation-scheme-field--moved {
+  order: -1;
+}
+
+.wizard-generation-items-list-enhanced {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(120, 90, 48, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.76);
+}
+
+.wizard-generation-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wizard-generation-list-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #5f4322;
+}
+
+.wizard-generation-list-header span {
+  color: rgba(95, 67, 34, 0.62);
+  font-size: 13px;
+}
+
+.wizard-generation-list-table-wrap {
+  overflow-x: auto;
+}
+
+.wizard-generation-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.wizard-generation-list-table th,
+.wizard-generation-list-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(120, 90, 48, 0.12);
+  text-align: left;
+}
+
+.wizard-generation-list-table th {
+  color: rgba(95, 67, 34, 0.72);
+  font-weight: 700;
+  background: rgba(255, 248, 233, 0.88);
+}
+
+.wizard-generation-list-table td.empty {
+  color: rgba(95, 67, 34, 0.56);
+  text-align: center;
+}
