@@ -1,7 +1,8 @@
 -- Retire legacy clan_member table after RBAC membership switch.
--- 1. Re-point branch.manager_member_id from legacy clan_member.id to new member_role.id when possible.
--- 2. Rename the legacy table to clan_member_legacy.
--- 3. Recreate clan_member as a read-only compatibility view over legacy data.
+-- branch.manager_member_id now points to member_role.id.
+
+alter table branch drop constraint if exists fk_branch_manager_member;
+alter table branch drop constraint if exists fk_branch_manager_member_role;
 
 update branch b
 set manager_member_id = mr.id,
@@ -17,6 +18,14 @@ join member_role mr
  and mr.scope_id = coalesce(cm.scope_id, case when cm.scope_type in ('branch', 'branch_subtree') then cm.branch_id else cm.clan_id end, cm.clan_id)
 where b.manager_member_id = cm.id
   and b.clan_id = cm.clan_id;
+
+update branch b
+set manager_member_id = null,
+    updated_at = now()
+where manager_member_id is not null
+  and not exists (
+      select 1 from member_role mr where mr.id = b.manager_member_id
+  );
 
 do $$
 begin
@@ -38,7 +47,18 @@ begin
     end if;
 end $$;
 
-comment on table clan_member_legacy is '旧版宗族成员/角色混合表，仅用于历史数据兼容；新写入请使用 clan_membership 与 member_role。';
+do $$
+begin
+    if exists (
+        select 1
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema()
+          and c.relname = 'clan_member_legacy'
+    ) then
+        comment on table clan_member_legacy is '旧版宗族成员/角色混合表，仅用于历史数据兼容；新写入请使用 clan_membership 与 member_role。';
+    end if;
+end $$;
 
 drop view if exists clan_member;
 
@@ -62,3 +82,9 @@ select
 from clan_member_legacy;
 
 comment on view clan_member is '旧版 clan_member 只读兼容视图；业务主链路已切换至 clan_membership 与 member_role。';
+
+alter table branch
+    add constraint fk_branch_manager_member_role
+    foreign key (manager_member_id) references member_role(id);
+
+comment on column branch.manager_member_id is '支派负责人授权ID，关联 member_role.id。';
