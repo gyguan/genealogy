@@ -13,6 +13,12 @@ function isTechnicalLabel(label: string) {
     || /编码|主键|技术标识|系统标识|校验值|SHA/i.test(label);
 }
 
+function optionSearchText(label: unknown) {
+  if (typeof label === 'string' || typeof label === 'number') return String(label);
+  if (Array.isArray(label)) return label.map(optionSearchText).join(' ');
+  return String(label ?? '');
+}
+
 function toAntdControl(child: ReactNode): ReactNode {
   if (!isValidElement<AnyProps>(child)) return child;
   if (typeof child.type !== 'string') return child;
@@ -24,8 +30,22 @@ function toAntdControl(child: ReactNode): ReactNode {
   if (child.type === 'select') {
     const options = Children.toArray(children)
       .filter(isValidElement)
-      .map(option => ({ label: (option as ReactElement<AnyProps>).props.children, value: String((option as ReactElement<AnyProps>).props.value ?? '') }));
-    return <Select {...props} value={props.value} options={options} onChange={value => emitValue(props.onChange, value)} />;
+      .map(option => ({
+        label: (option as ReactElement<AnyProps>).props.children,
+        value: String((option as ReactElement<AnyProps>).props.value ?? ''),
+        searchText: optionSearchText((option as ReactElement<AnyProps>).props.children)
+      }));
+    return (
+      <Select
+        showSearch
+        optionFilterProp="searchText"
+        filterOption={(input, option) => String(option?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
+        {...props}
+        value={props.value}
+        options={options}
+        onChange={value => emitValue(props.onChange, value)}
+      />
+    );
   }
   if (child.type === 'input') {
     return <Input {...props} value={props.value} onChange={props.onChange} />;
