@@ -57,7 +57,7 @@ const memberManagementBase = '/member-management';
 
 const roleAbilityText: Record<string, string[]> = {
   clan_admin: ['可管理宗族成员与支派', '可维护全宗族人物、关系、来源', '可处理导出与审计类高风险事项'],
-  branch_admin: ['可管理授权支派及下级支派资料', '可维护人物、关系、来源', '删除和审核通过仍需更高权限'],
+  branch_admin: ['可管理授权支派范围内资料', '可维护授权支派下人物、关系、来源', '删除和审核通过仍需更高权限'],
   editor: ['可录入和编辑授权范围内资料', '可提交入谱审核', '不可调整成员权限或直接审核通过'],
   reviewer: ['可查看待审内容', '可通过或驳回审核任务', '不可直接维护业务资料'],
   viewer: ['可查看允许范围内人物、世系和来源摘要', '不可新增、编辑、审核或导出']
@@ -116,7 +116,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     const type = row?.scopeType || scopeType;
     const targetBranchId = row ? (row.scopeId || row.branchId) : scopeBranchId;
     if (isBranchScope(type)) {
-      return branchName(targetBranchId) ? `${branchName(targetBranchId)}及下级支派` : '支派及下级支派';
+      return branchName(targetBranchId) ? `指定支派：${branchName(targetBranchId)}` : '指定支派';
     }
     return selectedClan?.clanName ? `全宗族：${selectedClan.clanName}` : '全宗族';
   }
@@ -233,7 +233,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   async function updateRole(member: MemberRow, nextRoleCode: string) {
     await run(async () => {
       if (!selectedClanId) throw new Error('请先选择宗族');
-      const nextScopeType = member.scopeType || 'clan';
+      const nextScopeType = isBranchScope(member.scopeType) ? 'branch' : 'clan';
       const nextScopeId = isBranchScope(nextScopeType) ? (member.scopeId || member.branchId) : Number(selectedClanId);
       await apiClient.put(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`, {
         roleCode: nextRoleCode,
@@ -243,6 +243,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         branchId: member.branchId || (isBranchScope(nextScopeType) ? nextScopeId : null)
       });
       notify({ message: '成员角色已更新' });
+      await listMembers(selectedClanId);
+    });
+  }
+
+  async function revokeRole(member: MemberRow) {
+    await run(async () => {
+      if (!selectedClanId) throw new Error('请先选择宗族');
+      await apiClient.delete(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`);
+      notify({ message: '成员授权已撤销' });
       await listMembers(selectedClanId);
     });
   }
@@ -279,7 +288,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         description="权限由宗族成员身份、角色动作、授权范围、隐私规则和审核流程共同决定。界面只展示宗族名称、支派名称和成员姓名，不需要用户填写技术 ID。"
       />
       <div className="page-grid two">
-        <Panel title="新增成员授权" description="按“选择宗族 → 选择成员 → 授权角色 → 授权范围”完成授权；支派管理员和编辑建议选择支派及下级支派范围。">
+        <Panel title="新增成员授权" description="按“选择宗族 → 选择成员 → 授权角色 → 授权范围”完成授权；支派管理员和编辑建议选择支派范围。">
           <Field label="宗族名称">
             <select value={selectedClanId} onChange={e => onClanChange(e.target.value)} disabled={loading || !clans.length}>
               <option value="">请选择宗族</option>
@@ -303,7 +312,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           <Field label="授权范围">
             <select value={scopeType} onChange={e => setScopeType(e.target.value)}>
               <option value="clan">全宗族</option>
-              <option value="branch_subtree">指定支派及下级支派</option>
+              <option value="branch">指定支派</option>
             </select>
           </Field>
           {isBranchScope(scopeType) ? (
@@ -342,7 +351,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
             { key: 'roleName', title: '角色', render: row => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
             { key: 'scopeType', title: '授权范围', render: row => scopeText(row) },
             { key: 'memberStatus', title: '状态', render: row => row.memberStatus === 'active' ? '有效' : row.memberStatus || '-' },
-            { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'clan_admin'); }}>设为宗族管理员</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'editor'); }}>设为修谱编辑</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'viewer'); }}>设为查看者</button></div> }
+            { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'clan_admin'); }}>设为宗族管理员</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'editor'); }}>设为修谱编辑</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'viewer'); }}>设为查看者</button><button className="danger" onClick={event => { event.stopPropagation(); void revokeRole(row); }}>撤销授权</button></div> }
           ]}
         />
       </Panel>
