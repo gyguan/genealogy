@@ -134,6 +134,9 @@ public class AuthorizationApplicationService {
         if (crossClanAdmin.isPresent()) {
             return crossClanAdmin.get();
         }
+        if (rbacAuthorizationApplicationService.isActiveClanMember(userId, clanId)) {
+            return firstActiveMemberForReturn(clanId, userId).orElse(null);
+        }
         requirePrimaryClan(clanId, userId);
         return activeMembersInClan(clanId, userId).stream()
                 .findFirst()
@@ -152,11 +155,10 @@ public class AuthorizationApplicationService {
         if (crossClanAdmin.isPresent() && roleAllows(roleCode(crossClanAdmin.get()), permissionCode)) {
             return crossClanAdmin.get();
         }
-        requirePrimaryClan(clanId, userId);
-        Optional<ClanMemberEntity> rbacMember = requirePermissionByRbac(clanId, userId, permissionCode, null, null);
-        if (rbacMember.isPresent()) {
-            return rbacMember.get();
+        if (isPermissionAllowedByRbac(clanId, userId, permissionCode, null, null)) {
+            return firstActiveMemberForReturn(clanId, userId).orElse(null);
         }
+        requirePrimaryClan(clanId, userId);
         return activeMembersInClan(clanId, userId).stream()
                 .filter(member -> roleAllows(roleCode(member), permissionCode))
                 .findFirst()
@@ -172,13 +174,13 @@ public class AuthorizationApplicationService {
         if (crossClanAdmin.isPresent() && roleAllows(roleCode(crossClanAdmin.get()), permissionCode)) {
             return crossClanAdmin.get();
         }
-        requirePrimaryClan(clanId, userId);
-        Optional<ClanMemberEntity> rbacMember = branchId == null
-                ? requirePermissionByRbac(clanId, userId, permissionCode, MemberRoleScopeType.clan, clanId)
-                : requirePermissionByRbac(clanId, userId, permissionCode, MemberRoleScopeType.branch, branchId);
-        if (rbacMember.isPresent()) {
-            return rbacMember.get();
+        boolean rbacAllowed = branchId == null
+                ? isPermissionAllowedByRbac(clanId, userId, permissionCode, MemberRoleScopeType.clan, clanId)
+                : isPermissionAllowedByRbac(clanId, userId, permissionCode, MemberRoleScopeType.branch, branchId);
+        if (rbacAllowed) {
+            return firstActiveMemberForReturn(clanId, userId).orElse(null);
         }
+        requirePrimaryClan(clanId, userId);
         List<ClanMemberEntity> candidates = activeMembersInClan(clanId, userId).stream()
                 .filter(member -> roleAllows(roleCode(member), permissionCode))
                 .toList();
@@ -248,13 +250,13 @@ public class AuthorizationApplicationService {
         if (crossClanAdmin.isPresent()) {
             return crossClanAdmin.get();
         }
-        requirePrimaryClan(clanId, userId);
-        Optional<ClanMemberEntity> rbacMember = branchId == null
-                ? requirePermissionByRbac(clanId, userId, "person.update", MemberRoleScopeType.clan, clanId)
-                : requirePermissionByRbac(clanId, userId, "person.update", MemberRoleScopeType.branch, branchId);
-        if (rbacMember.isPresent()) {
-            return rbacMember.get();
+        boolean rbacAllowed = branchId == null
+                ? isPermissionAllowedByRbac(clanId, userId, "person.update", MemberRoleScopeType.clan, clanId)
+                : isPermissionAllowedByRbac(clanId, userId, "person.update", MemberRoleScopeType.branch, branchId);
+        if (rbacAllowed) {
+            return firstActiveMemberForReturn(clanId, userId).orElse(null);
         }
+        requirePrimaryClan(clanId, userId);
         Optional<ClanMemberEntity> clanAdmin = activeMembersInClan(clanId, userId).stream()
                 .filter(member -> ROLE_CLAN_ADMIN.equals(roleCode(member)))
                 .findFirst();
@@ -309,7 +311,8 @@ public class AuthorizationApplicationService {
             return true;
         }
         return primaryClanId(userId).filter(clanId::equals).isPresent()
-                && !activeMembersInClan(clanId, userId).isEmpty();
+                && !activeMembersInClan(clanId, userId).isEmpty()
+                || rbacAuthorizationApplicationService.isActiveClanMember(userId, clanId);
     }
 
     @Transactional(readOnly = true)
@@ -350,20 +353,17 @@ public class AuthorizationApplicationService {
 
     private void requirePrimaryClan(Long clanId, Long userId) {
         Long primaryClanId = primaryClanId(userId).orElse(null);
-        if (primaryClanId == null || !primaryClanId.equals(clanId)) {
+        if ((primaryClanId == null || !primaryClanId.equals(clanId))
+                && !rbacAuthorizationApplicationService.isActiveClanMember(userId, clanId)) {
             throw new BusinessException("AUTH_FORBIDDEN", "当前用户无权访问该宗族");
         }
     }
 
-    private Optional<ClanMemberEntity> requirePermissionByRbac(Long clanId, Long userId, String permissionCode, MemberRoleScopeType scopeType, Long scopeId) {
+    private boolean isPermissionAllowedByRbac(Long clanId, Long userId, String permissionCode, MemberRoleScopeType scopeType, Long scopeId) {
         try {
-            boolean allowed = rbacAuthorizationApplicationService.hasPermission(userId, clanId, permissionCode, scopeType, scopeId);
-            if (!allowed) {
-                return Optional.empty();
-            }
-            return firstActiveMemberForReturn(clanId, userId);
+            return rbacAuthorizationApplicationService.hasPermission(userId, clanId, permissionCode, scopeType, scopeId);
         } catch (RuntimeException ignored) {
-            return Optional.empty();
+            return false;
         }
     }
 
