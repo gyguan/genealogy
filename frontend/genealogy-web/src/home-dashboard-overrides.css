@@ -102,3 +102,36 @@
   color: #333;
   text-align: center;
 }
+
+/* MVP 建谱向导：建立关系时选择已有亲属人物。 */
+.wizard-current--relative-person-selector {
+  display: grid;
+  grid-template-columns: 140px minmax(240px, 1fr);
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(120, 90, 48, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 252, 245, 0.78);
+  color: #111;
+}
+
+.wizard-current--relative-person-selector label {
+  font-weight: 600;
+  color: #111;
+}
+
+.wizard-current--relative-person-selector select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: #111;
+  background: #fff;
+}
+
+.wizard-current--relative-person-selector small {
+  grid-column: 2;
+  color: #333;
+}
