@@ -28,6 +28,17 @@
 }
 
 /* MVP 建谱向导：维护字辈步骤增强。 */
+.wizard-generation-section,
+.wizard-generation-section h4,
+.wizard-generation-section label,
+.wizard-generation-section .ant-form-item-label > label,
+.wizard-generation-section--items,
+.wizard-generation-section--items h4,
+.wizard-generation-section--items label,
+.wizard-generation-section--items .ant-form-item-label > label {
+  color: #111 !important;
+}
+
 .wizard-generation-scheme-field--moved {
   order: -1;
 }
@@ -38,6 +49,7 @@
   border: 1px solid rgba(120, 90, 48, 0.14);
   border-radius: 18px;
   background: rgba(255, 252, 245, 0.76);
+  color: #111;
 }
 
 .wizard-generation-list-header {
@@ -46,17 +58,18 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  color: #111;
 }
 
 .wizard-generation-list-header h4 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #5f4322;
+  color: #111 !important;
 }
 
 .wizard-generation-list-header span {
-  color: rgba(95, 67, 34, 0.62);
+  color: #333;
   font-size: 13px;
 }
 
@@ -68,6 +81,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  color: #111;
 }
 
 .wizard-generation-list-table th,
@@ -75,15 +89,16 @@
   padding: 10px 12px;
   border-bottom: 1px solid rgba(120, 90, 48, 0.12);
   text-align: left;
+  color: #111;
 }
 
 .wizard-generation-list-table th {
-  color: rgba(95, 67, 34, 0.72);
+  color: #111;
   font-weight: 700;
   background: rgba(255, 248, 233, 0.88);
 }
 
 .wizard-generation-list-table td.empty {
-  color: rgba(95, 67, 34, 0.56);
+  color: #333;
   text-align: center;
 }
