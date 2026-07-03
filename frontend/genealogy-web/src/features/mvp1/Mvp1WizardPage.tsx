@@ -37,7 +37,7 @@ const stepOrder: { key: StepKey; title: string; desc: string }[] = [
   { key: 'branch', title: '2. 建立支派', desc: '在表单中选择宗族后建立支派，可连续追加创建。' },
   { key: 'generation', title: '3. 维护字辈', desc: '先创建/选择字辈方案，再追加字辈明细。' },
   { key: 'person', title: '4. 录入人物', desc: '在表单中选择支派和字辈后录入人物。' },
-  { key: 'relationship', title: '5. 建立关系', desc: '在表单中选择中心人物后维护亲属关系。' },
+  { key: 'relationship', title: '5. 建立关系', desc: '选择中心人物后录入亲属，并按关系校验亲属代次。' },
   { key: 'source', title: '6. 绑定来源', desc: '在表单中选择来源和绑定对象。' },
   { key: 'review', title: '7. 提交审核', desc: '在表单中选择审核对象或待审任务。' },
   { key: 'tree', title: '8. 查看世系', desc: '在表单中选择中心人物后查看世系。' }
@@ -122,6 +122,24 @@ function generationOptionValue(item: any) {
   return String(item?.id || `${item?.generationNo || ''}-${item?.word || ''}`);
 }
 
+function generationNoOptions() {
+  return Array.from({ length: 60 }, (_, index) => String(index + 1));
+}
+
+function expectedRelativeGenerationNo(centerGenerationNo: unknown, mode: string) {
+  const centerNo = Number(centerGenerationNo);
+  if (!Number.isFinite(centerNo) || centerNo <= 0) return null;
+  const expected = mode === 'child' ? centerNo + 1 : mode === 'spouse' ? centerNo : centerNo - 1;
+  return expected > 0 ? expected : null;
+}
+
+function relativeGenerationRuleText(mode: string) {
+  if (mode === 'father' || mode === 'mother') return '父母应为中心人物上一代';
+  if (mode === 'child') return '子女应为中心人物下一代';
+  if (mode === 'spouse') return '配偶应与中心人物同代';
+  return '请按关系选择正确代次';
+}
+
 export function Mvp1WizardPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [active, setActive] = useState<StepKey>('clan');
@@ -152,6 +170,7 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   const selectedClan = useMemo(() => clans.find(item => String(item.id) === workspace.clanId), [clans, workspace.clanId]);
   const selectedPerson = useMemo(() => persons.find(item => String(item.id) === workspace.personId), [persons, workspace.personId]);
+  const suggestedRelativeGenerationNo = expectedRelativeGenerationNo(selectedPerson?.generationNo, relativeForm.mode);
 
   const steps = useMemo(() => [
     { ...stepOrder[0], ready: Boolean(workspace.clanId) },
@@ -237,6 +256,24 @@ export function Mvp1WizardPage({ notify }: Props) {
   function patchPerson(key: keyof typeof personForm, value: string) { setPersonForm(prev => ({ ...prev, [key]: value })); }
   function patchRelative(key: keyof typeof relativeForm, value: string) { setRelativeForm(prev => ({ ...prev, [key]: value })); }
   function patchSource(key: keyof typeof sourceForm, value: string) { setSourceForm(prev => ({ ...prev, [key]: value })); }
+
+  function changeRelativeMode(mode: string) {
+    const expectedNo = expectedRelativeGenerationNo(selectedPerson?.generationNo, mode);
+    setRelativeForm(prev => ({ ...prev, mode, generationNo: expectedNo ? String(expectedNo) : '' }));
+  }
+
+  function validateRelativeGeneration(centerPerson: any) {
+    if (!centerPerson) throw new Error('中心人物数据未加载，请先选择中心人物');
+    const centerNo = Number(centerPerson.generationNo);
+    if (!Number.isFinite(centerNo) || centerNo <= 0) throw new Error('中心人物未维护代次，无法校验亲属代次');
+    const expectedNo = expectedRelativeGenerationNo(centerNo, relativeForm.mode);
+    if (!expectedNo) throw new Error('当前中心人物代次无法新增上一代父母');
+    const relativeNo = Number(relativeForm.generationNo);
+    if (!Number.isFinite(relativeNo) || relativeNo <= 0) throw new Error('请选择亲属代次');
+    if (relativeNo !== expectedNo) {
+      throw new Error(`${relativeGenerationRuleText(relativeForm.mode)}，应选择第${expectedNo}世；当前中心人物为第${centerNo}世`);
+    }
+  }
 
   function personName(id?: string) {
     const person = persons.find(item => String(item.id) === String(id));
@@ -372,9 +409,7 @@ export function Mvp1WizardPage({ notify }: Props) {
       await refresh({ clanId: workspace.clanId, branchId: nextBranchId });
       setBranchForm({ branchName: '', parentId: append ? parentId : '' });
       setPersonForm(prev => ({ ...prev, branchId: nextBranchId }));
-      if (!append) {
-        setActive('generation');
-      }
+      if (!append) setActive('generation');
       return makeNotice(append ? '支派创建成功，可继续追加创建支派' : '支派创建成功，已带入维护字辈步骤', data?.id);
     });
   }
@@ -433,11 +468,8 @@ export function Mvp1WizardPage({ notify }: Props) {
       const data: any = await apiClient.post(`/clans/${workspace.clanId}/persons`, buildPersonPayload());
       const nextPersonId = String(data?.id || '');
       await refresh({ clanId: workspace.clanId, branchId: personForm.branchId || workspace.branchId, personId: nextPersonId, schemeId: schemeForm.schemeId });
-      if (continueAdding) {
-        resetPersonFormForNext();
-      } else {
-        setActive('relationship');
-      }
+      if (continueAdding) resetPersonFormForNext();
+      else setActive('relationship');
       return makeNotice(continueAdding ? '人物档案创建成功，可继续录入下一个人物' : '人物档案创建成功，已带入建立关系步骤', data?.personCode || data?.id);
     });
   }
@@ -445,29 +477,30 @@ export function Mvp1WizardPage({ notify }: Props) {
   async function createRelative() {
     await run(async () => {
       const centerPerson = selectedPerson;
+      const mode = relativeForm.mode;
       const effectiveBranchId = String(centerPerson?.branchId || workspace.branchId || personForm.branchId || '');
       if (!workspace.clanId) throw new Error('请选择宗族');
       if (!workspace.personId) throw new Error('请选择中心人物');
       if (!effectiveBranchId) throw new Error('请选择支派');
       if (!relativeForm.name.trim()) throw new Error('请填写亲属姓名');
       if (!relativeForm.gender) throw new Error('请选择亲属性别');
+      validateRelativeGeneration(centerPerson);
       const created: any = await apiClient.post(`/clans/${workspace.clanId}/persons`, {
         branchId: Number(effectiveBranchId),
         personCode: null,
         name: relativeForm.name.trim(),
         gender: relativeForm.gender,
-        generationNo: relativeForm.generationNo ? Number(relativeForm.generationNo) : null,
+        generationNo: Number(relativeForm.generationNo),
         generationWord: nullableString(relativeForm.generationWord),
         isLiving: true,
         privacyLevel: 'clan_only',
         dataStatus: 'draft'
       });
       if (!created?.id) throw new Error('亲属人物创建失败');
-      const mode = relativeForm.mode;
       const relationBody = mode === 'spouse'
         ? { fromPersonId: Number(workspace.personId), toPersonId: Number(created.id), relationType: 'spouse', relationLabel: 'spouse', isLineageRelation: false, isBiological: false, isPrimary: true, confidenceLevel: 'high' }
         : mode === 'child'
-          ? { fromPersonId: Number(workspace.personId), toPersonId: Number(created.id), relationType: 'parent_child', relationLabel: selectedPerson?.gender === 'female' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' }
+          ? { fromPersonId: Number(workspace.personId), toPersonId: Number(created.id), relationType: 'parent_child', relationLabel: centerPerson?.gender === 'female' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' }
           : { fromPersonId: Number(created.id), toPersonId: Number(workspace.personId), relationType: 'parent_child', relationLabel: mode === 'mother' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' };
       const relationship: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, relationBody);
       workspace.setRelationshipId(String(relationship?.id || ''));
@@ -636,16 +669,7 @@ export function Mvp1WizardPage({ notify }: Props) {
             </Actions>
             <section className="wizard-branch-list">
               <h4>该宗族下已有支派</h4>
-              <DataTable
-                data={snapshot.branches}
-                empty={workspace.clanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'}
-                columns={[
-                  { key: 'branchName', title: '支派名称' },
-                  { key: 'parentName', title: '父支派', render: row => branches.find(item => String(item.id) === String(row.parentId))?.branchName || '无' },
-                  { key: 'status', title: '状态' }
-                ]}
-                onSelect={row => void selectBranchId(String(row.id || ''))}
-              />
+              <DataTable data={snapshot.branches} empty={workspace.clanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'} columns={[{ key: 'branchName', title: '支派名称' }, { key: 'parentName', title: '父支派', render: row => branches.find(item => String(item.id) === String(row.parentId))?.branchName || '无' }, { key: 'status', title: '状态' }]} onSelect={row => void selectBranchId(String(row.id || ''))} />
             </section>
           </Panel>
         );
@@ -661,20 +685,16 @@ export function Mvp1WizardPage({ notify }: Props) {
                 <Field label="字辈方案名称 *"><input value={schemeForm.schemeName} onChange={e => setSchemeForm(prev => ({ ...prev, schemeName: e.target.value }))} required /></Field>
                 <Field label="系统生成编号"><input value={schemeForm.schemeId ? `已生成：${schemeForm.schemeId}` : '创建方案后自动生成'} disabled readOnly /></Field>
               </div>
-              <Actions>
-                <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={createScheme}>创建字辈方案</button>
-              </Actions>
+              <Actions><button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={createScheme}>创建字辈方案</button></Actions>
             </section>
             <section className="wizard-generation-section wizard-generation-section--items">
               <h4>二、追加字辈明细</h4>
               <div className="wizard-form-grid wizard-generation-word-grid">
                 <Field label="当前字辈方案"><input value={schemeForm.schemeId ? schemeForm.schemeName : '请先创建或选择字辈方案'} disabled readOnly /></Field>
-                <Field label="代次 *"><select value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))}>{Array.from({ length: 60 }, (_, index) => String(index + 1)).map(no => <option key={no} value={no}>第{no}世</option>)}</select></Field>
+                <Field label="代次 *"><select value={schemeForm.generationNo} onChange={e => setSchemeForm(prev => ({ ...prev, generationNo: e.target.value }))}>{generationNoOptions().map(no => <option key={no} value={no}>第{no}世</option>)}</select></Field>
                 <Field label="字辈 *"><input value={schemeForm.word} onChange={e => setSchemeForm(prev => ({ ...prev, word: e.target.value }))} placeholder="例如：德" required /></Field>
               </div>
-              <Actions>
-                <button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button>
-              </Actions>
+              <Actions><button disabled={loading || !schemeForm.schemeId} onClick={addGenerationWord}>追加字辈</button></Actions>
             </section>
           </Panel>
         );
@@ -706,26 +726,21 @@ export function Mvp1WizardPage({ notify }: Props) {
             </div>
             <Field label="人物传记"><textarea value={personForm.biography} onChange={e => patchPerson('biography', e.target.value)} rows={4} placeholder="记录生平、迁徙、功名、事迹等" /></Field>
             <Field label="墓志铭"><textarea value={personForm.epitaph} onChange={e => patchPerson('epitaph', e.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Field>
-            <Actions>
-              <button disabled={loading} onClick={() => void createPerson(true)}>创建人物，继续录入</button>
-              <button className="secondary" disabled={loading} onClick={() => void createPerson(false)}>创建人物</button>
-              <button className="secondary" onClick={() => setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId })}>清空人物表单</button>
-              <button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, branchId: workspace.branchId, schemeId: schemeForm.schemeId })}>刷新选项</button>
-            </Actions>
+            <Actions><button disabled={loading} onClick={() => void createPerson(true)}>创建人物，继续录入</button><button className="secondary" disabled={loading} onClick={() => void createPerson(false)}>创建人物</button><button className="secondary" onClick={() => setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId })}>清空人物表单</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, branchId: workspace.branchId, schemeId: schemeForm.schemeId })}>刷新选项</button></Actions>
           </Panel>
         );
       case 'relationship':
         return (
-          <Panel title="建立亲属关系" description="在表单里选择中心人物；上一步创建的人物会自动默认选中。">
+          <Panel title="建立亲属关系" description="选择中心人物后录入亲属代次；父母必须上一代，配偶同代，子女下一代。">
             <div className="wizard-form-grid">
               {renderClanSelector('适用宗族')}
               {renderPersonSelector('中心人物 *')}
-              {renderSchemeSelector('亲属字辈方案')}
-              <Field label="关系类型 *"><select value={relativeForm.mode} onChange={e => patchRelative('mode', e.target.value)} required><option value="father">添加父亲</option><option value="mother">添加母亲</option><option value="spouse">添加配偶</option><option value="child">添加子女</option></select></Field>
+              <Field label="中心人物代次"><input value={selectedPerson?.generationNo ? `第${selectedPerson.generationNo}世` : '中心人物未维护代次'} disabled readOnly /></Field>
+              <Field label="关系类型 *"><select value={relativeForm.mode} onChange={e => changeRelativeMode(e.target.value)} required><option value="father">添加父亲</option><option value="mother">添加母亲</option><option value="spouse">添加配偶</option><option value="child">添加子女</option></select></Field>
               <Field label="亲属姓名 *"><input value={relativeForm.name} onChange={e => patchRelative('name', e.target.value)} required /></Field>
               <Field label="亲属性别 *"><select value={relativeForm.gender} onChange={e => patchRelative('gender', e.target.value)} required><option value="male">男</option><option value="female">女</option><option value="unknown">未知</option></select></Field>
-              <Field label="亲属字辈"><select value={generationSelectedValue(relativeForm.generationWord, relativeForm.generationNo)} onChange={e => selectGenerationItem(e.target.value, 'relative')} disabled={!generationItems.length}><option value="">{generationItems.length ? '请选择亲属字辈' : '未选择字辈方案'}</option>{generationItems.map(item => <option key={generationOptionValue(item)} value={generationOptionValue(item)}>{generationLabel(item)}</option>)}</select></Field>
-              <Field label="亲属代次"><input value={relativeForm.generationNo ? `第${relativeForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Field>
+              <Field label="亲属代次 *"><select value={relativeForm.generationNo} onChange={e => patchRelative('generationNo', e.target.value)} required><option value="">请选择亲属代次</option>{generationNoOptions().map(no => <option key={no} value={no}>第{no}世</option>)}</select></Field>
+              <Field label="代次规则"><input value={suggestedRelativeGenerationNo ? `${relativeGenerationRuleText(relativeForm.mode)}，建议第${suggestedRelativeGenerationNo}世` : '请先为中心人物维护代次'} disabled readOnly /></Field>
             </div>
             <Actions><button disabled={loading || !workspace.personId} onClick={createRelative}>创建亲属关系</button><button className="secondary" disabled={!workspace.clanId} onClick={() => void refresh({ clanId: workspace.clanId, personId: workspace.personId, schemeId: schemeForm.schemeId })}>刷新选项</button></Actions>
           </Panel>
@@ -778,32 +793,17 @@ export function Mvp1WizardPage({ notify }: Props) {
   return (
     <div className="mvp1-wizard">
       <section className="wizard-hero">
-        <div>
-          <span>MVP1 Workflow</span>
-          <h2>建谱闭环向导</h2>
-          <p>每一步都只保留当前表单和必要选择项；上一步创建的数据会自动带入下一步表单。</p>
-        </div>
+        <div><span>MVP1 Workflow</span><h2>建谱闭环向导</h2><p>每一步都只保留当前表单和必要选择项；上一步创建的数据会自动带入下一步表单。</p></div>
       </section>
       <div className="wizard-layout">
         <aside className="wizard-steps">
           {steps.map(step => <button key={step.key} className={active === step.key ? 'active' : ''} onClick={() => setActive(step.key)}><strong>{step.title}</strong><span>{step.desc}</span><em>{step.ready ? '已具备' : '待选择'}</em></button>)}
         </aside>
-        <main className="wizard-main">
-          {renderCurrentStep()}
-          <ResultNotice result={result} />
-        </main>
+        <main className="wizard-main">{renderCurrentStep()}<ResultNotice result={result} /></main>
         <aside className="wizard-context">
           <Panel title="数据概览">
             <div className="wizard-mini-metrics">
-              <div><span>宗族</span><strong>{clans.length}</strong></div>
-              <div><span>支派</span><strong>{branches.length}</strong></div>
-              <div><span>字辈方案</span><strong>{schemes.length}</strong></div>
-              <div><span>字辈明细</span><strong>{generationItems.length}</strong></div>
-              <div><span>人物</span><strong>{persons.length}</strong></div>
-              <div><span>关系</span><strong>{relationships.length}</strong></div>
-              <div><span>来源</span><strong>{sources.length}</strong></div>
-              <div><span>待审核</span><strong>{tasks.length}</strong></div>
-              <div><span>世系节点</span><strong>{treeNodes.length}</strong></div>
+              <div><span>宗族</span><strong>{clans.length}</strong></div><div><span>支派</span><strong>{branches.length}</strong></div><div><span>字辈方案</span><strong>{schemes.length}</strong></div><div><span>字辈明细</span><strong>{generationItems.length}</strong></div><div><span>人物</span><strong>{persons.length}</strong></div><div><span>关系</span><strong>{relationships.length}</strong></div><div><span>来源</span><strong>{sources.length}</strong></div><div><span>待审核</span><strong>{tasks.length}</strong></div><div><span>世系节点</span><strong>{treeNodes.length}</strong></div>
             </div>
           </Panel>
         </aside>
