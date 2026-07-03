@@ -173,6 +173,59 @@
   text-align: center;
 }
 
+/* MVP 建谱向导：绑定来源步骤增强。 */
+.wizard-source-panel-enhanced .wizard-source-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wizard-source-section-head h4 {
+  margin: 0;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wizard-source-section-head p {
+  margin: 4px 0 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wizard-source-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wizard-source-section-grid .field,
+.wizard-source-section-grid .ant-form-item {
+  margin-bottom: 4px;
+}
+
+.wizard-source-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.wizard-source-section-actions .ant-space-item {
+  display: inline-flex;
+}
+
 /* MVP 建谱向导：录入人物日期输入增强。 */
 .wizard-direct-date-input {
   letter-spacing: 0.02em;
