@@ -11,6 +11,7 @@ import com.genealogy.member.dto.UserSummaryResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,8 +28,10 @@ import java.util.List;
 @RequestMapping("/api/v1/member-management")
 public class MemberManagementController {
 
-    private static final String MEMBER_INVITE = "member:invite";
-    private static final String MEMBER_UPDATE_ROLE = "member:update_role";
+    private static final String MEMBER_VIEW = "member.view";
+    private static final String MEMBER_INVITE = "member.invite";
+    private static final String MEMBER_GRANT_ROLE = "member.grant_role";
+    private static final String MEMBER_REVOKE_ROLE = "member.revoke_role";
 
     private final MemberManagementApplicationService memberManagementApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -59,7 +62,7 @@ public class MemberManagementController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_UPDATE_ROLE);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_VIEW);
         return ApiResponse.success(memberManagementApplicationService.members(clanId));
     }
 
@@ -82,7 +85,19 @@ public class MemberManagementController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
-        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_UPDATE_ROLE);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_GRANT_ROLE);
         return ApiResponse.success(memberManagementApplicationService.updateMember(clanId, memberId, request, userId));
+    }
+
+    @DeleteMapping("/clans/{clanId}/members/{memberId}")
+    public ApiResponse<Void> revokeMemberRole(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long memberId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_REVOKE_ROLE);
+        memberManagementApplicationService.revokeMemberRole(clanId, memberId, userId);
+        return ApiResponse.success();
     }
 }
