@@ -42,8 +42,7 @@ function rows(data: any): any[] {
 }
 
 function edgeRows(data: any): any[] {
-  if (Array.isArray(data?.edges)) return data.edges;
-  return [];
+  return Array.isArray(data?.edges) ? data.edges : [];
 }
 
 function firstChar(name?: string) {
@@ -279,15 +278,10 @@ export function LineageTreeProductPage({ notify }: Props) {
     workspace.setRelationshipId('');
     setSelectedNode(null);
 
-    if (nextPersonId) {
-      await loadLineage(nextPersonId, branchRows, nextPeople);
-    } else {
-      resetLineage();
-    }
+    if (nextPersonId) await loadLineage(nextPersonId, branchRows, nextPeople);
+    else resetLineage();
 
-    if (nextBranchId) {
-      await loadBranchLineage(nextBranchId, branchRows, clanId, false);
-    }
+    if (nextBranchId) await loadBranchLineage(nextBranchId, branchRows, clanId, false);
   }
 
   async function loadBase() {
@@ -305,7 +299,7 @@ export function LineageTreeProductPage({ notify }: Props) {
       workspace.patch({ clanId: nextClanId, branchId: '', personId: '', relationshipId: '', sourceId: '', reviewTaskId: '' });
       clearClanScopedData();
       await loadClanContext(nextClanId, true);
-      notify({ message: nextClanId ? '宗族已切换，支派世系图和世系树已刷新' : '已清空宗族选择' });
+      notify({ message: nextClanId ? '宗族已切换，支派世系和中心人物世系已刷新' : '已清空宗族选择' });
     });
   }
 
@@ -358,15 +352,11 @@ export function LineageTreeProductPage({ notify }: Props) {
       apiClient.get(`/tree/descendants?rootPersonId=${personId}&maxDepth=${depth}`).catch(() => null)
     ]);
     const nextCenter = toPerson(detailRes, branchRows, personId);
-    const nextRelationships = rows(relationRes).map(toRelationship);
-    const nextFamily = rows(familyRes).map(row => toPerson(row, branchRows));
-    const nextAncestors = rows(ancestorRes).map(row => toPerson(row, branchRows)).filter(item => item.id !== personId);
-    const nextDescendants = rows(descendantRes).map(row => toPerson(row, branchRows)).filter(item => item.id !== personId);
     setCenter(nextCenter);
-    setRelationships(nextRelationships);
-    setFamilyNodes(nextFamily);
-    setAncestors(nextAncestors);
-    setDescendants(nextDescendants);
+    setRelationships(rows(relationRes).map(toRelationship));
+    setFamilyNodes(rows(familyRes).map(row => toPerson(row, branchRows)));
+    setAncestors(rows(ancestorRes).map(row => toPerson(row, branchRows)).filter(item => item.id !== personId));
+    setDescendants(rows(descendantRes).map(row => toPerson(row, branchRows)).filter(item => item.id !== personId));
   }
 
   async function loadBranchLineage(branchId = selectedBranchId, branchRows = branches, clanId = workspace.clanId, showNotice = true) {
@@ -379,9 +369,7 @@ export function LineageTreeProductPage({ notify }: Props) {
     setBranchEdges(nextEdges);
     setBranchRootPersonId(nextNodes.length ? String(data?.rootPersonId || nextNodes[0]?.id || '') : '');
     workspace.setBranchId(branchId);
-    if (showNotice) {
-      notify({ message: `支派世系图已生成：${nextNodes.length} 位人物，${nextEdges.length} 条世系关系` });
-    }
+    if (showNotice) notify({ message: `支派世系已生成：${nextNodes.length} 位人物，${nextEdges.length} 条关系` });
   }
 
   useEffect(() => { void loadBase(); }, []);
@@ -422,12 +410,10 @@ export function LineageTreeProductPage({ notify }: Props) {
   }, [relationships, center, personMap, branches]);
 
   const spousePersonIds = useMemo(() => new Set(relationshipDerived.spouses.map(person => person.id)), [relationshipDerived.spouses]);
-
   const ancestorLane = useMemo(() => {
     const source = ancestors.length ? ancestors.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.parents;
     return sortByGeneration(uniquePeople(source), 'asc').slice(-10);
   }, [ancestors, relationshipDerived.parents, spousePersonIds]);
-
   const descendantGroups = useMemo(() => {
     const source = descendants.length ? descendants.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.children;
     return groupDescendants(uniquePeople(source));
@@ -437,6 +423,7 @@ export function LineageTreeProductPage({ notify }: Props) {
   const branchRoot = useMemo(() => branchNodes.find(person => person.id === branchRootPersonId) || branchNodes[0], [branchNodes, branchRootPersonId]);
   const branchRootName = branchNodes.length ? branchRoot?.name || '-' : '-';
   const branchName = branches.find(item => String(item.id) === selectedBranchId)?.branchName || '支派';
+  const currentClanName = clans.find(item => String(item.id) === workspace.clanId)?.clanName || '族谱';
 
   async function setAsCenter(personId: string) {
     const nextCenter = findPerson(personId, selectedNode?.raw);
@@ -444,7 +431,6 @@ export function LineageTreeProductPage({ notify }: Props) {
     setBranchRootPersonId(personId);
     workspace.setPersonId(personId);
     setSelectedNode(null);
-
     if (nextCenter.branchId && nextCenter.branchId !== selectedBranchId) {
       setSelectedBranchId(nextCenter.branchId);
       await run(async () => {
@@ -456,9 +442,9 @@ export function LineageTreeProductPage({ notify }: Props) {
 
   return (
     <div className="lineage-page lineage-tree-page">
-      <Panel title="世系图谱">
+      <Panel title="世系图谱" description="先选择宗族和中心人物，再在同一工作台中对照支派全局世系与中心人物家庭世系。">
         <div className="lineage-search-grid">
-          <Field label="宗族"><select value={workspace.clanId} onChange={e => void handleClanChange(e.target.value)}><option value="">请选择宗族</option>{clans.map(clan => <option key={clan.id} value={clan.id}>{clan.clanName || clan.surname || `宗族#${clan.id}`}（ID:{clan.id}）</option>)}</select></Field>
+          <Field label="宗族"><select value={workspace.clanId} onChange={e => void handleClanChange(e.target.value)}><option value="">请选择宗族</option>{clans.map(clan => <option key={clan.id} value={clan.id}>{clan.clanName || clan.surname || `宗族#${clan.id}`}</option>)}</select></Field>
           <Field label="搜索人物"><input value={searchKeyword} onChange={e => setSearchKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void searchPeople(); }} placeholder="输入姓名、谱名、字号" /></Field>
           <Field label="展开深度"><select value={depth} onChange={e => setDepth(e.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
           <Actions><button disabled={loading} onClick={searchPeople}>{loading ? '搜索中...' : '搜索'}</button></Actions>
@@ -466,61 +452,71 @@ export function LineageTreeProductPage({ notify }: Props) {
         {searchNotice ? <div className="lineage-search-hint">{searchNotice}</div> : null}
       </Panel>
 
-      <Panel title="支派世系图" description="按支派聚合展示当前支派及下级支派的人物世系关系，适合快速检查某一房支的谱系完整性。">
-        <div className="lineage-search-grid">
-          <Field label="支派范围"><select value={selectedBranchId} onChange={e => void handleBranchChange(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}（ID:{branch.id}）</option>)}</select></Field>
-          <Field label="支派路径"><input value={branchPath(branches, selectedBranchId)} readOnly /></Field>
-          <Actions><button disabled={loading || !selectedBranchId} onClick={() => void run(() => loadBranchLineage(selectedBranchId))}>{loading ? '生成中...' : '生成支派世系图'}</button></Actions>
+      <section className="lineage-workbench">
+        <div className="lineage-workbench-head">
+          <div>
+            <span>{currentClanName}</span>
+            <h3>世系分析工作台</h3>
+            <p>左侧看支派整体脉络，右侧看中心人物上下延展；点击任一人物可查看详情或设为新的中心人物。</p>
+          </div>
+          <div className="lineage-workbench-actions">
+            <Field label="支派范围"><select value={selectedBranchId} onChange={e => void handleBranchChange(e.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.branchName}</option>)}</select></Field>
+            <button disabled={loading || !selectedBranchId} onClick={() => void run(() => loadBranchLineage(selectedBranchId))}>{loading ? '生成中...' : '刷新支派世系'}</button>
+          </div>
         </div>
-        <div className="summary-card">
+
+        <div className="summary-card lineage-workbench-summary">
+          <div><span>当前支派</span><strong>{branchName}</strong></div>
           <div><span>支派人物</span><strong>{branchNodes.length || '-'}</strong></div>
-          <div><span>世系关系</span><strong>{branchEdges.length || '-'}</strong></div>
-          <div><span>根人物</span><strong>{branchRootName}</strong></div>
-        </div>
-        <section className="lineage-tree-card branch-lineage-card">
-          <div className="lineage-tree-title">
-            <div><span>{branchPath(branches, selectedBranchId)}</span><h3>{branchName} 世系图</h3></div>
-            <small>{branchEdges.length} 条内部世系关系</small>
-          </div>
-          <div className="branch-lineage-canvas">
-            {branchGroups.length ? branchGroups.map(([label, group], index) => (
-              <div className="branch-lineage-column" key={label}>
-                <b>{label}</b>
-                <div>{group.map(person => <TreeNode key={person.id} person={person} active={person.id === branchRootPersonId} hint={person.id === branchRootPersonId ? '支派根人物' : label} onClick={() => setSelectedNode(person)} />)}</div>
-                {index < branchGroups.length - 1 ? <span className="branch-lineage-arrow">→</span> : null}
-              </div>
-            )) : <EmptyLane text="暂无支派世系数据，请选择支派后生成。" />}
-          </div>
-        </section>
-      </Panel>
-
-      <section className="lineage-tree-card">
-        <div className="lineage-tree-title">
-          <div><span>{clans.find(item => String(item.id) === workspace.clanId)?.clanName || '族谱'}</span><h3>{center ? `${center.name} 的世系树` : '世系树'}</h3></div>
+          <div><span>支派关系</span><strong>{branchEdges.length || '-'}</strong></div>
+          <div><span>支派根人物</span><strong>{branchRootName}</strong></div>
+          <div><span>中心人物</span><strong>{center?.name || '-'}</strong></div>
         </div>
 
-        <div className="lineage-tree-canvas">
-          <div className="lineage-tree-layer lineage-tree-layer--ancestors">
-            {ancestorLane.length ? ancestorLane.map(person => <TreeNode key={person.id} person={person} hint={person.relation || '祖先'} onClick={() => setSelectedNode(person)} />) : <EmptyLane text="暂无上溯祖先" />}
-          </div>
+        <div className="lineage-workbench-grid">
+          <section className="lineage-logic-card lineage-logic-card--branch">
+            <div className="lineage-tree-title">
+              <div><span>{branchPath(branches, selectedBranchId)}</span><h3>支派全局世系</h3></div>
+              <small>{branchEdges.length} 条内部关系</small>
+            </div>
+            <p className="lineage-section-desc">用于观察当前支派及下级支派的人物分布，帮助先确认“这一支有哪些人、处在第几世”。</p>
+            <div className="branch-lineage-canvas">
+              {branchGroups.length ? branchGroups.map(([label, group], index) => (
+                <div className="branch-lineage-column" key={label}>
+                  <b>{label}</b>
+                  <div>{group.map(person => <TreeNode key={person.id} person={person} active={person.id === branchRootPersonId || person.id === center?.id} hint={person.id === branchRootPersonId ? '支派根人物' : label} onClick={() => setSelectedNode(person)} />)}</div>
+                  {index < branchGroups.length - 1 ? <span className="branch-lineage-arrow">→</span> : null}
+                </div>
+              )) : <EmptyLane text="暂无支派世系数据，请选择支派后生成。" />}
+            </div>
+          </section>
 
-          <div className="lineage-tree-line" />
-
-          <div className="lineage-tree-layer lineage-tree-layer--center">
-            {center ? <TreeNode person={center} active hint="中心人物" onClick={() => setSelectedNode(center)} /> : <EmptyLane text="请选择中心人物" />}
-            {relationshipDerived.spouses.length ? <div className="lineage-spouse-tree"><b>配偶</b>{relationshipDerived.spouses.map(person => <TreeNode key={person.id} person={person} hint="配偶" onClick={() => setSelectedNode(person)} />)}</div> : null}
-          </div>
-
-          <div className="lineage-tree-line" />
-
-          <div className="lineage-tree-children">
-            {descendantGroups.length ? descendantGroups.map(([label, group]) => (
-              <div className="lineage-tree-generation" key={label}>
-                <b>{label}</b>
-                <div>{group.map(person => <TreeNode key={person.id} person={person} hint={person.relation || label} onClick={() => setSelectedNode(person)} />)}</div>
+          <section className="lineage-logic-card lineage-logic-card--person">
+            <div className="lineage-tree-title">
+              <div><span>{center?.branchName || branchName}</span><h3>{center ? `${center.name} 的中心世系树` : '中心人物世系树'}</h3></div>
+              <small>上溯祖先 / 配偶 / 下延后代</small>
+            </div>
+            <p className="lineage-section-desc">用于围绕一个人检查父母、配偶、子女和后代链路，适合做关系补录与异常定位。</p>
+            <div className="lineage-tree-canvas">
+              <div className="lineage-tree-layer lineage-tree-layer--ancestors">
+                {ancestorLane.length ? ancestorLane.map(person => <TreeNode key={person.id} person={person} hint={person.relation || '祖先'} onClick={() => setSelectedNode(person)} />) : <EmptyLane text="暂无上溯祖先" />}
               </div>
-            )) : <EmptyLane text="暂无下延后代" />}
-          </div>
+              <div className="lineage-tree-line" />
+              <div className="lineage-tree-layer lineage-tree-layer--center">
+                {center ? <TreeNode person={center} active hint="中心人物" onClick={() => setSelectedNode(center)} /> : <EmptyLane text="请选择中心人物" />}
+                {relationshipDerived.spouses.length ? <div className="lineage-spouse-tree"><b>配偶</b>{relationshipDerived.spouses.map(person => <TreeNode key={person.id} person={person} hint="配偶" onClick={() => setSelectedNode(person)} />)}</div> : null}
+              </div>
+              <div className="lineage-tree-line" />
+              <div className="lineage-tree-children">
+                {descendantGroups.length ? descendantGroups.map(([label, group]) => (
+                  <div className="lineage-tree-generation" key={label}>
+                    <b>{label}</b>
+                    <div>{group.map(person => <TreeNode key={person.id} person={person} hint={person.relation || label} onClick={() => setSelectedNode(person)} />)}</div>
+                  </div>
+                )) : <EmptyLane text="暂无下延后代" />}
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -533,12 +529,10 @@ export function LineageTreeProductPage({ notify }: Props) {
               <div><h3>{selectedNode.name}</h3><p>{genderCn(selectedNode.gender)} · {selectedNode.generation} · {selectedNode.word}字辈</p></div>
             </div>
             <div className="lineage-pop-grid">
-              <div><span>人物ID</span><strong>{selectedNode.id}</strong></div>
               <div><span>支派</span><strong>{selectedNode.branchName}</strong></div>
               <div><span>生卒</span><strong>{selectedNode.years}</strong></div>
               <div><span>状态</span><strong>{selectedNode.status}</strong></div>
               <div><span>关系</span><strong>{relationCn(selectedNode.relation || '')}</strong></div>
-              <div><span>支派ID</span><strong>{selectedNode.branchId || '-'}</strong></div>
             </div>
             <div className="lineage-pop-relations">
               <h4>相关关系</h4>
