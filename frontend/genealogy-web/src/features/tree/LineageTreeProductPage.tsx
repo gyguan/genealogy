@@ -334,7 +334,6 @@ export function LineageTreeProductPage({ notify }: Props) {
       if (first.branchId && first.branchId !== selectedBranchId) {
         setSelectedBranchId(first.branchId);
         await loadBranchLineage(first.branchId, branches, workspace.clanId, false);
-        setBranchRootPersonId(first.id);
       }
     });
   }
@@ -428,15 +427,11 @@ export function LineageTreeProductPage({ notify }: Props) {
   async function setAsCenter(personId: string) {
     const nextCenter = findPerson(personId, selectedNode?.raw);
     setCenter(nextCenter);
-    setBranchRootPersonId(personId);
     workspace.setPersonId(personId);
     setSelectedNode(null);
     if (nextCenter.branchId && nextCenter.branchId !== selectedBranchId) {
       setSelectedBranchId(nextCenter.branchId);
-      await run(async () => {
-        await loadBranchLineage(nextCenter.branchId, branches, workspace.clanId, false);
-        setBranchRootPersonId(personId);
-      });
+      await run(() => loadBranchLineage(nextCenter.branchId, branches, workspace.clanId, false));
     }
   }
 
@@ -481,7 +476,15 @@ export function LineageTreeProductPage({ notify }: Props) {
               {branchGroups.length ? branchGroups.map(([label, group], index) => (
                 <div className="branch-lineage-column" key={label}>
                   <b>{label}</b>
-                  <div>{group.map(person => <TreeNode key={person.id} person={person} active={person.id === branchRootPersonId || person.id === center?.id} hint={person.id === branchRootPersonId ? '支派根人物' : label} onClick={() => setSelectedNode(person)} />)}</div>
+                  <div>{group.map(person => (
+                    <TreeNode
+                      key={person.id}
+                      person={person}
+                      active={person.id === branchRootPersonId}
+                      hint={person.id === branchRootPersonId ? '支派根人物' : person.id === center?.id ? '中心人物' : label}
+                      onClick={() => setSelectedNode(person)}
+                    />
+                  ))}</div>
                   {index < branchGroups.length - 1 ? <span className="branch-lineage-arrow">→</span> : null}
                 </div>
               )) : <EmptyLane text="暂无支派世系数据，请选择支派后生成。" />}
