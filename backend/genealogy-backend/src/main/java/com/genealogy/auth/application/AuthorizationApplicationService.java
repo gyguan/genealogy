@@ -5,6 +5,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMemberEntity;
 import com.genealogy.member.entity.RoleEntity;
+import com.genealogy.member.enums.MemberRoleScopeType;
 import com.genealogy.member.enums.MemberScopeType;
 import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMemberRepository;
@@ -84,17 +85,23 @@ public class AuthorizationApplicationService {
     private final ClanMemberRepository clanMemberRepository;
     private final RoleRepository roleRepository;
     private final BranchRepository branchRepository;
+    private final RbacAuthorizationApplicationService rbacAuthorizationApplicationService;
+    private final PermissionApplicationService permissionApplicationService;
 
     public AuthorizationApplicationService(
             AuthApplicationService authApplicationService,
             ClanMemberRepository clanMemberRepository,
             RoleRepository roleRepository,
-            BranchRepository branchRepository
+            BranchRepository branchRepository,
+            RbacAuthorizationApplicationService rbacAuthorizationApplicationService,
+            PermissionApplicationService permissionApplicationService
     ) {
         this.authApplicationService = authApplicationService;
         this.clanMemberRepository = clanMemberRepository;
         this.roleRepository = roleRepository;
         this.branchRepository = branchRepository;
+        this.rbacAuthorizationApplicationService = rbacAuthorizationApplicationService;
+        this.permissionApplicationService = permissionApplicationService;
     }
 
     @Transactional(readOnly = true)
@@ -146,6 +153,10 @@ public class AuthorizationApplicationService {
             return crossClanAdmin.get();
         }
         requirePrimaryClan(clanId, userId);
+        Optional<ClanMemberEntity> rbacMember = requirePermissionByRbac(clanId, userId, permissionCode, null, null);
+        if (rbacMember.isPresent()) {
+            return rbacMember.get();
+        }
         return activeMembersInClan(clanId, userId).stream()
                 .filter(member -> roleAllows(roleCode(member), permissionCode))
                 .findFirst()
@@ -162,6 +173,12 @@ public class AuthorizationApplicationService {
             return crossClanAdmin.get();
         }
         requirePrimaryClan(clanId, userId);
+        Optional<ClanMemberEntity> rbacMember = branchId == null
+                ? requirePermissionByRbac(clanId, userId, permissionCode, MemberRoleScopeType.clan, clanId)
+                : requirePermissionByRbac(clanId, userId, permissionCode, MemberRoleScopeType.branch, branchId);
+        if (rbacMember.isPresent()) {
+            return rbacMember.get();
+        }
         List<ClanMemberEntity> candidates = activeMembersInClan(clanId, userId).stream()
                 .filter(member -> roleAllows(roleCode(member), permissionCode))
                 .toList();
@@ -194,6 +211,14 @@ public class AuthorizationApplicationService {
     }
 
     public Set<String> permissionsForRoleCode(String roleCode) {
+        try {
+            Set<String> permissions = permissionApplicationService.permissionsForRoleCode(roleCode);
+            if (!permissions.isEmpty()) {
+                return permissions;
+            }
+        } catch (BusinessException ignored) {
+            // Fall back to legacy in-memory permissions during phased migration.
+        }
         return Set.copyOf(ROLE_PERMISSIONS.getOrDefault(roleCode, Set.of()));
     }
 
@@ -224,6 +249,12 @@ public class AuthorizationApplicationService {
             return crossClanAdmin.get();
         }
         requirePrimaryClan(clanId, userId);
+        Optional<ClanMemberEntity> rbacMember = branchId == null
+                ? requirePermissionByRbac(clanId, userId, "person.update", MemberRoleScopeType.clan, clanId)
+                : requirePermissionByRbac(clanId, userId, "person.update", MemberRoleScopeType.branch, branchId);
+        if (rbacMember.isPresent()) {
+            return rbacMember.get();
+        }
         Optional<ClanMemberEntity> clanAdmin = activeMembersInClan(clanId, userId).stream()
                 .filter(member -> ROLE_CLAN_ADMIN.equals(roleCode(member)))
                 .findFirst();
@@ -324,6 +355,26 @@ public class AuthorizationApplicationService {
         }
     }
 
+    private Optional<ClanMemberEntity> requirePermissionByRbac(Long clanId, Long userId, String permissionCode, MemberRoleScopeType scopeType, Long scopeId) {
+        try {
+            boolean allowed = rbacAuthorizationApplicationService.hasPermission(userId, clanId, permissionCode, scopeType, scopeId);
+            if (!allowed) {
+                return Optional.empty();
+            }
+            return firstActiveMemberForReturn(clanId, userId);
+        } catch (RuntimeException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<ClanMemberEntity> firstActiveMemberForReturn(Long clanId, Long userId) {
+        Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
+        if (crossClanAdmin.isPresent()) {
+            return crossClanAdmin;
+        }
+        return activeMembersInClan(clanId, userId).stream().findFirst();
+    }
+
     private List<ClanMemberEntity> activeMembersInClan(Long clanId, Long userId) {
         if (clanId == null || userId == null) {
             return List.of();
@@ -388,11 +439,21 @@ public class AuthorizationApplicationService {
     }
 
     private boolean roleAllows(String roleCode, String permissionCode) {
+        if (roleCode == null || permissionCode == null) {
+            return false;
+        }
+        try {
+            if (permissionApplicationService.roleCodeHasPermission(roleCode, permissionCode)) {
+                return true;
+            }
+        } catch (RuntimeException ignored) {
+            // Fall back to legacy in-memory permissions during phased migration.
+        }
         Set<String> permissions = ROLE_PERMISSIONS.getOrDefault(roleCode, Set.of());
         if (permissions.contains(ALL_PERMISSIONS) || permissions.contains(permissionCode)) {
             return true;
         }
-        int separator = permissionCode == null ? -1 : permissionCode.indexOf(':');
+        int separator = permissionCode.indexOf(':');
         return separator > 0 && permissions.contains(permissionCode.substring(0, separator) + ":*");
     }
 
