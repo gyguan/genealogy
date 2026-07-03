@@ -364,8 +364,8 @@ insert into member_role (
 select
     cmship.id,
     cm.role_id,
-    cm.scope_type,
-    coalesce(cm.scope_id, case when cm.scope_type = 'branch' then cm.branch_id else cm.clan_id end, cm.clan_id),
+    case when cm.scope_type = 'branch_subtree' then 'branch' else cm.scope_type end,
+    coalesce(cm.scope_id, case when cm.scope_type in ('branch', 'branch_subtree') then cm.branch_id else cm.clan_id end, cm.clan_id),
     cm.member_status,
     cm.invited_by,
     coalesce(cm.joined_at, cm.created_at),
