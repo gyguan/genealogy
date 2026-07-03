@@ -8,6 +8,20 @@ type PersonOption = {
   generationNo?: string | number;
 };
 
+type GenerationSchemeOption = {
+  id: string;
+  schemeName: string;
+  branchId?: string | number;
+};
+
+type GenerationWordItem = {
+  id?: string | number;
+  generationNo?: string | number;
+  word?: string;
+  description?: string;
+  sortOrder?: string | number;
+};
+
 declare global {
   interface Window {
     __genealogyWorkspace?: {
@@ -21,6 +35,10 @@ declare global {
 
 const personCache = new Map<string, PersonOption[]>();
 const personLoading = new Set<string>();
+const generationSchemeCache = new Map<string, GenerationSchemeOption[]>();
+const generationSchemeLoading = new Set<string>();
+const generationItemCache = new Map<string, GenerationWordItem[]>();
+const generationItemLoading = new Set<string>();
 
 function toRows(data: any): any[] {
   if (Array.isArray(data)) return data;
@@ -28,6 +46,15 @@ function toRows(data: any): any[] {
   if (Array.isArray(data?.items)) return data.items;
   if (Array.isArray(data?.content)) return data.content;
   return [];
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function findClanWizardPanel() {
@@ -52,6 +79,24 @@ function findRelationshipWizardPanel() {
     const text = panel.textContent || '';
     return text.includes('建立亲属关系') && text.includes('创建亲属关系并进入来源');
   }) || null;
+}
+
+function findGenerationWizardPanel() {
+  const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
+  return panels.find(panel => {
+    const text = panel.textContent || '';
+    return text.includes('维护字辈') && text.includes('追加字辈');
+  }) || null;
+}
+
+function formItemLabelText(item: HTMLElement) {
+  const label = item.querySelector<HTMLElement>('.ant-form-item-label label, label');
+  return (label?.textContent || '').trim();
+}
+
+function findFormItemByLabel(root: HTMLElement, labelText: string) {
+  return Array.from(root.querySelectorAll<HTMLElement>('.ant-form-item, .field'))
+    .find(item => formItemLabelText(item).includes(labelText)) || null;
 }
 
 function selectedClanName(panel: HTMLElement) {
@@ -87,6 +132,38 @@ async function loadPersons(clanId: string) {
     personCache.set(clanId, []);
   } finally {
     personLoading.delete(clanId);
+    requestAnimationFrame(syncMvp1WizardEnhancements);
+  }
+}
+
+async function loadGenerationSchemes(clanId: string) {
+  if (!clanId || generationSchemeCache.has(clanId) || generationSchemeLoading.has(clanId)) return;
+  generationSchemeLoading.add(clanId);
+  try {
+    const rows = toRows(await apiClient.get(`/clans/${clanId}/generation-schemes`));
+    generationSchemeCache.set(clanId, rows.map(row => ({
+      id: String(row.id || ''),
+      schemeName: row.schemeName || `字辈方案#${row.id}`,
+      branchId: row.branchId
+    })).filter(item => item.id));
+  } catch {
+    generationSchemeCache.set(clanId, []);
+  } finally {
+    generationSchemeLoading.delete(clanId);
+    requestAnimationFrame(syncMvp1WizardEnhancements);
+  }
+}
+
+async function loadGenerationItems(schemeId: string) {
+  if (!schemeId || generationItemCache.has(schemeId) || generationItemLoading.has(schemeId)) return;
+  generationItemLoading.add(schemeId);
+  try {
+    const rows = toRows(await apiClient.get(`/generation-schemes/${schemeId}/items`));
+    generationItemCache.set(schemeId, rows);
+  } catch {
+    generationItemCache.set(schemeId, []);
+  } finally {
+    generationItemLoading.delete(schemeId);
     requestAnimationFrame(syncMvp1WizardEnhancements);
   }
 }
@@ -159,7 +236,7 @@ function ensureCenterPersonSelector() {
   const people = personCache.get(clanId) || [];
   const html = [
     '<option value="">请选择中心人物</option>',
-    ...people.map(person => `<option value="${person.id}">${personLabel(person)}</option>`)
+    ...people.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
   ].join('');
 
   if (select.dataset.optionsHtml !== html) {
@@ -182,10 +259,117 @@ function ensureCenterPersonSelector() {
   }
 }
 
+function selectedSchemeName(panel: HTMLElement) {
+  const itemSection = panel.querySelector<HTMLElement>('.wizard-generation-section--items');
+  const field = itemSection ? findFormItemByLabel(itemSection, '字辈方案') || findFormItemByLabel(itemSection, '已有方案') : null;
+  return (field?.querySelector<HTMLElement>('.ant-select-selection-item')?.textContent || '').trim();
+}
+
+function selectedSchemeId(panel: HTMLElement, clanId: string) {
+  const schemes = generationSchemeCache.get(clanId) || [];
+  if (!schemes.length) return '';
+  const selectedName = selectedSchemeName(panel);
+  const selected = schemes.find(item => item.schemeName === selectedName || selectedName.includes(item.schemeName));
+  return selected?.id || (schemes.length === 1 ? schemes[0].id : '');
+}
+
+function moveSchemeSelectorToGenerationWordSection(panel: HTMLElement) {
+  const itemSection = panel.querySelector<HTMLElement>('.wizard-generation-section--items');
+  const itemGrid = itemSection?.querySelector<HTMLElement>('.wizard-generation-word-grid');
+  if (!itemSection || !itemGrid) return;
+
+  const schemeField = findFormItemByLabel(panel, '已有方案');
+  if (schemeField && !itemGrid.contains(schemeField)) {
+    itemGrid.insertAdjacentElement('afterbegin', schemeField);
+    schemeField.classList.add('wizard-generation-scheme-field--moved');
+  }
+  if (schemeField) {
+    const label = schemeField.querySelector<HTMLElement>('.ant-form-item-label label, label');
+    if (label) label.textContent = '字辈方案 *';
+  }
+
+  const currentReadonly = findFormItemByLabel(itemSection, '当前字辈方案');
+  if (currentReadonly) currentReadonly.style.display = 'none';
+}
+
+function renderGenerationItemsList(panel: HTMLElement) {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  if (clanId) void loadGenerationSchemes(clanId);
+
+  const itemSection = panel.querySelector<HTMLElement>('.wizard-generation-section--items');
+  if (!itemSection) return;
+
+  let wrapper = itemSection.querySelector<HTMLElement>('.wizard-generation-items-list-enhanced');
+  if (!wrapper) {
+    wrapper = document.createElement('section');
+    wrapper.className = 'wizard-generation-items-list-enhanced';
+    const actions = itemSection.querySelector<HTMLElement>('.antd-actions, .actions');
+    if (actions) actions.insertAdjacentElement('afterend', wrapper);
+    else itemSection.appendChild(wrapper);
+  }
+
+  const schemeId = selectedSchemeId(panel, clanId);
+  if (schemeId) void loadGenerationItems(schemeId);
+  const items = schemeId ? (generationItemCache.get(schemeId) || []) : [];
+  const loading = schemeId && generationItemLoading.has(schemeId);
+  const schemes = generationSchemeCache.get(clanId) || [];
+
+  const rows = items
+    .slice()
+    .sort((a, b) => Number(a.generationNo || 0) - Number(b.generationNo || 0))
+    .map((item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>第${escapeHtml(item.generationNo || '-')}世</td>
+        <td><strong>${escapeHtml(item.word || '-')}</strong></td>
+        <td>${escapeHtml(item.description || item.sortOrder || '-')}</td>
+      </tr>
+    `).join('');
+
+  const emptyText = !clanId
+    ? '请先选择宗族'
+    : !schemes.length
+      ? '暂无字辈方案，请先创建方案'
+      : !schemeId
+        ? '请选择字辈方案后查看已有字辈'
+        : loading
+          ? '正在加载字辈明细...'
+          : '该方案下暂无字辈，创建后会显示在这里';
+
+  wrapper.innerHTML = `
+    <div class="wizard-generation-list-header">
+      <h4>三、该方案下已有字辈</h4>
+      <span>${schemeId ? `共 ${items.length} 条` : ''}</span>
+    </div>
+    <div class="wizard-generation-list-table-wrap">
+      <table class="wizard-generation-list-table">
+        <thead><tr><th>序号</th><th>代次</th><th>字辈</th><th>备注</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4" class="empty">${escapeHtml(emptyText)}</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function enhanceGenerationStep() {
+  const panel = findGenerationWizardPanel();
+  if (!panel) return;
+  moveSchemeSelectorToGenerationWordSection(panel);
+  renderGenerationItemsList(panel);
+}
+
+function invalidateGenerationCaches() {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  if (clanId) generationSchemeCache.delete(clanId);
+  generationItemCache.clear();
+}
+
 function syncMvp1WizardEnhancements() {
   ensureSelectedClanBanner();
   simplifyPersonEntryStep();
   ensureCenterPersonSelector();
+  enhanceGenerationStep();
 }
 
 function installMvp1WizardEnhancements() {
@@ -201,7 +385,22 @@ function installMvp1WizardEnhancements() {
     if (target?.closest('.antd-table-wrap tr.clickable')) {
       window.setTimeout(sync, 0);
     }
+    const button = target?.closest('button');
+    const text = button?.textContent || '';
+    if (text.includes('创建字辈方案') || text.includes('追加字辈')) {
+      window.setTimeout(() => {
+        invalidateGenerationCaches();
+        sync();
+      }, 600);
+    }
   });
+
+  document.addEventListener('change', event => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.wizard-generation-section--items')) {
+      window.setTimeout(sync, 0);
+    }
+  }, true);
 
   window.addEventListener('storage', sync);
 }
