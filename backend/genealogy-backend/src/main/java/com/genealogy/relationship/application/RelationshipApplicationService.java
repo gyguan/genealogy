@@ -52,6 +52,7 @@ public class RelationshipApplicationService {
     private static final String PRIVACY_SEALED = "sealed";
     private static final String DEFAULT_PRIVACY_LEVEL = "clan_only";
     private static final String DEFAULT_LIVING_PRIVACY_LEVEL = "branch_only";
+    private static final String RELATIONSHIP_STATUS_OFFICIAL = "official";
 
     private static final String RELATIONSHIP_VIEW = "relationship:view";
     private static final String RELATIONSHIP_CREATE = "relationship:create";
@@ -61,6 +62,7 @@ public class RelationshipApplicationService {
     private static final String PERSON_VIEW = "person:view";
     private static final String PERSON_UPDATE = "person:update";
     private static final String PERSON_DELETE = "person:delete";
+    private static final String REVIEW_APPROVE = "review_task:approve";
 
     private static final Set<String> ALLOWED_RELATION_TYPES = Set.of(
             TYPE_PARENT_CHILD, TYPE_SPOUSE, TYPE_ADOPTIVE, TYPE_SUCCESSOR, TYPE_OUT_ADOPTION
@@ -153,6 +155,7 @@ public class RelationshipApplicationService {
     public RelationshipResponse update(Long id, RelationshipUpdateRequest request, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
         requireRelationshipBranchPermission(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId(), RELATIONSHIP_UPDATE);
+        requireReviewForOfficialRelationship(entity, actorId);
         String oldType = entity.getRelationType();
         String relationType = normalizeType(request.relationType());
         String relationLabel = normalizeLabel(request.relationLabel(), relationType, entity.getFromPersonId());
@@ -186,6 +189,7 @@ public class RelationshipApplicationService {
     public void delete(Long id, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
         requireRelationshipBranchPermission(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId(), RELATIONSHIP_DELETE);
+        requireReviewForOfficialRelationship(entity, actorId);
         LocalDateTime now = LocalDateTime.now();
         entity.setDeletedAt(now);
         entity.setUpdatedAt(now);
@@ -254,6 +258,16 @@ public class RelationshipApplicationService {
 
     private boolean actorOwnsRecord(PersonEntity person, Long actorId) {
         return actorId != null && (actorId.equals(person.getCreatedBy()) || actorId.equals(person.getUpdatedBy()));
+    }
+
+    private void requireReviewForOfficialRelationship(RelationshipEntity entity, Long actorId) {
+        if (!RELATIONSHIP_STATUS_OFFICIAL.equals(entity.getDataStatus())) {
+            return;
+        }
+        if (authorizationApplicationService.can(entity.getClanId(), actorId, REVIEW_APPROVE)) {
+            return;
+        }
+        throw new BusinessException("RELATIONSHIP_OFFICIAL_REVIEW_REQUIRED", "正式关系变更需先提交审核");
     }
 
     private void requireRelationshipBranchPermission(Long clanId, Long actorId, Long fromPersonId, Long toPersonId, String permissionCode) {
@@ -492,7 +506,6 @@ public class RelationshipApplicationService {
         reverse.setDescription("auto reverse spouse relationship");
         reverse.setConfidenceLevel(saved.getConfidenceLevel());
         reverse.setDataStatus(saved.getDataStatus());
-        reverse.setDescription("auto reverse spouse relationship");
         reverse.setCreatedAt(now);
         reverse.setUpdatedAt(now);
         relationshipRepository.save(reverse);
