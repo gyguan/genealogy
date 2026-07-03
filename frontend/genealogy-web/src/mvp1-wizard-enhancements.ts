@@ -6,6 +6,8 @@ type PersonOption = {
   genealogyName?: string;
   generationWord?: string;
   generationNo?: string | number;
+  gender?: string;
+  branchId?: string | number;
 };
 
 type GenerationSchemeOption = {
@@ -77,7 +79,7 @@ function findRelationshipWizardPanel() {
   const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
   return panels.find(panel => {
     const text = panel.textContent || '';
-    return text.includes('建立亲属关系') && text.includes('创建亲属关系并进入来源');
+    return text.includes('建立亲属关系') && text.includes('创建亲属关系');
   }) || null;
 }
 
@@ -116,8 +118,8 @@ function personLabel(person: PersonOption) {
   return pieces.join(' · ');
 }
 
-async function loadPersons(clanId: string) {
-  if (!clanId || personCache.has(clanId) || personLoading.has(clanId)) return;
+async function loadPersons(clanId: string, force = false) {
+  if (!clanId || (!force && personCache.has(clanId)) || personLoading.has(clanId)) return;
   personLoading.add(clanId);
   try {
     const rows = toRows(await apiClient.get(`/clans/${clanId}/persons`));
@@ -126,7 +128,9 @@ async function loadPersons(clanId: string) {
       name: row.name || row.personName || '',
       genealogyName: row.genealogyName,
       generationWord: row.generationWord,
-      generationNo: row.generationNo
+      generationNo: row.generationNo,
+      gender: row.gender,
+      branchId: row.branchId
     })).filter(item => item.id));
   } catch {
     personCache.set(clanId, []);
@@ -259,6 +263,111 @@ function ensureCenterPersonSelector() {
   }
 }
 
+function ensureRelativePersonSelector() {
+  const panel = findRelationshipWizardPanel();
+  if (!panel) return;
+
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
+  if (clanId) void loadPersons(clanId);
+
+  let wrapper = panel.querySelector<HTMLElement>('.wizard-current--relative-person-selector');
+  if (!wrapper) {
+    wrapper = document.createElement('section');
+    wrapper.className = 'wizard-current wizard-current--relative-person-selector';
+    wrapper.innerHTML = '<label>选择已有亲属人物：</label><select><option value="">不选择，手工录入新亲属</option></select><small>选择后点击“创建亲属关系”，将直接绑定已有人员，不会重复创建人物。</small>';
+
+    const relativeNameField = findFormItemByLabel(panel, '亲属姓名');
+    if (relativeNameField) {
+      relativeNameField.insertAdjacentElement('beforebegin', wrapper);
+    } else {
+      const form = panel.querySelector<HTMLElement>('.wizard-form-grid');
+      form?.appendChild(wrapper);
+    }
+  }
+
+  const select = wrapper.querySelector<HTMLSelectElement>('select');
+  if (!select) return;
+
+  const people = (personCache.get(clanId) || []).filter(person => person.id !== centerPersonId);
+  const html = [
+    '<option value="">不选择，手工录入新亲属</option>',
+    ...people.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
+  ].join('');
+
+  if (select.dataset.optionsHtml !== html) {
+    const previous = select.value;
+    select.innerHTML = html;
+    select.dataset.optionsHtml = html;
+    if (people.some(person => person.id === previous)) select.value = previous;
+  }
+}
+
+function selectedExistingRelative(panel: HTMLElement) {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  const select = panel.querySelector<HTMLSelectElement>('.wizard-current--relative-person-selector select');
+  const relativeId = select?.value || '';
+  if (!relativeId) return null;
+  return (personCache.get(clanId) || []).find(person => person.id === relativeId) || null;
+}
+
+function selectedRelationshipMode(panel: HTMLElement) {
+  const field = findFormItemByLabel(panel, '关系类型');
+  const text = (field?.querySelector<HTMLElement>('.ant-select-selection-item')?.textContent || field?.textContent || '').trim();
+  if (text.includes('母亲')) return 'mother';
+  if (text.includes('配偶')) return 'spouse';
+  if (text.includes('子女')) return 'child';
+  return 'father';
+}
+
+function buildRelationshipBody(centerPerson: PersonOption | undefined, relativePerson: PersonOption, mode: string) {
+  const centerId = Number(centerPerson?.id || window.__genealogyWorkspace?.personId || localStorage.getItem('genealogy.workspace.personId'));
+  const relativeId = Number(relativePerson.id);
+  if (mode === 'spouse') {
+    return { fromPersonId: centerId, toPersonId: relativeId, relationType: 'spouse', relationLabel: 'spouse', isLineageRelation: false, isBiological: false, isPrimary: true, confidenceLevel: 'high' };
+  }
+  if (mode === 'child') {
+    return { fromPersonId: centerId, toPersonId: relativeId, relationType: 'parent_child', relationLabel: centerPerson?.gender === 'female' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' };
+  }
+  return { fromPersonId: relativeId, toPersonId: centerId, relationType: 'parent_child', relationLabel: mode === 'mother' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' };
+}
+
+async function createRelationshipWithSelectedRelative(panel: HTMLElement) {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
+  const relativePerson = selectedExistingRelative(panel);
+  if (!clanId || !centerPersonId || !relativePerson) return;
+  if (relativePerson.id === centerPersonId) {
+    window.alert('亲属人物不能与中心人物相同');
+    return;
+  }
+
+  const people = personCache.get(clanId) || [];
+  const centerPerson = people.find(person => person.id === centerPersonId);
+  const mode = selectedRelationshipMode(panel);
+  const relationship: any = await apiClient.post(`/clans/${clanId}/relationships`, buildRelationshipBody(centerPerson, relativePerson, mode));
+  const relationshipId = String(relationship?.id || '');
+  workspace?.patch({ relationshipId, sourceId: '', reviewTaskId: '' });
+  localStorage.setItem('genealogy.workspace.relationshipId', relationshipId);
+  localStorage.setItem('genealogy.workspace.sourceId', '');
+  localStorage.setItem('genealogy.workspace.reviewTaskId', '');
+  window.alert('亲属关系创建成功，已使用已有亲属人物建立关系');
+
+  const sourceStep = Array.from(document.querySelectorAll<HTMLButtonElement>('.wizard-steps button'))
+    .find(button => (button.textContent || '').includes('6. 绑定来源'));
+  sourceStep?.click();
+  window.setTimeout(() => {
+    const sourcePanel = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'))
+      .find(item => (item.textContent || '').includes('绑定来源证据'));
+    const refreshButton = Array.from(sourcePanel?.querySelectorAll<HTMLButtonElement>('button') || [])
+      .find(button => (button.textContent || '').includes('刷新选项'));
+    refreshButton?.click();
+  }, 150);
+}
+
 function selectedSchemeName(panel: HTMLElement) {
   const itemSection = panel.querySelector<HTMLElement>('.wizard-generation-section--items');
   const field = itemSection ? findFormItemByLabel(itemSection, '字辈方案') || findFormItemByLabel(itemSection, '已有方案') : null;
@@ -365,10 +474,17 @@ function invalidateGenerationCaches() {
   generationItemCache.clear();
 }
 
+function invalidatePersonCaches() {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  if (clanId) personCache.delete(clanId);
+}
+
 function syncMvp1WizardEnhancements() {
   ensureSelectedClanBanner();
   simplifyPersonEntryStep();
   ensureCenterPersonSelector();
+  ensureRelativePersonSelector();
   enhanceGenerationStep();
 }
 
@@ -379,6 +495,21 @@ function installMvp1WizardEnhancements() {
 
   const observer = new MutationObserver(sync);
   observer.observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener('click', event => {
+    const target = event.target as HTMLElement | null;
+    const button = target?.closest('button');
+    const text = button?.textContent || '';
+    if (text.includes('创建亲属关系')) {
+      const panel = findRelationshipWizardPanel();
+      if (panel && selectedExistingRelative(panel)) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        void createRelationshipWithSelectedRelative(panel).then(() => sync()).catch(error => window.alert((error as Error).message || '创建亲属关系失败'));
+      }
+    }
+  }, true);
 
   document.addEventListener('click', event => {
     const target = event.target as HTMLElement | null;
@@ -393,11 +524,17 @@ function installMvp1WizardEnhancements() {
         sync();
       }, 600);
     }
+    if (text.includes('创建人物') || text.includes('刷新选项')) {
+      window.setTimeout(() => {
+        invalidatePersonCaches();
+        void loadPersons(window.__genealogyWorkspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '', true);
+      }, 600);
+    }
   });
 
   document.addEventListener('change', event => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.wizard-generation-section--items')) {
+    if (target?.closest('.wizard-generation-section--items') || target?.closest('.wizard-current--relative-person-selector')) {
       window.setTimeout(sync, 0);
     }
   }, true);
