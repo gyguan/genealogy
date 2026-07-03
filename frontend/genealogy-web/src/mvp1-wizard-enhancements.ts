@@ -118,6 +118,37 @@ function personLabel(person: PersonOption) {
   return pieces.join(' · ');
 }
 
+function numericGeneration(person?: PersonOption) {
+  const value = Number(person?.generationNo);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function genderMatchForMode(person: PersonOption, mode: string) {
+  if (mode === 'father') return person.gender === 'male' || !person.gender || person.gender === 'unknown';
+  if (mode === 'mother') return person.gender === 'female' || !person.gender || person.gender === 'unknown';
+  return true;
+}
+
+function generationMatchForMode(center: PersonOption | undefined, relative: PersonOption, mode: string) {
+  const centerNo = numericGeneration(center);
+  const relativeNo = numericGeneration(relative);
+  if (!centerNo || !relativeNo) return true;
+  if (mode === 'father' || mode === 'mother') return relativeNo === centerNo - 1;
+  if (mode === 'child') return relativeNo === centerNo + 1;
+  if (mode === 'spouse') return relativeNo === centerNo;
+  return true;
+}
+
+function relationRestrictionText(center: PersonOption | undefined, mode: string) {
+  const centerNo = numericGeneration(center);
+  if (!centerNo) return '中心人物代次未维护，暂按姓名选择；建议先维护代次以获得更准确的亲属筛选。';
+  if (mode === 'father') return `父亲只能选择上一代人物：第 ${centerNo - 1} 世，且优先男性。`;
+  if (mode === 'mother') return `母亲只能选择上一代人物：第 ${centerNo - 1} 世，且优先女性。`;
+  if (mode === 'child') return `子女只能选择下一代人物：第 ${centerNo + 1} 世。`;
+  if (mode === 'spouse') return `配偶默认选择同代人物：第 ${centerNo} 世。`;
+  return '请根据关系类型选择合适的亲属人物。';
+}
+
 async function loadPersons(clanId: string, force = false) {
   if (!clanId || (!force && personCache.has(clanId)) || personLoading.has(clanId)) return;
   personLoading.add(clanId);
@@ -183,11 +214,8 @@ function ensureSelectedClanBanner() {
     banner.innerHTML = '当前选中宗族：<strong>未选择</strong>';
 
     const actions = panel.querySelector<HTMLElement>('.antd-actions, .actions');
-    if (actions?.parentElement) {
-      actions.insertAdjacentElement('afterend', banner);
-    } else {
-      panel.appendChild(banner);
-    }
+    if (actions?.parentElement) actions.insertAdjacentElement('afterend', banner);
+    else panel.appendChild(banner);
   }
 
   const strong = banner.querySelector('strong');
@@ -198,11 +226,8 @@ function simplifyPersonEntryStep() {
   const panel = findPersonWizardPanel();
   if (!panel) return;
 
-  const buttons = Array.from(panel.querySelectorAll<HTMLButtonElement>('button'));
-  buttons.forEach(button => {
-    if ((button.textContent || '').includes('刷新人物')) {
-      button.style.display = 'none';
-    }
+  Array.from(panel.querySelectorAll<HTMLButtonElement>('button')).forEach(button => {
+    if ((button.textContent || '').includes('刷新人物')) button.style.display = 'none';
   });
 
   panel.querySelectorAll<HTMLElement>('.antd-table-wrap, .table-wrap').forEach(table => {
@@ -210,57 +235,17 @@ function simplifyPersonEntryStep() {
   });
 }
 
-function ensureCenterPersonSelector() {
-  const panel = findRelationshipWizardPanel();
-  if (!panel) return;
+function removeExtraCenterPersonSelector() {
+  document.querySelectorAll<HTMLElement>('.wizard-current--center-person-selector').forEach(item => item.remove());
+}
 
-  const workspace = window.__genealogyWorkspace;
-  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
-  if (clanId) void loadPersons(clanId);
-
-  let wrapper = panel.querySelector<HTMLElement>('.wizard-current--center-person-selector');
-  if (!wrapper) {
-    wrapper = document.createElement('section');
-    wrapper.className = 'wizard-current wizard-current--center-person-selector';
-    wrapper.innerHTML = '<label>中心人物：</label><select><option value="">请选择中心人物</option></select>';
-
-    const current = Array.from(panel.querySelectorAll<HTMLElement>('.wizard-current')).find(item => (item.textContent || '').includes('中心人物'));
-    if (current) {
-      current.insertAdjacentElement('afterend', wrapper);
-    } else {
-      const form = panel.querySelector<HTMLElement>('.wizard-form-grid');
-      form?.insertAdjacentElement('beforebegin', wrapper);
-    }
-  }
-
-  const select = wrapper.querySelector<HTMLSelectElement>('select');
-  if (!select) return;
-
-  const currentPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
-  const people = personCache.get(clanId) || [];
-  const html = [
-    '<option value="">请选择中心人物</option>',
-    ...people.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
-  ].join('');
-
-  if (select.dataset.optionsHtml !== html) {
-    select.innerHTML = html;
-    select.dataset.optionsHtml = html;
-  }
-  select.value = currentPersonId;
-
-  if (!select.dataset.bound) {
-    select.dataset.bound = 'true';
-    select.addEventListener('change', event => {
-      const value = (event.target as HTMLSelectElement).value;
-      window.__genealogyWorkspace?.patch({ personId: value, relationshipId: '', sourceId: '', reviewTaskId: '' });
-      localStorage.setItem('genealogy.workspace.personId', value);
-      localStorage.setItem('genealogy.workspace.relationshipId', '');
-      localStorage.setItem('genealogy.workspace.sourceId', '');
-      localStorage.setItem('genealogy.workspace.reviewTaskId', '');
-      requestAnimationFrame(syncMvp1WizardEnhancements);
-    });
-  }
+function selectedRelationshipMode(panel: HTMLElement) {
+  const field = findFormItemByLabel(panel, '关系类型');
+  const text = (field?.querySelector<HTMLElement>('.ant-select-selection-item')?.textContent || field?.textContent || '').trim();
+  if (text.includes('母亲')) return 'mother';
+  if (text.includes('配偶')) return 'spouse';
+  if (text.includes('子女')) return 'child';
+  return 'father';
 }
 
 function ensureRelativePersonSelector() {
@@ -272,54 +257,54 @@ function ensureRelativePersonSelector() {
   const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
   if (clanId) void loadPersons(clanId);
 
-  let wrapper = panel.querySelector<HTMLElement>('.wizard-current--relative-person-selector');
+  const people = personCache.get(clanId) || [];
+  const centerPerson = people.find(person => person.id === centerPersonId);
+  const mode = selectedRelationshipMode(panel);
+  const filteredPeople = people
+    .filter(person => person.id !== centerPersonId)
+    .filter(person => generationMatchForMode(centerPerson, person, mode))
+    .filter(person => genderMatchForMode(person, mode));
+
+  let wrapper = panel.querySelector<HTMLElement>('.wizard-existing-relative-field');
   if (!wrapper) {
-    wrapper = document.createElement('section');
-    wrapper.className = 'wizard-current wizard-current--relative-person-selector';
-    wrapper.innerHTML = '<label>选择已有亲属人物：</label><select><option value="">不选择，手工录入新亲属</option></select><small>选择后点击“创建亲属关系”，将直接绑定已有人员，不会重复创建人物。</small>';
+    wrapper = document.createElement('div');
+    wrapper.className = 'field wizard-existing-relative-field';
+    wrapper.innerHTML = '<label>已有亲属人物</label><select><option value="">不选择，手工录入新亲属</option></select><small></small>';
 
     const relativeNameField = findFormItemByLabel(panel, '亲属姓名');
-    if (relativeNameField) {
-      relativeNameField.insertAdjacentElement('beforebegin', wrapper);
-    } else {
-      const form = panel.querySelector<HTMLElement>('.wizard-form-grid');
-      form?.appendChild(wrapper);
-    }
+    if (relativeNameField) relativeNameField.insertAdjacentElement('beforebegin', wrapper);
+    else panel.querySelector<HTMLElement>('.wizard-form-grid')?.appendChild(wrapper);
   }
 
   const select = wrapper.querySelector<HTMLSelectElement>('select');
+  const hint = wrapper.querySelector<HTMLElement>('small');
   if (!select) return;
 
-  const people = (personCache.get(clanId) || []).filter(person => person.id !== centerPersonId);
   const html = [
     '<option value="">不选择，手工录入新亲属</option>',
-    ...people.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
+    ...filteredPeople.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
   ].join('');
 
   if (select.dataset.optionsHtml !== html) {
     const previous = select.value;
     select.innerHTML = html;
     select.dataset.optionsHtml = html;
-    if (people.some(person => person.id === previous)) select.value = previous;
+    if (filteredPeople.some(person => person.id === previous)) select.value = previous;
+  }
+
+  if (hint) {
+    const baseText = relationRestrictionText(centerPerson, mode);
+    hint.textContent = filteredPeople.length ? baseText : `${baseText} 当前没有匹配的人物，可手工录入新亲属。`;
   }
 }
 
 function selectedExistingRelative(panel: HTMLElement) {
   const workspace = window.__genealogyWorkspace;
   const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
-  const select = panel.querySelector<HTMLSelectElement>('.wizard-current--relative-person-selector select');
+  const select = panel.querySelector<HTMLSelectElement>('.wizard-existing-relative-field select');
   const relativeId = select?.value || '';
   if (!relativeId) return null;
   return (personCache.get(clanId) || []).find(person => person.id === relativeId) || null;
-}
-
-function selectedRelationshipMode(panel: HTMLElement) {
-  const field = findFormItemByLabel(panel, '关系类型');
-  const text = (field?.querySelector<HTMLElement>('.ant-select-selection-item')?.textContent || field?.textContent || '').trim();
-  if (text.includes('母亲')) return 'mother';
-  if (text.includes('配偶')) return 'spouse';
-  if (text.includes('子女')) return 'child';
-  return 'father';
 }
 
 function buildRelationshipBody(centerPerson: PersonOption | undefined, relativePerson: PersonOption, mode: string) {
@@ -348,6 +333,11 @@ async function createRelationshipWithSelectedRelative(panel: HTMLElement) {
   const people = personCache.get(clanId) || [];
   const centerPerson = people.find(person => person.id === centerPersonId);
   const mode = selectedRelationshipMode(panel);
+  if (!generationMatchForMode(centerPerson, relativePerson, mode) || !genderMatchForMode(relativePerson, mode)) {
+    window.alert('所选亲属人物与当前关系类型不匹配，请重新选择。');
+    return;
+  }
+
   const relationship: any = await apiClient.post(`/clans/${clanId}/relationships`, buildRelationshipBody(centerPerson, relativePerson, mode));
   const relationshipId = String(relationship?.id || '');
   workspace?.patch({ relationshipId, sourceId: '', reviewTaskId: '' });
@@ -483,7 +473,7 @@ function invalidatePersonCaches() {
 function syncMvp1WizardEnhancements() {
   ensureSelectedClanBanner();
   simplifyPersonEntryStep();
-  ensureCenterPersonSelector();
+  removeExtraCenterPersonSelector();
   ensureRelativePersonSelector();
   enhanceGenerationStep();
 }
@@ -534,7 +524,7 @@ function installMvp1WizardEnhancements() {
 
   document.addEventListener('change', event => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.wizard-generation-section--items') || target?.closest('.wizard-current--relative-person-selector')) {
+    if (target?.closest('.wizard-generation-section--items') || target?.closest('.wizard-existing-relative-field')) {
       window.setTimeout(sync, 0);
     }
   }, true);
