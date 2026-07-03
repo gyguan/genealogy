@@ -46,6 +46,14 @@ public class RbacAuthorizationApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isActiveClanMember(Long userId, Long clanId) {
+        if (userId == null || clanId == null) {
+            return false;
+        }
+        return clanMembershipRepository.existsByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active);
+    }
+
+    @Transactional(readOnly = true)
     public boolean hasPermission(Long userId, Long clanId, String permissionCode) {
         return hasPermission(userId, clanId, permissionCode, null, null);
     }
