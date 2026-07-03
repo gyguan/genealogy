@@ -24,6 +24,18 @@ type GenerationWordItem = {
   sortOrder?: string | number;
 };
 
+type RelationshipItem = {
+  id?: string | number;
+  fromPersonId?: string | number;
+  sourcePersonId?: string | number;
+  toPersonId?: string | number;
+  targetPersonId?: string | number;
+  relationType?: string;
+  relationLabel?: string;
+  status?: string;
+  dataStatus?: string;
+};
+
 declare global {
   interface Window {
     __genealogyWorkspace?: {
@@ -37,6 +49,8 @@ declare global {
 
 const personCache = new Map<string, PersonOption[]>();
 const personLoading = new Set<string>();
+const relationshipCache = new Map<string, RelationshipItem[]>();
+const relationshipLoading = new Set<string>();
 const generationSchemeCache = new Map<string, GenerationSchemeOption[]>();
 const generationSchemeLoading = new Set<string>();
 const generationItemCache = new Map<string, GenerationWordItem[]>();
@@ -123,9 +137,48 @@ function numericGeneration(person?: PersonOption) {
   return Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+function genderText(value?: string) {
+  const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
+  return dict[value || ''] || value || '未知';
+}
+
+function relationTypeText(value?: string) {
+  const dict: Record<string, string> = {
+    parent_child: '亲子',
+    spouse: '配偶',
+    adoptive: '收养',
+    successor: '继嗣',
+    heir_successor: '继嗣',
+    out_adoption: '出嗣',
+    out_adopted: '出嗣'
+  };
+  return dict[value || ''] || value || '-';
+}
+
+function relationLabelText(value?: string) {
+  const dict: Record<string, string> = {
+    father: '父亲',
+    mother: '母亲',
+    spouse: '配偶',
+    child: '子女',
+    son: '儿子',
+    daughter: '女儿',
+    parent_child: '亲子',
+    adoptive: '收养',
+    adoptive_father: '养父',
+    adoptive_mother: '养母',
+    successor: '继嗣',
+    heir_successor: '继嗣',
+    out_adoption: '出嗣',
+    out_adopted: '出嗣'
+  };
+  return dict[value || ''] || value || '-';
+}
+
 function genderMatchForMode(person: PersonOption, mode: string) {
-  if (mode === 'father') return person.gender === 'male' || !person.gender || person.gender === 'unknown';
-  if (mode === 'mother') return person.gender === 'female' || !person.gender || person.gender === 'unknown';
+  if (mode === 'father') return person.gender === 'male';
+  if (mode === 'mother') return person.gender === 'female';
+  if (mode === 'spouse') return person.gender === 'female';
   return true;
 }
 
@@ -142,10 +195,10 @@ function generationMatchForMode(center: PersonOption | undefined, relative: Pers
 function relationRestrictionText(center: PersonOption | undefined, mode: string) {
   const centerNo = numericGeneration(center);
   if (!centerNo) return '中心人物代次未维护，暂按姓名选择；建议先维护代次以获得更准确的亲属筛选。';
-  if (mode === 'father') return `父亲只能选择上一代人物：第 ${centerNo - 1} 世，且优先男性。`;
-  if (mode === 'mother') return `母亲只能选择上一代人物：第 ${centerNo - 1} 世，且优先女性。`;
+  if (mode === 'father') return `父亲只能选择上一代男性人物：第 ${centerNo - 1} 世。`;
+  if (mode === 'mother') return `母亲只能选择上一代女性人物：第 ${centerNo - 1} 世。`;
   if (mode === 'child') return `子女只能选择下一代人物：第 ${centerNo + 1} 世。`;
-  if (mode === 'spouse') return `配偶默认选择同代人物：第 ${centerNo} 世。`;
+  if (mode === 'spouse') return `配偶默认选择同代女性人物：第 ${centerNo} 世。`;
   return '请根据关系类型选择合适的亲属人物。';
 }
 
@@ -167,6 +220,18 @@ async function loadPersons(clanId: string, force = false) {
     personCache.set(clanId, []);
   } finally {
     personLoading.delete(clanId);
+    requestAnimationFrame(syncMvp1WizardEnhancements);
+  }
+}
+
+async function loadRelationships(personId: string, force = false) {
+  if (!personId || (!force && relationshipCache.has(personId)) || relationshipLoading.has(personId)) return;
+  relationshipLoading.add(personId);
+  try {
+    const rows = toRows(await apiClient.get(`/persons/${personId}/relationships`).catch(() => []));
+    relationshipCache.set(personId, rows);
+  } finally {
+    relationshipLoading.delete(personId);
     requestAnimationFrame(syncMvp1WizardEnhancements);
   }
 }
@@ -248,31 +313,54 @@ function selectedRelationshipMode(panel: HTMLElement) {
   return 'father';
 }
 
+function centerPerson(clanId: string, centerPersonId: string) {
+  return (personCache.get(clanId) || []).find(person => person.id === centerPersonId);
+}
+
+function candidatePeople(clanId: string, centerPersonId: string, mode: string) {
+  const people = personCache.get(clanId) || [];
+  const center = centerPerson(clanId, centerPersonId);
+  return people
+    .filter(person => person.id !== centerPersonId)
+    .filter(person => generationMatchForMode(center, person, mode))
+    .filter(person => genderMatchForMode(person, mode));
+}
+
+function simplifyRelationshipStep(panel: HTMLElement) {
+  ['亲属姓名', '亲属性别', '亲属代次'].forEach(label => {
+    const field = findFormItemByLabel(panel, label);
+    if (field) field.style.display = 'none';
+  });
+  Array.from(panel.querySelectorAll<HTMLButtonElement>('button')).forEach(button => {
+    const text = button.textContent || '';
+    if (text.includes('刷新选项')) button.style.display = 'none';
+    if (text.includes('创建亲属关系')) button.textContent = '创建亲属关系';
+  });
+}
+
 function ensureRelativePersonSelector() {
   const panel = findRelationshipWizardPanel();
   if (!panel) return;
+  simplifyRelationshipStep(panel);
 
   const workspace = window.__genealogyWorkspace;
   const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
   const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
   if (clanId) void loadPersons(clanId);
+  if (centerPersonId) void loadRelationships(centerPersonId);
 
-  const people = personCache.get(clanId) || [];
-  const centerPerson = people.find(person => person.id === centerPersonId);
+  const center = centerPerson(clanId, centerPersonId);
   const mode = selectedRelationshipMode(panel);
-  const filteredPeople = people
-    .filter(person => person.id !== centerPersonId)
-    .filter(person => generationMatchForMode(centerPerson, person, mode))
-    .filter(person => genderMatchForMode(person, mode));
+  const filteredPeople = candidatePeople(clanId, centerPersonId, mode);
 
   let wrapper = panel.querySelector<HTMLElement>('.wizard-existing-relative-field');
   if (!wrapper) {
     wrapper = document.createElement('div');
-    wrapper.className = 'field wizard-existing-relative-field';
-    wrapper.innerHTML = '<label>已有亲属人物</label><select><option value="">不选择，手工录入新亲属</option></select><small></small>';
+    wrapper.className = 'field antd-field wizard-existing-relative-field';
+    wrapper.innerHTML = '<label>已有亲属人物</label><select><option value="">请选择已有亲属人物</option></select><small></small>';
 
-    const relativeNameField = findFormItemByLabel(panel, '亲属姓名');
-    if (relativeNameField) relativeNameField.insertAdjacentElement('beforebegin', wrapper);
+    const relationshipTypeField = findFormItemByLabel(panel, '关系类型');
+    if (relationshipTypeField) relationshipTypeField.insertAdjacentElement('afterend', wrapper);
     else panel.querySelector<HTMLElement>('.wizard-form-grid')?.appendChild(wrapper);
   }
 
@@ -281,7 +369,7 @@ function ensureRelativePersonSelector() {
   if (!select) return;
 
   const html = [
-    '<option value="">不选择，手工录入新亲属</option>',
+    '<option value="">请选择已有亲属人物</option>',
     ...filteredPeople.map(person => `<option value="${escapeHtml(person.id)}">${escapeHtml(personLabel(person))}</option>`)
   ].join('');
 
@@ -293,8 +381,8 @@ function ensureRelativePersonSelector() {
   }
 
   if (hint) {
-    const baseText = relationRestrictionText(centerPerson, mode);
-    hint.textContent = filteredPeople.length ? baseText : `${baseText} 当前没有匹配的人物，可手工录入新亲属。`;
+    const baseText = relationRestrictionText(center, mode);
+    hint.textContent = filteredPeople.length ? baseText : `${baseText} 当前没有匹配的人物，请先在录入人物步骤维护后再建立关系。`;
   }
 }
 
@@ -319,43 +407,108 @@ function buildRelationshipBody(centerPerson: PersonOption | undefined, relativeP
   return { fromPersonId: relativeId, toPersonId: centerId, relationType: 'parent_child', relationLabel: mode === 'mother' ? 'mother' : 'father', isLineageRelation: true, isBiological: true, isPrimary: true, confidenceLevel: 'high' };
 }
 
+function personNameById(clanId: string, id: string) {
+  return (personCache.get(clanId) || []).find(person => person.id === id)?.name || `人物#${id}`;
+}
+
+function relationshipPersonId(row: RelationshipItem, centerPersonId: string) {
+  const fromId = String(row.fromPersonId || row.sourcePersonId || '');
+  const toId = String(row.toPersonId || row.targetPersonId || '');
+  return fromId === centerPersonId ? toId : toId === centerPersonId ? fromId : fromId || toId;
+}
+
+function renderRelationshipList(panel: HTMLElement) {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
+  if (centerPersonId) void loadRelationships(centerPersonId);
+
+  let wrapper = panel.querySelector<HTMLElement>('.wizard-relationship-list-enhanced');
+  if (!wrapper) {
+    wrapper = document.createElement('section');
+    wrapper.className = 'wizard-relationship-list-enhanced';
+    const actions = panel.querySelector<HTMLElement>('.antd-actions, .actions');
+    if (actions) actions.insertAdjacentElement('afterend', wrapper);
+    else panel.appendChild(wrapper);
+  }
+
+  const rows = centerPersonId ? (relationshipCache.get(centerPersonId) || []) : [];
+  const loading = centerPersonId && relationshipLoading.has(centerPersonId);
+  const body = rows.map((row, index) => {
+    const otherId = relationshipPersonId(row, centerPersonId);
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(personNameById(clanId, otherId))}</td>
+        <td>${escapeHtml(relationTypeText(row.relationType))}</td>
+        <td>${escapeHtml(relationLabelText(row.relationLabel || row.relationType))}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const emptyText = !centerPersonId
+    ? '请先选择中心人物'
+    : loading
+      ? '正在加载亲属关系...'
+      : '暂无亲属关系，创建后会显示在这里';
+
+  const html = `
+    <div class="wizard-relationship-list-header">
+      <h4>已创建亲属关系</h4>
+      <span>${centerPersonId ? `共 ${rows.length} 条` : ''}</span>
+    </div>
+    <div class="wizard-relationship-list-table-wrap">
+      <table class="wizard-relationship-list-table">
+        <thead><tr><th>序号</th><th>亲属姓名</th><th>类型</th><th>标签</th></tr></thead>
+        <tbody>${body || `<tr><td colspan="4" class="empty">${escapeHtml(emptyText)}</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+
+  if (wrapper.dataset.html !== html) {
+    wrapper.innerHTML = html;
+    wrapper.dataset.html = html;
+  }
+}
+
 async function createRelationshipWithSelectedRelative(panel: HTMLElement) {
   const workspace = window.__genealogyWorkspace;
   const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
   const centerPersonId = workspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
   const relativePerson = selectedExistingRelative(panel);
-  if (!clanId || !centerPersonId || !relativePerson) return;
+  if (!clanId || !centerPersonId) {
+    window.alert('请先选择宗族和中心人物');
+    return;
+  }
+  if (!relativePerson) {
+    window.alert('请选择已有亲属人物');
+    return;
+  }
   if (relativePerson.id === centerPersonId) {
     window.alert('亲属人物不能与中心人物相同');
     return;
   }
 
-  const people = personCache.get(clanId) || [];
-  const centerPerson = people.find(person => person.id === centerPersonId);
+  const center = centerPerson(clanId, centerPersonId);
   const mode = selectedRelationshipMode(panel);
-  if (!generationMatchForMode(centerPerson, relativePerson, mode) || !genderMatchForMode(relativePerson, mode)) {
+  if (!generationMatchForMode(center, relativePerson, mode) || !genderMatchForMode(relativePerson, mode)) {
     window.alert('所选亲属人物与当前关系类型不匹配，请重新选择。');
     return;
   }
 
-  const relationship: any = await apiClient.post(`/clans/${clanId}/relationships`, buildRelationshipBody(centerPerson, relativePerson, mode));
+  const relationship: any = await apiClient.post(`/clans/${clanId}/relationships`, buildRelationshipBody(center, relativePerson, mode));
   const relationshipId = String(relationship?.id || '');
   workspace?.patch({ relationshipId, sourceId: '', reviewTaskId: '' });
   localStorage.setItem('genealogy.workspace.relationshipId', relationshipId);
   localStorage.setItem('genealogy.workspace.sourceId', '');
   localStorage.setItem('genealogy.workspace.reviewTaskId', '');
-  window.alert('亲属关系创建成功，已使用已有亲属人物建立关系');
 
-  const sourceStep = Array.from(document.querySelectorAll<HTMLButtonElement>('.wizard-steps button'))
-    .find(button => (button.textContent || '').includes('6. 绑定来源'));
-  sourceStep?.click();
-  window.setTimeout(() => {
-    const sourcePanel = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'))
-      .find(item => (item.textContent || '').includes('绑定来源证据'));
-    const refreshButton = Array.from(sourcePanel?.querySelectorAll<HTMLButtonElement>('button') || [])
-      .find(button => (button.textContent || '').includes('刷新选项'));
-    refreshButton?.click();
-  }, 150);
+  const select = panel.querySelector<HTMLSelectElement>('.wizard-existing-relative-field select');
+  if (select) select.value = '';
+  relationshipCache.delete(centerPersonId);
+  await loadRelationships(centerPersonId, true);
+  renderRelationshipList(panel);
+  window.alert('亲属关系创建成功，可继续创建下一条亲属关系');
 }
 
 function selectedSchemeName(panel: HTMLElement) {
@@ -457,6 +610,14 @@ function enhanceGenerationStep() {
   renderGenerationItemsList(panel);
 }
 
+function enhanceRelationshipStep() {
+  const panel = findRelationshipWizardPanel();
+  if (!panel) return;
+  removeExtraCenterPersonSelector();
+  ensureRelativePersonSelector();
+  renderRelationshipList(panel);
+}
+
 function invalidateGenerationCaches() {
   const workspace = window.__genealogyWorkspace;
   const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
@@ -470,11 +631,16 @@ function invalidatePersonCaches() {
   if (clanId) personCache.delete(clanId);
 }
 
+function invalidateRelationshipCaches() {
+  const personId = window.__genealogyWorkspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
+  if (personId) relationshipCache.delete(personId);
+}
+
 function syncMvp1WizardEnhancements() {
   ensureSelectedClanBanner();
   simplifyPersonEntryStep();
   removeExtraCenterPersonSelector();
-  ensureRelativePersonSelector();
+  enhanceRelationshipStep();
   enhanceGenerationStep();
 }
 
@@ -492,7 +658,7 @@ function installMvp1WizardEnhancements() {
     const text = button?.textContent || '';
     if (text.includes('创建亲属关系')) {
       const panel = findRelationshipWizardPanel();
-      if (panel && selectedExistingRelative(panel)) {
+      if (panel) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -517,6 +683,7 @@ function installMvp1WizardEnhancements() {
     if (text.includes('创建人物') || text.includes('刷新选项')) {
       window.setTimeout(() => {
         invalidatePersonCaches();
+        invalidateRelationshipCaches();
         void loadPersons(window.__genealogyWorkspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '', true);
       }, 600);
     }
@@ -524,7 +691,7 @@ function installMvp1WizardEnhancements() {
 
   document.addEventListener('change', event => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest('.wizard-generation-section--items') || target?.closest('.wizard-existing-relative-field')) {
+    if (target?.closest('.wizard-generation-section--items') || target?.closest('.wizard-existing-relative-field') || target?.closest('.wizard-form-grid')) {
       window.setTimeout(sync, 0);
     }
   }, true);
