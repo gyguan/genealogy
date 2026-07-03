@@ -44,7 +44,8 @@
 }
 
 .wizard-generation-items-list-enhanced,
-.wizard-relationship-list-enhanced {
+.wizard-relationship-list-enhanced,
+.wizard-person-list-enhanced {
   margin-top: 18px;
   padding: 16px;
   border: 1px solid rgba(120, 90, 48, 0.14);
@@ -54,7 +55,8 @@
 }
 
 .wizard-generation-list-header,
-.wizard-relationship-list-header {
+.wizard-relationship-list-header,
+.wizard-person-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,7 +66,8 @@
 }
 
 .wizard-generation-list-header h4,
-.wizard-relationship-list-header h4 {
+.wizard-relationship-list-header h4,
+.wizard-person-list-header h4 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
@@ -72,18 +75,21 @@
 }
 
 .wizard-generation-list-header span,
-.wizard-relationship-list-header span {
+.wizard-relationship-list-header span,
+.wizard-person-list-header span {
   color: #333;
   font-size: 13px;
 }
 
 .wizard-generation-list-table-wrap,
-.wizard-relationship-list-table-wrap {
+.wizard-relationship-list-table-wrap,
+.wizard-person-list-table-wrap {
   overflow-x: auto;
 }
 
 .wizard-generation-list-table,
-.wizard-relationship-list-table {
+.wizard-relationship-list-table,
+.wizard-person-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
@@ -93,7 +99,9 @@
 .wizard-generation-list-table th,
 .wizard-generation-list-table td,
 .wizard-relationship-list-table th,
-.wizard-relationship-list-table td {
+.wizard-relationship-list-table td,
+.wizard-person-list-table th,
+.wizard-person-list-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(120, 90, 48, 0.12);
   text-align: left;
@@ -101,16 +109,31 @@
 }
 
 .wizard-generation-list-table th,
-.wizard-relationship-list-table th {
+.wizard-relationship-list-table th,
+.wizard-person-list-table th {
   color: #111;
   font-weight: 700;
   background: rgba(255, 248, 233, 0.88);
 }
 
 .wizard-generation-list-table td.empty,
-.wizard-relationship-list-table td.empty {
+.wizard-relationship-list-table td.empty,
+.wizard-person-list-table td.empty {
   color: #333;
   text-align: center;
+}
+
+/* MVP 建谱向导：录入人物日期输入增强。 */
+.wizard-direct-date-input {
+  letter-spacing: 0.02em;
+}
+
+.wizard-date-input-hint {
+  display: block;
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 /* MVP 建谱向导：建立关系时选择已有亲属人物，视觉上对齐“关系类型”字段。 */
