@@ -8,6 +8,8 @@ type PersonOption = {
   generationNo?: string | number;
   gender?: string;
   branchId?: string | number;
+  birthDate?: string;
+  deathDate?: string;
 };
 
 type GenerationSchemeOption = {
@@ -85,7 +87,7 @@ function findPersonWizardPanel() {
   const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
   return panels.find(panel => {
     const text = panel.textContent || '';
-    return text.includes('录入人物') && text.includes('创建人物，继续录入') && text.includes('创建人物并进入关系');
+    return text.includes('录入人物') && text.includes('创建人物，继续录入') && text.includes('创建人物');
   }) || null;
 }
 
@@ -214,7 +216,9 @@ async function loadPersons(clanId: string, force = false) {
       generationWord: row.generationWord,
       generationNo: row.generationNo,
       gender: row.gender,
-      branchId: row.branchId
+      branchId: row.branchId,
+      birthDate: row.birthDate,
+      deathDate: row.deathDate
     })).filter(item => item.id));
   } catch {
     personCache.set(clanId, []);
@@ -287,17 +291,40 @@ function ensureSelectedClanBanner() {
   if (strong) strong.textContent = selectedClanName(panel) || '未选择';
 }
 
+function enhancePersonDateField(panel: HTMLElement, labelText: string) {
+  const field = findFormItemByLabel(panel, labelText);
+  const input = field?.querySelector<HTMLInputElement>('input');
+  if (!field || !input) return;
+
+  if (input.type !== 'text') input.type = 'text';
+  input.placeholder = '例如：1888-03-15，可直接输入年份';
+  input.inputMode = 'numeric';
+  input.pattern = '\\d{4}-\\d{2}-\\d{2}';
+  input.classList.add('wizard-direct-date-input');
+
+  let hint = field.querySelector<HTMLElement>('.wizard-date-input-hint');
+  if (!hint) {
+    hint = document.createElement('small');
+    hint.className = 'wizard-date-input-hint';
+    hint.textContent = '支持键盘直接输入 YYYY-MM-DD，不需要从日历逐月翻到久远年份。';
+    input.insertAdjacentElement('afterend', hint);
+  }
+}
+
 function simplifyPersonEntryStep() {
   const panel = findPersonWizardPanel();
   if (!panel) return;
 
+  enhancePersonDateField(panel, '出生日期');
+  enhancePersonDateField(panel, '逝世日期');
+
   Array.from(panel.querySelectorAll<HTMLButtonElement>('button')).forEach(button => {
-    if ((button.textContent || '').includes('刷新人物')) button.style.display = 'none';
+    const text = button.textContent || '';
+    if (text.includes('刷新选项') || text.includes('刷新人物')) button.style.display = 'none';
+    if (text.includes('清空人物表单')) button.textContent = '重置';
   });
 
-  panel.querySelectorAll<HTMLElement>('.antd-table-wrap, .table-wrap').forEach(table => {
-    table.style.display = 'none';
-  });
+  renderPersonList(panel);
 }
 
 function removeExtraCenterPersonSelector() {
@@ -415,6 +442,59 @@ function relationshipPersonId(row: RelationshipItem, centerPersonId: string) {
   const fromId = String(row.fromPersonId || row.sourcePersonId || '');
   const toId = String(row.toPersonId || row.targetPersonId || '');
   return fromId === centerPersonId ? toId : toId === centerPersonId ? fromId : fromId || toId;
+}
+
+function renderPersonList(panel: HTMLElement) {
+  const workspace = window.__genealogyWorkspace;
+  const clanId = workspace?.clanId || localStorage.getItem('genealogy.workspace.clanId') || '';
+  if (clanId) void loadPersons(clanId);
+
+  let wrapper = panel.querySelector<HTMLElement>('.wizard-person-list-enhanced');
+  if (!wrapper) {
+    wrapper = document.createElement('section');
+    wrapper.className = 'wizard-person-list-enhanced';
+    const actions = panel.querySelector<HTMLElement>('.antd-actions, .actions');
+    if (actions) actions.insertAdjacentElement('afterend', wrapper);
+    else panel.appendChild(wrapper);
+  }
+
+  const people = clanId ? (personCache.get(clanId) || []) : [];
+  const loading = clanId && personLoading.has(clanId);
+  const body = people.map((person, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td><strong>${escapeHtml(person.name || '-')}</strong></td>
+      <td>${escapeHtml(genderText(person.gender))}</td>
+      <td>${escapeHtml(person.generationNo ? `第${person.generationNo}世` : '-')}</td>
+      <td>${escapeHtml(person.generationWord || '-')}</td>
+      <td>${escapeHtml(person.birthDate || '-')}</td>
+      <td>${escapeHtml(person.deathDate || '-')}</td>
+    </tr>
+  `).join('');
+
+  const emptyText = !clanId
+    ? '请先选择宗族'
+    : loading
+      ? '正在加载人物列表...'
+      : '暂无人物，创建后会显示在这里';
+
+  const html = `
+    <div class="wizard-person-list-header">
+      <h4>已录入人物</h4>
+      <span>${clanId ? `共 ${people.length} 位` : ''}</span>
+    </div>
+    <div class="wizard-person-list-table-wrap">
+      <table class="wizard-person-list-table">
+        <thead><tr><th>序号</th><th>姓名</th><th>性别</th><th>代次</th><th>字辈</th><th>出生日期</th><th>逝世日期</th></tr></thead>
+        <tbody>${body || `<tr><td colspan="7" class="empty">${escapeHtml(emptyText)}</td></tr>`}</tbody>
+      </table>
+    </div>
+  `;
+
+  if (wrapper.dataset.html !== html) {
+    wrapper.innerHTML = html;
+    wrapper.dataset.html = html;
+  }
 }
 
 function renderRelationshipList(panel: HTMLElement) {
@@ -680,7 +760,7 @@ function installMvp1WizardEnhancements() {
         sync();
       }, 600);
     }
-    if (text.includes('创建人物') || text.includes('刷新选项')) {
+    if (text.includes('创建人物') || text.includes('刷新选项') || text.includes('重置')) {
       window.setTimeout(() => {
         invalidatePersonCaches();
         invalidateRelationshipCaches();
