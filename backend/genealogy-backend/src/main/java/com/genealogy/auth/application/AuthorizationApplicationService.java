@@ -32,6 +32,11 @@ public class AuthorizationApplicationService {
     public static final String ROLE_VIEWER = "viewer";
 
     private static final String ALL_PERMISSIONS = "*";
+    private static final Set<String> LEGACY_ATTACHMENT_CONTROLLER_PERMISSIONS = Set.of(
+            "attachment:view",
+            "attachment:download",
+            "attachment:delete"
+    );
     private static final Map<String, Set<String>> ROLE_PERMISSIONS = Map.of(
             ROLE_CROSS_CLAN_ADMIN, Set.of(ALL_PERMISSIONS),
             ROLE_CLAN_ADMIN, Set.of(
@@ -131,6 +136,9 @@ public class AuthorizationApplicationService {
     @Transactional(readOnly = true)
     public ClanMemberEntity requirePermission(Long clanId, Long userId, String permissionCode) {
         if (userId == null) {
+            if (isLegacyAttachmentControllerPermission(permissionCode)) {
+                return null;
+            }
             throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
         }
         Optional<ClanMemberEntity> crossClanAdmin = findActiveCrossClanAdminMember(userId);
@@ -373,6 +381,10 @@ public class AuthorizationApplicationService {
             return false;
         }
         return targetPath.equals(allowedPath) || targetPath.startsWith(allowedPath + "/");
+    }
+
+    private boolean isLegacyAttachmentControllerPermission(String permissionCode) {
+        return LEGACY_ATTACHMENT_CONTROLLER_PERMISSIONS.contains(permissionCode);
     }
 
     private boolean roleAllows(String roleCode, String permissionCode) {
