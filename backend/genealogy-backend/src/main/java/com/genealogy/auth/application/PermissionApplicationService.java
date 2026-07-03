@@ -59,14 +59,23 @@ public class PermissionApplicationService {
 
     @Transactional(readOnly = true)
     public Set<String> permissionsForRoleId(Long roleId) {
+        return activePermissionsForRoleId(roleId).stream()
+                .map(AppPermissionEntity::getPermissionCode)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppPermissionEntity> activePermissionsForRoleId(Long roleId) {
         List<Long> permissionIds = appRolePermissionRepository.findByRoleIdAndStatus(roleId, STATUS_ACTIVE).stream()
                 .filter(item -> EFFECT_ALLOW.equals(item.getEffect()))
                 .map(AppRolePermissionEntity::getPermissionId)
                 .toList();
+        if (permissionIds.isEmpty()) {
+            return List.of();
+        }
         return appPermissionRepository.findAllById(permissionIds).stream()
                 .filter(permission -> STATUS_ACTIVE.equals(permission.getStatus()))
-                .map(AppPermissionEntity::getPermissionCode)
-                .collect(Collectors.toUnmodifiableSet());
+                .toList();
     }
 
     @Transactional(readOnly = true)
