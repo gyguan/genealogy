@@ -32,43 +32,12 @@ alter table app_permission add column if not exists created_at timestamp default
 alter table app_permission add column if not exists updated_by bigint references app_user(id);
 alter table app_permission add column if not exists updated_at timestamp default now();
 
-update app_permission
-set permission_code = replace(permission_code, ':', '.')
-where permission_code like '%:%';
+update app_permission set permission_code = replace(permission_code, ':', '.') where permission_code like '%:%';
+update app_permission set resource_code = coalesce(resource_code, nullif(split_part(permission_code, '.', 1), ''), 'legacy'), action_code = coalesce(action_code, nullif(split_part(permission_code, '.', 2), ''), 'unknown');
+update app_permission set permission_code = coalesce(permission_code, resource_code || '.' || action_code), permission_name = coalesce(permission_name, permission_code, '未命名权限'), module_code = coalesce(module_code, resource_code, 'legacy'), module_name = coalesce(module_name, module_code, resource_code, '权限管理'), system_permission = coalesce(system_permission, true), status = coalesce(status, 'active'), created_at = coalesce(created_at, now()), updated_at = coalesce(updated_at, now());
 
-update app_permission
-set resource_code = coalesce(resource_code, nullif(split_part(permission_code, '.', 1), ''), 'legacy'),
-    action_code = coalesce(action_code, nullif(split_part(permission_code, '.', 2), ''), 'unknown');
-
-update app_permission
-set permission_code = coalesce(permission_code, resource_code || '.' || action_code),
-    permission_name = coalesce(permission_name, permission_code, '未命名权限'),
-    module_code = coalesce(module_code, resource_code, 'legacy'),
-    module_name = coalesce(module_name, module_code, resource_code, '权限管理'),
-    system_permission = coalesce(system_permission, true),
-    status = coalesce(status, 'active'),
-    created_at = coalesce(created_at, now()),
-    updated_at = coalesce(updated_at, now());
-
-with duplicated as (
-    select id,
-           row_number() over (partition by resource_code, action_code order by id) as rn
-    from app_permission
-)
-delete from app_permission p
-using duplicated d
-where p.id = d.id
-  and d.rn > 1;
-
-with duplicated as (
-    select id,
-           row_number() over (partition by permission_code order by id) as rn
-    from app_permission
-)
-delete from app_permission p
-using duplicated d
-where p.id = d.id
-  and d.rn > 1;
+with duplicated as (select id, row_number() over (partition by resource_code, action_code order by id) as rn from app_permission) delete from app_permission p using duplicated d where p.id = d.id and d.rn > 1;
+with duplicated as (select id, row_number() over (partition by permission_code order by id) as rn from app_permission) delete from app_permission p using duplicated d where p.id = d.id and d.rn > 1;
 
 alter table app_permission alter column system_permission set default true;
 alter table app_permission alter column status set default 'active';
@@ -111,6 +80,7 @@ alter table app_role_permission add column if not exists created_at timestamp de
 alter table app_role_permission add column if not exists updated_by bigint references app_user(id);
 alter table app_role_permission add column if not exists updated_at timestamp default now();
 update app_role_permission set effect = coalesce(effect, 'allow'), status = coalesce(status, 'active'), created_at = coalesce(created_at, now()), updated_at = coalesce(updated_at, now());
+with duplicated as (select id, row_number() over (partition by role_id, permission_id order by id) as rn from app_role_permission where role_id is not null and permission_id is not null) delete from app_role_permission p using duplicated d where p.id = d.id and d.rn > 1;
 create unique index if not exists ux_app_role_permission_role_permission on app_role_permission(role_id, permission_id);
 comment on table app_role_permission is '角色权限关系表。';
 comment on column app_role_permission.role_id is '角色ID。';
@@ -148,6 +118,7 @@ alter table clan_membership add column if not exists created_at timestamp defaul
 alter table clan_membership add column if not exists updated_by bigint references app_user(id);
 alter table clan_membership add column if not exists updated_at timestamp default now();
 update clan_membership set join_status = coalesce(join_status, 'invited'), member_status = coalesce(member_status, 'active'), created_at = coalesce(created_at, now()), updated_at = coalesce(updated_at, now());
+with duplicated as (select id, row_number() over (partition by clan_id, user_id order by id) as rn from clan_membership where clan_id is not null and user_id is not null) delete from clan_membership p using duplicated d where p.id = d.id and d.rn > 1;
 create unique index if not exists ux_clan_membership_clan_user on clan_membership(clan_id, user_id);
 comment on table clan_membership is '宗族成员身份表。';
 comment on column clan_membership.created_by is '创建人用户ID。';
@@ -184,6 +155,7 @@ alter table member_role add column if not exists created_at timestamp default no
 alter table member_role add column if not exists updated_by bigint references app_user(id);
 alter table member_role add column if not exists updated_at timestamp default now();
 update member_role set scope_type = coalesce(scope_type, 'clan'), status = coalesce(status, 'active'), granted_at = coalesce(granted_at, created_at, now()), created_at = coalesce(created_at, now()), updated_at = coalesce(updated_at, now());
+with duplicated as (select id, row_number() over (partition by membership_id, role_id, scope_type, scope_id order by id) as rn from member_role where membership_id is not null and role_id is not null and scope_type is not null and scope_id is not null) delete from member_role p using duplicated d where p.id = d.id and d.rn > 1;
 create unique index if not exists ux_member_role_membership_role_scope on member_role(membership_id, role_id, scope_type, scope_id);
 comment on table member_role is '成员角色授权表。';
 comment on column member_role.created_by is '创建人用户ID。';
@@ -198,57 +170,20 @@ create index if not exists idx_member_role_membership on member_role(membership_
 
 with seed(permission_code, permission_name, module_code, module_name, resource_code, action_code) as (
     values
-        ('clan.view','查看宗族','clan','宗族管理','clan','view'),
-        ('clan.update','编辑宗族','clan','宗族管理','clan','update'),
-        ('branch.view','查看支派','branch','支派管理','branch','view'),
-        ('branch.create','创建支派','branch','支派管理','branch','create'),
-        ('branch.update','编辑支派','branch','支派管理','branch','update'),
-        ('branch.delete','删除支派','branch','支派管理','branch','delete'),
-        ('generation.view','查看字辈','generation','字辈管理','generation','view'),
-        ('generation.create','创建字辈','generation','字辈管理','generation','create'),
-        ('generation.update','编辑字辈','generation','字辈管理','generation','update'),
-        ('person.view','查看人物','person','人物档案','person','view'),
-        ('person.create','创建人物','person','人物档案','person','create'),
-        ('person.update','编辑人物','person','人物档案','person','update'),
-        ('person.delete','删除人物','person','人物档案','person','delete'),
-        ('person.submit_review','人物提交审核','person','人物档案','person','submit_review'),
-        ('relationship.view','查看关系','relationship','亲属关系','relationship','view'),
-        ('relationship.create','创建关系','relationship','亲属关系','relationship','create'),
-        ('relationship.update','编辑关系','relationship','亲属关系','relationship','update'),
-        ('relationship.delete','删除关系','relationship','亲属关系','relationship','delete'),
-        ('relationship.submit_review','关系提交审核','relationship','亲属关系','relationship','submit_review'),
-        ('source.view','查看来源','source','来源资料','source','view'),
-        ('source.create','创建来源','source','来源资料','source','create'),
-        ('source.update','编辑来源','source','来源资料','source','update'),
-        ('source.delete','删除来源','source','来源资料','source','delete'),
-        ('source.verify','验证来源','source','来源资料','source','verify'),
-        ('source.submit_review','来源提交审核','source','来源资料','source','submit_review'),
-        ('review.view','查看审核','review','审核中心','review','view'),
-        ('review.submit','提交审核','review','审核中心','review','submit'),
-        ('review.approve','审核通过','review','审核中心','review','approve'),
-        ('review.reject','审核驳回','review','审核中心','review','reject'),
-        ('tree.view','查看世系','tree','世系图谱','tree','view'),
-        ('export.person','导出人物','export','导出','person','export'),
-        ('export.relationship','导出关系','export','导出','relationship','export'),
-        ('export.genealogy_book','导出族谱','export','导出','genealogy_book','export'),
-        ('member.view','查看修谱成员','member','成员权限','member','view'),
-        ('member.invite','邀请修谱成员','member','成员权限','member','invite'),
-        ('member.update','编辑修谱成员','member','成员权限','member','update'),
-        ('member.grant_role','授予成员角色','member','成员权限','member','grant_role'),
-        ('member.revoke_role','撤销成员角色','member','成员权限','member','revoke_role')
+        ('clan.view','查看宗族','clan','宗族管理','clan','view'),('clan.update','编辑宗族','clan','宗族管理','clan','update'),
+        ('branch.view','查看支派','branch','支派管理','branch','view'),('branch.create','创建支派','branch','支派管理','branch','create'),('branch.update','编辑支派','branch','支派管理','branch','update'),('branch.delete','删除支派','branch','支派管理','branch','delete'),
+        ('generation.view','查看字辈','generation','字辈管理','generation','view'),('generation.create','创建字辈','generation','字辈管理','generation','create'),('generation.update','编辑字辈','generation','字辈管理','generation','update'),
+        ('person.view','查看人物','person','人物档案','person','view'),('person.create','创建人物','person','人物档案','person','create'),('person.update','编辑人物','person','人物档案','person','update'),('person.delete','删除人物','person','人物档案','person','delete'),('person.submit_review','人物提交审核','person','人物档案','person','submit_review'),
+        ('relationship.view','查看关系','relationship','亲属关系','relationship','view'),('relationship.create','创建关系','relationship','亲属关系','relationship','create'),('relationship.update','编辑关系','relationship','亲属关系','relationship','update'),('relationship.delete','删除关系','relationship','亲属关系','relationship','delete'),('relationship.submit_review','关系提交审核','relationship','亲属关系','relationship','submit_review'),
+        ('source.view','查看来源','source','来源资料','source','view'),('source.create','创建来源','source','来源资料','source','create'),('source.update','编辑来源','source','来源资料','source','update'),('source.delete','删除来源','source','来源资料','source','delete'),('source.verify','验证来源','source','来源资料','source','verify'),('source.submit_review','来源提交审核','source','来源资料','source','submit_review'),
+        ('review.view','查看审核','review','审核中心','review','view'),('review.submit','提交审核','review','审核中心','review','submit'),('review.approve','审核通过','review','审核中心','review','approve'),('review.reject','审核驳回','review','审核中心','review','reject'),
+        ('tree.view','查看世系','tree','世系图谱','tree','view'),('export.person','导出人物','export','导出','person','export'),('export.relationship','导出关系','export','导出','relationship','export'),('export.genealogy_book','导出族谱','export','导出','genealogy_book','export'),
+        ('member.view','查看修谱成员','member','成员权限','member','view'),('member.invite','邀请修谱成员','member','成员权限','member','invite'),('member.update','编辑修谱成员','member','成员权限','member','update'),('member.grant_role','授予成员角色','member','成员权限','member','grant_role'),('member.revoke_role','撤销成员角色','member','成员权限','member','revoke_role')
 )
 insert into app_permission (permission_code, permission_name, module_code, module_name, resource_code, action_code, description, system_permission, status)
-select permission_code, permission_name, module_code, module_name, resource_code, action_code, permission_name, true, 'active'
-from seed
+select permission_code, permission_name, module_code, module_name, resource_code, action_code, permission_name, true, 'active' from seed
 on conflict (resource_code, action_code) do update
-set permission_code = excluded.permission_code,
-    permission_name = excluded.permission_name,
-    module_code = excluded.module_code,
-    module_name = excluded.module_name,
-    description = excluded.description,
-    system_permission = excluded.system_permission,
-    status = excluded.status,
-    updated_at = now();
+set permission_code = excluded.permission_code, permission_name = excluded.permission_name, module_code = excluded.module_code, module_name = excluded.module_name, description = excluded.description, system_permission = excluded.system_permission, status = excluded.status, updated_at = now();
 
 with rp(role_code, permission_code) as (
     values
@@ -259,46 +194,15 @@ with rp(role_code, permission_code) as (
         ('viewer','clan.view'),('viewer','branch.view'),('viewer','generation.view'),('viewer','person.view'),('viewer','relationship.view'),('viewer','source.view'),('viewer','review.view'),('viewer','tree.view')
 )
 insert into app_role_permission (role_id, permission_id, effect, status)
-select r.id, p.id, 'allow', 'active'
-from rp
-join app_role r on r.role_code = rp.role_code
-join app_permission p on p.permission_code = rp.permission_code
-on conflict (role_id, permission_id) do update
-set effect = excluded.effect, status = excluded.status, updated_at = now();
+select r.id, p.id, 'allow', 'active' from rp join app_role r on r.role_code = rp.role_code join app_permission p on p.permission_code = rp.permission_code
+on conflict (role_id, permission_id) do update set effect = excluded.effect, status = excluded.status, updated_at = now();
 
 insert into clan_membership (clan_id, user_id, person_id, join_status, member_status, invited_by, joined_at, created_by, created_at, updated_by, updated_at)
-select distinct on (cm.clan_id, cm.user_id)
-    cm.clan_id, cm.user_id, cm.person_id, cm.join_status, cm.member_status, cm.invited_by, cm.joined_at,
-    coalesce(cm.invited_by, cm.user_id), cm.created_at, coalesce(cm.invited_by, cm.user_id), cm.updated_at
-from clan_member cm
-order by cm.clan_id, cm.user_id, cm.created_at
-on conflict (clan_id, user_id) do update
-set person_id = coalesce(excluded.person_id, clan_membership.person_id),
-    join_status = excluded.join_status,
-    member_status = excluded.member_status,
-    invited_by = excluded.invited_by,
-    joined_at = coalesce(excluded.joined_at, clan_membership.joined_at),
-    updated_by = excluded.updated_by,
-    updated_at = now();
+select distinct on (cm.clan_id, cm.user_id) cm.clan_id, cm.user_id, cm.person_id, cm.join_status, cm.member_status, cm.invited_by, cm.joined_at, coalesce(cm.invited_by, cm.user_id), cm.created_at, coalesce(cm.invited_by, cm.user_id), cm.updated_at
+from clan_member cm order by cm.clan_id, cm.user_id, cm.created_at
+on conflict (clan_id, user_id) do update set person_id = coalesce(excluded.person_id, clan_membership.person_id), join_status = excluded.join_status, member_status = excluded.member_status, invited_by = excluded.invited_by, joined_at = coalesce(excluded.joined_at, clan_membership.joined_at), updated_by = excluded.updated_by, updated_at = now();
 
 insert into member_role (membership_id, role_id, scope_type, scope_id, status, granted_by, granted_at, created_by, created_at, updated_by, updated_at)
-select cmship.id,
-       cm.role_id,
-       case when cm.scope_type = 'branch_subtree' then 'branch' else cm.scope_type end,
-       coalesce(cm.scope_id, case when cm.scope_type in ('branch', 'branch_subtree') then cm.branch_id else cm.clan_id end, cm.clan_id),
-       cm.member_status,
-       cm.invited_by,
-       coalesce(cm.joined_at, cm.created_at),
-       coalesce(cm.invited_by, cm.user_id),
-       cm.created_at,
-       coalesce(cm.invited_by, cm.user_id),
-       cm.updated_at
-from clan_member cm
-join clan_membership cmship on cmship.clan_id = cm.clan_id and cmship.user_id = cm.user_id
-where cm.role_id is not null
-on conflict (membership_id, role_id, scope_type, scope_id) do update
-set status = excluded.status,
-    granted_by = excluded.granted_by,
-    granted_at = excluded.granted_at,
-    updated_by = excluded.updated_by,
-    updated_at = now();
+select cmship.id, cm.role_id, case when cm.scope_type = 'branch_subtree' then 'branch' else cm.scope_type end, coalesce(cm.scope_id, case when cm.scope_type in ('branch', 'branch_subtree') then cm.branch_id else cm.clan_id end, cm.clan_id), cm.member_status, cm.invited_by, coalesce(cm.joined_at, cm.created_at), coalesce(cm.invited_by, cm.user_id), cm.created_at, coalesce(cm.invited_by, cm.user_id), cm.updated_at
+from clan_member cm join clan_membership cmship on cmship.clan_id = cm.clan_id and cmship.user_id = cm.user_id where cm.role_id is not null
+on conflict (membership_id, role_id, scope_type, scope_id) do update set status = excluded.status, granted_by = excluded.granted_by, granted_at = excluded.granted_at, updated_by = excluded.updated_by, updated_at = now();
