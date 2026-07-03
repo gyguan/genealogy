@@ -13,6 +13,7 @@ import './antd-bridge.css';
 import './person-archive-tweaks.css';
 import './home-dashboard-overrides.css';
 import './mvp1-wizard-enhancements';
+import './person-archive-enhancements';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
