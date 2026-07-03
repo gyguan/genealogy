@@ -30,58 +30,63 @@ where manager_member_id is not null
 do $$
 begin
     if exists (
-        select 1
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname = current_schema()
-          and c.relname = 'clan_member'
-          and c.relkind = 'r'
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member' and c.relkind = 'r'
     ) and not exists (
-        select 1
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname = current_schema()
-          and c.relname = 'clan_member_legacy'
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member_legacy'
     ) then
         alter table clan_member rename to clan_member_legacy;
+    elsif exists (
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member' and c.relkind = 'r'
+    ) and exists (
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member_legacy'
+    ) then
+        drop table clan_member;
     end if;
 end $$;
 
 do $$
 begin
     if exists (
-        select 1
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where n.nspname = current_schema()
-          and c.relname = 'clan_member_legacy'
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member' and c.relkind = 'v'
     ) then
-        comment on table clan_member_legacy is '旧版宗族成员/角色混合表，仅用于历史数据兼容；新写入请使用 clan_membership 与 member_role。';
+        drop view clan_member;
     end if;
 end $$;
 
-drop view if exists clan_member;
-
-create view clan_member as
-select
-    id,
-    clan_id,
-    user_id,
-    person_id,
-    branch_id,
-    role_id,
-    member_name,
-    join_status,
-    invited_by,
-    member_status,
-    scope_type,
-    scope_id,
-    joined_at,
-    created_at,
-    updated_at
-from clan_member_legacy;
-
-comment on view clan_member is '旧版 clan_member 只读兼容视图；业务主链路已切换至 clan_membership 与 member_role。';
+do $$
+begin
+    if exists (
+        select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = current_schema() and c.relname = 'clan_member_legacy'
+    ) then
+        comment on table clan_member_legacy is '旧版宗族成员/角色混合表，仅用于历史数据兼容；新写入请使用 clan_membership 与 member_role。';
+        execute '
+            create view clan_member as
+            select
+                id,
+                clan_id,
+                user_id,
+                person_id,
+                branch_id,
+                role_id,
+                member_name,
+                join_status,
+                invited_by,
+                member_status,
+                scope_type,
+                scope_id,
+                joined_at,
+                created_at,
+                updated_at
+            from clan_member_legacy';
+        comment on view clan_member is '旧版 clan_member 只读兼容视图；业务主链路已切换至 clan_membership 与 member_role。';
+    end if;
+end $$;
 
 alter table branch
     add constraint fk_branch_manager_member_role
