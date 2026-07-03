@@ -103,35 +103,49 @@
   text-align: center;
 }
 
-/* MVP 建谱向导：建立关系时选择已有亲属人物。 */
-.wizard-current--relative-person-selector {
-  display: grid;
-  grid-template-columns: 140px minmax(240px, 1fr);
-  align-items: center;
-  gap: 8px 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(120, 90, 48, 0.14);
-  border-radius: 14px;
-  background: rgba(255, 252, 245, 0.78);
+/* MVP 建谱向导：建立关系时选择已有亲属人物，保持与普通表单控件一致。 */
+.wizard-existing-relative-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 0;
   color: #111;
 }
 
-.wizard-current--relative-person-selector label {
+.wizard-existing-relative-field label {
+  font-size: 13px;
   font-weight: 600;
-  color: #111;
+  color: rgba(0, 0, 0, 0.72);
 }
 
-.wizard-current--relative-person-selector select {
+.wizard-existing-relative-field select {
   width: 100%;
-  min-height: 34px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  height: 36px;
+  border: 1px solid #d9d9d9;
   border-radius: 8px;
-  padding: 4px 8px;
-  color: #111;
+  padding: 4px 11px;
+  color: rgba(0, 0, 0, 0.88);
   background: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.wizard-current--relative-person-selector small {
-  grid-column: 2;
-  color: #333;
+.wizard-existing-relative-field select:hover {
+  border-color: #4096ff;
+}
+
+.wizard-existing-relative-field select:focus {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+}
+
+.wizard-existing-relative-field small {
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.56);
+}
+
+.wizard-current--relative-person-selector,
+.wizard-current--center-person-selector {
+  display: none !important;
 }
