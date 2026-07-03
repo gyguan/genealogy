@@ -1,6 +1,9 @@
 package com.genealogy.member.controller;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.auth.application.PermissionApplicationService;
+import com.genealogy.auth.dto.PermissionResponse;
+import com.genealogy.auth.entity.AppPermissionEntity;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.member.application.MemberManagementApplicationService;
 import com.genealogy.member.dto.ClanMemberResponse;
@@ -35,13 +38,16 @@ public class MemberManagementController {
 
     private final MemberManagementApplicationService memberManagementApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final PermissionApplicationService permissionApplicationService;
 
     public MemberManagementController(
             MemberManagementApplicationService memberManagementApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
+            AuthorizationApplicationService authorizationApplicationService,
+            PermissionApplicationService permissionApplicationService
     ) {
         this.memberManagementApplicationService = memberManagementApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.permissionApplicationService = permissionApplicationService;
     }
 
     @GetMapping("/users")
@@ -54,6 +60,21 @@ public class MemberManagementController {
     public ApiResponse<List<RoleResponse>> roles(@RequestHeader(value = "Authorization", required = false) String authorization) {
         authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(memberManagementApplicationService.roles());
+    }
+
+    @GetMapping("/permissions")
+    public ApiResponse<List<PermissionResponse>> permissions(@RequestHeader(value = "Authorization", required = false) String authorization) {
+        authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(permissionApplicationService.listActivePermissions().stream().map(this::toPermissionResponse).toList());
+    }
+
+    @GetMapping("/roles/{roleId}/permissions")
+    public ApiResponse<List<PermissionResponse>> rolePermissions(
+            @Positive @PathVariable Long roleId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(permissionApplicationService.activePermissionsForRoleId(roleId).stream().map(this::toPermissionResponse).toList());
     }
 
     @GetMapping("/clans/{clanId}/members")
@@ -99,5 +120,19 @@ public class MemberManagementController {
         authorizationApplicationService.requirePermission(clanId, userId, MEMBER_REVOKE_ROLE);
         memberManagementApplicationService.revokeMemberRole(clanId, memberId, userId);
         return ApiResponse.success();
+    }
+
+    private PermissionResponse toPermissionResponse(AppPermissionEntity entity) {
+        return new PermissionResponse(
+                entity.getId(),
+                entity.getPermissionCode(),
+                entity.getPermissionName(),
+                entity.getModuleCode(),
+                entity.getModuleName(),
+                entity.getResourceCode(),
+                entity.getActionCode(),
+                entity.getDescription(),
+                entity.getStatus()
+        );
     }
 }
