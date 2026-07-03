@@ -44,6 +44,7 @@
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
+  background: transparent !important;
 }
 
 .wizard-generation-section--scheme-enhanced h4,
@@ -59,7 +60,8 @@
   padding: 14px;
   border: 1px solid #f0f0f0;
   border-radius: 12px;
-  background: #fff;
+  background: #fff !important;
+  box-shadow: none;
 }
 
 .wizard-generation-section--scheme-enhanced .actions,
@@ -70,7 +72,8 @@
   padding: 12px 14px;
   border: 1px solid #f0f0f0;
   border-radius: 12px;
-  background: #fafafa;
+  background: #fafafa !important;
+  box-shadow: none;
 }
 
 .wizard-generation-scheme-field--moved {
@@ -92,9 +95,10 @@
   padding: 0;
   border: 1px solid #f0f0f0;
   border-radius: 12px;
-  background: #fff;
+  background: #fff !important;
   color: #111;
   overflow: hidden;
+  box-shadow: none;
 }
 
 .wizard-generation-list-header,
@@ -112,7 +116,7 @@
   margin: 0;
   padding: 12px 14px;
   border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  background: #fafafa !important;
 }
 
 .wizard-generation-list-header h4,
@@ -135,6 +139,7 @@
 .wizard-relationship-list-table-wrap,
 .wizard-person-list-table-wrap {
   overflow-x: auto;
+  background: #fff !important;
 }
 
 .wizard-generation-list-table,
@@ -144,6 +149,7 @@
   border-collapse: collapse;
   font-size: 14px;
   color: #111;
+  background: #fff !important;
 }
 
 .wizard-generation-list-table th,
@@ -163,7 +169,7 @@
 .wizard-person-list-table th {
   color: rgba(0, 0, 0, 0.65);
   font-weight: 600;
-  background: #fafafa;
+  background: #fafafa !important;
 }
 
 .wizard-generation-list-table td.empty,
