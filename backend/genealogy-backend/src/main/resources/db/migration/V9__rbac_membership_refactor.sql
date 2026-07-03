@@ -1,5 +1,7 @@
 -- RBAC + membership refactor phase 1.
 -- Add permission and membership authorization tables, seed permissions, and migrate legacy clan_member data.
+-- This migration is intentionally defensive because some local databases may already contain
+-- partial app_permission/app_role_permission tables created by earlier experiments.
 
 create table if not exists app_permission (
     id bigserial primary key,
@@ -18,6 +20,40 @@ create table if not exists app_permission (
     updated_at timestamp not null default now(),
     unique (resource_code, action_code)
 );
+
+alter table app_permission add column if not exists permission_code varchar(128);
+alter table app_permission add column if not exists permission_name varchar(100);
+alter table app_permission add column if not exists module_code varchar(64);
+alter table app_permission add column if not exists module_name varchar(100);
+alter table app_permission add column if not exists resource_code varchar(64);
+alter table app_permission add column if not exists action_code varchar(64);
+alter table app_permission add column if not exists description text;
+alter table app_permission add column if not exists system_permission boolean default true;
+alter table app_permission add column if not exists status varchar(32) default 'active';
+alter table app_permission add column if not exists created_by bigint references app_user(id);
+alter table app_permission add column if not exists created_at timestamp default now();
+alter table app_permission add column if not exists updated_by bigint references app_user(id);
+alter table app_permission add column if not exists updated_at timestamp default now();
+
+update app_permission
+set permission_code = coalesce(permission_code, resource_code || '.' || action_code),
+    permission_name = coalesce(permission_name, permission_code, '未命名权限'),
+    module_code = coalesce(module_code, nullif(split_part(replace(permission_code, ':', '.'), '.', 1), ''), 'legacy'),
+    module_name = coalesce(module_name, module_code, '权限管理'),
+    resource_code = coalesce(resource_code, nullif(split_part(replace(permission_code, ':', '.'), '.', 1), ''), 'legacy'),
+    action_code = coalesce(action_code, nullif(split_part(replace(permission_code, ':', '.'), '.', 2), ''), 'unknown'),
+    system_permission = coalesce(system_permission, true),
+    status = coalesce(status, 'active'),
+    created_at = coalesce(created_at, now()),
+    updated_at = coalesce(updated_at, now());
+
+alter table app_permission alter column system_permission set default true;
+alter table app_permission alter column status set default 'active';
+alter table app_permission alter column created_at set default now();
+alter table app_permission alter column updated_at set default now();
+
+create unique index if not exists ux_app_permission_permission_code on app_permission(permission_code);
+create unique index if not exists ux_app_permission_resource_action on app_permission(resource_code, action_code);
 
 comment on table app_permission is '权限点定义表：定义系统可管控的业务动作，例如人物创建、关系维护、审核通过等。';
 comment on column app_permission.id is '主键ID。';
@@ -49,6 +85,28 @@ create table if not exists app_role_permission (
     unique (role_id, permission_id)
 );
 
+alter table app_role_permission add column if not exists role_id bigint references app_role(id);
+alter table app_role_permission add column if not exists permission_id bigint references app_permission(id);
+alter table app_role_permission add column if not exists effect varchar(16) default 'allow';
+alter table app_role_permission add column if not exists status varchar(32) default 'active';
+alter table app_role_permission add column if not exists created_by bigint references app_user(id);
+alter table app_role_permission add column if not exists created_at timestamp default now();
+alter table app_role_permission add column if not exists updated_by bigint references app_user(id);
+alter table app_role_permission add column if not exists updated_at timestamp default now();
+
+update app_role_permission
+set effect = coalesce(effect, 'allow'),
+    status = coalesce(status, 'active'),
+    created_at = coalesce(created_at, now()),
+    updated_at = coalesce(updated_at, now());
+
+alter table app_role_permission alter column effect set default 'allow';
+alter table app_role_permission alter column status set default 'active';
+alter table app_role_permission alter column created_at set default now();
+alter table app_role_permission alter column updated_at set default now();
+
+create unique index if not exists ux_app_role_permission_role_permission on app_role_permission(role_id, permission_id);
+
 comment on table app_role_permission is '角色权限关系表：定义某个角色拥有或拒绝哪些权限点。';
 comment on column app_role_permission.id is '主键ID。';
 comment on column app_role_permission.role_id is '角色ID，关联 app_role.id。';
@@ -75,6 +133,26 @@ create table if not exists clan_membership (
     updated_at timestamp not null default now(),
     unique (clan_id, user_id)
 );
+
+alter table clan_membership add column if not exists clan_id bigint references clan(id);
+alter table clan_membership add column if not exists user_id bigint references app_user(id);
+alter table clan_membership add column if not exists person_id bigint references person(id);
+alter table clan_membership add column if not exists join_status varchar(32) default 'invited';
+alter table clan_membership add column if not exists member_status varchar(32) default 'active';
+alter table clan_membership add column if not exists invited_by bigint references app_user(id);
+alter table clan_membership add column if not exists joined_at timestamp;
+alter table clan_membership add column if not exists created_by bigint references app_user(id);
+alter table clan_membership add column if not exists created_at timestamp default now();
+alter table clan_membership add column if not exists updated_by bigint references app_user(id);
+alter table clan_membership add column if not exists updated_at timestamp default now();
+
+update clan_membership
+set join_status = coalesce(join_status, 'invited'),
+    member_status = coalesce(member_status, 'active'),
+    created_at = coalesce(created_at, now()),
+    updated_at = coalesce(updated_at, now());
+
+create unique index if not exists ux_clan_membership_clan_user on clan_membership(clan_id, user_id);
 
 comment on table clan_membership is '宗族成员身份表：表示某个系统账号是否加入某个宗族，可选绑定谱内人物。';
 comment on column clan_membership.id is '主键ID。';
@@ -107,6 +185,28 @@ create table if not exists member_role (
     constraint chk_member_role_scope_type check (scope_type in ('global', 'clan', 'branch', 'self')),
     unique (membership_id, role_id, scope_type, scope_id)
 );
+
+alter table member_role add column if not exists membership_id bigint references clan_membership(id);
+alter table member_role add column if not exists role_id bigint references app_role(id);
+alter table member_role add column if not exists scope_type varchar(32) default 'clan';
+alter table member_role add column if not exists scope_id bigint;
+alter table member_role add column if not exists status varchar(32) default 'active';
+alter table member_role add column if not exists granted_by bigint references app_user(id);
+alter table member_role add column if not exists granted_at timestamp default now();
+alter table member_role add column if not exists revoked_at timestamp;
+alter table member_role add column if not exists created_by bigint references app_user(id);
+alter table member_role add column if not exists created_at timestamp default now();
+alter table member_role add column if not exists updated_by bigint references app_user(id);
+alter table member_role add column if not exists updated_at timestamp default now();
+
+update member_role
+set scope_type = coalesce(scope_type, 'clan'),
+    status = coalesce(status, 'active'),
+    granted_at = coalesce(granted_at, created_at, now()),
+    created_at = coalesce(created_at, now()),
+    updated_at = coalesce(updated_at, now());
+
+create unique index if not exists ux_member_role_membership_role_scope on member_role(membership_id, role_id, scope_type, scope_id);
 
 comment on table member_role is '成员角色授权表：表示某个宗族成员在某个范围内拥有什么角色。';
 comment on column member_role.id is '主键ID。';
