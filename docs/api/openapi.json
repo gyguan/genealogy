@@ -1,0 +1,515 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Genealogy API",
+    "version": "0.1.0",
+    "description": "Versioned API contract for frontend typed client generation."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/api/v1/clans/{clanId}/source-bindings": {
+      "post": {
+        "operationId": "createSourceBinding",
+        "tags": ["SourceBinding"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SourceBindingCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/source-bindings/sources/{sourceId}": {
+      "get": {
+        "operationId": "listSourceBindingsBySource",
+        "tags": ["SourceBinding"],
+        "parameters": [
+          { "name": "sourceId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/source-bindings/target/{targetType}/{targetId}": {
+      "get": {
+        "operationId": "listSourceBindingsByTarget",
+        "tags": ["SourceBinding"],
+        "parameters": [
+          { "name": "targetType", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "targetId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "clanId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-tasks": {
+      "post": {
+        "operationId": "submitReviewTask",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReviewSubmitRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-tasks/pending": {
+      "get": {
+        "operationId": "listPendingReviewTasks",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/my-submissions": {
+      "get": {
+        "operationId": "listMyReviewSubmissions",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "clanId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuditRecordList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{reviewTaskId}": {
+      "get": {
+        "operationId": "getReviewTask",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseReviewTaskDetailResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{reviewTaskId}/diff": {
+      "get": {
+        "operationId": "getReviewTaskDiff",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseReviewDiffResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{reviewTaskId}/approve": {
+      "post": {
+        "operationId": "approveReviewTask",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReviewDecisionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/review-tasks/{reviewTaskId}/reject": {
+      "post": {
+        "operationId": "rejectReviewTask",
+        "tags": ["ReviewTask"],
+        "parameters": [
+          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReviewDecisionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/persons/preview": {
+      "post": {
+        "operationId": "previewPersonImport",
+        "tags": ["Import"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
+          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "branchIdIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/persons": {
+      "post": {
+        "operationId": "importPersons",
+        "tags": ["Import"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
+          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "branchIdIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
+          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "confirmDuplicates", "in": "query", "required": false, "schema": { "type": "boolean" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SourceBindingCreateRequest": {
+        "type": "object",
+        "required": ["sourceId", "targetType", "targetId"],
+        "properties": {
+          "sourceId": { "type": "integer", "format": "int64" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "bindingReason": { "type": "string" },
+          "excerpt": { "type": "string" }
+        }
+      },
+      "SourceBindingResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "sourceId": { "type": "integer", "format": "int64" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "bindingReason": { "type": "string" },
+          "excerpt": { "type": "string" },
+          "createdBy": { "type": "integer", "format": "int64" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReviewSubmitRequest": {
+        "type": "object",
+        "required": ["targetType", "targetId"],
+        "properties": {
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "comment": { "type": "string" }
+        }
+      },
+      "ReviewDecisionRequest": {
+        "type": "object",
+        "properties": {
+          "comment": { "type": "string" }
+        }
+      },
+      "CheckTaskResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "revisionId": { "type": "integer", "format": "int64" },
+          "reviewLevel": { "type": "integer" },
+          "reviewerId": { "type": "integer", "format": "int64" },
+          "reviewerRole": { "type": "string" },
+          "branchId": { "type": "integer", "format": "int64" },
+          "status": { "type": "string" },
+          "reviewComment": { "type": "string" },
+          "reviewedAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuditRecordResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "changeType": { "type": "string" },
+          "oldPayload": { "type": "string" },
+          "newPayload": { "type": "string" },
+          "diffSummary": { "type": "string" },
+          "submitterId": { "type": "integer", "format": "int64" },
+          "submitTime": { "type": "string", "format": "date-time" },
+          "status": { "type": "string" },
+          "approvedAt": { "type": "string", "format": "date-time" },
+          "rejectedReason": { "type": "string" }
+        }
+      },
+      "ReviewTaskDetailResponse": {
+        "type": "object",
+        "properties": {
+          "task": { "$ref": "#/components/schemas/CheckTaskResponse" },
+          "record": { "$ref": "#/components/schemas/AuditRecordResponse" }
+        }
+      },
+      "ReviewDiffResponse": {
+        "type": "object",
+        "properties": {
+          "taskId": { "type": "integer", "format": "int64" },
+          "revisionId": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "changeType": { "type": "string" },
+          "diffSummary": { "type": "string" },
+          "fields": { "type": "array", "items": { "$ref": "#/components/schemas/FieldDiff" } }
+        }
+      },
+      "FieldDiff": {
+        "type": "object",
+        "properties": {
+          "field": { "type": "string" },
+          "beforeValue": { "type": "string" },
+          "afterValue": { "type": "string" },
+          "changeType": { "type": "string" }
+        }
+      },
+      "CsvImportResultResponse": {
+        "type": "object",
+        "properties": {
+          "totalCount": { "type": "integer" },
+          "successCount": { "type": "integer" },
+          "failureCount": { "type": "integer" },
+          "errors": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "MultipartFileRequest": {
+        "type": "object",
+        "required": ["file"],
+        "properties": {
+          "file": { "type": "string", "format": "binary" }
+        }
+      },
+      "ApiResponseSourceBindingResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/SourceBindingResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseSourceBindingList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/SourceBindingResponse" } },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseCheckTaskResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CheckTaskResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseCheckTaskList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/CheckTaskResponse" } },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseAuditRecordList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditRecordResponse" } },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseReviewTaskDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ReviewTaskDetailResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseReviewDiffResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ReviewDiffResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseCsvImportResultResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CsvImportResultResponse" },
+          "traceId": { "type": "string" }
+        }
+      }
+    }
+  }
+}
