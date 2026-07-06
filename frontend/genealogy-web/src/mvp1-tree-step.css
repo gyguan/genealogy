@@ -1,0 +1,46 @@
+/* MVP1 wizard lineage result tables. */
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap {
+  width: 100%;
+  margin-top: 12px;
+  overflow: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap::before {
+  display: block;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+  color: rgba(0, 0, 0, .65);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap:nth-of-type(1)::before {
+  content: "人物节点";
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap:nth-of-type(2)::before {
+  content: "关系边";
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap .table-hint {
+  display: none;
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table {
+  min-width: 520px;
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-cell {
+  vertical-align: top;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-empty {
+  margin-top: 12px;
+}
