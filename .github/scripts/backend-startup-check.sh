@@ -16,9 +16,11 @@ trap cleanup EXIT
 
 print_startup_error() {
   echo "Startup error summary:"
-  grep -Ei "ERROR|Exception|Caused by|Schema-validation|SchemaManagementException|Flyway|Failed|missing|column|table|relation|duplicate|constraint" /tmp/genealogy-backend-startup.log | tail -n 120 || true
-  echo "Startup log tail:"
-  tail -n 80 /tmp/genealogy-backend-startup.log
+  grep -Ei "ERROR|Application run failed|Exception|Caused by|Schema-validation|SchemaManagementException|Migration .* failed|Failed|missing|duplicate|constraint" /tmp/genealogy-backend-startup.log | grep -vi " WARN " | tail -n 80 || true
+  if grep -q "Ambiguous mapping" /tmp/genealogy-backend-startup.log; then
+    echo "Ambiguous mapping details:"
+    sed -n '/Ambiguous mapping/,+12p' /tmp/genealogy-backend-startup.log || true
+  fi
 }
 
 echo "Java version:"
