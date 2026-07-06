@@ -67,6 +67,7 @@ public class PersonApplicationService {
     private final GenWordRepository genWordRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final PersonCodeGenerationService personCodeGenerationService;
 
     public PersonApplicationService(
             PersonRepository personRepository,
@@ -75,7 +76,8 @@ public class PersonApplicationService {
             GenSchemeRepository genSchemeRepository,
             GenWordRepository genWordRepository,
             OperationLogApplicationService operationLogApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
+            AuthorizationApplicationService authorizationApplicationService,
+            PersonCodeGenerationService personCodeGenerationService
     ) {
         this.personRepository = personRepository;
         this.clanRepository = clanRepository;
@@ -84,6 +86,7 @@ public class PersonApplicationService {
         this.genWordRepository = genWordRepository;
         this.operationLogApplicationService = operationLogApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.personCodeGenerationService = personCodeGenerationService;
     }
 
     @Transactional
@@ -109,7 +112,7 @@ public class PersonApplicationService {
         entity.setUpdatedAt(now);
         PersonEntity saved = personRepository.save(entity);
         if (!hasText(saved.getPersonCode())) {
-            saved.setPersonCode(generateUnusedPersonCode(clanId, saved.getId()));
+            saved.setPersonCode(personCodeGenerationService.generate(clanId, saved));
             saved.setUpdatedAt(LocalDateTime.now());
             saved = personRepository.save(saved);
         }
@@ -258,12 +261,10 @@ public class PersonApplicationService {
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("courtesyName")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("aliasName")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("generationWord")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("rankInFamily")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("birthPlace")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("residencePlace")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("biography")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("tombPlace")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("epitaph")), pattern)
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("occupation")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("personCode")), pattern)
                 ));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
@@ -271,14 +272,17 @@ public class PersonApplicationService {
     }
 
     private Specification<PersonEntity> buildVisibleSpecification(Long clanId) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.and(
+        return (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.and(
                 criteriaBuilder.equal(root.get("clanId"), clanId),
                 criteriaBuilder.isNull(root.get("deletedAt"))
         );
     }
 
-    private Specification<PersonEntity> and(Specification<PersonEntity> first, Specification<PersonEntity> second) {
-        return first.and(second);
+    private Specification<PersonEntity> and(Specification<PersonEntity> left, Specification<PersonEntity> right) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.and(
+                left.toPredicate(root, query, criteriaBuilder),
+                right.toPredicate(root, query, criteriaBuilder)
+        );
     }
 
     private PersonResponse toPrivacyAwareResponse(PersonEntity entity, Long viewerId) {
@@ -286,18 +290,16 @@ public class PersonApplicationService {
         if (!shouldMaskSensitiveFields(entity, viewerId)) {
             return response;
         }
-        String privacyLevel = normalizePrivacyLevel(entity.getPrivacyLevel(), entity.getIsLiving());
-        String maskedName = PRIVACY_SEALED.equals(privacyLevel)
-                ? "已封存人物"
-                : PRIVACY_PRIVATE.equals(privacyLevel) || PRIVACY_RELATIVES_ONLY.equals(privacyLevel)
-                    ? "受保护人物"
-                    : response.name();
+        String maskedName = switch (normalizePrivacyLevel(entity.getPrivacyLevel(), entity.getIsLiving())) {
+            case PRIVACY_PRIVATE, PRIVACY_RELATIVES_ONLY -> "受保护人物";
+            case PRIVACY_SEALED -> "已封存人物";
+            default -> response.name();
+        };
         return new PersonResponse(
-                response.id(), response.clanId(), response.branchId(), null, maskedName,
-                null, null, null, response.gender(),
-                response.generationNo(), response.generationWord(), null, null, null,
-                null, null, response.isLiving(), null, null,
-                null, null, null, null, null, null,
+                response.id(), response.clanId(), response.branchId(), response.personCode(), maskedName,
+                response.genealogyName(), response.courtesyName(), response.aliasName(), response.gender(),
+                response.generationNo(), response.generationWord(), response.rankInFamily(), null, null, null,
+                null, null, null, null, null, null, null,
                 null, response.lineageStatus(), response.privacyLevel(), response.dataStatus(),
                 response.createdBy(), response.createdAt(), response.updatedBy(), response.updatedAt()
         );
@@ -458,17 +460,6 @@ public class PersonApplicationService {
         if (entity.getLineageStatus() == null) {
             entity.setLineageStatus("normal");
         }
-    }
-
-    private String generateUnusedPersonCode(Long clanId, Long id) {
-        long baseNo = id == null ? 1 : id;
-        for (int offset = 0; offset < 1000; offset++) {
-            String candidate = String.format("P%06d", baseNo + offset);
-            if (!personRepository.existsByClanIdAndPersonCodeAndDeletedAtIsNull(clanId, candidate)) {
-                return candidate;
-            }
-        }
-        throw new BusinessException("PERSON_CODE_GENERATE_FAILED", "人物编码生成失败，请稍后重试");
     }
 
     private boolean hasText(String value) {
