@@ -28,7 +28,9 @@ public class RevisionApplyService {
     private static final String TARGET_BRANCH = "branch";
     private static final String TARGET_GENERATION_SCHEME = "generation_scheme";
     private static final String STATUS_OFFICIAL = "official";
+    private static final String STATUS_DRAFT = "draft";
     private static final String STATUS_VERIFIED = "verified";
+    private static final String STATUS_UNVERIFIED = "unverified";
     private static final String STATUS_ACTIVE = "active";
     private static final String CHANGE_PERSON_DELETE = "person_delete";
 
@@ -81,6 +83,30 @@ public class RevisionApplyService {
         throw new BusinessException("REVISION_TARGET_UNSUPPORTED", "暂不支持该对象类型的审核生效");
     }
 
+    @Transactional
+    public void reject(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        String targetType = normalize(revision.getTargetType());
+        if (TARGET_PERSON.equals(targetType)) {
+            rollbackPerson(revision, rejectTime);
+            return;
+        }
+        if (TARGET_RELATIONSHIP.equals(targetType)) {
+            rollbackRelationship(revision, rejectTime);
+            return;
+        }
+        if (TARGET_SOURCE.equals(targetType)) {
+            rollbackSource(revision);
+            return;
+        }
+        if (TARGET_BRANCH.equals(targetType)) {
+            rollbackBranch(revision, rejectTime);
+            return;
+        }
+        if (TARGET_GENERATION_SCHEME.equals(targetType)) {
+            rollbackGenerationScheme(revision);
+        }
+    }
+
     private void applyPerson(AuditRecordEntity revision, LocalDateTime applyTime) {
         if (CHANGE_PERSON_DELETE.equals(normalize(revision.getChangeType()))) {
             PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(revision.getTargetId())
@@ -107,6 +133,22 @@ public class RevisionApplyService {
         personRepository.save(snapshot);
     }
 
+    private void rollbackPerson(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        PersonEntity snapshot = readPayload(revision.getOldPayload(), PersonEntity.class);
+        if (snapshot == null) {
+            personRepository.findByIdAndDeletedAtIsNull(revision.getTargetId()).ifPresent(entity -> {
+                entity.setDataStatus(STATUS_DRAFT);
+                entity.setUpdatedAt(rejectTime);
+                personRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setClanId(revision.getClanId());
+        snapshot.setUpdatedAt(rejectTime);
+        personRepository.save(snapshot);
+    }
+
     private void applyRelationship(AuditRecordEntity revision, LocalDateTime applyTime) {
         RelationshipEntity snapshot = readPayload(revision.getNewPayload(), RelationshipEntity.class);
         if (snapshot == null) {
@@ -125,6 +167,22 @@ public class RevisionApplyService {
         relationshipRepository.save(snapshot);
     }
 
+    private void rollbackRelationship(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        RelationshipEntity snapshot = readPayload(revision.getOldPayload(), RelationshipEntity.class);
+        if (snapshot == null) {
+            relationshipRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+                entity.setDataStatus(STATUS_DRAFT);
+                entity.setUpdatedAt(rejectTime);
+                relationshipRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setClanId(revision.getClanId());
+        snapshot.setUpdatedAt(rejectTime);
+        relationshipRepository.save(snapshot);
+    }
+
     private void applySource(AuditRecordEntity revision) {
         SourceEntity snapshot = readPayload(revision.getNewPayload(), SourceEntity.class);
         if (snapshot == null) {
@@ -137,6 +195,20 @@ public class RevisionApplyService {
         snapshot.setId(revision.getTargetId());
         snapshot.setClanId(revision.getClanId());
         snapshot.setVerificationStatus(STATUS_VERIFIED);
+        sourceRepository.save(snapshot);
+    }
+
+    private void rollbackSource(AuditRecordEntity revision) {
+        SourceEntity snapshot = readPayload(revision.getOldPayload(), SourceEntity.class);
+        if (snapshot == null) {
+            sourceRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+                entity.setVerificationStatus(STATUS_UNVERIFIED);
+                sourceRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setClanId(revision.getClanId());
         sourceRepository.save(snapshot);
     }
 
@@ -157,6 +229,22 @@ public class RevisionApplyService {
         branchRepository.save(snapshot);
     }
 
+    private void rollbackBranch(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        BranchEntity snapshot = readPayload(revision.getOldPayload(), BranchEntity.class);
+        if (snapshot == null) {
+            branchRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+                entity.setStatus(STATUS_DRAFT);
+                entity.setUpdatedAt(rejectTime);
+                branchRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setClanId(revision.getClanId());
+        snapshot.setUpdatedAt(rejectTime);
+        branchRepository.save(snapshot);
+    }
+
     private void applyGenerationScheme(AuditRecordEntity revision) {
         GenerationSchemeEntity snapshot = readPayload(revision.getNewPayload(), GenerationSchemeEntity.class);
         if (snapshot == null) {
@@ -169,6 +257,20 @@ public class RevisionApplyService {
         snapshot.setId(revision.getTargetId());
         snapshot.setClanId(revision.getClanId());
         snapshot.setStatus(STATUS_ACTIVE);
+        genSchemeRepository.save(snapshot);
+    }
+
+    private void rollbackGenerationScheme(AuditRecordEntity revision) {
+        GenerationSchemeEntity snapshot = readPayload(revision.getOldPayload(), GenerationSchemeEntity.class);
+        if (snapshot == null) {
+            genSchemeRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+                entity.setStatus(STATUS_DRAFT);
+                genSchemeRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setClanId(revision.getClanId());
         genSchemeRepository.save(snapshot);
     }
 
