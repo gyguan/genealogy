@@ -1,0 +1,116 @@
+package com.genealogy.source.controller;
+
+import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.auth.application.RequestContextApplicationService;
+import com.genealogy.auth.dto.RequestUserContext;
+import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.source.application.SourceApplicationService;
+import com.genealogy.source.dto.SourceBindingCreateRequest;
+import com.genealogy.source.dto.SourceBindingResponse;
+import com.genealogy.source.entity.SourceBindingEntity;
+import com.genealogy.source.repository.SourceBindingRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@Validated
+@RestController
+@RequestMapping("/api/v1")
+public class SourceBindingController {
+
+    private static final String SOURCE_VIEW = "source:view";
+
+    private final SourceApplicationService sourceApplicationService;
+    private final SourceBindingRepository sourceBindingRepository;
+    private final RequestContextApplicationService requestContextApplicationService;
+    private final AuthorizationApplicationService authorizationApplicationService;
+
+    public SourceBindingController(
+            SourceApplicationService sourceApplicationService,
+            SourceBindingRepository sourceBindingRepository,
+            RequestContextApplicationService requestContextApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
+        this.sourceApplicationService = sourceApplicationService;
+        this.sourceBindingRepository = sourceBindingRepository;
+        this.requestContextApplicationService = requestContextApplicationService;
+        this.authorizationApplicationService = authorizationApplicationService;
+    }
+
+    @PostMapping("/clans/{clanId}/source-bindings")
+    public ApiResponse<SourceBindingResponse> bind(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody SourceBindingCreateRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceApplicationService.bind(clanId, request, context.userId()));
+    }
+
+    /**
+     * Compatibility endpoint. New callers should use /clans/{clanId}/source-bindings.
+     */
+    @Deprecated
+    @PostMapping("/clans/{clanId}/source-links")
+    public ApiResponse<SourceBindingResponse> bindLegacySourceLink(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody SourceBindingCreateRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        return bind(clanId, request, servletRequest);
+    }
+
+    @GetMapping("/source-bindings/sources/{sourceId}")
+    public ApiResponse<List<SourceBindingResponse>> listBySource(
+            @Positive @PathVariable Long sourceId,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceApplicationService.listBindingsBySource(sourceId, context.userId()));
+    }
+
+    @GetMapping("/source-bindings/target/{targetType}/{targetId}")
+    public ApiResponse<List<SourceBindingResponse>> listByTarget(
+            @NotBlank @PathVariable String targetType,
+            @Positive @PathVariable Long targetId,
+            @RequestParam(required = false) Long clanId,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        if (clanId != null) {
+            return ApiResponse.success(sourceApplicationService.listBindingsByTarget(targetType, targetId, clanId, context.userId()));
+        }
+        return ApiResponse.success(sourceBindingRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(targetType, targetId).stream()
+                .filter(binding -> canViewSourceBinding(binding, context.userId()))
+                .map(this::toResponse)
+                .toList());
+    }
+
+    private boolean canViewSourceBinding(SourceBindingEntity binding, Long actorId) {
+        try {
+            authorizationApplicationService.requirePermission(binding.getClanId(), actorId, SOURCE_VIEW);
+            return true;
+        } catch (BusinessException ignored) {
+            return false;
+        }
+    }
+
+    private SourceBindingResponse toResponse(SourceBindingEntity entity) {
+        return new SourceBindingResponse(
+                entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getTargetType(), entity.getTargetId(),
+                entity.getBindingReason(), entity.getExcerpt(), entity.getCreatedBy(), entity.getCreatedAt()
+        );
+    }
+}
