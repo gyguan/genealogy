@@ -1,0 +1,45 @@
+name: API Contract
+
+on:
+  pull_request:
+    paths:
+      - 'docs/api/openapi.json'
+      - 'scripts/api/**'
+      - 'frontend/genealogy-web/src/shared/api/**'
+      - 'frontend/genealogy-web/package.json'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'docs/api/openapi.json'
+      - 'scripts/api/**'
+      - 'frontend/genealogy-web/src/shared/api/**'
+      - 'frontend/genealogy-web/package.json'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
+
+jobs:
+  api-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Check generated API contract
+        run: bash scripts/api/check-api-contract.sh
+
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
