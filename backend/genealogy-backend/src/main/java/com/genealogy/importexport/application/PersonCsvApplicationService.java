@@ -6,6 +6,7 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
+import com.genealogy.importexport.dto.PersonImportOptions;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,6 +43,17 @@ public class PersonCsvApplicationService {
     private static final List<String> RELATION_HEADERS = List.of(
             "fromPersonId", "toPersonId", "relationType", "relationLabel", "isLineageRelation",
             "isBiological", "isPrimary", "description", "confidenceLevel"
+    );
+
+    private static final Map<String, List<String>> PERSON_IMPORT_ALIASES = Map.of(
+            "branchId", List.of("branchId", "branch_id", "支派ID", "支派id", "支派编号", "支派"),
+            "name", List.of("name", "姓名", "人物姓名", "族人姓名"),
+            "gender", List.of("gender", "性别"),
+            "generationNo", List.of("generationNo", "generation_no", "代次", "世次", "第几世"),
+            "generationWord", List.of("generationWord", "generation_word", "字辈", "辈字", "派语"),
+            "birthDate", List.of("birthDate", "birth_date", "出生日期", "出生年月", "出生时间"),
+            "isLiving", List.of("isLiving", "is_living", "是否在世", "在世", "是否健在"),
+            "personCode", List.of("personCode", "person_code", "人物编码", "谱号", "编号")
     );
 
     private final ClanRepository clanRepository;
@@ -167,15 +180,23 @@ public class PersonCsvApplicationService {
     }
 
     public CsvImportResultResponse previewPersons(Long clanId, MultipartFile file) {
-        return parsePersons(clanId, file, null, false);
+        return previewPersons(clanId, file, new PersonImportOptions());
+    }
+
+    public CsvImportResultResponse previewPersons(Long clanId, MultipartFile file, PersonImportOptions options) {
+        return parsePersons(clanId, file, null, false, effectiveOptions(options));
     }
 
     public CsvImportResultResponse importPersons(Long clanId, MultipartFile file) {
-        return importPersons(clanId, file, null);
+        return importPersons(clanId, file, null, new PersonImportOptions());
     }
 
     public CsvImportResultResponse importPersons(Long clanId, MultipartFile file, Long actorId) {
-        return parsePersons(clanId, file, actorId, true);
+        return importPersons(clanId, file, actorId, new PersonImportOptions());
+    }
+
+    public CsvImportResultResponse importPersons(Long clanId, MultipartFile file, Long actorId, PersonImportOptions options) {
+        return parsePersons(clanId, file, actorId, true, effectiveOptions(options));
     }
 
     public CsvImportResultResponse previewRelations(Long clanId, MultipartFile file) {
@@ -186,12 +207,13 @@ public class PersonCsvApplicationService {
         return parseRelations(clanId, file, actorId, true);
     }
 
-    private CsvImportResultResponse parsePersons(Long clanId, MultipartFile file, Long actorId, boolean persist) {
+    private CsvImportResultResponse parsePersons(Long clanId, MultipartFile file, Long actorId, boolean persist, PersonImportOptions options) {
         ensureClanExists(clanId);
         List<String> lines = readNonEmptyLines(file);
         Map<String, Integer> headerIndex = parseHeader(lines.get(0));
-        if (!headerIndex.containsKey("name")) {
-            throw new BusinessException("CSV_HEADER_INVALID", "CSV表头缺少必填字段 name");
+        Map<String, Integer> personMapping = resolvePersonMapping(headerIndex, options);
+        if (!personMapping.containsKey("name")) {
+            throw new BusinessException("CSV_HEADER_INVALID", "CSV表头缺少姓名字段，且未指定 nameIndex");
         }
         int total = 0;
         int success = 0;
@@ -203,9 +225,12 @@ public class PersonCsvApplicationService {
             }
             total++;
             try {
-                PersonCreateRequest request = toCreateRequest(headerIndex, parseCsvLine(line));
+                PersonCreateRequest request = toCreateRequest(personMapping, parseCsvLine(line), options);
                 if (request.name() == null || request.name().isBlank()) {
                     throw new BusinessException("PERSON_NAME_REQUIRED", "姓名不能为空");
+                }
+                if (request.branchId() == null) {
+                    throw new BusinessException("PERSON_BRANCH_REQUIRED", "支派不能为空，请在文件中提供 branchId 或通过 branchId 参数指定当前支派");
                 }
                 if (persist) {
                     personApplicationService.create(clanId, request, actorId);
@@ -297,9 +322,76 @@ public class PersonCsvApplicationService {
         return result;
     }
 
-    private PersonCreateRequest toCreateRequest(Map<String, Integer> headerIndex, List<String> cells) {
+    private Map<String, Integer> resolvePersonMapping(Map<String, Integer> headerIndex, PersonImportOptions options) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        if (options.autoMappingEnabled()) {
+            for (String header : PERSON_HEADERS) {
+                if (headerIndex.containsKey(header)) {
+                    result.put(header, headerIndex.get(header));
+                }
+            }
+            for (Map.Entry<String, List<String>> entry : PERSON_IMPORT_ALIASES.entrySet()) {
+                Integer index = findHeaderIndex(headerIndex, entry.getValue());
+                if (index != null) {
+                    result.put(entry.getKey(), index);
+                }
+            }
+        }
+        boolean override = !options.autoMappingEnabled();
+        applyExplicitIndex(result, "name", options.getNameIndex(), override);
+        applyExplicitIndex(result, "gender", options.getGenderIndex(), override);
+        applyExplicitIndex(result, "generationNo", options.getGenerationNoIndex(), override);
+        applyExplicitIndex(result, "generationWord", options.getGenerationWordIndex(), override);
+        applyExplicitIndex(result, "branchId", options.getBranchIdIndex(), override);
+        applyExplicitIndex(result, "birthDate", options.getBirthDateIndex(), override);
+        applyExplicitIndex(result, "isLiving", options.getIsLivingIndex(), override);
+        return result;
+    }
+
+    private Integer findHeaderIndex(Map<String, Integer> headerIndex, List<String> aliases) {
+        for (String alias : aliases) {
+            Integer index = headerIndex.get(alias);
+            if (index != null) {
+                return index;
+            }
+        }
+        Map<String, Integer> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : headerIndex.entrySet()) {
+            normalized.put(normalizeHeader(entry.getKey()), entry.getValue());
+        }
+        for (String alias : aliases) {
+            Integer index = normalized.get(normalizeHeader(alias));
+            if (index != null) {
+                return index;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeHeader(String value) {
+        return value == null ? "" : value.trim().replace(" ", "").replace("_", "").replace("-", "").toLowerCase(Locale.ROOT);
+    }
+
+    private void applyExplicitIndex(Map<String, Integer> mapping, String field, Integer index, boolean override) {
+        if (index == null || index < 0) {
+            return;
+        }
+        if (override || !mapping.containsKey(field)) {
+            mapping.put(field, index);
+        }
+    }
+
+    private PersonImportOptions effectiveOptions(PersonImportOptions options) {
+        return options == null ? new PersonImportOptions() : options;
+    }
+
+    private PersonCreateRequest toCreateRequest(Map<String, Integer> headerIndex, List<String> cells, PersonImportOptions options) {
+        Long branchId = parseLong(read(headerIndex, cells, "branchId"));
+        if (branchId == null) {
+            branchId = options.getBranchId();
+        }
         return new PersonCreateRequest(
-                parseLong(read(headerIndex, cells, "branchId")), read(headerIndex, cells, "personCode"), read(headerIndex, cells, "name"),
+                branchId, read(headerIndex, cells, "personCode"), read(headerIndex, cells, "name"),
                 read(headerIndex, cells, "genealogyName"), read(headerIndex, cells, "courtesyName"), read(headerIndex, cells, "aliasName"),
                 read(headerIndex, cells, "gender"), parseInteger(read(headerIndex, cells, "generationNo")), read(headerIndex, cells, "generationWord"),
                 read(headerIndex, cells, "rankInFamily"), parseDate(read(headerIndex, cells, "birthDate")), read(headerIndex, cells, "birthDatePrecision"),
@@ -307,7 +399,7 @@ public class PersonCsvApplicationService {
                 read(headerIndex, cells, "birthPlace"), read(headerIndex, cells, "residencePlace"), read(headerIndex, cells, "occupation"),
                 read(headerIndex, cells, "education"), read(headerIndex, cells, "titleOrHonor"), read(headerIndex, cells, "biography"),
                 read(headerIndex, cells, "tombPlace"), read(headerIndex, cells, "epitaph"), parseBoolean(read(headerIndex, cells, "hasDescendant")),
-                read(headerIndex, cells, "lineageStatus"), read(headerIndex, cells, "privacyLevel"), true
+                read(headerIndex, cells, "lineageStatus"), read(headerIndex, cells, "privacyLevel"), options.confirmDuplicatesEnabled()
         );
     }
 
@@ -333,7 +425,19 @@ public class PersonCsvApplicationService {
 
     private Long parseLong(String value) { return value == null ? null : Long.valueOf(value); }
     private Integer parseInteger(String value) { return value == null ? null : Integer.valueOf(value); }
-    private Boolean parseBoolean(String value) { return value == null ? null : Boolean.valueOf(value); }
+    private Boolean parseBoolean(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (List.of("true", "1", "yes", "y", "是", "在世", "健在", "有").contains(normalized)) {
+            return true;
+        }
+        if (List.of("false", "0", "no", "n", "否", "不在世", "已故", "无").contains(normalized)) {
+            return false;
+        }
+        return Boolean.valueOf(normalized);
+    }
     private LocalDate parseDate(String value) { return value == null ? null : LocalDate.parse(value); }
 
     private List<String> parseCsvLine(String line) {
