@@ -20,6 +20,24 @@ function normalizeApiPath(path: string) {
   return path.replace(/\/clans\/(\d+)\/source-links\b/g, '/clans/$1/source-bindings');
 }
 
+function normalizeReviewTargetType(value: unknown) {
+  const text = String(value ?? '').trim();
+  const map: Record<string, string> = {
+    persons: 'person',
+    person: 'person',
+    relationships: 'relationship',
+    relationship: 'relationship',
+    sources: 'source',
+    source: 'source',
+    branches: 'branch',
+    branch: 'branch',
+    'generation-schemes': 'generation_scheme',
+    generation_schemes: 'generation_scheme',
+    generation_scheme: 'generation_scheme'
+  };
+  return map[text] || text;
+}
+
 function normalizeJsonBody(path: string, body: unknown) {
   if (body === undefined || body === null || typeof body !== 'object' || Array.isArray(body)) {
     return body;
@@ -27,6 +45,9 @@ function normalizeJsonBody(path: string, body: unknown) {
   const next = { ...(body as Record<string, unknown>) };
   if (/^\/clans\/\d+\/persons$/.test(path) && next.personCode === null) {
     delete next.personCode;
+  }
+  if (/^\/clans\/\d+\/review-tasks$/.test(path) && next.targetType !== undefined) {
+    next.targetType = normalizeReviewTargetType(next.targetType);
   }
   return next;
 }
