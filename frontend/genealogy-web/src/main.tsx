@@ -12,6 +12,7 @@ import './compact-ui.css';
 import './audit-trace.css';
 import './antd-bridge.css';
 import './person-archive-tweaks.css';
+import './person-archive-source.css';
 import './home-dashboard-overrides.css';
 import './mvp1-wizard-enhancements';
 import './person-archive-enhancements';
