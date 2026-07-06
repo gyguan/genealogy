@@ -13,6 +13,12 @@ const EDUCATION_OPTIONS = [
   '其他'
 ];
 
+declare global {
+  interface Window {
+    __genealogyPersonEntryFieldEnhancementsInstalled?: boolean;
+  }
+}
+
 function findPersonWizardPanel() {
   const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
   return panels.find(panel => {
@@ -96,6 +102,9 @@ function syncPersonEntryFieldEnhancements() {
 }
 
 function installPersonEntryFieldEnhancements() {
+  if (window.__genealogyPersonEntryFieldEnhancementsInstalled) return;
+  window.__genealogyPersonEntryFieldEnhancementsInstalled = true;
+
   const sync = () => window.requestAnimationFrame(syncPersonEntryFieldEnhancements);
   sync();
 
