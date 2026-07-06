@@ -7,6 +7,8 @@ import com.genealogy.review.dto.AuditRecordResponse;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.dto.PersonSubmitReviewRequest;
 import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.dto.ReviewDiffResponse;
+import com.genealogy.review.dto.ReviewSubmitRequest;
 import com.genealogy.review.dto.ReviewTaskDetailResponse;
 import com.genealogy.review.dto.TargetSubmitRequest;
 import jakarta.validation.Valid;
@@ -33,6 +35,16 @@ public class ApprovalController {
     public ApprovalController(ApprovalApplicationService approvalApplicationService, AuthorizationApplicationService authorizationApplicationService) {
         this.approvalApplicationService = approvalApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+    }
+
+    @PostMapping("/clans/{clanId}/review-tasks")
+    public ApiResponse<CheckTaskResponse> submitReviewTask(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody ReviewSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.submitGeneric(clanId, request, userId));
     }
 
     @PostMapping("/persons/{personId}/submit-review")
@@ -106,6 +118,15 @@ public class ApprovalController {
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(approvalApplicationService.getTaskDetail(taskId, userId));
+    }
+
+    @GetMapping("/review-tasks/{taskId}/diff")
+    public ApiResponse<ReviewDiffResponse> diff(
+            @Positive @PathVariable Long taskId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.diff(taskId, userId));
     }
 
     @PostMapping("/review-tasks/{taskId}/approve")
