@@ -2,6 +2,8 @@ package com.genealogy.review.controller;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.review.application.ReviewApplicationService;
 import com.genealogy.review.dto.ReviewDecisionRequest;
 import com.genealogy.review.dto.ReviewDiffResponse;
@@ -27,13 +29,16 @@ public class ReviewController {
 
     private final ReviewApplicationService reviewApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final PersonRepository personRepository;
 
     public ReviewController(
             ReviewApplicationService reviewApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
+            AuthorizationApplicationService authorizationApplicationService,
+            PersonRepository personRepository
     ) {
         this.reviewApplicationService = reviewApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.personRepository = personRepository;
     }
 
     @PostMapping("/clans/{clanId}/review-tasks")
@@ -53,8 +58,11 @@ public class ReviewController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
+        Long clanId = personRepository.findByIdAndDeletedAtIsNull(personId)
+                .orElseThrow(() -> new BusinessException("PERSON_NOT_FOUND", "人物不存在或已删除"))
+                .getClanId();
         ReviewSubmitRequest submitRequest = new ReviewSubmitRequest("person", personId, "modified", request == null ? null : request.comment());
-        return ApiResponse.success(reviewApplicationService.submit(resolveClanIdFromPerson(personId), submitRequest, actorId));
+        return ApiResponse.success(reviewApplicationService.submit(clanId, submitRequest, actorId));
     }
 
     @GetMapping("/clans/{clanId}/review-tasks/pending")
@@ -93,9 +101,5 @@ public class ReviewController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(reviewApplicationService.reject(id, request, actorId));
-    }
-
-    private Long resolveClanIdFromPerson(Long personId) {
-        return reviewApplicationService.diff(-1L, -1L).clanId();
     }
 }
