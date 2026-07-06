@@ -10,6 +10,19 @@ type RelationshipRow = {
   relationLabel?: string;
 };
 
+type SourceBindingRow = {
+  id?: string | number;
+  sourceId?: string | number;
+  sourceName?: string;
+  source?: { sourceName?: string; title?: string; name?: string; sourceType?: string };
+  targetType?: string;
+  targetId?: string | number;
+  bindType?: string;
+  confidenceLevel?: string;
+  description?: string;
+  note?: string;
+};
+
 type PersonBrief = {
   id: string;
   name: string;
@@ -18,11 +31,14 @@ type PersonBrief = {
 declare global {
   interface Window {
     __genealogyPersonArchiveEnhancementsInstalled?: boolean;
+    __genealogyWorkspace?: { clanId?: string; personId?: string };
   }
 }
 
 const personNameCache = new Map<string, PersonBrief>();
+const sourceNameCache = new Map<string, string>();
 let relationshipRendering = false;
+let sourceRendering = false;
 
 function toRows(data: any): any[] {
   if (Array.isArray(data)) return data;
@@ -39,6 +55,11 @@ function escapeHtml(value: unknown) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function display(value: unknown, fallback = '-') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
 }
 
 function relationText(value?: string) {
@@ -74,12 +95,30 @@ function relationLabelText(value?: string) {
   return dict[value || ''] || value || '-';
 }
 
-function currentPersonId() {
-  return window.__genealogyWorkspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
+function targetTypeText(value?: string) {
+  const dict: Record<string, string> = {
+    person: '人物',
+    relationship: '亲属关系',
+    branch: '支派',
+    clan: '宗族',
+    generation_word: '字辈'
+  };
+  return dict[value || ''] || value || '对象';
 }
 
-function relationshipId(row: RelationshipRow) {
-  return String(row.id || `${fromPersonId(row)}-${toPersonId(row)}-${row.relationType || row.relationLabel || ''}`);
+function sourceTypeText(value?: string) {
+  const dict: Record<string, string> = {
+    genealogy_book: '族谱',
+    oral_history: '口述',
+    tombstone: '墓碑',
+    photo: '照片',
+    archive: '档案'
+  };
+  return dict[value || ''] || value || '资料来源';
+}
+
+function currentPersonId() {
+  return window.__genealogyWorkspace?.personId || localStorage.getItem('genealogy.workspace.personId') || '';
 }
 
 function fromPersonId(row: RelationshipRow) {
@@ -95,11 +134,24 @@ async function getPersonName(id: string) {
   if (personNameCache.has(id)) return personNameCache.get(id)!.name;
   try {
     const data: any = await apiClient.get(`/persons/${id}`);
-    const name = data?.name || data?.personName || data?.displayName || `人物#${id}`;
+    const name = data?.name || data?.personName || data?.displayName || '未知人物';
     personNameCache.set(id, { id, name });
     return name;
   } catch {
-    return `人物#${id}`;
+    return '未知人物';
+  }
+}
+
+async function getSourceName(id: string) {
+  if (!id) return '-';
+  if (sourceNameCache.has(id)) return sourceNameCache.get(id)!;
+  try {
+    const data: any = await apiClient.get(`/sources/${id}`);
+    const name = data?.sourceName || data?.title || data?.name || '未命名来源';
+    sourceNameCache.set(id, name);
+    return name;
+  } catch {
+    return '未命名来源';
   }
 }
 
@@ -107,14 +159,13 @@ function findArchiveSearchTable() {
   return document.querySelector<HTMLElement>('.person-archive-search .archive-search-panel .antd-table-wrap');
 }
 
-function hideArchiveStatusColumn() {
-  const wrap = findArchiveSearchTable();
-  const table = wrap?.querySelector<HTMLTableElement>('table');
-  if (!table) return;
-
+function hideTableColumnsByTitle(table: HTMLTableElement, titles: string[]) {
   const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th'));
-  const statusIndex = headers.findIndex(header => (header.textContent || '').trim() === '状态');
-  if (statusIndex < 0) return;
+  const indexes = headers
+    .map((header, index) => ({ index, title: (header.textContent || '').trim() }))
+    .filter(item => titles.includes(item.title))
+    .map(item => item.index);
+  if (!indexes.length) return;
 
   const hideCell = (cell?: HTMLElement | null) => {
     if (!cell) return;
@@ -122,16 +173,43 @@ function hideArchiveStatusColumn() {
     cell.setAttribute('aria-hidden', 'true');
   };
 
-  hideCell(headers[statusIndex]);
-  Array.from(table.querySelectorAll<HTMLTableRowElement>('tbody tr')).forEach(row => {
-    hideCell(row.children.item(statusIndex) as HTMLElement | null);
+  indexes.forEach(index => {
+    hideCell(headers[index]);
+    Array.from(table.querySelectorAll<HTMLTableRowElement>('tbody tr')).forEach(row => hideCell(row.children.item(index) as HTMLElement | null));
+    hideCell(table.querySelectorAll<HTMLTableColElement>('colgroup col').item(index));
   });
-  hideCell(table.querySelectorAll<HTMLTableColElement>('colgroup col').item(statusIndex));
+}
+
+function hideArchiveTechnicalColumns() {
+  const wrap = findArchiveSearchTable();
+  const table = wrap?.querySelector<HTMLTableElement>('table');
+  if (!table) return;
+  hideTableColumnsByTitle(table, ['ID', '状态']);
+}
+
+function hideTechnicalDetailRows() {
+  const drawer = document.querySelector<HTMLElement>('.person-archive-search .archive-drawer-body');
+  if (!drawer) return;
+  const technicalLabels = new Set(['人物ID', '世系状态', '数据状态', '关系ID', '绑定ID', '来源ID', '对象ID']);
+  Array.from(drawer.querySelectorAll<HTMLElement>('span, label, th')).forEach(node => {
+    const text = (node.textContent || '').trim();
+    if (!technicalLabels.has(text)) return;
+    const row = node.closest<HTMLElement>('tr, .ant-descriptions-row, .ant-descriptions-item, .detail-card-row, div');
+    if (row) {
+      row.style.display = 'none';
+      row.setAttribute('aria-hidden', 'true');
+    }
+  });
 }
 
 function findRelationshipSection() {
   return Array.from(document.querySelectorAll<HTMLElement>('.person-archive-search .archive-drawer-section'))
     .find(section => (section.querySelector('h3')?.textContent || '').trim() === '亲属关系') || null;
+}
+
+function findSourceSection() {
+  return Array.from(document.querySelectorAll<HTMLElement>('.person-archive-search .archive-drawer-section'))
+    .find(section => (section.querySelector('h3')?.textContent || '').trim() === '来源证据') || null;
 }
 
 async function renderRelationshipSection() {
@@ -158,8 +236,8 @@ async function renderRelationshipSection() {
       const toId = toPersonId(row);
       const otherId = fromId === personId ? toId : toId === personId ? fromId : '';
       const name = otherId
-        ? personNameCache.get(otherId)?.name || `人物#${otherId}`
-        : `${personNameCache.get(fromId)?.name || `人物#${fromId}`} → ${personNameCache.get(toId)?.name || `人物#${toId}`}`;
+        ? personNameCache.get(otherId)?.name || '未知人物'
+        : `${personNameCache.get(fromId)?.name || '未知人物'} → ${personNameCache.get(toId)?.name || '未知人物'}`;
       return `
         <tr>
           <td>${escapeHtml(name)}</td>
@@ -183,9 +261,59 @@ async function renderRelationshipSection() {
   }
 }
 
+async function renderSourceSection() {
+  if (sourceRendering) return;
+  const section = findSourceSection();
+  const personId = currentPersonId();
+  if (!section || !personId) return;
+  if (section.dataset.enhancedFor === personId) return;
+
+  sourceRendering = true;
+  try {
+    section.dataset.enhancedFor = personId;
+    const rows = toRows(await apiClient.get(`/source-bindings/target/person/${personId}`).catch(() => [])) as SourceBindingRow[];
+    if (!rows.length) {
+      section.innerHTML = '<h3>来源证据</h3><div class="person-archive-source-empty">暂无来源绑定。</div>';
+      return;
+    }
+
+    const sourceIds = Array.from(new Set(rows.map(row => String(row.sourceId || '')).filter(Boolean)));
+    await Promise.all(sourceIds.map(getSourceName));
+
+    const body = rows.map(row => {
+      const sourceId = String(row.sourceId || '');
+      const sourceName = row.sourceName || row.source?.sourceName || row.source?.title || row.source?.name || sourceNameCache.get(sourceId) || '未命名来源';
+      const sourceType = sourceTypeText(row.source?.sourceType);
+      const targetSummary = row.targetType === 'person' ? '当前人物档案' : targetTypeText(row.targetType);
+      return `
+        <tr>
+          <td>${escapeHtml(sourceName)}</td>
+          <td>${escapeHtml(sourceType)}</td>
+          <td>${escapeHtml(targetSummary)}</td>
+          <td>${escapeHtml(display(row.description || row.note || row.bindType || row.confidenceLevel, '已绑定'))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    section.innerHTML = `
+      <h3>来源证据</h3>
+      <div class="person-archive-source-table-wrap">
+        <table class="person-archive-source-table">
+          <thead><tr><th>来源名称</th><th>来源类型</th><th>绑定对象</th><th>说明</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>
+      </div>
+    `;
+  } finally {
+    sourceRendering = false;
+  }
+}
+
 function syncPersonArchiveEnhancements() {
-  hideArchiveStatusColumn();
+  hideArchiveTechnicalColumns();
+  hideTechnicalDetailRows();
   void renderRelationshipSection();
+  void renderSourceSection();
 }
 
 function installPersonArchiveEnhancements() {
