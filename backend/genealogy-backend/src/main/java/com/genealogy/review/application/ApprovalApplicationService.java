@@ -1,6 +1,7 @@
 package com.genealogy.review.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.entity.BranchEntity;
@@ -18,6 +19,8 @@ import com.genealogy.review.dto.AuditRecordResponse;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.dto.PersonSubmitReviewRequest;
 import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.dto.ReviewDiffResponse;
+import com.genealogy.review.dto.ReviewSubmitRequest;
 import com.genealogy.review.dto.ReviewTaskDetailResponse;
 import com.genealogy.review.dto.TargetSubmitRequest;
 import com.genealogy.review.entity.AuditRecordEntity;
@@ -30,8 +33,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeSet;
 
 @Service
 public class ApprovalApplicationService {
@@ -47,7 +53,6 @@ public class ApprovalApplicationService {
     private static final String STATUS_REJECTED = "rejected";
     private static final String PERSON_STATUS_DRAFT = "draft";
     private static final String PERSON_STATUS_PENDING_REVIEW = "pending_review";
-    private static final String PERSON_STATUS_OFFICIAL = "official";
 
     private static final String REVIEW_VIEW = "review_task:view";
     private static final String REVIEW_APPROVE = "review_task:approve";
@@ -66,6 +71,7 @@ public class ApprovalApplicationService {
     private final CheckTaskRepository checkTaskRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final RevisionApplyService revisionApplyService;
     private final ObjectMapper objectMapper;
 
     public ApprovalApplicationService(
@@ -78,6 +84,7 @@ public class ApprovalApplicationService {
             CheckTaskRepository checkTaskRepository,
             OperationLogApplicationService operationLogApplicationService,
             AuthorizationApplicationService authorizationApplicationService,
+            RevisionApplyService revisionApplyService,
             ObjectMapper objectMapper
     ) {
         this.personRepository = personRepository;
@@ -89,6 +96,7 @@ public class ApprovalApplicationService {
         this.checkTaskRepository = checkTaskRepository;
         this.operationLogApplicationService = operationLogApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.revisionApplyService = revisionApplyService;
         this.objectMapper = objectMapper;
     }
 
@@ -162,6 +170,19 @@ public class ApprovalApplicationService {
         return response;
     }
 
+    @Transactional
+    public CheckTaskResponse submitGeneric(Long clanId, ReviewSubmitRequest request, Long submitterId) {
+        TargetSubmitRequest targetRequest = new TargetSubmitRequest(submitterId, request.comment());
+        return switch (normalize(request.targetType())) {
+            case TARGET_PERSON -> submitPerson(request.targetId(), new PersonSubmitReviewRequest(submitterId, request.comment()));
+            case TARGET_RELATIONSHIP -> submitRelationship(request.targetId(), targetRequest);
+            case TARGET_SOURCE -> submitSource(request.targetId(), targetRequest);
+            case TARGET_BRANCH -> submitBranch(request.targetId(), targetRequest);
+            case TARGET_GENERATION_SCHEME -> submitGenerationScheme(request.targetId(), targetRequest);
+            default -> throw new BusinessException("REVIEW_TARGET_UNSUPPORTED", "暂不支持该对象类型提交审核");
+        };
+    }
+
     private CheckTaskResponse submitTarget(Long clanId, String targetType, Long targetId, Long branchId, Long submitterId, String diffSummary, String logSummary, String beforePayload, String afterPayload) {
         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(targetType, targetId, STATUS_PENDING)) {
             throw new BusinessException("REVIEW_ALREADY_PENDING", "target already has pending review task");
@@ -225,6 +246,14 @@ public class ApprovalApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public ReviewDiffResponse diff(Long taskId, Long actorId) {
+        CheckTaskEntity task = getActiveTask(taskId);
+        authorizationApplicationService.requirePermission(task.getClanId(), actorId, REVIEW_VIEW);
+        AuditRecordEntity record = getRecord(task.getRevisionId());
+        return new ReviewDiffResponse(task.getId(), record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(), record.getDiffSummary(), fieldDiffs(record.getOldPayload(), record.getNewPayload()));
+    }
+
+    @Transactional(readOnly = true)
     public List<AuditRecordResponse> listPersonRecords(Long personId) {
         return auditRecordRepository.findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(TARGET_PERSON, personId).stream().map(this::toRecordResponse).toList();
     }
@@ -251,7 +280,7 @@ public class ApprovalApplicationService {
         task.setReviewComment(trimToNull(request.comment()));
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
-        applyTargetAfterApproval(record, now);
+        revisionApplyService.apply(record, now);
         operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "approve review", request.comment());
         return toTaskResponse(savedTask);
     }
@@ -300,36 +329,6 @@ public class ApprovalApplicationService {
         }
     }
 
-    private void applyTargetAfterApproval(AuditRecordEntity record, LocalDateTime now) {
-        switch (record.getTargetType()) {
-            case TARGET_PERSON -> {
-                PersonEntity person = getPerson(record.getTargetId());
-                person.setDataStatus(PERSON_STATUS_OFFICIAL);
-                person.setUpdatedAt(now);
-                personRepository.save(person);
-            }
-            case TARGET_RELATIONSHIP -> relationshipRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setDataStatus(PERSON_STATUS_OFFICIAL);
-                entity.setUpdatedAt(now);
-                relationshipRepository.save(entity);
-            });
-            case TARGET_SOURCE -> sourceRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setVerificationStatus("verified");
-                sourceRepository.save(entity);
-            });
-            case TARGET_BRANCH -> branchRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setStatus("active");
-                entity.setUpdatedAt(now);
-                branchRepository.save(entity);
-            });
-            case TARGET_GENERATION_SCHEME -> genSchemeRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setStatus("active");
-                genSchemeRepository.save(entity);
-            });
-            default -> { }
-        }
-    }
-
     private void rollbackTargetAfterReject(AuditRecordEntity record, LocalDateTime now) {
         switch (record.getTargetType()) {
             case TARGET_PERSON -> {
@@ -368,6 +367,45 @@ public class ApprovalApplicationService {
         return new AuditRecordResponse(record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(), record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason());
     }
 
+    private List<ReviewDiffResponse.FieldDiff> fieldDiffs(String beforeData, String afterData) {
+        JsonNode before = readTree(beforeData);
+        JsonNode after = readTree(afterData);
+        TreeSet<String> fields = new TreeSet<>();
+        before.fieldNames().forEachRemaining(fields::add);
+        after.fieldNames().forEachRemaining(fields::add);
+        List<ReviewDiffResponse.FieldDiff> diffs = new ArrayList<>();
+        for (String field : fields) {
+            JsonNode beforeValue = before.get(field);
+            JsonNode afterValue = after.get(field);
+            if (!Objects.equals(beforeValue, afterValue)) {
+                String changeType = beforeValue == null ? "added" : afterValue == null ? "removed" : "modified";
+                diffs.add(new ReviewDiffResponse.FieldDiff(field, nodeText(beforeValue), nodeText(afterValue), changeType));
+            }
+        }
+        return diffs;
+    }
+
+    private JsonNode readTree(String json) {
+        try {
+            if (json == null || json.isBlank()) {
+                return objectMapper.createObjectNode();
+            }
+            return objectMapper.readTree(json);
+        } catch (JsonProcessingException ignored) {
+            return objectMapper.createObjectNode();
+        }
+    }
+
+    private String nodeText(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isValueNode()) {
+            return node.asText();
+        }
+        return node.toString();
+    }
+
     private String toJson(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
@@ -385,5 +423,9 @@ public class ApprovalApplicationService {
             return null;
         }
         return value.trim();
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 }
