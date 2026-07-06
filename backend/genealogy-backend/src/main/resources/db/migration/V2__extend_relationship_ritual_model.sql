@@ -4,6 +4,13 @@ ALTER TABLE relationship
     ADD COLUMN IF NOT EXISTS succession_reason TEXT,
     ADD COLUMN IF NOT EXISTS successor_branch_id BIGINT;
 
+ALTER TABLE relationship
+    DROP CONSTRAINT IF EXISTS chk_relationship_not_self;
+
+ALTER TABLE relationship
+    ADD CONSTRAINT chk_relationship_not_self
+        CHECK (from_person_id <> to_person_id OR relation_type = 'no_descendant');
+
 UPDATE relationship
 SET relation_category = CASE
     WHEN relation_type = 'parent_child' THEN 'blood'
