@@ -10,4 +10,8 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecordEntity, 
     boolean existsByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
 
     List<AuditRecordEntity> findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(String targetType, Long targetId);
+
+    List<AuditRecordEntity> findBySubmitterIdOrderBySubmitTimeDesc(Long submitterId);
+
+    List<AuditRecordEntity> findByClanIdAndSubmitterIdOrderBySubmitTimeDesc(Long clanId, Long submitterId);
 }
