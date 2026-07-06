@@ -14,6 +14,10 @@ public record RelationshipCreateRequest(
         String relationType,
 
         String relationLabel,
+        String relationCategory,
+        String ritualRelationType,
+        String successionReason,
+        Long successorBranchId,
         Boolean isLineageRelation,
         Boolean isBiological,
         Boolean isPrimary,
