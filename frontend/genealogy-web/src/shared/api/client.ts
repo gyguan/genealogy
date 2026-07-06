@@ -14,6 +14,12 @@ export type ApiError = {
 
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
+function normalizeApiPath(path: string) {
+  // P0-1: source binding contract is /source-bindings.
+  // Keep frontend callers safe while legacy /source-links references are removed gradually.
+  return path.replace(/\/clans\/(\d+)\/source-links\b/g, '/clans/$1/source-bindings');
+}
+
 export class ApiClient {
   private baseUrl: string;
   private token: string;
@@ -48,28 +54,30 @@ export class ApiClient {
   }
 
   async get<T = unknown>(path: string): Promise<T> {
-    const key = this.pendingGetKey(path);
+    const normalizedPath = normalizeApiPath(path);
+    const key = this.pendingGetKey(normalizedPath);
     const pending = pendingGetRequests.get(key);
     if (pending) return pending as Promise<T>;
 
-    const request = this.request<T>(path, { method: 'GET' })
+    const request = this.request<T>(normalizedPath, { method: 'GET' })
       .finally(() => pendingGetRequests.delete(key));
     pendingGetRequests.set(key, request as Promise<unknown>);
     return request;
   }
 
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
+    const normalizedPath = normalizeApiPath(path);
     try {
-      return await this.request<T>(path, {
+      return await this.request<T>(normalizedPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body)
       });
     } catch (error) {
-      if (this.shouldConfirmDuplicatePerson(path, body, error)) {
+      if (this.shouldConfirmDuplicatePerson(normalizedPath, body, error)) {
         const ok = window.confirm('发现疑似重复人物。确认仍要创建这条人物记录吗？');
         if (ok) {
-          return this.request<T>(path, {
+          return this.request<T>(normalizedPath, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...(body as Record<string, unknown>), confirmDuplicate: true })
@@ -81,7 +89,7 @@ export class ApiClient {
   }
 
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(path, {
+    return this.request<T>(normalizeApiPath(path), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body)
@@ -89,15 +97,15 @@ export class ApiClient {
   }
 
   async delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>(path, { method: 'DELETE' });
+    return this.request<T>(normalizeApiPath(path), { method: 'DELETE' });
   }
 
   async upload<T = unknown>(path: string, formData: FormData): Promise<T> {
-    return this.request<T>(path, { method: 'POST', body: formData });
+    return this.request<T>(normalizeApiPath(path), { method: 'POST', body: formData });
   }
 
   async download(path: string): Promise<Blob> {
-    const res = await fetch(this.resolve(path), { headers: this.authHeaders() });
+    const res = await fetch(this.resolve(normalizeApiPath(path)), { headers: this.authHeaders() });
     if (!res.ok) throw new Error(`下载失败：HTTP ${res.status}`);
     return res.blob();
   }
@@ -133,7 +141,7 @@ export class ApiClient {
   }
 
   private resolve(path: string) {
-    return `${this.baseUrl}${path}`;
+    return `${this.baseUrl}${normalizeApiPath(path)}`;
   }
 
   private authHeaders(): Record<string, string> {
