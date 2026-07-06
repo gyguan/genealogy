@@ -19,6 +19,7 @@
 /api/v1/persons           人物档案
 /api/v1/relationships     人物关系
 /api/v1/sources           资料来源
+/api/v1/source-bindings   来源绑定
 /api/v1/reviews           审核中心
 /api/v1/tree              世系图
 /api/v1/imports           导入管理
@@ -94,12 +95,35 @@ POST   /api/v1/relationships/validate
 ### 来源
 
 ```text
-POST /api/v1/clans/{clanId}/sources
-GET  /api/v1/clans/{clanId}/sources
-GET  /api/v1/sources/{sourceId}
-POST /api/v1/sources/{sourceId}/attachments
-POST /api/v1/source-bindings
-GET  /api/v1/source-bindings
+POST   /api/v1/clans/{clanId}/sources
+GET    /api/v1/clans/{clanId}/sources
+GET    /api/v1/sources/{sourceId}
+PUT    /api/v1/sources/{sourceId}
+DELETE /api/v1/sources/{sourceId}
+POST   /api/v1/sources/{sourceId}/attachments
+```
+
+### 来源绑定
+
+```text
+POST /api/v1/clans/{clanId}/source-bindings
+GET  /api/v1/source-bindings/sources/{sourceId}
+GET  /api/v1/source-bindings/target/{targetType}/{targetId}
+GET  /api/v1/source-bindings/target/{targetType}/{targetId}?clanId={clanId}
+```
+
+`/api/v1/clans/{clanId}/source-links` 为历史兼容入口，新代码统一使用 `/api/v1/clans/{clanId}/source-bindings`。
+
+创建来源绑定请求：
+
+```json
+{
+  "sourceId": 1,
+  "targetType": "person",
+  "targetId": 1001,
+  "bindingReason": "老谱第3卷第12页记载",
+  "excerpt": "谱文摘录"
+}
 ```
 
 ### 审核
