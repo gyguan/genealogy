@@ -7,7 +7,9 @@
     "dev": "vite --host 0.0.0.0 --port 5179",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4174",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
+    "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
