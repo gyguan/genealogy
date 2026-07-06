@@ -265,6 +265,18 @@ public class ApprovalApplicationService {
         return listPersonRecords(personId);
     }
 
+    @Transactional(readOnly = true)
+    public List<AuditRecordResponse> listMySubmissions(Long actorId, Long clanId) {
+        if (clanId == null) {
+            return auditRecordRepository.findBySubmitterIdOrderBySubmitTimeDesc(actorId).stream()
+                    .map(this::toRecordResponse)
+                    .toList();
+        }
+        return auditRecordRepository.findByClanIdAndSubmitterIdOrderBySubmitTimeDesc(clanId, actorId).stream()
+                .map(this::toRecordResponse)
+                .toList();
+    }
+
     @Transactional
     public CheckTaskResponse approve(Long taskId, ReviewDecisionRequest request) {
         CheckTaskEntity task = getActiveTask(taskId);
