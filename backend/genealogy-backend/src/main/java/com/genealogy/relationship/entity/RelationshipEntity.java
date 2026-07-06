@@ -34,6 +34,28 @@ public class RelationshipEntity {
     private String relationType;
 
     private String relationLabel;
+
+    /**
+     * blood: 血缘关系；ritual: 礼法承嗣关系；marriage: 婚配关系；status: 状态标记。
+     */
+    private String relationCategory;
+
+    /**
+     * 入继、出继、承祧、兼祧、嗣子、无嗣等宗法承嗣细分类型。
+     */
+    private String ritualRelationType;
+
+    /**
+     * 立嗣原因或宗法说明，例如无嗣、兼祧、承继某房等。
+     */
+    @Column(columnDefinition = "text")
+    private String successionReason;
+
+    /**
+     * 承继房支 ID，用于表示入继/承祧/兼祧所承继的房支。
+     */
+    private Long successorBranchId;
+
     private Boolean isLineageRelation;
     private Boolean isBiological;
     private Boolean isPrimary;
