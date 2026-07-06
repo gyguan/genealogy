@@ -37,11 +37,11 @@ public class RevisionEntity {
     private String changeType;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "before_data", columnDefinition = "jsonb")
     private JsonNode beforeData;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "after_data", columnDefinition = "jsonb")
     private JsonNode afterData;
 
     @Column(columnDefinition = "text")
