@@ -1,18 +1,13 @@
--- 中国式族谱系统 MVP 1 数据库草案
--- Database: PostgreSQL
+-- Genealogy MVP1 draft schema
+-- PostgreSQL
 
 create table clan (
     id bigserial primary key,
-    clan_code varchar(64) unique,
-    clan_name varchar(200) not null,
-    surname varchar(50) not null,
-    hall_name varchar(100),
-    commandery varchar(100),
-    ancestor_person_id bigint,
+    clan_name varchar(100) not null,
+    surname varchar(20) not null,
     origin_place varchar(255),
-    current_places jsonb,
+    hall_name varchar(100),
     description text,
-    status varchar(32) not null default 'draft',
     created_by bigint,
     created_at timestamp not null default now(),
     updated_at timestamp not null default now()
@@ -22,7 +17,7 @@ create table branch (
     id bigserial primary key,
     clan_id bigint not null references clan(id),
     parent_id bigint references branch(id),
-    branch_name varchar(200) not null,
+    branch_name varchar(100) not null,
     branch_path varchar(500),
     level int not null default 1,
     sort_order int not null default 0,
@@ -40,10 +35,9 @@ create table generation_scheme (
     id bigserial primary key,
     clan_id bigint not null references clan(id),
     branch_id bigint references branch(id),
-    scheme_name varchar(200) not null,
+    scheme_name varchar(100) not null,
     poem_text text,
-    start_generation int,
-    is_default boolean not null default false,
+    start_generation_no int,
     validation_enabled boolean not null default true,
     strict_mode boolean not null default false,
     status varchar(32) not null default 'active',
@@ -55,8 +49,7 @@ create table generation_word (
     scheme_id bigint not null references generation_scheme(id),
     generation_no int not null,
     word varchar(20) not null,
-    description varchar(255),
-    sort_order int not null default 0,
+    meaning varchar(255),
     unique (scheme_id, generation_no)
 );
 
@@ -68,7 +61,7 @@ create table person (
     name varchar(100) not null,
     genealogy_name varchar(100),
     courtesy_name varchar(100),
-    alias_name varchar(200),
+    alias_name varchar(100),
     gender varchar(20) not null default 'unknown',
     generation_no int,
     generation_word varchar(20),
@@ -104,6 +97,10 @@ create table relationship (
     to_person_id bigint not null references person(id),
     relation_type varchar(50) not null,
     relation_label varchar(100),
+    relation_category varchar(32),
+    ritual_relation_type varchar(64),
+    succession_reason text,
+    successor_branch_id bigint references branch(id),
     is_lineage_relation boolean not null default false,
     is_biological boolean not null default false,
     is_primary boolean not null default true,
@@ -116,7 +113,7 @@ create table relationship (
     created_at timestamp not null default now(),
     updated_at timestamp not null default now(),
     deleted_at timestamp,
-    constraint chk_relationship_not_self check (from_person_id <> to_person_id)
+    constraint chk_relationship_not_self check (from_person_id <> to_person_id OR relation_type = 'no_descendant')
 );
 
 create table source (
@@ -126,8 +123,8 @@ create table source (
     source_type varchar(50) not null,
     provider_name varchar(100),
     book_title varchar(200),
-    volume_no varchar(100),
-    page_no varchar(100),
+    volume_no varchar(50),
+    page_no varchar(50),
     excerpt text,
     verification_status varchar(32) not null default 'unverified',
     description text,
@@ -137,17 +134,13 @@ create table source (
 
 create table attachment (
     id bigserial primary key,
-    clan_id bigint not null references clan(id),
-    source_id bigint references source(id),
+    source_id bigint not null references source(id),
     file_name varchar(255) not null,
-    file_type varchar(100),
+    file_path varchar(500) not null,
+    file_type varchar(50),
     file_size bigint,
-    storage_path varchar(500) not null,
-    thumbnail_path varchar(500),
-    checksum varchar(128),
     uploaded_by bigint,
-    uploaded_at timestamp not null default now(),
-    access_level varchar(32) not null default 'clan_only'
+    uploaded_at timestamp not null default now()
 );
 
 create table source_binding (
@@ -166,14 +159,14 @@ create table revision (
     id bigserial primary key,
     clan_id bigint not null references clan(id),
     target_type varchar(50) not null,
-    target_id bigint,
-    change_type varchar(32) not null,
-    before_data jsonb,
-    after_data jsonb,
+    target_id bigint not null,
+    change_type varchar(50) not null,
+    before_data text,
+    after_data text,
     diff_summary text,
     submitter_id bigint,
     submit_time timestamp not null default now(),
-    status varchar(32) not null default 'draft',
+    status varchar(32) not null default 'pending',
     approved_at timestamp,
     rejected_reason text
 );
@@ -185,7 +178,7 @@ create table review_task (
     review_level int not null default 1,
     reviewer_id bigint,
     reviewer_role varchar(50),
-    branch_id bigint,
+    branch_id bigint references branch(id),
     status varchar(32) not null default 'pending',
     review_comment text,
     reviewed_at timestamp,
@@ -194,41 +187,37 @@ create table review_task (
 
 create table user_account (
     id bigserial primary key,
-    username varchar(100),
-    phone varchar(50),
-    email varchar(100),
+    username varchar(100) not null unique,
     display_name varchar(100),
-    password_hash varchar(255),
+    phone varchar(30),
+    email varchar(100),
     status varchar(32) not null default 'active',
-    created_at timestamp not null default now(),
-    last_login_at timestamp
+    created_at timestamp not null default now()
 );
 
 create table clan_member (
     id bigserial primary key,
     clan_id bigint not null references clan(id),
-    user_id bigint references user_account(id),
-    person_id bigint references person(id),
-    branch_id bigint references branch(id),
+    user_id bigint not null references user_account(id),
     member_name varchar(100),
-    join_status varchar(32) not null default 'invited',
-    invited_by bigint,
-    joined_at timestamp,
-    created_at timestamp not null default now()
+    branch_id bigint references branch(id),
+    relation_to_clan varchar(100),
+    status varchar(32) not null default 'active',
+    joined_at timestamp not null default now()
 );
 
 create table role (
     id bigserial primary key,
-    role_code varchar(64) not null unique,
+    role_code varchar(50) not null unique,
     role_name varchar(100) not null,
-    description varchar(255)
+    description text
 );
 
 create table member_role (
     id bigserial primary key,
     member_id bigint not null references clan_member(id),
     role_id bigint not null references role(id),
-    scope_type varchar(32) not null default 'clan',
+    scope_type varchar(50) not null default 'clan',
     scope_id bigint,
     created_at timestamp not null default now()
 );
@@ -236,21 +225,11 @@ create table member_role (
 create table operation_log (
     id bigserial primary key,
     clan_id bigint,
-    operator_id bigint,
-    operation_type varchar(100) not null,
+    actor_id bigint,
+    action varchar(100) not null,
     target_type varchar(50),
     target_id bigint,
-    operation_summary varchar(500),
-    request_ip varchar(64),
-    user_agent varchar(500),
+    summary varchar(255),
+    detail text,
     created_at timestamp not null default now()
 );
-
-create index idx_branch_clan on branch(clan_id);
-create index idx_person_clan on person(clan_id);
-create index idx_person_branch on person(branch_id);
-create index idx_relationship_from on relationship(from_person_id);
-create index idx_relationship_to on relationship(to_person_id);
-create index idx_source_binding_target on source_binding(target_type, target_id);
-create index idx_revision_target on revision(target_type, target_id);
-create index idx_review_task_reviewer on review_task(reviewer_id, status);
