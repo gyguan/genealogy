@@ -8,8 +8,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -35,12 +33,10 @@ public class RevisionEntity {
     @Column(nullable = false)
     private String changeType;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "before_data", columnDefinition = "jsonb")
+    @Column(name = "before_data", columnDefinition = "text")
     private String beforeData;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "after_data", columnDefinition = "jsonb")
+    @Column(name = "after_data", columnDefinition = "text")
     private String afterData;
 
     @Column(columnDefinition = "text")
