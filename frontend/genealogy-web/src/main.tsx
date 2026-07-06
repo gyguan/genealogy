@@ -15,6 +15,7 @@ import './home-dashboard-overrides.css';
 import './mvp1-generation-step-enhancements';
 import './mvp1-person-entry-field-enhancements';
 import './mvp1-source-step-enhancements';
+import './mvp1-wizard-step-guard';
 import './person-archive-enhancements';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
