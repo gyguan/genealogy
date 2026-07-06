@@ -51,7 +51,6 @@ public class ApprovalApplicationService {
     private static final String STATUS_PENDING = "pending";
     private static final String STATUS_APPROVED = "approved";
     private static final String STATUS_REJECTED = "rejected";
-    private static final String PERSON_STATUS_DRAFT = "draft";
     private static final String PERSON_STATUS_PENDING_REVIEW = "pending_review";
 
     private static final String REVIEW_VIEW = "review_task:view";
@@ -313,7 +312,7 @@ public class ApprovalApplicationService {
         task.setReviewComment(comment);
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
-        rollbackTargetAfterReject(record, now);
+        revisionApplyService.reject(record, now);
         operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "reject review", comment);
         return toTaskResponse(savedTask);
     }
@@ -338,36 +337,6 @@ public class ApprovalApplicationService {
     private void ensurePending(CheckTaskEntity task) {
         if (!STATUS_PENDING.equals(task.getStatus())) {
             throw new BusinessException("REVIEW_TASK_ALREADY_HANDLED", "review task already handled");
-        }
-    }
-
-    private void rollbackTargetAfterReject(AuditRecordEntity record, LocalDateTime now) {
-        switch (record.getTargetType()) {
-            case TARGET_PERSON -> {
-                PersonEntity person = getPerson(record.getTargetId());
-                person.setDataStatus(PERSON_STATUS_DRAFT);
-                person.setUpdatedAt(now);
-                personRepository.save(person);
-            }
-            case TARGET_RELATIONSHIP -> relationshipRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setDataStatus(PERSON_STATUS_DRAFT);
-                entity.setUpdatedAt(now);
-                relationshipRepository.save(entity);
-            });
-            case TARGET_SOURCE -> sourceRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setVerificationStatus("unverified");
-                sourceRepository.save(entity);
-            });
-            case TARGET_BRANCH -> branchRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setStatus("draft");
-                entity.setUpdatedAt(now);
-                branchRepository.save(entity);
-            });
-            case TARGET_GENERATION_SCHEME -> genSchemeRepository.findById(record.getTargetId()).ifPresent(entity -> {
-                entity.setStatus("draft");
-                genSchemeRepository.save(entity);
-            });
-            default -> { }
         }
     }
 
