@@ -15,6 +15,12 @@ type PersonBrief = {
   name: string;
 };
 
+declare global {
+  interface Window {
+    __genealogyPersonArchiveEnhancementsInstalled?: boolean;
+  }
+}
+
 const personNameCache = new Map<string, PersonBrief>();
 let relationshipRendering = false;
 
@@ -183,6 +189,9 @@ function syncPersonArchiveEnhancements() {
 }
 
 function installPersonArchiveEnhancements() {
+  if (window.__genealogyPersonArchiveEnhancementsInstalled) return;
+  window.__genealogyPersonArchiveEnhancementsInstalled = true;
+
   const sync = () => window.requestAnimationFrame(syncPersonArchiveEnhancements);
   sync();
 
