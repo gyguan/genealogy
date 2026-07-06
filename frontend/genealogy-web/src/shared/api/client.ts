@@ -20,6 +20,17 @@ function normalizeApiPath(path: string) {
   return path.replace(/\/clans\/(\d+)\/source-links\b/g, '/clans/$1/source-bindings');
 }
 
+function normalizeJsonBody(path: string, body: unknown) {
+  if (body === undefined || body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return body;
+  }
+  const next = { ...(body as Record<string, unknown>) };
+  if (/^\/clans\/\d+\/persons$/.test(path) && next.personCode === null) {
+    delete next.personCode;
+  }
+  return next;
+}
+
 export class ApiClient {
   private baseUrl: string;
   private token: string;
@@ -67,20 +78,21 @@ export class ApiClient {
 
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
     const normalizedPath = normalizeApiPath(path);
+    const normalizedBody = normalizeJsonBody(normalizedPath, body);
     try {
       return await this.request<T>(normalizedPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body)
+        body: normalizedBody === undefined ? undefined : JSON.stringify(normalizedBody)
       });
     } catch (error) {
-      if (this.shouldConfirmDuplicatePerson(normalizedPath, body, error)) {
+      if (this.shouldConfirmDuplicatePerson(normalizedPath, normalizedBody, error)) {
         const ok = window.confirm('发现疑似重复人物。确认仍要创建这条人物记录吗？');
         if (ok) {
           return this.request<T>(normalizedPath, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...(body as Record<string, unknown>), confirmDuplicate: true })
+            body: JSON.stringify({ ...(normalizedBody as Record<string, unknown>), confirmDuplicate: true })
           });
         }
       }
@@ -89,10 +101,12 @@ export class ApiClient {
   }
 
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>(normalizeApiPath(path), {
+    const normalizedPath = normalizeApiPath(path);
+    const normalizedBody = normalizeJsonBody(normalizedPath, body);
+    return this.request<T>(normalizedPath, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body)
+      body: normalizedBody === undefined ? undefined : JSON.stringify(normalizedBody)
     });
   }
 
