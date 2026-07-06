@@ -12,6 +12,8 @@ export type ApiError = {
   errorMessage?: string;
 };
 
+const pendingGetRequests = new Map<string, Promise<unknown>>();
+
 export class ApiClient {
   private baseUrl: string;
   private token: string;
@@ -28,6 +30,7 @@ export class ApiClient {
   setBaseUrl(baseUrl: string) {
     this.baseUrl = (baseUrl || '/api/v1').replace(/\/$/, '');
     localStorage.setItem('genealogy.apiBase', this.baseUrl);
+    this.clearPendingGetRequests();
   }
 
   getToken() {
@@ -37,6 +40,7 @@ export class ApiClient {
   setToken(token: string) {
     this.token = token || '';
     localStorage.setItem('genealogy.token', this.token);
+    this.clearPendingGetRequests();
   }
 
   clearToken() {
@@ -44,7 +48,14 @@ export class ApiClient {
   }
 
   async get<T = unknown>(path: string): Promise<T> {
-    return this.request<T>(path, { method: 'GET' });
+    const key = this.pendingGetKey(path);
+    const pending = pendingGetRequests.get(key);
+    if (pending) return pending as Promise<T>;
+
+    const request = this.request<T>(path, { method: 'GET' })
+      .finally(() => pendingGetRequests.delete(key));
+    pendingGetRequests.set(key, request as Promise<unknown>);
+    return request;
   }
 
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
@@ -111,6 +122,14 @@ export class ApiClient {
       throw new Error(err.errorMessage || err.message || err.code || `HTTP ${res.status}`);
     }
     return payload?.data ?? payload;
+  }
+
+  private clearPendingGetRequests() {
+    pendingGetRequests.clear();
+  }
+
+  private pendingGetKey(path: string) {
+    return `${this.baseUrl}|${path}|${this.token}`;
   }
 
   private resolve(path: string) {
