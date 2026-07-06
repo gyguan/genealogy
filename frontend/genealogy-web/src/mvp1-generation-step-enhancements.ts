@@ -4,6 +4,15 @@ const CUSTOM_SCHEME_ID_KEY = 'genealogy.mvp1.generation.schemeId';
 const CUSTOM_SCHEME_NAME_KEY = 'genealogy.mvp1.generation.schemeName';
 const CUSTOM_SCHEME_CLAN_KEY = 'genealogy.mvp1.generation.clanId';
 
+let storedItemsLoading = false;
+let lastLoadedStoredSchemeId = '';
+
+declare global {
+  interface Window {
+    __genealogyGenerationStepEnhancementsInstalled?: boolean;
+  }
+}
+
 function findGenerationWizardPanel() {
   const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
   return panels.find(panel => {
@@ -118,36 +127,43 @@ function enableClanLevelSchemeButtons(panel: HTMLElement) {
   }
 }
 
-async function loadStoredGenerationItems(panel: HTMLElement) {
+async function loadStoredGenerationItems(panel: HTMLElement, force = false) {
   const schemeId = storedSchemeId();
   if (!schemeId) return;
-  const rows = await apiClient.get(`/generation-schemes/${schemeId}/items`).catch(() => []);
-  const list = Array.isArray(rows) ? rows : Array.isArray((rows as any)?.records) ? (rows as any).records : [];
-  const wrapper = panel.querySelector<HTMLElement>('.wizard-generation-items-list-enhanced');
-  if (!wrapper) return;
-  const body = list
-    .slice()
-    .sort((a: any, b: any) => Number(a.generationNo || 0) - Number(b.generationNo || 0))
-    .map((item: any, index: number) => `
-      <tr>
-        <td>${index + 1}</td>
-        <td>第${item.generationNo || '-'}世</td>
-        <td><strong>${item.word || '-'}</strong></td>
-        <td>${item.description || item.sortOrder || '-'}</td>
-      </tr>
-    `).join('');
-  wrapper.innerHTML = `
-    <div class="wizard-generation-list-header">
-      <h4>该方案下已有字辈</h4>
-      <span>共 ${list.length} 条</span>
-    </div>
-    <div class="wizard-generation-list-table-wrap">
-      <table class="wizard-generation-list-table">
-        <thead><tr><th>序号</th><th>代次</th><th>字辈</th><th>备注</th></tr></thead>
-        <tbody>${body || '<tr><td colspan="4" class="empty">该方案下暂无字辈，创建后会显示在这里</td></tr>'}</tbody>
-      </table>
-    </div>
-  `;
+  if (!force && (storedItemsLoading || lastLoadedStoredSchemeId === schemeId)) return;
+  storedItemsLoading = true;
+  try {
+    const rows = await apiClient.get(`/generation-schemes/${schemeId}/items`).catch(() => []);
+    const list = Array.isArray(rows) ? rows : Array.isArray((rows as any)?.records) ? (rows as any).records : [];
+    const wrapper = panel.querySelector<HTMLElement>('.wizard-generation-items-list-enhanced');
+    if (!wrapper) return;
+    const body = list
+      .slice()
+      .sort((a: any, b: any) => Number(a.generationNo || 0) - Number(b.generationNo || 0))
+      .map((item: any, index: number) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>第${item.generationNo || '-'}世</td>
+          <td><strong>${item.word || '-'}</strong></td>
+          <td>${item.description || item.sortOrder || '-'}</td>
+        </tr>
+      `).join('');
+    wrapper.innerHTML = `
+      <div class="wizard-generation-list-header">
+        <h4>该方案下已有字辈</h4>
+        <span>共 ${list.length} 条</span>
+      </div>
+      <div class="wizard-generation-list-table-wrap">
+        <table class="wizard-generation-list-table">
+          <thead><tr><th>序号</th><th>代次</th><th>字辈</th><th>备注</th></tr></thead>
+          <tbody>${body || '<tr><td colspan="4" class="empty">该方案下暂无字辈，创建后会显示在这里</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+    lastLoadedStoredSchemeId = schemeId;
+  } finally {
+    storedItemsLoading = false;
+  }
 }
 
 async function createClanLevelScheme(panel: HTMLElement) {
@@ -170,9 +186,10 @@ async function createClanLevelScheme(panel: HTMLElement) {
   sessionStorage.setItem(CUSTOM_SCHEME_ID_KEY, schemeId);
   sessionStorage.setItem(CUSTOM_SCHEME_NAME_KEY, schemeName);
   sessionStorage.setItem(CUSTOM_SCHEME_CLAN_KEY, clanId);
+  lastLoadedStoredSchemeId = '';
   const generatedIdInput = findFormItemByLabel(panel, '系统生成编号')?.querySelector<HTMLInputElement>('input');
   if (generatedIdInput) setNativeInputValue(generatedIdInput, `已生成：${schemeId}`);
-  await loadStoredGenerationItems(panel);
+  await loadStoredGenerationItems(panel, true);
   window.alert('字辈方案创建成功，可继续追加字辈明细');
 }
 
@@ -187,7 +204,8 @@ async function addGenerationWordToStoredScheme(panel: HTMLElement) {
     word
   });
   if (input) setNativeInputValue(input, '');
-  await loadStoredGenerationItems(panel);
+  lastLoadedStoredSchemeId = '';
+  await loadStoredGenerationItems(panel, true);
   window.alert('字辈明细已追加，可继续维护字辈');
 }
 
@@ -202,6 +220,9 @@ function syncGenerationStepEnhancements() {
 }
 
 function installGenerationStepEnhancements() {
+  if (window.__genealogyGenerationStepEnhancementsInstalled) return;
+  window.__genealogyGenerationStepEnhancementsInstalled = true;
+
   const sync = () => window.requestAnimationFrame(syncGenerationStepEnhancements);
   sync();
 
