@@ -1,6 +1,5 @@
 package com.genealogy.review.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -86,8 +85,8 @@ public class ReviewApplicationService {
         revision.setTargetType(snapshot.targetType());
         revision.setTargetId(snapshot.targetId());
         revision.setChangeType(normalizeOrDefault(request.changeType(), CHANGE_MODIFIED));
-        revision.setBeforeData(toJson(snapshot.beforeData()));
-        revision.setAfterData(toJson(snapshot.afterData()));
+        revision.setBeforeData(snapshot.beforeData());
+        revision.setAfterData(snapshot.afterData());
         revision.setDiffSummary(hasText(request.comment()) ? request.comment().trim() : snapshot.summary());
         revision.setSubmitterId(actorId);
         revision.setSubmitTime(LocalDateTime.now());
@@ -184,7 +183,7 @@ public class ReviewApplicationService {
             PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(targetId)
                     .filter(item -> clanId.equals(item.getClanId()))
                     .orElseThrow(() -> new BusinessException("PERSON_NOT_FOUND", "人物不存在或不属于当前宗族"));
-            ObjectNode after = valueTree(person);
+            ObjectNode after = valueTree(person).deepCopy();
             after.put("dataStatus", "official");
             return new TargetSnapshot("person", targetId, person.getBranchId(), person.getName(), "人物入谱审核：" + person.getName(), valueTree(person), after);
         }
@@ -193,7 +192,7 @@ public class ReviewApplicationService {
                     .filter(item -> clanId.equals(item.getClanId()))
                     .filter(item -> item.getDeletedAt() == null)
                     .orElseThrow(() -> new BusinessException("RELATIONSHIP_NOT_FOUND", "亲属关系不存在或不属于当前宗族"));
-            ObjectNode after = valueTree(relationship);
+            ObjectNode after = valueTree(relationship).deepCopy();
             after.put("dataStatus", "official");
             return new TargetSnapshot("relationship", targetId, null, "亲属关系", "亲属关系审核", valueTree(relationship), after);
         }
@@ -201,7 +200,7 @@ public class ReviewApplicationService {
             SourceEntity source = sourceRepository.findById(targetId)
                     .filter(item -> clanId.equals(item.getClanId()))
                     .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "来源资料不存在或不属于当前宗族"));
-            ObjectNode after = valueTree(source);
+            ObjectNode after = valueTree(source).deepCopy();
             after.put("verificationStatus", "verified");
             return new TargetSnapshot("source", targetId, null, source.getSourceName(), "来源资料审核：" + source.getSourceName(), valueTree(source), after);
         }
@@ -229,16 +228,16 @@ public class ReviewApplicationService {
         );
     }
 
-    private List<ReviewDiffResponse.FieldDiff> fieldDiffs(String beforeData, String afterData) {
-        JsonNode before = readTree(beforeData);
-        JsonNode after = readTree(afterData);
+    private List<ReviewDiffResponse.FieldDiff> fieldDiffs(JsonNode before, JsonNode after) {
+        JsonNode safeBefore = before == null ? objectMapper.createObjectNode() : before;
+        JsonNode safeAfter = after == null ? objectMapper.createObjectNode() : after;
         TreeSet<String> fields = new TreeSet<>();
-        before.fieldNames().forEachRemaining(fields::add);
-        after.fieldNames().forEachRemaining(fields::add);
+        safeBefore.fieldNames().forEachRemaining(fields::add);
+        safeAfter.fieldNames().forEachRemaining(fields::add);
         List<ReviewDiffResponse.FieldDiff> diffs = new ArrayList<>();
         for (String field : fields) {
-            JsonNode beforeValue = before.get(field);
-            JsonNode afterValue = after.get(field);
+            JsonNode beforeValue = safeBefore.get(field);
+            JsonNode afterValue = safeAfter.get(field);
             if (!Objects.equals(beforeValue, afterValue)) {
                 String changeType = beforeValue == null ? "added" : afterValue == null ? "removed" : "modified";
                 diffs.add(new ReviewDiffResponse.FieldDiff(field, nodeText(beforeValue), nodeText(afterValue), changeType));
@@ -261,25 +260,6 @@ public class ReviewApplicationService {
         return objectMapper.valueToTree(value);
     }
 
-    private String toJson(JsonNode node) {
-        try {
-            return objectMapper.writeValueAsString(node);
-        } catch (JsonProcessingException error) {
-            throw new BusinessException("REVIEW_JSON_SERIALIZE_FAILED", "审核数据序列化失败");
-        }
-    }
-
-    private JsonNode readTree(String json) {
-        try {
-            if (json == null || json.isBlank()) {
-                return objectMapper.createObjectNode();
-            }
-            return objectMapper.readTree(json);
-        } catch (JsonProcessingException error) {
-            return objectMapper.createObjectNode();
-        }
-    }
-
     private String nodeText(JsonNode node) {
         if (node == null || node.isNull()) {
             return null;
@@ -291,7 +271,7 @@ public class ReviewApplicationService {
     }
 
     private String targetTitle(RevisionEntity revision) {
-        JsonNode after = readTree(revision.getAfterData());
+        JsonNode after = revision.getAfterData() == null ? objectMapper.createObjectNode() : revision.getAfterData();
         Iterator<Map.Entry<String, JsonNode>> fields = after.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
