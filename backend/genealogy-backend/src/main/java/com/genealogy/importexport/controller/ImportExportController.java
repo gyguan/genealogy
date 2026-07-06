@@ -5,6 +5,7 @@ import com.genealogy.common.api.ApiResponse;
 import com.genealogy.importexport.application.BookletExportApplicationService;
 import com.genealogy.importexport.application.PersonCsvApplicationService;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
+import com.genealogy.importexport.dto.PersonImportOptions;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -63,11 +65,12 @@ public class ImportExportController {
     public ApiResponse<CsvImportResultResponse> previewPersons(
             @Positive @PathVariable Long clanId,
             @RequestParam("file") MultipartFile file,
+            @ModelAttribute PersonImportOptions options,
             @RequestHeader HttpHeaders headers
     ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
-        return ApiResponse.success(personCsvApplicationService.previewPersons(clanId, file));
+        return ApiResponse.success(personCsvApplicationService.previewPersons(clanId, file, options));
     }
 
     @PostMapping(value = {
@@ -77,11 +80,12 @@ public class ImportExportController {
     public ApiResponse<CsvImportResultResponse> importPersons(
             @Positive @PathVariable Long clanId,
             @RequestParam("file") MultipartFile file,
+            @ModelAttribute PersonImportOptions options,
             @RequestHeader HttpHeaders headers
     ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
-        return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId));
+        return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId, options));
     }
 
     @PostMapping(value = {
