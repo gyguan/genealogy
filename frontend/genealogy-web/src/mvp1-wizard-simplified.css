@@ -22,6 +22,32 @@
   min-width: 0;
 }
 
+/* The old .field input rule must not style the internal search input of AntD Select. */
+.mvp1-wizard-page .antd-field .ant-select .ant-select-selection-search-input {
+  width: 100% !important;
+  height: 30px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.mvp1-wizard-page .antd-field .ant-select-selection-search {
+  inset-inline-start: 11px !important;
+  inset-inline-end: 28px !important;
+}
+
+.mvp1-wizard-page .antd-field .ant-select-selection-item,
+.mvp1-wizard-page .antd-field .ant-select-selection-placeholder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Simplified MVP1 wizard layout: selections live inside each step form; maintained-data lists and current-selection callouts are no longer shown. */
 .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
 .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
