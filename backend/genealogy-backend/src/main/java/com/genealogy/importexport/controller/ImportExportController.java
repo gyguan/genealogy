@@ -56,29 +56,59 @@ public class ImportExportController {
         return csvResponse("relation-template.csv", personCsvApplicationService.buildRelationTemplate());
     }
 
-    @PostMapping(value = "/clans/{clanId}/imports/persons.csv/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CsvImportResultResponse> previewPersons(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
+    @PostMapping(value = {
+            "/clans/{clanId}/imports/persons/preview",
+            "/clans/{clanId}/imports/persons.csv/preview"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<CsvImportResultResponse> previewPersons(
+            @Positive @PathVariable Long clanId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader HttpHeaders headers
+    ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
         return ApiResponse.success(personCsvApplicationService.previewPersons(clanId, file));
     }
 
-    @PostMapping(value = "/clans/{clanId}/imports/persons.csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CsvImportResultResponse> importPersons(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
+    @PostMapping(value = {
+            "/clans/{clanId}/imports/persons",
+            "/clans/{clanId}/imports/persons.csv"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<CsvImportResultResponse> importPersons(
+            @Positive @PathVariable Long clanId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader HttpHeaders headers
+    ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
         return ApiResponse.success(personCsvApplicationService.importPersons(clanId, file, actorId));
     }
 
-    @PostMapping(value = "/clans/{clanId}/imports/relations.csv/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CsvImportResultResponse> previewRelations(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
+    @PostMapping(value = {
+            "/clans/{clanId}/imports/relationships/preview",
+            "/clans/{clanId}/imports/relations/preview",
+            "/clans/{clanId}/imports/relations.csv/preview"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<CsvImportResultResponse> previewRelations(
+            @Positive @PathVariable Long clanId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader HttpHeaders headers
+    ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, RELATIONSHIP_CREATE);
         return ApiResponse.success(personCsvApplicationService.previewRelations(clanId, file));
     }
 
-    @PostMapping(value = "/clans/{clanId}/imports/relations.csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CsvImportResultResponse> importRelations(@Positive @PathVariable Long clanId, @RequestParam("file") MultipartFile file, @RequestHeader HttpHeaders headers) {
+    @PostMapping(value = {
+            "/clans/{clanId}/imports/relationships",
+            "/clans/{clanId}/imports/relations",
+            "/clans/{clanId}/imports/relations.csv"
+    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<CsvImportResultResponse> importRelations(
+            @Positive @PathVariable Long clanId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader HttpHeaders headers
+    ) {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, RELATIONSHIP_CREATE);
         return ApiResponse.success(personCsvApplicationService.importRelations(clanId, file, actorId));
@@ -128,15 +158,19 @@ public class ImportExportController {
 
     @GetMapping("/exports/types")
     public ApiResponse<Map<String, Object>> exportTypes() {
-        return ApiResponse.success(Map.of(
-                "person_csv", "/api/v1/clans/{clanId}/exports/persons.csv",
-                "branch_person_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/persons.csv",
-                "relation_csv", "/api/v1/clans/{clanId}/exports/relations.csv",
-                "branch_relation_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/relations.csv",
-                "booklet_html", "/api/v1/clans/{clanId}/exports/booklet.html",
-                "branch_booklet_html", "/api/v1/clans/{clanId}/branches/{branchId}/exports/booklet.html",
-                "person_template_csv", "/api/v1/imports/templates/persons.csv",
-                "relation_template_csv", "/api/v1/imports/templates/relations.csv"
+        return ApiResponse.success(Map.ofEntries(
+                Map.entry("person_import_preview", "/api/v1/clans/{clanId}/imports/persons/preview"),
+                Map.entry("person_import", "/api/v1/clans/{clanId}/imports/persons"),
+                Map.entry("relationship_import_preview", "/api/v1/clans/{clanId}/imports/relationships/preview"),
+                Map.entry("relationship_import", "/api/v1/clans/{clanId}/imports/relationships"),
+                Map.entry("person_csv", "/api/v1/clans/{clanId}/exports/persons.csv"),
+                Map.entry("branch_person_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/persons.csv"),
+                Map.entry("relation_csv", "/api/v1/clans/{clanId}/exports/relations.csv"),
+                Map.entry("branch_relation_csv", "/api/v1/clans/{clanId}/branches/{branchId}/exports/relations.csv"),
+                Map.entry("booklet_html", "/api/v1/clans/{clanId}/exports/booklet.html"),
+                Map.entry("branch_booklet_html", "/api/v1/clans/{clanId}/branches/{branchId}/exports/booklet.html"),
+                Map.entry("person_template_csv", "/api/v1/imports/templates/persons.csv"),
+                Map.entry("relation_template_csv", "/api/v1/imports/templates/relations.csv")
         ));
     }
 
