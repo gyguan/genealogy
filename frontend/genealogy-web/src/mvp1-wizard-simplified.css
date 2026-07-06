@@ -1,3 +1,27 @@
+/* Keep MVP1 wizard as the original left-right flow: left step navigation, right active step content. */
+.mvp1-wizard-page {
+  display: grid;
+  grid-template-columns: 280px minmax(620px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.mvp1-wizard-page > .panel:first-child {
+  grid-column: 1;
+  position: sticky;
+  top: 24px;
+  margin-bottom: 0;
+}
+
+.mvp1-wizard-page > .panel:first-child .wizard-steps {
+  position: static;
+}
+
+.mvp1-wizard-page > :not(:first-child) {
+  grid-column: 2;
+  min-width: 0;
+}
+
 /* Simplified MVP1 wizard layout: selections live inside each step form; maintained-data lists and current-selection callouts are no longer shown. */
 .mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
 .mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
@@ -103,6 +127,19 @@
 }
 
 @media (max-width: 980px) {
+  .mvp1-wizard-page {
+    grid-template-columns: 1fr;
+  }
+
+  .mvp1-wizard-page > .panel:first-child,
+  .mvp1-wizard-page > :not(:first-child) {
+    grid-column: 1;
+  }
+
+  .mvp1-wizard-page > .panel:first-child {
+    position: static;
+  }
+
   .wizard-generation-scheme-grid,
   .wizard-generation-word-grid {
     grid-template-columns: 1fr;
