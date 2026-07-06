@@ -6,6 +6,7 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.person.application.PersonApplicationService;
+import com.genealogy.person.application.PersonRevisionApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
 import com.genealogy.person.dto.PersonSearchQuery;
@@ -39,11 +40,18 @@ public class PersonController {
     private static final String PERSON_CREATE = "person:create";
 
     private final PersonApplicationService personApplicationService;
+    private final PersonRevisionApplicationService personRevisionApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final PersonRepository personRepository;
 
-    public PersonController(PersonApplicationService personApplicationService, AuthorizationApplicationService authorizationApplicationService, PersonRepository personRepository) {
+    public PersonController(
+            PersonApplicationService personApplicationService,
+            PersonRevisionApplicationService personRevisionApplicationService,
+            AuthorizationApplicationService authorizationApplicationService,
+            PersonRepository personRepository
+    ) {
         this.personApplicationService = personApplicationService;
+        this.personRevisionApplicationService = personRevisionApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
         this.personRepository = personRepository;
     }
@@ -59,7 +67,7 @@ public class PersonController {
         if (!Boolean.TRUE.equals(request.confirmDuplicate()) && duplicateCount(clanId, request) > 0) {
             throw new BusinessException("PERSON_DUPLICATE_CONFIRM_REQUIRED", "发现疑似重复人物，请确认后再创建");
         }
-        return ApiResponse.success(personApplicationService.create(clanId, request, actorId));
+        return ApiResponse.success(personRevisionApplicationService.create(clanId, request, actorId));
     }
 
     @GetMapping("/persons/search")
@@ -134,7 +142,7 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(personApplicationService.update(id, request, actorId));
+        return ApiResponse.success(personRevisionApplicationService.update(id, request, actorId));
     }
 
     @DeleteMapping("/persons/{id}")
@@ -143,7 +151,7 @@ public class PersonController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        personApplicationService.delete(id, actorId);
+        personRevisionApplicationService.delete(id, actorId);
         return ApiResponse.success();
     }
 
