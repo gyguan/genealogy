@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -45,6 +46,19 @@ public class ApprovalController {
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(approvalApplicationService.submitGeneric(clanId, request, userId));
+    }
+
+    /**
+     * Compatibility endpoint. New callers should use /clans/{clanId}/review-tasks.
+     */
+    @Deprecated
+    @PostMapping("/reviews/tasks")
+    public ApiResponse<CheckTaskResponse> submitReviewTaskLegacy(
+            @Positive @RequestParam Long clanId,
+            @Valid @RequestBody ReviewSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return submitReviewTask(clanId, request, authorization);
     }
 
     @PostMapping("/persons/{personId}/submit-review")
@@ -111,6 +125,39 @@ public class ApprovalController {
         return ApiResponse.success(approvalApplicationService.listPending(clanId, userId));
     }
 
+    /**
+     * Compatibility endpoint. New callers should use /clans/{clanId}/review-tasks/pending.
+     */
+    @Deprecated
+    @GetMapping("/reviews/tasks")
+    public ApiResponse<List<CheckTaskResponse>> listPendingLegacy(
+            @Positive @RequestParam Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return listPending(clanId, authorization);
+    }
+
+    @GetMapping("/review-tasks/my-submissions")
+    public ApiResponse<List<AuditRecordResponse>> mySubmissions(
+            @RequestParam(required = false) Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(approvalApplicationService.listMySubmissions(userId, clanId));
+    }
+
+    /**
+     * Compatibility endpoint. New callers should use /review-tasks/my-submissions.
+     */
+    @Deprecated
+    @GetMapping("/reviews/my-submissions")
+    public ApiResponse<List<AuditRecordResponse>> mySubmissionsLegacy(
+            @RequestParam(required = false) Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return mySubmissions(clanId, authorization);
+    }
+
     @GetMapping("/review-tasks/{taskId}")
     public ApiResponse<ReviewTaskDetailResponse> getTask(
             @Positive @PathVariable Long taskId,
@@ -120,6 +167,18 @@ public class ApprovalController {
         return ApiResponse.success(approvalApplicationService.getTaskDetail(taskId, userId));
     }
 
+    /**
+     * Compatibility endpoint. New callers should use /review-tasks/{taskId}.
+     */
+    @Deprecated
+    @GetMapping("/reviews/tasks/{taskId}")
+    public ApiResponse<ReviewTaskDetailResponse> getTaskLegacy(
+            @Positive @PathVariable Long taskId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return getTask(taskId, authorization);
+    }
+
     @GetMapping("/review-tasks/{taskId}/diff")
     public ApiResponse<ReviewDiffResponse> diff(
             @Positive @PathVariable Long taskId,
@@ -127,6 +186,18 @@ public class ApprovalController {
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(approvalApplicationService.diff(taskId, userId));
+    }
+
+    /**
+     * Compatibility endpoint. New callers should use /review-tasks/{taskId}/diff.
+     */
+    @Deprecated
+    @GetMapping("/reviews/tasks/{taskId}/diff")
+    public ApiResponse<ReviewDiffResponse> diffLegacy(
+            @Positive @PathVariable Long taskId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return diff(taskId, authorization);
     }
 
     @PostMapping("/review-tasks/{taskId}/approve")
@@ -140,6 +211,19 @@ public class ApprovalController {
         return ApiResponse.success(approvalApplicationService.approve(taskId, request));
     }
 
+    /**
+     * Compatibility endpoint. New callers should use /review-tasks/{taskId}/approve.
+     */
+    @Deprecated
+    @PostMapping("/reviews/tasks/{taskId}/approve")
+    public ApiResponse<CheckTaskResponse> approveLegacy(
+            @Positive @PathVariable Long taskId,
+            @Valid @RequestBody ReviewDecisionRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return approve(taskId, request, authorization);
+    }
+
     @PostMapping("/review-tasks/{taskId}/reject")
     public ApiResponse<CheckTaskResponse> reject(
             @Positive @PathVariable Long taskId,
@@ -149,6 +233,19 @@ public class ApprovalController {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         request = new ReviewDecisionRequest(userId, request.comment());
         return ApiResponse.success(approvalApplicationService.reject(taskId, request));
+    }
+
+    /**
+     * Compatibility endpoint. New callers should use /review-tasks/{taskId}/reject.
+     */
+    @Deprecated
+    @PostMapping("/reviews/tasks/{taskId}/reject")
+    public ApiResponse<CheckTaskResponse> rejectLegacy(
+            @Positive @PathVariable Long taskId,
+            @Valid @RequestBody ReviewDecisionRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        return reject(taskId, request, authorization);
     }
 
     @GetMapping("/persons/{personId}/review-records")
