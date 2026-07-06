@@ -1,0 +1,35 @@
+.runtime-error-panel {
+  display: grid;
+  gap: 10px;
+  max-width: 720px;
+  margin: 32px auto;
+  padding: 22px;
+  border: 1px solid #ffccc7;
+  border-radius: 12px;
+  background: #fff2f0;
+  color: rgba(0, 0, 0, .88);
+}
+
+.runtime-error-panel h3 {
+  margin: 0;
+  color: #cf1322;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.runtime-error-panel p {
+  margin: 0;
+  color: rgba(0, 0, 0, .65);
+  line-height: 1.7;
+}
+
+.runtime-error-panel button {
+  justify-self: start;
+  min-height: 32px;
+  padding: 4px 15px;
+  border: 1px solid #ff4d4f;
+  border-radius: 8px;
+  background: #fff;
+  color: #cf1322;
+  cursor: pointer;
+}
