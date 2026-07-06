@@ -19,7 +19,5 @@ import './mvp1-source-step-enhancements';
 import './person-archive-enhancements';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  React.createElement(App)
 );
