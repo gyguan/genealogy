@@ -9,7 +9,7 @@ API_DOCS_URL="${API_DOCS_URL:-http://localhost:8080/api-docs}"
 mkdir -p "$(dirname "$OUTPUT")"
 cd "$BACKEND_DIR"
 
-./mvnw -q -DskipTests spring-boot:run > /tmp/genealogy-openapi-export.log 2>&1 &
+mvn -q -DskipTests spring-boot:run > /tmp/genealogy-openapi-export.log 2>&1 &
 PID=$!
 trap 'kill $PID >/dev/null 2>&1 || true' EXIT
 
