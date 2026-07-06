@@ -1,5 +1,6 @@
 package com.genealogy.review.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -37,11 +38,11 @@ public class RevisionEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String beforeData;
+    private JsonNode beforeData;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String afterData;
+    private JsonNode afterData;
 
     @Column(columnDefinition = "text")
     private String diffSummary;
