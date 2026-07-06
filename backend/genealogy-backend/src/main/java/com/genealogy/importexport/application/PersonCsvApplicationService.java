@@ -8,7 +8,7 @@ import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.importexport.dto.CsvImportResultResponse;
 import com.genealogy.importexport.dto.PersonImportOptions;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
-import com.genealogy.person.application.PersonApplicationService;
+import com.genealogy.person.application.PersonRevisionApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
@@ -59,7 +59,7 @@ public class PersonCsvApplicationService {
     private final ClanRepository clanRepository;
     private final BranchRepository branchRepository;
     private final PersonRepository personRepository;
-    private final PersonApplicationService personApplicationService;
+    private final PersonRevisionApplicationService personRevisionApplicationService;
     private final RelationshipRepository relationshipRepository;
     private final RelationshipApplicationService relationshipApplicationService;
     private final OperationLogApplicationService operationLogApplicationService;
@@ -68,7 +68,7 @@ public class PersonCsvApplicationService {
             ClanRepository clanRepository,
             BranchRepository branchRepository,
             PersonRepository personRepository,
-            PersonApplicationService personApplicationService,
+            PersonRevisionApplicationService personRevisionApplicationService,
             RelationshipRepository relationshipRepository,
             RelationshipApplicationService relationshipApplicationService,
             OperationLogApplicationService operationLogApplicationService
@@ -76,7 +76,7 @@ public class PersonCsvApplicationService {
         this.clanRepository = clanRepository;
         this.branchRepository = branchRepository;
         this.personRepository = personRepository;
-        this.personApplicationService = personApplicationService;
+        this.personRevisionApplicationService = personRevisionApplicationService;
         this.relationshipRepository = relationshipRepository;
         this.relationshipApplicationService = relationshipApplicationService;
         this.operationLogApplicationService = operationLogApplicationService;
@@ -233,7 +233,7 @@ public class PersonCsvApplicationService {
                     throw new BusinessException("PERSON_BRANCH_REQUIRED", "支派不能为空，请在文件中提供 branchId 或通过 branchId 参数指定当前支派");
                 }
                 if (persist) {
-                    personApplicationService.create(clanId, request, actorId);
+                    personRevisionApplicationService.create(clanId, request, actorId);
                 }
                 success++;
             } catch (Exception ex) {
@@ -242,7 +242,7 @@ public class PersonCsvApplicationService {
         }
         CsvImportResultResponse result = new CsvImportResultResponse(total, success, total - success, errors);
         if (persist) {
-            operationLogApplicationService.record(clanId, actorId, "person_csv_import", "clan", clanId, "导入人物CSV：成功" + success + "条，失败" + (total - success) + "条", String.join("\n", errors));
+            operationLogApplicationService.record(clanId, actorId, "person_csv_import", "clan", clanId, "导入人物CSV：生成待审修订" + success + "条，失败" + (total - success) + "条", String.join("\n", errors));
         }
         return result;
     }
