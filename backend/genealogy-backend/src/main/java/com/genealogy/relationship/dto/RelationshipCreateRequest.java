@@ -24,4 +24,31 @@ public record RelationshipCreateRequest(
         String description,
         String confidenceLevel
 ) {
+    public RelationshipCreateRequest(
+            Long fromPersonId,
+            Long toPersonId,
+            String relationType,
+            String relationLabel,
+            Boolean isLineageRelation,
+            Boolean isBiological,
+            Boolean isPrimary,
+            String description,
+            String confidenceLevel
+    ) {
+        this(
+                fromPersonId,
+                toPersonId,
+                relationType,
+                relationLabel,
+                null,
+                null,
+                null,
+                null,
+                isLineageRelation,
+                isBiological,
+                isPrimary,
+                description,
+                confidenceLevel
+        );
+    }
 }
