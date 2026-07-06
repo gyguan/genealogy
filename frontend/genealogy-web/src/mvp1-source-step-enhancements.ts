@@ -1,3 +1,9 @@
+declare global {
+  interface Window {
+    __genealogySourceStepEnhancementsInstalled?: boolean;
+  }
+}
+
 function findSourceWizardPanel() {
   const panels = Array.from(document.querySelectorAll<HTMLElement>('.antd-panel, .panel'));
   return panels.find(panel => {
@@ -113,6 +119,9 @@ function syncSourceStepEnhancements() {
 }
 
 function installSourceStepEnhancements() {
+  if (window.__genealogySourceStepEnhancementsInstalled) return;
+  window.__genealogySourceStepEnhancementsInstalled = true;
+
   const sync = () => window.requestAnimationFrame(syncSourceStepEnhancements);
   sync();
 
