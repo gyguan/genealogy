@@ -17,6 +17,10 @@ public final class RelationshipMapper {
         entity.setToPersonId(request.toPersonId());
         entity.setRelationType(trim(request.relationType()));
         entity.setRelationLabel(trim(request.relationLabel()));
+        entity.setRelationCategory(trim(request.relationCategory()));
+        entity.setRitualRelationType(trim(request.ritualRelationType()));
+        entity.setSuccessionReason(trim(request.successionReason()));
+        entity.setSuccessorBranchId(request.successorBranchId());
         entity.setIsLineageRelation(request.isLineageRelation());
         entity.setIsBiological(request.isBiological());
         entity.setIsPrimary(request.isPrimary());
@@ -28,6 +32,10 @@ public final class RelationshipMapper {
     public static void updateEntity(RelationshipEntity entity, RelationshipUpdateRequest request) {
         entity.setRelationType(trim(request.relationType()));
         entity.setRelationLabel(trim(request.relationLabel()));
+        entity.setRelationCategory(trim(request.relationCategory()));
+        entity.setRitualRelationType(trim(request.ritualRelationType()));
+        entity.setSuccessionReason(trim(request.successionReason()));
+        entity.setSuccessorBranchId(request.successorBranchId());
         entity.setIsLineageRelation(request.isLineageRelation());
         entity.setIsBiological(request.isBiological());
         entity.setIsPrimary(request.isPrimary());
@@ -44,6 +52,10 @@ public final class RelationshipMapper {
                 entity.getToPersonId(),
                 entity.getRelationType(),
                 entity.getRelationLabel(),
+                entity.getRelationCategory(),
+                entity.getRitualRelationType(),
+                entity.getSuccessionReason(),
+                entity.getSuccessorBranchId(),
                 entity.getIsLineageRelation(),
                 entity.getIsBiological(),
                 entity.getIsPrimary(),
