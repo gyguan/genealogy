@@ -16,7 +16,7 @@ trap cleanup EXIT
 
 print_startup_error() {
   echo "Startup error summary:"
-  grep -Ei "ERROR|Application run failed|Exception|Caused by|Schema-validation|SchemaManagementException|Migration .* failed|Failed|missing|duplicate|constraint" /tmp/genealogy-backend-startup.log | tail -n 80 || true
+  grep -Ei "ERROR|Application run failed|Exception|Caused by|Schema-validation|SchemaManagementException|Migration .* failed|Failed|missing|duplicate|constraint" /tmp/genealogy-backend-startup.log | grep -vi " WARN " | tail -n 80 || true
 }
 
 echo "Java version:"
