@@ -176,7 +176,7 @@ export function ImportPage({ notify }: Props) {
       const formData = new FormData();
       formData.append('file', file);
       const sep = mappingQuery ? '&' : '';
-      const result = await apiClient.upload<ImportJob>(`/clans/${workspace.clanId}/imports/persons.csv?${mappingQuery}${sep}confirmDuplicates=${confirmDuplicates}`, formData);
+      const result = await apiClient.upload<ImportJob>(`/clans/${workspace.clanId}/imports/persons?${mappingQuery}${sep}confirmDuplicates=${confirmDuplicates}`, formData);
       notify({ message: `导入完成：成功 ${result.successCount || 0} 行，失败 ${result.failureCount || 0} 行` }, Boolean(result.failureCount));
       setSelectedJob(result);
       setPreview(null);
