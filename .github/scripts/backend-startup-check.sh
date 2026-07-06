@@ -16,7 +16,7 @@ trap cleanup EXIT
 
 print_startup_error() {
   echo "Startup error summary:"
-  grep -Ei "ERROR|Exception|Caused by|Schema-validation|SchemaManagementException|Flyway|Failed|missing|column|table|relation|duplicate|constraint" /tmp/genealogy-backend-startup.log | tail -n 120 || true
+  grep -Ei "ERROR|Exception|Caused by|Schema-validation|SchemaManagementException|Flyway|Failed|missing|duplicate|constraint" /tmp/genealogy-backend-startup.log | tail -n 120 || true
   echo "Startup log tail:"
   tail -n 80 /tmp/genealogy-backend-startup.log
 }
