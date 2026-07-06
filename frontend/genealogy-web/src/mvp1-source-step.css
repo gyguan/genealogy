@@ -1,0 +1,51 @@
+/* Source evidence step: create source first, then bind source. */
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) > .ant-card-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) > .ant-card-body::before,
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) > .ant-card-body::after {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f5faff;
+  color: #1677ff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) > .ant-card-body::before {
+  content: "一、创建来源";
+  order: 1;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) > .ant-card-body::after {
+  content: "二、绑定来源";
+  order: 5;
+  margin-top: 4px;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .panel-description {
+  order: 0;
+  margin-bottom: 0 !important;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid,
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .actions {
+  display: contents !important;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field {
+  margin-bottom: 0 !important;
+}
+
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(1) { order: 2; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(3) { order: 3; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(4) { order: 4; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .actions > .ant-space-item:nth-child(1) { order: 4; justify-self: start; margin-top: 2px; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(2) { order: 6; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(5) { order: 7; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .wizard-form-grid > .antd-field:nth-child(6) { order: 8; }
+.mvp1-wizard .panel:has(input[placeholder="例如：民国二十年族谱"]) .actions > .ant-space-item:nth-child(2) { order: 9; justify-self: start; margin-top: 2px; }
