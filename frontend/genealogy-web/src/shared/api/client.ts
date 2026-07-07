@@ -76,7 +76,8 @@ function extractApiErrorMessage(payload: unknown, status: number) {
       record.message,
       record.error,
       record.detail,
-      record.code
+      record.code,
+      record.data
     ];
     for (const item of candidates) {
       const normalized = normalizeApiErrorMessage(String(item ?? '').trim());
@@ -99,6 +100,44 @@ function normalizeApiErrorMessage(message: string) {
     return '父母关系已存在，请勿重复创建';
   }
   return message;
+}
+
+function isErrorLikeMessage(message: string) {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return lower.includes('already exists')
+    || lower.includes('duplicated')
+    || lower.includes('duplicate')
+    || lower.includes('not found')
+    || lower.includes('required')
+    || lower.includes('unsupported')
+    || lower.includes('conflict')
+    || lower.includes('mismatch')
+    || lower.includes('forbidden')
+    || lower.includes('unauthorized')
+    || lower.includes('failed')
+    || lower.includes('error')
+    || lower.includes('exception')
+    || lower.includes('不存在')
+    || lower.includes('已存在')
+    || lower.includes('重复')
+    || lower.includes('不能为空')
+    || lower.includes('无权限')
+    || lower.includes('失败');
+}
+
+function hasImplicitErrorPayload(payload: unknown) {
+  if (typeof payload === 'string') {
+    return isErrorLikeMessage(payload.trim());
+  }
+  if (!payload || typeof payload !== 'object') return false;
+  const record = payload as Record<string, unknown>;
+  const code = String(record.code ?? '').toUpperCase();
+  if (code && code !== 'SUCCESS' && /ERROR|DUPLICATED|DUPLICATE|CONFLICT|REQUIRED|UNSUPPORTED|NOT_FOUND|MISMATCH|FORBIDDEN|FAILED|INVALID/.test(code)) {
+    return true;
+  }
+  return [record.errorMessage, record.error, record.detail, record.data]
+    .some(item => isErrorLikeMessage(String(item ?? '').trim()));
 }
 
 export class ApiClient {
@@ -212,7 +251,9 @@ export class ApiClient {
     const res = await fetch(this.resolve(path), { ...init, headers });
     const type = res.headers.get('content-type') || '';
     const payload = type.includes('application/json') ? await res.json() : await res.text();
-    if (!res.ok || (payload && typeof payload === 'object' && (payload as Record<string, unknown>).success === false)) {
+    const explicitFailure = payload && typeof payload === 'object' && (payload as Record<string, unknown>).success === false;
+    const implicitFailure = res.ok && hasImplicitErrorPayload(payload);
+    if (!res.ok || explicitFailure || implicitFailure) {
       throw new Error(extractApiErrorMessage(payload, res.status));
     }
     return payload?.data ?? payload;
