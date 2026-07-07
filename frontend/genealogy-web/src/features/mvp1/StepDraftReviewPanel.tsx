@@ -98,12 +98,19 @@ function currentStepPanelBody() {
   return bodies.length ? bodies[bodies.length - 1] : null;
 }
 
+function currentResultSignature() {
+  return Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page .result-notice span'))
+    .map(item => item.textContent || '')
+    .join('|');
+}
+
 export function StepDraftReviewPanel() {
   const requestSeq = useRef(0);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<StepConfig | null>(null);
   const [clanId, setClanId] = useState('');
   const [personId, setPersonId] = useState('');
+  const [resultSignature, setResultSignature] = useState('');
   const [rows, setRows] = useState<any[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -116,6 +123,7 @@ export function StepDraftReviewPanel() {
       setContainer(nextConfig ? currentStepPanelBody() : null);
       setClanId(getWorkspaceValue('clanId'));
       setPersonId(getWorkspaceValue('personId'));
+      setResultSignature(currentResultSignature());
     }, 500);
     return () => window.clearInterval(timer);
   }, []);
@@ -126,7 +134,7 @@ export function StepDraftReviewPanel() {
     if (!config || !clanId) return;
     const timer = window.setTimeout(() => void loadObjects(config), 0);
     return () => window.clearTimeout(timer);
-  }, [config?.targetType, clanId, personId]);
+  }, [config?.targetType, clanId, personId, resultSignature]);
 
   const warning = config?.warning?.({ clanId, personId }) || null;
 
