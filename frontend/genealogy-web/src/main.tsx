@@ -17,8 +17,6 @@ import './person-archive-tweaks.css';
 import './person-archive-source.css';
 import './runtime-error.css';
 import './home-dashboard-overrides.css';
-import './mvp1-wizard-enhancements';
-import './person-archive-enhancements';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(RuntimeErrorBoundary, null, React.createElement(App))
