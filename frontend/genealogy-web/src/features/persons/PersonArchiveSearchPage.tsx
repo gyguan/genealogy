@@ -158,7 +158,7 @@ function lifeText(row: any) {
   const birth = asDate(row.birthDate);
   const death = asDate(row.deathDate);
   if (!birth && !death) return '-';
-  return `${birth || '?'} - ${death || row.isLiving === true ? '今' : '?'}`;
+  return `${birth || '?'} - ${death || (row.isLiving === true ? '今' : '?')}`;
 }
 
 function spouseText(row: any) {
