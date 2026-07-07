@@ -49,6 +49,10 @@ function statusOf(row: Record<string, any>) {
   return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
 }
 
+function isLifecycleRow(row: Record<string, any>) {
+  return row?.dataStatus !== undefined || row?.status !== undefined || row?.verificationStatus !== undefined;
+}
+
 function isReviewable(row: Record<string, any>) {
   return ['draft', 'rejected'].includes(statusOf(row)) && Boolean(row.id);
 }
@@ -61,7 +65,8 @@ function workspaceClanId() {
 
 function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>[]): ReviewTargetType | null {
   const keys = new Set(columns.map(column => column.key));
-  const sample = rows[0] || {};
+  const sample = rows.find(isLifecycleRow) || rows[0] || {};
+  if (!isLifecycleRow(sample)) return null;
   if (keys.has('branchName') || 'branchName' in sample) return 'branch';
   if (keys.has('schemeName') || 'schemeName' in sample) return 'generation_scheme';
   if (keys.has('sourceName') || 'sourceName' in sample) return 'source';
