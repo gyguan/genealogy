@@ -19,6 +19,8 @@ const REVIEW_TARGET_LABEL: Record<ReviewTargetType, string> = {
   generation_scheme: '字辈方案'
 };
 
+const REVIEW_STATUS_KEYS = new Set(['dataStatus', 'status', 'verificationStatus']);
+
 export function toRecordList<T = any>(data: any): T[] {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.records)) return data.records;
@@ -67,6 +69,7 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
   const keys = new Set(columns.map(column => column.key));
   const sample = rows.find(isLifecycleRow) || rows[0] || {};
   if (!isLifecycleRow(sample)) return null;
+  if (!columns.some(column => REVIEW_STATUS_KEYS.has(column.key))) return null;
   if (keys.has('branchName') || 'branchName' in sample) return 'branch';
   if (keys.has('schemeName') || 'schemeName' in sample) return 'generation_scheme';
   if (keys.has('sourceName') || 'sourceName' in sample) return 'source';
