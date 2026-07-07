@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Checkbox, Empty, Space, Table, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
@@ -75,6 +75,11 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
   return null;
 }
 
+function sameKeys(left: Key[], right: Key[]) {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => value === right[index]);
+}
+
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -84,11 +89,9 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
-
-  useEffect(() => {
-    setSelectedRowKeys(prev => prev.filter(key => reviewableKeySet.has(String(key))));
-  }, [reviewableKeySet]);
-
+  if (!sameKeys(selectedRowKeys, effectiveSelectedKeys)) {
+    setSelectedRowKeys(effectiveSelectedKeys);
+  }
   if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
   async function submitSelectedReview() {
