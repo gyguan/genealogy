@@ -136,6 +136,10 @@ export function StepDraftReviewPanel() {
     setSearched(false);
   }, [config?.targetType, clanId, personId]);
 
+  useEffect(() => {
+    if (config && clanId) void loadObjects();
+  }, [config?.targetType, clanId, personId]);
+
   const warning = config?.warning?.({ clanId, personId }) || null;
 
   async function loadObjects() {
@@ -146,7 +150,7 @@ export function StepDraftReviewPanel() {
     }
     const path = config.loadPath({ clanId, personId });
     if (!path) {
-      message.warning(warning || `请先完成${config.label}查询条件`);
+      setSearched(true);
       return;
     }
     setLoading(true);
@@ -171,11 +175,11 @@ export function StepDraftReviewPanel() {
             <Typography.Title level={5}>{config.resultTitle}</Typography.Title>
             <Typography.Paragraph type="secondary">复用当前步骤对象查询结果；草稿/已驳回版本可在列表中勾选后批量提交审批。</Typography.Paragraph>
           </div>
-          <Button loading={loading} onClick={loadObjects}>查询{config.label}</Button>
+          <Button loading={loading} onClick={loadObjects}>刷新</Button>
         </div>
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         {warning ? <Alert type="info" showIcon message={warning} /> : null}
-        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`点击查询${config.label}后展示结果`} /> : (
+        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
           <DataTable data={rows} empty={`暂无${config.label}数据`} columns={config.columns} />
         )}
       </Space>
