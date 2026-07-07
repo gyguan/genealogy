@@ -33,7 +33,6 @@ public final class BranchMapper {
         entity.setMigrationTo(trimToNull(request.migrationTo()));
         entity.setManagerMemberId(request.managerMemberId());
         entity.setDescription(trimToNull(request.description()));
-        entity.setStatus(trimToNull(request.status()));
     }
 
     public static BranchResponse toResponse(BranchEntity entity) {
