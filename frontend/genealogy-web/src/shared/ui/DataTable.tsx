@@ -148,6 +148,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const reviewRowSelection = targetType && reviewableRows.length ? {
     selectedRowKeys: effectiveSelectedKeys,
     columnTitle: '勾选',
+    columnWidth: 88,
     preserveSelectedRowKeys: false,
     getCheckboxProps: (row: T) => ({ disabled: !isReviewable(row), title: isReviewable(row) ? '可提交审批' : '仅草稿/已驳回版本可提交审批' }),
     onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
