@@ -48,25 +48,7 @@ public class PersonRevisionApplicationService {
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
-        PersonResponse created = personApplicationService.create(clanId, request, actorId);
-        PersonEntity entity = getActiveEntity(created.id());
-        entity.setDataStatus(STATUS_PENDING_REVIEW);
-        entity.setUpdatedBy(actorId);
-        entity.setUpdatedAt(LocalDateTime.now());
-        PersonEntity saved = personRepository.save(entity);
-        revisionWorkflowApplicationService.submitRevision(
-                clanId,
-                TARGET_PERSON,
-                saved.getId(),
-                saved.getBranchId(),
-                actorId,
-                RevisionWorkflowApplicationService.CHANGE_PERSON_CREATE,
-                null,
-                saved,
-                "新增人物待审核：" + saved.getName(),
-                "submit person create revision: " + saved.getName()
-        );
-        return PersonMapper.toResponse(saved);
+        return personApplicationService.create(clanId, request, actorId);
     }
 
     @Transactional
