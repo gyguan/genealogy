@@ -111,7 +111,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     setSubmitting(false);
   }
 
-  const rowSelection = targetType && reviewableRows.length ? {
+  const reviewRowSelection = targetType && reviewableRows.length ? {
     selectedRowKeys: effectiveSelectedKeys,
     columnTitle: '勾选',
     getCheckboxProps: (row: T) => ({ disabled: !isReviewable(row), title: isReviewable(row) ? '可提交审批' : '仅草稿/已驳回版本可提交审批' }),
@@ -139,7 +139,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         size="small"
         bordered={false}
         rowKey={rowKey}
-        rowSelection={rowSelection}
+        rowSelection={reviewRowSelection}
         dataSource={rows}
         pagination={false}
         tableLayout="fixed"
