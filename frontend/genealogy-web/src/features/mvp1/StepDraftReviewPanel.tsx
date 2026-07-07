@@ -133,6 +133,28 @@ export function StepDraftReviewPanel() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  function clearPanelState() {
+    requestSeq.current += 1;
+    setConfig(null);
+    setContainer(null);
+    setRows([]);
+    setSearched(false);
+    setLoading(false);
+  }
+
+  function syncPanelTarget() {
+    const index = activeStepIndex();
+    const nextConfig = STEP_CONFIGS.find(item => item.stepIndex === index) || null;
+    if (!nextConfig) {
+      clearPanelState();
+      return;
+    }
+    setConfig(nextConfig);
+    setContainer(currentStepPanelBody());
+    setClanId(getWorkspaceValue('clanId'));
+    setPersonId(getWorkspaceValue('personId'));
+  }
+
   function scheduleRefresh() {
     refreshTimers.current.forEach(timer => window.clearTimeout(timer));
     refreshTimers.current = [
@@ -142,15 +164,15 @@ export function StepDraftReviewPanel() {
   }
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      const index = activeStepIndex();
-      const nextConfig = STEP_CONFIGS.find(item => item.stepIndex === index) || null;
-      setConfig(nextConfig);
-      setContainer(nextConfig ? currentStepPanelBody() : null);
-      setClanId(getWorkspaceValue('clanId'));
-      setPersonId(getWorkspaceValue('personId'));
-    }, 500);
-    return () => window.clearInterval(timer);
+    syncPanelTarget();
+    const stepContainer = document.querySelector('.mvp1-wizard-page .wizard-steps');
+    const observer = stepContainer ? new MutationObserver(syncPanelTarget) : null;
+    observer?.observe(stepContainer, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    const timer = window.setInterval(syncPanelTarget, 250);
+    return () => {
+      observer?.disconnect();
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -188,6 +210,7 @@ export function StepDraftReviewPanel() {
   async function loadObjects(sourceConfig = config) {
     if (!sourceConfig) return;
     if (!clanId) return;
+    if (activeStepIndex() !== sourceConfig.stepIndex) return;
     const seq = ++requestSeq.current;
     const path = sourceConfig.loadPath({ clanId, personId });
     if (!path) {
@@ -199,19 +222,19 @@ export function StepDraftReviewPanel() {
     setSearched(true);
     try {
       const data = await apiClient.get(path);
-      if (seq === requestSeq.current) setRows(toRows(data));
+      if (seq === requestSeq.current && activeStepIndex() === sourceConfig.stepIndex) setRows(toRows(data));
     } catch (error) {
-      if (seq === requestSeq.current) {
+      if (seq === requestSeq.current && activeStepIndex() === sourceConfig.stepIndex) {
         setRows([]);
         setSearched(true);
         message.error((error as Error).message || `查询${sourceConfig.label}失败`);
       }
     } finally {
-      if (seq === requestSeq.current) setLoading(false);
+      if (seq === requestSeq.current && activeStepIndex() === sourceConfig.stepIndex) setLoading(false);
     }
   }
 
-  if (!container || !config) return null;
+  if (!container || !config || activeStepIndex() !== config.stepIndex) return null;
 
   return createPortal(
     <section className="step-draft-review-panel step-object-result-panel">
