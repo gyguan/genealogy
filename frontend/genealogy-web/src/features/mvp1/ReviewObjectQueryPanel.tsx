@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert, Button, Checkbox, Empty, List, Select, Space, Tag, Typography, message } from 'antd';
+import type { Key } from 'react';
+import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { toRecordList } from '../../shared/ui/DataTable';
 
 type ReviewTargetType = 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
+type ObjectStatus = 'draft' | 'rejected' | 'pending_review' | 'official' | 'archived';
 
 type ReviewTarget = {
   key: string;
@@ -22,19 +24,48 @@ const TYPE_LABEL: Record<ReviewTargetType, string> = {
   generation_scheme: '字辈方案'
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: '草稿',
+  rejected: '已驳回',
+  pending: '待审核',
+  pending_review: '待审核',
+  official: '已通过',
+  active: '已通过',
+  approved: '已通过',
+  archived: '已归档'
+};
+
 const TYPE_OPTIONS = Object.entries(TYPE_LABEL).map(([value, label]) => ({ value, label }));
+const STATUS_OPTIONS = [
+  { value: 'draft', label: '草稿' },
+  { value: 'rejected', label: '已驳回' },
+  { value: 'pending_review', label: '待审核' },
+  { value: 'official', label: '已通过' },
+  { value: 'archived', label: '已归档' }
+];
 const DEFAULT_TYPES: ReviewTargetType[] = ['person', 'relationship', 'source', 'branch', 'generation_scheme'];
+const DEFAULT_STATUSES: ObjectStatus[] = ['draft', 'rejected'];
 
 function statusOf(row: any) {
   return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
 }
 
-function isReviewable(row: any) {
-  return ['draft', 'rejected'].includes(statusOf(row));
+function normalizedStatus(status: string) {
+  if (status === 'pending') return 'pending_review';
+  if (status === 'active' || status === 'approved') return 'official';
+  return status;
+}
+
+function isReviewableStatus(status: string) {
+  return ['draft', 'rejected'].includes(normalizedStatus(status));
 }
 
 function statusLabel(status: string) {
-  return status === 'rejected' ? '已驳回' : '草稿';
+  return STATUS_LABEL[status] || STATUS_LABEL[normalizedStatus(status)] || status || '-';
+}
+
+function shouldInclude(row: any, statuses: ObjectStatus[]) {
+  return statuses.includes(normalizedStatus(statusOf(row)) as ObjectStatus);
 }
 
 function personName(persons: any[], id: unknown) {
@@ -57,8 +88,9 @@ export function ReviewObjectQueryPanel() {
   const [clanId, setClanId] = useState('');
   const [personId, setPersonId] = useState('');
   const [types, setTypes] = useState<ReviewTargetType[]>(DEFAULT_TYPES);
+  const [statuses, setStatuses] = useState<ObjectStatus[]>(DEFAULT_STATUSES);
   const [items, setItems] = useState<ReviewTarget[]>([]);
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<Key[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -72,7 +104,10 @@ export function ReviewObjectQueryPanel() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const selectedItems = useMemo(() => items.filter(item => selectedKeys.includes(item.key)), [items, selectedKeys]);
+  const reviewableItems = useMemo(() => items.filter(item => isReviewableStatus(item.status)), [items]);
+  const reviewableKeySet = useMemo(() => new Set(reviewableItems.map(item => item.key)), [reviewableItems]);
+  const effectiveSelectedKeys = selectedKeys.filter(key => reviewableKeySet.has(String(key)));
+  const selectedItems = useMemo(() => items.filter(item => effectiveSelectedKeys.includes(item.key)), [items, effectiveSelectedKeys]);
   const groupedCount = useMemo(() => items.reduce<Record<string, number>>((acc, item) => {
     acc[item.type] = (acc[item.type] || 0) + 1;
     return acc;
@@ -85,6 +120,10 @@ export function ReviewObjectQueryPanel() {
     }
     if (!types.length) {
       message.warning('请至少选择一个对象类型');
+      return;
+    }
+    if (!statuses.length) {
+      message.warning('请至少选择一个对象状态');
       return;
     }
     setLoading(true);
@@ -107,19 +146,19 @@ export function ReviewObjectQueryPanel() {
       const nextItems: ReviewTarget[] = [];
 
       if (types.includes('person')) {
-        persons.filter(isReviewable).forEach(item => nextItems.push({ key: `person:${item.id}`, type: 'person', id: String(item.id), title: item.name || `人物#${item.id}`, status: statusOf(item) }));
+        persons.filter(item => shouldInclude(item, statuses)).forEach(item => nextItems.push({ key: `person:${item.id}`, type: 'person', id: String(item.id), title: item.name || `人物#${item.id}`, status: statusOf(item) }));
       }
       if (types.includes('relationship')) {
-        relationships.filter(isReviewable).forEach(item => nextItems.push({ key: `relationship:${item.id}`, type: 'relationship', id: String(item.id), title: `${personName(persons, item.fromPersonId)} → ${personName(persons, item.toPersonId)} · ${item.relationLabel || item.relationType || '关系'}`, status: statusOf(item) }));
+        relationships.filter(item => shouldInclude(item, statuses)).forEach(item => nextItems.push({ key: `relationship:${item.id}`, type: 'relationship', id: String(item.id), title: `${personName(persons, item.fromPersonId)} → ${personName(persons, item.toPersonId)} · ${item.relationLabel || item.relationType || '关系'}`, status: statusOf(item) }));
       }
       if (types.includes('source')) {
-        sources.filter(isReviewable).forEach(item => nextItems.push({ key: `source:${item.id}`, type: 'source', id: String(item.id), title: item.sourceName || `来源#${item.id}`, status: statusOf(item) }));
+        sources.filter(item => shouldInclude(item, statuses)).forEach(item => nextItems.push({ key: `source:${item.id}`, type: 'source', id: String(item.id), title: item.sourceName || `来源#${item.id}`, status: statusOf(item) }));
       }
       if (types.includes('branch')) {
-        branches.filter(isReviewable).forEach(item => nextItems.push({ key: `branch:${item.id}`, type: 'branch', id: String(item.id), title: item.branchName || `支派#${item.id}`, status: statusOf(item) }));
+        branches.filter(item => shouldInclude(item, statuses)).forEach(item => nextItems.push({ key: `branch:${item.id}`, type: 'branch', id: String(item.id), title: item.branchName || `支派#${item.id}`, status: statusOf(item) }));
       }
       if (types.includes('generation_scheme')) {
-        schemes.filter(isReviewable).forEach(item => nextItems.push({ key: `generation_scheme:${item.id}`, type: 'generation_scheme', id: String(item.id), title: item.schemeName || `字辈方案#${item.id}`, status: statusOf(item) }));
+        schemes.filter(item => shouldInclude(item, statuses)).forEach(item => nextItems.push({ key: `generation_scheme:${item.id}`, type: 'generation_scheme', id: String(item.id), title: item.schemeName || `字辈方案#${item.id}`, status: statusOf(item) }));
       }
 
       setItems(nextItems);
@@ -136,7 +175,7 @@ export function ReviewObjectQueryPanel() {
       return;
     }
     if (!selectedItems.length) {
-      message.warning('请先勾选要提交审核的对象');
+      message.warning('请先勾选草稿/已驳回对象');
       return;
     }
     setSubmitting(true);
@@ -158,49 +197,65 @@ export function ReviewObjectQueryPanel() {
   return createPortal(
     <div className="review-object-query-panel">
       <Typography.Title level={5}>查询对象信息</Typography.Title>
-      <Typography.Paragraph type="secondary">选择对象类型后查询草稿/已驳回对象，在查询结果中勾选后可批量提交审核。</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">按对象类型和对象状态查询对象；草稿/已驳回对象可在结果中勾选后批量提交审批。</Typography.Paragraph>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         <div className="review-object-query-filter">
-          <Typography.Text>对象类型</Typography.Text>
-          <Select
-            mode="multiple"
-            allowClear
-            value={types}
-            options={TYPE_OPTIONS}
-            placeholder="请选择对象类型"
-            onChange={value => setTypes(value as ReviewTargetType[])}
-            style={{ minWidth: 320, flex: 1 }}
-          />
-          <Button type="primary" loading={loading} onClick={queryObjects}>查询</Button>
+          <label className="review-object-query-field">
+            <span>对象类型</span>
+            <Select
+              mode="multiple"
+              allowClear
+              value={types}
+              options={TYPE_OPTIONS}
+              placeholder="请选择对象类型"
+              onChange={value => setTypes(value as ReviewTargetType[])}
+            />
+          </label>
+          <label className="review-object-query-field">
+            <span>对象状态</span>
+            <Select
+              mode="multiple"
+              allowClear
+              value={statuses}
+              options={STATUS_OPTIONS}
+              placeholder="请选择对象状态"
+              onChange={value => setStatuses(value as ObjectStatus[])}
+            />
+          </label>
+          <Button type="primary" loading={loading} onClick={queryObjects}>查询对象</Button>
         </div>
-        {types.includes('relationship') && !personId ? <Alert type="info" showIcon message="关系对象当前按中心人物加载。请先在建谱向导中选择中心人物，再查询关系草稿。" /> : null}
+        {types.includes('relationship') && !personId ? <Alert type="info" showIcon message="关系对象当前按中心人物加载。请先在建谱向导中选择中心人物，再查询关系对象。" /> : null}
         {searched && items.length ? (
           <Space size={8} wrap>
             {Object.entries(groupedCount).map(([key, count]) => <Tag key={key}>{TYPE_LABEL[key as ReviewTargetType]}：{count}</Tag>)}
           </Space>
         ) : null}
-        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择对象类型后查询" /> : !items.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可提交审核的草稿/驳回对象" /> : (
+        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择对象类型和对象状态后查询" /> : !items.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配对象" /> : (
           <>
-            <Checkbox checked={selectedKeys.length === items.length} indeterminate={selectedKeys.length > 0 && selectedKeys.length < items.length} onChange={e => setSelectedKeys(e.target.checked ? items.map(item => item.key) : [])}>全选</Checkbox>
-            <List
+            <div className="review-object-query-result-actions">
+              <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
+              <Button type="primary" disabled={!selectedItems.length} loading={submitting} onClick={submitSelected}>批量提交审批（{selectedItems.length}）</Button>
+            </div>
+            <Table<ReviewTarget>
               size="small"
               bordered
+              rowKey="key"
               dataSource={items}
-              className="review-object-query-list"
-              renderItem={item => (
-                <List.Item>
-                  <Checkbox checked={selectedKeys.includes(item.key)} onChange={e => setSelectedKeys(prev => e.target.checked ? [...prev, item.key] : prev.filter(key => key !== item.key))}>
-                    <Space size={8} wrap>
-                      <Tag color="blue">{TYPE_LABEL[item.type]}</Tag>
-                      <Typography.Text>{item.title}</Typography.Text>
-                      <Tag>{statusLabel(item.status)}</Tag>
-                    </Space>
-                  </Checkbox>
-                </List.Item>
-              )}
+              pagination={false}
+              rowSelection={{
+                selectedRowKeys: effectiveSelectedKeys,
+                columnTitle: '勾选',
+                columnWidth: 88,
+                getCheckboxProps: item => ({ disabled: !isReviewableStatus(item.status), title: isReviewableStatus(item.status) ? '可提交审批' : '仅草稿/已驳回对象可提交审批' }),
+                onChange: keys => setSelectedKeys(keys.filter(key => reviewableKeySet.has(String(key))))
+              }}
+              columns={[
+                { title: '对象类型', dataIndex: 'type', key: 'type', width: 120, render: value => <Tag color="blue">{TYPE_LABEL[value as ReviewTargetType]}</Tag> },
+                { title: '对象名', dataIndex: 'title', key: 'title', ellipsis: true },
+                { title: '状态', dataIndex: 'status', key: 'status', width: 120, render: value => <Tag>{statusLabel(String(value))}</Tag> }
+              ]}
             />
-            <Button type="primary" disabled={!selectedItems.length} loading={submitting} onClick={submitSelected}>批量提交审核（{selectedItems.length}）</Button>
           </>
         )}
       </Space>
