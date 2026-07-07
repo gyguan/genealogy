@@ -45,6 +45,7 @@ const STATUS_OPTIONS = [
 ];
 const DEFAULT_TYPES: ReviewTargetType[] = ['person', 'relationship', 'source', 'branch', 'generation_scheme'];
 const DEFAULT_STATUSES: ObjectStatus[] = ['draft', 'rejected'];
+const REVIEW_HOST_CLASS = 'review-object-query-host';
 
 function statusOf(row: any) {
   return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
@@ -79,8 +80,15 @@ function getWorkspaceValue(key: string) {
   return localStorage.getItem(`genealogy.workspace.${key}`) || '';
 }
 
+function activeStepIndex() {
+  const buttons = Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page .wizard-steps > button'));
+  return buttons.findIndex(button => button.classList.contains('active')) + 1;
+}
+
 function reviewPanelBody() {
-  return document.querySelector<HTMLElement>('.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) .ant-card-body');
+  if (activeStepIndex() !== 7) return null;
+  const bodies = Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page > .panel > .ant-card-body'));
+  return bodies.length ? bodies[bodies.length - 1] : null;
 }
 
 export function ReviewObjectQueryPanel() {
@@ -97,7 +105,12 @@ export function ReviewObjectQueryPanel() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setContainer(reviewPanelBody());
+      const nextContainer = reviewPanelBody();
+      document.querySelectorAll<HTMLElement>(`.${REVIEW_HOST_CLASS}`).forEach(item => {
+        if (item !== nextContainer) item.classList.remove(REVIEW_HOST_CLASS);
+      });
+      nextContainer?.classList.add(REVIEW_HOST_CLASS);
+      setContainer(nextContainer);
       setClanId(getWorkspaceValue('clanId'));
       setPersonId(getWorkspaceValue('personId'));
     }, 500);
