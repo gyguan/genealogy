@@ -51,7 +51,10 @@ public class ApprovalApplicationService {
     private static final String STATUS_PENDING = "pending";
     private static final String STATUS_APPROVED = "approved";
     private static final String STATUS_REJECTED = "rejected";
-    private static final String PERSON_STATUS_PENDING_REVIEW = "pending_review";
+    private static final String OBJECT_STATUS_DRAFT = "draft";
+    private static final String OBJECT_STATUS_PENDING_REVIEW = "pending_review";
+    private static final String OBJECT_STATUS_OFFICIAL = "official";
+    private static final String OBJECT_STATUS_ARCHIVED = "archived";
 
     private static final String REVIEW_VIEW = "review_task:view";
     private static final String REVIEW_APPROVE = "review_task:approve";
@@ -103,9 +106,10 @@ public class ApprovalApplicationService {
     public CheckTaskResponse submitPerson(Long personId, PersonSubmitReviewRequest request) {
         PersonEntity person = getPerson(personId);
         authorizationApplicationService.requireBranchPermission(person.getClanId(), request.submitterId(), person.getBranchId(), PERSON_SUBMIT_REVIEW);
+        ensureReviewSubmitAllowed(TARGET_PERSON, personId, person.getDataStatus());
         String beforePayload = toJson(person);
         LocalDateTime now = LocalDateTime.now();
-        person.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
+        person.setDataStatus(OBJECT_STATUS_PENDING_REVIEW);
         person.setUpdatedAt(now);
         String afterPayload = toJson(person);
         CheckTaskResponse response = submitTarget(person.getClanId(), TARGET_PERSON, personId, person.getBranchId(), request.submitterId(), request.diffSummary(), "submit person review: " + person.getName(), beforePayload, afterPayload);
@@ -120,8 +124,9 @@ public class ApprovalApplicationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RELATIONSHIP_NOT_FOUND));
         Long branchId = relationshipBranchId(relationship);
         authorizationApplicationService.requireBranchPermission(relationship.getClanId(), request.submitterId(), branchId, RELATIONSHIP_SUBMIT_REVIEW);
+        ensureReviewSubmitAllowed(TARGET_RELATIONSHIP, relationshipId, relationship.getDataStatus());
         String beforePayload = toJson(relationship);
-        relationship.setDataStatus(PERSON_STATUS_PENDING_REVIEW);
+        relationship.setDataStatus(OBJECT_STATUS_PENDING_REVIEW);
         relationship.setUpdatedAt(LocalDateTime.now());
         String afterPayload = toJson(relationship);
         CheckTaskResponse response = submitTarget(relationship.getClanId(), TARGET_RELATIONSHIP, relationshipId, branchId, request.submitterId(), request.diffSummary(), "submit relationship review", beforePayload, afterPayload);
@@ -134,8 +139,9 @@ public class ApprovalApplicationService {
         SourceEntity source = sourceRepository.findById(sourceId)
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "source not found"));
         authorizationApplicationService.requirePermission(source.getClanId(), request.submitterId(), SOURCE_UPDATE);
+        ensureReviewSubmitAllowed(TARGET_SOURCE, sourceId, source.getVerificationStatus());
         String beforePayload = toJson(source);
-        source.setVerificationStatus(PERSON_STATUS_PENDING_REVIEW);
+        source.setVerificationStatus(OBJECT_STATUS_PENDING_REVIEW);
         String afterPayload = toJson(source);
         CheckTaskResponse response = submitTarget(source.getClanId(), TARGET_SOURCE, sourceId, null, request.submitterId(), request.diffSummary(), "submit source review: " + source.getSourceName(), beforePayload, afterPayload);
         sourceRepository.save(source);
@@ -147,8 +153,9 @@ public class ApprovalApplicationService {
         BranchEntity branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
         authorizationApplicationService.requireBranchPermission(branch.getClanId(), request.submitterId(), branch.getId(), BRANCH_UPDATE);
+        ensureReviewSubmitAllowed(TARGET_BRANCH, branchId, branch.getStatus());
         String beforePayload = toJson(branch);
-        branch.setStatus(PERSON_STATUS_PENDING_REVIEW);
+        branch.setStatus(OBJECT_STATUS_PENDING_REVIEW);
         branch.setUpdatedAt(LocalDateTime.now());
         String afterPayload = toJson(branch);
         CheckTaskResponse response = submitTarget(branch.getClanId(), TARGET_BRANCH, branchId, branchId, request.submitterId(), request.diffSummary(), "submit branch review: " + branch.getBranchName(), beforePayload, afterPayload);
@@ -161,8 +168,9 @@ public class ApprovalApplicationService {
         GenerationSchemeEntity scheme = genSchemeRepository.findById(schemeId)
                 .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "generation scheme not found"));
         authorizationApplicationService.requireBranchPermission(scheme.getClanId(), request.submitterId(), scheme.getBranchId(), BRANCH_UPDATE);
+        ensureReviewSubmitAllowed(TARGET_GENERATION_SCHEME, schemeId, scheme.getStatus());
         String beforePayload = toJson(scheme);
-        scheme.setStatus(PERSON_STATUS_PENDING_REVIEW);
+        scheme.setStatus(OBJECT_STATUS_PENDING_REVIEW);
         String afterPayload = toJson(scheme);
         CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "submit generation scheme review: " + scheme.getSchemeName(), beforePayload, afterPayload);
         genSchemeRepository.save(scheme);
@@ -315,6 +323,23 @@ public class ApprovalApplicationService {
         revisionApplyService.reject(record, now);
         operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "reject review", comment);
         return toTaskResponse(savedTask);
+    }
+
+    private void ensureReviewSubmitAllowed(String targetType, Long targetId, String status) {
+        String normalized = normalize(status);
+        if (OBJECT_STATUS_DRAFT.equals(normalized) || STATUS_REJECTED.equals(normalized)) {
+            return;
+        }
+        if (OBJECT_STATUS_PENDING_REVIEW.equals(normalized) || STATUS_PENDING.equals(normalized)) {
+            throw new BusinessException("REVIEW_TARGET_ALREADY_PENDING", "对象已处于待审核状态，不能重复提交审核");
+        }
+        if (OBJECT_STATUS_OFFICIAL.equals(normalized)) {
+            throw new BusinessException("REVIEW_TARGET_ALREADY_OFFICIAL", "对象已是正式数据，不能通过新增审核重复提交");
+        }
+        if (OBJECT_STATUS_ARCHIVED.equals(normalized)) {
+            throw new BusinessException("REVIEW_TARGET_ARCHIVED", "对象已归档，不能提交审核");
+        }
+        throw new BusinessException("REVIEW_TARGET_STATUS_NOT_SUBMITTABLE", "对象当前状态不允许提交审核: " + targetType + "#" + targetId + " status=" + (status == null ? "null" : status));
     }
 
     private Long relationshipBranchId(RelationshipEntity relationship) {
