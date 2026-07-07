@@ -74,28 +74,6 @@
   flex-wrap: wrap;
 }
 
-.review-generation-words-panel {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid #e8eef7;
-  border-radius: 10px;
-  background: #fbfdff;
-}
-
-.review-generation-words-panel h5 {
-  margin: 0 0 10px;
-}
-
-.review-generation-words-card {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  background: #fff;
-}
-
 @media (max-width: 1120px) {
   .review-object-query-filter {
     grid-template-columns: 1fr 1fr;
