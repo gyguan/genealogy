@@ -164,12 +164,12 @@
 }
 
 .wizard-generation-section--items {
-  background: #fbfffb;
-  border-color: #d9f7be;
+  background: #fff;
+  border-color: #f0f0f0;
 }
 
 .wizard-generation-section--items h4 {
-  color: #52c41a;
+  color: rgba(0,0,0,.88);
 }
 
 .wizard-generation-scheme-grid,
