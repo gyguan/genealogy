@@ -136,20 +136,20 @@ export function StepDraftReviewPanel() {
     setRows([]);
     setSearched(false);
     if (!config || !clanId) return;
-    const timer = window.setTimeout(() => void loadObjects(), 0);
+    const timer = window.setTimeout(() => void loadObjects(config), 0);
     return () => window.clearTimeout(timer);
   }, [config?.targetType, clanId, personId]);
 
   const warning = config?.warning?.({ clanId, personId }) || null;
 
-  async function loadObjects() {
-    if (!config) return;
+  async function loadObjects(sourceConfig = config) {
+    if (!sourceConfig) return;
     if (!clanId) {
       message.warning('请先选择宗族');
       return;
     }
     const seq = ++requestSeq.current;
-    const path = config.loadPath({ clanId, personId });
+    const path = sourceConfig.loadPath({ clanId, personId });
     if (!path) {
       setRows([]);
       setSearched(true);
@@ -164,7 +164,7 @@ export function StepDraftReviewPanel() {
       if (seq === requestSeq.current) {
         setRows([]);
         setSearched(true);
-        message.error((error as Error).message || `查询${config.label}失败`);
+        message.error((error as Error).message || `查询${sourceConfig.label}失败`);
       }
     } finally {
       if (seq === requestSeq.current) setLoading(false);
@@ -181,7 +181,7 @@ export function StepDraftReviewPanel() {
             <Typography.Title level={5}>{config.resultTitle}</Typography.Title>
             <Typography.Paragraph type="secondary">复用当前步骤对象查询结果；草稿/已驳回版本可在列表中勾选后批量提交审批。</Typography.Paragraph>
           </div>
-          <Button loading={loading} onClick={loadObjects}>刷新</Button>
+          <Button loading={loading} onClick={() => void loadObjects()}>刷新</Button>
         </div>
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         {warning ? <Alert type="info" showIcon message={warning} /> : null}
