@@ -181,6 +181,35 @@
   display: none;
 }
 
+.wizard-generation-section--items > .wizard-generation-word-grid,
+.wizard-generation-section--items > .actions {
+  display: none;
+}
+
+.wizard-generation-detail-form {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.wizard-inline-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(0,0,0,.88);
+  font-size: 14px;
+}
+
+.wizard-inline-form-field > span {
+  font-weight: 500;
+}
+
+.wizard-generation-detail-actions {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
 @media (max-width: 980px) {
   .mvp1-wizard-page {
     grid-template-columns: 1fr;
