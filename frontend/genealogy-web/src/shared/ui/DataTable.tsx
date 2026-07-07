@@ -102,7 +102,15 @@ function isActionColumn(column: Column<any>) {
   return REVIEW_ACTION_KEYS.has(column.key) || /操作|维护/.test(column.title || '');
 }
 
-export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
+type DataTableProps<T extends Record<string, any>> = {
+  data: any;
+  columns: Column<T>[];
+  empty?: string;
+  onSelect?: (row: T) => void;
+  normalizeReviewColumns?: boolean;
+};
+
+export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true }: DataTableProps<T>) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -178,12 +186,12 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
   } : undefined;
 
-  const tableColumns = targetType ? [
+  const normalizedReviewColumns = [
     {
       key: 'reviewObjectName',
       title: '对象名',
       ellipsis: true,
-      render: (_value: unknown, row: T) => reviewObjectName(row, targetType, visibleColumns)
+      render: (_value: unknown, row: T) => reviewObjectName(row, targetType!, visibleColumns)
     },
     {
       key: 'reviewStatus',
@@ -219,15 +227,17 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         </Button>
       ) : '-'
     }] : [])
-  ] : [
-    ...visibleColumns.map(column => ({
-      key: column.key,
-      dataIndex: column.key,
-      title: column.title,
-      ellipsis: true,
-      render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
-    }))
   ];
+
+  const originalColumns = visibleColumns.map(column => ({
+    key: column.key,
+    dataIndex: column.key,
+    title: column.title,
+    ellipsis: true,
+    render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
+  }));
+
+  const tableColumns = targetType && normalizeReviewColumns ? normalizedReviewColumns : originalColumns;
 
   return (
     <div className={`table-wrap antd-table-wrap${reviewRowSelection ? ' batch-review-table-wrap' : ''}`}>
