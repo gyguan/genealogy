@@ -125,8 +125,7 @@
   margin-bottom: 0;
 }
 
-.wizard-generation-inline-list,
-.wizard-generation-detail-list {
+.wizard-generation-inline-list {
   margin-top: 16px;
 }
 
@@ -163,15 +162,6 @@
   border-top: 1px solid #f0f0f0;
 }
 
-.wizard-generation-section--items {
-  background: #fff;
-  border-color: #f0f0f0;
-}
-
-.wizard-generation-section--items h4 {
-  color: rgba(0,0,0,.88);
-}
-
 .wizard-generation-scheme-grid,
 .wizard-generation-word-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -181,8 +171,20 @@
   display: none;
 }
 
-.wizard-generation-section--items > .wizard-generation-word-grid,
-.wizard-generation-section--items > .actions {
+.wizard-generation-section:not(.wizard-generation-section--items) > .actions button:first-child {
+  font-size: 0;
+}
+
+.wizard-generation-section:not(.wizard-generation-section--items) > .actions button:first-child::after {
+  content: '保存草稿并继续录入';
+  font-size: 14px;
+}
+
+.wizard-generation-section:not(.wizard-generation-section--items) > .actions button.secondary {
+  display: none;
+}
+
+.wizard-generation-section--items {
   display: none;
 }
 
@@ -204,10 +206,8 @@
   font-weight: 500;
 }
 
-.wizard-generation-detail-actions {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid #f0f0f0;
+.wizard-generation-modal-action {
+  justify-content: end;
 }
 
 @media (max-width: 980px) {
