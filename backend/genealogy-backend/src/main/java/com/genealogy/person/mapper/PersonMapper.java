@@ -7,6 +7,8 @@ import com.genealogy.person.entity.PersonEntity;
 
 public final class PersonMapper {
 
+    private static final String STATUS_DRAFT = "draft";
+
     private PersonMapper() {
     }
 
@@ -39,7 +41,7 @@ public final class PersonMapper {
         entity.setHasDescendant(request.hasDescendant());
         entity.setLineageStatus(defaultIfBlank(request.lineageStatus(), "normal"));
         entity.setPrivacyLevel(trimToNull(request.privacyLevel()));
-        entity.setDataStatus(trimToNull(request.dataStatus()));
+        entity.setDataStatus(STATUS_DRAFT);
         return entity;
     }
 
@@ -70,7 +72,6 @@ public final class PersonMapper {
         entity.setHasDescendant(request.hasDescendant());
         entity.setLineageStatus(defaultIfBlank(request.lineageStatus(), "normal"));
         entity.setPrivacyLevel(trimToNull(request.privacyLevel()));
-        entity.setDataStatus(trimToNull(request.dataStatus()));
     }
 
     public static PersonResponse toResponse(PersonEntity entity) {
