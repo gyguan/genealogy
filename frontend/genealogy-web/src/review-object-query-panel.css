@@ -34,3 +34,15 @@
 .review-object-query-list .ant-list-item {
   padding: 10px 12px;
 }
+
+.review-generation-words-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e8eef7;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.review-generation-words-panel h5 {
+  margin: 0 0 10px;
+}
