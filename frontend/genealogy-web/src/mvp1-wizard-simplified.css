@@ -177,6 +177,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.wizard-generation-scheme-grid > .field:nth-child(3) {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .mvp1-wizard-page {
     grid-template-columns: 1fr;
