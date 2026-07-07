@@ -68,7 +68,7 @@ function workspaceClanId() {
 function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>[]): ReviewTargetType | null {
   const keys = new Set(columns.map(column => column.key));
   const sample = rows.find(isLifecycleRow) || rows[0] || {};
-  if (!isLifecycleRow(sample)) return null;
+  if (!isLifecycleRow(sample) || !sample.id) return null;
   if (!columns.some(column => REVIEW_STATUS_KEYS.has(column.key))) return null;
   if (keys.has('branchName') || 'branchName' in sample) return 'branch';
   if (keys.has('schemeName') || 'schemeName' in sample) return 'generation_scheme';
