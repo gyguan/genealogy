@@ -19,6 +19,7 @@ import java.util.List;
 @Service
 public class BranchApplicationService {
 
+    private static final String STATUS_DRAFT = "draft";
     private static final String BRANCH_VIEW = "branch:view";
     private static final String BRANCH_CREATE = "branch:create";
     private static final String BRANCH_UPDATE = "branch:update";
@@ -52,7 +53,7 @@ public class BranchApplicationService {
         BranchEntity entity = BranchMapper.toEntity(clanId, request);
         applyHierarchy(entity, parent);
         LocalDateTime now = LocalDateTime.now();
-        entity.setStatus("active");
+        entity.setStatus(STATUS_DRAFT);
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         BranchEntity saved = branchRepository.save(entity);
@@ -126,7 +127,7 @@ public class BranchApplicationService {
             authorizationApplicationService.requireBranchManagerCandidate(entity.getClanId(), entity.getManagerMemberId(), entity.getId());
         }
         if (entity.getStatus() == null) {
-            entity.setStatus("active");
+            entity.setStatus(STATUS_DRAFT);
         }
         entity.setUpdatedAt(LocalDateTime.now());
         return BranchMapper.toResponse(branchRepository.save(entity));
@@ -182,13 +183,22 @@ public class BranchApplicationService {
     }
 
     private void applyHierarchy(BranchEntity entity, BranchEntity parent) {
-        entity.setLevel(parent == null ? 1 : parent.getLevel() + 1);
+        if (parent == null) {
+            entity.setParentId(null);
+            entity.setLevel(1);
+            return;
+        }
+        entity.setParentId(parent.getId());
+        entity.setLevel(parent.getLevel() == null ? 2 : parent.getLevel() + 1);
     }
 
-    private String buildBranchPath(BranchEntity parent, Long branchId) {
-        if (parent == null || parent.getBranchPath() == null || parent.getBranchPath().isBlank()) {
-            return String.valueOf(branchId);
+    private String buildBranchPath(BranchEntity parent, Long id) {
+        if (id == null) {
+            return null;
         }
-        return parent.getBranchPath() + "/" + branchId;
+        if (parent == null || parent.getBranchPath() == null || parent.getBranchPath().isBlank()) {
+            return String.valueOf(id);
+        }
+        return parent.getBranchPath() + "/" + id;
     }
 }
