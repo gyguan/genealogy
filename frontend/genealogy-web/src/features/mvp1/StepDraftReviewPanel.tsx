@@ -226,7 +226,13 @@ export function StepDraftReviewPanel() {
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         {warning ? <Alert type="info" showIcon message={warning} /> : null}
         {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
-          <DataTable data={rows} empty={`暂无${config.label}数据`} columns={config.columns} normalizeReviewColumns={config.normalizeReviewColumns !== false} />
+          <DataTable
+            data={rows}
+            empty={`暂无${config.label}数据`}
+            columns={config.columns}
+            normalizeReviewColumns={config.normalizeReviewColumns !== false}
+            reviewTargetType={config.targetType === 'relationship' ? 'relationship' : undefined}
+          />
         )}
       </Space>
     </section>,
