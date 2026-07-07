@@ -6,6 +6,7 @@ type AnyProps = Record<string, any>;
 
 const REVIEW_SUBMIT_LABEL = '保存并提交审核';
 const REVIEW_DRAFT_LABEL = '保存草稿继续录入';
+const DRAFT_SAVE_GUARD_MS = 8000;
 const REVIEW_DRAFT_ALIASES = [
   REVIEW_DRAFT_LABEL,
   '保存草稿，继续录入',
@@ -14,6 +15,10 @@ const REVIEW_DRAFT_ALIASES = [
   '保存来源草稿',
   '保存草稿'
 ];
+
+function markDraftSaveGuard() {
+  (window as any).__genealogyDraftSaveGuardUntil = Date.now() + DRAFT_SAVE_GUARD_MS;
+}
 
 function emitValue(originalOnChange: any, value: unknown) {
   if (typeof originalOnChange === 'function') originalOnChange({ target: { value } });
@@ -100,10 +105,18 @@ function toAntdControl(child: ReactNode): ReactNode {
 
 function toAntdAction(child: ReactNode): ReactNode {
   if (!isValidElement<AnyProps>(child) || child.type !== 'button') return child;
-  const { className = '', children, ...rest } = child.props;
+  const { className = '', children, onClick, ...rest } = child.props;
   const isSecondary = className.includes('secondary') || className.includes('ghost');
   const isDanger = className.includes('danger');
-  return <Button {...rest} danger={isDanger} type={isSecondary || isDanger ? 'default' : 'primary'}>{children}</Button>;
+  const text = nodeText(children);
+  const isDraftSave = REVIEW_DRAFT_ALIASES.includes(text);
+  const nextOnClick = isDraftSave
+    ? (event: unknown) => {
+        markDraftSaveGuard();
+        if (typeof onClick === 'function') onClick(event);
+      }
+    : onClick;
+  return <Button {...rest} onClick={nextOnClick} danger={isDanger} type={isSecondary || isDanger ? 'default' : 'primary'}>{children}</Button>;
 }
 
 export function Field(props: { label: string; children: ReactNode; hint?: string }) {
