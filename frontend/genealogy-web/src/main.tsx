@@ -10,6 +10,7 @@ import './mvp1-wizard.css';
 import './mvp1-wizard-simplified.css';
 import './mvp1-source-step.css';
 import './mvp1-tree-step.css';
+import './mvp1-person-step.css';
 import './review-object-query-panel.css';
 import './lineage-tree.css';
 import './compact-ui.css';
