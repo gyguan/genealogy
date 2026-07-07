@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
-import { Button, Checkbox, Empty, Space, Table, Typography, message } from 'antd';
+import { Button, Empty, Table, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
 
 export type Column<T> = {
@@ -183,25 +183,19 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   ];
 
   return (
-    <div className="table-wrap antd-table-wrap">
+    <div className={`table-wrap antd-table-wrap${reviewRowSelection ? ' batch-review-table-wrap' : ''}`}>
       {selectableRowHandler ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
       {targetType && reviewableRows.length ? (
-        <Space className="table-review-actions" size={8} wrap>
-          <Checkbox
-            checked={effectiveSelectedKeys.length === reviewableRows.length}
-            indeterminate={effectiveSelectedKeys.length > 0 && effectiveSelectedKeys.length < reviewableRows.length}
-            onChange={event => setSelectedRowKeys(event.target.checked ? reviewableRows.map(row => rowKey(row)) : [])}
-          >
-            勾选草稿/已驳回版本
-          </Checkbox>
+        <div className="batch-review-actions table-review-actions">
+          <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
           <Button size="small" type="primary" disabled={!effectiveSelectedKeys.length} loading={submitting} onClick={submitSelectedReview}>
             批量提交审批（{effectiveSelectedKeys.length}）
           </Button>
-        </Space>
+        </div>
       ) : null}
       <Table<T>
         size="small"
-        bordered={false}
+        bordered={Boolean(reviewRowSelection)}
         rowKey={rowKey}
         rowSelection={reviewRowSelection}
         dataSource={rows}
