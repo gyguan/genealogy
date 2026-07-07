@@ -38,13 +38,26 @@ function normalizeReviewTargetType(value: unknown) {
   return map[text] || text;
 }
 
+function draftSaveGuardActive() {
+  return Number((window as any).__genealogyDraftSaveGuardUntil || 0) > Date.now();
+}
+
+function shouldBlockDraftPersonAutoReview(path: string, body: unknown) {
+  if (!draftSaveGuardActive()) return false;
+  if (!/^\/clans\/\d+\/review-tasks$/.test(path)) return false;
+  if (!body || typeof body !== 'object') return false;
+  const record = body as Record<string, unknown>;
+  return normalizeReviewTargetType(record.targetType) === 'person' && String(record.comment || '').includes('提交人物审核');
+}
+
 function normalizeJsonBody(path: string, body: unknown) {
   if (body === undefined || body === null || typeof body !== 'object' || Array.isArray(body)) {
     return body;
   }
   const next = { ...(body as Record<string, unknown>) };
-  if (/^\/clans\/\d+\/persons$/.test(path) && next.personCode === null) {
-    delete next.personCode;
+  if (/^\/clans\/\d+\/persons$/.test(path)) {
+    if (next.personCode === null) delete next.personCode;
+    next.dataStatus = 'draft';
   }
   if (/^\/clans\/\d+\/review-tasks$/.test(path) && next.targetType !== undefined) {
     next.targetType = normalizeReviewTargetType(next.targetType);
@@ -100,6 +113,9 @@ export class ApiClient {
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
     const normalizedPath = normalizeApiPath(path);
     const normalizedBody = normalizeJsonBody(normalizedPath, body);
+    if (shouldBlockDraftPersonAutoReview(normalizedPath, normalizedBody)) {
+      throw new Error('保存草稿继续录入不会自动提交人物审核');
+    }
     try {
       return await this.request<T>(normalizedPath, {
         method: 'POST',
