@@ -10,6 +10,7 @@ import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.generation.repository.GenWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
@@ -69,6 +70,7 @@ public class ApprovalApplicationService {
     private final SourceRepository sourceRepository;
     private final BranchRepository branchRepository;
     private final GenSchemeRepository genSchemeRepository;
+    private final GenWordRepository genWordRepository;
     private final AuditRecordRepository auditRecordRepository;
     private final CheckTaskRepository checkTaskRepository;
     private final OperationLogApplicationService operationLogApplicationService;
@@ -82,6 +84,7 @@ public class ApprovalApplicationService {
             SourceRepository sourceRepository,
             BranchRepository branchRepository,
             GenSchemeRepository genSchemeRepository,
+            GenWordRepository genWordRepository,
             AuditRecordRepository auditRecordRepository,
             CheckTaskRepository checkTaskRepository,
             OperationLogApplicationService operationLogApplicationService,
@@ -94,6 +97,7 @@ public class ApprovalApplicationService {
         this.sourceRepository = sourceRepository;
         this.branchRepository = branchRepository;
         this.genSchemeRepository = genSchemeRepository;
+        this.genWordRepository = genWordRepository;
         this.auditRecordRepository = auditRecordRepository;
         this.checkTaskRepository = checkTaskRepository;
         this.operationLogApplicationService = operationLogApplicationService;
@@ -169,9 +173,13 @@ public class ApprovalApplicationService {
                 .orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "generation scheme not found"));
         authorizationApplicationService.requireBranchPermission(scheme.getClanId(), request.submitterId(), scheme.getBranchId(), BRANCH_UPDATE);
         ensureReviewSubmitAllowed(TARGET_GENERATION_SCHEME, schemeId, scheme.getStatus());
-        String beforePayload = toJson(scheme);
+        List<?> words = genWordRepository.findBySchemeIdOrderByGenerationNoAsc(schemeId);
+        if (words.isEmpty()) {
+            throw new BusinessException("GENERATION_SCHEME_WORD_EMPTY", "请先维护至少一条字辈明细，再提交字辈方案审核");
+        }
+        String beforePayload = generationSchemeReviewPayload(scheme, words);
         scheme.setStatus(OBJECT_STATUS_PENDING_REVIEW);
-        String afterPayload = toJson(scheme);
+        String afterPayload = generationSchemeReviewPayload(scheme, words);
         CheckTaskResponse response = submitTarget(scheme.getClanId(), TARGET_GENERATION_SCHEME, schemeId, scheme.getBranchId(), request.submitterId(), request.diffSummary(), "submit generation scheme review: " + scheme.getSchemeName(), beforePayload, afterPayload);
         genSchemeRepository.save(scheme);
         return response;
@@ -371,6 +379,10 @@ public class ApprovalApplicationService {
 
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {
         return new AuditRecordResponse(record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(), record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason());
+    }
+
+    private String generationSchemeReviewPayload(GenerationSchemeEntity scheme, List<?> words) {
+        return toJson(Map.of("scheme", scheme, "words", words));
     }
 
     private List<ReviewDiffResponse.FieldDiff> fieldDiffs(String beforeData, String afterData) {
