@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Checkbox, Empty, Space, Table, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
@@ -84,6 +84,11 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
+
+  useEffect(() => {
+    setSelectedRowKeys(prev => prev.filter(key => reviewableKeySet.has(String(key))));
+  }, [reviewableKeySet]);
+
   if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
   async function submitSelectedReview() {
