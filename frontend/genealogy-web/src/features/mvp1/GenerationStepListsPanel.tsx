@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Empty, Space, Typography, message } from 'antd';
+import { Button, Empty, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
 
@@ -57,7 +57,8 @@ function currentSchemeId(host: HTMLElement | null) {
 }
 
 export function GenerationStepListsPanel() {
-  const requestSeq = useRef(0);
+  const schemeRequestSeq = useRef(0);
+  const itemRequestSeq = useRef(0);
   const [schemeHost, setSchemeHost] = useState<HTMLElement | null>(null);
   const [itemHost, setItemHost] = useState<HTMLElement | null>(null);
   const [clanId, setClanId] = useState('');
@@ -103,37 +104,37 @@ export function GenerationStepListsPanel() {
 
   async function loadSchemes() {
     if (!clanId) return;
-    const seq = ++requestSeq.current;
+    const seq = ++schemeRequestSeq.current;
     setLoadingSchemes(true);
     setSchemeSearched(true);
     try {
       const data = await apiClient.get(`/clans/${clanId}/generation-schemes`);
-      if (seq === requestSeq.current) setSchemes(toRecordList(data));
+      if (seq === schemeRequestSeq.current) setSchemes(toRecordList(data));
     } catch (error) {
-      if (seq === requestSeq.current) {
+      if (seq === schemeRequestSeq.current) {
         setSchemes([]);
         message.error((error as Error).message || '查询字辈方案失败');
       }
     } finally {
-      if (seq === requestSeq.current) setLoadingSchemes(false);
+      if (seq === schemeRequestSeq.current) setLoadingSchemes(false);
     }
   }
 
   async function loadItems() {
     if (!schemeId) return;
-    const seq = ++requestSeq.current;
+    const seq = ++itemRequestSeq.current;
     setLoadingItems(true);
     setItemSearched(true);
     try {
       const data = await apiClient.get(`/generation-schemes/${schemeId}/items`);
-      if (seq === requestSeq.current) setItems(toRecordList(data));
+      if (seq === itemRequestSeq.current) setItems(toRecordList(data));
     } catch (error) {
-      if (seq === requestSeq.current) {
+      if (seq === itemRequestSeq.current) {
         setItems([]);
         message.error((error as Error).message || '查询字辈明细失败');
       }
     } finally {
-      if (seq === requestSeq.current) setLoadingItems(false);
+      if (seq === itemRequestSeq.current) setLoadingItems(false);
     }
   }
 
