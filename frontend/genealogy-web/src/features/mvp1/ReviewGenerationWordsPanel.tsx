@@ -18,8 +18,15 @@ function getWorkspaceValue(key: string) {
   return localStorage.getItem(`genealogy.workspace.${key}`) || '';
 }
 
+function activeStepIndex() {
+  const buttons = Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page .wizard-steps > button'));
+  return buttons.findIndex(button => button.classList.contains('active')) + 1;
+}
+
 function reviewPanelBody() {
-  return document.querySelector<HTMLElement>('.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) .ant-card-body');
+  if (activeStepIndex() !== 7) return null;
+  const bodies = Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page > .panel > .ant-card-body'));
+  return bodies.length ? bodies[bodies.length - 1] : null;
 }
 
 function parsePayload(payload: unknown) {
