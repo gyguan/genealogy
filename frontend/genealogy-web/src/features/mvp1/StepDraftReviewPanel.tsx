@@ -145,7 +145,6 @@ export function StepDraftReviewPanel() {
   async function loadObjects(sourceConfig = config) {
     if (!sourceConfig) return;
     if (!clanId) {
-      message.warning('请先选择宗族');
       return;
     }
     const seq = ++requestSeq.current;
