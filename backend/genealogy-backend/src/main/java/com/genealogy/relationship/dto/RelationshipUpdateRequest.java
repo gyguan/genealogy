@@ -18,7 +18,6 @@ public record RelationshipUpdateRequest(
         String confidenceLevel,
         String dataStatus
 ) {
-    @Override
     public String dataStatus() {
         return null;
     }
