@@ -77,7 +77,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
-  const reviewableKeySet = useMemo(() => new Set(reviewableRows.map((row, index) => rowKey(row, index))), [reviewableRows]);
+  const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
   if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
@@ -88,7 +88,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       message.warning('请先选择宗族');
       return;
     }
-    const selectedRows = rows.filter((row, index) => effectiveSelectedKeys.includes(rowKey(row, index)) && isReviewable(row));
+    const selectedRows = rows.filter(row => effectiveSelectedKeys.includes(rowKey(row)) && isReviewable(row));
     if (!selectedRows.length) {
       message.warning('请先勾选草稿/已驳回版本');
       return;
@@ -122,7 +122,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
           <Checkbox
             checked={effectiveSelectedKeys.length === reviewableRows.length}
             indeterminate={effectiveSelectedKeys.length > 0 && effectiveSelectedKeys.length < reviewableRows.length}
-            onChange={event => setSelectedRowKeys(event.target.checked ? reviewableRows.map((row, index) => rowKey(row, index)) : [])}
+            onChange={event => setSelectedRowKeys(event.target.checked ? reviewableRows.map(row => rowKey(row)) : [])}
           >
             勾选草稿/已驳回版本
           </Checkbox>
