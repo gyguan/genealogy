@@ -134,6 +134,16 @@ function relationBody(center: PersonLike, relative: PersonLike, mode: Relationsh
   };
 }
 
+function readableError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (!message) return fallback;
+  const lower = message.toLowerCase();
+  if (lower.includes('same relationship already exists') || lower.includes('relationship_duplicated')) return '该关系已存在，请勿重复创建';
+  if (lower.includes('spouse relationship already exists') || lower.includes('relationship_spouse_duplicated')) return '配偶关系已存在，请勿重复创建';
+  if (lower.includes('biological parent relationship already exists') || lower.includes('relationship_parent_duplicated')) return '父母关系已存在，请勿重复创建';
+  return message;
+}
+
 export function RelationshipStepPanel() {
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [clanId, setClanId] = useState('');
@@ -143,6 +153,7 @@ export function RelationshipStepPanel() {
   const [persons, setPersons] = useState<PersonLike[]>([]);
   const [loadingPersons, setLoadingPersons] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -160,6 +171,7 @@ export function RelationshipStepPanel() {
 
   useEffect(() => {
     setRelativePersonId('');
+    setSaveError('');
     if (!container || !clanId) {
       setPersons([]);
       return;
@@ -181,8 +193,10 @@ export function RelationshipStepPanel() {
       const data = toRecordList<PersonLike>(await apiClient.get(`/clans/${sourceClanId}/persons`));
       setPersons(data);
     } catch (error) {
+      const errorText = readableError(error, '查询人物失败');
       setPersons([]);
-      message.error((error as Error).message || '查询人物失败');
+      setSaveError(errorText);
+      message.error(errorText);
     } finally {
       setLoadingPersons(false);
     }
@@ -191,15 +205,18 @@ export function RelationshipStepPanel() {
   function changeCenterPerson(value: string) {
     setCenterPersonId(value);
     setRelativePersonId('');
+    setSaveError('');
     patchWorkspace({ personId: value });
   }
 
   function changeMode(value: RelationshipMode) {
     setMode(value);
     setRelativePersonId('');
+    setSaveError('');
   }
 
   async function saveRelationship(submit = false) {
+    setSaveError('');
     if (!clanId) {
       message.warning('请先选择宗族');
       return;
@@ -229,9 +246,12 @@ export function RelationshipStepPanel() {
         message.success('关系已保存为草稿');
       }
       setRelativePersonId('');
+      setSaveError('');
       window.dispatchEvent(new CustomEvent('genealogy:object-changed', { detail: { targetType: 'relationship' } }));
     } catch (error) {
-      message.error((error as Error).message || '保存关系失败');
+      const errorText = readableError(error, '保存关系失败');
+      setSaveError(errorText);
+      message.error(errorText);
     } finally {
       setSaving(false);
     }
@@ -247,6 +267,7 @@ export function RelationshipStepPanel() {
           <Typography.Paragraph type="secondary">先选择中心人物和关系类型，再从符合代次、性别规则的已审核人物中选择亲属。</Typography.Paragraph>
         </div>
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+        {saveError ? <Alert type="error" showIcon message={saveError} /> : null}
         <div className="relationship-step-form-grid">
           <label className="relationship-step-field">
             <span>中心人物 *</span>
@@ -282,7 +303,10 @@ export function RelationshipStepPanel() {
               options={relativeOptions}
               placeholder={relativeOptions.length ? `请选择${MODE_LABEL[mode]}` : relationshipRuleText(mode)}
               optionFilterProp="label"
-              onChange={setRelativePersonId}
+              onChange={value => {
+                setRelativePersonId(value);
+                setSaveError('');
+              }}
             />
           </label>
           <label className="relationship-step-field relationship-step-field--wide">
