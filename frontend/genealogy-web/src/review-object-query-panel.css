@@ -15,24 +15,38 @@
 }
 
 .review-object-query-filter {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  align-items: end;
   gap: 12px;
-  flex-wrap: wrap;
   padding: 12px;
   border: 1px solid #f0f0f0;
   border-radius: 10px;
   background: #fafafa;
 }
 
-.review-object-query-list {
-  max-height: 360px;
-  overflow: auto;
-  background: #fff;
+.review-object-query-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(0,0,0,.88);
+  font-size: 14px;
 }
 
-.review-object-query-list .ant-list-item {
-  padding: 10px 12px;
+.review-object-query-field > span {
+  font-weight: 500;
+}
+
+.review-object-query-field .ant-select {
+  width: 100%;
+}
+
+.review-object-query-result-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .review-generation-words-panel {
@@ -55,4 +69,10 @@
   border: 1px solid #f0f0f0;
   border-radius: 10px;
   background: #fff;
+}
+
+@media (max-width: 900px) {
+  .review-object-query-filter {
+    grid-template-columns: 1fr;
+  }
 }
