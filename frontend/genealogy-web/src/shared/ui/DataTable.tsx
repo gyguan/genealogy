@@ -86,7 +86,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
-  const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
+  const effectiveSelectedKeys = targetType ? selectedRowKeys.filter(key => reviewableKeySet.has(String(key))) : [];
   if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
   async function submitSelectedReview() {
