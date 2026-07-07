@@ -1,0 +1,33 @@
+.step-draft-review-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #e8eef7;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.step-draft-review-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.step-draft-review-header h5 {
+  margin: 0 0 4px;
+}
+
+.step-draft-review-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.step-draft-review-list {
+  max-height: 280px;
+  overflow: auto;
+  background: #fff;
+}
+
+.step-draft-review-list .ant-list-item {
+  padding: 10px 12px;
+}
