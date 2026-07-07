@@ -27,6 +27,7 @@ import java.util.List;
 public class SourceApplicationService {
 
     private static final String STATUS_DRAFT = "draft";
+    private static final String STATUS_OFFICIAL = "official";
     private static final String SOURCE_VIEW = "source:view";
     private static final String SOURCE_CREATE = "source:create";
     private static final String SOURCE_UPDATE = "source:update";
@@ -116,6 +117,7 @@ public class SourceApplicationService {
     public SourceResponse update(Long id, SourceCreateRequest request, Long actorId) {
         SourceEntity entity = getEntity(id);
         authorizationApplicationService.requirePermission(entity.getClanId(), actorId, SOURCE_UPDATE);
+        ensureMutableSource(entity);
         String before = sourceSnapshot(entity);
         applyRequest(entity, request);
         SourceEntity saved = sourceRepository.save(entity);
@@ -127,6 +129,7 @@ public class SourceApplicationService {
     public void delete(Long id, Long actorId) {
         SourceEntity entity = getEntity(id);
         authorizationApplicationService.requirePermission(entity.getClanId(), actorId, SOURCE_DELETE);
+        ensureMutableSource(entity);
         if (!sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(id).isEmpty()) {
             throw new BusinessException("SOURCE_HAS_BINDINGS", "资料来源已绑定业务对象，不能直接删除");
         }
@@ -142,6 +145,9 @@ public class SourceApplicationService {
         SourceEntity source = getEntity(request.sourceId());
         if (!source.getClanId().equals(clanId)) {
             throw new BusinessException("SOURCE_CLAN_MISMATCH", "source is not in clan");
+        }
+        if (!STATUS_OFFICIAL.equals(source.getVerificationStatus())) {
+            throw new BusinessException("SOURCE_NOT_OFFICIAL", "资料来源审核通过后才能绑定业务对象");
         }
         authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_BIND);
         if (sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetId(request.sourceId(), request.targetType(), request.targetId())) {
@@ -180,6 +186,12 @@ public class SourceApplicationService {
     private SourceEntity getEntity(Long id) {
         return sourceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "source not found"));
+    }
+
+    private void ensureMutableSource(SourceEntity entity) {
+        if (STATUS_OFFICIAL.equals(entity.getVerificationStatus())) {
+            throw new BusinessException("SOURCE_OFFICIAL_REVIEW_REQUIRED", "正式来源变更需先提交变更审核");
+        }
     }
 
     private void applyRequest(SourceEntity entity, SourceCreateRequest request) {
