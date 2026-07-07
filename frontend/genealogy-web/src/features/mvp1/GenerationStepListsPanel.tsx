@@ -4,12 +4,6 @@ import { Alert, Button, Empty, Input, Select, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
 
-const SCHEME_COLUMNS: Column<any>[] = [
-  { key: 'schemeName', title: '字辈方案' },
-  { key: 'branchId', title: '支派', render: row => row.branchName || row.branchId || '-' },
-  { key: 'status', title: '状态', render: row => statusText(row) }
-];
-
 const ITEM_COLUMNS: Column<any>[] = [
   { key: 'generationNo', title: '代次', render: row => row.generationNo ? `第${row.generationNo}世` : '-' },
   { key: 'word', title: '字辈', render: row => row.word || '-' }
@@ -76,6 +70,24 @@ export function GenerationStepListsPanel() {
   const [addingItem, setAddingItem] = useState(false);
 
   const editableSchemes = schemes.filter(isEditableScheme);
+  const schemeColumns: Column<any>[] = [
+    { key: 'schemeName', title: '字辈方案' },
+    { key: 'branchId', title: '支派', render: row => row.branchName || row.branchId || '-' },
+    { key: 'status', title: '状态', render: row => statusText(row) },
+    {
+      key: 'maintainWords',
+      title: '维护字辈',
+      render: row => isEditableScheme(row) ? (
+        <Button
+          size="small"
+          type={String(row.id) === selectedSchemeId ? 'primary' : 'default'}
+          onClick={() => selectSchemeForWords(row)}
+        >
+          维护字辈
+        </Button>
+      ) : '-'
+    }
+  ];
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -109,6 +121,18 @@ export function GenerationStepListsPanel() {
     const timer = window.setTimeout(() => void loadItems(selectedSchemeId), 0);
     return () => window.clearTimeout(timer);
   }, [itemHost, selectedSchemeId]);
+
+  function selectSchemeForWords(row: any) {
+    if (!isEditableScheme(row)) {
+      message.warning('仅草稿/已驳回字辈方案可维护字辈');
+      return;
+    }
+    setSelectedSchemeId(String(row.id));
+    setGenerationNo('1');
+    setWord('');
+    message.success(`已切换到“${row.schemeName || `方案#${row.id}`}”，请在下方维护字辈`);
+    window.setTimeout(() => itemHost?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+  }
 
   async function loadSchemes() {
     if (!clanId) return;
@@ -184,8 +208,8 @@ export function GenerationStepListsPanel() {
         <h4>该宗族下已有字辈方案</h4>
         <Button size="small" loading={loadingSchemes} onClick={() => void loadSchemes()}>刷新</Button>
       </div>
-      <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先创建草稿方案并追加明细，再在本列表勾选草稿/已驳回方案批量提交审批。" style={{ marginBottom: 10 }} />
-      {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : <DataTable data={schemes} empty="暂无字辈方案，创建后会显示在这里" columns={SCHEME_COLUMNS} />}
+      <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先创建草稿方案，再从列表点击“维护字辈”追加明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
+      {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : <DataTable data={schemes} empty="暂无字辈方案，创建后会显示在这里" columns={schemeColumns} />}
     </section>,
     schemeHost
   ) : null;
@@ -221,7 +245,7 @@ export function GenerationStepListsPanel() {
         <h4>字辈明细查询列表</h4>
         <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
       </div>
-      <Typography.Paragraph type="secondary">请选择草稿/已驳回字辈方案后维护明细；已通过方案属于正式数据，不能在本流程直接追加字辈。</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">请选择草稿/已驳回字辈方案后维护明细；也可以直接从上方方案列表点击“维护字辈”进入。</Typography.Paragraph>
       {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择待编辑字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
     </section>,
     itemHost
