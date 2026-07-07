@@ -144,9 +144,7 @@ export function StepDraftReviewPanel() {
 
   async function loadObjects(sourceConfig = config) {
     if (!sourceConfig) return;
-    if (!clanId) {
-      return;
-    }
+    if (!clanId) return;
     const seq = ++requestSeq.current;
     const path = sourceConfig.loadPath({ clanId, personId });
     if (!path) {
