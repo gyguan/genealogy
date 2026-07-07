@@ -190,7 +190,9 @@ public class SourceApplicationService {
         entity.setVolumeNo(request.volumeNo());
         entity.setPageNo(request.pageNo());
         entity.setExcerpt(request.excerpt());
-        entity.setVerificationStatus(request.verificationStatus() == null ? STATUS_DRAFT : request.verificationStatus());
+        if (entity.getVerificationStatus() == null || entity.getVerificationStatus().isBlank()) {
+            entity.setVerificationStatus(STATUS_DRAFT);
+        }
         entity.setDescription(request.description());
     }
 
