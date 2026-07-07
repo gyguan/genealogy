@@ -98,22 +98,29 @@ function currentStepPanelBody() {
   return bodies.length ? bodies[bodies.length - 1] : null;
 }
 
-function currentResultSignature() {
-  return Array.from(document.querySelectorAll<HTMLElement>('.mvp1-wizard-page .result-notice span'))
-    .map(item => item.textContent || '')
-    .join('|');
+function isSaveOrReviewButtonText(text: string) {
+  return /保存草稿|继续录入|保存关系草稿|保存来源草稿|保存并提交审核|批量提交审批/.test(text);
 }
 
 export function StepDraftReviewPanel() {
   const requestSeq = useRef(0);
+  const refreshTimers = useRef<number[]>([]);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<StepConfig | null>(null);
   const [clanId, setClanId] = useState('');
   const [personId, setPersonId] = useState('');
-  const [resultSignature, setResultSignature] = useState('');
+  const [refreshToken, setRefreshToken] = useState(0);
   const [rows, setRows] = useState<any[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  function scheduleRefresh() {
+    refreshTimers.current.forEach(timer => window.clearTimeout(timer));
+    refreshTimers.current = [
+      window.setTimeout(() => setRefreshToken(Date.now()), 600),
+      window.setTimeout(() => setRefreshToken(Date.now()), 1400)
+    ];
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -123,10 +130,31 @@ export function StepDraftReviewPanel() {
       setContainer(nextConfig ? currentStepPanelBody() : null);
       setClanId(getWorkspaceValue('clanId'));
       setPersonId(getWorkspaceValue('personId'));
-      setResultSignature(currentResultSignature());
     }, 500);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const handler = () => scheduleRefresh();
+    window.addEventListener('genealogy:review-submitted', handler);
+    window.addEventListener('genealogy:object-changed', handler);
+    return () => {
+      window.removeEventListener('genealogy:review-submitted', handler);
+      window.removeEventListener('genealogy:object-changed', handler);
+      refreshTimers.current.forEach(timer => window.clearTimeout(timer));
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!container) return;
+    const handleClick = (event: MouseEvent) => {
+      const button = (event.target as HTMLElement | null)?.closest('button');
+      const text = button?.textContent?.trim() || '';
+      if (isSaveOrReviewButtonText(text)) scheduleRefresh();
+    };
+    container.addEventListener('click', handleClick, true);
+    return () => container.removeEventListener('click', handleClick, true);
+  }, [container]);
 
   useEffect(() => {
     setRows([]);
@@ -134,7 +162,7 @@ export function StepDraftReviewPanel() {
     if (!config || !clanId) return;
     const timer = window.setTimeout(() => void loadObjects(config), 0);
     return () => window.clearTimeout(timer);
-  }, [config?.targetType, clanId, personId, resultSignature]);
+  }, [config?.targetType, clanId, personId, refreshToken]);
 
   const warning = config?.warning?.({ clanId, personId }) || null;
 
