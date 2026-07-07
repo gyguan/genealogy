@@ -42,63 +42,82 @@ function generationSchemeName(detail: any) {
   return payload?.scheme?.schemeName || `字辈方案#${detail?.auditRecord?.targetId || ''}`;
 }
 
+function isGenerationSchemeDetail(detail: any) {
+  return detail?.auditRecord?.targetType === 'generation_scheme';
+}
+
 export function ReviewGenerationWordsPanel() {
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  const [taskId, setTaskId] = useState('');
-  const [detail, setDetail] = useState<any>(null);
+  const [clanId, setClanId] = useState('');
+  const [details, setDetails] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setContainer(reviewPanelBody());
-      setTaskId(getWorkspaceValue('reviewTaskId'));
+      setClanId(getWorkspaceValue('clanId'));
     }, 500);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    setDetail(null);
-    if (!container || !taskId) return;
-    const timer = window.setTimeout(() => void loadDetail(taskId), 0);
+    setDetails([]);
+    if (!container || !clanId) return;
+    const timer = window.setTimeout(() => void loadGenerationDetails(), 0);
     return () => window.clearTimeout(timer);
-  }, [container, taskId]);
+  }, [container, clanId]);
 
-  async function loadDetail(sourceTaskId: string) {
+  async function loadTaskDetail(taskId: string) {
+    return apiClient.get(`/review-tasks/${taskId}/detail`).catch(() => apiClient.get(`/review-tasks/${taskId}`));
+  }
+
+  async function loadGenerationDetails() {
     setLoading(true);
     try {
-      const data = await apiClient.get(`/review-tasks/${sourceTaskId}/detail`).catch(() => apiClient.get(`/review-tasks/${sourceTaskId}`));
-      setDetail(data);
+      const tasks = toRecordList<any>(await apiClient.get(`/clans/${clanId}/review-tasks/pending`));
+      const results = await Promise.allSettled(tasks.map(task => loadTaskDetail(String(task.id))));
+      setDetails(results
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
+        .map(result => result.value)
+        .filter(isGenerationSchemeDetail));
     } catch {
-      setDetail(null);
+      setDetails([]);
     } finally {
       setLoading(false);
     }
   }
 
-  const isGenerationSchemeTask = detail?.auditRecord?.targetType === 'generation_scheme';
-  const words = useMemo(() => isGenerationSchemeTask ? generationWordsFromDetail(detail) : [], [detail, isGenerationSchemeTask]);
+  const hasDetails = useMemo(() => details.length > 0, [details]);
 
-  if (!container || !taskId || (!loading && !isGenerationSchemeTask)) return null;
+  if (!container || (!loading && !hasDetails)) return null;
 
   return createPortal(
     <section className="review-generation-words-panel">
       <Typography.Title level={5}>字辈方案审核详情</Typography.Title>
       {loading ? <Spin size="small" /> : (
         <>
-          <Alert type="info" showIcon message={`当前审核方案：${generationSchemeName(detail)}`} style={{ marginBottom: 10 }} />
-          {!words.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该审核快照未包含字辈明细" /> : (
-            <Table<GenerationWord>
-              size="small"
-              rowKey={row => String(row.id || `${row.generationNo}-${row.word}`)}
-              pagination={false}
-              dataSource={words}
-              columns={[
-                { title: '代次', dataIndex: 'generationNo', key: 'generationNo', render: value => value ? `第${value}世` : '-' },
-                { title: '字辈', dataIndex: 'word', key: 'word', render: value => value || '-' },
-                { title: '说明', dataIndex: 'description', key: 'description', render: value => value || '-' }
-              ]}
-            />
-          )}
+          <Alert type="info" showIcon message="以下展示待审字辈方案的方案信息与字辈明细，便于审核人确认方案内容。" style={{ marginBottom: 10 }} />
+          {details.map(detail => {
+            const words = generationWordsFromDetail(detail);
+            return (
+              <section className="review-generation-words-card" key={`${detail?.auditRecord?.targetId}-${detail?.auditRecord?.id}`}>
+                <Typography.Text strong>{generationSchemeName(detail)}</Typography.Text>
+                {!words.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该审核快照未包含字辈明细" /> : (
+                  <Table<GenerationWord>
+                    size="small"
+                    rowKey={row => String(row.id || `${row.generationNo}-${row.word}`)}
+                    pagination={false}
+                    dataSource={words}
+                    columns={[
+                      { title: '代次', dataIndex: 'generationNo', key: 'generationNo', render: value => value ? `第${value}世` : '-' },
+                      { title: '字辈', dataIndex: 'word', key: 'word', render: value => value || '-' },
+                      { title: '说明', dataIndex: 'description', key: 'description', render: value => value || '-' }
+                    ]}
+                  />
+                )}
+              </section>
+            );
+          })}
         </>
       )}
     </section>,
