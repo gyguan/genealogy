@@ -299,7 +299,7 @@ export function ReviewObjectQueryPanel() {
         {types.includes('relationship') && !personId ? <Alert type="info" showIcon message="关系对象当前按中心人物加载。请先在建谱向导中选择中心人物，再查询关系对象。" /> : null}
         {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择查询条件后点击查询对象" /> : !items.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配对象" /> : (
           <>
-            <div className="review-object-query-result-actions">
+            <div className="batch-review-actions review-object-query-result-actions">
               <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
               <Button type="primary" disabled={!selectedItems.length} loading={submitting} onClick={submitSelected}>批量提交审批（{selectedItems.length}）</Button>
             </div>
