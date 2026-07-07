@@ -45,11 +45,17 @@ public final class RelationshipMapper {
     }
 
     public static RelationshipResponse toResponse(RelationshipEntity entity) {
+        return toResponse(entity, null, null);
+    }
+
+    public static RelationshipResponse toResponse(RelationshipEntity entity, String fromPersonName, String toPersonName) {
         return new RelationshipResponse(
                 entity.getId(),
                 entity.getClanId(),
                 entity.getFromPersonId(),
+                fromPersonName,
                 entity.getToPersonId(),
+                toPersonName,
                 entity.getRelationType(),
                 entity.getRelationLabel(),
                 entity.getRelationCategory(),
