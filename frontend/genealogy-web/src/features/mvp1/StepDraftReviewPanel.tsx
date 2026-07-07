@@ -13,6 +13,7 @@ type StepConfig = {
   resultTitle: string;
   loadPath: (ctx: { clanId: string; personId: string }) => string | null;
   columns: Column<any>[];
+  normalizeReviewColumns?: boolean;
   warning?: (ctx: { clanId: string; personId: string }) => string | null;
 };
 
@@ -37,10 +38,10 @@ const STEP_CONFIGS: StepConfig[] = [
     label: '关系',
     resultTitle: '当前中心人物已有关系',
     loadPath: ({ personId }) => personId ? `/persons/${personId}/relationships` : null,
+    normalizeReviewColumns: false,
     columns: [
-      { key: 'fromPersonId', title: '起点', render: row => row.fromPersonName || row.fromName || `人物#${row.fromPersonId}` },
-      { key: 'toPersonId', title: '终点', render: row => row.toPersonName || row.toName || `人物#${row.toPersonId}` },
-      { key: 'relationLabel', title: '关系', render: row => row.relationLabel || row.relationType || '-' },
+      { key: 'relationshipObjectName', title: '对象名', render: row => relationshipObjectName(row) },
+      { key: 'relationshipObjectRelation', title: '对象关系', render: row => relationshipObjectRelation(row) },
       { key: 'dataStatus', title: '状态', render: row => statusText(row) }
     ],
     warning: ({ personId }) => personId ? null : '关系按当前中心人物加载，请先选择中心人物。'
@@ -86,6 +87,24 @@ function getWorkspaceValue(key: string) {
   const runtimeValue = (window as any).__genealogyWorkspace?.[key];
   if (runtimeValue) return String(runtimeValue);
   return localStorage.getItem(`genealogy.workspace.${key}`) || '';
+}
+
+function relationshipObjectName(row: any) {
+  const centerPersonId = getWorkspaceValue('personId');
+  const centerIsFrom = String(row?.fromPersonId) === String(centerPersonId);
+  if (centerIsFrom) return row.toPersonName || row.toName || `人物#${row.toPersonId}`;
+  return row.fromPersonName || row.fromName || `人物#${row.fromPersonId}`;
+}
+
+function relationshipObjectRelation(row: any) {
+  const centerPersonId = getWorkspaceValue('personId');
+  const label = String(row?.relationLabel || row?.relationType || '').toLowerCase();
+  if (label === 'spouse' || row?.relationType === 'spouse') return '配偶';
+  const centerIsFrom = String(row?.fromPersonId) === String(centerPersonId);
+  if (centerIsFrom) return '子女';
+  if (label === 'father') return '父亲';
+  if (label === 'mother') return '母亲';
+  return '亲属';
 }
 
 function activeStepIndex() {
@@ -207,7 +226,7 @@ export function StepDraftReviewPanel() {
         {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         {warning ? <Alert type="info" showIcon message={warning} /> : null}
         {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
-          <DataTable data={rows} empty={`暂无${config.label}数据`} columns={config.columns} />
+          <DataTable data={rows} empty={`暂无${config.label}数据`} columns={config.columns} normalizeReviewColumns={config.normalizeReviewColumns !== false} />
         )}
       </Space>
     </section>,
