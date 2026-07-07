@@ -20,6 +20,7 @@ const REVIEW_TARGET_LABEL: Record<ReviewTargetType, string> = {
 };
 
 const REVIEW_STATUS_KEYS = new Set(['dataStatus', 'status', 'verificationStatus']);
+const REVIEW_ACTION_KEYS = new Set(['actions', 'maintainWords']);
 
 export function toRecordList<T = any>(data: any): T[] {
   if (Array.isArray(data)) return data;
@@ -82,13 +83,43 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
   return null;
 }
 
+function pendingReviewRow<T extends Record<string, any>>(row: T): T {
+  const next = { ...row } as T;
+  if ('dataStatus' in next) next.dataStatus = 'pending_review';
+  if ('status' in next) next.status = 'pending_review';
+  if ('verificationStatus' in next) next.verificationStatus = 'pending_review';
+  return next;
+}
+
+function reviewObjectName(row: Record<string, any>, targetType: ReviewTargetType, fallbackColumns: Column<any>[]) {
+  if (targetType === 'person') return row.name || `人物#${row.id}`;
+  if (targetType === 'branch') return row.branchName || `支派#${row.id}`;
+  if (targetType === 'source') return row.sourceName || `来源#${row.id}`;
+  if (targetType === 'generation_scheme') return row.schemeName || `字辈方案#${row.id}`;
+  if (targetType === 'relationship') {
+    const from = row.fromPersonName || row.fromName || (row.fromPersonId ? `人物#${row.fromPersonId}` : '起点');
+    const to = row.toPersonName || row.toName || (row.toPersonId ? `人物#${row.toPersonId}` : '终点');
+    const label = row.relationLabel || row.relationType || '关系';
+    return `${from} → ${to} · ${label}`;
+  }
+  const firstDisplayColumn = fallbackColumns.find(column => !REVIEW_STATUS_KEYS.has(column.key) && !REVIEW_ACTION_KEYS.has(column.key));
+  return firstDisplayColumn ? String(row[firstDisplayColumn.key] ?? '') : `对象#${row.id}`;
+}
+
+function isActionColumn(column: Column<any>) {
+  return REVIEW_ACTION_KEYS.has(column.key) || /操作|维护/.test(column.title || '');
+}
+
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
+  const [submittedRowKeys, setSubmittedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [deletingRowKey, setDeletingRowKey] = useState<Key | null>(null);
   const allRows = toRecordList<T>(data);
-  const rows = allRows.filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)));
+  const rows = allRows
+    .filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)))
+    .map((row, index) => submittedRowKeys.includes(rowKey(row, index)) || submittedRowKeys.includes(rowKey(row)) ? pendingReviewRow(row) : row);
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const selectableRowHandler = targetType === 'branch' ? undefined : onSelect;
@@ -115,9 +146,13 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       targetId: Number(row.id),
       comment: `${REVIEW_TARGET_LABEL[targetType]}批量提交审批`
     })));
-    const successCount = results.filter(result => result.status === 'fulfilled').length;
+    const successRows = selectedRows.filter((_row, index) => results[index]?.status === 'fulfilled');
+    const successCount = successRows.length;
     const failedCount = results.length - successCount;
-    if (successCount) message.success(`已提交 ${successCount} 条审批任务，请刷新列表查看最新状态`);
+    if (successCount) {
+      setSubmittedRowKeys(prev => Array.from(new Set([...prev, ...successRows.map(row => rowKey(row))])));
+      message.success(`已提交 ${successCount} 条审批任务，列表已自动更新为待审核状态`);
+    }
     if (failedCount) message.error(`${failedCount} 条提交失败，请刷新后重试`);
     setSelectedRowKeys([]);
     setSubmitting(false);
@@ -154,12 +189,27 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
   } : undefined;
 
-  const tableColumns = [
-    ...visibleColumns.map(column => ({
+  const tableColumns = targetType ? [
+    {
+      key: 'reviewObjectName',
+      title: '对象名',
+      ellipsis: true,
+      render: (_value: unknown, row: T) => reviewObjectName(row, targetType, visibleColumns)
+    },
+    {
+      key: 'reviewStatus',
+      title: '状态',
+      width: 120,
+      render: (_value: unknown, row: T) => {
+        const statusColumn = visibleColumns.find(column => REVIEW_STATUS_KEYS.has(column.key));
+        return statusColumn?.render ? statusColumn.render(row) : statusOf(row) || '-';
+      }
+    },
+    ...visibleColumns.filter(isActionColumn).map(column => ({
       key: column.key,
       dataIndex: column.key,
-      title: column.title,
-      ellipsis: true,
+      title: '操作',
+      width: 120,
       render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
     })),
     ...(targetType === 'branch' ? [{
@@ -180,6 +230,14 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         </Button>
       ) : '-'
     }] : [])
+  ] : [
+    ...visibleColumns.map(column => ({
+      key: column.key,
+      dataIndex: column.key,
+      title: column.title,
+      ellipsis: true,
+      render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
+    }))
   ];
 
   return (
