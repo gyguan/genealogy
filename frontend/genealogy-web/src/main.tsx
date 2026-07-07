@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
 import { GenerationStepListsPanel } from './features/mvp1/GenerationStepListsPanel';
+import { RelationshipStepPanel } from './features/mvp1/RelationshipStepPanel';
 import { ReviewGenerationWordsPanel } from './features/mvp1/ReviewGenerationWordsPanel';
 import { ReviewObjectQueryPanel } from './features/mvp1/ReviewObjectQueryPanel';
 import { StepDraftReviewPanel } from './features/mvp1/StepDraftReviewPanel';
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       React.createElement(ReviewObjectQueryPanel),
       React.createElement(StepDraftReviewPanel),
       React.createElement(GenerationStepListsPanel),
+      React.createElement(RelationshipStepPanel),
       React.createElement(ReviewGenerationWordsPanel)
     )
   )
