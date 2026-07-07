@@ -4,7 +4,7 @@ import { Alert, Button, Checkbox, Empty, List, Space, Tag, Typography, message }
 import { apiClient } from '../../shared/api/client';
 import { toRecordList } from '../../shared/ui/DataTable';
 
-type StepReviewTargetType = 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
+type StepReviewTargetType = 'person' | 'relationship' | 'source' | 'generation_scheme';
 
 type StepConfig = {
   stepIndex: number;
@@ -24,13 +24,6 @@ type DraftItem = {
 };
 
 const STEP_CONFIGS: StepConfig[] = [
-  {
-    stepIndex: 2,
-    targetType: 'branch',
-    label: '支派',
-    loadPath: ({ clanId }) => clanId ? `/clans/${clanId}/branches` : null,
-    titleOf: row => row.branchName || `支派#${row.id}`
-  },
   {
     stepIndex: 3,
     targetType: 'generation_scheme',
