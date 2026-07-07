@@ -149,6 +149,7 @@ export function StepDraftReviewPanel() {
     }
     const path = config.loadPath({ clanId, personId });
     if (!path) {
+      setRows([]);
       setSearched(true);
       return;
     }
