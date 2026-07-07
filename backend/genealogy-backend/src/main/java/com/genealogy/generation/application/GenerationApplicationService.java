@@ -23,6 +23,8 @@ import java.util.Set;
 @Service
 public class GenerationApplicationService {
 
+    private static final String STATUS_DRAFT = "draft";
+
     private final GenSchemeRepository schemeRepository;
     private final GenWordRepository wordRepository;
     private final ClanRepository clanRepository;
@@ -55,7 +57,7 @@ public class GenerationApplicationService {
         entity.setIsDefault(Boolean.TRUE.equals(request.isDefault()));
         entity.setValidationEnabled(request.validationEnabled() == null || request.validationEnabled());
         entity.setStrictMode(Boolean.TRUE.equals(request.strictMode()));
-        entity.setStatus("active");
+        entity.setStatus(STATUS_DRAFT);
         entity.setCreatedAt(LocalDateTime.now());
         return toSchemeResponse(schemeRepository.save(entity));
     }
