@@ -35,9 +35,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       null,
       React.createElement(App),
       React.createElement(ReviewObjectQueryPanel),
+      React.createElement(RelationshipStepPanel),
       React.createElement(StepDraftReviewPanel),
       React.createElement(GenerationStepListsPanel),
-      React.createElement(RelationshipStepPanel),
       React.createElement(ReviewGenerationWordsPanel)
     )
   )
