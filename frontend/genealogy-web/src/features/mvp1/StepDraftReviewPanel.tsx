@@ -134,9 +134,6 @@ export function StepDraftReviewPanel() {
   useEffect(() => {
     setRows([]);
     setSearched(false);
-  }, [config?.targetType, clanId, personId]);
-
-  useEffect(() => {
     if (!config || !clanId) return;
     const timer = window.setTimeout(() => void loadObjects(), 0);
     return () => window.clearTimeout(timer);
