@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Checkbox, Empty, Space, Table, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
@@ -59,10 +59,6 @@ function workspaceClanId() {
   return localStorage.getItem('genealogy.workspace.clanId') || '';
 }
 
-function wizardBatchReviewEnabled() {
-  return Boolean(document.querySelector('.mvp1-wizard-page'));
-}
-
 function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>[]): ReviewTargetType | null {
   const keys = new Set(columns.map(column => column.key));
   const sample = rows[0] || {};
@@ -77,15 +73,9 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [wizardReviewEnabled, setWizardReviewEnabled] = useState(false);
   const rows = toRecordList<T>(data);
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
-
-  useEffect(() => {
-    setWizardReviewEnabled(wizardBatchReviewEnabled());
-  }, []);
-
-  const targetType = useMemo(() => wizardReviewEnabled ? inferReviewTargetType(columns, rows) : null, [wizardReviewEnabled, columns, rows]);
+  const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
