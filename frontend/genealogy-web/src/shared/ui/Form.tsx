@@ -1,8 +1,19 @@
-import { Children, isValidElement } from 'react';
+import { Children, cloneElement, isValidElement } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Button, Form, Input, Select, Space } from 'antd';
 
 type AnyProps = Record<string, any>;
+
+const REVIEW_SUBMIT_LABEL = '保存并提交审核';
+const REVIEW_DRAFT_LABEL = '保存草稿继续录入';
+const REVIEW_DRAFT_ALIASES = [
+  REVIEW_DRAFT_LABEL,
+  '保存草稿，继续录入',
+  '追加草稿',
+  '保存关系草稿',
+  '保存来源草稿',
+  '保存草稿'
+];
 
 function emitValue(originalOnChange: any, value: unknown) {
   if (typeof originalOnChange === 'function') originalOnChange({ target: { value } });
@@ -17,6 +28,40 @@ function optionSearchText(label: unknown) {
   if (typeof label === 'string' || typeof label === 'number') return String(label);
   if (Array.isArray(label)) return label.map(optionSearchText).join(' ');
   return String(label ?? '');
+}
+
+function nodeText(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node).trim();
+  if (Array.isArray(node)) return node.map(nodeText).join('').trim();
+  if (isValidElement<AnyProps>(node)) return nodeText(node.props.children);
+  return '';
+}
+
+function buttonText(node: ReactNode) {
+  if (!isValidElement<AnyProps>(node) || node.type !== 'button') return '';
+  return nodeText(node.props.children);
+}
+
+function cloneButtonLabel(node: ReactNode, label: string, primary = false): ReactNode {
+  if (!isValidElement<AnyProps>(node) || node.type !== 'button') return node;
+  const { className = '', ...props } = node.props;
+  const nextClassName = primary
+    ? String(className).split(/\s+/).filter(item => item && !['secondary', 'ghost', 'danger'].includes(item)).join(' ')
+    : className;
+  return cloneElement(node as ReactElement<AnyProps>, { ...props, className: nextClassName, children: label });
+}
+
+function normalizeReviewActions(children: ReactNode) {
+  const items = Children.toArray(children);
+  const submit = items.find(item => buttonText(item) === REVIEW_SUBMIT_LABEL);
+  if (!submit) return items;
+
+  const draft = REVIEW_DRAFT_ALIASES
+    .map(label => items.find(item => buttonText(item) === label))
+    .find(Boolean);
+  if (!draft) return items;
+
+  return [cloneButtonLabel(draft, REVIEW_DRAFT_LABEL, true), submit];
 }
 
 function toAntdControl(child: ReactNode): ReactNode {
@@ -71,5 +116,5 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
 }
 
 export function Actions({ children }: { children: ReactNode }) {
-  return <Space className="actions antd-actions" wrap>{Children.map(children, toAntdAction)}</Space>;
+  return <Space className="actions antd-actions" wrap>{normalizeReviewActions(children).map(toAntdAction)}</Space>;
 }
