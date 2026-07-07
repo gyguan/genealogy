@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { Key, ReactNode } from 'react';
 import { Button, Checkbox, Empty, Space, Table, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
 
@@ -71,7 +71,7 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
 }
 
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const rows = toRecordList<T>(data);
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
@@ -111,7 +111,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     selectedRowKeys: effectiveSelectedKeys,
     columnTitle: '勾选',
     getCheckboxProps: (row: T) => ({ disabled: !isReviewable(row), title: isReviewable(row) ? '可提交审批' : '仅草稿/已驳回版本可提交审批' }),
-    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
+    onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
   } : undefined;
 
   return (
