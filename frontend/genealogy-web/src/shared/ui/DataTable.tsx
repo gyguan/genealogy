@@ -17,6 +17,7 @@ export function toRecordList<T = any>(data: any): T[] {
 }
 
 function isTechnicalColumn(column: Column<any>) {
+  if (column.render) return false;
   const key = column.key || '';
   const title = column.title || '';
   return key === 'id'
