@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Alert, Button, Empty, Space, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
@@ -111,6 +111,7 @@ function currentStepPanelBody() {
 }
 
 export function StepDraftReviewPanel() {
+  const requestSeq = useRef(0);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [config, setConfig] = useState<StepConfig | null>(null);
   const [clanId, setClanId] = useState('');
@@ -147,6 +148,7 @@ export function StepDraftReviewPanel() {
       message.warning('请先选择宗族');
       return;
     }
+    const seq = ++requestSeq.current;
     const path = config.loadPath({ clanId, personId });
     if (!path) {
       setRows([]);
@@ -157,11 +159,11 @@ export function StepDraftReviewPanel() {
     setSearched(true);
     try {
       const data = await apiClient.get(path);
-      setRows(toRows(data));
+      if (seq === requestSeq.current) setRows(toRows(data));
     } catch (error) {
-      message.error((error as Error).message || `查询${config.label}失败`);
+      if (seq === requestSeq.current) message.error((error as Error).message || `查询${config.label}失败`);
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   }
 
