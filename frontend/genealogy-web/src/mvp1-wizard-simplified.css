@@ -113,6 +113,31 @@
   background: #fff;
 }
 
+.wizard-inline-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.wizard-inline-list-header h4 {
+  margin-bottom: 0;
+}
+
+.wizard-generation-inline-list,
+.wizard-generation-detail-list {
+  margin-top: 16px;
+}
+
+.wizard-generation-inline-list .table-review-actions {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e8eef7;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
 .wizard-generation-section {
   margin-top: 14px;
   padding: 14px;
