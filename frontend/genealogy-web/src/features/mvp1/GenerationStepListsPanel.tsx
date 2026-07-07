@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Empty, Input, Modal, Select, Space, Typography, message } from 'antd';
 import { createPortal } from 'react-dom';
-import { Alert, Button, Empty, Input, Select, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
 
@@ -48,15 +48,10 @@ function generationSchemeHost() {
   return document.querySelector<HTMLElement>('.mvp1-wizard-page .wizard-generation-section:not(.wizard-generation-section--items)');
 }
 
-function generationItemHost() {
-  return document.querySelector<HTMLElement>('.mvp1-wizard-page .wizard-generation-section--items');
-}
-
 export function GenerationStepListsPanel() {
   const schemeRequestSeq = useRef(0);
   const itemRequestSeq = useRef(0);
   const [schemeHost, setSchemeHost] = useState<HTMLElement | null>(null);
-  const [itemHost, setItemHost] = useState<HTMLElement | null>(null);
   const [clanId, setClanId] = useState('');
   const [selectedSchemeId, setSelectedSchemeId] = useState('');
   const [generationNo, setGenerationNo] = useState('1');
@@ -68,8 +63,10 @@ export function GenerationStepListsPanel() {
   const [loadingSchemes, setLoadingSchemes] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
+  const [wordsModalOpen, setWordsModalOpen] = useState(false);
 
-  const editableSchemes = schemes.filter(isEditableScheme);
+  const selectedScheme = useMemo(() => schemes.find(scheme => String(scheme.id) === selectedSchemeId), [schemes, selectedSchemeId]);
+
   const schemeColumns: Column<any>[] = [
     { key: 'schemeName', title: '字辈方案' },
     { key: 'branchId', title: '支派', render: row => row.branchName || row.branchId || '-' },
@@ -80,8 +77,11 @@ export function GenerationStepListsPanel() {
       render: row => isEditableScheme(row) ? (
         <Button
           size="small"
-          type={String(row.id) === selectedSchemeId ? 'primary' : 'default'}
-          onClick={() => selectSchemeForWords(row)}
+          type={String(row.id) === selectedSchemeId && wordsModalOpen ? 'primary' : 'default'}
+          onClick={event => {
+            event.stopPropagation();
+            openWordsModal(row);
+          }}
         >
           维护字辈
         </Button>
@@ -93,11 +93,9 @@ export function GenerationStepListsPanel() {
     const timer = window.setInterval(() => {
       if (activeStepIndex() !== 3) {
         setSchemeHost(null);
-        setItemHost(null);
         return;
       }
       setSchemeHost(generationSchemeHost());
-      setItemHost(generationItemHost());
       setClanId(getWorkspaceValue('clanId'));
     }, 500);
     return () => window.clearInterval(timer);
@@ -109,6 +107,7 @@ export function GenerationStepListsPanel() {
     setSelectedSchemeId('');
     setSchemeSearched(false);
     setItemSearched(false);
+    setWordsModalOpen(false);
     if (!schemeHost || !clanId) return;
     const timer = window.setTimeout(() => void loadSchemes(), 0);
     return () => window.clearTimeout(timer);
@@ -117,12 +116,12 @@ export function GenerationStepListsPanel() {
   useEffect(() => {
     setItems([]);
     setItemSearched(false);
-    if (!itemHost || !selectedSchemeId) return;
+    if (!wordsModalOpen || !selectedSchemeId) return;
     const timer = window.setTimeout(() => void loadItems(selectedSchemeId), 0);
     return () => window.clearTimeout(timer);
-  }, [itemHost, selectedSchemeId]);
+  }, [wordsModalOpen, selectedSchemeId]);
 
-  function selectSchemeForWords(row: any) {
+  function openWordsModal(row: any) {
     if (!isEditableScheme(row)) {
       message.warning('仅草稿/已驳回字辈方案可维护字辈');
       return;
@@ -130,8 +129,7 @@ export function GenerationStepListsPanel() {
     setSelectedSchemeId(String(row.id));
     setGenerationNo('1');
     setWord('');
-    message.success(`已切换到“${row.schemeName || `方案#${row.id}`}”，请在下方维护字辈`);
-    window.setTimeout(() => itemHost?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    setWordsModalOpen(true);
   }
 
   async function loadSchemes() {
@@ -144,8 +142,6 @@ export function GenerationStepListsPanel() {
       const nextSchemes = toRecordList<any>(data);
       if (seq === schemeRequestSeq.current) {
         setSchemes(nextSchemes);
-        const nextEditableSchemes = nextSchemes.filter(isEditableScheme);
-        setSelectedSchemeId(prev => nextEditableSchemes.some(item => String(item.id) === prev) ? prev : nextEditableSchemes.length === 1 ? String(nextEditableSchemes[0].id) : '');
       }
     } catch (error) {
       if (seq === schemeRequestSeq.current) {
@@ -193,7 +189,7 @@ export function GenerationStepListsPanel() {
       await apiClient.post(`/generation-schemes/${selectedSchemeId}/items`, { generationNo: Number(generationNo), word: word.trim() });
       setWord('');
       setGenerationNo(String(Number(generationNo || '0') + 1));
-      message.success('字辈明细已追加；完善后请在上方方案列表勾选该方案并提交审批');
+      message.success('字辈明细已追加；完善后请在方案列表勾选该方案并提交审批');
       await loadItems(selectedSchemeId);
     } catch (error) {
       message.error((error as Error).message || '追加字辈明细失败');
@@ -208,48 +204,49 @@ export function GenerationStepListsPanel() {
         <h4>该宗族下已有字辈方案</h4>
         <Button size="small" loading={loadingSchemes} onClick={() => void loadSchemes()}>刷新</Button>
       </div>
-      <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先创建草稿方案，再从列表点击“维护字辈”追加明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
+      <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
       {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : <DataTable data={schemes} empty="暂无字辈方案，创建后会显示在这里" columns={schemeColumns} />}
     </section>,
     schemeHost
   ) : null;
 
-  const itemList = itemHost ? createPortal(
-    <section className="wizard-branch-list wizard-generation-detail-list">
-      <div className="wizard-generation-detail-form wizard-generation-word-grid">
-        <label className="wizard-inline-form-field">
-          <span>待编辑字辈方案 *</span>
-          <Select
-            showSearch
-            value={selectedSchemeId || undefined}
-            disabled={!clanId || !editableSchemes.length}
-            placeholder={editableSchemes.length ? '请选择草稿/已驳回方案' : '暂无可编辑方案，请先创建草稿'}
-            optionFilterProp="label"
-            options={editableSchemes.map(scheme => ({ value: String(scheme.id), label: `${scheme.schemeName || `方案#${scheme.id}`}（${statusText(scheme)}）` }))}
-            onChange={value => setSelectedSchemeId(value)}
-          />
-        </label>
-        <label className="wizard-inline-form-field">
-          <span>代次 *</span>
-          <Select value={generationNo} options={generationNoOptions()} onChange={value => setGenerationNo(value)} />
-        </label>
-        <label className="wizard-inline-form-field">
-          <span>字辈 *</span>
-          <Input value={word} onChange={event => setWord(event.target.value)} placeholder="例如：德" />
-        </label>
-      </div>
-      <div className="wizard-generation-detail-actions">
-        <Button type="primary" disabled={!selectedSchemeId} loading={addingItem} onClick={() => void addGenerationItem()}>追加字辈</Button>
-      </div>
-      <div className="wizard-inline-list-header">
-        <h4>字辈明细查询列表</h4>
-        <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
-      </div>
-      <Typography.Paragraph type="secondary">请选择草稿/已驳回字辈方案后维护明细；也可以直接从上方方案列表点击“维护字辈”进入。</Typography.Paragraph>
-      {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择待编辑字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
-    </section>,
-    itemHost
-  ) : null;
-
-  return <>{schemeList}{itemList}</>;
+  return <>
+    {schemeList}
+    <Modal
+      title="维护字辈"
+      open={wordsModalOpen}
+      width={760}
+      footer={null}
+      destroyOnClose
+      onCancel={() => setWordsModalOpen(false)}
+    >
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Alert
+          type="info"
+          showIcon
+          message={selectedScheme ? `当前维护方案：${selectedScheme.schemeName || `方案#${selectedScheme.id}`}（${statusText(selectedScheme)}）` : '请选择草稿/已驳回字辈方案'}
+        />
+        <div className="wizard-generation-detail-form wizard-generation-word-grid">
+          <label className="wizard-inline-form-field">
+            <span>代次 *</span>
+            <Select value={generationNo} options={generationNoOptions()} onChange={value => setGenerationNo(value)} />
+          </label>
+          <label className="wizard-inline-form-field">
+            <span>字辈 *</span>
+            <Input value={word} onChange={event => setWord(event.target.value)} placeholder="例如：德" />
+          </label>
+          <label className="wizard-inline-form-field wizard-generation-modal-action">
+            <span>&nbsp;</span>
+            <Button type="primary" disabled={!selectedSchemeId} loading={addingItem} onClick={() => void addGenerationItem()}>追加字辈</Button>
+          </label>
+        </div>
+        <div className="wizard-inline-list-header">
+          <h4>字辈明细查询列表</h4>
+          <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
+        </div>
+        <Typography.Paragraph type="secondary">字辈明细会随字辈方案整体提交审批；正式方案不可在此直接维护。</Typography.Paragraph>
+        {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先从方案列表点击维护字辈" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
+      </Space>
+    </Modal>
+  </>;
 }
