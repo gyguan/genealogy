@@ -14,7 +14,6 @@ public record SourceCreateRequest(
         String volumeNo,
         String pageNo,
         String excerpt,
-        String verificationStatus,
         String description
 ) {
 }
