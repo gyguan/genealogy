@@ -24,6 +24,7 @@ import java.util.Set;
 public class GenerationApplicationService {
 
     private static final String STATUS_DRAFT = "draft";
+    private static final String STATUS_OFFICIAL = "official";
 
     private final GenSchemeRepository schemeRepository;
     private final GenWordRepository wordRepository;
@@ -84,6 +85,7 @@ public class GenerationApplicationService {
     public List<GenItemResponse> replaceItems(Long schemeId, List<GenItemRequest> requests, Long actorId) {
         GenerationSchemeEntity scheme = getScheme(schemeId);
         authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), actorId, scheme.getBranchId());
+        ensureMutableScheme(scheme);
         validateItems(requests);
         wordRepository.deleteBySchemeId(schemeId);
         List<GenerationWordEntity> entities = requests.stream().map(request -> toWordEntity(schemeId, request)).toList();
@@ -99,6 +101,7 @@ public class GenerationApplicationService {
     public GenItemResponse addItem(Long schemeId, GenItemRequest request, Long actorId) {
         GenerationSchemeEntity scheme = getScheme(schemeId);
         authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), actorId, scheme.getBranchId());
+        ensureMutableScheme(scheme);
         if (wordRepository.existsBySchemeIdAndGenerationNo(schemeId, request.generationNo())) {
             throw new BusinessException("GENERATION_WORD_DUPLICATED", "该代次字辈已存在");
         }
@@ -121,6 +124,12 @@ public class GenerationApplicationService {
 
     private GenerationSchemeEntity getScheme(Long schemeId) {
         return schemeRepository.findById(schemeId).orElseThrow(() -> new BusinessException("GENERATION_SCHEME_NOT_FOUND", "字辈方案不存在"));
+    }
+
+    private void ensureMutableScheme(GenerationSchemeEntity scheme) {
+        if (STATUS_OFFICIAL.equals(scheme.getStatus())) {
+            throw new BusinessException("GENERATION_SCHEME_OFFICIAL_REVIEW_REQUIRED", "正式字辈方案变更需先提交变更审核");
+        }
     }
 
     private void validateItems(List<GenItemRequest> requests) {
