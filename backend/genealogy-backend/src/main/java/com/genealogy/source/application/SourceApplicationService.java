@@ -26,6 +26,7 @@ import java.util.List;
 @Service
 public class SourceApplicationService {
 
+    private static final String STATUS_DRAFT = "draft";
     private static final String SOURCE_VIEW = "source:view";
     private static final String SOURCE_CREATE = "source:create";
     private static final String SOURCE_UPDATE = "source:update";
@@ -189,7 +190,7 @@ public class SourceApplicationService {
         entity.setVolumeNo(request.volumeNo());
         entity.setPageNo(request.pageNo());
         entity.setExcerpt(request.excerpt());
-        entity.setVerificationStatus(request.verificationStatus() == null ? "unverified" : request.verificationStatus());
+        entity.setVerificationStatus(request.verificationStatus() == null ? STATUS_DRAFT : request.verificationStatus());
         entity.setDescription(request.description());
     }
 
