@@ -59,6 +59,10 @@ function isReviewable(row: Record<string, any>) {
   return ['draft', 'rejected'].includes(statusOf(row)) && Boolean(row.id);
 }
 
+function isDraft(row: Record<string, any>) {
+  return statusOf(row) === 'draft' && Boolean(row.id);
+}
+
 function workspaceClanId() {
   const runtimeValue = (window as any).__genealogyWorkspace?.clanId;
   if (runtimeValue) return String(runtimeValue);
@@ -80,10 +84,14 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
 
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const rows = toRecordList<T>(data);
+  const [deletingRowKey, setDeletingRowKey] = useState<Key | null>(null);
+  const allRows = toRecordList<T>(data);
+  const rows = allRows.filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)));
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
+  const selectableRowHandler = targetType === 'branch' ? undefined : onSelect;
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = targetType ? selectedRowKeys.filter(key => reviewableKeySet.has(String(key))) : [];
@@ -115,6 +123,28 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     setSubmitting(false);
   }
 
+  async function deleteBranchDraft(row: T) {
+    if (!isDraft(row)) {
+      message.warning('仅草稿支派可以删除');
+      return;
+    }
+    const branchName = row.branchName || `支派#${row.id}`;
+    const ok = window.confirm(`确认删除草稿支派“${branchName}”吗？删除后不可恢复。`);
+    if (!ok) return;
+    const key = rowKey(row);
+    setDeletingRowKey(key);
+    try {
+      await apiClient.delete(`/branches/${row.id}`);
+      setDeletedRowKeys(prev => [...prev, key]);
+      setSelectedRowKeys(prev => prev.filter(item => String(item) !== key));
+      message.success('草稿支派已删除');
+    } catch (error) {
+      message.error((error as Error).message || '删除草稿支派失败');
+    } finally {
+      setDeletingRowKey(null);
+    }
+  }
+
   const reviewRowSelection = targetType && reviewableRows.length ? {
     selectedRowKeys: effectiveSelectedKeys,
     columnTitle: '勾选',
@@ -123,9 +153,37 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
   } : undefined;
 
+  const tableColumns = [
+    ...visibleColumns.map(column => ({
+      key: column.key,
+      dataIndex: column.key,
+      title: column.title,
+      ellipsis: true,
+      render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
+    })),
+    ...(targetType === 'branch' ? [{
+      key: 'actions',
+      title: '操作',
+      width: 96,
+      render: (_value: unknown, row: T) => isDraft(row) ? (
+        <Button
+          size="small"
+          danger
+          loading={deletingRowKey === rowKey(row)}
+          onClick={event => {
+            event.stopPropagation();
+            void deleteBranchDraft(row);
+          }}
+        >
+          删除草稿
+        </Button>
+      ) : '-'
+    }] : [])
+  ];
+
   return (
     <div className="table-wrap antd-table-wrap">
-      {onSelect ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
+      {selectableRowHandler ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
       {targetType && reviewableRows.length ? (
         <Space className="table-review-actions" size={8} wrap>
           <Checkbox
@@ -149,17 +207,11 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         pagination={false}
         tableLayout="fixed"
         scroll={{ x: 'max-content' }}
-        columns={visibleColumns.map(column => ({
-          key: column.key,
-          dataIndex: column.key,
-          title: column.title,
-          ellipsis: true,
-          render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
-        }))}
+        columns={tableColumns}
         onRow={row => ({
-          onClick: () => onSelect?.(row),
-          className: onSelect ? 'clickable' : '',
-          title: onSelect ? '点击查看详情' : undefined
+          onClick: () => selectableRowHandler?.(row),
+          className: selectableRowHandler ? 'clickable' : '',
+          title: selectableRowHandler ? '点击查看详情' : undefined
         })}
       />
     </div>
