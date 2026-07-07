@@ -17,6 +17,10 @@
   position: static;
 }
 
+.mvp1-wizard-page .wizard-steps > button:nth-child(8) {
+  display: none;
+}
+
 .mvp1-wizard-page > :not(:first-child) {
   grid-column: 2;
   min-width: 0;
