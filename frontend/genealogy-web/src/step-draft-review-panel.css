@@ -1,3 +1,51 @@
+.relationship-step-host > .wizard-form-grid,
+.relationship-step-host > .antd-actions {
+  display: none !important;
+}
+
+.relationship-step-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.relationship-step-panel h5 {
+  margin: 0 0 4px;
+}
+
+.relationship-step-panel .ant-typography {
+  margin-bottom: 0;
+}
+
+.relationship-step-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.relationship-step-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(0,0,0,.88);
+  font-size: 14px;
+}
+
+.relationship-step-field > span {
+  font-weight: 500;
+}
+
+.relationship-step-field .ant-select {
+  width: 100%;
+}
+
+.relationship-step-field--wide {
+  grid-column: 1 / -1;
+}
+
 .batch-review-actions,
 .table-review-actions {
   display: flex;
@@ -41,4 +89,16 @@
 
 .step-draft-review-list .ant-list-item {
   padding: 10px 12px;
+}
+
+@media (max-width: 1100px) {
+  .relationship-step-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .relationship-step-form-grid {
+    grid-template-columns: 1fr;
+  }
 }
