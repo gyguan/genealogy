@@ -20,6 +20,7 @@ import java.util.List;
 public class BranchApplicationService {
 
     private static final String STATUS_DRAFT = "draft";
+    private static final String STATUS_OFFICIAL = "official";
     private static final String BRANCH_VIEW = "branch:view";
     private static final String BRANCH_CREATE = "branch:create";
     private static final String BRANCH_UPDATE = "branch:update";
@@ -98,6 +99,7 @@ public class BranchApplicationService {
     public void delete(Long id, Long actorId) {
         BranchEntity entity = getEntity(id);
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getId(), BRANCH_DELETE);
+        ensureMutableBranch(entity);
         if (branchRepository.existsByParentId(id)) {
             throw new BusinessException("BRANCH_HAS_CHILDREN", "支派下存在下级支派，不能删除");
         }
@@ -113,6 +115,7 @@ public class BranchApplicationService {
     public BranchResponse update(Long id, BranchUpdateRequest request, Long actorId) {
         BranchEntity entity = getEntity(id);
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getId(), BRANCH_UPDATE);
+        ensureMutableBranch(entity);
         if (request.parentId() != null) {
             authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, request.parentId(), BRANCH_UPDATE);
         }
@@ -141,6 +144,12 @@ public class BranchApplicationService {
 
     private BranchEntity getEntity(Long id) {
         return branchRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+    }
+
+    private void ensureMutableBranch(BranchEntity entity) {
+        if (STATUS_OFFICIAL.equals(entity.getStatus())) {
+            throw new BusinessException("BRANCH_OFFICIAL_REVIEW_REQUIRED", "正式支派变更需先提交变更审核");
+        }
     }
 
     private BranchEntity getParentBranch(Long clanId, Long parentId) {
