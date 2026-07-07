@@ -74,6 +74,10 @@ function personName(persons: any[], id: unknown) {
   return person?.name || `人物#${id}`;
 }
 
+function clanName(row: any) {
+  return row?.clanName || row?.surname || `宗族#${row?.id}`;
+}
+
 function getWorkspaceValue(key: string) {
   const runtimeValue = (window as any).__genealogyWorkspace?.[key];
   if (runtimeValue) return String(runtimeValue);
@@ -93,30 +97,42 @@ function reviewPanelBody() {
 
 export function ReviewObjectQueryPanel() {
   const [container, setContainer] = useState<HTMLElement | null>(null);
-  const [clanId, setClanId] = useState('');
+  const [workspaceClanId, setWorkspaceClanId] = useState('');
+  const [selectedClanId, setSelectedClanId] = useState('');
   const [personId, setPersonId] = useState('');
+  const [clans, setClans] = useState<any[]>([]);
   const [types, setTypes] = useState<ReviewTargetType[]>(DEFAULT_TYPES);
   const [statuses, setStatuses] = useState<ObjectStatus[]>(DEFAULT_STATUSES);
   const [items, setItems] = useState<ReviewTarget[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingClans, setLoadingClans] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       const nextContainer = reviewPanelBody();
+      const nextClanId = getWorkspaceValue('clanId');
       document.querySelectorAll<HTMLElement>(`.${REVIEW_HOST_CLASS}`).forEach(item => {
         if (item !== nextContainer) item.classList.remove(REVIEW_HOST_CLASS);
       });
       nextContainer?.classList.add(REVIEW_HOST_CLASS);
       setContainer(nextContainer);
-      setClanId(getWorkspaceValue('clanId'));
+      setWorkspaceClanId(nextClanId);
+      setSelectedClanId(prev => prev || nextClanId);
       setPersonId(getWorkspaceValue('personId'));
     }, 500);
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (!container) return;
+    const timer = window.setTimeout(() => void loadClans(), 0);
+    return () => window.clearTimeout(timer);
+  }, [container]);
+
+  const clanOptions = useMemo(() => clans.map(clan => ({ value: String(clan.id), label: clanName(clan) })), [clans]);
   const reviewableItems = useMemo(() => items.filter(item => isReviewableStatus(item.status)), [items]);
   const reviewableKeySet = useMemo(() => new Set(reviewableItems.map(item => item.key)), [reviewableItems]);
   const effectiveSelectedKeys = selectedKeys.filter(key => reviewableKeySet.has(String(key)));
@@ -126,8 +142,21 @@ export function ReviewObjectQueryPanel() {
     return acc;
   }, {}), [items]);
 
+  async function loadClans() {
+    setLoadingClans(true);
+    try {
+      const data = toRecordList<any>(await apiClient.get('/clans'));
+      setClans(data);
+      setSelectedClanId(prev => prev || workspaceClanId || (data.length === 1 && data[0]?.id ? String(data[0].id) : ''));
+    } catch (error) {
+      message.error((error as Error).message || '查询宗族失败');
+    } finally {
+      setLoadingClans(false);
+    }
+  }
+
   async function queryObjects() {
-    if (!clanId) {
+    if (!selectedClanId) {
       message.warning('请先选择宗族');
       return;
     }
@@ -144,10 +173,10 @@ export function ReviewObjectQueryPanel() {
     setSelectedKeys([]);
     try {
       const [personsRes, branchesRes, sourcesRes, schemesRes] = await Promise.all([
-        apiClient.get(`/clans/${clanId}/persons`),
-        apiClient.get(`/clans/${clanId}/branches`),
-        apiClient.get(`/clans/${clanId}/sources`),
-        apiClient.get(`/clans/${clanId}/generation-schemes`)
+        apiClient.get(`/clans/${selectedClanId}/persons`),
+        apiClient.get(`/clans/${selectedClanId}/branches`),
+        apiClient.get(`/clans/${selectedClanId}/sources`),
+        apiClient.get(`/clans/${selectedClanId}/generation-schemes`)
       ]);
       const persons = toRecordList<any>(personsRes);
       const branches = toRecordList<any>(branchesRes);
@@ -183,7 +212,7 @@ export function ReviewObjectQueryPanel() {
   }
 
   async function submitSelected() {
-    if (!clanId) {
+    if (!selectedClanId) {
       message.warning('请先选择宗族');
       return;
     }
@@ -192,7 +221,7 @@ export function ReviewObjectQueryPanel() {
       return;
     }
     setSubmitting(true);
-    const results = await Promise.allSettled(selectedItems.map(item => apiClient.post(`/clans/${clanId}/review-tasks`, {
+    const results = await Promise.allSettled(selectedItems.map(item => apiClient.post(`/clans/${selectedClanId}/review-tasks`, {
       targetType: item.type,
       targetId: Number(item.id),
       comment: '批量提交审核'
@@ -209,11 +238,29 @@ export function ReviewObjectQueryPanel() {
 
   return createPortal(
     <div className="review-object-query-panel">
-      <Typography.Title level={5}>查询对象信息</Typography.Title>
-      <Typography.Paragraph type="secondary">按对象类型和对象状态查询对象；草稿/已驳回对象可在结果中勾选后批量提交审批。</Typography.Paragraph>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+      <section className="review-object-query-section review-object-query-search-section">
+        <div>
+          <Typography.Title level={5}>查询对象</Typography.Title>
+          <Typography.Paragraph type="secondary">按宗族、对象类型和对象状态查询对象。</Typography.Paragraph>
+        </div>
         <div className="review-object-query-filter">
+          <label className="review-object-query-field">
+            <span>宗族</span>
+            <Select
+              showSearch
+              loading={loadingClans}
+              value={selectedClanId || undefined}
+              options={clanOptions}
+              placeholder="请选择宗族"
+              optionFilterProp="label"
+              onChange={value => {
+                setSelectedClanId(value);
+                setSearched(false);
+                setItems([]);
+                setSelectedKeys([]);
+              }}
+            />
+          </label>
           <label className="review-object-query-field">
             <span>对象类型</span>
             <Select
@@ -238,13 +285,19 @@ export function ReviewObjectQueryPanel() {
           </label>
           <Button type="primary" loading={loading} onClick={queryObjects}>查询对象</Button>
         </div>
+      </section>
+
+      <section className="review-object-query-section review-object-query-result-section">
+        <div className="review-object-query-section-header">
+          <div>
+            <Typography.Title level={5}>查询结果列表</Typography.Title>
+            <Typography.Paragraph type="secondary">对象状态为草稿/已驳回时，可勾选后批量提交审批。</Typography.Paragraph>
+          </div>
+          {searched && items.length ? <Space size={8} wrap>{Object.entries(groupedCount).map(([key, count]) => <Tag key={key}>{TYPE_LABEL[key as ReviewTargetType]}：{count}</Tag>)}</Space> : null}
+        </div>
+        {!selectedClanId ? <Alert type="warning" showIcon message="请先在上方选择宗族" /> : null}
         {types.includes('relationship') && !personId ? <Alert type="info" showIcon message="关系对象当前按中心人物加载。请先在建谱向导中选择中心人物，再查询关系对象。" /> : null}
-        {searched && items.length ? (
-          <Space size={8} wrap>
-            {Object.entries(groupedCount).map(([key, count]) => <Tag key={key}>{TYPE_LABEL[key as ReviewTargetType]}：{count}</Tag>)}
-          </Space>
-        ) : null}
-        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择对象类型和对象状态后查询" /> : !items.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配对象" /> : (
+        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择查询条件后点击查询对象" /> : !items.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配对象" /> : (
           <>
             <div className="review-object-query-result-actions">
               <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
@@ -271,7 +324,7 @@ export function ReviewObjectQueryPanel() {
             />
           </>
         )}
-      </Space>
+      </section>
     </div>,
     container
   );
