@@ -85,8 +85,21 @@ function personGender(row: any) {
   return row.gender || row.sex || '';
 }
 
+function genderText(value: unknown) {
+  const text = String(value || '').toLowerCase();
+  if (text === 'male') return '男';
+  if (text === 'female') return '女';
+  if (text === 'unknown') return '未知';
+  return display(value);
+}
+
 function personGenerationNo(row: any) {
   return row.generationNo || row.generation || row.generationNumber || '';
+}
+
+function generationText(row: any) {
+  const no = personGenerationNo(row);
+  return no ? `第${no}世` : '-';
 }
 
 function personGenerationWord(row: any) {
@@ -101,6 +114,21 @@ function personStatus(row: any) {
   return row.dataStatus || row.status || row.verificationStatus || row.reviewStatus || '';
 }
 
+function statusText(row: any) {
+  const status = String(personStatus(row)).trim().toLowerCase();
+  const dict: Record<string, string> = {
+    draft: '草稿',
+    pending: '待审核',
+    pending_review: '待审核',
+    official: '正式',
+    active: '正式',
+    approved: '已通过',
+    rejected: '已驳回',
+    archived: '已归档'
+  };
+  return dict[status] || status || '-';
+}
+
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -112,12 +140,30 @@ function boolText(value: unknown) {
   return '-';
 }
 
+function livingText(value: unknown) {
+  if (value === true) return '在世';
+  if (value === false) return '已故';
+  return '未知';
+}
+
 function asString(value: unknown) {
   return value === null || value === undefined ? '' : String(value);
 }
 
 function asDate(value: unknown) {
   return asString(value).slice(0, 10);
+}
+
+function lifeText(row: any) {
+  const birth = asDate(row.birthDate);
+  const death = asDate(row.deathDate);
+  if (!birth && !death) return '-';
+  return `${birth || '?'} - ${death || row.isLiving === true ? '今' : '?'}`;
+}
+
+function spouseText(row: any) {
+  if (Array.isArray(row.spouseNames) && row.spouseNames.length) return row.spouseNames.join('、');
+  return row.spouseName || row.spouseNames || '-';
 }
 
 function clanLabel(clan: any) {
@@ -532,17 +578,20 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         <DataTable
           data={rows}
           empty="暂无人物记录，请先选择宗族并搜索，或调整筛选条件。"
+          normalizeReviewColumns={false}
           columns={[
-            { key: 'id', title: 'ID', render: row => row.id || row.personId },
-            { key: 'name', title: '姓名', render: row => personName(row) },
-            { key: 'genealogyName', title: '谱名' },
-            { key: 'courtesyName', title: '字号' },
-            { key: 'gender', title: '性别', render: row => personGender(row) },
+            { key: 'name', title: '姓名', render: row => display(personName(row)) },
+            { key: 'aliasName', title: '别名', render: row => display(row.aliasName) },
+            { key: 'gender', title: '性别', render: row => genderText(personGender(row)) },
+            { key: 'generationWord', title: '字辈', render: row => display(personGenerationWord(row)) },
+            { key: 'generationNo', title: '代次', render: row => generationText(row) },
             { key: 'branchName', title: '支派', render: row => branchText(row) },
-            { key: 'generationNo', title: '代次', render: row => personGenerationNo(row) },
-            { key: 'generationWord', title: '字辈', render: row => personGenerationWord(row) },
-            { key: 'privacyLevel', title: '隐私', render: row => privacyText(row.privacyLevel) },
-            { key: 'dataStatus', title: '状态', render: row => personStatus(row) },
+            { key: 'rankInFamily', title: '排行', render: row => display(row.rankInFamily) },
+            { key: 'life', title: '生卒', render: row => lifeText(row) },
+            { key: 'isLiving', title: '是否在世', render: row => livingText(row.isLiving) },
+            { key: 'education', title: '教育程度', render: row => display(row.education) },
+            { key: 'spouseName', title: '配偶', render: row => spouseText(row) },
+            { key: 'dataStatus', title: '状态', render: row => statusText(row) },
             { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button onClick={event => { event.stopPropagation(); void openDetail(row, 'view'); }}>查看</button><button className="secondary" onClick={event => { event.stopPropagation(); void openDetail(row, 'edit'); }}>编辑</button></div> }
           ]}
           onSelect={row => openDetail(row, 'view')}
@@ -561,7 +610,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                 <span className="archive-avatar">{String(selected.name || '谱').slice(0, 1)}</span>
                 <div>
                   <h2>{selected.name || selected.personName || `人物 #${selected.id}`}</h2>
-                  <p>{selected.gender || '未知'} · {selected.generationNo ? `${selected.generationNo}世` : '世次未维护'} · {selected.generationWord || '-'}字辈</p>
+                  <p>{genderText(selected.gender)} · {selected.generationNo ? `${selected.generationNo}世` : '世次未维护'} · {selected.generationWord || '-'}字辈</p>
                 </div>
               </div>
               <div className="archive-drawer-actions">
@@ -590,7 +639,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                       { label: '谱名', value: row => row.genealogyName },
                       { label: '字号', value: row => row.courtesyName },
                       { label: '排行', value: row => row.rankInFamily },
-                      { label: '生卒', value: row => `${row.birthDate || '?'} - ${row.deathDate || ''}` },
+                      { label: '生卒', value: row => lifeText(row) },
                       { label: '隐私级别', value: row => privacyText(row.privacyLevel) }
                     ]}
                   />
@@ -599,9 +648,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                     <div className="archive-view-grid">
                       <div><span>别名</span><strong>{display(selected.aliasName)}</strong></div>
                       <div><span>支派</span><strong>{branchText(selected)}</strong></div>
+                      <div><span>配偶</span><strong>{spouseText(selected)}</strong></div>
                       <div><span>出生日期</span><strong>{display(selected.birthDate)}</strong></div>
                       <div><span>逝世日期</span><strong>{display(selected.deathDate)}</strong></div>
-                      <div><span>是否在世</span><strong>{boolText(selected.isLiving)}</strong></div>
+                      <div><span>是否在世</span><strong>{livingText(selected.isLiving)}</strong></div>
                       <div><span>是否有后裔</span><strong>{boolText(selected.hasDescendant)}</strong></div>
                       <div><span>出生地</span><strong>{display(selected.birthPlace)}</strong></div>
                       <div><span>居住地</span><strong>{display(selected.residencePlace)}</strong></div>
@@ -610,7 +660,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                       <div><span>称号荣誉</span><strong>{display(selected.titleOrHonor)}</strong></div>
                       <div><span>墓葬地</span><strong>{display(selected.tombPlace)}</strong></div>
                       <div><span>世系状态</span><strong>{display(selected.lineageStatus)}</strong></div>
-                      <div><span>数据状态</span><strong>{display(selected.dataStatus)}</strong></div>
+                      <div><span>数据状态</span><strong>{statusText(selected)}</strong></div>
                     </div>
                   </section>
                   <section className="archive-drawer-section archive-event-section">
