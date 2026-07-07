@@ -7,7 +7,8 @@
   background: #f8fbff;
 }
 
-.step-draft-review-panel {
+.step-draft-review-panel,
+.step-object-result-panel {
   margin-top: 16px;
   padding: 14px;
   border: 1px solid #e8eef7;
