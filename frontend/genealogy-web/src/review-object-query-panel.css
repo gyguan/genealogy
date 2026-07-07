@@ -7,22 +7,47 @@
 
 .review-object-query-panel {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .review-object-query-panel h5 {
   margin: 0;
 }
 
+.review-object-query-panel .ant-typography {
+  margin-bottom: 0;
+}
+
+.review-object-query-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.review-object-query-search-section {
+  background: #fafafa;
+}
+
+.review-object-query-result-section {
+  min-height: 240px;
+}
+
+.review-object-query-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .review-object-query-filter {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr) auto;
   align-items: end;
   gap: 12px;
-  padding: 12px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  background: #fafafa;
 }
 
 .review-object-query-field {
@@ -71,7 +96,13 @@
   background: #fff;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1120px) {
+  .review-object-query-filter {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
   .review-object-query-filter {
     grid-template-columns: 1fr;
   }
