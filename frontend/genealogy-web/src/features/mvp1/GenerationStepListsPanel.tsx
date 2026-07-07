@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Empty, Typography, message } from 'antd';
+import { Button, Empty, Input, Select, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
 
@@ -31,6 +31,14 @@ function statusText(row: any) {
   return dict[status] || status || '-';
 }
 
+function isOfficial(row: any) {
+  return statusOf(row) === 'official';
+}
+
+function generationNoOptions() {
+  return Array.from({ length: 60 }, (_, index) => ({ label: `第${index + 1}世`, value: String(index + 1) }));
+}
+
 function getWorkspaceValue(key: string) {
   const runtimeValue = (window as any).__genealogyWorkspace?.[key];
   if (runtimeValue) return String(runtimeValue);
@@ -50,25 +58,24 @@ function generationItemHost() {
   return document.querySelector<HTMLElement>('.mvp1-wizard-page .wizard-generation-section--items');
 }
 
-function currentSchemeId(host: HTMLElement | null) {
-  if (!host) return '';
-  const selects = Array.from(host.querySelectorAll<HTMLSelectElement>('select'));
-  return selects[2]?.value || '';
-}
-
 export function GenerationStepListsPanel() {
   const schemeRequestSeq = useRef(0);
   const itemRequestSeq = useRef(0);
   const [schemeHost, setSchemeHost] = useState<HTMLElement | null>(null);
   const [itemHost, setItemHost] = useState<HTMLElement | null>(null);
   const [clanId, setClanId] = useState('');
-  const [schemeId, setSchemeId] = useState('');
+  const [selectedSchemeId, setSelectedSchemeId] = useState('');
+  const [generationNo, setGenerationNo] = useState('1');
+  const [word, setWord] = useState('');
   const [schemes, setSchemes] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [schemeSearched, setSchemeSearched] = useState(false);
   const [itemSearched, setItemSearched] = useState(false);
   const [loadingSchemes, setLoadingSchemes] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
+
+  const officialSchemes = schemes.filter(isOfficial);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -77,18 +84,19 @@ export function GenerationStepListsPanel() {
         setItemHost(null);
         return;
       }
-      const nextSchemeHost = generationSchemeHost();
-      setSchemeHost(nextSchemeHost);
+      setSchemeHost(generationSchemeHost());
       setItemHost(generationItemHost());
       setClanId(getWorkspaceValue('clanId'));
-      setSchemeId(currentSchemeId(nextSchemeHost));
     }, 500);
     return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
     setSchemes([]);
+    setItems([]);
+    setSelectedSchemeId('');
     setSchemeSearched(false);
+    setItemSearched(false);
     if (!schemeHost || !clanId) return;
     const timer = window.setTimeout(() => void loadSchemes(), 0);
     return () => window.clearTimeout(timer);
@@ -97,10 +105,10 @@ export function GenerationStepListsPanel() {
   useEffect(() => {
     setItems([]);
     setItemSearched(false);
-    if (!itemHost || !schemeId) return;
-    const timer = window.setTimeout(() => void loadItems(), 0);
+    if (!itemHost || !selectedSchemeId) return;
+    const timer = window.setTimeout(() => void loadItems(selectedSchemeId), 0);
     return () => window.clearTimeout(timer);
-  }, [itemHost, schemeId]);
+  }, [itemHost, selectedSchemeId]);
 
   async function loadSchemes() {
     if (!clanId) return;
@@ -109,7 +117,12 @@ export function GenerationStepListsPanel() {
     setSchemeSearched(true);
     try {
       const data = await apiClient.get(`/clans/${clanId}/generation-schemes`);
-      if (seq === schemeRequestSeq.current) setSchemes(toRecordList(data));
+      const nextSchemes = toRecordList<any>(data);
+      if (seq === schemeRequestSeq.current) {
+        setSchemes(nextSchemes);
+        const nextOfficialSchemes = nextSchemes.filter(isOfficial);
+        setSelectedSchemeId(prev => nextOfficialSchemes.some(item => String(item.id) === prev) ? prev : nextOfficialSchemes.length === 1 ? String(nextOfficialSchemes[0].id) : '');
+      }
     } catch (error) {
       if (seq === schemeRequestSeq.current) {
         setSchemes([]);
@@ -120,13 +133,13 @@ export function GenerationStepListsPanel() {
     }
   }
 
-  async function loadItems() {
-    if (!schemeId) return;
+  async function loadItems(sourceSchemeId = selectedSchemeId) {
+    if (!sourceSchemeId) return;
     const seq = ++itemRequestSeq.current;
     setLoadingItems(true);
     setItemSearched(true);
     try {
-      const data = await apiClient.get(`/generation-schemes/${schemeId}/items`);
+      const data = await apiClient.get(`/generation-schemes/${sourceSchemeId}/items`);
       if (seq === itemRequestSeq.current) setItems(toRecordList(data));
     } catch (error) {
       if (seq === itemRequestSeq.current) {
@@ -135,6 +148,33 @@ export function GenerationStepListsPanel() {
       }
     } finally {
       if (seq === itemRequestSeq.current) setLoadingItems(false);
+    }
+  }
+
+  async function addGenerationItem() {
+    if (!selectedSchemeId) {
+      message.warning('请先选择已审核通过的字辈方案');
+      return;
+    }
+    if (!generationNo) {
+      message.warning('请选择代次');
+      return;
+    }
+    if (!word.trim()) {
+      message.warning('请填写字辈');
+      return;
+    }
+    setAddingItem(true);
+    try {
+      await apiClient.post(`/generation-schemes/${selectedSchemeId}/items`, { generationNo: Number(generationNo), word: word.trim() });
+      setWord('');
+      setGenerationNo(String(Number(generationNo || '0') + 1));
+      message.success('字辈明细已追加');
+      await loadItems(selectedSchemeId);
+    } catch (error) {
+      message.error((error as Error).message || '追加字辈明细失败');
+    } finally {
+      setAddingItem(false);
     }
   }
 
@@ -151,12 +191,37 @@ export function GenerationStepListsPanel() {
 
   const itemList = itemHost ? createPortal(
     <section className="wizard-branch-list wizard-generation-detail-list">
+      <div className="wizard-generation-detail-form wizard-generation-word-grid">
+        <label className="wizard-inline-form-field">
+          <span>当前字辈方案 *</span>
+          <Select
+            showSearch
+            value={selectedSchemeId || undefined}
+            disabled={!clanId || !officialSchemes.length}
+            placeholder={officialSchemes.length ? '请选择已通过字辈方案' : '暂无已通过字辈方案'}
+            optionFilterProp="label"
+            options={officialSchemes.map(scheme => ({ value: String(scheme.id), label: scheme.schemeName || `方案#${scheme.id}` }))}
+            onChange={value => setSelectedSchemeId(value)}
+          />
+        </label>
+        <label className="wizard-inline-form-field">
+          <span>代次 *</span>
+          <Select value={generationNo} options={generationNoOptions()} onChange={value => setGenerationNo(value)} />
+        </label>
+        <label className="wizard-inline-form-field">
+          <span>字辈 *</span>
+          <Input value={word} onChange={event => setWord(event.target.value)} placeholder="例如：德" />
+        </label>
+      </div>
+      <div className="wizard-generation-detail-actions">
+        <Button type="primary" disabled={!selectedSchemeId} loading={addingItem} onClick={() => void addGenerationItem()}>追加字辈</Button>
+      </div>
       <div className="wizard-inline-list-header">
         <h4>字辈明细查询列表</h4>
-        <Button size="small" disabled={!schemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
+        <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
       </div>
-      <Typography.Paragraph type="secondary">请选择已审核通过的字辈方案后查看明细。</Typography.Paragraph>
-      {!schemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
+      <Typography.Paragraph type="secondary">请选择已审核通过的字辈方案后查看和维护明细。</Typography.Paragraph>
+      {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
     </section>,
     itemHost
   ) : null;
