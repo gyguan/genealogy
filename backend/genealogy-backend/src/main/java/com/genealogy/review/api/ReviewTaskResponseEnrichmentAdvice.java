@@ -60,7 +60,8 @@ public class ReviewTaskResponseEnrichmentAdvice implements ResponseBodyAdvice<Ob
 
     private Object enrich(Object data) {
         if (data instanceof CheckTaskResponse task) {
-            return taskMap(task, recordMap(Set.of(task.revisionId())));
+            Set<Long> revisionIds = task.revisionId() == null ? Set.of() : Set.of(task.revisionId());
+            return taskMap(task, recordMap(revisionIds));
         }
         if (data instanceof List<?> list && list.stream().anyMatch(CheckTaskResponse.class::isInstance)) {
             List<CheckTaskResponse> tasks = list.stream()
