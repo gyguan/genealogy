@@ -108,9 +108,10 @@ type DataTableProps<T extends Record<string, any>> = {
   empty?: string;
   onSelect?: (row: T) => void;
   normalizeReviewColumns?: boolean;
+  reviewTargetType?: ReviewTargetType;
 };
 
-export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true }: DataTableProps<T>) {
+export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true, reviewTargetType }: DataTableProps<T>) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -118,7 +119,8 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const allRows = toRecordList<T>(data);
   const rows = allRows.filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)));
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
-  const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
+  const inferredTargetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
+  const targetType = reviewTargetType || inferredTargetType;
   const selectableRowHandler = targetType === 'branch' ? undefined : onSelect;
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
