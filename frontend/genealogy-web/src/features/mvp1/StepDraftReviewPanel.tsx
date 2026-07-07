@@ -92,8 +92,8 @@ function getWorkspaceValue(key: string) {
 function relationshipObjectName(row: any) {
   const centerPersonId = getWorkspaceValue('personId');
   const centerIsFrom = String(row?.fromPersonId) === String(centerPersonId);
-  if (centerIsFrom) return row.toPersonName || row.toName || `人物#${row.toPersonId}`;
-  return row.fromPersonName || row.fromName || `人物#${row.fromPersonId}`;
+  if (centerIsFrom) return row.toPersonName || row.toName || row.toPerson?.name || `人物#${row.toPersonId}`;
+  return row.fromPersonName || row.fromName || row.fromPerson?.name || `人物#${row.fromPersonId}`;
 }
 
 function relationshipObjectRelation(row: any) {
@@ -119,6 +119,19 @@ function currentStepPanelBody() {
 
 function isSaveOrReviewButtonText(text: string) {
   return /保存草稿|继续录入|保存关系草稿|保存来源草稿|保存并提交审核|批量提交审批/.test(text);
+}
+
+function personNameMap(persons: any[]) {
+  return new Map(persons.map(person => [String(person.id), person.name || `人物#${person.id}`]));
+}
+
+function enrichRelationshipRows(rows: any[], persons: any[]) {
+  const names = personNameMap(persons);
+  return rows.map(row => ({
+    ...row,
+    fromPersonName: row.fromPersonName || row.fromName || names.get(String(row.fromPersonId)),
+    toPersonName: row.toPersonName || row.toName || names.get(String(row.toPersonId))
+  }));
 }
 
 export function StepDraftReviewPanel() {
@@ -199,7 +212,12 @@ export function StepDraftReviewPanel() {
     setSearched(true);
     try {
       const data = await apiClient.get(path);
-      if (seq === requestSeq.current) setRows(toRows(data));
+      let nextRows = toRows(data);
+      if (sourceConfig.targetType === 'relationship') {
+        const persons = toRows(await apiClient.get(`/clans/${clanId}/persons`));
+        nextRows = enrichRelationshipRows(nextRows, persons);
+      }
+      if (seq === requestSeq.current) setRows(nextRows);
     } catch (error) {
       if (seq === requestSeq.current) {
         setRows([]);
