@@ -25,9 +25,6 @@ public record BranchUpdateRequest(
         Long managerMemberId,
 
         @Size(max = 2000, message = "简介长度不能超过2000")
-        String description,
-
-        @Size(max = 32, message = "状态长度不能超过32")
-        String status
+        String description
 ) {
 }
