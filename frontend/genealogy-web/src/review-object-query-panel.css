@@ -1,0 +1,36 @@
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .wizard-form-grid,
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-field,
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-actions,
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-table-wrap {
+  display: none !important;
+}
+
+.review-object-query-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.review-object-query-panel h5 {
+  margin: 0;
+}
+
+.review-object-query-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.review-object-query-list {
+  max-height: 360px;
+  overflow: auto;
+  background: #fff;
+}
+
+.review-object-query-list .ant-list-item {
+  padding: 10px 12px;
+}
