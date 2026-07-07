@@ -65,6 +65,42 @@ function normalizeJsonBody(path: string, body: unknown) {
   return next;
 }
 
+function extractApiErrorMessage(payload: unknown, status: number) {
+  if (typeof payload === 'string') {
+    return normalizeApiErrorMessage(payload.trim()) || `HTTP ${status}`;
+  }
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+    const candidates = [
+      record.errorMessage,
+      record.message,
+      record.error,
+      record.detail,
+      record.code
+    ];
+    for (const item of candidates) {
+      const normalized = normalizeApiErrorMessage(String(item ?? '').trim());
+      if (normalized) return normalized;
+    }
+  }
+  return `HTTP ${status}`;
+}
+
+function normalizeApiErrorMessage(message: string) {
+  if (!message) return '';
+  const lower = message.toLowerCase();
+  if (lower.includes('same relationship already exists') || lower.includes('relationship_duplicated')) {
+    return '该关系已存在，请勿重复创建';
+  }
+  if (lower.includes('spouse relationship already exists') || lower.includes('relationship_spouse_duplicated')) {
+    return '配偶关系已存在，请勿重复创建';
+  }
+  if (lower.includes('biological parent relationship already exists') || lower.includes('relationship_parent_duplicated')) {
+    return '父母关系已存在，请勿重复创建';
+  }
+  return message;
+}
+
 export class ApiClient {
   private baseUrl: string;
   private token: string;
@@ -176,9 +212,8 @@ export class ApiClient {
     const res = await fetch(this.resolve(path), { ...init, headers });
     const type = res.headers.get('content-type') || '';
     const payload = type.includes('application/json') ? await res.json() : await res.text();
-    if (!res.ok || payload?.success === false) {
-      const err = payload as ApiError;
-      throw new Error(err.errorMessage || err.message || err.code || `HTTP ${res.status}`);
+    if (!res.ok || (payload && typeof payload === 'object' && (payload as Record<string, unknown>).success === false)) {
+      throw new Error(extractApiErrorMessage(payload, res.status));
     }
     return payload?.data ?? payload;
   }
