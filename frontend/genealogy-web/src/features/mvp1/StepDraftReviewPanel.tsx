@@ -161,7 +161,11 @@ export function StepDraftReviewPanel() {
       const data = await apiClient.get(path);
       if (seq === requestSeq.current) setRows(toRows(data));
     } catch (error) {
-      if (seq === requestSeq.current) message.error((error as Error).message || `查询${config.label}失败`);
+      if (seq === requestSeq.current) {
+        setRows([]);
+        setSearched(true);
+        message.error((error as Error).message || `查询${config.label}失败`);
+      }
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
