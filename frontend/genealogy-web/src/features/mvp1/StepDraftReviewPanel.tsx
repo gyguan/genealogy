@@ -137,7 +137,9 @@ export function StepDraftReviewPanel() {
   }, [config?.targetType, clanId, personId]);
 
   useEffect(() => {
-    if (config && clanId) void loadObjects();
+    if (!config || !clanId) return;
+    const timer = window.setTimeout(() => void loadObjects(), 0);
+    return () => window.clearTimeout(timer);
   }, [config?.targetType, clanId, personId]);
 
   const warning = config?.warning?.({ clanId, personId }) || null;
