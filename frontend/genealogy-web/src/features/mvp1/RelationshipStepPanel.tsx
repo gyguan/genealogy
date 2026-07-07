@@ -293,7 +293,6 @@ export function RelationshipStepPanel() {
         <Space wrap>
           <Button type="primary" loading={saving} disabled={!centerPersonId || !relativePersonId} onClick={() => void saveRelationship(false)}>保存关系草稿</Button>
           <Button loading={saving} disabled={!centerPersonId || !relativePersonId} onClick={() => void saveRelationship(true)}>保存并提交审核</Button>
-          <Button onClick={() => void loadPersons(clanId)} loading={loadingPersons} disabled={!clanId}>刷新人物</Button>
         </Space>
       </Space>
     </section>,
