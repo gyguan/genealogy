@@ -83,14 +83,6 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
   return null;
 }
 
-function pendingReviewRow<T extends Record<string, any>>(row: T): T {
-  const next = { ...row } as T;
-  if ('dataStatus' in next) next.dataStatus = 'pending_review';
-  if ('status' in next) next.status = 'pending_review';
-  if ('verificationStatus' in next) next.verificationStatus = 'pending_review';
-  return next;
-}
-
 function reviewObjectName(row: Record<string, any>, targetType: ReviewTargetType, fallbackColumns: Column<any>[]) {
   if (targetType === 'person') return row.name || `人物#${row.id}`;
   if (targetType === 'branch') return row.branchName || `支派#${row.id}`;
@@ -113,13 +105,10 @@ function isActionColumn(column: Column<any>) {
 export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect }: { data: any; columns: Column<T>[]; empty?: string; onSelect?: (row: T) => void }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
-  const [submittedRowKeys, setSubmittedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [deletingRowKey, setDeletingRowKey] = useState<Key | null>(null);
   const allRows = toRecordList<T>(data);
-  const rows = allRows
-    .filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)))
-    .map((row, index) => submittedRowKeys.includes(rowKey(row, index)) || submittedRowKeys.includes(rowKey(row)) ? pendingReviewRow(row) : row);
+  const rows = allRows.filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)));
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const selectableRowHandler = targetType === 'branch' ? undefined : onSelect;
@@ -146,12 +135,11 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       targetId: Number(row.id),
       comment: `${REVIEW_TARGET_LABEL[targetType]}批量提交审批`
     })));
-    const successRows = selectedRows.filter((_row, index) => results[index]?.status === 'fulfilled');
-    const successCount = successRows.length;
+    const successCount = results.filter(result => result.status === 'fulfilled').length;
     const failedCount = results.length - successCount;
     if (successCount) {
-      setSubmittedRowKeys(prev => Array.from(new Set([...prev, ...successRows.map(row => rowKey(row))])));
-      message.success(`已提交 ${successCount} 条审批任务，列表已自动更新为待审核状态`);
+      message.success(`已提交 ${successCount} 条审批任务，列表将自动刷新`);
+      window.dispatchEvent(new CustomEvent('genealogy:review-submitted', { detail: { targetType, successCount } }));
     }
     if (failedCount) message.error(`${failedCount} 条提交失败，请刷新后重试`);
     setSelectedRowKeys([]);
@@ -173,6 +161,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       setDeletedRowKeys(prev => [...prev, key]);
       setSelectedRowKeys(prev => prev.filter(item => String(item) !== key));
       message.success('草稿支派已删除');
+      window.dispatchEvent(new CustomEvent('genealogy:object-changed', { detail: { targetType: 'branch' } }));
     } catch (error) {
       message.error((error as Error).message || '删除草稿支派失败');
     } finally {
