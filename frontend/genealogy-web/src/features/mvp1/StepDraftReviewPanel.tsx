@@ -4,7 +4,7 @@ import { Alert, Button, Empty, Space, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column } from '../../shared/ui/DataTable';
 
-type StepReviewTargetType = 'person' | 'relationship' | 'source' | 'generation_scheme';
+type StepReviewTargetType = 'person' | 'relationship' | 'source';
 
 type StepConfig = {
   stepIndex: number;
@@ -17,18 +17,6 @@ type StepConfig = {
 };
 
 const STEP_CONFIGS: StepConfig[] = [
-  {
-    stepIndex: 3,
-    targetType: 'generation_scheme',
-    label: '字辈方案',
-    resultTitle: '该宗族下已有字辈方案',
-    loadPath: ({ clanId }) => clanId ? `/clans/${clanId}/generation-schemes` : null,
-    columns: [
-      { key: 'schemeName', title: '字辈方案' },
-      { key: 'branchId', title: '支派', render: row => row.branchName || row.branchId || '-' },
-      { key: 'status', title: '状态', render: row => statusText(row) }
-    ]
-  },
   {
     stepIndex: 4,
     targetType: 'person',
