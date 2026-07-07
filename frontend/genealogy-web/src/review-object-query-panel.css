@@ -1,7 +1,7 @@
-.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .wizard-form-grid,
-.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-field,
-.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-actions,
-.mvp1-wizard-page:has(.wizard-steps > button:nth-child(7).active) .panel:has(select option[value="generation-schemes"]) > .ant-card-body > .antd-table-wrap {
+.review-object-query-host > .wizard-form-grid,
+.review-object-query-host > .antd-field,
+.review-object-query-host > .antd-actions,
+.review-object-query-host > .antd-table-wrap {
   display: none !important;
 }
 
