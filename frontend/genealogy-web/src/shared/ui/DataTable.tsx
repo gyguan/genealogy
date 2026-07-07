@@ -59,6 +59,10 @@ function workspaceClanId() {
   return localStorage.getItem('genealogy.workspace.clanId') || '';
 }
 
+function wizardBatchReviewEnabled() {
+  return Boolean(document.querySelector('.mvp1-wizard-page'));
+}
+
 function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>[]): ReviewTargetType | null {
   const keys = new Set(columns.map(column => column.key));
   const sample = rows[0] || {};
@@ -75,7 +79,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const [submitting, setSubmitting] = useState(false);
   const rows = toRecordList<T>(data);
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
-  const targetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
+  const targetType = useMemo(() => wizardBatchReviewEnabled() ? inferReviewTargetType(columns, rows) : null, [columns, rows]);
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = selectedRowKeys.filter(key => reviewableKeySet.has(String(key)));
