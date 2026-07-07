@@ -17,7 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @ControllerAdvice(assignableTypes = RelationshipController.class)
@@ -56,7 +55,10 @@ public class RelationshipResponseEnrichmentAdvice implements ResponseBodyAdvice<
 
     private Object enrich(Object data) {
         if (data instanceof RelationshipResponse relationship) {
-            Map<Long, String> names = personNames(Set.of(relationship.fromPersonId(), relationship.toPersonId()));
+            Set<Long> personIds = new HashSet<>();
+            if (relationship.fromPersonId() != null) personIds.add(relationship.fromPersonId());
+            if (relationship.toPersonId() != null) personIds.add(relationship.toPersonId());
+            Map<Long, String> names = personNames(personIds);
             return enrichOne(relationship, names);
         }
         if (data instanceof List<?> list && list.stream().anyMatch(RelationshipResponse.class::isInstance)) {
