@@ -1,0 +1,58 @@
+/* MVP1 wizard person step layout.
+   Required fields are placed first. Related lookup fields stay adjacent. */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field {
+  order: 50;
+}
+
+/* 1. 适用宗族 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(1) {
+  order: 1;
+}
+
+/* 2. 所属支派 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(2) {
+  order: 2;
+}
+
+/* 3. 姓名 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(4) {
+  order: 3;
+}
+
+/* 4. 性别 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(8) {
+  order: 4;
+}
+
+/* 5. 字辈方案 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(3) {
+  order: 5;
+}
+
+/* 6. 字辈 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(9) {
+  order: 6;
+}
+
+/* 7. 代次 */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(10) {
+  order: 7;
+}
+
+/* Optional identity aliases. */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(5) {
+  order: 20;
+}
+
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(6) {
+  order: 21;
+}
+
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(7) {
+  order: 22;
+}
+
+/* Keep later optional profile fields after the core and related fields. */
+.mvp1-wizard-page:has(.wizard-steps > button:nth-child(4).active) .panel:has(select option[value="normal"]):has(select option[value="adopted_in"]) .wizard-form-grid > .antd-field:nth-child(n+11) {
+  order: 60;
+}
