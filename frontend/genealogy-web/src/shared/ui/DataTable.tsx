@@ -138,7 +138,6 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
         </Space>
       ) : null}
       <Table<T>
-        key={rows.map(row => rowKey(row)).join('|')}
         size="small"
         bordered={false}
         rowKey={rowKey}
