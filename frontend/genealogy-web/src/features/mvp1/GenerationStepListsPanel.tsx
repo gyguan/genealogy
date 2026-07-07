@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Empty, Input, Select, Typography, message } from 'antd';
+import { Alert, Button, Empty, Input, Select, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
 
@@ -31,8 +31,8 @@ function statusText(row: any) {
   return dict[status] || status || '-';
 }
 
-function isOfficial(row: any) {
-  return statusOf(row) === 'official';
+function isEditableScheme(row: any) {
+  return ['draft', 'rejected'].includes(statusOf(row));
 }
 
 function generationNoOptions() {
@@ -75,7 +75,7 @@ export function GenerationStepListsPanel() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
 
-  const officialSchemes = schemes.filter(isOfficial);
+  const editableSchemes = schemes.filter(isEditableScheme);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -120,8 +120,8 @@ export function GenerationStepListsPanel() {
       const nextSchemes = toRecordList<any>(data);
       if (seq === schemeRequestSeq.current) {
         setSchemes(nextSchemes);
-        const nextOfficialSchemes = nextSchemes.filter(isOfficial);
-        setSelectedSchemeId(prev => nextOfficialSchemes.some(item => String(item.id) === prev) ? prev : nextOfficialSchemes.length === 1 ? String(nextOfficialSchemes[0].id) : '');
+        const nextEditableSchemes = nextSchemes.filter(isEditableScheme);
+        setSelectedSchemeId(prev => nextEditableSchemes.some(item => String(item.id) === prev) ? prev : nextEditableSchemes.length === 1 ? String(nextEditableSchemes[0].id) : '');
       }
     } catch (error) {
       if (seq === schemeRequestSeq.current) {
@@ -153,7 +153,7 @@ export function GenerationStepListsPanel() {
 
   async function addGenerationItem() {
     if (!selectedSchemeId) {
-      message.warning('请先选择已审核通过的字辈方案');
+      message.warning('请先选择草稿/已驳回的字辈方案');
       return;
     }
     if (!generationNo) {
@@ -169,7 +169,7 @@ export function GenerationStepListsPanel() {
       await apiClient.post(`/generation-schemes/${selectedSchemeId}/items`, { generationNo: Number(generationNo), word: word.trim() });
       setWord('');
       setGenerationNo(String(Number(generationNo || '0') + 1));
-      message.success('字辈明细已追加');
+      message.success('字辈明细已追加；完善后请在上方方案列表勾选该方案并提交审批');
       await loadItems(selectedSchemeId);
     } catch (error) {
       message.error((error as Error).message || '追加字辈明细失败');
@@ -184,6 +184,7 @@ export function GenerationStepListsPanel() {
         <h4>该宗族下已有字辈方案</h4>
         <Button size="small" loading={loadingSchemes} onClick={() => void loadSchemes()}>刷新</Button>
       </div>
+      <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先创建草稿方案并追加明细，再在本列表勾选草稿/已驳回方案批量提交审批。" style={{ marginBottom: 10 }} />
       {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : <DataTable data={schemes} empty="暂无字辈方案，创建后会显示在这里" columns={SCHEME_COLUMNS} />}
     </section>,
     schemeHost
@@ -193,14 +194,14 @@ export function GenerationStepListsPanel() {
     <section className="wizard-branch-list wizard-generation-detail-list">
       <div className="wizard-generation-detail-form wizard-generation-word-grid">
         <label className="wizard-inline-form-field">
-          <span>当前字辈方案 *</span>
+          <span>待编辑字辈方案 *</span>
           <Select
             showSearch
             value={selectedSchemeId || undefined}
-            disabled={!clanId || !officialSchemes.length}
-            placeholder={officialSchemes.length ? '请选择已通过字辈方案' : '暂无已通过字辈方案'}
+            disabled={!clanId || !editableSchemes.length}
+            placeholder={editableSchemes.length ? '请选择草稿/已驳回方案' : '暂无可编辑方案，请先创建草稿'}
             optionFilterProp="label"
-            options={officialSchemes.map(scheme => ({ value: String(scheme.id), label: scheme.schemeName || `方案#${scheme.id}` }))}
+            options={editableSchemes.map(scheme => ({ value: String(scheme.id), label: `${scheme.schemeName || `方案#${scheme.id}`}（${statusText(scheme)}）` }))}
             onChange={value => setSelectedSchemeId(value)}
           />
         </label>
@@ -220,8 +221,8 @@ export function GenerationStepListsPanel() {
         <h4>字辈明细查询列表</h4>
         <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadItems()}>刷新</Button>
       </div>
-      <Typography.Paragraph type="secondary">请选择已审核通过的字辈方案后查看和维护明细。</Typography.Paragraph>
-      {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
+      <Typography.Paragraph type="secondary">请选择草稿/已驳回字辈方案后维护明细；已通过方案属于正式数据，不能在本流程直接追加字辈。</Typography.Paragraph>
+      {!selectedSchemeId ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择待编辑字辈方案" /> : !itemSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈明细" /> : <DataTable data={items} empty="暂无字辈明细，追加后会显示在这里" columns={ITEM_COLUMNS} />}
     </section>,
     itemHost
   ) : null;
