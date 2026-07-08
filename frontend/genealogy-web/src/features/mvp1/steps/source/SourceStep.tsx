@@ -5,30 +5,16 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { toRows } from '../../domain/normalize';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
+import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 import { loadSources as querySources, type SourceLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
-
-type RelationshipLike = {
-  id?: number | string;
-  fromPersonId?: number | string;
-  fromPersonName?: string;
-  fromName?: string;
-  toPersonId?: number | string;
-  toPersonName?: string;
-  toName?: string;
-  relationType?: string;
-  relationLabel?: string;
-  dataStatus?: string;
-  status?: string;
-};
 
 type Option = {
   value: string;
@@ -147,10 +133,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       setPersons(personRows);
       setSources(sourceRows);
       setSelectedSourceRowKeys([]);
-      const relationshipResults = await Promise.allSettled(personRows.filter(isOfficial).map(person => apiClient.get(`/persons/${person.id}/relationships`)));
+      const relationshipResults = await Promise.allSettled(personRows.filter(isOfficial).map(person => queryRelationships(person.id)));
       const relationshipRows = relationshipResults
         .filter(result => result.status === 'fulfilled')
-        .flatMap(result => toRows<RelationshipLike>((result as PromiseFulfilledResult<unknown>).value));
+        .flatMap(result => (result as PromiseFulfilledResult<RelationshipLike[]>).value);
       const uniqueRelationships = Array.from(new Map(relationshipRows.map(row => [String(row.id || `${row.fromPersonId}-${row.toPersonId}-${row.relationLabel}`), row])).values());
       setRelationships(uniqueRelationships);
     } finally {
