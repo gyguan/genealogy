@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
-import { createBranchApi, loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
+import { createBranchApi, deleteBranchApi, loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
@@ -179,7 +178,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     if (!row.id) return;
     setSubmitting(true);
     try {
-      await apiClient.delete(`/branches/${row.id}`);
+      await deleteBranchApi(row.id);
       toast({ message: '支派草稿已删除' });
       await loadBranches();
     } catch (error) {
