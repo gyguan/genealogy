@@ -18,6 +18,7 @@ import {
 } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonLike = {
@@ -29,20 +30,6 @@ type PersonLike = {
   dataStatus?: string;
   status?: string;
   branchId?: number | string;
-};
-
-type RelationshipLike = {
-  id?: number | string;
-  fromPersonId?: number | string;
-  fromPersonName?: string;
-  fromName?: string;
-  toPersonId?: number | string;
-  toPersonName?: string;
-  toName?: string;
-  relationType?: string;
-  relationLabel?: string;
-  dataStatus?: string;
-  status?: string;
 };
 
 type Props = {
@@ -138,8 +125,8 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingRelationships(true);
     try {
-      const data = await apiClient.get(`/persons/${sourcePersonId}/relationships`);
-      setRelationships(toRows<RelationshipLike>(data));
+      const rows = await queryRelationships(sourcePersonId);
+      setRelationships(rows);
       setSelectedRelationshipRowKeys([]);
     } catch (error) {
       setRelationships([]);
