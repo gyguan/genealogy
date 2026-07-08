@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
-import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
+import { createGenerationItemApi, createGenerationSchemeApi, loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type SchemeForm = {
@@ -184,7 +183,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
     setSavingScheme(true);
     try {
-      const data: any = await apiClient.post(`/clans/${workspace.clanId}/generation-schemes`, {
+      const data = await createGenerationSchemeApi(workspace.clanId, {
         branchId: schemeForm.branchId ? Number(schemeForm.branchId) : null,
         schemeName: schemeForm.schemeName.trim(),
         isDefault: true,
@@ -237,7 +236,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
     setAddingItem(true);
     try {
-      await apiClient.post(`/generation-schemes/${selectedSchemeId}/items`, {
+      await createGenerationItemApi(selectedSchemeId, {
         generationNo: Number(wordForm.generationNo),
         word: wordForm.word.trim()
       });
