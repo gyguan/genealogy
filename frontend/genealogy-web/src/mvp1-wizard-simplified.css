@@ -1,4 +1,4 @@
-/* Keep MVP1 wizard as the original left-right flow: left step navigation, right active step content. */
+/* MVP1 wizard layout: left step navigation, right active step content. */
 .mvp1-wizard-page {
   display: grid;
   grid-template-columns: 280px minmax(620px, 1fr);
@@ -15,10 +15,6 @@
 
 .mvp1-wizard-page > .panel:first-child .wizard-steps {
   position: static;
-}
-
-.mvp1-wizard-page .wizard-steps > button:nth-child(8) {
-  display: none;
 }
 
 .mvp1-wizard-page > :not(:first-child) {
@@ -52,64 +48,23 @@
   white-space: nowrap;
 }
 
-/* Simplified MVP1 wizard layout: selections live inside each step form; maintained-data lists and current-selection callouts are no longer shown. */
-.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body,
-.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body,
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body {
-  display: block;
-}
-
-.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::before,
-.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::before,
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::before,
-.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) > .ant-card-body::after,
-.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) > .ant-card-body::after,
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) > .ant-card-body::after {
-  display: none;
-  content: none;
-}
-
-.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid,
-.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .wizard-form-grid,
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .wizard-form-grid {
-  grid-column: auto;
-  grid-row: auto;
-  margin-bottom: 8px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .actions,
-.mvp1-wizard .panel:has(input[placeholder="例如：长沙支"]) .actions,
-.mvp1-wizard .panel:has(input[placeholder="例如：德"]) .actions {
-  grid-column: auto;
-  grid-row: auto;
-  justify-content: flex-start;
-  width: auto;
-  margin-top: 8px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.branch-step-host > .wizard-branch-list {
-  display: none !important;
+.branch-step-list-panel,
+.step-object-result-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #e8eef7;
+  border-radius: 12px;
+  background: #f8fbff;
 }
 
 .branch-step-list-panel {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
-  padding: 14px;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  background: #fff;
 }
 
-.branch-step-list-header {
+.branch-step-list-header,
+.step-draft-review-header,
+.wizard-inline-list-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -117,11 +72,23 @@
   flex-wrap: wrap;
 }
 
-.branch-step-list-header h5 {
+.branch-step-list-header h5,
+.step-draft-review-header h5,
+.wizard-inline-list-header h4 {
   margin: 0 0 4px;
 }
 
-.branch-step-list-header .ant-typography {
+.branch-step-list-header .ant-typography,
+.step-draft-review-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.wizard-inline-list-header {
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.wizard-inline-list-header h4 {
   margin-bottom: 0;
 }
 
@@ -138,32 +105,12 @@
   font-weight: 600;
 }
 
-.wizard-branch-list .table-wrap {
-  margin-top: 0;
-  max-height: 320px;
-  overflow: auto;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  background: #fff;
-}
-
-.wizard-inline-list-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.wizard-inline-list-header h4 {
-  margin-bottom: 0;
-}
-
 .wizard-generation-inline-list {
   margin-top: 16px;
 }
 
-.wizard-generation-section {
+.wizard-generation-section,
+.relationship-step-panel {
   margin-top: 14px;
   padding: 14px;
   border: 1px solid #f0f0f0;
@@ -175,11 +122,21 @@
   margin-top: 0;
 }
 
-.wizard-generation-section h4 {
+.wizard-generation-section h4,
+.relationship-step-panel h5 {
   margin: 0 0 12px;
   color: rgba(0,0,0,.88);
   font-size: 14px;
   font-weight: 600;
+}
+
+.relationship-step-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.relationship-step-panel .ant-typography {
+  margin-bottom: 0;
 }
 
 .wizard-generation-section .actions {
@@ -193,34 +150,14 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.wizard-generation-scheme-grid > .field:nth-child(3) {
-  display: none;
-}
-
-.wizard-generation-section:not(.wizard-generation-section--items) > .actions button:first-child {
-  font-size: 0;
-}
-
-.wizard-generation-section:not(.wizard-generation-section--items) > .actions button:first-child::after {
-  content: '保存草稿并继续录入';
-  font-size: 14px;
-}
-
-.wizard-generation-section:not(.wizard-generation-section--items) > .actions button.secondary {
-  display: none;
-}
-
-.wizard-generation-section--items {
-  display: none;
-}
-
 .wizard-generation-detail-form {
   display: grid;
   gap: 12px;
   margin-bottom: 10px;
 }
 
-.wizard-inline-form-field {
+.wizard-inline-form-field,
+.relationship-step-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -228,12 +165,33 @@
   font-size: 14px;
 }
 
-.wizard-inline-form-field > span {
+.wizard-inline-form-field > span,
+.relationship-step-field > span {
   font-weight: 500;
 }
 
 .wizard-generation-modal-action {
   justify-content: end;
+}
+
+.relationship-step-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.relationship-step-field .ant-select {
+  width: 100%;
+}
+
+.relationship-step-field--wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .relationship-step-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 980px) {
@@ -252,6 +210,12 @@
 
   .wizard-generation-scheme-grid,
   .wizard-generation-word-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .relationship-step-form-grid {
     grid-template-columns: 1fr;
   }
 }
