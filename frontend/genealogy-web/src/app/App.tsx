@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Tabs, Typography, theme } from 'antd';
+import { ConfigProvider, Layout, Menu, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
-import { BranchPage } from '../features/branches/BranchPage';
-import { ClanPage } from '../features/clans/ClanPage';
-import { GenerationPage } from '../features/generations/GenerationPage';
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
@@ -20,7 +17,6 @@ import {
   EditingWorkspaceProductPage,
   SourceLibraryProductPage
 } from '../features/experience/GenealogyExperiencePages';
-import { RelationshipPage } from '../features/relationships/RelationshipPage';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
@@ -33,26 +29,16 @@ const navItems = [
   ['treeProduct', '世系图谱', '按上溯祖先、中心人物、下延后代查看世系'],
   ['personArchive', '人物档案', '按姓名、字辈、性别、支派检索人物并查看档案'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
+  ['sourceAttachments', '来源附件', '管理来源资料附件上传、查看和维护'],
   ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
+  ['imports', '导入管理', '族谱数据导入任务、结果和异常处理'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
+  ['memberManage', '成员权限', '宗族成员、角色和权限配置'],
   ['auditTrace', '追踪中心', '操作日志、审核流和字段Diff完整追踪'],
-  ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
-  ['system', '基础数据管理', '宗族、权限、字辈、关系、导入、附件和日志']
+  ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
-type LegacyKey = 'clans' | 'memberManage' | 'branches' | 'generations' | 'relationships' | 'imports' | 'sourceAttachments' | 'logs';
-
-const legacyTabs: [LegacyKey, string][] = [
-  ['clans', '宗族'],
-  ['memberManage', '成员权限'],
-  ['branches', '支派'],
-  ['generations', '字辈'],
-  ['relationships', '关系'],
-  ['imports', '导入管理'],
-  ['sourceAttachments', '来源附件'],
-  ['logs', '日志']
-];
 
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
@@ -105,7 +91,6 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
-  const [legacyActive, setLegacyActive] = useState<LegacyKey>('clans');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(apiClient.getToken()));
 
@@ -145,21 +130,6 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
-  function renderLegacyPage() {
-    const props = { notify };
-    switch (legacyActive) {
-      case 'clans': return <ClanPage {...props} />;
-      case 'memberManage': return <MemberPage {...props} />;
-      case 'branches': return <BranchPage {...props} />;
-      case 'generations': return <GenerationPage {...props} />;
-      case 'relationships': return <RelationshipPage {...props} />;
-      case 'imports': return <ImportPage {...props} />;
-      case 'sourceAttachments': return <SourceAttachmentPage {...props} />;
-      case 'logs': return <LogPage {...props} />;
-      default: return null;
-    }
-  }
-
   function renderPage() {
     switch (active) {
       case 'home': return <StatisticsHomePage />;
@@ -167,19 +137,13 @@ function AppShell() {
       case 'treeProduct': return <LineageTreeProductPage notify={notify} />;
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
+      case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
       case 'editingWorkspace': return <EditingWorkspaceProductPage />;
+      case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
+      case 'memberManage': return <MemberPage notify={notify} />;
       case 'auditTrace': return <LogPage notify={notify} />;
       case 'culture': return <CultureProductPage />;
-      case 'system': return (
-        <div className="system-management">
-          <Tabs
-            activeKey={legacyActive}
-            onChange={key => setLegacyActive(key as LegacyKey)}
-            items={legacyTabs.map(([key, label]) => ({ key, label, children: key === legacyActive ? renderLegacyPage() : null }))}
-          />
-        </div>
-      );
       default: return null;
     }
   }
