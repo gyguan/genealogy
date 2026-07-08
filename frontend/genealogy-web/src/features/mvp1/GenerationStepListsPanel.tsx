@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Empty, Input, Modal, Select, Space, Typography, message } from 'antd';
+import type { Key } from 'react';
+import { Alert, Button, Empty, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { createPortal } from 'react-dom';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column, toRecordList } from '../../shared/ui/DataTable';
@@ -17,16 +18,31 @@ function statusText(row: any) {
   const status = statusOf(row);
   const dict: Record<string, string> = {
     draft: '草稿',
+    pending: '待审核',
     pending_review: '待审核',
     official: '已通过',
+    active: '已通过',
+    approved: '已通过',
     rejected: '已驳回',
     archived: '已归档'
   };
   return dict[status] || status || '-';
 }
 
+function statusColor(row: any) {
+  const status = statusOf(row);
+  if (['official', 'active', 'approved'].includes(status)) return 'success';
+  if (status === 'rejected') return 'error';
+  if (status === 'draft') return 'default';
+  return 'processing';
+}
+
 function isEditableScheme(row: any) {
   return ['draft', 'rejected'].includes(statusOf(row));
+}
+
+function schemeName(row: any) {
+  return row.schemeName || row.name || `方案#${row.id || '-'}`;
 }
 
 function generationNoOptions() {
@@ -54,6 +70,7 @@ export function GenerationStepListsPanel() {
   const [schemeHost, setSchemeHost] = useState<HTMLElement | null>(null);
   const [clanId, setClanId] = useState('');
   const [selectedSchemeId, setSelectedSchemeId] = useState('');
+  const [selectedSchemeRowKeys, setSelectedSchemeRowKeys] = useState<Key[]>([]);
   const [generationNo, setGenerationNo] = useState('1');
   const [word, setWord] = useState('');
   const [schemes, setSchemes] = useState<any[]>([]);
@@ -63,31 +80,14 @@ export function GenerationStepListsPanel() {
   const [loadingSchemes, setLoadingSchemes] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
+  const [submittingSchemes, setSubmittingSchemes] = useState(false);
   const [wordsModalOpen, setWordsModalOpen] = useState(false);
 
   const selectedScheme = useMemo(() => schemes.find(scheme => String(scheme.id) === selectedSchemeId), [schemes, selectedSchemeId]);
-
-  const schemeColumns: Column<any>[] = [
-    { key: 'schemeName', title: '字辈方案' },
-    { key: 'branchId', title: '支派', render: row => row.branchName || row.branchId || '-' },
-    { key: 'status', title: '状态', render: row => statusText(row) },
-    {
-      key: 'maintainWords',
-      title: '维护字辈',
-      render: row => isEditableScheme(row) ? (
-        <Button
-          size="small"
-          type={String(row.id) === selectedSchemeId && wordsModalOpen ? 'primary' : 'default'}
-          onClick={event => {
-            event.stopPropagation();
-            openWordsModal(row);
-          }}
-        >
-          维护字辈
-        </Button>
-      ) : '-'
-    }
-  ];
+  const selectedReviewableSchemes = useMemo(
+    () => schemes.filter(scheme => selectedSchemeRowKeys.includes(String(scheme.id)) && isEditableScheme(scheme)),
+    [schemes, selectedSchemeRowKeys]
+  );
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -105,6 +105,7 @@ export function GenerationStepListsPanel() {
     setSchemes([]);
     setItems([]);
     setSelectedSchemeId('');
+    setSelectedSchemeRowKeys([]);
     setSchemeSearched(false);
     setItemSearched(false);
     setWordsModalOpen(false);
@@ -142,6 +143,7 @@ export function GenerationStepListsPanel() {
       const nextSchemes = toRecordList<any>(data);
       if (seq === schemeRequestSeq.current) {
         setSchemes(nextSchemes);
+        setSelectedSchemeRowKeys([]);
       }
     } catch (error) {
       if (seq === schemeRequestSeq.current) {
@@ -168,6 +170,35 @@ export function GenerationStepListsPanel() {
       }
     } finally {
       if (seq === itemRequestSeq.current) setLoadingItems(false);
+    }
+  }
+
+  async function submitSelectedSchemes() {
+    if (!clanId || !selectedReviewableSchemes.length) return;
+    setSubmittingSchemes(true);
+    try {
+      const results = await Promise.allSettled(selectedReviewableSchemes.map(scheme => apiClient.post(`/clans/${clanId}/review-tasks`, { targetType: 'generation_scheme', targetId: Number(scheme.id), comment: '提交字辈方案审核' })));
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      if (successCount) message.success(`已提交 ${successCount} 个字辈方案审核`);
+      if (failedCount) message.error(`${failedCount} 个字辈方案提交失败`);
+      await loadSchemes();
+    } finally {
+      setSubmittingSchemes(false);
+    }
+  }
+
+  async function submitScheme(row: any) {
+    if (!clanId || !row?.id) return;
+    setSubmittingSchemes(true);
+    try {
+      await apiClient.post(`/clans/${clanId}/review-tasks`, { targetType: 'generation_scheme', targetId: Number(row.id), comment: '提交字辈方案审核' });
+      message.success('字辈方案已提交审核');
+      await loadSchemes();
+    } catch (error) {
+      message.error((error as Error).message || '提交字辈方案审核失败');
+    } finally {
+      setSubmittingSchemes(false);
     }
   }
 
@@ -202,10 +233,49 @@ export function GenerationStepListsPanel() {
     <section className="wizard-branch-list wizard-generation-inline-list">
       <div className="wizard-inline-list-header">
         <h4>该宗族下已有字辈方案</h4>
-        <Button size="small" loading={loadingSchemes} onClick={() => void loadSchemes()}>刷新</Button>
+        <Space wrap>
+          <Button type="primary" size="small" disabled={!selectedReviewableSchemes.length} loading={submittingSchemes} onClick={() => void submitSelectedSchemes()}>
+            批量提交审核（{selectedReviewableSchemes.length}）
+          </Button>
+          <Button size="small" loading={loadingSchemes} onClick={() => void loadSchemes()}>刷新</Button>
+        </Space>
       </div>
       <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
-      {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : <DataTable data={schemes} empty="暂无字辈方案，创建后会显示在这里" columns={schemeColumns} />}
+      {!schemeSearched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="正在加载字辈方案" /> : (
+        <Table<any>
+          size="small"
+          bordered
+          loading={loadingSchemes}
+          rowKey={row => String(row.id || '')}
+          dataSource={schemes}
+          pagination={false}
+          rowSelection={{
+            selectedRowKeys: selectedSchemeRowKeys,
+            columnTitle: '勾选',
+            columnWidth: 72,
+            onChange: keys => setSelectedSchemeRowKeys(keys),
+            getCheckboxProps: row => ({ disabled: !isEditableScheme(row) || !row.id })
+          }}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字辈方案，创建后会显示在这里" /> }}
+          columns={[
+            { key: 'schemeName', title: '字辈方案', render: (_value, row) => schemeName(row) },
+            { key: 'branchId', title: '支派', render: (_value, row) => row.branchName || row.branchId || '-' },
+            { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+            {
+              key: 'actions',
+              title: '操作',
+              width: 200,
+              render: (_value, row) => (
+                <Space size="small" wrap>
+                  {isEditableScheme(row) ? <Button size="small" onClick={() => openWordsModal(row)}>维护字辈</Button> : null}
+                  {isEditableScheme(row) ? <Button size="small" type="primary" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
+                  {!isEditableScheme(row) ? '-' : null}
+                </Space>
+              )
+            }
+          ]}
+        />
+      )}
     </section>,
     schemeHost
   ) : null;
