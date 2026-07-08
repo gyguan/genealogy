@@ -1,10 +1,40 @@
-import type { ReactNode } from 'react';
+import { BranchStep } from './steps/branch/BranchStep';
+import { ClanStep } from './steps/clan/ClanStep';
+import { GenerationStep } from './steps/generation/GenerationStep';
+import { PersonStep } from './steps/person/PersonStep';
+import { RelationshipStep } from './steps/relationship/RelationshipStep';
+import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
+import { SourceStep } from './steps/source/SourceStep';
+import { TreeStep } from './steps/tree/TreeStep';
 
-type StepRendererProps<TKey extends string = string> = {
-  activeStep: TKey;
-  renderStep: (step: TKey) => ReactNode;
+export type Mvp1StepKey = 'clan' | 'branch' | 'generation' | 'person' | 'relationship' | 'source' | 'review' | 'tree';
+
+type StepRendererProps = {
+  activeStep: Mvp1StepKey;
+  notify: (data: unknown, error?: boolean) => void;
+  onStepChange: (step: Mvp1StepKey) => void;
+  onSubmittedReview?: (taskId: string) => void;
 };
 
-export function StepRenderer<TKey extends string = string>({ activeStep, renderStep }: StepRendererProps<TKey>) {
-  return <>{renderStep(activeStep)}</>;
+export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedReview }: StepRendererProps) {
+  switch (activeStep) {
+    case 'clan':
+      return <ClanStep notify={notify} onCreated={() => onStepChange('branch')} />;
+    case 'branch':
+      return <BranchStep notify={notify} onSubmittedReview={onSubmittedReview} />;
+    case 'generation':
+      return <GenerationStep notify={notify} onSubmittedReview={onSubmittedReview} />;
+    case 'person':
+      return <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />;
+    case 'relationship':
+      return <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />;
+    case 'source':
+      return <SourceStep notify={notify} onSubmittedReview={onSubmittedReview} />;
+    case 'review':
+      return <ReviewProgressStep notify={notify} />;
+    case 'tree':
+      return <TreeStep notify={notify} />;
+    default:
+      return null;
+  }
 }
