@@ -7,7 +7,15 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { nullableString, toRows } from '../../domain/normalize';
 import { buildReviewTargetOptions, createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { statusColor, statusText } from '../../domain/status';
-import { loadReviewData as queryReviewData } from '../../services/reviewProgressService';
+import {
+  loadReviewData as queryReviewData,
+  type ReviewProgressBranchLike as BranchLike,
+  type ReviewProgressGenerationSchemeLike as GenerationSchemeLike,
+  type ReviewProgressPersonLike as PersonLike,
+  type ReviewProgressRelationshipLike as RelationshipLike,
+  type ReviewProgressSourceLike as SourceLike,
+  type ReviewProgressTaskLike as ReviewTaskLike
+} from '../../services/reviewProgressService';
 import { approveReview as approveReviewTask, submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
@@ -20,65 +28,6 @@ type ClanLike = {
   id?: number | string;
   clanName?: string;
   surname?: string;
-};
-
-type BranchLike = {
-  id?: number | string;
-  branchName?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type GenerationSchemeLike = {
-  id?: number | string;
-  schemeName?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type PersonLike = {
-  id?: number | string;
-  name?: string;
-  generationWord?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type RelationshipLike = {
-  id?: number | string;
-  fromPersonId?: number | string;
-  fromPersonName?: string;
-  fromName?: string;
-  toPersonId?: number | string;
-  toPersonName?: string;
-  toName?: string;
-  relationType?: string;
-  relationLabel?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type SourceLike = {
-  id?: number | string;
-  sourceName?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type ReviewTaskLike = {
-  id?: number | string;
-  title?: string;
-  targetType?: string;
-  targetId?: number | string;
-  status?: string;
-  reviewStatus?: string;
-  taskStatus?: string;
-  createdAt?: string;
 };
 
 type Props = {
