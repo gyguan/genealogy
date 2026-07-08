@@ -8,6 +8,7 @@ import { nullableString, toRows } from '../../domain/normalize';
 import { relationshipName } from '../../domain/relationship';
 import { createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
   targetType: ReviewTargetType;
@@ -225,9 +226,10 @@ export function ReviewProgressStep({ notify }: Props) {
     }
     setSubmitting(true);
     try {
-      const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const task: any = await submitReviewTask({
+        clanId: workspace.clanId,
         targetType: toApiReviewTargetType(reviewForm.targetType),
-        targetId: Number(targetId),
+        targetId,
         comment: nullableString(reviewForm.comment)
       });
       if (task?.id) workspace.setReviewTaskId(String(task.id));
