@@ -5,19 +5,13 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { nullableBoolean, nullableNumber, nullableString, toRows } from '../../domain/normalize';
+import { nullableBoolean, nullableNumber, nullableString } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-
-type BranchLike = {
-  id?: number | string;
-  branchName?: string;
-  dataStatus?: string;
-  status?: string;
-};
 
 type PersonForm = {
   branchId: string;
@@ -173,11 +167,10 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingOptions(true);
     try {
-      const [branchData, schemeRows] = await Promise.all([
-        apiClient.get(`/clans/${sourceClanId}/branches`).catch(() => []),
+      const [branchRows, schemeRows] = await Promise.all([
+        queryBranches(sourceClanId).catch(() => []),
         queryGenerationSchemes(sourceClanId).catch(() => [])
       ]);
-      const branchRows = toRows<BranchLike>(branchData);
       setBranches(branchRows);
       setSchemes(schemeRows);
       const nextBranchId = personForm.branchId || workspace.branchId || branchRows.filter(isOfficial)[0]?.id;
