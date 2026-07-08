@@ -5,18 +5,11 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-
-type BranchLike = {
-  id?: number | string;
-  branchName?: string;
-  dataStatus?: string;
-  status?: string;
-};
 
 type SchemeForm = {
   schemeName: string;
@@ -110,8 +103,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingBranches(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/branches`).catch(() => []);
-      const rows = toRows<BranchLike>(data);
+      const rows = await queryBranches(sourceClanId).catch(() => []);
       setBranches(rows);
       const nextBranchId = workspace.branchId && rows.some(branch => String(branch.id) === workspace.branchId)
         ? workspace.branchId
