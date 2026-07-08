@@ -8,7 +8,7 @@ import { nullableString, toRows } from '../../domain/normalize';
 import { relationshipName } from '../../domain/relationship';
 import { createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
-import { submitReviewTask } from '../../services/reviewTaskService';
+import { approveReview as approveReviewTask, submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
   targetType: ReviewTargetType;
@@ -250,7 +250,7 @@ export function ReviewProgressStep({ notify }: Props) {
     }
     setApproving(true);
     try {
-      await apiClient.post(`/review-tasks/${effectiveTaskId}/approve`, { comment: nullableString(reviewForm.comment) });
+      await approveReviewTask(effectiveTaskId, nullableString(reviewForm.comment));
       toast({ message: '审核已通过，相关对象现在可用于下一步关联。', id: effectiveTaskId });
       await loadReviewData();
     } catch (error) {
