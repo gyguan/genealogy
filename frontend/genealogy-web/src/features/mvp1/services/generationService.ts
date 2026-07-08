@@ -18,6 +18,19 @@ export type GenerationItemLike = {
   word?: string;
 };
 
+export type CreateGenerationSchemePayload = {
+  branchId?: number | null;
+  schemeName: string;
+  isDefault?: boolean;
+  validationEnabled?: boolean;
+  strictMode?: boolean;
+};
+
+export type CreateGenerationItemPayload = {
+  generationNo: number;
+  word: string;
+};
+
 export async function loadGenerationSchemes(clanId?: number | string): Promise<GenerationSchemeLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/generation-schemes`);
@@ -28,4 +41,12 @@ export async function loadGenerationItems(schemeId?: number | string): Promise<G
   if (!schemeId) return [];
   const data = await apiClient.get(`/generation-schemes/${schemeId}/items`);
   return toRows<GenerationItemLike>(data);
+}
+
+export async function createGenerationSchemeApi(clanId: number | string, payload: CreateGenerationSchemePayload): Promise<GenerationSchemeLike> {
+  return apiClient.post(`/clans/${clanId}/generation-schemes`, payload);
+}
+
+export async function createGenerationItemApi(schemeId: number | string, payload: CreateGenerationItemPayload): Promise<GenerationItemLike> {
+  return apiClient.post(`/generation-schemes/${schemeId}/items`, payload);
 }
