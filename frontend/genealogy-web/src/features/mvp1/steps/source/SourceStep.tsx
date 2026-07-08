@@ -151,15 +151,15 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setLoadingOptions(true);
     setLoadingSources(true);
     try {
-      const [branchData, personData, sourceData] = await Promise.all([
+      const [branchData, personData, sourceRows] = await Promise.all([
         apiClient.get(`/clans/${sourceClanId}/branches`).catch(() => []),
         apiClient.get(`/clans/${sourceClanId}/persons`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/sources`).catch(() => [])
+        querySources(sourceClanId).catch(() => [])
       ]);
       const personRows = toRows<PersonLike>(personData);
       setBranches(toRows<BranchLike>(branchData));
       setPersons(personRows);
-      setSources(toRows<SourceLike>(sourceData));
+      setSources(sourceRows);
       setSelectedSourceRowKeys([]);
       const relationshipResults = await Promise.allSettled(personRows.filter(isOfficial).map(person => apiClient.get(`/persons/${person.id}/relationships`)));
       const relationshipRows = relationshipResults
