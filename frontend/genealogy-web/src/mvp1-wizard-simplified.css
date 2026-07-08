@@ -95,6 +95,36 @@
   background: transparent;
 }
 
+.branch-step-host > .wizard-branch-list {
+  display: none !important;
+}
+
+.branch-step-list-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.branch-step-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.branch-step-list-header h5 {
+  margin: 0 0 4px;
+}
+
+.branch-step-list-header .ant-typography {
+  margin-bottom: 0;
+}
+
 .wizard-branch-list {
   margin-top: 18px;
   padding-top: 16px;
