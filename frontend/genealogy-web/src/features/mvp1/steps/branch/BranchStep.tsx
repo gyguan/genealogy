@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
+import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type BranchLike = {
   id?: number | string;
@@ -134,9 +135,10 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
       });
       setForm({ branchName: '', parentId: append ? form.parentId : '' });
       if (submit && data?.id) {
-        const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+        const task: any = await submitReviewTask({
+          clanId: workspace.clanId,
           targetType: 'branch',
-          targetId: Number(data.id),
+          targetId: data.id,
           comment: '提交支派审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
@@ -156,9 +158,10 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !row.id) return;
     setSubmitting(true);
     try {
-      const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const task: any = await submitReviewTask({
+        clanId: workspace.clanId,
         targetType: 'branch',
-        targetId: Number(row.id),
+        targetId: row.id,
         comment: '提交支派审核'
       });
       if (task?.id) onSubmittedReview?.(String(task.id));
@@ -175,13 +178,13 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !selectedReviewableRows.length) return;
     setSubmitting(true);
     try {
-      const results = await Promise.allSettled(selectedReviewableRows.map(row => apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const results = await submitReviewTasks(selectedReviewableRows.map(row => ({
+        clanId: workspace.clanId,
         targetType: 'branch',
-        targetId: Number(row.id),
+        targetId: row.id || '',
         comment: '提交支派审核'
       })));
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      const { successCount, failedCount } = countSettledResults(results);
       if (successCount) toast({ message: `已提交 ${successCount} 个支派审核` });
       if (failedCount) toast({ message: `${failedCount} 个支派提交失败` }, true);
       await loadBranches();
