@@ -8,6 +8,7 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { nullableBoolean, nullableNumber, nullableString, toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type BranchLike = {
@@ -30,16 +31,6 @@ type GenerationItemLike = {
   id?: number | string;
   generationNo?: number | string;
   word?: string;
-};
-
-type PersonLike = {
-  id?: number | string;
-  name?: string;
-  gender?: string;
-  generationNo?: number | string;
-  generationWord?: string;
-  dataStatus?: string;
-  status?: string;
 };
 
 type PersonForm = {
@@ -230,8 +221,8 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingPersons(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/persons`);
-      setPersons(toRows<PersonLike>(data));
+      const rows = await queryPersons(sourceClanId);
+      setPersons(rows);
       setSelectedPersonRowKeys([]);
     } catch (error) {
       setPersons([]);
