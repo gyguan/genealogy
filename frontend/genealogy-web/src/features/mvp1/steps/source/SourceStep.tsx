@@ -8,6 +8,7 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
 
@@ -261,9 +262,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       setSourceForm(prev => ({ ...prev, sourceName: '' }));
       if (data?.id) workspace.setSourceId(String(data.id));
       if (submit && data?.id) {
-        const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+        const task: any = await submitReviewTask({
+          clanId: workspace.clanId,
           targetType: 'source',
-          targetId: Number(data.id),
+          targetId: data.id,
           comment: '提交来源审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
@@ -313,9 +315,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !row.id) return;
     setSubmittingSources(true);
     try {
-      const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const task: any = await submitReviewTask({
+        clanId: workspace.clanId,
         targetType: 'source',
-        targetId: Number(row.id),
+        targetId: row.id,
         comment: '提交来源审核'
       });
       if (task?.id) onSubmittedReview?.(String(task.id));
@@ -332,13 +335,13 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !selectedReviewableSources.length) return;
     setSubmittingSources(true);
     try {
-      const results = await Promise.allSettled(selectedReviewableSources.map(source => apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const results = await submitReviewTasks(selectedReviewableSources.map(source => ({
+        clanId: workspace.clanId,
         targetType: 'source',
-        targetId: Number(source.id),
+        targetId: source.id || '',
         comment: '提交来源审核'
       })));
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      const { successCount, failedCount } = countSettledResults(results);
       if (successCount) toast({ message: `已提交 ${successCount} 个来源审核` });
       if (failedCount) toast({ message: `${failedCount} 个来源提交失败` }, true);
       await loadSources();
