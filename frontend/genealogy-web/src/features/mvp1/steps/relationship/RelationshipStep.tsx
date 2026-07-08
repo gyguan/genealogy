@@ -17,6 +17,7 @@ import {
   type RelationshipMode
 } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonLike = {
   id?: number | string;
@@ -217,9 +218,10 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
       const relationId = String(relation?.id || '');
       workspace.setRelationshipId(relationId);
       if (submit && relationId) {
-        const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+        const task: any = await submitReviewTask({
+          clanId: workspace.clanId,
           targetType: 'relationship',
-          targetId: Number(relationId),
+          targetId: relationId,
           comment: '提交关系审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
@@ -242,13 +244,13 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !selectedReviewableRelationships.length) return;
     setSubmittingRelationships(true);
     try {
-      const results = await Promise.allSettled(selectedReviewableRelationships.map(row => apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const results = await submitReviewTasks(selectedReviewableRelationships.map(row => ({
+        clanId: workspace.clanId,
         targetType: 'relationship',
-        targetId: Number(row.id),
+        targetId: row.id || '',
         comment: '提交关系审核'
       })));
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      const { successCount, failedCount } = countSettledResults(results);
       if (successCount) toast({ message: `已提交 ${successCount} 个关系审核` });
       if (failedCount) toast({ message: `${failedCount} 个关系提交失败` }, true);
       await loadRelationships(centerPersonId);
