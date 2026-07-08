@@ -345,7 +345,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
           dataSource={schemes}
           pagination={false}
           rowSelection={{
-            selectedSchemeRowKeys,
+            selectedRowKeys: selectedSchemeRowKeys,
             columnTitle: '勾选',
             columnWidth: 72,
             onChange: keys => setSelectedSchemeRowKeys(keys),
