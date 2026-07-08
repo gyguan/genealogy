@@ -13,8 +13,17 @@ export type BranchLike = {
   dataStatus?: string;
 };
 
+export type CreateBranchPayload = {
+  branchName: string;
+  parentId?: number | null;
+};
+
 export async function loadBranches(clanId?: number | string): Promise<BranchLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/branches`);
   return toRows<BranchLike>(data);
+}
+
+export async function createBranchApi(clanId: number | string, payload: CreateBranchPayload): Promise<BranchLike> {
+  return apiClient.post(`/clans/${clanId}/branches`, payload);
 }
