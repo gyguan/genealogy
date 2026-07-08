@@ -7,13 +7,8 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-
-type ClanLike = {
-  id?: number | string;
-  clanName?: string;
-  surname?: string;
-};
 
 type BranchLike = {
   id?: number | string;
@@ -116,8 +111,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
   async function loadClans() {
     setLoadingClans(true);
     try {
-      const data = await apiClient.get('/clans').catch(() => []);
-      const rows = toRows<ClanLike>(data);
+      const rows = await queryClans();
       setClans(rows);
       if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id));
     } finally {
