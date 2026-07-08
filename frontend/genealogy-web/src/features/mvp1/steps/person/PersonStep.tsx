@@ -5,6 +5,8 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { nullableBoolean, nullableNumber, nullableString, toRows } from '../../domain/normalize';
+import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 
 type ClanLike = {
   id?: number | string;
@@ -108,67 +110,6 @@ const defaultPersonForm: PersonForm = {
   privacyLevel: 'clan_only',
   dataStatus: 'draft'
 };
-
-function toRows<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
-
-function nullableString(value: string) {
-  const text = String(value ?? '').trim();
-  return text ? text : null;
-}
-
-function nullableNumber(value: string) {
-  const text = String(value ?? '').trim();
-  return text ? Number(text) : null;
-}
-
-function nullableBoolean(value: string) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return null;
-}
-
-function statusOf(row: any) {
-  return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
-}
-
-function isOfficial(row: any) {
-  const status = statusOf(row);
-  return !status || ['official', 'active', 'approved'].includes(status);
-}
-
-function isReviewable(row: any) {
-  return ['draft', 'rejected'].includes(statusOf(row));
-}
-
-function statusText(row: any) {
-  const status = statusOf(row);
-  const dict: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '已通过',
-    active: '已通过',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
-  };
-  return dict[status] || status || '-';
-}
-
-function statusColor(row: any) {
-  const status = statusOf(row);
-  if (['official', 'active', 'approved'].includes(status)) return 'success';
-  if (status === 'rejected') return 'error';
-  if (status === 'draft') return 'default';
-  return 'processing';
-}
 
 function genderText(value: unknown) {
   const text = String(value || '').toLowerCase();
