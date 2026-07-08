@@ -5,22 +5,10 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
+import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-
-type BranchLike = {
-  id?: number | string;
-  branchName?: string;
-  name?: string;
-  parentId?: number | string;
-  branchPath?: string;
-  level?: number | string;
-  sortOrder?: number | string;
-  status?: string;
-  dataStatus?: string;
-};
 
 type BranchForm = {
   branchName: string;
@@ -88,8 +76,8 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     }
     setLoading(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/branches`);
-      setBranches(toRows<BranchLike>(data));
+      const rows = await queryBranches(sourceClanId);
+      setBranches(rows);
       setSelectedRowKeys([]);
     } catch (error) {
       toast({ message: (error as Error).message || '查询支派失败' }, true);
@@ -258,8 +246,8 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'} /> }}
           onRow={row => ({ onClick: () => selectBranch(row) })}
           columns={[
-            { key: 'branchName', title: '支派名', render: (_value, row) => branchName(row) },
-            { key: 'parentName', title: '父支派', render: (_value, row) => parentName(row, branches) },
+            { key: 'name', title: '支派名称', render: (_value, row) => branchName(row) },
+            { key: 'parentId', title: '父支派', render: (_value, row) => parentName(row, branches) },
             { key: 'level', title: '层级', width: 88, render: (_value, row) => row.level ?? '-' },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row, '已通过')}</Tag> },
             {
