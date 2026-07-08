@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import {
@@ -18,7 +17,7 @@ import {
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
-import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
+import { createRelationshipApi, loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type Props = {
@@ -184,7 +183,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     }
     setSavingRelationship(true);
     try {
-      const relation: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, buildRelationshipBody(centerPerson, relative, mode));
+      const relation = await createRelationshipApi(workspace.clanId, buildRelationshipBody(centerPerson, relative, mode));
       const relationId = String(relation?.id || '');
       workspace.setRelationshipId(relationId);
       if (submit && relationId) {
