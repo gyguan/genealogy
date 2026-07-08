@@ -12,8 +12,14 @@ export type PersonLike = {
   branchId?: number | string;
 };
 
+export type CreatePersonPayload = Record<string, unknown>;
+
 export async function loadPersons(clanId?: number | string): Promise<PersonLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/persons`);
   return toRows<PersonLike>(data);
+}
+
+export async function createPersonApi(clanId: number | string, payload: CreatePersonPayload): Promise<PersonLike> {
+  return apiClient.post(`/clans/${clanId}/persons`, payload);
 }
