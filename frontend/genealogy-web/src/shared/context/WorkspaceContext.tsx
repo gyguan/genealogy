@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type WorkspaceState = {
@@ -19,38 +19,34 @@ export type WorkspaceState = {
   patch: (values: Partial<Pick<WorkspaceState, 'clanId' | 'branchId' | 'personId' | 'relationshipId' | 'sourceId' | 'attachmentId' | 'reviewTaskId'>>) => void;
 };
 
-declare global {
-  interface Window {
-    __genealogyWorkspace?: WorkspaceState;
-  }
-}
-
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
 
-function load(key: string) {
-  return localStorage.getItem(`genealogy.workspace.${key}`) || '';
+const CLAN_ID_STORAGE_KEY = 'genealogy.workspace.clanId';
+
+function loadClanId() {
+  return localStorage.getItem(CLAN_ID_STORAGE_KEY) || '';
 }
 
-function save(key: string, value: string) {
-  localStorage.setItem(`genealogy.workspace.${key}`, value || '');
+function saveClanId(value: string) {
+  localStorage.setItem(CLAN_ID_STORAGE_KEY, value || '');
 }
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const [clanId, updateClanId] = useState(load('clanId'));
-  const [branchId, updateBranchId] = useState(load('branchId'));
-  const [personId, updatePersonId] = useState(load('personId'));
-  const [relationshipId, updateRelationshipId] = useState(load('relationshipId'));
-  const [sourceId, updateSourceId] = useState(load('sourceId'));
-  const [attachmentId, updateAttachmentId] = useState(load('attachmentId'));
-  const [reviewTaskId, updateReviewTaskId] = useState(load('reviewTaskId'));
+  const [clanId, updateClanId] = useState(loadClanId);
+  const [branchId, updateBranchId] = useState('');
+  const [personId, updatePersonId] = useState('');
+  const [relationshipId, updateRelationshipId] = useState('');
+  const [sourceId, updateSourceId] = useState('');
+  const [attachmentId, updateAttachmentId] = useState('');
+  const [reviewTaskId, updateReviewTaskId] = useState('');
 
-  function setClanId(value: string) { updateClanId(value); save('clanId', value); }
-  function setBranchId(value: string) { updateBranchId(value); save('branchId', value); }
-  function setPersonId(value: string) { updatePersonId(value); save('personId', value); }
-  function setRelationshipId(value: string) { updateRelationshipId(value); save('relationshipId', value); }
-  function setSourceId(value: string) { updateSourceId(value); save('sourceId', value); }
-  function setAttachmentId(value: string) { updateAttachmentId(value); save('attachmentId', value); }
-  function setReviewTaskId(value: string) { updateReviewTaskId(value); save('reviewTaskId', value); }
+  function setClanId(value: string) { updateClanId(value); saveClanId(value); }
+  function setBranchId(value: string) { updateBranchId(value); }
+  function setPersonId(value: string) { updatePersonId(value); }
+  function setRelationshipId(value: string) { updateRelationshipId(value); }
+  function setSourceId(value: string) { updateSourceId(value); }
+  function setAttachmentId(value: string) { updateAttachmentId(value); }
+  function setReviewTaskId(value: string) { updateReviewTaskId(value); }
 
   const value = useMemo<WorkspaceState>(() => ({
     clanId,
@@ -77,13 +73,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (values.reviewTaskId !== undefined) setReviewTaskId(values.reviewTaskId);
     }
   }), [clanId, branchId, personId, relationshipId, sourceId, attachmentId, reviewTaskId]);
-
-  useEffect(() => {
-    window.__genealogyWorkspace = value;
-    return () => {
-      if (window.__genealogyWorkspace === value) delete window.__genealogyWorkspace;
-    };
-  }, [value]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
