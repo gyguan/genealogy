@@ -5,6 +5,8 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { toRows } from '../../domain/normalize';
+import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 
 type ClanLike = {
   id?: number | string;
@@ -51,51 +53,6 @@ type Props = {
   onSubmittedReview?: (taskId: string) => void;
 };
 
-function toRows<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
-
-function statusOf(row: any) {
-  return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
-}
-
-function isOfficial(row: any) {
-  const status = statusOf(row);
-  return !status || ['official', 'active', 'approved'].includes(status);
-}
-
-function isEditableScheme(row: GenerationSchemeLike) {
-  return ['draft', 'rejected'].includes(statusOf(row));
-}
-
-function statusText(row: any) {
-  const status = statusOf(row);
-  const dict: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '已通过',
-    active: '已通过',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
-  };
-  return dict[status] || status || '-';
-}
-
-function statusColor(row: any) {
-  const status = statusOf(row);
-  if (['official', 'active', 'approved'].includes(status)) return 'success';
-  if (status === 'rejected') return 'error';
-  if (status === 'draft') return 'default';
-  return 'processing';
-}
-
 function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
 }
@@ -134,7 +91,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
   const officialBranches = useMemo(() => branches.filter(isOfficial), [branches]);
   const selectedScheme = useMemo(() => schemes.find(scheme => String(scheme.id) === selectedSchemeId), [schemes, selectedSchemeId]);
   const selectedReviewableSchemes = useMemo(
-    () => schemes.filter(scheme => selectedSchemeRowKeys.includes(String(scheme.id)) && isEditableScheme(scheme)),
+    () => schemes.filter(scheme => selectedSchemeRowKeys.includes(String(scheme.id)) && isReviewable(scheme)),
     [schemes, selectedSchemeRowKeys]
   );
 
@@ -284,7 +241,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
   }
 
   function openWordsModal(row: GenerationSchemeLike) {
-    if (!isEditableScheme(row)) {
+    if (!isReviewable(row)) {
       toast({ message: '仅草稿/已驳回字辈方案可维护字辈' }, true);
       return;
     }
@@ -411,7 +368,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
             columnTitle: '勾选',
             columnWidth: 72,
             onChange: keys => setSelectedSchemeRowKeys(keys),
-            getCheckboxProps: row => ({ disabled: !isEditableScheme(row) || !row.id })
+            getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
           }}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无字辈方案，创建后会显示在这里' : '请选择宗族后查看字辈方案'} /> }}
           columns={[
@@ -424,9 +381,9 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
               width: 200,
               render: (_value, row) => (
                 <Space size="small" wrap>
-                  {isEditableScheme(row) ? <Button size="small" onClick={() => openWordsModal(row)}>维护字辈</Button> : null}
-                  {isEditableScheme(row) ? <Button size="small" type="primary" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
-                  {!isEditableScheme(row) ? '-' : null}
+                  {isReviewable(row) ? <Button size="small" onClick={() => openWordsModal(row)}>维护字辈</Button> : null}
+                  {isReviewable(row) ? <Button size="small" type="primary" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
+                  {!isReviewable(row) ? '-' : null}
                 </Space>
               )
             }
