@@ -5,9 +5,9 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { nullableString, toRows } from '../../domain/normalize';
+import { relationshipName } from '../../domain/relationship';
+import { createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
-
-type ReviewTargetType = 'persons' | 'relationships' | 'sources' | 'branches' | 'generation-schemes';
 
 type ReviewForm = {
   targetType: ReviewTargetType;
@@ -97,49 +97,6 @@ const defaultReviewForm: ReviewForm = {
 
 function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
-}
-
-function targetTypeText(value?: string) {
-  const normalized = String(value || '').trim().toLowerCase().replace(/-/g, '_');
-  const dict: Record<string, string> = {
-    person: '人物',
-    persons: '人物',
-    relationship: '关系',
-    relationships: '关系',
-    source: '来源',
-    sources: '来源',
-    branch: '支派',
-    branches: '支派',
-    generation_scheme: '字辈方案',
-    generation_schemes: '字辈方案'
-  };
-  return dict[normalized] || value || '-';
-}
-
-function toApiTargetType(type: ReviewTargetType) {
-  const dict: Record<ReviewTargetType, string> = {
-    persons: 'person',
-    relationships: 'relationship',
-    sources: 'source',
-    branches: 'branch',
-    'generation-schemes': 'generation_scheme'
-  };
-  return dict[type];
-}
-
-function relationshipLabel(row: RelationshipLike) {
-  const fromName = row.fromPersonName || row.fromName || `人物#${row.fromPersonId || '-'}`;
-  const toName = row.toPersonName || row.toName || `人物#${row.toPersonId || '-'}`;
-  return `${fromName} → ${toName}`;
-}
-
-function taskTitle(row: ReviewTaskLike) {
-  if (row.title) return row.title;
-  return `${targetTypeText(row.targetType)} #${row.targetId || '-'}`;
-}
-
-function createdAtText(value?: string) {
-  return value ? String(value).replace('T', ' ').slice(0, 19) : '-';
 }
 
 export function ReviewProgressStep({ notify }: Props) {
@@ -245,7 +202,7 @@ export function ReviewProgressStep({ notify }: Props) {
 
   function reviewTargetOptions(type = reviewForm.targetType): Option[] {
     if (type === 'persons') return persons.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.name || `人物#${item.id}`} · ${statusText(item)}` }));
-    if (type === 'relationships') return relationships.filter(isReviewable).map(item => ({ value: String(item.id), label: `${relationshipLabel(item)} · ${statusText(item)}` }));
+    if (type === 'relationships') return relationships.filter(isReviewable).map(item => ({ value: String(item.id), label: `${relationshipName(item)} · ${statusText(item)}` }));
     if (type === 'sources') return sources.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.sourceName || `来源#${item.id}`} · ${statusText(item)}` }));
     if (type === 'branches') return branches.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.branchName || `支派#${item.id}`} · ${statusText(item)}` }));
     if (type === 'generation-schemes') return schemes.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.schemeName || `字辈方案#${item.id}`} · ${statusText(item)}` }));
@@ -269,7 +226,7 @@ export function ReviewProgressStep({ notify }: Props) {
     setSubmitting(true);
     try {
       const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
-        targetType: toApiTargetType(reviewForm.targetType),
+        targetType: toApiReviewTargetType(reviewForm.targetType),
         targetId: Number(targetId),
         comment: nullableString(reviewForm.comment)
       });
@@ -328,7 +285,7 @@ export function ReviewProgressStep({ notify }: Props) {
         <Field label="待审任务">
           <select value={workspace.reviewTaskId} disabled={!tasks.length} onChange={event => workspace.setReviewTaskId(event.target.value)}>
             <option value="">{tasks.length ? '请选择待审任务' : '暂无待审任务'}</option>
-            {tasks.map(task => <option key={task.id} value={String(task.id)}>{taskTitle(task)} · {statusText(task)}</option>)}
+            {tasks.map(task => <option key={task.id} value={String(task.id)}>{reviewTaskTitle(task)} · {statusText(task)}</option>)}
           </select>
         </Field>
       </div>
@@ -363,8 +320,8 @@ export function ReviewProgressStep({ notify }: Props) {
           onRow={row => ({ onClick: () => workspace.setReviewTaskId(String(row.id || '')) })}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无待审任务' : '请选择宗族后查看待审任务'} /> }}
           columns={[
-            { key: 'title', title: '标题', render: (_value, row) => taskTitle(row) },
-            { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => targetTypeText(row.targetType) },
+            { key: 'title', title: '标题', render: (_value, row) => reviewTaskTitle(row) },
+            { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
             { key: 'targetId', title: '对象ID', width: 100, render: (_value, row) => row.targetId || '-' },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
             { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => createdAtText(row.createdAt) },
