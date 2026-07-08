@@ -6,6 +6,7 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
+import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
@@ -99,20 +100,6 @@ function sourceTypeText(value: unknown) {
     other: '其他'
   };
   return dict[type] || String(value || '-');
-}
-
-function relationshipName(row: RelationshipLike) {
-  const fromName = row.fromPersonName || row.fromName || `人物#${row.fromPersonId || '-'}`;
-  const toName = row.toPersonName || row.toName || `人物#${row.toPersonId || '-'}`;
-  return `${fromName} → ${toName}`;
-}
-
-function relationTypeText(row: RelationshipLike) {
-  const label = String(row.relationLabel || row.relationType || '').toLowerCase();
-  if (label === 'spouse' || row.relationType === 'spouse') return '配偶';
-  if (label === 'father') return '父亲';
-  if (label === 'mother') return '母亲';
-  return row.relationLabel || row.relationType || '关系';
 }
 
 export function SourceStep({ notify, onSubmittedReview }: Props) {
