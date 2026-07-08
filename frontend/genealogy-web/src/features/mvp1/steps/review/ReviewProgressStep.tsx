@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
@@ -7,7 +7,8 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { nullableString, toRows } from '../../domain/normalize';
 import { relationshipName } from '../../domain/relationship';
 import { createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
-import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadReviewData as queryReviewData } from '../../services/reviewProgressService';
 import { approveReview as approveReviewTask, submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
@@ -115,8 +116,6 @@ export function ReviewProgressStep({ notify }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [approving, setApproving] = useState(false);
 
-  const officialPersons = useMemo(() => persons.filter(isOfficial), [persons]);
-
   function toast(data: unknown, error = false) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
@@ -154,29 +153,14 @@ export function ReviewProgressStep({ notify }: Props) {
     }
     setLoadingData(true);
     try {
-      const [branchData, personData, sourceData, schemeData, taskData] = await Promise.all([
-        apiClient.get(`/clans/${sourceClanId}/branches`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/persons`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/sources`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/generation-schemes`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/review-tasks/pending`).catch(() => [])
-      ]);
-      const personRows = toRows<PersonLike>(personData);
-      setBranches(toRows<BranchLike>(branchData));
-      setPersons(personRows);
-      setSources(toRows<SourceLike>(sourceData));
-      setSchemes(toRows<GenerationSchemeLike>(schemeData));
-      const taskRows = toRows<ReviewTaskLike>(taskData);
-      setTasks(taskRows);
-      if (!workspace.reviewTaskId && taskRows[0]?.id) workspace.setReviewTaskId(String(taskRows[0].id));
-
-      const relationPersonId = workspace.personId || personRows.filter(isOfficial)[0]?.id;
-      if (relationPersonId) {
-        const relationData = await apiClient.get(`/persons/${relationPersonId}/relationships`).catch(() => []);
-        setRelationships(toRows<RelationshipLike>(relationData));
-      } else {
-        setRelationships([]);
-      }
+      const data = await queryReviewData(sourceClanId, workspace.personId);
+      setBranches(data.branches);
+      setPersons(data.persons);
+      setSources(data.sources);
+      setSchemes(data.schemes);
+      setTasks(data.tasks);
+      setRelationships(data.relationships);
+      if (!workspace.reviewTaskId && data.tasks[0]?.id) workspace.setReviewTaskId(String(data.tasks[0].id));
     } catch (error) {
       toast({ message: (error as Error).message || '查询审核进度失败' }, true);
     } finally {
