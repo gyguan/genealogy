@@ -10,18 +10,11 @@ import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 import { loadSources as querySources, type SourceLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
-
-type PersonLike = {
-  id?: number | string;
-  name?: string;
-  generationWord?: string;
-  dataStatus?: string;
-  status?: string;
-};
 
 type RelationshipLike = {
   id?: number | string;
@@ -145,12 +138,11 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setLoadingOptions(true);
     setLoadingSources(true);
     try {
-      const [branchRows, personData, sourceRows] = await Promise.all([
+      const [branchRows, personRows, sourceRows] = await Promise.all([
         queryBranches(sourceClanId).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/persons`).catch(() => []),
+        queryPersons(sourceClanId).catch(() => []),
         querySources(sourceClanId).catch(() => [])
       ]);
-      const personRows = toRows<PersonLike>(personData);
       setBranches(branchRows);
       setPersons(personRows);
       setSources(sourceRows);
