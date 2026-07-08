@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { nullableString, toRows } from '../../domain/normalize';
+import { nullableString } from '../../domain/normalize';
 import { buildReviewTargetOptions, createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { statusColor, statusText } from '../../domain/status';
+import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import {
   loadReviewData as queryReviewData,
   type ReviewProgressBranchLike as BranchLike,
@@ -22,12 +22,6 @@ type ReviewForm = {
   targetType: ReviewTargetType;
   targetId: string;
   comment: string;
-};
-
-type ClanLike = {
-  id?: number | string;
-  clanName?: string;
-  surname?: string;
 };
 
 type Props = {
@@ -75,8 +69,7 @@ export function ReviewProgressStep({ notify }: Props) {
   async function loadClans() {
     setLoadingClans(true);
     try {
-      const data = await apiClient.get('/clans').catch(() => []);
-      const rows = toRows<ClanLike>(data);
+      const rows = await queryClans();
       setClans(rows);
       if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id));
     } finally {
