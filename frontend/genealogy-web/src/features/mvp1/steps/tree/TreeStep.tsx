@@ -4,6 +4,7 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { toRows } from '../../domain/normalize';
 
 type TreeMode = 'family' | 'ancestors' | 'descendants';
 
@@ -25,15 +26,6 @@ type TreeEdgeLike = {
 type Props = {
   notify?: (data: unknown, error?: boolean) => void;
 };
-
-function toRows<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
 
 export function TreeStep({ notify }: Props) {
   const workspace = useWorkspace();
