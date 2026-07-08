@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
-import { BranchStepListPanel } from './features/mvp1/BranchStepListPanel';
 import { GenerationStepListsPanel } from './features/mvp1/GenerationStepListsPanel';
 import { PersonStepListPanel } from './features/mvp1/PersonStepListPanel';
 import { RelationshipStepListPanel } from './features/mvp1/RelationshipStepListPanel';
@@ -37,7 +36,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       null,
       React.createElement(App),
       React.createElement(ReviewObjectQueryPanel),
-      React.createElement(BranchStepListPanel),
       React.createElement(GenerationStepListsPanel),
       React.createElement(PersonStepListPanel),
       React.createElement(RelationshipStepPanel),
