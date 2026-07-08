@@ -2,13 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
-import { BranchStepListPanel } from './features/mvp1/BranchStepListPanel';
-import { GenerationStepListsPanel } from './features/mvp1/GenerationStepListsPanel';
-import { PersonStepListPanel } from './features/mvp1/PersonStepListPanel';
-import { RelationshipStepListPanel } from './features/mvp1/RelationshipStepListPanel';
-import { RelationshipStepPanel } from './features/mvp1/RelationshipStepPanel';
-import { ReviewObjectQueryPanel } from './features/mvp1/ReviewObjectQueryPanel';
-import { SourceStepListPanel } from './features/mvp1/SourceStepListPanel';
 import { RuntimeErrorBoundary } from './shared/ui/RuntimeErrorBoundary';
 import './styles.css';
 import './experience.css';
@@ -32,17 +25,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
     RuntimeErrorBoundary,
     null,
-    React.createElement(
-      React.Fragment,
-      null,
-      React.createElement(App),
-      React.createElement(ReviewObjectQueryPanel),
-      React.createElement(BranchStepListPanel),
-      React.createElement(GenerationStepListsPanel),
-      React.createElement(PersonStepListPanel),
-      React.createElement(RelationshipStepPanel),
-      React.createElement(RelationshipStepListPanel),
-      React.createElement(SourceStepListPanel)
-    )
+    React.createElement(App)
   )
 );
