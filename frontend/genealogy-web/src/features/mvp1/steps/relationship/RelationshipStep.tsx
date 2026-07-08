@@ -17,6 +17,7 @@ import {
   type RelationshipMode
 } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonLike = {
@@ -42,12 +43,6 @@ type RelationshipLike = {
   relationLabel?: string;
   dataStatus?: string;
   status?: string;
-};
-
-type ClanLike = {
-  id?: number | string;
-  clanName?: string;
-  surname?: string;
 };
 
 type Props = {
@@ -108,8 +103,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
   async function loadClans() {
     setLoadingClans(true);
     try {
-      const data = await apiClient.get('/clans').catch(() => []);
-      const rows = toRows<ClanLike>(data);
+      const rows = await queryClans();
       setClans(rows);
       if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id));
     } finally {
@@ -322,7 +316,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             </label>
             <label className="relationship-step-field relationship-step-field--wide">
               <span>选择规则</span>
-              <Alert type="info" showIcon message={expectedNo ? `${relationshipRuleText(mode)}，应选择第${expectedNo}世人物` : '请先为中心人物维护代次'} />
+              <input value={expectedNo ? `${relationshipRuleText(mode)} · 目标代次：第${expectedNo}世` : '中心人物需维护代次后才能自动筛选'} disabled readOnly />
             </label>
           </div>
           {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
