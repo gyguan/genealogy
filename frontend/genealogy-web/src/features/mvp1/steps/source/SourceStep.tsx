@@ -12,7 +12,7 @@ import { loadClans as queryClans, type ClanLike } from '../../services/clanServi
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-import { loadSources as querySources, type SourceLike } from '../../services/sourceService';
+import { createSourceApi, loadSources as querySources, type SourceLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
 
@@ -214,7 +214,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
     setSavingSource(true);
     try {
-      const data: any = await apiClient.post(`/clans/${workspace.clanId}/sources`, {
+      const data = await createSourceApi(workspace.clanId, {
         sourceName: sourceForm.sourceName.trim(),
         sourceType: sourceForm.sourceType,
         description: null
