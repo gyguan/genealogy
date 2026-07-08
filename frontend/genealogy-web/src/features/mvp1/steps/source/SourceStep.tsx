@@ -10,6 +10,7 @@ import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
+import { loadSources as querySources, type SourceLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
 
@@ -40,16 +41,6 @@ type RelationshipLike = {
   relationLabel?: string;
   dataStatus?: string;
   status?: string;
-};
-
-type SourceLike = {
-  id?: number | string;
-  sourceName?: string;
-  name?: string;
-  sourceType?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
 };
 
 type Option = {
@@ -190,8 +181,8 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingSources(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/sources`);
-      setSources(toRows<SourceLike>(data));
+      const rows = await querySources(sourceClanId);
+      setSources(rows);
       setSelectedSourceRowKeys([]);
     } catch (error) {
       setSources([]);
