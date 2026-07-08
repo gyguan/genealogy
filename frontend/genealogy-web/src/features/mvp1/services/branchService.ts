@@ -27,3 +27,7 @@ export async function loadBranches(clanId?: number | string): Promise<BranchLike
 export async function createBranchApi(clanId: number | string, payload: CreateBranchPayload): Promise<BranchLike> {
   return apiClient.post(`/clans/${clanId}/branches`, payload);
 }
+
+export async function deleteBranchApi(branchId: number | string): Promise<void> {
+  return apiClient.delete(`/branches/${branchId}`);
+}
