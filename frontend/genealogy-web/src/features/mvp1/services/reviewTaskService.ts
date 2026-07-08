@@ -6,7 +6,7 @@ export type SubmitReviewTaskInput = {
   clanId: string | number;
   targetType: ReviewTaskTargetType;
   targetId: string | number;
-  comment: string;
+  comment: string | null;
 };
 
 export async function submitReviewTask({ clanId, targetType, targetId, comment }: SubmitReviewTaskInput) {
