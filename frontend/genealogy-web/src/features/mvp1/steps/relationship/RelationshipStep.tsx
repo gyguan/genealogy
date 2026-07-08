@@ -4,6 +4,8 @@ import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } 
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
+import { toRows } from '../../domain/normalize';
+import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 
 type RelationshipMode = 'father' | 'mother' | 'spouse' | 'child';
 
@@ -49,51 +51,6 @@ const MODE_LABEL: Record<RelationshipMode, string> = {
   spouse: '配偶',
   child: '子女'
 };
-
-function toRows<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
-
-function statusOf(row: any) {
-  return String(row?.dataStatus || row?.status || '').trim().toLowerCase();
-}
-
-function isOfficial(row: any) {
-  const status = statusOf(row);
-  return !status || ['official', 'active', 'approved'].includes(status);
-}
-
-function isReviewable(row: any) {
-  return ['draft', 'rejected'].includes(statusOf(row));
-}
-
-function statusText(row: any) {
-  const status = statusOf(row);
-  const dict: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '已通过',
-    active: '已通过',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
-  };
-  return dict[status] || status || '-';
-}
-
-function statusColor(row: any) {
-  const status = statusOf(row);
-  if (['official', 'active', 'approved'].includes(status)) return 'success';
-  if (status === 'rejected') return 'error';
-  if (status === 'draft') return 'default';
-  return 'processing';
-}
 
 function genderText(value: unknown) {
   const text = String(value || '').toLowerCase();
