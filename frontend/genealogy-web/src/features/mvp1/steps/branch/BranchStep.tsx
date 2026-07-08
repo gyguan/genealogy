@@ -6,7 +6,7 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
-import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
+import { createBranchApi, loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
@@ -111,7 +111,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     }
     setSubmitting(true);
     try {
-      const data: any = await apiClient.post(`/clans/${workspace.clanId}/branches`, {
+      const data = await createBranchApi(workspace.clanId, {
         branchName: form.branchName.trim(),
         parentId: form.parentId ? Number(form.parentId) : null
       });
