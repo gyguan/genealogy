@@ -8,6 +8,7 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { nullableBoolean, nullableNumber, nullableString, toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
@@ -16,21 +17,6 @@ type BranchLike = {
   branchName?: string;
   dataStatus?: string;
   status?: string;
-};
-
-type GenerationSchemeLike = {
-  id?: number | string;
-  schemeName?: string;
-  branchId?: number | string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type GenerationItemLike = {
-  id?: number | string;
-  generationNo?: number | string;
-  word?: string;
 };
 
 type PersonForm = {
@@ -187,12 +173,11 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingOptions(true);
     try {
-      const [branchData, schemeData] = await Promise.all([
+      const [branchData, schemeRows] = await Promise.all([
         apiClient.get(`/clans/${sourceClanId}/branches`).catch(() => []),
-        apiClient.get(`/clans/${sourceClanId}/generation-schemes`).catch(() => [])
+        queryGenerationSchemes(sourceClanId).catch(() => [])
       ]);
       const branchRows = toRows<BranchLike>(branchData);
-      const schemeRows = toRows<GenerationSchemeLike>(schemeData);
       setBranches(branchRows);
       setSchemes(schemeRows);
       const nextBranchId = personForm.branchId || workspace.branchId || branchRows.filter(isOfficial)[0]?.id;
@@ -272,8 +257,8 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
       setPersonForm(prev => ({ ...prev, branchId: String(row.branchId) }));
     }
     try {
-      const data = await apiClient.get(`/generation-schemes/${nextSchemeId}/items`);
-      setGenerationItems(toRows<GenerationItemLike>(data));
+      const rows = await queryGenerationItems(nextSchemeId);
+      setGenerationItems(rows);
       if (showMessage) toast({ message: `已选择字辈方案：${schemeName(row)}` });
     } catch (error) {
       setGenerationItems([]);
