@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type ClanLike = {
   id?: number | string;
@@ -222,9 +223,10 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
       });
       setSchemeForm(prev => ({ ...prev, schemeName: '' }));
       if (submit && data?.id) {
-        const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+        const task: any = await submitReviewTask({
+          clanId: workspace.clanId,
           targetType: 'generation_scheme',
-          targetId: Number(data.id),
+          targetId: data.id,
           comment: '提交字辈方案审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
@@ -283,9 +285,10 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !row.id) return;
     setSubmittingSchemes(true);
     try {
-      const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const task: any = await submitReviewTask({
+        clanId: workspace.clanId,
         targetType: 'generation_scheme',
-        targetId: Number(row.id),
+        targetId: row.id,
         comment: '提交字辈方案审核'
       });
       if (task?.id) onSubmittedReview?.(String(task.id));
@@ -302,13 +305,13 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !selectedReviewableSchemes.length) return;
     setSubmittingSchemes(true);
     try {
-      const results = await Promise.allSettled(selectedReviewableSchemes.map(scheme => apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const results = await submitReviewTasks(selectedReviewableSchemes.map(scheme => ({
+        clanId: workspace.clanId,
         targetType: 'generation_scheme',
-        targetId: Number(scheme.id),
+        targetId: scheme.id || '',
         comment: '提交字辈方案审核'
       })));
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      const { successCount, failedCount } = countSettledResults(results);
       if (successCount) toast({ message: `已提交 ${successCount} 个字辈方案审核` });
       if (failedCount) toast({ message: `${failedCount} 个字辈方案提交失败` }, true);
       await loadSchemes();
