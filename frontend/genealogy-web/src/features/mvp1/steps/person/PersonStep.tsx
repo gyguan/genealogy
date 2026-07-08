@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -10,7 +9,7 @@ import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
-import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
+import { createPersonApi, loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonForm = {
@@ -330,7 +329,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
     setSavingPerson(true);
     try {
-      const data: any = await apiClient.post(`/clans/${workspace.clanId}/persons`, buildPersonPayload());
+      const data = await createPersonApi(workspace.clanId, buildPersonPayload());
       const nextPersonId = String(data?.id || '');
       if (continueAdding) resetPersonFormForNext();
       if (submit && nextPersonId) {
