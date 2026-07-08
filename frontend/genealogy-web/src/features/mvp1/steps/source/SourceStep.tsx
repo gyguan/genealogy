@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
-import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -12,7 +11,7 @@ import { loadClans as queryClans, type ClanLike } from '../../services/clanServi
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-import { createSourceApi, loadSources as querySources, type SourceLike } from '../../services/sourceService';
+import { bindSourceApi, createSourceApi, loadSources as querySources, type SourceLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
 
@@ -257,7 +256,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
     setBindingSource(true);
     try {
-      const data: any = await apiClient.post(`/clans/${workspace.clanId}/source-links`, {
+      const data = await bindSourceApi(workspace.clanId, {
         sourceId: Number(workspace.sourceId),
         targetType: sourceForm.targetType,
         targetId: Number(targetId)
