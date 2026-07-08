@@ -4,7 +4,6 @@ import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } 
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
-import { toRows } from '../../domain/normalize';
 import {
   RELATIONSHIP_MODE_LABEL,
   buildRelationshipBody,
@@ -18,19 +17,9 @@ import {
 } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-
-type PersonLike = {
-  id?: number | string;
-  name?: string;
-  gender?: string;
-  generationNo?: number | string;
-  generationWord?: string;
-  dataStatus?: string;
-  status?: string;
-  branchId?: number | string;
-};
 
 type Props = {
   notify?: (data: unknown, error?: boolean) => void;
@@ -105,8 +94,8 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingPersons(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/persons`);
-      setPersons(toRows<PersonLike>(data));
+      const rows = await queryPersons(sourceClanId);
+      setPersons(rows);
     } catch (error) {
       const text = readableError(error, '查询人物失败');
       setPersons([]);
