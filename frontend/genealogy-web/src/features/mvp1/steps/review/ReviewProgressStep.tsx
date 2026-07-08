@@ -5,9 +5,8 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { nullableString, toRows } from '../../domain/normalize';
-import { relationshipName } from '../../domain/relationship';
-import { createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
-import { isReviewable, statusColor, statusText } from '../../domain/status';
+import { buildReviewTargetOptions, createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
+import { statusColor, statusText } from '../../domain/status';
 import { loadReviewData as queryReviewData } from '../../services/reviewProgressService';
 import { approveReview as approveReviewTask, submitReviewTask } from '../../services/reviewTaskService';
 
@@ -15,11 +14,6 @@ type ReviewForm = {
   targetType: ReviewTargetType;
   targetId: string;
   comment: string;
-};
-
-type Option = {
-  value: string;
-  label: string;
 };
 
 type ClanLike = {
@@ -185,13 +179,8 @@ export function ReviewProgressStep({ notify }: Props) {
     setTasks([]);
   }
 
-  function reviewTargetOptions(type = reviewForm.targetType): Option[] {
-    if (type === 'persons') return persons.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.name || `人物#${item.id}`} · ${statusText(item)}` }));
-    if (type === 'relationships') return relationships.filter(isReviewable).map(item => ({ value: String(item.id), label: `${relationshipName(item)} · ${statusText(item)}` }));
-    if (type === 'sources') return sources.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.sourceName || `来源#${item.id}`} · ${statusText(item)}` }));
-    if (type === 'branches') return branches.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.branchName || `支派#${item.id}`} · ${statusText(item)}` }));
-    if (type === 'generation-schemes') return schemes.filter(isReviewable).map(item => ({ value: String(item.id), label: `${item.schemeName || `字辈方案#${item.id}`} · ${statusText(item)}` }));
-    return [];
+  function reviewTargetOptions(type = reviewForm.targetType) {
+    return buildReviewTargetOptions(type, { persons, relationships, sources, branches, schemes });
   }
 
   function effectiveReviewTargetId() {
