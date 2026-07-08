@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { nullableBoolean, nullableNumber, nullableString, toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type ClanLike = {
   id?: number | string;
@@ -370,9 +371,10 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
       const nextPersonId = String(data?.id || '');
       if (continueAdding) resetPersonFormForNext();
       if (submit && nextPersonId) {
-        const task: any = await apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+        const task: any = await submitReviewTask({
+          clanId: workspace.clanId,
           targetType: 'person',
-          targetId: Number(nextPersonId),
+          targetId: nextPersonId,
           comment: '提交人物审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
@@ -392,13 +394,13 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId || !selectedReviewablePersons.length) return;
     setSubmittingPersons(true);
     try {
-      const results = await Promise.allSettled(selectedReviewablePersons.map(person => apiClient.post(`/clans/${workspace.clanId}/review-tasks`, {
+      const results = await submitReviewTasks(selectedReviewablePersons.map(person => ({
+        clanId: workspace.clanId,
         targetType: 'person',
-        targetId: Number(person.id),
+        targetId: person.id || '',
         comment: '提交人物审核'
       })));
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
+      const { successCount, failedCount } = countSettledResults(results);
       if (successCount) toast({ message: `已提交 ${successCount} 个人物审核` });
       if (failedCount) toast({ message: `${failedCount} 个人物提交失败` }, true);
       await loadPersons();
