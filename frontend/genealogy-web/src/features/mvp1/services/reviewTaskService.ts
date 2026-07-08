@@ -21,6 +21,10 @@ export function submitReviewTasks(items: SubmitReviewTaskInput[]) {
   return Promise.allSettled(items.map(item => submitReviewTask(item)));
 }
 
+export async function approveReview(taskId: string | number, comment: string | null) {
+  return apiClient.post(`/review-tasks/${taskId}/approve`, { comment });
+}
+
 export function countSettledResults(results: PromiseSettledResult<unknown>[]) {
   const successCount = results.filter(result => result.status === 'fulfilled').length;
   return {
