@@ -62,6 +62,10 @@ function sourceTypeText(value: unknown) {
   return dict[type] || String(value || '-');
 }
 
+function dedupeRelationships(rows: RelationshipLike[]) {
+  return Array.from(new Map(rows.map(row => [String(row.id || `${row.fromPersonId}-${row.toPersonId}-${row.relationLabel}`), row])).values());
+}
+
 export function SourceStep({ notify, onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [sourceForm, setSourceForm] = useState<SourceForm>({ ...defaultSourceForm });
@@ -137,8 +141,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       const relationshipRows = relationshipResults
         .filter(result => result.status === 'fulfilled')
         .flatMap(result => (result as PromiseFulfilledResult<RelationshipLike[]>).value);
-      const uniqueRelationships = Array.from(new Map(relationshipRows.map(row => [String(row.id || `${row.fromPersonId}-${row.toPersonId}-${row.relationLabel}`), row])).values());
-      setRelationships(uniqueRelationships);
+      setRelationships(dedupeRelationships(relationshipRows));
     } finally {
       setLoadingOptions(false);
       setLoadingSources(false);
