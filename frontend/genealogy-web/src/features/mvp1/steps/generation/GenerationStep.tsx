@@ -8,6 +8,7 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
+import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type BranchLike = {
@@ -15,23 +16,6 @@ type BranchLike = {
   branchName?: string;
   dataStatus?: string;
   status?: string;
-};
-
-type GenerationSchemeLike = {
-  id?: number | string;
-  branchId?: number | string;
-  branchName?: string;
-  schemeName?: string;
-  name?: string;
-  dataStatus?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type GenerationItemLike = {
-  id?: number | string;
-  generationNo?: number | string;
-  word?: string;
 };
 
 type SchemeForm = {
@@ -147,8 +131,8 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingSchemes(true);
     try {
-      const data = await apiClient.get(`/clans/${sourceClanId}/generation-schemes`);
-      setSchemes(toRows<GenerationSchemeLike>(data));
+      const rows = await queryGenerationSchemes(sourceClanId);
+      setSchemes(rows);
       setSelectedSchemeRowKeys([]);
     } catch (error) {
       setSchemes([]);
@@ -165,8 +149,8 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
     setLoadingItems(true);
     try {
-      const data = await apiClient.get(`/generation-schemes/${sourceSchemeId}/items`);
-      setItems(toRows<GenerationItemLike>(data));
+      const rows = await queryGenerationItems(sourceSchemeId);
+      setItems(rows);
     } catch (error) {
       setItems([]);
       toast({ message: (error as Error).message || '查询字辈明细失败' }, true);
@@ -361,7 +345,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
           dataSource={schemes}
           pagination={false}
           rowSelection={{
-            selectedRowKeys: selectedSchemeRowKeys,
+            selectedSchemeRowKeys,
             columnTitle: '勾选',
             columnWidth: 72,
             onChange: keys => setSelectedSchemeRowKeys(keys),
