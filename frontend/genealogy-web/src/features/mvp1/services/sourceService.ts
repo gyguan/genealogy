@@ -17,6 +17,16 @@ export type CreateSourcePayload = {
   description?: string | null;
 };
 
+export type BindSourcePayload = {
+  sourceId: number;
+  targetType: string;
+  targetId: number;
+};
+
+export type SourceLinkLike = {
+  id?: number | string;
+};
+
 export async function loadSources(clanId?: number | string): Promise<SourceLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/sources`);
@@ -25,4 +35,8 @@ export async function loadSources(clanId?: number | string): Promise<SourceLike[
 
 export async function createSourceApi(clanId: number | string, payload: CreateSourcePayload): Promise<SourceLike> {
   return apiClient.post(`/clans/${clanId}/sources`, payload);
+}
+
+export async function bindSourceApi(clanId: number | string, payload: BindSourcePayload): Promise<SourceLinkLike> {
+  return apiClient.post(`/clans/${clanId}/source-links`, payload);
 }
