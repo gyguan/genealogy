@@ -5,9 +5,18 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
+import {
+  RELATIONSHIP_MODE_LABEL,
+  buildRelationshipBody,
+  expectedGenerationNo,
+  isRelationshipCandidate,
+  personLabel,
+  relationTypeText,
+  relationshipRuleText,
+  relativeName,
+  type RelationshipMode
+} from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
-
-type RelationshipMode = 'father' | 'mother' | 'spouse' | 'child';
 
 type PersonLike = {
   id?: number | string;
@@ -45,107 +54,8 @@ type Props = {
   onSubmittedReview?: (taskId: string) => void;
 };
 
-const MODE_LABEL: Record<RelationshipMode, string> = {
-  father: '父亲',
-  mother: '母亲',
-  spouse: '配偶',
-  child: '子女'
-};
-
-function genderText(value: unknown) {
-  const text = String(value || '').toLowerCase();
-  if (text === 'male') return '男';
-  if (text === 'female') return '女';
-  return '未知';
-}
-
 function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
-}
-
-function personLabel(person: PersonLike) {
-  const generation = person.generationNo ? `第${person.generationNo}世` : '未维护代次';
-  const word = person.generationWord ? `${person.generationWord}字辈` : '无字辈';
-  return `${person.name || `人物#${person.id}`}（${generation} · ${word} · ${genderText(person.gender)}）`;
-}
-
-function expectedGenerationNo(center: PersonLike | undefined, mode: RelationshipMode) {
-  const centerNo = Number(center?.generationNo);
-  if (!Number.isFinite(centerNo) || centerNo <= 0) return null;
-  const expected = mode === 'child' ? centerNo + 1 : mode === 'spouse' ? centerNo : centerNo - 1;
-  return expected > 0 ? expected : null;
-}
-
-function relationshipRuleText(mode: RelationshipMode) {
-  if (mode === 'father') return '父亲必须是中心人物上一代男性';
-  if (mode === 'mother') return '母亲必须是中心人物上一代女性';
-  if (mode === 'spouse') return '配偶必须是中心人物同一代女性';
-  return '子女必须是中心人物下一代';
-}
-
-function isCandidate(center: PersonLike | undefined, candidate: PersonLike, mode: RelationshipMode) {
-  if (!center?.id || !candidate?.id || String(center.id) === String(candidate.id)) return false;
-  const expectedNo = expectedGenerationNo(center, mode);
-  if (!expectedNo) return false;
-  if (Number(candidate.generationNo) !== expectedNo) return false;
-  const gender = String(candidate.gender || '').toLowerCase();
-  if (mode === 'father') return gender === 'male';
-  if (mode === 'mother') return gender === 'female';
-  if (mode === 'spouse') return gender === 'female';
-  return true;
-}
-
-function relationBody(center: PersonLike, relative: PersonLike, mode: RelationshipMode) {
-  if (mode === 'spouse') {
-    return {
-      fromPersonId: Number(center.id),
-      toPersonId: Number(relative.id),
-      relationType: 'spouse',
-      relationLabel: 'spouse',
-      isLineageRelation: false,
-      isBiological: false,
-      isPrimary: true,
-      confidenceLevel: 'high'
-    };
-  }
-  if (mode === 'child') {
-    return {
-      fromPersonId: Number(center.id),
-      toPersonId: Number(relative.id),
-      relationType: 'parent_child',
-      relationLabel: String(center.gender || '').toLowerCase() === 'female' ? 'mother' : 'father',
-      isLineageRelation: true,
-      isBiological: true,
-      isPrimary: true,
-      confidenceLevel: 'high'
-    };
-  }
-  return {
-    fromPersonId: Number(relative.id),
-    toPersonId: Number(center.id),
-    relationType: 'parent_child',
-    relationLabel: mode,
-    isLineageRelation: true,
-    isBiological: true,
-    isPrimary: true,
-    confidenceLevel: 'high'
-  };
-}
-
-function relativeName(row: RelationshipLike, centerPersonId: string) {
-  const centerIsFrom = String(row.fromPersonId) === String(centerPersonId);
-  if (centerIsFrom) return row.toPersonName || row.toName || `人物#${row.toPersonId || '-'}`;
-  return row.fromPersonName || row.fromName || `人物#${row.fromPersonId || '-'}`;
-}
-
-function relationTypeText(row: RelationshipLike, centerPersonId: string) {
-  const label = String(row.relationLabel || row.relationType || '').toLowerCase();
-  if (label === 'spouse' || row.relationType === 'spouse') return '配偶';
-  const centerIsFrom = String(row.fromPersonId) === String(centerPersonId);
-  if (centerIsFrom) return '子女';
-  if (label === 'father') return '父亲';
-  if (label === 'mother') return '母亲';
-  return '亲属';
 }
 
 function readableError(error: unknown, fallback: string) {
@@ -178,7 +88,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
   const centerPerson = useMemo(() => officialPersons.find(item => String(item.id) === String(centerPersonId)), [officialPersons, centerPersonId]);
   const expectedNo = expectedGenerationNo(centerPerson, mode);
   const relativeOptions = useMemo(() => officialPersons
-    .filter(item => isCandidate(centerPerson, item, mode))
+    .filter(item => isRelationshipCandidate(centerPerson, item, mode))
     .map(item => ({ value: String(item.id), label: personLabel(item) })), [officialPersons, centerPerson, mode]);
   const selectedReviewableRelationships = useMemo(
     () => relationships.filter(row => selectedRelationshipRowKeys.includes(String(row.id)) && isReviewable(row)),
@@ -297,13 +207,13 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
       return;
     }
     const relative = officialPersons.find(item => String(item.id) === String(relativePersonId));
-    if (!relative || !isCandidate(centerPerson, relative, mode)) {
-      toast({ message: `请选择符合规则的${MODE_LABEL[mode]}：${relationshipRuleText(mode)}` }, true);
+    if (!relative || !isRelationshipCandidate(centerPerson, relative, mode)) {
+      toast({ message: `请选择符合规则的${RELATIONSHIP_MODE_LABEL[mode]}：${relationshipRuleText(mode)}` }, true);
       return;
     }
     setSavingRelationship(true);
     try {
-      const relation: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, relationBody(centerPerson, relative, mode));
+      const relation: any = await apiClient.post(`/clans/${workspace.clanId}/relationships`, buildRelationshipBody(centerPerson, relative, mode));
       const relationId = String(relation?.id || '');
       workspace.setRelationshipId(relationId);
       if (submit && relationId) {
@@ -400,7 +310,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
                 value={relativePersonId || undefined}
                 disabled={!centerPerson || !expectedNo || !relativeOptions.length}
                 options={relativeOptions}
-                placeholder={relativeOptions.length ? `请选择${MODE_LABEL[mode]}` : relationshipRuleText(mode)}
+                placeholder={relativeOptions.length ? `请选择${RELATIONSHIP_MODE_LABEL[mode]}` : relationshipRuleText(mode)}
                 optionFilterProp="label"
                 onChange={value => {
                   setRelativePersonId(value);
