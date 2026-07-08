@@ -11,8 +11,18 @@ export type SourceLike = {
   verificationStatus?: string;
 };
 
+export type CreateSourcePayload = {
+  sourceName: string;
+  sourceType: string;
+  description?: string | null;
+};
+
 export async function loadSources(clanId?: number | string): Promise<SourceLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/sources`);
   return toRows<SourceLike>(data);
+}
+
+export async function createSourceApi(clanId: number | string, payload: CreateSourcePayload): Promise<SourceLike> {
+  return apiClient.post(`/clans/${clanId}/sources`, payload);
 }
