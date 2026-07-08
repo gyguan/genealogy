@@ -5,6 +5,8 @@ import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { toRows } from '../../domain/normalize';
+import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
 
 type BranchLike = {
   id?: number | string;
@@ -33,51 +35,6 @@ type Props = {
   notify?: (data: unknown, error?: boolean) => void;
   onSubmittedReview?: (taskId: string) => void;
 };
-
-function toRows<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
-
-function statusOf(row: BranchLike) {
-  return String(row?.dataStatus || row?.status || '').trim().toLowerCase();
-}
-
-function isOfficial(row: BranchLike) {
-  const status = statusOf(row);
-  return !status || ['official', 'active', 'approved'].includes(status);
-}
-
-function isReviewable(row: BranchLike) {
-  return ['draft', 'rejected'].includes(statusOf(row));
-}
-
-function statusText(row: BranchLike) {
-  const status = statusOf(row);
-  const dict: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '已通过',
-    active: '已通过',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
-  };
-  return dict[status] || status || '已通过';
-}
-
-function statusColor(row: BranchLike) {
-  const status = statusOf(row);
-  if (['official', 'active', 'approved'].includes(status) || !status) return 'success';
-  if (status === 'rejected') return 'error';
-  if (status === 'draft') return 'default';
-  return 'processing';
-}
 
 function branchName(row: BranchLike) {
   return row.branchName || row.name || `支派#${row.id || '-'}`;
@@ -307,7 +264,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
             { key: 'branchName', title: '支派名', render: (_value, row) => branchName(row) },
             { key: 'parentName', title: '父支派', render: (_value, row) => parentName(row, branches) },
             { key: 'level', title: '层级', width: 88, render: (_value, row) => row.level ?? '-' },
-            { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+            { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row, '已通过')}</Tag> },
             {
               key: 'actions',
               title: '操作',
