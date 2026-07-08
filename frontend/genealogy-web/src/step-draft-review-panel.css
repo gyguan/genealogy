@@ -1,3 +1,17 @@
+.relationship-step-host {
+  display: flex;
+  flex-direction: column;
+}
+
+.relationship-step-host > .relationship-step-panel {
+  order: 10;
+}
+
+.relationship-step-host > .step-draft-review-panel,
+.relationship-step-host > .step-object-result-panel {
+  order: 20;
+}
+
 .relationship-step-host > .wizard-form-grid,
 .relationship-step-host > .antd-actions {
   display: none !important;
