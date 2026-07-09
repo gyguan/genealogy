@@ -1,17 +1,8 @@
 import { apiClient } from '../../../shared/api/client';
 import { toRows } from '../domain/normalize';
-import type { RelationshipCreatePayload } from '../domain/relationship';
+import type { RelationshipCreatePayload, RelationshipLike as DomainRelationshipLike } from '../domain/relationship';
 
-export type RelationshipLike = {
-  id?: number | string;
-  fromPersonId?: number | string;
-  fromPersonName?: string;
-  fromName?: string;
-  toPersonId?: number | string;
-  toPersonName?: string;
-  toName?: string;
-  relationType?: string;
-  relationLabel?: string;
+export type RelationshipLike = DomainRelationshipLike & {
   dataStatus?: string;
   status?: string;
 };
