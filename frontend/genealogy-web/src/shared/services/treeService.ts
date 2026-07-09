@@ -11,6 +11,76 @@ export type RelationshipPayload = {
   confidenceLevel?: string;
 };
 
+export type LineageClanDto = {
+  id?: number | string;
+  clanName?: string;
+  surname?: string;
+};
+
+export type LineageBranchDto = {
+  id?: number | string;
+  branchName?: string;
+  name?: string;
+  parentId?: number | string;
+};
+
+export type LineagePersonDto = {
+  id?: number | string;
+  personId?: number | string;
+  targetId?: number | string;
+  name?: string;
+  personName?: string;
+  displayName?: string;
+  branchId?: number | string;
+  branch?: LineageBranchDto;
+  branchName?: string;
+  gender?: string;
+  sex?: string;
+  generationNo?: number | string;
+  generation?: number | string;
+  generationNumber?: number | string;
+  generationName?: string;
+  generationWord?: string;
+  word?: string;
+  birthDate?: string;
+  birthYear?: string;
+  birthDateText?: string;
+  deathDate?: string;
+  deathYear?: string;
+  deathDateText?: string;
+  status?: string;
+  dataStatus?: string;
+  verificationStatus?: string;
+  reviewStatus?: string;
+  relationLabel?: string;
+  relationType?: string;
+};
+
+export type LineageRelationshipDto = {
+  id?: number | string;
+  relationshipId?: number | string;
+  fromPersonId?: number | string;
+  sourcePersonId?: number | string;
+  from?: LineagePersonDto;
+  toPersonId?: number | string;
+  targetPersonId?: number | string;
+  to?: LineagePersonDto;
+  relationType?: string;
+  relationLabel?: string;
+  status?: string;
+  dataStatus?: string;
+  confidenceLevel?: string;
+};
+
+export type LineageTreeDto = {
+  nodes?: LineagePersonDto[];
+  edges?: LineageRelationshipDto[];
+  rootPersonId?: number | string;
+  records?: LineagePersonDto[];
+  items?: LineagePersonDto[];
+  content?: LineagePersonDto[];
+};
+
 export const treeService = {
   listClans() {
     return apiClient.get('/clans');
