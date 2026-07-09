@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Key } from 'react';
 import { Button, Card, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
