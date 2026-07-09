@@ -11,7 +11,7 @@ import { loadClans as queryClans, type ClanLike } from '../../services/clanServi
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
-import { bindSourceApi, createSourceApi, loadSources as querySources, type SourceLike } from '../../services/sourceService';
+import { bindSourceApi, createSourceApi, loadSourceLinks as querySourceLinks, loadSources as querySources, type SourceLike, type SourceLinkLike } from '../../services/sourceService';
 
 type SourceTargetType = 'person' | 'relationship' | 'branch' | 'clan';
 
@@ -52,6 +52,18 @@ function sourceName(row: SourceLike) {
   return row.sourceName || row.name || `来源#${row.id || '-'}`;
 }
 
+function sourceLinkSourceName(row: SourceLinkLike) {
+  return row.sourceName || `来源#${row.sourceId || row.id || '-'}`;
+}
+
+function sourceLinkTargetName(row: SourceLinkLike) {
+  return row.targetName || row.targetLabel || `对象#${row.targetId || '-'}`;
+}
+
+function sourceLinkTime(row: SourceLinkLike) {
+  return row.createdAt || row.createTime || '-';
+}
+
 function sourceTypeText(value: unknown) {
   const type = String(value || '').toLowerCase();
   const dict: Record<string, string> = {
@@ -66,14 +78,14 @@ function sourceTypeText(value: unknown) {
   return dict[type] || String(value || '-');
 }
 
-function sourceTargetTypeText(type: SourceTargetType) {
+function sourceTargetTypeText(type: SourceTargetType | string | undefined) {
   const dict: Record<SourceTargetType, string> = {
     person: '人物',
     relationship: '关系',
     branch: '支派',
     clan: '宗族'
   };
-  return dict[type];
+  return dict[type as SourceTargetType] || String(type || '-');
 }
 
 function dedupeRelationships(rows: RelationshipLike[]) {
@@ -88,10 +100,12 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   const [persons, setPersons] = useState<PersonLike[]>([]);
   const [relationships, setRelationships] = useState<RelationshipLike[]>([]);
   const [sources, setSources] = useState<SourceLike[]>([]);
+  const [sourceLinks, setSourceLinks] = useState<SourceLinkLike[]>([]);
   const [selectedSourceRowKeys, setSelectedSourceRowKeys] = useState<Key[]>([]);
   const [loadingClans, setLoadingClans] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingSources, setLoadingSources] = useState(false);
+  const [loadingSourceLinks, setLoadingSourceLinks] = useState(false);
   const [savingSource, setSavingSource] = useState(false);
   const [bindingSource, setBindingSource] = useState(false);
   const [submittingSources, setSubmittingSources] = useState(false);
@@ -151,6 +165,35 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  async function loadBindingCandidateOptions(sourceClanId = workspace.clanId) {
+    if (!sourceClanId) {
+      setBranches([]);
+      setPersons([]);
+      setRelationships([]);
+      return;
+    }
+    setLoadingOptions(true);
+    try {
+      const [branchRows, personRows] = await Promise.all([
+        queryBranches(sourceClanId).catch(() => []),
+        queryPersons(sourceClanId).catch(() => [])
+      ]);
+      setBranches(branchRows);
+      setPersons(personRows);
+      await loadRelationshipTargetOptions(personRows);
+    } finally {
+      setLoadingOptions(false);
+    }
+  }
+
+  async function loadRelationshipTargetOptions(personRows: PersonLike[]) {
+    const relationshipResults = await Promise.allSettled(personRows.filter(isOfficial).map(person => queryRelationships(person.id)));
+    const relationshipRows = relationshipResults
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => (result as PromiseFulfilledResult<RelationshipLike[]>).value);
+    setRelationships(dedupeRelationships(relationshipRows));
+  }
+
   async function loadStepData(sourceClanId = workspace.clanId) {
     if (!sourceClanId) {
       setBranches([]);
@@ -160,27 +203,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       setSelectedSourceRowKeys([]);
       return;
     }
-    setLoadingOptions(true);
-    setLoadingSources(true);
-    try {
-      const [branchRows, personRows, sourceRows] = await Promise.all([
-        queryBranches(sourceClanId).catch(() => []),
-        queryPersons(sourceClanId).catch(() => []),
-        querySources(sourceClanId).catch(() => [])
-      ]);
-      setBranches(branchRows);
-      setPersons(personRows);
-      setSources(sourceRows);
-      setSelectedSourceRowKeys([]);
-      const relationshipResults = await Promise.allSettled(personRows.filter(isOfficial).map(person => queryRelationships(person.id)));
-      const relationshipRows = relationshipResults
-        .filter(result => result.status === 'fulfilled')
-        .flatMap(result => (result as PromiseFulfilledResult<RelationshipLike[]>).value);
-      setRelationships(dedupeRelationships(relationshipRows));
-    } finally {
-      setLoadingOptions(false);
-      setLoadingSources(false);
-    }
+    await Promise.all([
+      loadBindingCandidateOptions(sourceClanId),
+      loadSources(sourceClanId)
+    ]);
   }
 
   async function loadSources(sourceClanId = workspace.clanId) {
@@ -202,10 +228,26 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  async function loadSourceLinks(sourceClanId = workspace.clanId) {
+    if (!sourceClanId) {
+      setSourceLinks([]);
+      return;
+    }
+    setLoadingSourceLinks(true);
+    try {
+      const rows = await querySourceLinks(sourceClanId).catch(() => []);
+      setSourceLinks(rows);
+    } finally {
+      setLoadingSourceLinks(false);
+    }
+  }
+
   useEffect(() => { void loadClans(); }, []);
   useEffect(() => {
     setSourceForm({ ...defaultSourceForm });
+    setSourceLinks([]);
     void loadStepData();
+    void loadSourceLinks();
   }, [workspace.clanId]);
 
   function changeClan(nextClanId: string) {
@@ -215,6 +257,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setPersons([]);
     setRelationships([]);
     setSources([]);
+    setSourceLinks([]);
     setSelectedSourceRowKeys([]);
   }
 
@@ -303,6 +346,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       });
       setSourceForm(prev => ({ ...prev, targetId }));
       toast({ message: '来源绑定成功。', id: data?.id });
+      await loadSourceLinks();
     } catch (error) {
       toast({ message: (error as Error).message || '绑定来源失败' }, true);
     } finally {
@@ -408,6 +452,32 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         <button className="secondary" disabled={!!sourceBindDisabledReason} title={sourceBindDisabledReason || undefined} onClick={() => void bindSource()}>绑定来源</button>
         <button className="secondary" disabled={loadingOptions || !workspace.clanId} onClick={() => void loadStepData()}>刷新绑定对象</button>
       </Actions>
+
+      <section className="source-step-bound-panel step-object-result-panel">
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div className="step-draft-review-header">
+            <div>
+              <h4>已绑定来源对象</h4>
+              <p>仅展示已经建立绑定关系的记录，与上方可绑定对象候选列表相互独立。</p>
+            </div>
+            <Button loading={loadingSourceLinks} disabled={!workspace.clanId} onClick={() => void loadSourceLinks()}>刷新已绑定对象</Button>
+          </div>
+          {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+          {sourceLinks.length ? (
+            <div className="source-step-bound-list">
+              {sourceLinks.map(link => (
+                <div className="source-step-bound-card" key={String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`)}>
+                  <strong>{sourceLinkSourceName(link)}</strong>
+                  <span>{sourceTargetTypeText(link.targetType)}：{sourceLinkTargetName(link)}</span>
+                  <small>绑定时间：{sourceLinkTime(link)}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadingSourceLinks ? '正在查询已绑定对象' : '暂无已绑定来源对象'} />
+          )}
+        </Space>
+      </section>
 
       <section className="source-step-list-panel step-object-result-panel">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
