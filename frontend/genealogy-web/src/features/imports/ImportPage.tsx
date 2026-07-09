@@ -3,7 +3,7 @@ import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, 
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { toRecordList } from '../../shared/ui/DataTable';
+import { toRecordList } from '../../shared/utils/records';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
