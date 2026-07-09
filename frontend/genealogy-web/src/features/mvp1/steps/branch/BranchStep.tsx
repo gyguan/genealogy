@@ -246,9 +246,15 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
             getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
           }}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'} /> }}
-          onRow={row => ({ onClick: () => selectBranch(row) })}
+          onRow={row => {
+            const selected = String(workspace.branchId || '') === String(row.id || '');
+            return {
+              onClick: () => selectBranch(row),
+              style: selected ? { background: '#e6f4ff', cursor: 'pointer' } : { cursor: 'pointer' }
+            };
+          }}
           columns={[
-            { key: 'name', title: '支派名称', render: (_value, row) => branchName(row) },
+            { key: 'name', title: '支派名称', render: (_value, row) => <Space><span>{branchName(row)}</span>{String(workspace.branchId || '') === String(row.id || '') ? <Tag color="processing">已选择</Tag> : null}</Space> },
             { key: 'parentId', title: '父支派', render: (_value, row) => parentName(row, branches) },
             { key: 'level', title: '层级', width: 88, render: (_value, row) => row.level ?? '-' },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row, '已通过')}</Tag> },
@@ -256,17 +262,20 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
               key: 'actions',
               title: '操作',
               width: 210,
-              render: (_value, row) => (
-                <Space size="small" wrap onClick={event => event.stopPropagation()}>
-                  <Button size="small" disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>选中支派</Button>
-                  {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
-                  {statusOf(row) === 'draft' ? (
-                    <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
-                      <Button size="small" danger loading={submitting}>删除草稿</Button>
-                    </Popconfirm>
-                  ) : null}
-                </Space>
-              )
+              render: (_value, row) => {
+                const selected = String(workspace.branchId || '') === String(row.id || '');
+                return (
+                  <Space size="small" wrap onClick={event => event.stopPropagation()}>
+                    <Button size="small" type={selected ? 'primary' : 'default'} disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>{selected ? '已选中' : '选中支派'}</Button>
+                    {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
+                    {statusOf(row) === 'draft' ? (
+                      <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
+                        <Button size="small" danger loading={submitting}>删除草稿</Button>
+                      </Popconfirm>
+                    ) : null}
+                  </Space>
+                );
+              }
             }
           ]}
         />
