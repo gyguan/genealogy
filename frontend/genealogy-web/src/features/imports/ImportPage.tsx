@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
-import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { importService } from '../../shared/services/importService';
 import { toRecordList } from '../../shared/utils/records';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
@@ -84,6 +84,12 @@ function importStatusColor(value?: string) {
   return 'default';
 }
 
+function importTypeText(value?: string) {
+  const type = String(value || '').toLowerCase();
+  const dict: Record<string, string> = { persons: '人物导入', person: '人物导入', relationships: '关系导入', relationship: '关系导入' };
+  return dict[type] || value || '导入任务';
+}
+
 function genderText(value?: string) {
   const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
   return dict[value || ''] || value || '-';
@@ -123,7 +129,7 @@ export function ImportPage({ notify }: Props) {
 
   async function loadJobs() {
     if (!workspace.clanId) return;
-    const data = await apiClient.get(`/clans/${workspace.clanId}/imports`);
+    const data = await importService.listJobs(workspace.clanId);
     const rows = toRecordList<ImportJob>(data);
     setJobs(rows);
     if (!selectedJob && rows[0]) setSelectedJob(rows[0]);
@@ -138,11 +144,11 @@ export function ImportPage({ notify }: Props) {
     notify({ message: '导入模板已生成' });
   }
 
-  async function downloadCsv(path: string, filename: string) {
+  async function downloadCsv(loader: () => Promise<Blob>, filename: string) {
     if (loading) return;
     setLoading(true);
     try {
-      const blob = await apiClient.download(path);
+      const blob = await loader();
       saveBlob(blob, filename);
       notify({ message: `导出完成：${filename}` });
     } catch (error) {
@@ -155,11 +161,13 @@ export function ImportPage({ notify }: Props) {
   async function exportCurrentBranch(pathType: 'persons' | 'relations' | 'booklet') {
     if (!workspace.clanId) { notify({ message: '请先在宗族管理中选择宗族' }, true); return; }
     if (!workspace.branchId) { notify({ message: '请先在支派管理中选择支派' }, true); return; }
-    const path = pathType === 'booklet'
-      ? `/clans/${workspace.clanId}/branches/${workspace.branchId}/exports/booklet.html`
-      : `/clans/${workspace.clanId}/branches/${workspace.branchId}/exports/${pathType}.csv`;
+    const loader = pathType === 'booklet'
+      ? () => importService.downloadBranchBooklet(workspace.clanId, workspace.branchId)
+      : pathType === 'persons'
+        ? () => importService.downloadBranchPersons(workspace.clanId, workspace.branchId)
+        : () => importService.downloadBranchRelations(workspace.clanId, workspace.branchId);
     const filename = pathType === 'booklet' ? 'branch-booklet.html' : `branch-${pathType}.csv`;
-    await downloadCsv(path, filename);
+    await downloadCsv(loader, filename);
   }
 
   async function previewFile() {
@@ -170,7 +178,7 @@ export function ImportPage({ notify }: Props) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const result = await apiClient.upload<ImportPreview>(`/clans/${workspace.clanId}/imports/persons/preview?${mappingQuery}`, formData);
+      const result = await importService.previewPersons(workspace.clanId, mappingQuery, formData) as ImportPreview;
       setPreview(result);
       notify({ message: `预览完成：有效 ${result.validCount || 0} 行，疑似重复 ${result.duplicateCount || 0} 行，错误 ${result.errorCount || 0} 行` }, Boolean(result.errorCount));
       return result;
@@ -194,8 +202,7 @@ export function ImportPage({ notify }: Props) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const sep = mappingQuery ? '&' : '';
-      const result = await apiClient.upload<ImportJob>(`/clans/${workspace.clanId}/imports/persons?${mappingQuery}${sep}confirmDuplicates=${confirmDuplicates}`, formData);
+      const result = await importService.importPersons(workspace.clanId, mappingQuery, confirmDuplicates, formData) as ImportJob;
       notify({ message: `导入完成：成功 ${result.successCount || 0} 行，失败 ${result.failureCount || 0} 行` }, Boolean(result.failureCount));
       setSelectedJob(result);
       setPreview(null);
@@ -259,9 +266,9 @@ export function ImportPage({ notify }: Props) {
 
       <Card title="人物/关系/成册导出" style={{ marginTop: 16 }}>
         <Space wrap>
-          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</Button>
-          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</Button>
-          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, 'clan-booklet.html')}>导出全宗族成册</Button>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(() => importService.downloadClanPersons(workspace.clanId), 'persons.csv')}>导出全宗族人物</Button>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(() => importService.downloadClanRelations(workspace.clanId), 'relations.csv')}>导出全宗族关系</Button>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(() => importService.downloadClanBooklet(workspace.clanId), 'clan-booklet.html')}>导出全宗族成册</Button>
           <Button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('persons')}>按当前支派导出人物</Button>
           <Button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('relations')}>按当前支派导出关系</Button>
           <Button type="primary" disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('booklet')}>按当前支派导出成册</Button>
@@ -301,7 +308,7 @@ export function ImportPage({ notify }: Props) {
           onRow={row => ({ onClick: () => setSelectedJob(row), style: { cursor: 'pointer' } })}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
           columns={[
-            { key: 'importType', title: '导入类型', dataIndex: 'importType' },
+            { key: 'importType', title: '导入类型', render: (_value, row) => importTypeText(row.importType) },
             { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename' },
             { key: 'totalCount', title: '总数', dataIndex: 'totalCount' },
             { key: 'successCount', title: '成功', dataIndex: 'successCount' },
