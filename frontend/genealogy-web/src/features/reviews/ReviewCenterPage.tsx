@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Key } from 'react';
+import type { Key, ReactNode } from 'react';
 import { Button, Descriptions, Drawer, Empty, Modal, Popconfirm, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
-import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { reviewCenterService } from '../../shared/services/reviewCenterService';
 import { toRecordList } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 
@@ -149,7 +149,7 @@ export function ReviewCenterPage({ notify }: Props) {
     }
     setLoading(true);
     try {
-      const data = await apiClient.get(`/clans/${workspace.clanId}/review-tasks/pending`);
+      const data = await reviewCenterService.listPendingTasks(workspace.clanId);
       setTasks(toRecordList<ReviewTask>(data));
       setSelectedRowKeys([]);
     } catch (error) {
@@ -166,7 +166,7 @@ export function ReviewCenterPage({ notify }: Props) {
     const key = rowKey(row);
     setProcessingKeys(prev => [...prev, key]);
     try {
-      await apiClient.post(`/review-tasks/${row.id}/approve`, { comment: '同意入谱' });
+      await reviewCenterService.approveTask(row.id);
       notify({ message: '审核已通过' });
       await loadTasks();
       setDetailTask(null);
@@ -182,7 +182,7 @@ export function ReviewCenterPage({ notify }: Props) {
     const key = rowKey(row);
     setProcessingKeys(prev => [...prev, key]);
     try {
-      await apiClient.post(`/review-tasks/${row.id}/reject`, { comment: '请补充资料后重新提交' });
+      await reviewCenterService.rejectTask(row.id);
       notify({ message: '审核已驳回' });
       await loadTasks();
       setDetailTask(null);
@@ -198,7 +198,7 @@ export function ReviewCenterPage({ notify }: Props) {
     setLoading(true);
     try {
       const results = await Promise.allSettled(selectedTasks.map(task => task.id
-        ? apiClient.post(`/review-tasks/${task.id}/approve`, { comment: '同意入谱' })
+        ? reviewCenterService.approveTask(task.id)
         : Promise.reject(new Error('审核任务为空'))
       ));
       const successCount = results.filter(result => result.status === 'fulfilled').length;
@@ -216,7 +216,7 @@ export function ReviewCenterPage({ notify }: Props) {
     setLoading(true);
     try {
       const results = await Promise.allSettled(selectedTasks.map(task => task.id
-        ? apiClient.post(`/review-tasks/${task.id}/reject`, { comment: '请补充资料后重新提交' })
+        ? reviewCenterService.rejectTask(task.id)
         : Promise.reject(new Error('审核任务为空'))
       ));
       const successCount = results.filter(result => result.status === 'fulfilled').length;
@@ -240,7 +240,7 @@ export function ReviewCenterPage({ notify }: Props) {
     });
   }
 
-  function renderRejectConfirm(row: ReviewTask, button: React.ReactNode) {
+  function renderRejectConfirm(row: ReviewTask, button: ReactNode) {
     return (
       <Popconfirm
         title="确认驳回该审核任务？"
