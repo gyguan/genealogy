@@ -132,6 +132,14 @@ export const ROLE_TYPE_LABELS: Record<string, string> = {
   business: '业务角色'
 };
 
+export const MEMBER_STATUS_LABELS: Record<string, string> = {
+  active: '有效',
+  enabled: '有效',
+  disabled: '已停用',
+  revoked: '已撤销',
+  pending: '待生效'
+};
+
 export const IMPORT_STATUS_LABELS: Record<string, string> = {
   pending: '待处理',
   processing: '处理中',
@@ -162,6 +170,7 @@ export const RELATION_TYPE_OPTIONS = toOptions(RELATION_TYPE_LABELS);
 export const REVIEW_TARGET_TYPE_OPTIONS = toOptions(REVIEW_TARGET_TYPE_LABELS);
 export const PRIVACY_LEVEL_OPTIONS = toOptions(PRIVACY_LEVEL_LABELS);
 export const ROLE_TYPE_OPTIONS = toOptions(ROLE_TYPE_LABELS);
+export const MEMBER_STATUS_OPTIONS = toOptions(MEMBER_STATUS_LABELS);
 export const IMPORT_STATUS_OPTIONS = toOptions(IMPORT_STATUS_LABELS);
 
 export function dictionaryText(labels: Record<string, string>, value?: string | number | boolean | null, fallback = '待维护') {
@@ -220,6 +229,14 @@ export function roleTypeColor(value?: string | number | null): DictionaryColor {
   if (key === 'view') return 'blue';
   if (key === 'manage') return 'green';
   return 'default';
+}
+
+export function memberStatusText(value?: string | number | null) {
+  return dictionaryText(MEMBER_STATUS_LABELS, value, '成员状态待维护');
+}
+
+export function memberStatusColor(value?: string | number | null) {
+  return statusColor(value);
 }
 
 export function importStatusText(value?: string | number | null) {
