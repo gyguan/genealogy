@@ -12,7 +12,35 @@ export type PersonLike = {
   branchId?: number | string;
 };
 
-export type CreatePersonPayload = Record<string, unknown>;
+export type CreatePersonPayload = {
+  branchId: number | null;
+  personCode: string | null;
+  name: string;
+  genealogyName: string | null;
+  courtesyName: string | null;
+  aliasName: string | null;
+  gender: string;
+  generationNo: number | null;
+  generationWord: string | null;
+  rankInFamily: string | null;
+  birthDate: string | null;
+  birthDatePrecision: string | null;
+  deathDate: string | null;
+  deathDatePrecision: string | null;
+  isLiving: boolean | null;
+  birthPlace: string | null;
+  residencePlace: string | null;
+  occupation: string | null;
+  education: string | null;
+  titleOrHonor: string | null;
+  biography: string | null;
+  tombPlace: string | null;
+  epitaph: string | null;
+  hasDescendant: boolean | null;
+  lineageStatus: string | null;
+  privacyLevel: string | null;
+  dataStatus: string | null;
+};
 
 export async function loadPersons(clanId?: number | string): Promise<PersonLike[]> {
   if (!clanId) return [];
