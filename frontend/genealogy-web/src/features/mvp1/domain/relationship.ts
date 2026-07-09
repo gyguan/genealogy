@@ -20,6 +20,17 @@ export type RelationshipLike = {
   relationLabel?: string;
 };
 
+export type RelationshipCreatePayload = {
+  fromPersonId: number;
+  toPersonId: number;
+  relationType: 'spouse' | 'parent_child';
+  relationLabel: string;
+  isLineageRelation: boolean;
+  isBiological: boolean;
+  isPrimary: boolean;
+  confidenceLevel: 'high';
+};
+
 export const RELATIONSHIP_MODE_LABEL: Record<RelationshipMode, string> = {
   father: '父亲',
   mother: '母亲',
@@ -66,7 +77,7 @@ export function isRelationshipCandidate(center: RelationshipPersonLike | undefin
   return true;
 }
 
-export function buildRelationshipBody(center: RelationshipPersonLike, relative: RelationshipPersonLike, mode: RelationshipMode) {
+export function buildRelationshipBody(center: RelationshipPersonLike, relative: RelationshipPersonLike, mode: RelationshipMode): RelationshipCreatePayload {
   if (mode === 'spouse') {
     return {
       fromPersonId: Number(center.id),
