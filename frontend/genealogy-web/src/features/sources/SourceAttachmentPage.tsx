@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Empty, Popconfirm, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
-import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { sourceAttachmentService } from '../../shared/services/sourceAttachmentService';
 import { toRecordList } from '../../shared/ui/DataTable';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
@@ -49,7 +49,7 @@ export function SourceAttachmentPage({ notify }: Props) {
 
   async function loadAttachments() {
     if (!workspace.sourceId) return;
-    const data = await apiClient.get(`/source-attachments/sources/${workspace.sourceId}`);
+    const data = await sourceAttachmentService.listBySource(workspace.sourceId);
     setAttachments(toRecordList<Attachment>(data));
   }
 
@@ -63,7 +63,7 @@ export function SourceAttachmentPage({ notify }: Props) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      await apiClient.upload(`/sources/${workspace.sourceId}/attachments`, formData);
+      await sourceAttachmentService.uploadToSource(workspace.sourceId, formData);
       notify({ message: '附件上传成功' });
       setFile(null);
       await loadAttachments();
@@ -82,7 +82,7 @@ export function SourceAttachmentPage({ notify }: Props) {
       return;
     }
     try {
-      const blob = await apiClient.download(`/source-attachments/${row.id}/content`);
+      const blob = await sourceAttachmentService.downloadContent(row.id);
       const url = URL.createObjectURL(blob);
       previewWindow.location.href = url;
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -96,7 +96,7 @@ export function SourceAttachmentPage({ notify }: Props) {
   async function downloadAttachment(row: Attachment) {
     if (!row.id) return;
     try {
-      const blob = await apiClient.download(`/source-attachments/${row.id}/content`);
+      const blob = await sourceAttachmentService.downloadContent(row.id);
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = row.originalFilename || 'attachment';
@@ -111,7 +111,7 @@ export function SourceAttachmentPage({ notify }: Props) {
   async function removeAttachment(row: Attachment) {
     if (!row.id) return;
     try {
-      await apiClient.delete(`/source-attachments/${row.id}`);
+      await sourceAttachmentService.remove(row.id);
       notify({ message: '附件已删除' });
       await loadAttachments();
     } catch (error) {
