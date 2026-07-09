@@ -25,12 +25,27 @@ export type BindSourcePayload = {
 
 export type SourceLinkLike = {
   id?: number | string;
+  sourceId?: number | string;
+  sourceName?: string;
+  sourceType?: string;
+  targetType?: string;
+  targetId?: number | string;
+  targetName?: string;
+  targetLabel?: string;
+  createdAt?: string;
+  createTime?: string;
 };
 
 export async function loadSources(clanId?: number | string): Promise<SourceLike[]> {
   if (!clanId) return [];
   const data = await apiClient.get(`/clans/${clanId}/sources`);
   return toRows<SourceLike>(data);
+}
+
+export async function loadSourceLinks(clanId?: number | string): Promise<SourceLinkLike[]> {
+  if (!clanId) return [];
+  const data = await apiClient.get(`/clans/${clanId}/source-links`);
+  return toRows<SourceLinkLike>(data);
 }
 
 export async function createSourceApi(clanId: number | string, payload: CreateSourcePayload): Promise<SourceLike> {
