@@ -1,9 +1,6 @@
 import { Avatar, Button, Card, Descriptions, Drawer, Empty, Space, Tag, Typography } from 'antd';
 import { relationTypeText, statusColor, statusText } from './dictionaries';
-
-type CreateMode = 'person' | 'father' | 'mother' | 'spouse' | 'child' | null;
-type PersonView = { id: string; name: string; generation: string; word: string; years: string; branch: string; status: string; avatar: string; relation: string; raw?: any };
-type ExperienceData = { selectedPerson?: PersonView; relationships: any[]; people: PersonView[]; submitPersonReview: (personId: string) => Promise<void> };
+import type { CreateMode, ExperienceData, PersonView } from './types';
 
 function EmptyGuide({ text }: { text: string }) {
   return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={text} />;
@@ -36,64 +33,12 @@ export function PersonSidePanel({ data, onCreate, onOpenDetail }: { data: Experi
   const person = data.selectedPerson;
   const relatives = buildRelatives(person, data.relationships, data.people);
   if (!person) return <Card className="xp-person-panel"><EmptyGuide text="暂无人物数据。请点击“新增人物”创建第一位族人。" /></Card>;
-  return (
-    <Card className="xp-person-panel" title="中心人物" extra={<StatusTag value={person.status} />}>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Space align="center">
-          <Avatar size={56}>{person.avatar}</Avatar>
-          <div>
-            <Typography.Title level={4} style={{ margin: 0 }}>{person.name}</Typography.Title>
-            <Typography.Text type="secondary">{person.branch} · {person.generation} · {person.word}字辈</Typography.Text>
-          </div>
-        </Space>
-        <Descriptions size="small" column={1} bordered>
-          <Descriptions.Item label="生卒">{person.years}</Descriptions.Item>
-          <Descriptions.Item label="关系">{person.relation}</Descriptions.Item>
-          <Descriptions.Item label="支派">{person.branch}</Descriptions.Item>
-        </Descriptions>
-        <Space wrap>
-          <Button type="primary" onClick={onOpenDetail}>查看详情</Button>
-          <Button onClick={() => onCreate('father')}>添加父亲</Button>
-          <Button onClick={() => onCreate('mother')}>添加母亲</Button>
-          <Button onClick={() => onCreate('spouse')}>添加配偶</Button>
-          <Button onClick={() => onCreate('child')}>添加子女</Button>
-          <Button onClick={() => data.submitPersonReview(person.id)}>提交审核</Button>
-        </Space>
-        <Card size="small" title="亲属关系">
-          {relatives.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{relatives.map(item => <Space key={`${item.type}-${item.name}`} style={{ justifyContent: 'space-between', width: '100%' }}><span>{item.type}：{item.name}</span><StatusTag value={item.status} /></Space>)}</Space> : <EmptyGuide text="暂无亲属关系，请添加父母、配偶或子女。" />}
-        </Card>
-      </Space>
-    </Card>
-  );
+  return <Card className="xp-person-panel" title="中心人物" extra={<StatusTag value={person.status} />}><Space direction="vertical" size="middle" style={{ width: '100%' }}><Space align="center"><Avatar size={56}>{person.avatar}</Avatar><div><Typography.Title level={4} style={{ margin: 0 }}>{person.name}</Typography.Title><Typography.Text type="secondary">{person.branch} · {person.generation} · {person.word}字辈</Typography.Text></div></Space><Descriptions size="small" column={1} bordered><Descriptions.Item label="生卒">{person.years}</Descriptions.Item><Descriptions.Item label="关系">{person.relation}</Descriptions.Item><Descriptions.Item label="支派">{person.branch}</Descriptions.Item></Descriptions><Space wrap><Button type="primary" onClick={onOpenDetail}>查看详情</Button><Button onClick={() => onCreate('father')}>添加父亲</Button><Button onClick={() => onCreate('mother')}>添加母亲</Button><Button onClick={() => onCreate('spouse')}>添加配偶</Button><Button onClick={() => onCreate('child')}>添加子女</Button><Button onClick={() => data.submitPersonReview(person.id)}>提交审核</Button></Space><Card size="small" title="亲属关系">{relatives.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{relatives.map(item => <Space key={`${item.type}-${item.name}`} style={{ justifyContent: 'space-between', width: '100%' }}><span>{item.type}：{item.name}</span><StatusTag value={item.status} /></Space>)}</Space> : <EmptyGuide text="暂无亲属关系，请添加父母、配偶或子女。" />}</Card></Space></Card>;
 }
 
 export function PersonDetailDrawer({ data, open, onClose, onCreate }: { data: ExperienceData; open: boolean; onClose: () => void; onCreate: (mode: CreateMode) => void }) {
   const person = data.selectedPerson;
   const relatives = buildRelatives(person, data.relationships, data.people);
   const events = buildEvents(person);
-  return (
-    <Drawer title={person ? `${person.name} · 人物详情` : '人物详情'} width={520} open={open} onClose={onClose}>
-      {person ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Card size="small">
-          <Space align="center">
-            <Avatar size={64}>{person.avatar}</Avatar>
-            <div>
-              <Typography.Title level={4} style={{ margin: 0 }}>{person.name}</Typography.Title>
-              <Typography.Text type="secondary">{person.branch} · {person.generation} · {person.word}字辈</Typography.Text><br />
-              <StatusTag value={person.status} />
-            </div>
-          </Space>
-        </Card>
-        <Descriptions size="small" column={1} bordered>
-          <Descriptions.Item label="所属支派">{person.branch}</Descriptions.Item>
-          <Descriptions.Item label="代次字辈">{person.generation} · {person.word}</Descriptions.Item>
-          <Descriptions.Item label="生卒信息">{person.years}</Descriptions.Item>
-          <Descriptions.Item label="关系摘要">{person.relation}</Descriptions.Item>
-        </Descriptions>
-        <Card size="small" title="亲属关系">{relatives.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{relatives.map(item => <Space key={`${item.type}-${item.name}`} style={{ justifyContent: 'space-between', width: '100%' }}><span>{item.type}：{item.name}</span><StatusTag value={item.status} /></Space>)}</Space> : <EmptyGuide text="暂无后端返回的亲属关系。" />}</Card>
-        <Card size="small" title="生命事件">{events.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{events.map(item => <div key={`${item.year}-${item.title}`}><Typography.Text strong>{item.title}</Typography.Text><br /><Typography.Text type="secondary">{item.year} · {item.detail}</Typography.Text></div>)}</Space> : <EmptyGuide text="暂无后端返回的生命事件。" />}</Card>
-        <Space wrap><Button onClick={() => onCreate('father')}>添加父亲</Button><Button onClick={() => onCreate('mother')}>添加母亲</Button><Button onClick={() => onCreate('spouse')}>添加配偶</Button><Button onClick={() => onCreate('child')}>添加子女</Button></Space>
-      </Space> : <EmptyGuide text="暂无人物详情。" />}
-    </Drawer>
-  );
+  return <Drawer title={person ? `${person.name} · 人物详情` : '人物详情'} width={520} open={open} onClose={onClose}>{person ? <Space direction="vertical" size="middle" style={{ width: '100%' }}><Card size="small"><Space align="center"><Avatar size={64}>{person.avatar}</Avatar><div><Typography.Title level={4} style={{ margin: 0 }}>{person.name}</Typography.Title><Typography.Text type="secondary">{person.branch} · {person.generation} · {person.word}字辈</Typography.Text><br /><StatusTag value={person.status} /></div></Space></Card><Descriptions size="small" column={1} bordered><Descriptions.Item label="所属支派">{person.branch}</Descriptions.Item><Descriptions.Item label="代次字辈">{person.generation} · {person.word}</Descriptions.Item><Descriptions.Item label="生卒信息">{person.years}</Descriptions.Item><Descriptions.Item label="关系摘要">{person.relation}</Descriptions.Item></Descriptions><Card size="small" title="亲属关系">{relatives.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{relatives.map(item => <Space key={`${item.type}-${item.name}`} style={{ justifyContent: 'space-between', width: '100%' }}><span>{item.type}：{item.name}</span><StatusTag value={item.status} /></Space>)}</Space> : <EmptyGuide text="暂无后端返回的亲属关系。" />}</Card><Card size="small" title="生命事件">{events.length ? <Space direction="vertical" size="small" style={{ width: '100%' }}>{events.map(item => <div key={`${item.year}-${item.title}`}><Typography.Text strong>{item.title}</Typography.Text><br /><Typography.Text type="secondary">{item.year} · {item.detail}</Typography.Text></div>)}</Space> : <EmptyGuide text="暂无后端返回的生命事件。" />}</Card><Space wrap><Button onClick={() => onCreate('father')}>添加父亲</Button><Button onClick={() => onCreate('mother')}>添加母亲</Button><Button onClick={() => onCreate('spouse')}>添加配偶</Button><Button onClick={() => onCreate('child')}>添加子女</Button></Space></Space> : <EmptyGuide text="暂无人物详情。" />}</Drawer>;
 }
