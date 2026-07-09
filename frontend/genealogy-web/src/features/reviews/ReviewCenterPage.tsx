@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Button, Descriptions, Drawer, Empty, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import { Button, Descriptions, Drawer, Empty, Modal, Popconfirm, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -128,6 +128,7 @@ function reviewTimelineItems(row: ReviewTask) {
 
 export function ReviewCenterPage({ notify }: Props) {
   const workspace = useWorkspace();
+  const [modal, contextHolder] = Modal.useModal();
   const [tasks, setTasks] = useState<ReviewTask[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [loading, setLoading] = useState(false);
@@ -228,6 +229,32 @@ export function ReviewCenterPage({ notify }: Props) {
     }
   }
 
+  function confirmBatchReject() {
+    modal.confirm({
+      title: `确认批量驳回 ${selectedTasks.length} 条审核任务？`,
+      content: '批量驳回后，相关对象需要补充资料后重新提交审核。',
+      okText: '确认驳回',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => batchReject()
+    });
+  }
+
+  function renderRejectConfirm(row: ReviewTask, button: React.ReactNode) {
+    return (
+      <Popconfirm
+        title="确认驳回该审核任务？"
+        description="驳回后，该对象需要补充资料后重新提交审核。"
+        okText="确认驳回"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        onConfirm={() => void rejectOne(row)}
+      >
+        {button}
+      </Popconfirm>
+    );
+  }
+
   function renderPendingTable() {
     return (
       <>
@@ -239,7 +266,7 @@ export function ReviewCenterPage({ notify }: Props) {
             <Button type="primary" disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={() => void batchApprove()}>
               批量通过（{selectedTasks.length}）
             </Button>
-            <Button danger disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={() => void batchReject()}>
+            <Button danger disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={confirmBatchReject}>
               批量驳回（{selectedTasks.length}）
             </Button>
           </Space>
@@ -276,7 +303,7 @@ export function ReviewCenterPage({ notify }: Props) {
                 return (
                   <Space size="small" wrap onClick={event => event.stopPropagation()}>
                     <Button size="small" type="primary" loading={processing} disabled={loading} onClick={() => void approveOne(row)}>通过</Button>
-                    <Button size="small" danger loading={processing} disabled={loading} onClick={() => void rejectOne(row)}>驳回</Button>
+                    {renderRejectConfirm(row, <Button size="small" danger loading={processing} disabled={loading}>驳回</Button>)}
                   </Space>
                 );
               }
@@ -290,6 +317,7 @@ export function ReviewCenterPage({ notify }: Props) {
 
   return (
     <div className="review-center-page">
+      {contextHolder}
       <Panel title="审核中心" description="集中处理待审核任务，支持查看审核对象、流转状态和批量审批。">
         <Tabs
           activeKey={activeTab}
@@ -310,7 +338,7 @@ export function ReviewCenterPage({ notify }: Props) {
         extra={detailTask ? (
           <Space>
             <Button onClick={() => setDetailTask(null)}>关闭</Button>
-            <Button danger loading={processingKeys.includes(rowKey(detailTask))} onClick={() => void rejectOne(detailTask)}>驳回</Button>
+            {renderRejectConfirm(detailTask, <Button danger loading={processingKeys.includes(rowKey(detailTask))}>驳回</Button>)}
             <Button type="primary" loading={processingKeys.includes(rowKey(detailTask))} onClick={() => void approveOne(detailTask)}>通过</Button>
           </Space>
         ) : null}
