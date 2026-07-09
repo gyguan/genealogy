@@ -24,6 +24,16 @@ export const treeService = {
     return apiClient.get(`/clans/${clanId}/persons`);
   },
 
+  searchPeople(clanId: string, pageNo = 1, pageSize = 120, keyword = '') {
+    const params = new URLSearchParams({ clanId, pageNo: String(pageNo), pageSize: String(pageSize) });
+    if (keyword.trim()) params.set('keyword', keyword.trim());
+    return apiClient.get(`/persons/search?${params.toString()}`);
+  },
+
+  getPerson(personId: string | number) {
+    return apiClient.get(`/persons/${personId}`);
+  },
+
   listSources(clanId: string) {
     return apiClient.get(`/clans/${clanId}/sources`);
   },
@@ -40,20 +50,25 @@ export const treeService = {
     return apiClient.get(`/persons/${personId}/relationships`);
   },
 
-  getPersonFamilyTree(personId: string | number) {
-    return apiClient.get(`/tree/person/${personId}/family`);
+  getPersonFamilyTree(personId: string | number, depth?: string | number) {
+    const suffix = depth ? `?depth=${depth}` : '';
+    return apiClient.get(`/tree/person/${personId}/family${suffix}`);
   },
 
-  getAncestors(personId: string | number, depth = 5) {
-    return apiClient.get(`/tree/ancestors?personId=${personId}&depth=${depth}`);
+  getAncestors(personId: string | number, maxDepth: string | number = 5) {
+    return apiClient.get(`/tree/ancestors?personId=${personId}&maxDepth=${maxDepth}`);
   },
 
-  getDescendants(personId: string | number, depth = 5) {
-    return apiClient.get(`/tree/descendants?personId=${personId}&depth=${depth}`);
+  getDescendants(personId: string | number, maxDepth: string | number = 5) {
+    return apiClient.get(`/tree/descendants?rootPersonId=${personId}&maxDepth=${maxDepth}`);
   },
 
-  getFamily(personId: string | number, depth = 3) {
-    return apiClient.get(`/tree/person/${personId}/family?depth=${depth}`);
+  getFamily(personId: string | number, depth: string | number = 3) {
+    return this.getPersonFamilyTree(personId, depth);
+  },
+
+  getBranchLineage(clanId: string, branchId: string | number) {
+    return apiClient.get(`/tree/clans/${clanId}/branches/${branchId}/lineage`);
   },
 
   createPerson(clanId: string, payload: unknown) {
