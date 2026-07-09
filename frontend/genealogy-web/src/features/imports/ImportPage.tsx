@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
+import { genderText, importStatusColor, importStatusText } from '../../shared/dictionaries';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { importService } from '../../shared/services/importService';
 import { toRecordList } from '../../shared/utils/records';
@@ -70,29 +71,10 @@ function saveBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function importStatusText(value?: string) {
-  const status = String(value || '').toLowerCase();
-  const dict: Record<string, string> = { success: '成功', completed: '已完成', failed: '失败', processing: '处理中', pending: '待处理' };
-  return dict[status] || value || '待维护';
-}
-
-function importStatusColor(value?: string) {
-  const status = String(value || '').toLowerCase();
-  if (['success', 'completed'].includes(status)) return 'success';
-  if (status === 'failed') return 'error';
-  if (['processing', 'pending'].includes(status)) return 'processing';
-  return 'default';
-}
-
 function importTypeText(value?: string) {
   const type = String(value || '').toLowerCase();
   const dict: Record<string, string> = { persons: '人物导入', person: '人物导入', relationships: '关系导入', relationship: '关系导入' };
   return dict[type] || value || '导入任务';
-}
-
-function genderText(value?: string) {
-  const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
-  return dict[value || ''] || value || '-';
 }
 
 export function ImportPage({ notify }: Props) {
@@ -328,12 +310,8 @@ export function ImportPage({ notify }: Props) {
             rowKey={(row: any, index) => String(row.rowNo || index)}
             dataSource={selectedJob.errors || []}
             pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无错误行" /> }}
-            columns={[
-              { key: 'rowNo', title: '行号', dataIndex: 'rowNo' },
-              { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' },
-              { key: 'rawData', title: '原始数据', dataIndex: 'rawData' }
-            ]}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无错误明细" /> }}
+            columns={[{ key: 'rowNo', title: '行号', dataIndex: 'rowNo' }, { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' }, { key: 'rawData', title: '原始数据', dataIndex: 'rawData' }]}
           />
         </Card>
       ) : null}
