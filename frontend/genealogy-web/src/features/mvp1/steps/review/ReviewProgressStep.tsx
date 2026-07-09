@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Empty, Select, Space, Table, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../../../shared/ui/Form';
+import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
-import { nullableString } from '../../domain/normalize';
 import { buildReviewTargetOptions, createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
 import { statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
@@ -19,19 +18,30 @@ import {
 import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
+  targetTypes: ReviewTargetType[];
+};
+
+type ReviewCandidate = {
+  key: string;
   targetType: ReviewTargetType;
   targetId: string;
-  comment: string;
+  title: string;
 };
 
 type Props = {
   notify?: (data: unknown, error?: boolean) => void;
 };
 
+const targetTypeOptions: { value: ReviewTargetType; label: string }[] = [
+  { value: 'persons', label: '人物' },
+  { value: 'relationships', label: '关系' },
+  { value: 'sources', label: '来源' },
+  { value: 'branches', label: '支派' },
+  { value: 'generation-schemes', label: '字辈方案' }
+];
+
 const defaultReviewForm: ReviewForm = {
-  targetType: 'persons',
-  targetId: '',
-  comment: '提交审核'
+  targetTypes: ['persons']
 };
 
 function clanLabel(clan: ClanLike) {
@@ -50,7 +60,15 @@ export function ReviewProgressStep({ notify }: Props) {
   const [tasks, setTasks] = useState<ReviewTaskLike[]>([]);
   const [loadingClans, setLoadingClans] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingTargetKey, setSubmittingTargetKey] = useState('');
+
+  const selectedTargetTypes = reviewForm.targetTypes.length ? reviewForm.targetTypes : targetTypeOptions.map(option => option.value);
+  const reviewCandidates = useMemo<ReviewCandidate[]>(() => selectedTargetTypes.flatMap(targetType => buildReviewTargetOptions(targetType, { persons, relationships, sources, branches, schemes }).map(option => ({
+    key: `${targetType}-${option.value}`,
+    targetType,
+    targetId: option.value,
+    title: option.label
+  }))), [selectedTargetTypes, persons, relationships, sources, branches, schemes]);
 
   function toast(data: unknown, error = false) {
     notify?.(data, error);
@@ -59,10 +77,6 @@ export function ReviewProgressStep({ notify }: Props) {
       if (error) message.error(text);
       else message.success(text);
     }
-  }
-
-  function patchReview(key: keyof ReviewForm, value: string) {
-    setReviewForm(prev => ({ ...prev, [key]: value }));
   }
 
   async function loadClans() {
@@ -120,31 +134,18 @@ export function ReviewProgressStep({ notify }: Props) {
     setTasks([]);
   }
 
-  function reviewTargetOptions(type = reviewForm.targetType) {
-    return buildReviewTargetOptions(type, { persons, relationships, sources, branches, schemes });
-  }
-
-  function effectiveReviewTargetId() {
-    return reviewForm.targetId || reviewTargetOptions()[0]?.value || '';
-  }
-
-  async function submitReview() {
-    const targetId = effectiveReviewTargetId();
+  async function submitReview(row: ReviewCandidate) {
     if (!workspace.clanId) {
       toast({ message: '请选择宗族' }, true);
       return;
     }
-    if (!targetId) {
-      toast({ message: '请选择草稿或已驳回的审核对象' }, true);
-      return;
-    }
-    setSubmitting(true);
+    setSubmittingTargetKey(row.key);
     try {
       const task: any = await submitReviewTask({
         clanId: workspace.clanId,
-        targetType: toApiReviewTargetType(reviewForm.targetType),
-        targetId,
-        comment: nullableString(reviewForm.comment)
+        targetType: toApiReviewTargetType(row.targetType),
+        targetId: row.targetId,
+        comment: '提交审核'
       });
       if (task?.id) workspace.setReviewTaskId(String(task.id));
       toast({ message: '审核任务已提交', id: task?.id });
@@ -152,7 +153,7 @@ export function ReviewProgressStep({ notify }: Props) {
     } catch (error) {
       toast({ message: (error as Error).message || '提交审核任务失败' }, true);
     } finally {
-      setSubmitting(false);
+      setSubmittingTargetKey('');
     }
   }
 
@@ -165,38 +166,58 @@ export function ReviewProgressStep({ notify }: Props) {
             {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
           </select>
         </Field>
-        <Field label="补充提交对象类型">
-          <select value={reviewForm.targetType} onChange={event => setReviewForm(prev => ({ ...prev, targetType: event.target.value as ReviewTargetType, targetId: '' }))}>
-            <option value="persons">人物</option>
-            <option value="relationships">关系</option>
-            <option value="sources">来源</option>
-            <option value="branches">支派</option>
-            <option value="generation-schemes">字辈方案</option>
-          </select>
-        </Field>
-        <Field label="草稿/驳回对象">
-          <select value={reviewForm.targetId || effectiveReviewTargetId()} onChange={event => patchReview('targetId', event.target.value)}>
-            <option value="">暂无可提交对象</option>
-            {reviewTargetOptions().map(option => <option key={`${reviewForm.targetType}-${option.value}`} value={option.value}>{option.label}</option>)}
-          </select>
-        </Field>
-        <Field label="待审任务">
-          <select value={workspace.reviewTaskId} disabled={!tasks.length} onChange={event => workspace.setReviewTaskId(event.target.value)}>
-            <option value="">{tasks.length ? '请选择待审任务' : '暂无待审任务'}</option>
-            {tasks.map(task => <option key={task.id} value={String(task.id)}>{reviewTaskTitle(task)} · {statusText(task)}</option>)}
-          </select>
+        <Field label="对象类型">
+          <Select<ReviewTargetType[]>
+            mode="multiple"
+            allowClear
+            value={reviewForm.targetTypes}
+            onChange={value => setReviewForm({ targetTypes: value })}
+            options={targetTypeOptions}
+            placeholder="请选择对象类型；不选则查看全部"
+            maxTagCount="responsive"
+            style={{ width: '100%' }}
+          />
         </Field>
       </div>
-      <Field label="审核说明">
-        <textarea value={reviewForm.comment} onChange={event => patchReview('comment', event.target.value)} rows={3} />
-      </Field>
-      <Actions>
-        <button disabled={submitting || !reviewTargetOptions().length} onClick={() => void submitReview()}>补充提交审核</button>
-        <button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()}>刷新审核进度</button>
-      </Actions>
-      {reviewForm.targetType === 'relationships' && !workspace.personId ? (
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()}>查询审核进度</Button>
+        <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
+      </Space>
+      {selectedTargetTypes.includes('relationships') && !workspace.personId ? (
         <Alert type="info" showIcon message="关系候选对象按当前中心人物加载；如需提交关系审核，请先在录入人物/建立关系步骤选中中心人物。" style={{ marginBottom: 12 }} />
       ) : null}
+
+      <section className="review-progress-submit-list step-object-result-panel">
+        <div className="step-draft-review-header">
+          <div>
+            <h4>可提交审核对象</h4>
+            <p>草稿/已驳回对象可在列表中直接提交审核，样式与支派列表保持一致。</p>
+          </div>
+          <Space wrap>
+            <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
+          </Space>
+        </div>
+        <Table<ReviewCandidate>
+          size="small"
+          bordered
+          loading={loadingData}
+          rowKey={row => row.key}
+          dataSource={reviewCandidates}
+          pagination={false}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无可提交审核对象' : '请选择宗族后查看可提交对象'} /> }}
+          columns={[
+            { key: 'title', title: '对象名称', render: (_value, row) => row.title },
+            { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
+            {
+              key: 'actions',
+              title: '操作',
+              width: 140,
+              render: (_value, row) => <Button size="small" type="primary" loading={submittingTargetKey === row.key} onClick={() => void submitReview(row)}>提交审核</Button>
+            }
+          ]}
+        />
+      </section>
+
       <section className="review-progress-task-list step-object-result-panel">
         <div className="step-draft-review-header">
           <div>
