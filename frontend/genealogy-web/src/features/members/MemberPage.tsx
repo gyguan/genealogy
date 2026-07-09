@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
-import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { memberService } from '../../shared/services/memberService';
 import { toRecordList } from '../../shared/utils/records';
 
 type ClanRow = { id: number; clanName: string; surname?: string; clanCode?: string; hallName?: string };
@@ -11,7 +11,6 @@ type RoleRow = { id: number; roleCode: string; roleName: string; roleType: 'mana
 type MemberRow = { id: number; userId: number; username: string; displayName: string; roleCode: string; roleName: string; roleType: 'manage' | 'view' | string; memberName: string; memberStatus: string; scopeType: string; scopeId?: number; branchId?: number };
 
 const manageRoleCodes = ['clan_admin', 'branch_admin', 'editor', 'reviewer'];
-const memberManagementBase = '/member-management';
 
 const roleAbilityText: Record<string, string[]> = {
   clan_admin: ['可管理宗族成员与支派', '可维护全宗族人物、关系、来源', '可处理导出与审计类高风险事项'],
@@ -81,7 +80,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function loadBranches(clanId: string) {
     if (!clanId) { setBranches([]); setScopeBranchId(''); return [] as BranchRow[]; }
-    const branchRes = await apiClient.get(`/clans/${clanId}/branches`).catch(() => []);
+    const branchRes = await memberService.listBranches(clanId).catch(() => []);
     const nextBranches = toRecordList<BranchRow>(branchRes);
     setBranches(nextBranches);
     if (nextBranches.length && !nextBranches.some(branch => String(branch.id) === scopeBranchId)) setScopeBranchId(String(nextBranches[0].id));
@@ -92,9 +91,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   async function loadBase() {
     await run(async () => {
       const [clanRes, userRes, roleRes] = await Promise.all([
-        apiClient.get('/clans').catch(() => []),
-        apiClient.get(`${memberManagementBase}/users`).catch(() => []),
-        apiClient.get(`${memberManagementBase}/roles`).catch(() => [])
+        memberService.listClans().catch(() => []),
+        memberService.listUsers().catch(() => []),
+        memberService.listRoles().catch(() => [])
       ]);
       const nextClans = toRecordList<ClanRow>(clanRes);
       const nextUsers = toRecordList<UserRow>(userRes);
@@ -108,7 +107,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!roleCode) setRoleCode(defaultRoleCode(nextRoles));
       if (nextClanId) {
         await loadBranches(nextClanId);
-        const memberRes = await apiClient.get(`${memberManagementBase}/clans/${nextClanId}/members`).catch(() => []);
+        const memberRes = await memberService.listMembers(nextClanId).catch(() => []);
         setMembers(toRecordList<MemberRow>(memberRes));
       } else {
         setBranches([]);
@@ -119,7 +118,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function listMembers(clanId = selectedClanId) {
     if (!clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members`);
+    const res = await memberService.listMembers(clanId);
     setMembers(toRecordList<MemberRow>(res));
   }
 
@@ -130,7 +129,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!roleCode) throw new Error('请选择角色');
       if (isBranchScope(scopeType) && !scopeBranchId) throw new Error('支派范围授权需要先选择支派');
       const selectedUser = users.find(user => String(user.id) === userId);
-      await apiClient.post(`${memberManagementBase}/clans/${selectedClanId}/members`, {
+      await memberService.createMember(selectedClanId, {
         userId: Number(userId),
         roleCode,
         memberName: memberName.trim() || selectedUser?.displayName || selectedUser?.username || `用户${userId}`,
@@ -148,7 +147,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!selectedClanId) throw new Error('请先选择宗族');
       const nextScopeType = isBranchScope(member.scopeType) ? 'branch' : 'clan';
       const nextScopeId = isBranchScope(nextScopeType) ? (member.scopeId || member.branchId) : Number(selectedClanId);
-      await apiClient.put(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`, {
+      await memberService.updateMember(selectedClanId, member.id, {
         roleCode: nextRoleCode,
         memberStatus: member.memberStatus || 'active',
         scopeType: nextScopeType,
@@ -163,7 +162,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   async function revokeRole(member: MemberRow) {
     await run(async () => {
       if (!selectedClanId) throw new Error('请先选择宗族');
-      await apiClient.delete(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`);
+      await memberService.revokeMember(selectedClanId, member.id);
       notify({ message: '成员授权已撤销' });
       await listMembers(selectedClanId);
     });
