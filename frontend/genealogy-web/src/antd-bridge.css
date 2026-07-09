@@ -7,9 +7,11 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 .antd-brand .ant-typography { margin: 0; }
 .antd-sidebar .ant-menu { flex: 1 1 auto; }
 .antd-sidebar-footer { display: none !important; }
-.github-like-header { position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 24px; border-bottom: 1px solid #f0f0f0; background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.github-like-header { position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 56px; padding: 8px 24px; border-bottom: 1px solid #f0f0f0; background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
 .github-like-header-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .github-like-header-title .ant-typography:last-child { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.github-like-header-actions { justify-content: flex-end; min-width: 0; }
+.github-like-header-actions .ant-tag { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .github-user-trigger { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 8px; width: auto; height: 36px; min-height: 36px; max-height: 36px; padding: 2px 8px 2px 4px; overflow: hidden; border: 1px solid transparent; border-radius: 999px; background: transparent; color: rgba(0,0,0,.88); box-shadow: none; line-height: 1; vertical-align: middle; cursor: pointer; }
 .github-user-trigger:hover, .github-user-trigger:focus-visible { border-color: #d9d9d9; background: #f5f5f5; outline: none; }
 .github-user-trigger .ant-avatar { flex: 0 0 32px; width: 32px !important; height: 32px !important; line-height: 32px !important; }
@@ -86,17 +88,10 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 .antd-actions { display: flex !important; align-items: center; margin-top: 0; }
 .antd-actions .ant-space-item { display: flex; }
 
-.archive-search-form,
-.lineage-search-grid { align-items: end !important; }
-.archive-search-form .ant-form-item,
-.lineage-search-grid .ant-form-item { margin: 0 !important; }
-.archive-search-form .antd-actions,
-.lineage-search-grid .antd-actions { align-items: end; justify-content: flex-start; min-height: 32px; margin: 0 !important; white-space: nowrap; }
-.archive-search-form .ant-btn,
-.lineage-search-grid .ant-btn { height: 32px !important; }
-
-.lineage-search-results button { border: 1px solid #d9d9d9 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; }
-.lineage-search-results button.active { border-color: #91caff !important; background: #f5faff !important; color: #1677ff !important; }
+.archive-search-form { align-items: end !important; }
+.archive-search-form .ant-form-item { margin: 0 !important; }
+.archive-search-form .antd-actions { align-items: end; justify-content: flex-start; min-height: 32px; margin: 0 !important; white-space: nowrap; }
+.archive-search-form .ant-btn { height: 32px !important; }
 
 .antd-table-wrap { border: 0; border-radius: 8px; overflow: auto; }
 .antd-table-wrap .table-hint { display: block; padding: 0 0 8px; background: transparent; border-bottom: 0; }
@@ -104,17 +99,13 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 .antd-table-wrap .ant-table-tbody > tr.clickable { cursor: pointer; }
 .antd-table-wrap .ant-table-tbody > tr.clickable:hover > td { background: #f5faff; }
 .antd-empty { border: 1px dashed #d9d9d9; background: #fafafa; border-radius: 8px; padding: 18px; }
-
 .antd-detail-card { margin-top: 0; padding: 0 !important; background: #fff; }
 .antd-detail-card .ant-card-body { padding: 12px; }
-
 .antd-toast-stack { position: fixed; top: 22px; right: 24px; z-index: 1200; width: 360px; }
-
 .system-management .ant-tabs-nav { margin-bottom: 14px; }
 
 @media (max-width: 1400px) {
   .archive-search-form { grid-template-columns: 140px minmax(260px, 1fr) 140px 120px !important; }
-  .lineage-search-grid { grid-template-columns: 140px minmax(260px, 1fr) 120px auto !important; }
 }
 
 @media (max-width: 900px) {
@@ -127,10 +118,8 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 
 @media (max-width: 760px) {
   .antd-content { padding: 12px; }
-  .github-like-header { padding: 0 12px; }
+  .github-like-header { align-items: flex-start; flex-direction: column; padding: 8px 12px; }
   .github-like-header-title .ant-typography:last-child { max-width: 180px; }
-  .archive-search-form,
-  .lineage-search-grid { grid-template-columns: 1fr !important; }
+  .archive-search-form { grid-template-columns: 1fr !important; }
   .relationship-preset-grid { grid-template-columns: 1fr; }
-  .auth-page-shell { padding: 16px; }
 }
