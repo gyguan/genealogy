@@ -61,6 +61,12 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  function validateBranchForm() {
+    if (!workspace.clanId) return clans.length > 1 ? '请选择宗族' : '请先创建或选择宗族';
+    if (!form.branchName.trim()) return '请填写支派名称';
+    return '';
+  }
+
   async function loadClans() {
     const rows = await queryClans();
     setClans(rows);
@@ -100,12 +106,9 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function createBranch(append = false, submit = false) {
-    if (!workspace.clanId) {
-      toast({ message: clans.length > 1 ? '请选择宗族' : '请先创建或选择宗族' }, true);
-      return;
-    }
-    if (!form.branchName.trim()) {
-      toast({ message: '请填写支派名称' }, true);
+    const errorMessage = validateBranchForm();
+    if (errorMessage) {
+      toast({ message: errorMessage }, true);
       return;
     }
     setSubmitting(true);
