@@ -98,6 +98,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingSources, setLoadingSources] = useState(false);
   const [loadingSourceLinks, setLoadingSourceLinks] = useState(false);
+  const [sourceLinksError, setSourceLinksError] = useState('');
   const [savingSource, setSavingSource] = useState(false);
   const [bindingSource, setBindingSource] = useState(false);
   const [submittingSources, setSubmittingSources] = useState(false);
@@ -223,12 +224,17 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   async function loadSourceLinks(sourceId = workspace.sourceId) {
     if (!sourceId) {
       setSourceLinks([]);
+      setSourceLinksError('');
       return;
     }
     setLoadingSourceLinks(true);
+    setSourceLinksError('');
     try {
-      const rows = await querySourceLinks(sourceId).catch(() => []);
+      const rows = await querySourceLinks(sourceId);
       setSourceLinks(rows);
+    } catch (error) {
+      setSourceLinks([]);
+      setSourceLinksError((error as Error).message || '查询已绑定对象失败');
     } finally {
       setLoadingSourceLinks(false);
     }
@@ -238,6 +244,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   useEffect(() => {
     setSourceForm({ ...defaultSourceForm });
     setSourceLinks([]);
+    setSourceLinksError('');
     void loadStepData();
   }, [workspace.clanId]);
 
@@ -253,6 +260,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setRelationships([]);
     setSources([]);
     setSourceLinks([]);
+    setSourceLinksError('');
     setSelectedSourceRowKeys([]);
   }
 
@@ -313,6 +321,18 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
     if (targetType === 'clan') return selectedClan ? clanLabel(selectedClan) : `宗族#${row.targetId || '-'}`;
     return `对象#${row.targetId || '-'}`;
+  }
+
+  function buildSourceLinkView(link: SourceLinkLike) {
+    return {
+      key: String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`),
+      sourceText: sourceLinkSourceName(link),
+      targetTypeText: sourceTargetTypeText(link.targetType),
+      targetText: sourceLinkTargetName(link),
+      excerpt: link.excerpt,
+      bindingReason: link.bindingReason,
+      createdAt: sourceLinkTime(link)
+    };
   }
 
   async function createSource(submit = false) {
@@ -422,6 +442,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   }
 
   const sourceBindDisabledReason = bindSourceDisabledReason();
+  const sourceLinkViews = sourceLinks.map(buildSourceLinkView);
 
   return (
     <Panel title="绑定来源证据" description="来源和绑定对象都必须审核通过后才能建立绑定。">
@@ -482,19 +503,20 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
             <Button loading={loadingSourceLinks} disabled={!workspace.sourceId} onClick={() => void loadSourceLinks()}>刷新已绑定对象</Button>
           </div>
           {!workspace.sourceId ? <Alert type="info" showIcon message="请先选择已审核通过的来源，再查看已绑定对象。" /> : null}
-          {sourceLinks.length ? (
+          {sourceLinksError ? <Alert type="error" showIcon message={sourceLinksError} /> : null}
+          {sourceLinkViews.length ? (
             <div className="source-step-bound-list">
-              {sourceLinks.map(link => (
-                <div className="source-step-bound-card" key={String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`)}>
+              {sourceLinkViews.map(link => (
+                <div className="source-step-bound-card" key={link.key}>
                   <Space direction="vertical" size={4} style={{ width: '100%' }}>
                     <Space wrap>
-                      <strong>{sourceLinkSourceName(link)}</strong>
-                      <Tag>{sourceTargetTypeText(link.targetType)}</Tag>
-                      <span>{sourceLinkTargetName(link)}</span>
+                      <strong>{link.sourceText}</strong>
+                      <Tag>{link.targetTypeText}</Tag>
+                      <span>{link.targetText}</span>
                     </Space>
                     {link.excerpt ? <span>摘录：{link.excerpt}</span> : null}
                     {link.bindingReason ? <span>绑定说明：{link.bindingReason}</span> : null}
-                    <small>绑定时间：{sourceLinkTime(link)}</small>
+                    <small>绑定时间：{link.createdAt}</small>
                   </Space>
                 </div>
               ))}
