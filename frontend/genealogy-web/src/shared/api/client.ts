@@ -15,9 +15,7 @@ export type ApiError = {
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
 function normalizeApiPath(path: string) {
-  // P0-1: source binding contract is /source-bindings.
-  // Keep frontend callers safe while legacy /source-links references are removed gradually.
-  return path.replace(/\/clans\/(\d+)\/source-links\b/g, '/clans/$1/source-bindings');
+  return path;
 }
 
 function normalizeReviewTargetType(value: unknown) {
