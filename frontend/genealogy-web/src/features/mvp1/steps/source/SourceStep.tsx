@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, Select, Space, Table, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
@@ -44,12 +43,27 @@ const defaultSourceForm: SourceForm = {
   targetId: ''
 };
 
+const sourceTypeOptions = [
+  { value: 'genealogy_book', label: '族谱' },
+  { value: 'oral_history', label: '口述' },
+  { value: 'tombstone', label: '墓碑' },
+  { value: 'photo', label: '照片' },
+  { value: 'archive', label: '档案' }
+];
+
+const targetTypeOptions = [
+  { value: 'person', label: '人物' },
+  { value: 'relationship', label: '关系' },
+  { value: 'branch', label: '支派' },
+  { value: 'clan', label: '宗族' }
+];
+
 function clanLabel(clan: ClanLike) {
-  return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
+  return clan.clanName || clan.surname || '未命名宗族';
 }
 
 function sourceName(row: SourceLike) {
-  return row.sourceName || row.name || `来源#${row.id || '-'}`;
+  return row.sourceName || row.name || '未命名来源';
 }
 
 function sourceLinkTime(row: SourceLinkLike) {
@@ -265,7 +279,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   }
 
   function personSourceTargetOptions(): Option[] {
-    return officialPersons.map(person => ({ value: String(person.id), label: `${person.name || `人物#${person.id}`}（${person.generationWord || '无字辈'}）` }));
+    return officialPersons.map(person => ({ value: String(person.id), label: `${person.name || '未命名人物'}（${person.generationWord || '无字辈'}）` }));
   }
 
   function relationshipSourceTargetOptions(): Option[] {
@@ -273,11 +287,11 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   }
 
   function branchSourceTargetOptions(): Option[] {
-    return officialBranches.map(branch => ({ value: String(branch.id), label: branch.branchName || `支派#${branch.id}` }));
+    return officialBranches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }));
   }
 
   function clanSourceTargetOptions(): Option[] {
-    return workspace.clanId ? [{ value: workspace.clanId, label: selectedClan?.clanName || selectedClan?.surname || `宗族#${workspace.clanId}` }] : [];
+    return workspace.clanId ? [{ value: workspace.clanId, label: selectedClan?.clanName || selectedClan?.surname || '当前宗族' }] : [];
   }
 
   function sourceTargetOptions(type = sourceForm.targetType): Option[] {
@@ -301,7 +315,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
 
   function sourceLinkSourceName(row: SourceLinkLike) {
     const source = sources.find(item => String(item.id) === String(row.sourceId));
-    return source ? sourceName(source) : `来源#${row.sourceId || '-'}`;
+    return source ? sourceName(source) : '来源资料待维护';
   }
 
   function sourceLinkTargetName(row: SourceLinkLike) {
@@ -309,18 +323,18 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     const targetId = String(row.targetId || '');
     if (targetType === 'person') {
       const person = persons.find(item => String(item.id) === targetId);
-      return person?.name || `人物#${row.targetId || '-'}`;
+      return person?.name || '人物待维护';
     }
     if (targetType === 'relationship') {
       const relationship = relationships.find(item => String(item.id) === targetId);
-      return relationship ? relationshipName(relationship) : `关系#${row.targetId || '-'}`;
+      return relationship ? relationshipName(relationship) : '关系待维护';
     }
     if (targetType === 'branch') {
       const branch = branches.find(item => String(item.id) === targetId);
-      return branch?.branchName || branch?.name || `支派#${row.targetId || '-'}`;
+      return branch?.branchName || branch?.name || '支派待维护';
     }
-    if (targetType === 'clan') return selectedClan ? clanLabel(selectedClan) : `宗族#${row.targetId || '-'}`;
-    return `对象#${row.targetId || '-'}`;
+    if (targetType === 'clan') return selectedClan ? clanLabel(selectedClan) : '宗族待维护';
+    return '绑定对象待维护';
   }
 
   function buildSourceLinkView(link: SourceLinkLike) {
@@ -384,7 +398,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         targetId: Number(targetId)
       });
       setSourceForm(prev => ({ ...prev, targetId }));
-      toast({ message: '来源绑定成功。', id: data?.id });
+      toast({ message: '来源绑定成功。' });
       await loadSourceLinks(workspace.sourceId);
     } catch (error) {
       toast({ message: (error as Error).message || '绑定来源失败' }, true);
@@ -446,52 +460,54 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
 
   return (
     <Panel title="绑定来源证据" description="来源和绑定对象都必须审核通过后才能建立绑定。">
-      <div className="wizard-form-grid">
-        <Field label="适用宗族 *">
-          <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
-            <option value="">请选择宗族</option>
-            {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-          </select>
-        </Field>
-        <Field label="已有来源">
-          <select value={workspace.sourceId} disabled={!officialSources.length} onChange={event => workspace.setSourceId(event.target.value)}>
-            <option value="">{officialSources.length ? '请选择已通过来源' : '暂无已通过来源，可先创建并提交审核'}</option>
-            {officialSources.map(source => <option key={source.id} value={String(source.id)}>{sourceName(source)}</option>)}
-          </select>
-        </Field>
-        <Field label="来源名称 *">
-          <input value={sourceForm.sourceName} onChange={event => patchSource('sourceName', event.target.value)} placeholder="例如：民国二十年族谱" />
-        </Field>
-        <Field label="来源类型">
-          <select value={sourceForm.sourceType} onChange={event => patchSource('sourceType', event.target.value)}>
-            <option value="genealogy_book">族谱</option>
-            <option value="oral_history">口述</option>
-            <option value="tombstone">墓碑</option>
-            <option value="photo">照片</option>
-            <option value="archive">档案</option>
-          </select>
-        </Field>
-        <Field label="绑定对象类型">
-          <select value={sourceForm.targetType} onChange={event => setSourceForm(prev => ({ ...prev, targetType: event.target.value as SourceTargetType, targetId: '' }))}>
-            <option value="person">人物</option>
-            <option value="relationship">关系</option>
-            <option value="branch">支派</option>
-            <option value="clan">宗族</option>
-          </select>
-        </Field>
-        <Field label="绑定对象">
-          <select value={effectiveSourceTargetId()} onChange={event => patchSource('targetId', event.target.value)}>
-            <option value="">{sourceTargetPlaceholder()}</option>
-            {sourceTargetOptions().map(option => <option key={`${sourceForm.targetType}-${option.value}`} value={option.value}>{option.label}</option>)}
-          </select>
-        </Field>
-      </div>
-      <Actions>
-        <button disabled={savingSource || !workspace.clanId} onClick={() => void createSource(false)}>保存来源草稿</button>
-        <button className="secondary" disabled={savingSource || !workspace.clanId} onClick={() => void createSource(true)}>保存并提交审核</button>
-        <button className="secondary" disabled={!!sourceBindDisabledReason} title={sourceBindDisabledReason || undefined} onClick={() => void bindSource()}>绑定来源</button>
-        <button className="secondary" disabled={loadingOptions || !workspace.clanId} onClick={() => void loadStepData()}>刷新绑定对象</button>
-      </Actions>
+      <Form layout="vertical" className="source-step-form">
+        <div className="wizard-form-grid">
+          <Form.Item label="适用宗族" required>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={workspace.clanId}
+              onChange={changeClan}
+              disabled={loadingClans}
+              options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+            />
+          </Form.Item>
+          <Form.Item label="已有来源">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={workspace.sourceId}
+              disabled={!officialSources.length}
+              onChange={value => workspace.setSourceId(value)}
+              options={[{ value: '', label: officialSources.length ? '请选择已通过来源' : '暂无已通过来源，可先创建并提交审核' }, ...officialSources.map(source => ({ value: String(source.id), label: sourceName(source) }))]}
+            />
+          </Form.Item>
+          <Form.Item label="来源名称" required>
+            <Input value={sourceForm.sourceName} onChange={event => patchSource('sourceName', event.target.value)} placeholder="例如：民国二十年族谱" />
+          </Form.Item>
+          <Form.Item label="来源类型">
+            <Select value={sourceForm.sourceType} onChange={value => patchSource('sourceType', value)} options={sourceTypeOptions} />
+          </Form.Item>
+          <Form.Item label="绑定对象类型">
+            <Select value={sourceForm.targetType} onChange={value => setSourceForm(prev => ({ ...prev, targetType: value as SourceTargetType, targetId: '' }))} options={targetTypeOptions} />
+          </Form.Item>
+          <Form.Item label="绑定对象">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={effectiveSourceTargetId()}
+              onChange={value => patchSource('targetId', value)}
+              options={[{ value: '', label: sourceTargetPlaceholder() }, ...sourceTargetOptions().map(option => ({ value: option.value, label: option.label }))]}
+            />
+          </Form.Item>
+        </div>
+        <Space className="actions antd-actions" wrap>
+          <Button type="primary" disabled={savingSource || !workspace.clanId} loading={savingSource} onClick={() => void createSource(false)}>保存来源草稿</Button>
+          <Button disabled={savingSource || !workspace.clanId} onClick={() => void createSource(true)}>保存并提交审核</Button>
+          <Button disabled={!!sourceBindDisabledReason} title={sourceBindDisabledReason || undefined} loading={bindingSource} onClick={() => void bindSource()}>绑定来源</Button>
+          <Button disabled={loadingOptions || !workspace.clanId} loading={loadingOptions} onClick={() => void loadStepData()}>刷新绑定对象</Button>
+        </Space>
+      </Form>
 
       <section className="source-step-bound-panel step-object-result-panel">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -567,7 +583,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
                 title: '操作',
                 width: 150,
                 render: (_value, row) => isReviewable(row)
-                  ? <Button size="small" type="primary" loading={submittingSources} onClick={event => { event.stopPropagation(); void submitSource(row); }}>提交审核</Button>
+                  ? <Button size="small" loading={submittingSources} onClick={event => { event.stopPropagation(); void submitSource(row); }}>提交审核</Button>
                   : '-'
               }
             ]}
