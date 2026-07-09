@@ -33,7 +33,7 @@ export function WizardShell<TKey extends string = string>({
     <div className="mvp1-wizard-page">
       <Panel title="MVP1 建谱向导" description="对象先保存为草稿，可在创建页内提交审核；只有审核通过对象才能进入下一步关联。">
         <Steps
-          className="wizard-steps"
+          className="wizard-ant-steps"
           direction="vertical"
           size="small"
           current={activeIndex}
