@@ -13,6 +13,108 @@ export type PersonSearchParams = {
   dataStatus?: string;
 };
 
+export type ClanOptionDto = {
+  id?: number | string;
+  clanName?: string;
+  name?: string;
+  surname?: string;
+  hallName?: string;
+  isDefault?: boolean;
+};
+
+export type BranchOptionDto = {
+  id?: number | string;
+  branchName?: string;
+  name?: string;
+  parentId?: number | string;
+};
+
+export type GenerationSchemeDto = {
+  id?: number | string;
+  isDefault?: boolean;
+};
+
+export type GenerationSchemeItemDto = {
+  id?: number | string;
+  word?: string;
+  generationWord?: string;
+  generationNo?: number | string;
+};
+
+export type PersonArchiveDto = {
+  id?: number | string;
+  personId?: number | string;
+  branchId?: number | string;
+  branch?: BranchOptionDto;
+  branchName?: string;
+  personCode?: string;
+  name?: string;
+  personName?: string;
+  displayName?: string;
+  genealogyName?: string;
+  courtesyName?: string;
+  aliasName?: string;
+  gender?: string;
+  generationNo?: number | string;
+  generationWord?: string;
+  rankInFamily?: string;
+  birthDate?: string;
+  birthDatePrecision?: string;
+  deathDate?: string;
+  deathDatePrecision?: string;
+  isLiving?: boolean;
+  birthPlace?: string;
+  residencePlace?: string;
+  occupation?: string;
+  education?: string;
+  titleOrHonor?: string;
+  biography?: string;
+  tombPlace?: string;
+  epitaph?: string;
+  hasDescendant?: boolean;
+  lineageStatus?: string;
+  privacyLevel?: string;
+  dataStatus?: string;
+  status?: string;
+};
+
+export type PersonRelationshipDto = {
+  id?: number | string;
+  relationType?: string;
+  relationLabel?: string;
+  fromPersonName?: string;
+  toPersonName?: string;
+  personName?: string;
+  confidenceLevel?: string;
+  status?: string;
+};
+
+export type PersonSourceBindingDto = {
+  id?: number | string;
+  sourceName?: string;
+  sourceTitle?: string;
+  title?: string;
+  fileName?: string;
+  materialName?: string;
+  sourceType?: string;
+  type?: string;
+  dataStatus?: string;
+  status?: string;
+};
+
+export type PersonEventDto = {
+  id?: number | string;
+  eventType?: string;
+  eventTitle?: string;
+  eventDate?: string;
+  eventPlace?: string;
+  eventDescription?: string;
+  sourceType?: string;
+  sourceName?: string;
+  sourceTitle?: string;
+  dataStatus?: string;
+};
+
 function personSearchQuery(params: PersonSearchParams) {
   const query = new URLSearchParams({ clanId: params.clanId, pageNo: String(params.pageNo), pageSize: String(params.pageSize) });
   if (params.branchId) query.set('branchId', params.branchId);
