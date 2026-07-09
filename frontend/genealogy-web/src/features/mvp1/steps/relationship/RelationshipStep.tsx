@@ -249,10 +249,16 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
           <div className="relationship-step-form-grid">
             <label className="relationship-step-field">
               <span>适用宗族 *</span>
-              <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
-                <option value="">请选择宗族</option>
-                {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-              </select>
+              <Select
+                showSearch
+                loading={loadingClans}
+                value={workspace.clanId || undefined}
+                options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+                placeholder="请选择宗族"
+                optionFilterProp="label"
+                onChange={changeClan}
+                style={{ width: '100%' }}
+              />
             </label>
             <label className="relationship-step-field">
               <span>中心人物 *</span>
