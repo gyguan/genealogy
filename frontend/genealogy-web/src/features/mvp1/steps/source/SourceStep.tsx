@@ -66,6 +66,16 @@ function sourceTypeText(value: unknown) {
   return dict[type] || String(value || '-');
 }
 
+function sourceTargetTypeText(type: SourceTargetType) {
+  const dict: Record<SourceTargetType, string> = {
+    person: '人物',
+    relationship: '关系',
+    branch: '支派',
+    clan: '宗族'
+  };
+  return dict[type];
+}
+
 function dedupeRelationships(rows: RelationshipLike[]) {
   return Array.from(new Map(rows.map(row => [String(row.id || `${row.fromPersonId}-${row.toPersonId}-${row.relationLabel}`), row])).values());
 }
@@ -118,8 +128,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   function validateBindSourceForm(): SourceBindValidationResult {
     if (!workspace.clanId) return { errorMessage: '请选择宗族', targetId: '' };
     if (!workspace.sourceId) return { errorMessage: '请选择已审核通过的来源', targetId: '' };
+    const targetOptions = sourceTargetOptions();
+    if (!targetOptions.length) return { errorMessage: `暂无已审核通过的${sourceTargetTypeText(sourceForm.targetType)}`, targetId: '' };
     const targetId = effectiveSourceTargetId();
-    if (!targetId) return { errorMessage: '请选择已审核通过的绑定对象', targetId: '' };
+    if (!targetId) return { errorMessage: `请选择具体${sourceTargetTypeText(sourceForm.targetType)}`, targetId: '' };
     return { errorMessage: '', targetId };
   }
 
@@ -225,8 +237,15 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     return [];
   }
 
+  function sourceTargetPlaceholder() {
+    const typeName = sourceTargetTypeText(sourceForm.targetType);
+    return sourceTargetOptions().length ? `请选择具体${typeName}` : `暂无已审核通过的${typeName}`;
+  }
+
   function effectiveSourceTargetId() {
-    return sourceForm.targetId || sourceTargetOptions()[0]?.value || '';
+    if (sourceForm.targetId) return sourceForm.targetId;
+    if (sourceForm.targetType === 'clan') return clanSourceTargetOptions()[0]?.value || '';
+    return '';
   }
 
   async function createSource(submit = false) {
@@ -370,8 +389,8 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
           </select>
         </Field>
         <Field label="绑定对象">
-          <select value={sourceForm.targetId || effectiveSourceTargetId()} onChange={event => patchSource('targetId', event.target.value)}>
-            <option value="">请选择已通过绑定对象</option>
+          <select value={effectiveSourceTargetId()} onChange={event => patchSource('targetId', event.target.value)}>
+            <option value="">{sourceTargetPlaceholder()}</option>
             {sourceTargetOptions().map(option => <option key={`${sourceForm.targetType}-${option.value}`} value={option.value}>{option.label}</option>)}
           </select>
         </Field>
