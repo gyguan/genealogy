@@ -27,6 +27,7 @@ type Props = {
 
 type RelationshipValidationResult = {
   errorMessage: string;
+  centerPerson?: PersonLike;
   relative?: PersonLike;
 };
 
@@ -88,7 +89,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     if (!relative || !isRelationshipCandidate(centerPerson, relative, mode)) {
       return { errorMessage: `请选择符合规则的${RELATIONSHIP_MODE_LABEL[mode]}：${relationshipRuleText(mode)}` };
     }
-    return { errorMessage: '', relative };
+    return { errorMessage: '', centerPerson, relative };
   }
 
   async function loadClans() {
@@ -180,14 +181,14 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
 
   async function saveRelationship(submit = false) {
     setSaveError('');
-    const { errorMessage, relative } = validateRelationshipForm();
-    if (errorMessage || !relative || !centerPerson) {
+    const { errorMessage, centerPerson: validCenterPerson, relative } = validateRelationshipForm();
+    if (errorMessage || !validCenterPerson || !relative) {
       toast({ message: errorMessage || '关系信息不完整' }, true);
       return;
     }
     setSavingRelationship(true);
     try {
-      const relation = await createRelationshipApi(workspace.clanId, buildRelationshipBody(centerPerson, relative, mode));
+      const relation = await createRelationshipApi(workspace.clanId, buildRelationshipBody(validCenterPerson, relative, mode));
       const relationId = String(relation?.id || '');
       workspace.setRelationshipId(relationId);
       if (submit && relationId) {
