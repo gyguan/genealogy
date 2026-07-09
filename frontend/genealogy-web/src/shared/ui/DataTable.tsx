@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Empty, Popconfirm, Table, Tag, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
+import { toRecordList } from '../utils/records';
+
+export { toRecordList } from '../utils/records';
 
 export type Column<T> = {
   key: string;
@@ -48,15 +51,6 @@ const STATUS_COLOR: Record<string, string> = {
   failed: 'error',
   failure: 'error'
 };
-
-export function toRecordList<T = any>(data: any): T[] {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.records)) return data.records;
-  if (Array.isArray(data?.items)) return data.items;
-  if (Array.isArray(data?.content)) return data.content;
-  if (data && typeof data === 'object') return [data];
-  return [];
-}
 
 function isTechnicalColumn(column: Column<any>) {
   if (column.render) return false;
