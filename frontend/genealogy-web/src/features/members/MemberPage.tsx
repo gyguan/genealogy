@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { memberStatusColor, memberStatusText, roleTypeColor, roleTypeText } from '../../shared/dictionaries';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { memberService } from '../../shared/services/memberService';
 import { toRecordList } from '../../shared/utils/records';
@@ -20,10 +21,6 @@ const roleAbilityText: Record<string, string[]> = {
   viewer: ['可查看允许范围内人物、世系和来源摘要', '不可新增、编辑、审核或导出']
 };
 
-function roleTypeText(roleType?: string) { return roleType === 'view' ? '查看角色' : '管理角色'; }
-function roleTypeColor(roleType?: string) { return roleType === 'view' ? 'blue' : 'green'; }
-function memberStatusText(status?: string) { const value = String(status || '').toLowerCase(); const dict: Record<string, string> = { active: '有效', disabled: '已停用', revoked: '已撤销' }; return dict[value] || status || '-'; }
-function memberStatusColor(status?: string) { const value = String(status || '').toLowerCase(); if (value === 'active') return 'success'; if (['disabled', 'revoked'].includes(value)) return 'default'; return 'processing'; }
 function defaultRoleCode(roles: RoleRow[]) { return roles.find(role => role.roleCode === 'viewer')?.roleCode || roles[0]?.roleCode || ''; }
 function display(value: unknown, fallback = '-') { const text = String(value ?? '').trim(); return text || fallback; }
 function isBranchScope(scopeType?: string) { return scopeType === 'branch' || scopeType === 'branch_subtree'; }
