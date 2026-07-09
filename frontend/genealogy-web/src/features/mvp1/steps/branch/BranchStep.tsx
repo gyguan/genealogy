@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
 import { createBranchApi, deleteBranchApi, loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
@@ -20,17 +19,17 @@ type Props = {
 };
 
 function branchName(row: BranchLike) {
-  return row.branchName || row.name || `支派#${row.id || '-'}`;
+  return row.branchName || row.name || '未命名支派';
 }
 
 function parentName(row: BranchLike, branches: BranchLike[]) {
   if (!row.parentId) return '无';
   const parent = branches.find(item => String(item.id) === String(row.parentId));
-  return parent ? branchName(parent) : `支派#${row.parentId}`;
+  return parent ? branchName(parent) : '父支派待维护';
 }
 
 function clanLabel(clan: ClanLike) {
-  return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
+  return clan.clanName || clan.surname || '未命名宗族';
 }
 
 export function BranchStep({ notify, onSubmittedReview }: Props) {
@@ -193,29 +192,44 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
 
   return (
     <Panel title="建立支派" description="支派保存后默认为草稿；审核通过后才能用于字辈、人物和来源关联。">
-      <div className="wizard-form-grid">
-        <Field label="适用宗族 *">
-          <select value={workspace.clanId} onChange={event => workspace.patch({ clanId: event.target.value, branchId: '' })} required>
-            <option value="">请选择宗族</option>
-            {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-          </select>
-        </Field>
-        <Field label="支派名称 *">
-          <input value={form.branchName} onChange={event => patch('branchName', event.target.value)} placeholder="例如：长沙支" required />
-        </Field>
-        <Field label="父支派">
-          <select value={form.parentId} disabled={!workspace.clanId} onChange={event => patch('parentId', event.target.value)}>
-            <option value="">无父支派/作为一级支派</option>
-            {officialBranches.map(branch => <option key={branch.id} value={String(branch.id)}>{branchName(branch)}</option>)}
-          </select>
-        </Field>
-        <Field label="系统生成编号"><input value="保存后自动生成" disabled readOnly /></Field>
-      </div>
-      <Actions>
-        <button disabled={submitting || !workspace.clanId} onClick={() => void createBranch(false, false)}>保存草稿</button>
-        <button className="secondary" disabled={submitting || !workspace.clanId} onClick={() => void createBranch(false, true)}>保存并提交审核</button>
-        <button className="secondary" disabled={submitting || !workspace.clanId} onClick={() => void createBranch(true, false)}>追加草稿</button>
-      </Actions>
+      <Alert
+        type="info"
+        showIcon
+        message="前置条件"
+        description="请先选择宗族；父支派仅展示已审核通过的支派，页面不要求用户填写系统标识。"
+        style={{ marginBottom: 16 }}
+      />
+      <Form layout="vertical" className="branch-step-form">
+        <div className="wizard-form-grid">
+          <Form.Item label="适用宗族" required>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={workspace.clanId}
+              onChange={value => workspace.patch({ clanId: value, branchId: '' })}
+              options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+            />
+          </Form.Item>
+          <Form.Item label="支派名称" required>
+            <Input value={form.branchName} onChange={event => patch('branchName', event.target.value)} placeholder="例如：长沙支" />
+          </Form.Item>
+          <Form.Item label="父支派" extra="不选择则作为一级支派。">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={form.parentId}
+              disabled={!workspace.clanId}
+              onChange={value => patch('parentId', value)}
+              options={[{ value: '', label: '无父支派/作为一级支派' }, ...officialBranches.map(branch => ({ value: String(branch.id), label: branchName(branch) }))]}
+            />
+          </Form.Item>
+        </div>
+        <Space className="actions antd-actions" wrap>
+          <Button type="primary" disabled={submitting || !workspace.clanId} loading={submitting} onClick={() => void createBranch(false, false)}>保存草稿</Button>
+          <Button disabled={submitting || !workspace.clanId} onClick={() => void createBranch(false, true)}>保存并提交审核</Button>
+          <Button disabled={submitting || !workspace.clanId} onClick={() => void createBranch(true, false)}>追加草稿</Button>
+        </Space>
+      </Form>
 
       <section className="branch-step-list-panel">
         <div className="branch-step-list-header">
@@ -255,11 +269,11 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
             {
               key: 'actions',
               title: '操作',
-              width: 210,
+              width: 220,
               render: (_value, row) => (
                 <Space size="small" wrap onClick={event => event.stopPropagation()}>
                   <Button size="small" disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>选中支派</Button>
-                  {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
+                  {isReviewable(row) ? <Button size="small" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
                   {statusOf(row) === 'draft' ? (
                     <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
                       <Button size="small" danger loading={submitting}>删除草稿</Button>
