@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Empty, Popconfirm, Table, Tag, Typography, message } from 'antd';
-import { apiClient } from '../api/client';
+import { relationTypeText, statusColor, statusText } from '../dictionaries';
 import { toRecordList } from '../utils/records';
 
 export { toRecordList } from '../utils/records';
@@ -14,43 +14,9 @@ export type Column<T> = {
 
 type ReviewTargetType = 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
 
-const REVIEW_TARGET_LABEL: Record<ReviewTargetType, string> = {
-  person: '人物',
-  relationship: '关系',
-  source: '来源',
-  branch: '支派',
-  generation_scheme: '字辈方案'
-};
-
 const REVIEW_STATUS_KEYS = new Set(['dataStatus', 'status', 'verificationStatus']);
 const REVIEW_ACTION_KEYS = new Set(['actions', 'maintainWords']);
 const TECHNICAL_COLUMN_KEYS = new Set(['targetId', 'targetType', 'checksum', 'storagePath']);
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: '草稿',
-  pending: '待处理',
-  pending_review: '待审核',
-  official: '正式',
-  approved: '已通过',
-  rejected: '已驳回',
-  archived: '已归档',
-  success: '成功',
-  failed: '失败',
-  failure: '失败'
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  draft: 'default',
-  pending: 'processing',
-  pending_review: 'processing',
-  official: 'success',
-  approved: 'success',
-  rejected: 'error',
-  archived: 'default',
-  success: 'success',
-  failed: 'error',
-  failure: 'error'
-};
 
 function isTechnicalColumn(column: Column<any>) {
   if (column.render) return false;
@@ -72,15 +38,10 @@ function statusOf(row: Record<string, any>) {
   return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
 }
 
-function statusLabel(status: string) {
-  if (!status) return '-';
-  return STATUS_LABEL[status] || '未知状态';
-}
-
 function renderStatusTag(row: Record<string, any>) {
   const status = statusOf(row);
   if (!status) return '-';
-  return <Tag color={STATUS_COLOR[status] || 'default'}>{statusLabel(status)}</Tag>;
+  return <Tag color={statusColor(status)}>{statusText(status)}</Tag>;
 }
 
 function isLifecycleRow(row: Record<string, any>) {
@@ -93,12 +54,6 @@ function isReviewable(row: Record<string, any>) {
 
 function isDraft(row: Record<string, any>) {
   return statusOf(row) === 'draft' && Boolean(row.id);
-}
-
-function workspaceClanId() {
-  const runtimeValue = (window as any).__genealogyWorkspace?.clanId;
-  if (runtimeValue) return String(runtimeValue);
-  return localStorage.getItem('genealogy.workspace.clanId') || '';
 }
 
 function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>[]): ReviewTargetType | null {
@@ -122,7 +77,7 @@ function reviewObjectName(row: Record<string, any>, targetType: ReviewTargetType
   if (targetType === 'relationship') {
     const from = row.fromPersonName || row.fromName || '起点人物待维护';
     const to = row.toPersonName || row.toName || '终点人物待维护';
-    const label = row.relationLabel || row.relationType || '关系';
+    const label = relationTypeText(row.relationLabel || row.relationType || 'relationship');
     return `${from} → ${to} · ${label}`;
   }
   const firstDisplayColumn = fallbackColumns.find(column => !REVIEW_STATUS_KEYS.has(column.key) && !REVIEW_ACTION_KEYS.has(column.key));
@@ -140,15 +95,17 @@ type DataTableProps<T extends Record<string, any>> = {
   onSelect?: (row: T) => void;
   normalizeReviewColumns?: boolean;
   reviewTargetType?: ReviewTargetType;
+  onSubmitReviewRows?: (rows: T[], targetType: ReviewTargetType) => void | Promise<void>;
+  submitReviewLoading?: boolean;
+  onDeleteDraftRow?: (row: T) => void | Promise<void>;
+  deletingRowKey?: Key | null;
 };
 
-export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true, reviewTargetType }: DataTableProps<T>) {
+export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true, reviewTargetType, onSubmitReviewRows, submitReviewLoading = false, onDeleteDraftRow, deletingRowKey }: DataTableProps<T>) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
-  const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [deletingRowKey, setDeletingRowKey] = useState<Key | null>(null);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
   const allRows = toRecordList<T>(data);
-  const rows = allRows.filter((row, index) => !deletedRowKeys.includes(rowKey(row, index)));
+  const rows = allRows;
   const visibleColumns = columns.filter(column => !isTechnicalColumn(column));
   const inferredTargetType = useMemo(() => inferReviewTargetType(columns, rows), [columns, rows]);
   const targetType = reviewTargetType || inferredTargetType;
@@ -156,58 +113,8 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = targetType ? selectedRowKeys.filter(key => reviewableKeySet.has(String(key))) : [];
-  if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
-
-  async function submitSelectedReview() {
-    if (!targetType) return;
-    const clanId = workspaceClanId();
-    if (!clanId) {
-      message.warning('请先选择宗族');
-      return;
-    }
-    const selectedRows = rows.filter(row => effectiveSelectedKeys.includes(rowKey(row)) && isReviewable(row));
-    if (!selectedRows.length) {
-      message.warning('请先勾选草稿/已驳回版本');
-      return;
-    }
-    setSubmitting(true);
-    const results = await Promise.allSettled(selectedRows.map(row => apiClient.post(`/clans/${clanId}/review-tasks`, {
-      targetType,
-      targetId: Number(row.id),
-      comment: `${REVIEW_TARGET_LABEL[targetType]}批量提交审批`
-    })));
-    const successCount = results.filter(result => result.status === 'fulfilled').length;
-    const failedCount = results.length - successCount;
-    if (successCount) {
-      message.success(`已提交 ${successCount} 条审批任务，列表将自动刷新`);
-      window.dispatchEvent(new CustomEvent('genealogy:review-submitted', { detail: { targetType, successCount } }));
-    }
-    if (failedCount) message.error(`${failedCount} 条提交失败，请刷新后重试`);
-    setSelectedRowKeys([]);
-    setSubmitting(false);
-  }
-
-  async function deleteBranchDraft(row: T) {
-    if (!isDraft(row)) {
-      message.warning('仅草稿支派可以删除');
-      return;
-    }
-    const key = rowKey(row);
-    setDeletingRowKey(key);
-    try {
-      await apiClient.delete(`/branches/${row.id}`);
-      setDeletedRowKeys(prev => [...prev, key]);
-      setSelectedRowKeys(prev => prev.filter(item => String(item) !== key));
-      message.success('草稿支派已删除');
-      window.dispatchEvent(new CustomEvent('genealogy:object-changed', { detail: { targetType: 'branch' } }));
-    } catch (error) {
-      message.error((error as Error).message || '删除草稿支派失败');
-    } finally {
-      setDeletingRowKey(null);
-    }
-  }
-
-  const reviewRowSelection = targetType && reviewableRows.length ? {
+  const effectiveSelectedRows = rows.filter(row => effectiveSelectedKeys.includes(rowKey(row)) && isReviewable(row));
+  const reviewRowSelection = targetType && onSubmitReviewRows && reviewableRows.length ? {
     selectedRowKeys: effectiveSelectedKeys,
     columnTitle: '勾选',
     columnWidth: 88,
@@ -215,6 +122,23 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     getCheckboxProps: (row: T) => ({ disabled: !isReviewable(row), title: isReviewable(row) ? '可提交审批' : '仅草稿/已驳回版本可提交审批' }),
     onChange: (keys: Key[]) => setSelectedRowKeys(keys.filter(key => reviewableKeySet.has(String(key))))
   } : undefined;
+
+  if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
+
+  async function submitSelectedReview() {
+    if (!targetType || !onSubmitReviewRows) return;
+    if (!effectiveSelectedRows.length) {
+      message.warning('请先勾选草稿/已驳回版本');
+      return;
+    }
+    setLocalSubmitting(true);
+    try {
+      await onSubmitReviewRows(effectiveSelectedRows, targetType);
+      setSelectedRowKeys([]);
+    } finally {
+      setLocalSubmitting(false);
+    }
+  }
 
   const normalizedReviewColumns = [
     {
@@ -239,7 +163,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       width: 120,
       render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
     })),
-    ...(targetType === 'branch' ? [{
+    ...(targetType === 'branch' && onDeleteDraftRow ? [{
       key: 'actions',
       title: '操作',
       width: 96,
@@ -249,7 +173,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
           description={`确认删除草稿支派“${row.branchName || '未命名支派'}”吗？`}
           okText="删除"
           cancelText="取消"
-          onConfirm={() => void deleteBranchDraft(row)}
+          onConfirm={() => void onDeleteDraftRow(row)}
         >
           <Button
             size="small"
@@ -281,10 +205,10 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   return (
     <div className={`table-wrap antd-table-wrap${reviewRowSelection ? ' batch-review-table-wrap' : ''}`}>
       {selectableRowHandler ? <Typography.Text className="table-hint" type="secondary">点击列表行可查看详情或执行后续操作</Typography.Text> : null}
-      {targetType && reviewableRows.length ? (
+      {targetType && onSubmitReviewRows && reviewableRows.length ? (
         <div className="batch-review-actions table-review-actions">
           <Typography.Text type="secondary">仅草稿/已驳回对象可勾选提交审批。</Typography.Text>
-          <Button size="small" type="primary" disabled={!effectiveSelectedKeys.length} loading={submitting} onClick={submitSelectedReview}>
+          <Button size="small" type="primary" disabled={!effectiveSelectedKeys.length} loading={submitReviewLoading || localSubmitting} onClick={submitSelectedReview}>
             批量提交审批（{effectiveSelectedKeys.length}）
           </Button>
         </div>
