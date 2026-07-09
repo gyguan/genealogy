@@ -52,16 +52,8 @@ function sourceName(row: SourceLike) {
   return row.sourceName || row.name || `来源#${row.id || '-'}`;
 }
 
-function sourceLinkSourceName(row: SourceLinkLike) {
-  return row.sourceName || `来源#${row.sourceId || row.id || '-'}`;
-}
-
-function sourceLinkTargetName(row: SourceLinkLike) {
-  return row.targetName || row.targetLabel || `对象#${row.targetId || '-'}`;
-}
-
 function sourceLinkTime(row: SourceLinkLike) {
-  return row.createdAt || row.createTime || '-';
+  return row.createdAt || '-';
 }
 
 function sourceTypeText(value: unknown) {
@@ -228,14 +220,14 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
-  async function loadSourceLinks(sourceClanId = workspace.clanId) {
-    if (!sourceClanId) {
+  async function loadSourceLinks(sourceId = workspace.sourceId) {
+    if (!sourceId) {
       setSourceLinks([]);
       return;
     }
     setLoadingSourceLinks(true);
     try {
-      const rows = await querySourceLinks(sourceClanId).catch(() => []);
+      const rows = await querySourceLinks(sourceId).catch(() => []);
       setSourceLinks(rows);
     } finally {
       setLoadingSourceLinks(false);
@@ -247,8 +239,11 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setSourceForm({ ...defaultSourceForm });
     setSourceLinks([]);
     void loadStepData();
-    void loadSourceLinks();
   }, [workspace.clanId]);
+
+  useEffect(() => {
+    void loadSourceLinks();
+  }, [workspace.sourceId]);
 
   function changeClan(nextClanId: string) {
     workspace.patch({ clanId: nextClanId, sourceId: '', relationshipId: '', personId: '' });
@@ -294,6 +289,30 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     if (sourceForm.targetId) return sourceForm.targetId;
     if (sourceForm.targetType === 'clan') return clanSourceTargetOptions()[0]?.value || '';
     return '';
+  }
+
+  function sourceLinkSourceName(row: SourceLinkLike) {
+    const source = sources.find(item => String(item.id) === String(row.sourceId));
+    return source ? sourceName(source) : `来源#${row.sourceId || '-'}`;
+  }
+
+  function sourceLinkTargetName(row: SourceLinkLike) {
+    const targetType = String(row.targetType || '');
+    const targetId = String(row.targetId || '');
+    if (targetType === 'person') {
+      const person = persons.find(item => String(item.id) === targetId);
+      return person?.name || `人物#${row.targetId || '-'}`;
+    }
+    if (targetType === 'relationship') {
+      const relationship = relationships.find(item => String(item.id) === targetId);
+      return relationship ? relationshipName(relationship) : `关系#${row.targetId || '-'}`;
+    }
+    if (targetType === 'branch') {
+      const branch = branches.find(item => String(item.id) === targetId);
+      return branch?.branchName || branch?.name || `支派#${row.targetId || '-'}`;
+    }
+    if (targetType === 'clan') return selectedClan ? clanLabel(selectedClan) : `宗族#${row.targetId || '-'}`;
+    return `对象#${row.targetId || '-'}`;
   }
 
   async function createSource(submit = false) {
@@ -346,7 +365,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       });
       setSourceForm(prev => ({ ...prev, targetId }));
       toast({ message: '来源绑定成功。', id: data?.id });
-      await loadSourceLinks();
+      await loadSourceLinks(workspace.sourceId);
     } catch (error) {
       toast({ message: (error as Error).message || '绑定来源失败' }, true);
     } finally {
@@ -457,19 +476,26 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div className="step-draft-review-header">
             <div>
-              <h4>已绑定来源对象</h4>
-              <p>仅展示已经建立绑定关系的记录，与上方可绑定对象候选列表相互独立。</p>
+              <h4>当前来源已绑定对象</h4>
+              <p>仅展示当前已通过来源已经建立的绑定记录，与上方可绑定对象候选列表相互独立。</p>
             </div>
-            <Button loading={loadingSourceLinks} disabled={!workspace.clanId} onClick={() => void loadSourceLinks()}>刷新已绑定对象</Button>
+            <Button loading={loadingSourceLinks} disabled={!workspace.sourceId} onClick={() => void loadSourceLinks()}>刷新已绑定对象</Button>
           </div>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+          {!workspace.sourceId ? <Alert type="info" showIcon message="请先选择已审核通过的来源，再查看已绑定对象。" /> : null}
           {sourceLinks.length ? (
             <div className="source-step-bound-list">
               {sourceLinks.map(link => (
                 <div className="source-step-bound-card" key={String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`)}>
-                  <strong>{sourceLinkSourceName(link)}</strong>
-                  <span>{sourceTargetTypeText(link.targetType)}：{sourceLinkTargetName(link)}</span>
-                  <small>绑定时间：{sourceLinkTime(link)}</small>
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space wrap>
+                      <strong>{sourceLinkSourceName(link)}</strong>
+                      <Tag>{sourceTargetTypeText(link.targetType)}</Tag>
+                      <span>{sourceLinkTargetName(link)}</span>
+                    </Space>
+                    {link.excerpt ? <span>摘录：{link.excerpt}</span> : null}
+                    {link.bindingReason ? <span>绑定说明：{link.bindingReason}</span> : null}
+                    <small>绑定时间：{sourceLinkTime(link)}</small>
+                  </Space>
                 </div>
               ))}
             </div>
