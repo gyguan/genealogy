@@ -5,8 +5,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 1180px; }
-button, input, select { font: inherit; }
+body { margin: 0; }
 
 .admin-layout { display: flex; min-height: 100vh; }
 .sidebar { width: 280px; background: linear-gradient(180deg, #101828 0%, #1d2939 100%); color: #fff; padding: 24px 18px; overflow: auto; position: sticky; top: 0; height: 100vh; }
@@ -33,13 +32,13 @@ button, input, select { font: inherit; }
 .field { display: block; margin: 12px 0; }
 .field span { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
 .field small { display: block; color: #667085; margin-top: 4px; }
-.field input, .field select, .proto-search-card input { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; }
+.field input, .field select, .proto-search-card input { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; font: inherit; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-.actions button, button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
-button.secondary { background: #eff8ff; color: #175cd3; }
-button.danger { background: #d92d20; }
-button.ghost { background: #f2f4f7; color: #344054; }
-button:disabled { cursor: not-allowed; opacity: .58; }
+.actions button, .prototype-actions button, .proto-tool-buttons button, .proto-mini-nav button, .proto-quick-actions button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+.actions button.secondary, .prototype-actions button.secondary, .proto-tool-buttons button.secondary, .proto-quick-actions button.secondary { background: #eff8ff; color: #175cd3; }
+.actions button.danger, .prototype-actions button.danger, .proto-tool-buttons button.danger, .proto-quick-actions button.danger { background: #d92d20; }
+.actions button.ghost, .prototype-actions button.ghost, .proto-tool-buttons button.ghost, .proto-quick-actions button.ghost { background: #f2f4f7; color: #344054; }
+.actions button:disabled, .prototype-actions button:disabled, .proto-tool-buttons button:disabled, .proto-mini-nav button:disabled, .proto-quick-actions button:disabled { cursor: not-allowed; opacity: .58; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
 .result-notice { margin-top: 16px; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; border-radius: 14px; }
 .result-notice strong { font-size: 14px; }
@@ -99,7 +98,7 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .proto-hint, .proto-source, .proto-task { padding: 13px; border: 1px solid #eef2f6; background: #fcfcfd; border-radius: 16px; margin-top: 10px; }
 .proto-hint strong, .proto-source strong, .proto-task strong { display: block; color: #1d2939; }
 .proto-hint p, .proto-source p, .proto-task p { margin: 6px 0; color: #667085; font-size: 13px; line-height: 1.5; }
-.link-button { padding: 0; background: transparent; color: #175cd3; font-weight: 800; }
+.link-button { padding: 0; border: 0; background: transparent; color: #175cd3; font: inherit; font-weight: 800; cursor: pointer; }
 .proto-tool-buttons { display: flex; gap: 8px; }
 .proto-tree-canvas { position: relative; min-height: 620px; overflow: hidden; border-radius: 20px; background: linear-gradient(90deg, rgba(226,232,240,.6) 1px, transparent 1px), linear-gradient(rgba(226,232,240,.6) 1px, transparent 1px), #f8fafc; background-size: 48px 48px; border: 1px solid #e4e7ec; }
 .proto-link { position: absolute; border-left: 2px solid #c7d7fe; border-bottom: 2px solid #c7d7fe; pointer-events: none; }

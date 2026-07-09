@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
-import { Button, Empty, Table, Typography, message } from 'antd';
+import { Button, Empty, Popconfirm, Table, Tag, Typography, message } from 'antd';
 import { apiClient } from '../api/client';
 
 export type Column<T> = {
@@ -21,6 +21,33 @@ const REVIEW_TARGET_LABEL: Record<ReviewTargetType, string> = {
 
 const REVIEW_STATUS_KEYS = new Set(['dataStatus', 'status', 'verificationStatus']);
 const REVIEW_ACTION_KEYS = new Set(['actions', 'maintainWords']);
+const TECHNICAL_COLUMN_KEYS = new Set(['targetId', 'targetType', 'checksum', 'storagePath']);
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: '草稿',
+  pending: '待处理',
+  pending_review: '待审核',
+  official: '正式',
+  approved: '已通过',
+  rejected: '已驳回',
+  archived: '已归档',
+  success: '成功',
+  failed: '失败',
+  failure: '失败'
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'default',
+  pending: 'processing',
+  pending_review: 'processing',
+  official: 'success',
+  approved: 'success',
+  rejected: 'error',
+  archived: 'default',
+  success: 'success',
+  failed: 'error',
+  failure: 'error'
+};
 
 export function toRecordList<T = any>(data: any): T[] {
   if (Array.isArray(data)) return data;
@@ -36,12 +63,11 @@ function isTechnicalColumn(column: Column<any>) {
   const key = column.key || '';
   const title = column.title || '';
   return key === 'id'
+    || TECHNICAL_COLUMN_KEYS.has(key)
     || key.endsWith('Id')
     || key.endsWith('Code')
-    || key === 'checksum'
-    || key === 'storagePath'
     || /(^|[\s（(])ID([\s）)]|$)/i.test(title)
-    || /编码|主键|技术标识|系统标识|校验值|SHA/i.test(title);
+    || /编码|主键|技术标识|系统标识|校验值|SHA|接口字段|存储路径/i.test(title);
 }
 
 function rowKey(row: Record<string, any>, index?: number) {
@@ -50,6 +76,17 @@ function rowKey(row: Record<string, any>, index?: number) {
 
 function statusOf(row: Record<string, any>) {
   return String(row?.dataStatus || row?.status || row?.verificationStatus || '').trim().toLowerCase();
+}
+
+function statusLabel(status: string) {
+  if (!status) return '-';
+  return STATUS_LABEL[status] || '未知状态';
+}
+
+function renderStatusTag(row: Record<string, any>) {
+  const status = statusOf(row);
+  if (!status) return '-';
+  return <Tag color={STATUS_COLOR[status] || 'default'}>{statusLabel(status)}</Tag>;
 }
 
 function isLifecycleRow(row: Record<string, any>) {
@@ -84,18 +121,18 @@ function inferReviewTargetType(columns: Column<any>[], rows: Record<string, any>
 }
 
 function reviewObjectName(row: Record<string, any>, targetType: ReviewTargetType, fallbackColumns: Column<any>[]) {
-  if (targetType === 'person') return row.name || `人物#${row.id}`;
-  if (targetType === 'branch') return row.branchName || `支派#${row.id}`;
-  if (targetType === 'source') return row.sourceName || `来源#${row.id}`;
-  if (targetType === 'generation_scheme') return row.schemeName || `字辈方案#${row.id}`;
+  if (targetType === 'person') return row.name || '未命名人物';
+  if (targetType === 'branch') return row.branchName || '未命名支派';
+  if (targetType === 'source') return row.sourceName || '未命名来源';
+  if (targetType === 'generation_scheme') return row.schemeName || '未命名字辈方案';
   if (targetType === 'relationship') {
-    const from = row.fromPersonName || row.fromName || (row.fromPersonId ? `人物#${row.fromPersonId}` : '起点');
-    const to = row.toPersonName || row.toName || (row.toPersonId ? `人物#${row.toPersonId}` : '终点');
+    const from = row.fromPersonName || row.fromName || '起点人物待维护';
+    const to = row.toPersonName || row.toName || '终点人物待维护';
     const label = row.relationLabel || row.relationType || '关系';
     return `${from} → ${to} · ${label}`;
   }
   const firstDisplayColumn = fallbackColumns.find(column => !REVIEW_STATUS_KEYS.has(column.key) && !REVIEW_ACTION_KEYS.has(column.key));
-  return firstDisplayColumn ? String(row[firstDisplayColumn.key] ?? '') : `对象#${row.id}`;
+  return firstDisplayColumn ? String(row[firstDisplayColumn.key] ?? '') : '对象信息待维护';
 }
 
 function isActionColumn(column: Column<any>) {
@@ -161,9 +198,6 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       message.warning('仅草稿支派可以删除');
       return;
     }
-    const branchName = row.branchName || `支派#${row.id}`;
-    const ok = window.confirm(`确认删除草稿支派“${branchName}”吗？删除后不可恢复。`);
-    if (!ok) return;
     const key = rowKey(row);
     setDeletingRowKey(key);
     try {
@@ -201,7 +235,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       width: 120,
       render: (_value: unknown, row: T) => {
         const statusColumn = visibleColumns.find(column => REVIEW_STATUS_KEYS.has(column.key));
-        return statusColumn?.render ? statusColumn.render(row) : statusOf(row) || '-';
+        return statusColumn?.render ? statusColumn.render(row) : renderStatusTag(row);
       }
     },
     ...visibleColumns.filter(isActionColumn).map(column => ({
@@ -216,17 +250,22 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       title: '操作',
       width: 96,
       render: (_value: unknown, row: T) => isDraft(row) ? (
-        <Button
-          size="small"
-          danger
-          loading={deletingRowKey === rowKey(row)}
-          onClick={event => {
-            event.stopPropagation();
-            void deleteBranchDraft(row);
-          }}
+        <Popconfirm
+          title="删除草稿支派"
+          description={`确认删除草稿支派“${row.branchName || '未命名支派'}”吗？`}
+          okText="删除"
+          cancelText="取消"
+          onConfirm={() => void deleteBranchDraft(row)}
         >
-          删除草稿
-        </Button>
+          <Button
+            size="small"
+            danger
+            loading={deletingRowKey === rowKey(row)}
+            onClick={event => event.stopPropagation()}
+          >
+            删除草稿
+          </Button>
+        </Popconfirm>
       ) : '-'
     }] : [])
   ];
@@ -236,7 +275,11 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
     dataIndex: column.key,
     title: column.title,
     ellipsis: true,
-    render: (_value: unknown, row: T) => column.render ? column.render(row) : String(row[column.key] ?? '')
+    render: (_value: unknown, row: T) => {
+      if (column.render) return column.render(row);
+      if (REVIEW_STATUS_KEYS.has(column.key)) return renderStatusTag(row);
+      return String(row[column.key] ?? '');
+    }
   }));
 
   const tableColumns = targetType && normalizeReviewColumns ? normalizedReviewColumns : originalColumns;
