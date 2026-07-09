@@ -25,6 +25,16 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [08. 后端工程结构设计](docs/08-backend-structure.md)
 - [09. 中国式族谱权限管理方案](docs/09-permission-management.md)
 - [10. 前端统一设计与实现规范（Ant Design 版）](docs/10-frontend-design-guidelines.md)
+- [AI 工程流程适配方案](docs/ai/ai-engineering-workflow.md)
+- [AI Skill 映射表](docs/ai/skill-mapping.md)
+
+## AI 辅助研发入口
+
+- 项目级 Agent 规则：`AGENTS.md`
+- AI 临时任务工作区：`tasks/`
+- PR 质量门禁模板：`.github/pull_request_template.md`
+
+AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。
 
 ## 可点击原型
 
