@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import {
@@ -32,7 +32,7 @@ type RelationshipValidationResult = {
 };
 
 function clanLabel(clan: ClanLike) {
-  return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
+  return clan.clanName || clan.surname || '未命名宗族';
 }
 
 function readableError(error: unknown, fallback: string) {
@@ -246,59 +246,59 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             <Typography.Title level={5}>建立亲属关系</Typography.Title>
             <Typography.Paragraph type="secondary">先选择中心人物和关系类型，再从符合代次、性别规则的已审核人物中选择亲属。</Typography.Paragraph>
           </div>
-          <div className="relationship-step-form-grid">
-            <label className="relationship-step-field">
-              <span>适用宗族 *</span>
-              <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
-                <option value="">请选择宗族</option>
-                {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-              </select>
-            </label>
-            <label className="relationship-step-field">
-              <span>中心人物 *</span>
-              <Select
-                showSearch
-                loading={loadingPersons}
-                value={centerPersonId || undefined}
-                options={officialPersons.map(item => ({ value: String(item.id), label: personLabel(item) }))}
-                placeholder="请选择已审核通过的中心人物"
-                optionFilterProp="label"
-                onChange={value => setCenterPersonId(value)}
-              />
-            </label>
-            <label className="relationship-step-field">
-              <span>中心人物代次</span>
-              <Select disabled value={centerPerson?.generationNo ? `第${centerPerson.generationNo}世` : '中心人物未维护代次'} options={[{ value: centerPerson?.generationNo ? `第${centerPerson.generationNo}世` : '中心人物未维护代次', label: centerPerson?.generationNo ? `第${centerPerson.generationNo}世` : '中心人物未维护代次' }]} />
-            </label>
-            <label className="relationship-step-field">
-              <span>关系类型 *</span>
-              <Select value={mode} onChange={changeMode} options={[
-                { value: 'father', label: '父亲' },
-                { value: 'mother', label: '母亲' },
-                { value: 'spouse', label: '配偶' },
-                { value: 'child', label: '子女' }
-              ]} />
-            </label>
-            <label className="relationship-step-field">
-              <span>亲属 *</span>
-              <Select
-                showSearch
-                value={relativePersonId || undefined}
-                disabled={!centerPerson || !expectedNo || !relativeOptions.length}
-                options={relativeOptions}
-                placeholder={relativeOptions.length ? `请选择${RELATIONSHIP_MODE_LABEL[mode]}` : relationshipRuleText(mode)}
-                optionFilterProp="label"
-                onChange={value => {
-                  setRelativePersonId(value);
-                  setSaveError('');
-                }}
-              />
-            </label>
-            <label className="relationship-step-field relationship-step-field--wide">
-              <span>选择规则</span>
-              <input value={expectedNo ? `${relationshipRuleText(mode)} · 目标代次：第${expectedNo}世` : '中心人物需维护代次后才能自动筛选'} disabled readOnly />
-            </label>
-          </div>
+          <Form layout="vertical" className="relationship-step-form">
+            <div className="relationship-step-form-grid">
+              <Form.Item label="适用宗族" required>
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  value={workspace.clanId}
+                  onChange={changeClan}
+                  disabled={loadingClans}
+                  options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+                />
+              </Form.Item>
+              <Form.Item label="中心人物" required>
+                <Select
+                  showSearch
+                  loading={loadingPersons}
+                  value={centerPersonId || undefined}
+                  options={officialPersons.map(item => ({ value: String(item.id), label: personLabel(item) }))}
+                  placeholder="请选择已审核通过的中心人物"
+                  optionFilterProp="label"
+                  onChange={value => setCenterPersonId(value)}
+                />
+              </Form.Item>
+              <Form.Item label="中心人物代次">
+                <Input value={centerPerson?.generationNo ? `第${centerPerson.generationNo}世` : '中心人物未维护代次'} disabled readOnly />
+              </Form.Item>
+              <Form.Item label="关系类型" required>
+                <Select value={mode} onChange={changeMode} options={[
+                  { value: 'father', label: '父亲' },
+                  { value: 'mother', label: '母亲' },
+                  { value: 'spouse', label: '配偶' },
+                  { value: 'child', label: '子女' }
+                ]} />
+              </Form.Item>
+              <Form.Item label="亲属" required>
+                <Select
+                  showSearch
+                  value={relativePersonId || undefined}
+                  disabled={!centerPerson || !expectedNo || !relativeOptions.length}
+                  options={relativeOptions}
+                  placeholder={relativeOptions.length ? `请选择${RELATIONSHIP_MODE_LABEL[mode]}` : relationshipRuleText(mode)}
+                  optionFilterProp="label"
+                  onChange={value => {
+                    setRelativePersonId(value);
+                    setSaveError('');
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="选择规则" className="relationship-step-field--wide">
+                <Input value={expectedNo ? `${relationshipRuleText(mode)} · 目标代次：第${expectedNo}世` : '中心人物需维护代次后才能自动筛选'} disabled readOnly />
+              </Form.Item>
+            </div>
+          </Form>
           {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
           {saveError ? <Alert type="error" showIcon message={saveError} /> : null}
           <Space wrap>
