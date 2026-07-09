@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../shared/ui/Form';
-import { DataTable, toRecordList } from '../../shared/ui/DataTable';
-import { Panel } from '../../shared/ui/Panel';
+import { toRecordList } from '../../shared/ui/DataTable';
 
 type ClanRow = {
   id: number;
@@ -69,6 +67,19 @@ function roleTypeText(roleType?: string) {
 
 function roleTypeColor(roleType?: string) {
   return roleType === 'view' ? 'blue' : 'green';
+}
+
+function memberStatusText(status?: string) {
+  const value = String(status || '').toLowerCase();
+  const dict: Record<string, string> = { active: '有效', disabled: '已停用', revoked: '已撤销' };
+  return dict[value] || status || '-';
+}
+
+function memberStatusColor(status?: string) {
+  const value = String(status || '').toLowerCase();
+  if (value === 'active') return 'success';
+  if (['disabled', 'revoked'].includes(value)) return 'default';
+  return 'processing';
 }
 
 function defaultRoleCode(roles: RoleRow[]) {
@@ -278,6 +289,11 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     if (user) setMemberName(user.displayName || user.username);
   }
 
+  const roleOptions = [
+    ...(manageRoles.length ? [{ label: '管理与协作角色', options: manageRoles.map(role => ({ value: role.roleCode, label: role.roleName })) }] : []),
+    ...(viewRoles.length ? [{ label: '查看角色', options: viewRoles.map(role => ({ value: role.roleCode, label: role.roleName })) }] : [])
+  ];
+
   return (
     <div className="member-role-page">
       <Alert
@@ -288,49 +304,56 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         description="权限由宗族成员身份、角色动作、授权范围、隐私规则和审核流程共同决定。界面只展示宗族名称、支派名称和成员姓名，不需要用户填写技术 ID。"
       />
       <div className="page-grid two">
-        <Panel title="新增成员授权" description="按“选择宗族 → 选择成员 → 授权角色 → 授权范围”完成授权；支派管理员和编辑建议选择支派范围。">
-          <Field label="宗族名称">
-            <select value={selectedClanId} onChange={e => onClanChange(e.target.value)} disabled={loading || !clans.length}>
-              <option value="">请选择宗族</option>
-              {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{display(clan.clanName, '未命名宗族')}{clan.hallName ? ` · ${clan.hallName}` : ''}</option>)}
-            </select>
-          </Field>
-          <Field label="选择成员">
-            <select value={userId} onChange={e => onUserChange(e.target.value)}>
-              <option value="">请选择成员</option>
-              {users.map(user => <option key={user.id} value={user.id}>{user.displayName || user.username}</option>)}
-            </select>
-          </Field>
-          <Field label="族内称呼"><input value={memberName} onChange={e => setMemberName(e.target.value)} placeholder="默认使用用户显示名" /></Field>
-          <Field label="授权角色">
-            <select value={roleCode} onChange={e => setRoleCode(e.target.value)}>
-              <option value="">请选择角色</option>
-              {manageRoles.length ? <optgroup label="管理与协作角色">{manageRoles.map(role => <option key={role.roleCode} value={role.roleCode}>{role.roleName}</option>)}</optgroup> : null}
-              {viewRoles.length ? <optgroup label="查看角色">{viewRoles.map(role => <option key={role.roleCode} value={role.roleCode}>{role.roleName}</option>)}</optgroup> : null}
-            </select>
-          </Field>
-          <Field label="授权范围">
-            <select value={scopeType} onChange={e => setScopeType(e.target.value)}>
-              <option value="clan">全宗族</option>
-              <option value="branch">指定支派</option>
-            </select>
-          </Field>
-          {isBranchScope(scopeType) ? (
-            <Field label="选择支派">
-              <select value={scopeBranchId} onChange={e => setScopeBranchId(e.target.value)} disabled={!branches.length}>
-                <option value="">请选择支派</option>
-                {branches.map(branch => <option key={branch.id} value={String(branch.id)}>{display(branch.branchName, '未命名支派')}</option>)}
-              </select>
-            </Field>
-          ) : null}
+        <Card title="新增成员授权">
+          <Form layout="vertical">
+            <Form.Item label="宗族名称">
+              <Select
+                showSearch
+                optionFilterProp="label"
+                value={selectedClanId}
+                onChange={onClanChange}
+                disabled={loading || !clans.length}
+                options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: `${display(clan.clanName, '未命名宗族')}${clan.hallName ? ` · ${clan.hallName}` : ''}` }))]}
+              />
+            </Form.Item>
+            <Form.Item label="选择成员">
+              <Select
+                showSearch
+                optionFilterProp="label"
+                value={userId}
+                onChange={onUserChange}
+                options={[{ value: '', label: '请选择成员' }, ...users.map(user => ({ value: String(user.id), label: user.displayName || user.username }))]}
+              />
+            </Form.Item>
+            <Form.Item label="族内称呼"><Input value={memberName} onChange={e => setMemberName(e.target.value)} placeholder="默认使用用户显示名" /></Form.Item>
+            <Form.Item label="授权角色"><Select value={roleCode} onChange={setRoleCode} options={roleOptions} /></Form.Item>
+            <Form.Item label="授权范围">
+              <Select value={scopeType} onChange={setScopeType} options={[{ value: 'clan', label: '全宗族' }, { value: 'branch', label: '指定支派' }]} />
+            </Form.Item>
+            {isBranchScope(scopeType) ? (
+              <Form.Item label="选择支派">
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  value={scopeBranchId}
+                  onChange={setScopeBranchId}
+                  disabled={!branches.length}
+                  options={[{ value: '', label: '请选择支派' }, ...branches.map(branch => ({ value: String(branch.id), label: display(branch.branchName, '未命名支派') }))]}
+                />
+              </Form.Item>
+            ) : null}
+          </Form>
           <Card size="small" title="数据权限预览" className="permission-preview-card">
             {permissionPreview().map(item => <Typography.Paragraph key={item} type="secondary">• {item}</Typography.Paragraph>)}
           </Card>
           {selectedRole ? <Tag color={roleTypeColor(selectedRole.roleType)}>{selectedRole.roleName}：{roleTypeText(selectedRole.roleType)}</Tag> : null}
-          <Actions><button disabled={loading} onClick={create}>新增授权</button><button className="secondary" disabled={loading} onClick={() => void run(async () => { await listMembers(); })}>刷新成员</button></Actions>
-        </Panel>
+          <Space style={{ marginTop: 12 }} wrap>
+            <Button type="primary" disabled={loading} loading={loading} onClick={() => void create()}>新增授权</Button>
+            <Button disabled={loading} onClick={() => void run(async () => { await listMembers(); })}>刷新成员</Button>
+          </Space>
+        </Card>
 
-        <Panel title="角色清单" description="角色表示能做什么，授权范围表示管哪里；两者共同决定最终权限。">
+        <Card title="角色清单">
           <div className="role-card-grid">
             {roles.map(role => (
               <Card key={role.roleCode} size="small" title={<Space><span>{role.roleName}</span><Tag color={roleTypeColor(role.roleType)}>{roleTypeText(role.roleType)}</Tag></Space>}>
@@ -339,22 +362,38 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               </Card>
             ))}
           </div>
-        </Panel>
+        </Card>
       </div>
 
-      <Panel title="成员与角色列表">
-        <DataTable
-          data={members}
-          empty="暂无成员，请先选择宗族并刷新成员列表。"
+      <Card title="成员与角色列表">
+        <Table<MemberRow>
+          size="small"
+          bordered
+          rowKey={(row, index) => String(row.id || index)}
+          dataSource={members}
+          pagination={false}
           columns={[
-            { key: 'displayName', title: '成员', render: row => `${row.displayName || row.memberName || '-'}` },
-            { key: 'roleName', title: '角色', render: row => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
-            { key: 'scopeType', title: '授权范围', render: row => scopeText(row) },
-            { key: 'memberStatus', title: '状态', render: row => row.memberStatus === 'active' ? '有效' : row.memberStatus || '-' },
-            { key: 'actions', title: '操作', render: row => <div className="archive-row-actions"><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'clan_admin'); }}>设为宗族管理员</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'editor'); }}>设为修谱编辑</button><button className="secondary" onClick={event => { event.stopPropagation(); void updateRole(row, 'viewer'); }}>设为查看者</button><button className="danger" onClick={event => { event.stopPropagation(); void revokeRole(row); }}>撤销授权</button></div> }
+            { key: 'displayName', title: '成员', render: (_value, row) => row.displayName || row.memberName || '-' },
+            { key: 'roleName', title: '角色', render: (_value, row) => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
+            { key: 'scopeType', title: '授权范围', render: (_value, row) => scopeText(row) },
+            { key: 'memberStatus', title: '状态', render: (_value, row) => <Tag color={memberStatusColor(row.memberStatus)}>{memberStatusText(row.memberStatus)}</Tag> },
+            {
+              key: 'actions',
+              title: '操作',
+              render: (_value, row) => (
+                <Space size="small" wrap>
+                  <Button size="small" type="link" onClick={() => void updateRole(row, 'clan_admin')}>设为宗族管理员</Button>
+                  <Button size="small" type="link" onClick={() => void updateRole(row, 'editor')}>设为修谱编辑</Button>
+                  <Button size="small" type="link" onClick={() => void updateRole(row, 'viewer')}>设为查看者</Button>
+                  <Popconfirm title="撤销授权" description={`确认撤销“${row.displayName || row.memberName || '该成员'}”的授权吗？`} okText="撤销" cancelText="取消" onConfirm={() => void revokeRole(row)}>
+                    <Button size="small" type="link" danger>撤销授权</Button>
+                  </Popconfirm>
+                </Space>
+              )
+            }
           ]}
         />
-      </Panel>
+      </Card>
     </div>
   );
 }
