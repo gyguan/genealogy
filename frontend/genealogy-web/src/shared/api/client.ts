@@ -14,10 +14,6 @@ export type ApiError = {
 
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
-function normalizeApiPath(path: string) {
-  return path;
-}
-
 function normalizeReviewTargetType(value: unknown) {
   const text = String(value ?? '').trim();
   const map: Record<string, string> = {
@@ -172,34 +168,32 @@ export class ApiClient {
   }
 
   async get<T = unknown>(path: string): Promise<T> {
-    const normalizedPath = normalizeApiPath(path);
-    const key = this.pendingGetKey(normalizedPath);
+    const key = this.pendingGetKey(path);
     const pending = pendingGetRequests.get(key);
     if (pending) return pending as Promise<T>;
 
-    const request = this.request<T>(normalizedPath, { method: 'GET' })
+    const request = this.request<T>(path, { method: 'GET' })
       .finally(() => pendingGetRequests.delete(key));
     pendingGetRequests.set(key, request as Promise<unknown>);
     return request;
   }
 
   async post<T = unknown>(path: string, body?: unknown): Promise<T> {
-    const normalizedPath = normalizeApiPath(path);
-    const normalizedBody = normalizeJsonBody(normalizedPath, body);
-    if (shouldBlockDraftPersonAutoReview(normalizedPath, normalizedBody)) {
+    const normalizedBody = normalizeJsonBody(path, body);
+    if (shouldBlockDraftPersonAutoReview(path, normalizedBody)) {
       throw new Error('保存草稿继续录入不会自动提交人物审核');
     }
     try {
-      return await this.request<T>(normalizedPath, {
+      return await this.request<T>(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: normalizedBody === undefined ? undefined : JSON.stringify(normalizedBody)
       });
     } catch (error) {
-      if (this.shouldConfirmDuplicatePerson(normalizedPath, normalizedBody, error)) {
+      if (this.shouldConfirmDuplicatePerson(path, normalizedBody, error)) {
         const ok = window.confirm('发现疑似重复人物。确认仍要创建这条人物记录吗？');
         if (ok) {
-          return this.request<T>(normalizedPath, {
+          return this.request<T>(path, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...(normalizedBody as Record<string, unknown>), confirmDuplicate: true })
@@ -211,9 +205,8 @@ export class ApiClient {
   }
 
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
-    const normalizedPath = normalizeApiPath(path);
-    const normalizedBody = normalizeJsonBody(normalizedPath, body);
-    return this.request<T>(normalizedPath, {
+    const normalizedBody = normalizeJsonBody(path, body);
+    return this.request<T>(path, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: normalizedBody === undefined ? undefined : JSON.stringify(normalizedBody)
@@ -221,15 +214,15 @@ export class ApiClient {
   }
 
   async delete<T = unknown>(path: string): Promise<T> {
-    return this.request<T>(normalizeApiPath(path), { method: 'DELETE' });
+    return this.request<T>(path, { method: 'DELETE' });
   }
 
   async upload<T = unknown>(path: string, formData: FormData): Promise<T> {
-    return this.request<T>(normalizeApiPath(path), { method: 'POST', body: formData });
+    return this.request<T>(path, { method: 'POST', body: formData });
   }
 
   async download(path: string): Promise<Blob> {
-    const res = await fetch(this.resolve(normalizeApiPath(path)), { headers: this.authHeaders() });
+    const res = await fetch(this.resolve(path), { headers: this.authHeaders() });
     if (!res.ok) throw new Error(`下载失败：HTTP ${res.status}`);
     return res.blob();
   }
@@ -266,7 +259,7 @@ export class ApiClient {
   }
 
   private resolve(path: string) {
-    return `${this.baseUrl}${normalizeApiPath(path)}`;
+    return `${this.baseUrl}${path}`;
   }
 
   private authHeaders(): Record<string, string> {
