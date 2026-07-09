@@ -62,9 +62,18 @@ type TimelineItem = {
   source: 'log' | 'review' | 'diff' | 'system';
 };
 
+const technicalIdentifierPattern = /(对象\s*ID|人物#\d+|支派#\d+|来源#\d+|fromPersonId|toPersonId|targetId|personId|branchId|sourceId)/i;
+const rawIdLikePattern = /^\d+$/;
+
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
   return text || fallback;
+}
+
+function businessDisplay(value: unknown, fallback = '业务信息待维护') {
+  const text = String(value ?? '').trim();
+  if (!text || rawIdLikePattern.test(text) || technicalIdentifierPattern.test(text)) return fallback;
+  return text;
 }
 
 function rows(data: unknown): OperationLog[] {
@@ -102,7 +111,7 @@ function targetTypeText(type?: string) {
 
 function targetText(type?: string, summary?: string, name?: string) {
   const label = targetTypeText(type);
-  const businessText = display(name || summary, '未提供业务摘要');
+  const businessText = businessDisplay(name || summary, '业务摘要待维护');
   return `${label}：${businessText}`;
 }
 
@@ -111,16 +120,49 @@ function targetTextFromLog(log: OperationLog) {
 }
 
 function reviewTaskTitle(task: ReviewTask) {
-  return display(task.title || task.targetName, targetText(task.targetType, task.comment || task.title, task.targetName));
+  return businessDisplay(task.title || task.targetName, targetText(task.targetType, task.comment || task.title, task.targetName));
 }
 
-function actorText(value?: string | number, name?: string) {
-  return display(name || value, '系统/未知操作者');
+function actorText(_value?: string | number, name?: string) {
+  return businessDisplay(name, '操作者待维护');
 }
 
 function changeText(value?: string) {
   const dict: Record<string, string> = { added: '新增', removed: '删除', modified: '修改' };
   return dict[value || ''] || value || '-';
+}
+
+function fieldText(value?: string) {
+  const dict: Record<string, string> = {
+    name: '姓名',
+    personName: '姓名',
+    genealogyName: '谱名',
+    courtesyName: '字号',
+    aliasName: '别名',
+    gender: '性别',
+    generationNo: '代次',
+    generationWord: '字辈',
+    branchId: '所属支派',
+    sourceId: '来源资料',
+    targetId: '业务对象',
+    targetType: '对象类型',
+    fromPersonId: '起点人物',
+    toPersonId: '关联人物',
+    dataStatus: '档案状态',
+    verificationStatus: '审核状态',
+    privacyLevel: '隐私级别',
+    birthDate: '出生日期',
+    deathDate: '逝世日期',
+    isLiving: '在世状态',
+    birthPlace: '出生地',
+    residencePlace: '居住地',
+    biography: '人物传记'
+  };
+  return dict[value || ''] || businessDisplay(value, '字段待维护');
+}
+
+function businessValueText(value?: string) {
+  return businessDisplay(value, '待维护');
 }
 
 function severityOf(log: OperationLog): TimelineItem['status'] {
@@ -133,15 +175,45 @@ function severityOf(log: OperationLog): TimelineItem['status'] {
 function buildTimeline(logs: OperationLog[], reviewTask: ReviewTask | null, diff: ReviewDiff | null): TimelineItem[] {
   const items: TimelineItem[] = [];
   if (reviewTask?.id) {
-    items.push({ key: `review-${reviewTask.id}`, time: reviewTask.createdAt, title: `审核任务：${statusText(reviewTask.status)}`, desc: `${reviewTaskTitle(reviewTask)}，提交人：${actorText(reviewTask.submitterId, reviewTask.submitterName)}`, actor: reviewTask.submitterName || reviewTask.submitterId, status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done', source: 'review' });
-    if (reviewTask.reviewedAt || reviewTask.reviewerId || reviewTask.comment) {
-      items.push({ key: `review-result-${reviewTask.id}`, time: reviewTask.reviewedAt, title: reviewTask.status === 'rejected' ? '审核驳回' : reviewTask.status === 'approved' ? '审核通过' : '审核处理中', desc: display(reviewTask.comment, '暂无审核意见'), actor: reviewTask.reviewerName || reviewTask.reviewerId, status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done', source: 'review' });
+    items.push({
+      key: `review-${reviewTask.id}`,
+      time: reviewTask.createdAt,
+      title: `审核任务：${statusText(reviewTask.status)}`,
+      desc: `${reviewTaskTitle(reviewTask)}，提交人：${actorText(reviewTask.submitterId, reviewTask.submitterName)}`,
+      actor: reviewTask.submitterName,
+      status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done',
+      source: 'review'
+    });
+    if (reviewTask.reviewedAt || reviewTask.reviewerName || reviewTask.comment) {
+      items.push({
+        key: `review-result-${reviewTask.id}`,
+        time: reviewTask.reviewedAt,
+        title: reviewTask.status === 'rejected' ? '审核驳回' : reviewTask.status === 'approved' ? '审核通过' : '审核处理中',
+        desc: businessDisplay(reviewTask.comment, '暂无审核意见'),
+        actor: reviewTask.reviewerName,
+        status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done',
+        source: 'review'
+      });
     }
   }
   if (diff?.reviewTaskId || diff?.revisionId) {
-    items.push({ key: `diff-${diff.reviewTaskId || diff.revisionId}`, title: `字段级变更：${changeText(diff.changeType)}`, desc: `${display(diff.diffSummary, '暂无变更摘要')}，字段差异 ${diff.fields?.length || 0} 项`, status: 'info', source: 'diff' });
+    items.push({
+      key: `diff-${diff.reviewTaskId || diff.revisionId}`,
+      title: `字段级变更：${changeText(diff.changeType)}`,
+      desc: `${businessDisplay(diff.diffSummary, '暂无变更摘要')}，字段差异 ${diff.fields?.length || 0} 项`,
+      status: 'info',
+      source: 'diff'
+    });
   }
-  logs.forEach(log => items.push({ key: `log-${log.id || `${log.actionType}-${log.createdAt}`}`, time: log.createdAt, title: actionText(log.actionType), desc: `${display(log.summary, '暂无摘要')}｜${targetTextFromLog(log)}`, actor: log.actorName || log.operatorName || log.actorId, status: severityOf(log), source: 'log' }));
+  logs.forEach(log => items.push({
+    key: `log-${log.id || `${log.actionType}-${log.createdAt}`}`,
+    time: log.createdAt,
+    title: actionText(log.actionType),
+    desc: `${businessDisplay(log.summary, '暂无摘要')}｜${targetTextFromLog(log)}`,
+    actor: log.actorName || log.operatorName,
+    status: severityOf(log),
+    source: 'log'
+  }));
   return items.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.key.localeCompare(b.key));
 }
 
@@ -211,8 +283,9 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   }
 
   function applyTraceFromLog(row: OperationLog) {
-    setTraceForm(prev => ({ ...prev, clanId: String(row.clanId || prev.clanId || workspace.clanId), targetType: String(row.targetType || ''), targetId: String(row.targetId || ''), targetSummary: targetTextFromLog(row), reviewTaskId: row.targetType === 'review_task' ? String(row.targetId || '') : prev.reviewTaskId }));
-    setResult({ message: `已选择追踪对象：${targetTextFromLog(row)}` });
+    const summary = targetTextFromLog(row);
+    setTraceForm(prev => ({ ...prev, clanId: String(row.clanId || prev.clanId || workspace.clanId), targetType: String(row.targetType || ''), targetId: String(row.targetId || ''), targetSummary: summary, reviewTaskId: row.targetType === 'review_task' ? String(row.targetId || '') : prev.reviewTaskId }));
+    setResult({ message: `已选择追踪对象：${summary}` });
   }
 
   const timeline = useMemo(() => buildTimeline(traceLogs, reviewTask, reviewDiff), [traceLogs, reviewTask, reviewDiff]);
@@ -221,10 +294,57 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   return (
     <div className="audit-trace-page">
-      <Card title="操作日志与审核流完整追踪"><Descriptions size="small" bordered column={4}><Descriptions.Item label="当前日志">{logRows.length || '-'}</Descriptions.Item><Descriptions.Item label="追踪日志">{traceLogs.length || '-'}</Descriptions.Item><Descriptions.Item label="字段差异">{reviewDiff?.fields?.length || '-'}</Descriptions.Item><Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item></Descriptions></Card>
-      <div className="page-grid two audit-query-grid"><Card title="日志审计查询"><Form layout="vertical"><Form.Item label="当前宗族"><Input value={workspace.clanId ? '已选择当前宗族' : '未选择宗族'} disabled readOnly /></Form.Item><Form.Item label="动作类型"><Input value={filters.actionType} onChange={e => set('actionType', e.target.value)} placeholder="例如：创建人物 / 更新人物" /></Form.Item><Form.Item label="对象类型"><Select value={filters.targetType} onChange={value => set('targetType', value)} options={[{ value: '', label: '全部' }, { value: 'person', label: '人物' }, { value: 'relationship', label: '亲属关系' }, { value: 'source', label: '来源资料' }, { value: 'branch', label: '支派' }, { value: 'clan', label: '宗族' }, { value: 'review_task', label: '审核任务' }]} /></Form.Item><Form.Item label="关键词"><Input value={filters.keyword} onChange={e => set('keyword', e.target.value)} placeholder="姓名、来源名、支派名或摘要" /></Form.Item><Form.Item label="开始时间"><Input value={filters.startTime} onChange={e => set('startTime', e.target.value)} placeholder="2026-06-01T00:00:00" /></Form.Item><Form.Item label="结束时间"><Input value={filters.endTime} onChange={e => set('endTime', e.target.value)} placeholder="2026-06-30T23:59:59" /></Form.Item><Form.Item label="每页数量"><Input value={filters.pageSize} onChange={e => set('pageSize', e.target.value)} /></Form.Item></Form><Space wrap><Button type="primary" onClick={() => void list()}>查询</Button><Button onClick={() => void stats()}>统计</Button><Button onClick={() => void exportCsv()}>导出 CSV</Button></Space>{result ? <Alert type="success" showIcon message={display((result as any).message || result)} style={{ marginTop: 12 }} /> : null}</Card><Card title="审核流追踪"><Descriptions size="small" bordered column={1}><Descriptions.Item label="追踪对象">{traceForm.targetSummary || '请先在日志列表中选择一条记录'}</Descriptions.Item><Descriptions.Item label="对象类型">{targetTypeText(traceForm.targetType)}</Descriptions.Item></Descriptions><Space style={{ marginTop: 12 }}><Button type="primary" disabled={loading || !traceForm.targetId} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button></Space><Alert type="info" showIcon message="点击下方日志的“追踪”按钮带入对象；界面只展示业务摘要，不展示技术标识。" style={{ marginTop: 12 }} /></Card></div>
-      <div className="page-grid two audit-query-grid"><Card title="操作与审核时间线">{timeline.length ? <Timeline items={timeline.map(item => ({ color: timelineColor(item.status), children: <div><Space><Tag>{sourceText(item.source)}</Tag><strong>{item.title}</strong></Space><p>{item.desc}</p><span>{display(item.time, '时间未记录')} · 操作者 {actorText(item.actor)}</span></div> }))} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无追踪数据，请先从日志列表选择业务记录后生成追踪链路。" />}</Card><Card title="追踪摘要"><Descriptions size="small" bordered column={1}><Descriptions.Item label="对象">{traceForm.targetSummary || targetText(reviewDiff?.targetType, reviewDiff?.diffSummary, reviewDiff?.targetName)}</Descriptions.Item><Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '-'}</Descriptions.Item><Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item><Descriptions.Item label="变更记录">{display(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</Descriptions.Item></Descriptions><Space wrap style={{ marginTop: 12 }}>{actionTypes.length ? actionTypes.map(([name, count]) => <Tag key={name}>{actionText(name)} × {count}</Tag>) : <Tag>暂无动作分布</Tag>}</Space>{reviewDiff ? <Table size="small" bordered style={{ marginTop: 12 }} rowKey={(row: any, index) => `${row.fieldName || 'field'}-${index}`} dataSource={reviewDiff.fields || []} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字段差异" /> }} columns={[{ key: 'fieldName', title: '字段', dataIndex: 'fieldName' }, { key: 'beforeValue', title: '变更前', dataIndex: 'beforeValue' }, { key: 'afterValue', title: '变更后', dataIndex: 'afterValue' }, { key: 'changeType', title: '类型', render: (_value, row: any) => changeText(row.changeType) }]} /> : null}</Card></div>
-      <Card title="审计日志列表"><Table<OperationLog> size="small" bordered rowKey={(row, index) => String(row.id || index)} dataSource={logRows} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计日志" /> }} columns={[{ key: 'actionType', title: '动作', render: (_value, row) => actionText(row.actionType) }, { key: 'targetSummary', title: '业务对象', render: (_value, row) => targetTextFromLog(row) }, { key: 'actorName', title: '操作者', render: (_value, row) => actorText(row.actorId, row.actorName || row.operatorName) }, { key: 'summary', title: '摘要', dataIndex: 'summary' }, { key: 'createdAt', title: '时间', dataIndex: 'createdAt' }, { key: 'trace', title: '追踪', width: 90, render: (_value, row) => <Button size="small" type="link" onClick={() => applyTraceFromLog(row)}>追踪</Button> }]} /></Card>
+      <Card title="操作日志与审核流完整追踪">
+        <Descriptions size="small" bordered column={4}>
+          <Descriptions.Item label="当前日志">{logRows.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="追踪日志">{traceLogs.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="字段差异">{reviewDiff?.fields?.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+        </Descriptions>
+      </Card>
+      <div className="page-grid two audit-query-grid">
+        <Card title="日志审计查询">
+          <Form layout="vertical">
+            <Form.Item label="当前宗族"><Input value={workspace.clanId ? '已选择当前宗族' : '未选择宗族'} disabled readOnly /></Form.Item>
+            <Form.Item label="动作类型"><Input value={filters.actionType} onChange={e => set('actionType', e.target.value)} placeholder="例如：创建人物 / 更新人物" /></Form.Item>
+            <Form.Item label="对象类型"><Select value={filters.targetType} onChange={value => set('targetType', value)} options={[{ value: '', label: '全部' }, { value: 'person', label: '人物' }, { value: 'relationship', label: '亲属关系' }, { value: 'source', label: '来源资料' }, { value: 'branch', label: '支派' }, { value: 'clan', label: '宗族' }, { value: 'review_task', label: '审核任务' }]} /></Form.Item>
+            <Form.Item label="关键词"><Input value={filters.keyword} onChange={e => set('keyword', e.target.value)} placeholder="姓名、来源名、支派名或摘要" /></Form.Item>
+            <Form.Item label="开始时间"><Input value={filters.startTime} onChange={e => set('startTime', e.target.value)} placeholder="2026-06-01T00:00:00" /></Form.Item>
+            <Form.Item label="结束时间"><Input value={filters.endTime} onChange={e => set('endTime', e.target.value)} placeholder="2026-06-30T23:59:59" /></Form.Item>
+            <Form.Item label="每页数量"><Input value={filters.pageSize} onChange={e => set('pageSize', e.target.value)} /></Form.Item>
+          </Form>
+          <Space wrap><Button type="primary" onClick={() => void list()}>查询</Button><Button onClick={() => void stats()}>统计</Button><Button onClick={() => void exportCsv()}>导出 CSV</Button></Space>
+          {result ? <Alert type="success" showIcon message={display((result as any).message || result)} style={{ marginTop: 12 }} /> : null}
+        </Card>
+        <Card title="审核流追踪">
+          <Descriptions size="small" bordered column={1}>
+            <Descriptions.Item label="追踪对象">{traceForm.targetSummary || '请先在日志列表中选择一条记录'}</Descriptions.Item>
+            <Descriptions.Item label="对象类型">{targetTypeText(traceForm.targetType)}</Descriptions.Item>
+          </Descriptions>
+          <Space style={{ marginTop: 12 }}>
+            <Button type="primary" disabled={loading || !traceForm.targetId} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button>
+          </Space>
+          <Alert type="info" showIcon message="点击下方日志的“追踪”按钮带入对象；界面只展示业务摘要，不展示技术标识。" style={{ marginTop: 12 }} />
+        </Card>
+      </div>
+      <div className="page-grid two audit-query-grid">
+        <Card title="操作与审核时间线">
+          {timeline.length ? <Timeline items={timeline.map(item => ({ color: timelineColor(item.status), children: <div><Space><Tag>{sourceText(item.source)}</Tag><strong>{item.title}</strong></Space><p>{item.desc}</p><span>{display(item.time, '时间未记录')} · 操作者 {actorText(item.actor)}</span></div> }))} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无追踪数据，请先从日志列表选择业务记录后生成追踪链路。" />}
+        </Card>
+        <Card title="追踪摘要">
+          <Descriptions size="small" bordered column={1}>
+            <Descriptions.Item label="对象">{traceForm.targetSummary || targetText(reviewDiff?.targetType, reviewDiff?.diffSummary, reviewDiff?.targetName)}</Descriptions.Item>
+            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '-'}</Descriptions.Item>
+            <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+            <Descriptions.Item label="变更记录">{businessDisplay(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</Descriptions.Item>
+          </Descriptions>
+          <Space wrap style={{ marginTop: 12 }}>{actionTypes.length ? actionTypes.map(([name, count]) => <Tag key={name}>{actionText(name)} × {count}</Tag>) : <Tag>暂无动作分布</Tag>}</Space>
+          {reviewDiff ? <Table size="small" bordered style={{ marginTop: 12 }} rowKey={(row: any, index) => `${fieldText(row.fieldName)}-${index}`} dataSource={reviewDiff.fields || []} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字段差异" /> }} columns={[{ key: 'fieldName', title: '字段', render: (_value, row: any) => fieldText(row.fieldName) }, { key: 'beforeValue', title: '变更前', render: (_value, row: any) => businessValueText(row.beforeValue) }, { key: 'afterValue', title: '变更后', render: (_value, row: any) => businessValueText(row.afterValue) }, { key: 'changeType', title: '类型', render: (_value, row: any) => changeText(row.changeType) }]} /> : null}
+        </Card>
+      </div>
+      <Card title="审计日志列表">
+        <Table<OperationLog> size="small" bordered rowKey={(row, index) => String(row.id || index)} dataSource={logRows} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计日志" /> }} columns={[{ key: 'actionType', title: '动作', render: (_value, row) => actionText(row.actionType) }, { key: 'targetSummary', title: '业务对象', render: (_value, row) => targetTextFromLog(row) }, { key: 'actorName', title: '操作者', render: (_value, row) => actorText(row.actorId, row.actorName || row.operatorName) }, { key: 'summary', title: '摘要', render: (_value, row) => businessDisplay(row.summary, '暂无摘要') }, { key: 'createdAt', title: '时间', dataIndex: 'createdAt' }, { key: 'trace', title: '追踪', width: 90, render: (_value, row) => <Button size="small" type="link" onClick={() => applyTraceFromLog(row)}>追踪</Button> }]} />
+      </Card>
     </div>
   );
 }
