@@ -16,6 +16,8 @@ const REVIEW_DRAFT_ALIASES = [
   '保存草稿'
 ];
 
+const TECHNICAL_LABEL_PATTERN = /(^|[\s（(])(ID|Id|id)([\s）)]|$)|编码|主键|技术标识|系统标识|校验值|SHA|checksum|storagePath|targetType|targetId|dataStatus|verificationStatus/i;
+
 function markDraftSaveGuard() {
   (window as any).__genealogyDraftSaveGuardUntil = Date.now() + DRAFT_SAVE_GUARD_MS;
 }
@@ -25,8 +27,7 @@ function emitValue(originalOnChange: any, value: unknown) {
 }
 
 function isTechnicalLabel(label: string) {
-  return /(^|[\s（(])ID([\s）)]|$)/i.test(label)
-    || /编码|主键|技术标识|系统标识|校验值|SHA/i.test(label);
+  return TECHNICAL_LABEL_PATTERN.test(label);
 }
 
 function optionSearchText(label: unknown) {
