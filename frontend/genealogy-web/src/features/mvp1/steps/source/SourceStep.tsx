@@ -104,6 +104,12 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setSourceForm(prev => ({ ...prev, [key]: value }));
   }
 
+  function validateSourceForm() {
+    if (!workspace.clanId) return '请选择宗族';
+    if (!sourceForm.sourceName.trim()) return '请填写来源名称';
+    return '';
+  }
+
   async function loadClans() {
     setLoadingClans(true);
     try {
@@ -203,12 +209,9 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function createSource(submit = false) {
-    if (!workspace.clanId) {
-      toast({ message: '请选择宗族' }, true);
-      return;
-    }
-    if (!sourceForm.sourceName.trim()) {
-      toast({ message: '请填写来源名称' }, true);
+    const errorMessage = validateSourceForm();
+    if (errorMessage) {
+      toast({ message: errorMessage }, true);
       return;
     }
     setSavingSource(true);
