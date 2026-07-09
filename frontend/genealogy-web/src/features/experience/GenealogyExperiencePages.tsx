@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Empty, Input, Select, Space, Tag } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
@@ -36,6 +37,41 @@ function dateText(row: any) {
 }
 function mapStatus(row: any) { return row.status || row.dataStatus || row.verificationStatus || row.reviewStatus || '已记录'; }
 
+function sourceTypeText(value?: string) {
+  const type = String(value || '').trim().toLowerCase();
+  const dict: Record<string, string> = { genealogy_book: '族谱原文', photo: '照片资料', local_chronicle: '地方志', oral_record: '口述记录', tombstone: '墓志/碑刻', archive: '档案资料', other: '其他' };
+  return dict[type] || value || '资料来源待维护';
+}
+
+function sourceStatusText(value?: string) {
+  const status = String(value || '').trim().toLowerCase();
+  const dict: Record<string, string> = { draft: '草稿', pending: '待复核', pending_review: '待复核', reviewed: '已复核', approved: '已复核', official: '正式', rejected: '已驳回', archived: '已归档' };
+  return dict[status] || value || '待复核';
+}
+
+function sourceStatusColor(value?: string) {
+  const status = String(value || '').trim().toLowerCase();
+  if (['reviewed', 'approved', 'official'].includes(status)) return 'success';
+  if (['pending', 'pending_review'].includes(status)) return 'processing';
+  if (status === 'rejected') return 'error';
+  return 'default';
+}
+
+function confidenceText(value?: string) {
+  const text = String(value || '').trim().toLowerCase();
+  const dict: Record<string, string> = { high: '高', medium: '中', low: '低' };
+  return dict[text] || value || '待评估';
+}
+
+function businessSourceTitle(source: SourceView) {
+  return source.title || '未命名资料';
+}
+
+function businessPersonLabel(person?: PersonView) {
+  if (!person) return '未选择绑定对象';
+  return `${person.name} · ${person.branch} · ${person.generation}`;
+}
+
 function normalizePeople(rawRows: any[], branches: any[], treeNodes: any[] = []): PersonView[] {
   const sourceRows = treeNodes.length ? treeNodes : rawRows;
   return sourceRows.map((row, index) => {
@@ -67,11 +103,11 @@ function normalizeSources(rawRows: any[]): SourceView[] {
   return rawRows.map((row, index) => ({
     id: String(row.id || index + 1),
     title: row.sourceName || row.title || row.name || `资料${index + 1}`,
-    category: row.sourceType || row.category || '资料来源',
+    category: sourceTypeText(row.sourceType || row.category),
     owner: row.createdByName || row.owner || row.creatorName || '族谱资料库',
-    confidence: row.confidenceLevel || row.confidence || '中',
-    status: row.verificationStatus || row.status || '待复核',
-    bind: row.bindingCount ? `已绑定 ${row.bindingCount} 条` : '点击查看绑定',
+    confidence: confidenceText(row.confidenceLevel || row.confidence),
+    status: sourceStatusText(row.verificationStatus || row.status),
+    bind: row.bindingCount ? `已绑定 ${row.bindingCount} 条` : '暂无绑定记录',
     raw: row
   }));
 }
@@ -379,7 +415,85 @@ export function PersonArchiveProductPage() {
 export function SourceLibraryProductPage() {
   const data = useExperienceData();
   const [sourceOpen, setSourceOpen] = useState(false);
-  return <div className="xp-page"><SectionHeader eyebrow="Evidence" title="来源资料库" desc="把族谱原文、地方志、墓志照片、口述记录、证件资料统一作为证据管理。" action="新增资料" onAction={() => setSourceOpen(true)} /><ExperienceNotice message={data.message} loading={data.loading} /><section className="xp-source-layout"><div className="xp-card xp-card--wide"><div className="xp-search-bar"><input placeholder="搜索资料题名、姓氏、堂号、地域、年代" /><button onClick={() => data.setMessage('搜索会基于来源列表和文献元数据过滤')}>搜索</button></div>{data.sources.length ? data.sources.map(item => <div className="xp-source-row" key={item.id || item.title}><div><strong>{item.title}</strong><p>{item.category} · {item.owner} · {item.bind}</p></div><div><Badge>{item.status}</Badge><span>可信度：{item.confidence}</span></div></div>) : <EmptyGuide text="暂无来源资料，请点击右上角“新增资料”。" />}</div><aside className="xp-card"><h3>资料著录建议</h3>{['题名 / 卷册 / 页码', '姓氏 / 堂号 / 地域', '版本年代 / 收藏机构', 'OCR转写 / 原图对照', '可信度与引用记录'].map(item => <div className="xp-mini-item" key={item}>{item}</div>)}</aside></section><CreateSourceModal data={data} open={sourceOpen} onClose={() => setSourceOpen(false)} /></div>;
+  const [keyword, setKeyword] = useState('');
+  const [sourceType, setSourceType] = useState('');
+  const [bindPersonId, setBindPersonId] = useState(data.workspace.personId || '');
+  const selectedPerson = data.people.find(person => person.id === bindPersonId) || data.selectedPerson;
+  const filteredSources = useMemo(() => data.sources.filter(source => {
+    const keywordText = keyword.trim().toLowerCase();
+    const matchesKeyword = !keywordText || [source.title, source.category, source.owner, source.status, source.bind].some(value => String(value || '').toLowerCase().includes(keywordText));
+    const matchesType = !sourceType || source.category === sourceType;
+    return matchesKeyword && matchesType;
+  }), [data.sources, keyword, sourceType]);
+  const sourceTypeOptions = useMemo(() => Array.from(new Set(data.sources.map(source => source.category).filter(Boolean))).map(type => ({ value: type, label: type })), [data.sources]);
+
+  function selectSource(source: SourceView) {
+    if (source.id) data.workspace.setSourceId(source.id);
+    data.setMessage(`已选择来源资料“${businessSourceTitle(source)}”，可绑定到${businessPersonLabel(selectedPerson)}。`);
+  }
+
+  function bindCandidate(source: SourceView) {
+    if (!selectedPerson) {
+      data.setMessage('请先选择人物作为来源绑定对象。');
+      return;
+    }
+    if (source.id) data.workspace.setSourceId(source.id);
+    data.workspace.setPersonId(selectedPerson.id);
+    data.setMessage(`已选择“${businessSourceTitle(source)}”作为“${selectedPerson.name}”的来源绑定候选，请到来源绑定流程完成提交。`);
+  }
+
+  return (
+    <div className="xp-page">
+      <SectionHeader eyebrow="Evidence" title="来源资料库" desc="把族谱原文、地方志、墓志照片、口述记录、证件资料统一作为证据管理。" action="新增资料" onAction={() => setSourceOpen(true)} />
+      <ExperienceNotice message={data.message} loading={data.loading} />
+      <section className="xp-source-layout">
+        <Card className="xp-card xp-card--wide" title="来源资料检索" extra={<Button onClick={data.refreshAll}>刷新资料</Button>}>
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space wrap style={{ width: '100%' }}>
+              <Input.Search style={{ width: 320 }} value={keyword} onChange={event => setKeyword(event.target.value)} onSearch={setKeyword} placeholder="搜索资料题名、姓氏、堂号、地域、年代" allowClear />
+              <Select style={{ width: 180 }} value={sourceType} onChange={setSourceType} options={[{ value: '', label: '全部资料类型' }, ...sourceTypeOptions]} />
+              <Select
+                showSearch
+                optionFilterProp="label"
+                style={{ width: 280 }}
+                value={bindPersonId || selectedPerson?.id || ''}
+                onChange={value => setBindPersonId(value)}
+                options={[{ value: '', label: '请选择绑定对象' }, ...data.people.map(person => ({ value: person.id, label: businessPersonLabel(person) }))]}
+              />
+            </Space>
+            {filteredSources.length ? filteredSources.map(source => (
+              <Card key={source.id || source.title} size="small" className="xp-source-row" hoverable onClick={() => selectSource(source)}>
+                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                  <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                    <strong>{businessSourceTitle(source)}</strong>
+                    <Space wrap>
+                      <Tag>{source.category}</Tag>
+                      <Tag color={sourceStatusColor(source.raw?.verificationStatus || source.raw?.status)}>{source.status}</Tag>
+                    </Space>
+                  </Space>
+                  <span>{source.owner} · {source.bind} · 可信度：{source.confidence}</span>
+                  <Space wrap>
+                    <Button type="link" onClick={event => { event.stopPropagation(); selectSource(source); }}>查看资料</Button>
+                    <Button type="link" onClick={event => { event.stopPropagation(); bindCandidate(source); }}>作为绑定候选</Button>
+                  </Space>
+                </Space>
+              </Card>
+            )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源资料，请点击右上角“新增资料”。" />}
+          </Space>
+        </Card>
+        <Card className="xp-card" title="资料绑定对象">
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Tag color="processing">{businessPersonLabel(selectedPerson)}</Tag>
+            <span>来源绑定对象通过人物姓名、支派、代次选择，避免展示技术字段。</span>
+            <div>
+              {['题名 / 卷册 / 页码', '姓氏 / 堂号 / 地域', '版本年代 / 收藏机构', 'OCR转写 / 原图对照', '可信度与引用记录'].map(item => <div className="xp-mini-item" key={item}>{item}</div>)}
+            </div>
+          </Space>
+        </Card>
+      </section>
+      <CreateSourceModal data={data} open={sourceOpen} onClose={() => setSourceOpen(false)} />
+    </div>
+  );
 }
 
 export function EditingWorkspaceProductPage() { const data = useExperienceData(); const first = data.people[0]; const second = data.people[1]; const hints = [{ title: '疑似重复人物', desc: data.people.length > 1 ? `${first.name} 与 ${second.name} 可进一步检查是否存在重复或关系冲突。` : '人物数量不足，暂无法分析重复。', level: '待处理', action: '检查关系' }, { title: '资料补齐', desc: `当前资料库有 ${data.sources.length} 条来源，可继续绑定到人物档案。`, level: '待补充', action: '查看资料' }, { title: '字辈校验', desc: '基于人物代次和字辈字段做一致性检查。', level: '待校验', action: '查看校验' }]; return <div className="xp-page"><SectionHeader eyebrow="Workspace" title="修谱工作台" desc="把批量导入、重复合并、缺失补齐、字辈校验、关系冲突集中成编辑工作流。" action="刷新工作台" onAction={data.refreshAll} /><ExperienceNotice message={data.message} loading={data.loading} /><section className="xp-board">{hints.map(item => <div className="xp-board-card" key={item.title}><Badge>{item.level}</Badge><h3>{item.title}</h3><p>{item.desc}</p><button onClick={() => item.title.includes('重复') && first && second ? data.checkRelationshipConflict(first.id, second.id) : data.setMessage(item.desc)}>{item.action}</button></div>)}<div className="xp-board-card"><Badge>导入</Badge><h3>CSV 族谱导入</h3><p>真实导入能力已在基础数据管理的导入导出中接入。</p><button onClick={() => data.setMessage('请进入基础数据管理 > 导入导出执行 CSV 预校验和导入')}>去导入</button></div></section></div>; }
