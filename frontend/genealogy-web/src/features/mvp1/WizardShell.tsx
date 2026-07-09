@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Steps } from 'antd';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
@@ -26,21 +27,23 @@ export function WizardShell<TKey extends string = string>({
   onStepChange,
   children
 }: WizardShellProps<TKey>) {
+  const activeIndex = Math.max(0, steps.findIndex(step => step.key === activeStep));
+
   return (
     <div className="mvp1-wizard-page">
       <Panel title="MVP1 建谱向导" description="对象先保存为草稿，可在创建页内提交审核；只有审核通过对象才能进入下一步关联。">
-        <div className="wizard-steps">
-          {steps.map(step => (
-            <button
-              key={step.key}
-              className={activeStep === step.key ? 'active' : step.ready ? 'ready' : ''}
-              onClick={() => onStepChange(step.key)}
-            >
-              <strong>{step.title}</strong>
-              <span>{step.desc}</span>
-            </button>
-          ))}
-        </div>
+        <Steps
+          className="wizard-steps"
+          direction="vertical"
+          size="small"
+          current={activeIndex}
+          onChange={index => onStepChange(steps[index].key)}
+          items={steps.map(step => ({
+            title: step.title,
+            description: step.desc,
+            status: step.key === activeStep ? 'process' : step.ready ? 'finish' : 'wait'
+          }))}
+        />
       </Panel>
       {result ? <ResultNotice data={result} /> : null}
       {!loaded ? <div className="wizard-step-hint">点击步骤后加载本步骤数据。</div> : null}
