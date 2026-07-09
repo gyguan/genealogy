@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, Select, Space, Table, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { nullableString } from '../../domain/normalize';
 import { buildReviewTargetOptions, createdAtText, reviewTargetTypeText, reviewTaskTitle, toApiReviewTargetType, type ReviewTargetType } from '../../domain/review';
@@ -34,8 +33,16 @@ const defaultReviewForm: ReviewForm = {
   comment: '同意入谱'
 };
 
+const reviewTargetTypeOptions = [
+  { value: 'persons', label: '人物' },
+  { value: 'relationships', label: '关系' },
+  { value: 'sources', label: '来源' },
+  { value: 'branches', label: '支派' },
+  { value: 'generation-schemes', label: '字辈方案' }
+];
+
 function clanLabel(clan: ClanLike) {
-  return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
+  return clan.clanName || clan.surname || '未命名宗族';
 }
 
 export function ReviewProgressStep({ notify }: Props) {
@@ -148,7 +155,7 @@ export function ReviewProgressStep({ notify }: Props) {
         comment: nullableString(reviewForm.comment)
       });
       if (task?.id) workspace.setReviewTaskId(String(task.id));
-      toast({ message: '审核任务已提交', id: task?.id });
+      toast({ message: '审核任务已提交' });
       await loadReviewData();
     } catch (error) {
       toast({ message: (error as Error).message || '提交审核任务失败' }, true);
@@ -166,7 +173,7 @@ export function ReviewProgressStep({ notify }: Props) {
     setApproving(true);
     try {
       await approveReviewTask(effectiveTaskId, nullableString(reviewForm.comment));
-      toast({ message: '审核已通过，相关对象现在可用于下一步关联。', id: effectiveTaskId });
+      toast({ message: '审核已通过，相关对象现在可用于下一步关联。' });
       await loadReviewData();
     } catch (error) {
       toast({ message: (error as Error).message || '审核通过失败' }, true);
@@ -177,43 +184,54 @@ export function ReviewProgressStep({ notify }: Props) {
 
   return (
     <Panel title="审核进度" description="查看待审任务；创建页内已支持保存并提交审核，这里作为进度查看和补充提交入口。">
-      <div className="wizard-form-grid">
-        <Field label="适用宗族 *">
-          <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
-            <option value="">请选择宗族</option>
-            {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-          </select>
-        </Field>
-        <Field label="补充提交对象类型">
-          <select value={reviewForm.targetType} onChange={event => setReviewForm(prev => ({ ...prev, targetType: event.target.value as ReviewTargetType, targetId: '' }))}>
-            <option value="persons">人物</option>
-            <option value="relationships">关系</option>
-            <option value="sources">来源</option>
-            <option value="branches">支派</option>
-            <option value="generation-schemes">字辈方案</option>
-          </select>
-        </Field>
-        <Field label="草稿/驳回对象">
-          <select value={reviewForm.targetId || effectiveReviewTargetId()} onChange={event => patchReview('targetId', event.target.value)}>
-            <option value="">暂无可提交对象</option>
-            {reviewTargetOptions().map(option => <option key={`${reviewForm.targetType}-${option.value}`} value={option.value}>{option.label}</option>)}
-          </select>
-        </Field>
-        <Field label="待审任务">
-          <select value={workspace.reviewTaskId} disabled={!tasks.length} onChange={event => workspace.setReviewTaskId(event.target.value)}>
-            <option value="">{tasks.length ? '请选择待审任务' : '暂无待审任务'}</option>
-            {tasks.map(task => <option key={task.id} value={String(task.id)}>{reviewTaskTitle(task)} · {statusText(task)}</option>)}
-          </select>
-        </Field>
-      </div>
-      <Field label="审核说明">
-        <textarea value={reviewForm.comment} onChange={event => patchReview('comment', event.target.value)} rows={3} />
-      </Field>
-      <Actions>
-        <button disabled={submitting || !reviewTargetOptions().length} onClick={() => void submitReview()}>补充提交审核</button>
-        <button className="secondary" disabled={approving || !workspace.reviewTaskId} onClick={() => void approveReview()}>通过选中任务</button>
-        <button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()}>刷新审核进度</button>
-      </Actions>
+      <Form layout="vertical" className="review-progress-form">
+        <div className="wizard-form-grid">
+          <Form.Item label="适用宗族" required>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={workspace.clanId}
+              onChange={changeClan}
+              disabled={loadingClans}
+              options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+            />
+          </Form.Item>
+          <Form.Item label="补充提交对象类型">
+            <Select
+              value={reviewForm.targetType}
+              onChange={value => setReviewForm(prev => ({ ...prev, targetType: value as ReviewTargetType, targetId: '' }))}
+              options={reviewTargetTypeOptions}
+            />
+          </Form.Item>
+          <Form.Item label="草稿/驳回对象">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={reviewForm.targetId || effectiveReviewTargetId()}
+              onChange={value => patchReview('targetId', value)}
+              options={[{ value: '', label: '暂无可提交对象' }, ...reviewTargetOptions().map(option => ({ value: option.value, label: option.label }))]}
+            />
+          </Form.Item>
+          <Form.Item label="待审任务">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={workspace.reviewTaskId}
+              disabled={!tasks.length}
+              onChange={value => workspace.setReviewTaskId(value)}
+              options={[{ value: '', label: tasks.length ? '请选择待审任务' : '暂无待审任务' }, ...tasks.map(task => ({ value: String(task.id), label: `${reviewTaskTitle(task)} · ${statusText(task)}` }))]}
+            />
+          </Form.Item>
+        </div>
+        <Form.Item label="审核说明">
+          <Input.TextArea value={reviewForm.comment} onChange={event => patchReview('comment', event.target.value)} rows={3} />
+        </Form.Item>
+        <Space className="actions antd-actions" wrap>
+          <Button type="primary" disabled={submitting || !reviewTargetOptions().length} loading={submitting} onClick={() => void submitReview()}>补充提交审核</Button>
+          <Button disabled={approving || !workspace.reviewTaskId} loading={approving} onClick={() => void approveReview()}>通过选中任务</Button>
+          <Button disabled={loadingData || !workspace.clanId} loading={loadingData} onClick={() => void loadReviewData()}>刷新审核进度</Button>
+        </Space>
+      </Form>
       {reviewForm.targetType === 'relationships' && !workspace.personId ? (
         <Alert type="info" showIcon message="关系候选对象按当前中心人物加载；如需提交关系审核，请先在录入人物/建立关系步骤选中中心人物。" style={{ marginBottom: 12 }} />
       ) : null}
@@ -238,15 +256,14 @@ export function ReviewProgressStep({ notify }: Props) {
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无待审任务' : '请选择宗族后查看待审任务'} /> }}
           columns={[
             { key: 'title', title: '标题', render: (_value, row) => reviewTaskTitle(row) },
-            { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
-            { key: 'targetId', title: '对象ID', width: 100, render: (_value, row) => row.targetId || '-' },
+            { key: 'targetType', title: '审核对象', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
             { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => createdAtText(row.createdAt) },
             {
               key: 'actions',
               title: '操作',
               width: 120,
-              render: (_value, row) => <Button size="small" type="primary" loading={approving} onClick={event => { event.stopPropagation(); void approveReview(String(row.id || '')); }}>通过</Button>
+              render: (_value, row) => <Button size="small" loading={approving} onClick={event => { event.stopPropagation(); void approveReview(String(row.id || '')); }}>通过</Button>
             }
           ]}
         />
