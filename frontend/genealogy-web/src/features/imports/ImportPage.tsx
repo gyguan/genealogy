@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
+import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../shared/ui/Form';
-import { DataTable, toRecordList } from '../../shared/ui/DataTable';
-import { Panel } from '../../shared/ui/Panel';
+import { toRecordList } from '../../shared/ui/DataTable';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
@@ -70,6 +70,25 @@ function saveBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function importStatusText(value?: string) {
+  const status = String(value || '').toLowerCase();
+  const dict: Record<string, string> = { success: '成功', completed: '已完成', failed: '失败', processing: '处理中', pending: '待处理' };
+  return dict[status] || value || '待维护';
+}
+
+function importStatusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (['success', 'completed'].includes(status)) return 'success';
+  if (status === 'failed') return 'error';
+  if (['processing', 'pending'].includes(status)) return 'processing';
+  return 'default';
+}
+
+function genderText(value?: string) {
+  const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
+  return dict[value || ''] || value || '-';
+}
+
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [branchId] = useState(workspace.branchId || '');
@@ -90,8 +109,8 @@ export function ImportPage({ notify }: Props) {
     return params.toString();
   }, [mapping, branchId, autoMapping]);
 
-  function patchMapping(key: keyof typeof mapping, value: string) {
-    setMapping(prev => ({ ...prev, [key]: value }));
+  function patchMapping(key: keyof typeof mapping, value: number | null) {
+    setMapping(prev => ({ ...prev, [key]: value === null ? '' : String(value) }));
     setAutoMapping(false);
     setPreview(null);
   }
@@ -190,96 +209,126 @@ export function ImportPage({ notify }: Props) {
     }
   }
 
+  const uploadProps: UploadProps = {
+    maxCount: 1,
+    accept: '.csv,.xlsx',
+    beforeUpload: nextFile => {
+      setFile(nextFile);
+      setPreview(null);
+      return false;
+    },
+    onRemove: () => {
+      setFile(null);
+      setPreview(null);
+      return true;
+    },
+    fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
+  };
+
   return (
     <div className="import-page">
-      <Panel title="人物导入" description="支持 CSV / XLSX 导入。导入人物默认进入 draft 草稿状态，需要审核通过后正式入谱。">
-        <div className="wizard-form-grid">
-          <Field label="导入文件"><input type="file" accept=".csv,.xlsx" onChange={e => { setFile(e.target.files?.[0] || null); setPreview(null); }} /></Field>
-        </div>
-        <label className="import-confirm-line"><input type="checkbox" checked={autoMapping} onChange={e => { setAutoMapping(e.target.checked); setPreview(null); }} /> 自动识别表头字段；识别失败时使用下方列号兜底</label>
-        <div className="wizard-form-grid">
-          <Field label="姓名列"><input value={mapping.nameIndex} onChange={e => patchMapping('nameIndex', e.target.value)} /></Field>
-          <Field label="性别列"><input value={mapping.genderIndex} onChange={e => patchMapping('genderIndex', e.target.value)} /></Field>
-          <Field label="代次列"><input value={mapping.generationNoIndex} onChange={e => patchMapping('generationNoIndex', e.target.value)} /></Field>
-          <Field label="字辈列"><input value={mapping.generationWordIndex} onChange={e => patchMapping('generationWordIndex', e.target.value)} /></Field>
-          <Field label="出生日期列"><input value={mapping.birthDateIndex} onChange={e => patchMapping('birthDateIndex', e.target.value)} /></Field>
-          <Field label="是否在世列"><input value={mapping.isLivingIndex} onChange={e => patchMapping('isLivingIndex', e.target.value)} /></Field>
-        </div>
-        <label className="import-confirm-line"><input type="checkbox" checked={confirmDuplicates} onChange={e => setConfirmDuplicates(e.target.checked)} /> 我已确认疑似重复人物，仍继续导入</label>
-        <Actions>
-          <button className="secondary" onClick={downloadTemplate}>下载模板</button>
-          <button className="secondary" onClick={resetAutoMapping}>恢复自动识别</button>
-          <button className="secondary" disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</button>
-          <button disabled={loading} onClick={upload}>{loading ? '导入中...' : '确认导入'}</button>
-          <button className="secondary" onClick={() => void loadJobs()}>刷新导入任务</button>
-        </Actions>
-        <div className="import-template-tip">
-          <strong>模板字段：</strong>姓名, 性别, 代次, 字辈, 出生日期, 是否在世。支派不在文件中填写系统 ID；需要按支派导入时，请先在支派管理中选择支派作为当前支派。
-        </div>
-      </Panel>
+      <Card title="人物导入" extra={<Button disabled={loading} onClick={downloadTemplate}>下载模板</Button>}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert type="info" showIcon message="导入人物默认进入草稿状态，需要审核通过后正式入谱。" />
+          <Upload {...uploadProps}>
+            <Button>选择 CSV / XLSX 文件</Button>
+          </Upload>
+          <Checkbox checked={autoMapping} onChange={e => { setAutoMapping(e.target.checked); setPreview(null); }}>
+            自动识别表头字段；识别失败时使用下方列号兜底
+          </Checkbox>
+          <Form layout="vertical" className="archive-search-form">
+            <Form.Item label="姓名列"><InputNumber min={1} value={Number(mapping.nameIndex || 1)} onChange={value => patchMapping('nameIndex', value)} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="性别列"><InputNumber min={1} value={Number(mapping.genderIndex || 1)} onChange={value => patchMapping('genderIndex', value)} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="代次列"><InputNumber min={1} value={Number(mapping.generationNoIndex || 1)} onChange={value => patchMapping('generationNoIndex', value)} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="字辈列"><InputNumber min={1} value={Number(mapping.generationWordIndex || 1)} onChange={value => patchMapping('generationWordIndex', value)} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="出生日期列"><InputNumber min={1} value={Number(mapping.birthDateIndex || 1)} onChange={value => patchMapping('birthDateIndex', value)} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="是否在世列"><InputNumber min={1} value={Number(mapping.isLivingIndex || 1)} onChange={value => patchMapping('isLivingIndex', value)} style={{ width: '100%' }} /></Form.Item>
+          </Form>
+          <Checkbox checked={confirmDuplicates} onChange={e => setConfirmDuplicates(e.target.checked)}>
+            我已确认疑似重复人物，仍继续导入
+          </Checkbox>
+          <Space wrap>
+            <Button onClick={resetAutoMapping}>恢复自动识别</Button>
+            <Button disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
+            <Button type="primary" disabled={loading} loading={loading} onClick={() => void upload()}>确认导入</Button>
+            <Button onClick={() => void loadJobs()}>刷新导入任务</Button>
+          </Space>
+          <Alert type="warning" showIcon message="支派不在文件中填写系统 ID；需要按支派导入时，请先在支派管理中选择支派作为当前支派。" />
+        </Space>
+      </Card>
 
-      <Panel title="人物/关系/成册导出" description="支持全宗族导出，也支持按当前已选支派导出人物、关系和简版族谱成册。">
-        <Actions>
-          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</button>
-          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</button>
-          <button className="secondary" disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, 'clan-booklet.html')}>导出全宗族成册</button>
-          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('persons')}>按当前支派导出人物</button>
-          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('relations')}>按当前支派导出关系</button>
-          <button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('booklet')}>按当前支派导出成册</button>
-        </Actions>
-        <div className="import-template-tip">
-          <strong>成册导出规则：</strong>生成可打印 HTML 册子，包含封面、卷首概览、支派目录、人物世录和关系索引；按支派导出前请先在支派管理中选择支派。
-        </div>
-      </Panel>
+      <Card title="人物/关系/成册导出" style={{ marginTop: 16 }}>
+        <Space wrap>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/persons.csv`, 'persons.csv')}>导出全宗族人物</Button>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/relations.csv`, 'relations.csv')}>导出全宗族关系</Button>
+          <Button disabled={loading || !workspace.clanId} onClick={() => void downloadCsv(`/clans/${workspace.clanId}/exports/booklet.html`, 'clan-booklet.html')}>导出全宗族成册</Button>
+          <Button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('persons')}>按当前支派导出人物</Button>
+          <Button disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('relations')}>按当前支派导出关系</Button>
+          <Button type="primary" disabled={loading || !workspace.clanId || !workspace.branchId} onClick={() => void exportCurrentBranch('booklet')}>按当前支派导出成册</Button>
+        </Space>
+      </Card>
 
       {preview ? (
-        <Panel title="导入预览与查重" description={`总计 ${preview.totalCount || 0} 行，有效 ${preview.validCount || 0} 行，疑似重复 ${preview.duplicateCount || 0} 行，错误 ${preview.errorCount || 0} 行。`}>
-          <DataTable
-            data={preview.rows || []}
+        <Card title="导入预览与查重" style={{ marginTop: 16 }}>
+          <Table<PreviewRow>
+            size="small"
+            bordered
+            rowKey={(row, index) => String(row.rowNo || index)}
+            dataSource={preview.rows || []}
+            pagination={false}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无预览数据" /> }}
             columns={[
-              { key: 'rowNo', title: '行号' },
-              { key: 'name', title: '姓名' },
-              { key: 'gender', title: '性别' },
-              { key: 'generationNo', title: '代次' },
-              { key: 'generationWord', title: '字辈' },
-              { key: 'birthDate', title: '出生日期' },
-              { key: 'duplicated', title: '查重', render: row => row.errorMessage ? '错误行' : row.duplicated ? `疑似重复(${row.duplicateCount})` : '未重复' },
-              { key: 'errorMessage', title: '错误' }
+              { key: 'rowNo', title: '行号', dataIndex: 'rowNo' },
+              { key: 'name', title: '姓名', dataIndex: 'name' },
+              { key: 'gender', title: '性别', render: (_value, row) => genderText(row.gender) },
+              { key: 'generationNo', title: '代次', dataIndex: 'generationNo' },
+              { key: 'generationWord', title: '字辈', dataIndex: 'generationWord' },
+              { key: 'birthDate', title: '出生日期', dataIndex: 'birthDate' },
+              { key: 'duplicated', title: '查重', render: (_value, row) => row.errorMessage ? <Tag color="error">错误行</Tag> : row.duplicated ? <Tag color="warning">疑似重复({row.duplicateCount})</Tag> : <Tag color="success">未重复</Tag> },
+              { key: 'errorMessage', title: '错误', dataIndex: 'errorMessage' }
             ]}
-            empty="暂无预览数据"
           />
-        </Panel>
+        </Card>
       ) : null}
 
-      <Panel title="导入任务记录" description="查看历史导入状态、成功失败行数和错误明细。">
-        <DataTable
-          data={jobs}
+      <Card title="导入任务记录" style={{ marginTop: 16 }}>
+        <Table<ImportJob>
+          size="small"
+          bordered
+          rowKey={(row, index) => String(row.id || index)}
+          dataSource={jobs}
+          pagination={false}
+          onRow={row => ({ onClick: () => setSelectedJob(row), style: { cursor: 'pointer' } })}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
           columns={[
-            { key: 'importType', title: '类型' },
-            { key: 'originalFilename', title: '文件名' },
-            { key: 'totalCount', title: '总数' },
-            { key: 'successCount', title: '成功' },
-            { key: 'failureCount', title: '失败' },
-            { key: 'status', title: '状态' },
-            { key: 'createdAt', title: '创建时间' }
+            { key: 'importType', title: '导入类型', dataIndex: 'importType' },
+            { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename' },
+            { key: 'totalCount', title: '总数', dataIndex: 'totalCount' },
+            { key: 'successCount', title: '成功', dataIndex: 'successCount' },
+            { key: 'failureCount', title: '失败', dataIndex: 'failureCount' },
+            { key: 'status', title: '状态', render: (_value, row) => <Tag color={importStatusColor(row.status)}>{importStatusText(row.status)}</Tag> },
+            { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt' }
           ]}
-          onSelect={row => setSelectedJob(row as ImportJob)}
-          empty="暂无导入任务"
         />
-      </Panel>
+      </Card>
 
       {selectedJob ? (
-        <Panel title="错误明细" description={selectedJob.errorSummary || '当前任务无错误明细。'}>
-          <DataTable
-            data={selectedJob.errors || []}
+        <Card title="错误明细" style={{ marginTop: 16 }}>
+          <Alert type="info" showIcon message={selectedJob.errorSummary || '当前任务无错误明细。'} style={{ marginBottom: 12 }} />
+          <Table
+            size="small"
+            bordered
+            rowKey={(row: any, index) => String(row.rowNo || index)}
+            dataSource={selectedJob.errors || []}
+            pagination={false}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无错误行" /> }}
             columns={[
-              { key: 'rowNo', title: '行号' },
-              { key: 'errorMessage', title: '错误原因' },
-              { key: 'rawData', title: '原始数据' }
+              { key: 'rowNo', title: '行号', dataIndex: 'rowNo' },
+              { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' },
+              { key: 'rawData', title: '原始数据', dataIndex: 'rawData' }
             ]}
-            empty="暂无错误行"
           />
-        </Panel>
+        </Card>
       ) : null}
     </div>
   );
