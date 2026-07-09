@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Button, Card, Empty, Popconfirm, Space, Table, Tag, Upload } from 'antd';
+import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../shared/ui/Form';
-import { DataTable, toRecordList } from '../../shared/ui/DataTable';
-import { Panel } from '../../shared/ui/Panel';
+import { toRecordList } from '../../shared/ui/DataTable';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
@@ -19,6 +19,27 @@ type Attachment = {
   uploadStatus?: string;
   createdAt?: string;
 };
+
+function fileSizeText(value?: number) {
+  if (!value) return '-';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function uploadStatusText(value?: string) {
+  const status = String(value || '').toLowerCase();
+  const dict: Record<string, string> = { uploaded: '已上传', success: '已上传', failed: '上传失败', processing: '处理中' };
+  return dict[status] || value || '待维护';
+}
+
+function uploadStatusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (['uploaded', 'success'].includes(status)) return 'success';
+  if (status === 'failed') return 'error';
+  if (status === 'processing') return 'processing';
+  return 'default';
+}
 
 export function SourceAttachmentPage({ notify }: Props) {
   const workspace = useWorkspace();
@@ -89,7 +110,6 @@ export function SourceAttachmentPage({ notify }: Props) {
 
   async function removeAttachment(row: Attachment) {
     if (!row.id) return;
-    if (!window.confirm(`确认删除附件「${row.originalFilename || '当前附件'}」吗？`)) return;
     try {
       await apiClient.delete(`/source-attachments/${row.id}`);
       notify({ message: '附件已删除' });
@@ -99,33 +119,66 @@ export function SourceAttachmentPage({ notify }: Props) {
     }
   }
 
+  const uploadProps: UploadProps = {
+    maxCount: 1,
+    beforeUpload: nextFile => {
+      setFile(nextFile);
+      return false;
+    },
+    onRemove: () => {
+      setFile(null);
+      return true;
+    },
+    fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
+  };
+
   return (
     <div className="source-attachment-page">
-      <Panel title="来源附件上传" description="为族谱原文、照片、墓碑、地方志、口述资料等来源上传原始附件。请先在来源资料库中选择来源资料，再上传附件。">
-        <div className="wizard-form-grid">
-          <Field label="附件文件"><input type="file" onChange={e => setFile(e.target.files?.[0] || null)} /></Field>
-        </div>
-        <Actions>
-          <button disabled={loading || !workspace.sourceId} onClick={upload}>{loading ? '上传中...' : '上传到当前来源'}</button>
-          <button className="secondary" disabled={!workspace.sourceId} onClick={() => void loadAttachments()}>刷新附件</button>
-        </Actions>
-      </Panel>
+      <Card title="来源附件上传" extra={<Button disabled={!workspace.sourceId} onClick={() => void loadAttachments()}>刷新附件</Button>}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Upload {...uploadProps}>
+            <Button>选择附件文件</Button>
+          </Upload>
+          <Space wrap>
+            <Button type="primary" disabled={loading || !workspace.sourceId} loading={loading} onClick={() => void upload()}>
+              上传到当前来源
+            </Button>
+            <Button disabled={!workspace.sourceId} onClick={() => void loadAttachments()}>刷新附件</Button>
+          </Space>
+        </Space>
+      </Card>
 
-      <Panel title="附件列表" description="展示当前来源的附件原始文件名、大小、校验值，支持浏览器可识别格式在线预览。">
-        <DataTable
-          data={attachments}
+      <Card title="附件列表" style={{ marginTop: 16 }}>
+        <Table<Attachment>
+          size="small"
+          bordered
+          rowKey={(row, index) => String(row.id || index)}
+          dataSource={attachments}
+          pagination={false}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }}
           columns={[
-            { key: 'originalFilename', title: '原始文件名' },
-            { key: 'contentType', title: '类型' },
-            { key: 'fileSize', title: '大小' },
-            { key: 'uploadStatus', title: '状态' },
-            { key: 'checksum', title: 'SHA-256' },
-            { key: 'createdAt', title: '上传时间' },
-            { key: 'actions', title: '操作', render: row => <span className="row-action-buttons"><button onClick={() => void previewAttachment(row)}>预览</button><button onClick={() => void downloadAttachment(row)}>下载</button><button className="danger" onClick={() => void removeAttachment(row)}>删除</button></span> }
+            { key: 'originalFilename', title: '文件名', render: (_value, row) => row.originalFilename || '未命名附件' },
+            { key: 'contentType', title: '文件类型', render: (_value, row) => row.contentType || '类型待维护' },
+            { key: 'fileSize', title: '文件大小', render: (_value, row) => fileSizeText(row.fileSize) },
+            { key: 'uploadStatus', title: '上传状态', render: (_value, row) => <Tag color={uploadStatusColor(row.uploadStatus)}>{uploadStatusText(row.uploadStatus)}</Tag> },
+            { key: 'createdAt', title: '上传时间', render: (_value, row) => row.createdAt || '待维护' },
+            {
+              key: 'actions',
+              title: '操作',
+              width: 180,
+              render: (_value, row) => (
+                <Space size="small">
+                  <Button size="small" type="link" onClick={() => void previewAttachment(row)}>预览</Button>
+                  <Button size="small" type="link" onClick={() => void downloadAttachment(row)}>下载</Button>
+                  <Popconfirm title="删除附件" description={`确认删除附件“${row.originalFilename || '当前附件'}”吗？`} okText="删除" cancelText="取消" onConfirm={() => void removeAttachment(row)}>
+                    <Button size="small" type="link" danger>删除</Button>
+                  </Popconfirm>
+                </Space>
+              )
+            }
           ]}
-          empty="暂无附件"
         />
-      </Panel>
+      </Card>
     </div>
   );
 }
