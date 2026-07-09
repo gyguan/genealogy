@@ -1,4 +1,4 @@
-import { Card, Empty, Space, Tag, Typography, theme } from 'antd';
+import { Button, Card, Empty, Space, Tag, Typography, theme } from 'antd';
 import { display, sourceStatusColor } from './dictionaries';
 
 type SourceView = { id?: string; title: string; category: string; owner: string; confidence: string; status: string; bind: string; raw?: any };
@@ -25,7 +25,7 @@ export function CultureProductPage({ data }: { data: ExperienceData }) {
 
   return (
     <div className="xp-page">
-      <div className="xp-section-header"><div><span>Culture</span><h2>宗族文化</h2><p>沉淀姓氏源流、堂号、家训、谱序、凡例、迁徙路线、祠堂和纪念活动。</p></div><button onClick={data.refreshAll}>刷新文化资料</button></div>
+      <div className="xp-section-header"><div><span>Culture</span><h2>宗族文化</h2><p>沉淀姓氏源流、堂号、家训、谱序、凡例、迁徙路线、祠堂和纪念活动。</p></div><Button type="primary" onClick={data.refreshAll}>刷新文化资料</Button></div>
       <ExperienceNotice message={data.message} loading={data.loading} />
       <section className="xp-culture-grid">
         {cultureCards.map(item => <Card key={item.title} className="xp-culture-card" style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }}><Space direction="vertical" size="small"><Tag>{item.title}</Tag><Typography.Title level={4} style={{ margin: 0 }}>{item.value}</Typography.Title><Typography.Text type="secondary">{item.desc}</Typography.Text></Space></Card>)}
