@@ -27,6 +27,11 @@ type SourceForm = {
   targetId: string;
 };
 
+type SourceBindValidationResult = {
+  errorMessage: string;
+  targetId: string;
+};
+
 type Props = {
   notify?: (data: unknown, error?: boolean) => void;
   onSubmittedReview?: (taskId: string) => void;
@@ -108,6 +113,14 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     if (!workspace.clanId) return '请选择宗族';
     if (!sourceForm.sourceName.trim()) return '请填写来源名称';
     return '';
+  }
+
+  function validateBindSourceForm(): SourceBindValidationResult {
+    if (!workspace.clanId) return { errorMessage: '请选择宗族', targetId: '' };
+    if (!workspace.sourceId) return { errorMessage: '请选择已审核通过的来源', targetId: '' };
+    const targetId = effectiveSourceTargetId();
+    if (!targetId) return { errorMessage: '请选择已审核通过的绑定对象', targetId: '' };
+    return { errorMessage: '', targetId };
   }
 
   async function loadClans() {
@@ -244,17 +257,9 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function bindSource() {
-    if (!workspace.clanId) {
-      toast({ message: '请选择宗族' }, true);
-      return;
-    }
-    if (!workspace.sourceId) {
-      toast({ message: '请选择已审核通过的来源' }, true);
-      return;
-    }
-    const targetId = effectiveSourceTargetId();
-    if (!targetId) {
-      toast({ message: '请选择已审核通过的绑定对象' }, true);
+    const { errorMessage, targetId } = validateBindSourceForm();
+    if (errorMessage) {
+      toast({ message: errorMessage }, true);
       return;
     }
     setBindingSource(true);
