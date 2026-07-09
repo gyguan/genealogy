@@ -9,7 +9,7 @@ import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
-import { createPersonApi, loadPersons as queryPersons, type PersonLike } from '../../services/personService';
+import { createPersonApi, loadPersons as queryPersons, type CreatePersonPayload, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonForm = {
@@ -146,6 +146,14 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     setPersonForm(prev => ({ ...prev, [key]: value }));
   }
 
+  function validatePersonForm() {
+    if (!workspace.clanId) return '请选择宗族';
+    if (!(personForm.branchId || workspace.branchId)) return '请选择已审核通过的所属支派';
+    if (!personForm.name.trim()) return '请填写人物姓名';
+    if (!personForm.gender) return '请选择性别';
+    return '';
+  }
+
   async function loadClans() {
     setLoadingClans(true);
     try {
@@ -267,7 +275,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }));
   }
 
-  function buildPersonPayload(form = personForm) {
+  function buildPersonPayload(form = personForm): CreatePersonPayload {
     return {
       branchId: nullableNumber(form.branchId || workspace.branchId),
       personCode: null,
@@ -311,20 +319,9 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function createPerson(continueAdding = false, submit = false) {
-    if (!workspace.clanId) {
-      toast({ message: '请选择宗族' }, true);
-      return;
-    }
-    if (!(personForm.branchId || workspace.branchId)) {
-      toast({ message: '请选择已审核通过的所属支派' }, true);
-      return;
-    }
-    if (!personForm.name.trim()) {
-      toast({ message: '请填写人物姓名' }, true);
-      return;
-    }
-    if (!personForm.gender) {
-      toast({ message: '请选择性别' }, true);
+    const errorMessage = validatePersonForm();
+    if (errorMessage) {
+      toast({ message: errorMessage }, true);
       return;
     }
     setSavingPerson(true);
