@@ -25,15 +25,14 @@ export type BindSourcePayload = {
 
 export type SourceLinkLike = {
   id?: number | string;
+  clanId?: number | string;
   sourceId?: number | string;
-  sourceName?: string;
-  sourceType?: string;
   targetType?: string;
   targetId?: number | string;
-  targetName?: string;
-  targetLabel?: string;
+  bindingReason?: string;
+  excerpt?: string;
+  createdBy?: number | string;
   createdAt?: string;
-  createTime?: string;
 };
 
 export async function loadSources(clanId?: number | string): Promise<SourceLike[]> {
@@ -42,9 +41,9 @@ export async function loadSources(clanId?: number | string): Promise<SourceLike[
   return toRows<SourceLike>(data);
 }
 
-export async function loadSourceLinks(clanId?: number | string): Promise<SourceLinkLike[]> {
-  if (!clanId) return [];
-  const data = await apiClient.get(`/clans/${clanId}/source-links`);
+export async function loadSourceLinks(sourceId?: number | string): Promise<SourceLinkLike[]> {
+  if (!sourceId) return [];
+  const data = await apiClient.get(`/source-bindings/sources/${sourceId}`);
   return toRows<SourceLinkLike>(data);
 }
 
@@ -53,5 +52,5 @@ export async function createSourceApi(clanId: number | string, payload: CreateSo
 }
 
 export async function bindSourceApi(clanId: number | string, payload: BindSourcePayload): Promise<SourceLinkLike> {
-  return apiClient.post(`/clans/${clanId}/source-links`, payload);
+  return apiClient.post(`/clans/${clanId}/source-bindings`, payload);
 }
