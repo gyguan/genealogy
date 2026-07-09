@@ -1,5 +1,6 @@
 import { apiClient } from '../../../shared/api/client';
 import { toRows } from '../domain/normalize';
+import type { RelationshipCreatePayload } from '../domain/relationship';
 
 export type RelationshipLike = {
   id?: number | string;
@@ -15,7 +16,7 @@ export type RelationshipLike = {
   status?: string;
 };
 
-export type CreateRelationshipPayload = unknown;
+export type CreateRelationshipPayload = RelationshipCreatePayload;
 
 export async function loadRelationships(personId?: number | string): Promise<RelationshipLike[]> {
   if (!personId) return [];
