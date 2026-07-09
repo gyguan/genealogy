@@ -27,14 +27,18 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [10. 前端统一设计与实现规范（Ant Design 版）](docs/10-frontend-design-guidelines.md)
 - [AI 工程流程适配方案](docs/ai/ai-engineering-workflow.md)
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
+- [通用 AI 提问模板库](docs/ai/prompt-templates.md)
 
 ## AI 辅助研发入口
 
 - 项目级 Agent 规则：`AGENTS.md`
+- AI 工程流程：`docs/ai/ai-engineering-workflow.md`
+- AI Skill 映射表：`docs/ai/skill-mapping.md`
+- 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
 - AI 临时任务工作区：`tasks/`
 - PR 质量门禁模板：`.github/pull_request_template.md`
 
-AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。
+AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。日常提问可直接复用 `docs/ai/prompt-templates.md` 中的分类模板。
 
 ## 可点击原型
 
