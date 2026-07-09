@@ -47,14 +47,7 @@ function CreateSourceModal({ data, open, onClose }: { data: ExperienceData; open
   );
 }
 
-export function SourceLibraryProductPage() {
-  const data = (arguments[0] as { data?: ExperienceData } | undefined)?.data as ExperienceData | undefined;
-  const contextData = data;
-  if (!contextData) return null;
-  return <SourceLibraryProductContent data={contextData} />;
-}
-
-export function SourceLibraryProductContent({ data }: { data: ExperienceData }) {
+export function SourceLibraryProductPage({ data }: { data: ExperienceData }) {
   const [sourceOpen, setSourceOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [sourceType, setSourceType] = useState('');
