@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Form, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
@@ -26,15 +25,15 @@ type Props = {
 };
 
 function clanLabel(clan: ClanLike) {
-  return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
+  return clan.clanName || clan.surname || '未命名宗族';
 }
 
 function branchName(branch: BranchLike) {
-  return branch.branchName || `支派#${branch.id || '-'}`;
+  return branch.branchName || '未命名支派';
 }
 
 function schemeName(row: GenerationSchemeLike) {
-  return row.schemeName || row.name || `方案#${row.id || '-'}`;
+  return row.schemeName || row.name || '未命名字辈方案';
 }
 
 function generationNoOptions() {
@@ -292,34 +291,43 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
   return (
     <Panel title="维护字辈" description="字辈方案保存后默认为草稿；审核通过后才能用于人物录入。">
       <section className="wizard-generation-section">
-        <h4>一、创建字辈方案</h4>
-        <div className="wizard-form-grid wizard-generation-scheme-grid">
-          <Field label="适用宗族 *">
-            <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
-              <option value="">请选择宗族</option>
-              {clans.map(clan => <option key={clan.id} value={String(clan.id)}>{clanLabel(clan)}</option>)}
-            </select>
-          </Field>
-          <Field label="适用支派">
-            <select value={schemeForm.branchId || workspace.branchId} disabled={!workspace.clanId || loadingBranches || !officialBranches.length} onChange={event => { workspace.setBranchId(event.target.value); patchScheme('branchId', event.target.value); }}>
-              <option value="">{officialBranches.length ? '请选择已通过支派' : '暂无已通过支派'}</option>
-              {officialBranches.map(branch => <option key={branch.id} value={String(branch.id)}>{branchName(branch)}</option>)}
-            </select>
-          </Field>
-          <Field label="字辈方案名称 *">
-            <input value={schemeForm.schemeName} onChange={event => patchScheme('schemeName', event.target.value)} required />
-          </Field>
-          <Field label="系统生成编号"><input value="创建方案后自动生成" disabled readOnly /></Field>
-        </div>
-        <Actions>
-          <button disabled={savingScheme || !workspace.clanId} onClick={() => void createScheme(false)}>保存草稿</button>
-          <button className="secondary" disabled={savingScheme || !workspace.clanId} onClick={() => void createScheme(true)}>保存并提交审核</button>
-        </Actions>
+        <Typography.Title level={5}>一、创建字辈方案</Typography.Title>
+        <Form layout="vertical" className="generation-step-form">
+          <div className="wizard-form-grid wizard-generation-scheme-grid">
+            <Form.Item label="适用宗族" required>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                value={workspace.clanId}
+                onChange={changeClan}
+                disabled={loadingClans}
+                options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+              />
+            </Form.Item>
+            <Form.Item label="适用支派">
+              <Select
+                showSearch
+                optionFilterProp="label"
+                value={schemeForm.branchId || workspace.branchId}
+                disabled={!workspace.clanId || loadingBranches || !officialBranches.length}
+                onChange={value => { workspace.setBranchId(value); patchScheme('branchId', value); }}
+                options={[{ value: '', label: officialBranches.length ? '请选择已通过支派' : '暂无已通过支派' }, ...officialBranches.map(branch => ({ value: String(branch.id), label: branchName(branch) }))]}
+              />
+            </Form.Item>
+            <Form.Item label="字辈方案名称" required>
+              <Input value={schemeForm.schemeName} onChange={event => patchScheme('schemeName', event.target.value)} placeholder="例如：江夏堂二十世字辈" />
+            </Form.Item>
+          </div>
+          <Space className="actions antd-actions" wrap>
+            <Button type="primary" disabled={savingScheme || !workspace.clanId} loading={savingScheme} onClick={() => void createScheme(false)}>保存草稿</Button>
+            <Button disabled={savingScheme || !workspace.clanId} onClick={() => void createScheme(true)}>保存并提交审核</Button>
+          </Space>
+        </Form>
       </section>
 
       <section className="wizard-branch-list wizard-generation-inline-list">
         <div className="wizard-inline-list-header">
-          <h4>该宗族下已有字辈方案</h4>
+          <Typography.Title level={5}>该宗族下已有字辈方案</Typography.Title>
           <Space wrap>
             <Button type="primary" size="small" disabled={!selectedReviewableSchemes.length} loading={submittingSchemes} onClick={() => void submitSelectedSchemes()}>
               批量提交审核（{selectedReviewableSchemes.length}）
@@ -345,7 +353,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无字辈方案，创建后会显示在这里' : '请选择宗族后查看字辈方案'} /> }}
           columns={[
             { key: 'schemeName', title: '字辈方案', render: (_value, row) => schemeName(row) },
-            { key: 'branchId', title: '支派', render: (_value, row) => row.branchName || row.branchId || '-' },
+            { key: 'branchId', title: '支派', render: (_value, row) => row.branchName || '支派待维护' },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
             {
               key: 'actions',
@@ -354,7 +362,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
               render: (_value, row) => (
                 <Space size="small" wrap>
                   {isReviewable(row) ? <Button size="small" onClick={() => openWordsModal(row)}>维护字辈</Button> : null}
-                  {isReviewable(row) ? <Button size="small" type="primary" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
+                  {isReviewable(row) ? <Button size="small" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
                   {!isReviewable(row) ? '-' : null}
                 </Space>
               )
@@ -377,22 +385,19 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
             showIcon
             message={selectedScheme ? `当前维护方案：${schemeName(selectedScheme)}（${statusText(selectedScheme)}）` : '请选择草稿/已驳回字辈方案'}
           />
-          <div className="wizard-generation-detail-form wizard-generation-word-grid">
-            <label className="wizard-inline-form-field">
-              <span>代次 *</span>
+          <Form layout="vertical" className="wizard-generation-detail-form wizard-generation-word-grid">
+            <Form.Item label="代次" required>
               <Select value={wordForm.generationNo} options={generationNoOptions()} onChange={value => patchWord('generationNo', value)} />
-            </label>
-            <label className="wizard-inline-form-field">
-              <span>字辈 *</span>
+            </Form.Item>
+            <Form.Item label="字辈" required>
               <Input value={wordForm.word} onChange={event => patchWord('word', event.target.value)} placeholder="例如：德" />
-            </label>
-            <label className="wizard-inline-form-field wizard-generation-modal-action">
-              <span>&nbsp;</span>
+            </Form.Item>
+            <Form.Item label="操作">
               <Button type="primary" disabled={!selectedSchemeId} loading={addingItem} onClick={() => void addGenerationItem()}>追加字辈</Button>
-            </label>
-          </div>
+            </Form.Item>
+          </Form>
           <div className="wizard-inline-list-header">
-            <h4>字辈明细查询列表</h4>
+            <Typography.Title level={5}>字辈明细查询列表</Typography.Title>
             <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadGenerationItems()}>刷新</Button>
           </div>
           <Typography.Paragraph type="secondary">字辈明细会随字辈方案整体提交审批；正式方案不可在此直接维护。</Typography.Paragraph>
