@@ -1,3 +1,5 @@
+import { Alert } from 'antd';
+
 export type ResultNoticeProps = {
   result?: unknown;
   title?: string;
@@ -12,12 +14,15 @@ export function ResultNotice({ result, title = '操作结果', successText = '�
   if (!result) return null;
   const record = asRecord(result);
   const isError = Boolean(record.error || record.errorMessage || record.message?.includes?.('失败'));
-  const message = record.errorMessage || record.message || record.status || successText;
+  const description = record.errorMessage || record.message || record.status || successText;
 
   return (
-    <div className={`result-notice${isError ? ' result-notice--error' : ''}`}>
-      <strong>{title}</strong>
-      <span>{String(message)}</span>
-    </div>
+    <Alert
+      className="result-notice antd-result-notice"
+      type={isError ? 'error' : 'success'}
+      message={title}
+      description={String(description)}
+      showIcon
+    />
   );
 }
