@@ -201,19 +201,27 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setSelectedSourceRowKeys([]);
   }
 
+  function personSourceTargetOptions(): Option[] {
+    return officialPersons.map(person => ({ value: String(person.id), label: `${person.name || `人物#${person.id}`}（${person.generationWord || '无字辈'}）` }));
+  }
+
+  function relationshipSourceTargetOptions(): Option[] {
+    return officialRelationships.map(relationship => ({ value: String(relationship.id), label: `${relationshipName(relationship)} · ${relationTypeText(relationship)}` }));
+  }
+
+  function branchSourceTargetOptions(): Option[] {
+    return officialBranches.map(branch => ({ value: String(branch.id), label: branch.branchName || `支派#${branch.id}` }));
+  }
+
+  function clanSourceTargetOptions(): Option[] {
+    return workspace.clanId ? [{ value: workspace.clanId, label: selectedClan?.clanName || selectedClan?.surname || `宗族#${workspace.clanId}` }] : [];
+  }
+
   function sourceTargetOptions(type = sourceForm.targetType): Option[] {
-    if (type === 'person') {
-      return officialPersons.map(person => ({ value: String(person.id), label: `${person.name || `人物#${person.id}`}（${person.generationWord || '无字辈'}）` }));
-    }
-    if (type === 'relationship') {
-      return officialRelationships.map(relationship => ({ value: String(relationship.id), label: `${relationshipName(relationship)} · ${relationTypeText(relationship)}` }));
-    }
-    if (type === 'branch') {
-      return officialBranches.map(branch => ({ value: String(branch.id), label: branch.branchName || `支派#${branch.id}` }));
-    }
-    if (type === 'clan') {
-      return workspace.clanId ? [{ value: workspace.clanId, label: selectedClan?.clanName || selectedClan?.surname || `宗族#${workspace.clanId}` }] : [];
-    }
+    if (type === 'person') return personSourceTargetOptions();
+    if (type === 'relationship') return relationshipSourceTargetOptions();
+    if (type === 'branch') return branchSourceTargetOptions();
+    if (type === 'clan') return clanSourceTargetOptions();
     return [];
   }
 
