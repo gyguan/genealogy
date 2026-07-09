@@ -135,6 +135,11 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     return { errorMessage: '', targetId };
   }
 
+  function bindSourceDisabledReason() {
+    if (bindingSource) return '来源正在绑定中';
+    return validateBindSourceForm().errorMessage;
+  }
+
   async function loadClans() {
     setLoadingClans(true);
     try {
@@ -353,6 +358,8 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     toast({ message: `已选中来源：${sourceName(row)}` });
   }
 
+  const sourceBindDisabledReason = bindSourceDisabledReason();
+
   return (
     <Panel title="绑定来源证据" description="来源和绑定对象都必须审核通过后才能建立绑定。">
       <div className="wizard-form-grid">
@@ -398,7 +405,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       <Actions>
         <button disabled={savingSource || !workspace.clanId} onClick={() => void createSource(false)}>保存来源草稿</button>
         <button className="secondary" disabled={savingSource || !workspace.clanId} onClick={() => void createSource(true)}>保存并提交审核</button>
-        <button className="secondary" disabled={bindingSource || !workspace.sourceId} onClick={() => void bindSource()}>绑定来源</button>
+        <button className="secondary" disabled={!!sourceBindDisabledReason} title={sourceBindDisabledReason || undefined} onClick={() => void bindSource()}>绑定来源</button>
         <button className="secondary" disabled={loadingOptions || !workspace.clanId} onClick={() => void loadStepData()}>刷新绑定对象</button>
       </Actions>
 
