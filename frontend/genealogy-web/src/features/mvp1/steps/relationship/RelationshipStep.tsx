@@ -25,6 +25,11 @@ type Props = {
   onSubmittedReview?: (taskId: string) => void;
 };
 
+type RelationshipValidationResult = {
+  errorMessage: string;
+  relative?: PersonLike;
+};
+
 function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
 }
@@ -73,6 +78,17 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
       if (error) message.error(text);
       else message.success(text);
     }
+  }
+
+  function validateRelationshipForm(): RelationshipValidationResult {
+    if (!workspace.clanId) return { errorMessage: '请先选择宗族' };
+    if (!centerPerson) return { errorMessage: '请选择已审核通过的中心人物' };
+    if (!centerPerson.generationNo) return { errorMessage: '中心人物未维护代次，无法建立关系' };
+    const relative = officialPersons.find(item => String(item.id) === String(relativePersonId));
+    if (!relative || !isRelationshipCandidate(centerPerson, relative, mode)) {
+      return { errorMessage: `请选择符合规则的${RELATIONSHIP_MODE_LABEL[mode]}：${relationshipRuleText(mode)}` };
+    }
+    return { errorMessage: '', relative };
   }
 
   async function loadClans() {
@@ -164,21 +180,9 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
 
   async function saveRelationship(submit = false) {
     setSaveError('');
-    if (!workspace.clanId) {
-      toast({ message: '请先选择宗族' }, true);
-      return;
-    }
-    if (!centerPerson) {
-      toast({ message: '请选择已审核通过的中心人物' }, true);
-      return;
-    }
-    if (!centerPerson.generationNo) {
-      toast({ message: '中心人物未维护代次，无法建立关系' }, true);
-      return;
-    }
-    const relative = officialPersons.find(item => String(item.id) === String(relativePersonId));
-    if (!relative || !isRelationshipCandidate(centerPerson, relative, mode)) {
-      toast({ message: `请选择符合规则的${RELATIONSHIP_MODE_LABEL[mode]}：${relationshipRuleText(mode)}` }, true);
+    const { errorMessage, relative } = validateRelationshipForm();
+    if (errorMessage || !relative || !centerPerson) {
+      toast({ message: errorMessage || '关系信息不完整' }, true);
       return;
     }
     setSavingRelationship(true);
