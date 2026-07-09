@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { Button, Descriptions, Drawer, Empty, Modal, Popconfirm, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import { reviewTargetTypeText, statusColor, statusText } from '../../shared/dictionaries';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { reviewCenterService } from '../../shared/services/reviewCenterService';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -28,60 +29,28 @@ type ReviewTask = {
 
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
 
+function statusValue(row: ReviewTask) {
+  return String(row.reviewStatus || row.taskStatus || row.status || '').trim().toLowerCase();
+}
+
+function reviewStatusText(row: ReviewTask) {
+  return statusText(statusValue(row), statusValue(row) ? '未知状态' : '待维护');
+}
+
+function reviewStatusColor(row: ReviewTask) {
+  return statusColor(statusValue(row));
+}
+
+function targetTypeText(value?: string) {
+  return reviewTargetTypeText(String(value || '').trim().toLowerCase().replace(/-/g, '_'), value ? '其他对象' : '未知对象');
+}
+
 function taskTitle(row: ReviewTask) {
   return row.title || `${targetTypeText(row.targetType)}变更审核`;
 }
 
 function rowKey(row: ReviewTask) {
   return String(row.id || `${row.targetType || 'task'}-${row.targetId || ''}`);
-}
-
-function targetTypeText(value?: string) {
-  const normalized = String(value || '').trim().toLowerCase().replace(/-/g, '_');
-  const dict: Record<string, string> = {
-    person: '人物',
-    persons: '人物',
-    relationship: '关系',
-    relationships: '关系',
-    source: '来源',
-    sources: '来源',
-    branch: '支派',
-    branches: '支派',
-    generation_scheme: '字辈方案',
-    generation_schemes: '字辈方案',
-    generation_scheme_item: '字辈明细',
-    generation_schemes_item: '字辈明细',
-    clan: '宗族'
-  };
-  return dict[normalized] || (value ? '其他对象' : '未知对象');
-}
-
-function statusValue(row: ReviewTask) {
-  return String(row.reviewStatus || row.taskStatus || row.status || '').trim().toLowerCase();
-}
-
-function statusText(row: ReviewTask) {
-  const status = statusValue(row);
-  const dict: Record<string, string> = {
-    pending: '待审核',
-    pending_review: '待审核',
-    reviewing: '审核中',
-    approved: '已通过',
-    passed: '已通过',
-    rejected: '已驳回',
-    cancelled: '已取消',
-    canceled: '已取消',
-    completed: '已完成'
-  };
-  return dict[status] || (status ? '未知状态' : '待维护');
-}
-
-function statusColor(row: ReviewTask) {
-  const status = statusValue(row);
-  if (['approved', 'passed', 'completed'].includes(status)) return 'success';
-  if (['rejected', 'cancelled', 'canceled'].includes(status)) return 'error';
-  if (['pending', 'pending_review', 'reviewing'].includes(status)) return 'processing';
-  return 'default';
 }
 
 function submitterText(row: ReviewTask) {
@@ -117,7 +86,7 @@ function reviewTimelineItems(row: ReviewTask) {
       color: processed ? 'green' : 'gray',
       children: (
         <div>
-          <Typography.Text strong>{processed ? statusText(row) : '等待审核处理'}</Typography.Text>
+          <Typography.Text strong>{processed ? reviewStatusText(row) : '等待审核处理'}</Typography.Text>
           <br />
           <Typography.Text type="secondary">{processed ? `${row.updatedAt || '处理时间待维护'} · ${reviewerText(row)}` : '审核结论由后端返回后展示'}</Typography.Text>
         </div>
@@ -242,14 +211,7 @@ export function ReviewCenterPage({ notify }: Props) {
 
   function renderRejectConfirm(row: ReviewTask, button: ReactNode) {
     return (
-      <Popconfirm
-        title="确认驳回该审核任务？"
-        description="驳回后，该对象需要补充资料后重新提交审核。"
-        okText="确认驳回"
-        cancelText="取消"
-        okButtonProps={{ danger: true }}
-        onConfirm={() => void rejectOne(row)}
-      >
+      <Popconfirm title="确认驳回该审核任务？" description="驳回后，该对象需要补充资料后重新提交审核。" okText="确认驳回" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => void rejectOne(row)}>
         {button}
       </Popconfirm>
     );
@@ -259,17 +221,8 @@ export function ReviewCenterPage({ notify }: Props) {
     return (
       <>
         <div className="batch-review-actions table-review-actions">
-          <Typography.Text type="secondary">
-            {workspace.clanId ? `待审核任务 ${tasks.length} 条` : '请先选择宗族后查看审核任务'}
-          </Typography.Text>
-          <Space wrap>
-            <Button type="primary" disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={() => void batchApprove()}>
-              批量通过（{selectedTasks.length}）
-            </Button>
-            <Button danger disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={confirmBatchReject}>
-              批量驳回（{selectedTasks.length}）
-            </Button>
-          </Space>
+          <Typography.Text type="secondary">{workspace.clanId ? `待审核任务 ${tasks.length} 条` : '请先选择宗族后查看审核任务'}</Typography.Text>
+          <Space wrap><Button type="primary" disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={() => void batchApprove()}>批量通过（{selectedTasks.length}）</Button><Button danger disabled={!selectedTasks.length || loading} loading={loading && Boolean(selectedTasks.length)} onClick={confirmBatchReject}>批量驳回（{selectedTasks.length}）</Button></Space>
         </div>
         <Table<ReviewTask>
           size="small"
@@ -278,36 +231,15 @@ export function ReviewCenterPage({ notify }: Props) {
           rowKey={rowKey}
           dataSource={tasks}
           pagination={false}
-          rowSelection={{
-            selectedRowKeys,
-            columnTitle: '勾选',
-            columnWidth: 88,
-            preserveSelectedRowKeys: false,
-            onChange: keys => setSelectedRowKeys(keys)
-          }}
+          rowSelection={{ selectedRowKeys, columnTitle: '勾选', columnWidth: 88, preserveSelectedRowKeys: false, onChange: keys => setSelectedRowKeys(keys) }}
           onRow={row => ({ onClick: () => setDetailTask(row), style: { cursor: 'pointer' } })}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前没有待审核任务' : '请先选择宗族'} /> }}
           columns={[
             { key: 'title', title: '审核事项', ellipsis: true, render: (_value, row) => taskTitle(row) },
             { key: 'targetType', title: '审核对象', width: 130, render: (_value, row) => targetTypeText(row.targetType) },
-            { key: 'status', title: '审核状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+            { key: 'status', title: '审核状态', width: 110, render: (_value, row) => <Tag color={reviewStatusColor(row)}>{reviewStatusText(row)}</Tag> },
             { key: 'createdAt', title: '提交时间', width: 180, render: (_value, row) => row.createdAt || '待维护' },
-            {
-              key: 'actions',
-              title: '审核操作',
-              width: 170,
-              fixed: 'right',
-              render: (_value, row) => {
-                const key = rowKey(row);
-                const processing = processingKeys.includes(key);
-                return (
-                  <Space size="small" wrap onClick={event => event.stopPropagation()}>
-                    <Button size="small" type="primary" loading={processing} disabled={loading} onClick={() => void approveOne(row)}>通过</Button>
-                    {renderRejectConfirm(row, <Button size="small" danger loading={processing} disabled={loading}>驳回</Button>)}
-                  </Space>
-                );
-              }
-            }
+            { key: 'actions', title: '审核操作', width: 170, fixed: 'right', render: (_value, row) => { const key = rowKey(row); const processing = processingKeys.includes(key); return <Space size="small" wrap onClick={event => event.stopPropagation()}><Button size="small" type="primary" loading={processing} disabled={loading} onClick={() => void approveOne(row)}>通过</Button>{renderRejectConfirm(row, <Button size="small" danger loading={processing} disabled={loading}>驳回</Button>)}</Space>; } }
           ]}
           scroll={{ x: 'max-content' }}
         />
@@ -319,45 +251,10 @@ export function ReviewCenterPage({ notify }: Props) {
     <div className="review-center-page">
       {contextHolder}
       <Panel title="审核中心" description="集中处理待审核任务，支持查看审核对象、流转状态和批量审批。">
-        <Tabs
-          activeKey={activeTab}
-          onChange={key => setActiveTab(key as ReviewTabKey)}
-          items={[
-            { key: 'pending', label: `待我审核（${tasks.length}）`, children: renderPendingTable() },
-            { key: 'submitted', label: '我提交的', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回我提交的审核任务" /> },
-            { key: 'processed', label: '已处理', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回已处理审核任务" /> }
-          ]}
-        />
+        <Tabs activeKey={activeTab} onChange={key => setActiveTab(key as ReviewTabKey)} items={[{ key: 'pending', label: `待我审核（${tasks.length}）`, children: renderPendingTable() }, { key: 'submitted', label: '我提交的', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回我提交的审核任务" /> }, { key: 'processed', label: '已处理', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回已处理审核任务" /> }]} />
       </Panel>
-
-      <Drawer
-        title="审核详情"
-        width={520}
-        open={Boolean(detailTask)}
-        onClose={() => setDetailTask(null)}
-        extra={detailTask ? (
-          <Space>
-            <Button onClick={() => setDetailTask(null)}>关闭</Button>
-            {renderRejectConfirm(detailTask, <Button danger loading={processingKeys.includes(rowKey(detailTask))}>驳回</Button>)}
-            <Button type="primary" loading={processingKeys.includes(rowKey(detailTask))} onClick={() => void approveOne(detailTask)}>通过</Button>
-          </Space>
-        ) : null}
-      >
-        {detailTask ? (
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="审核事项">{taskTitle(detailTask)}</Descriptions.Item>
-              <Descriptions.Item label="审核对象">{targetTypeText(detailTask.targetType)}</Descriptions.Item>
-              <Descriptions.Item label="审核状态"><Tag color={statusColor(detailTask)}>{statusText(detailTask)}</Tag></Descriptions.Item>
-              <Descriptions.Item label="提交时间">{detailTask.createdAt || '待维护'}</Descriptions.Item>
-              <Descriptions.Item label="审核意见">{reviewComment(detailTask)}</Descriptions.Item>
-            </Descriptions>
-            <div>
-              <Typography.Title level={5}>流转记录</Typography.Title>
-              <Timeline items={reviewTimelineItems(detailTask)} />
-            </div>
-          </Space>
-        ) : null}
+      <Drawer title="审核详情" width={520} open={Boolean(detailTask)} onClose={() => setDetailTask(null)} extra={detailTask ? <Space><Button onClick={() => setDetailTask(null)}>关闭</Button>{renderRejectConfirm(detailTask, <Button danger loading={processingKeys.includes(rowKey(detailTask))}>驳回</Button>)}<Button type="primary" loading={processingKeys.includes(rowKey(detailTask))} onClick={() => void approveOne(detailTask)}>通过</Button></Space> : null}>
+        {detailTask ? <Space direction="vertical" size="large" style={{ width: '100%' }}><Descriptions column={1} size="small" bordered><Descriptions.Item label="审核事项">{taskTitle(detailTask)}</Descriptions.Item><Descriptions.Item label="审核对象">{targetTypeText(detailTask.targetType)}</Descriptions.Item><Descriptions.Item label="审核状态"><Tag color={reviewStatusColor(detailTask)}>{reviewStatusText(detailTask)}</Tag></Descriptions.Item><Descriptions.Item label="提交时间">{detailTask.createdAt || '待维护'}</Descriptions.Item><Descriptions.Item label="审核意见">{reviewComment(detailTask)}</Descriptions.Item></Descriptions><div><Typography.Title level={5}>流转记录</Typography.Title><Timeline items={reviewTimelineItems(detailTask)} /></div></Space> : null}
       </Drawer>
     </div>
   );
