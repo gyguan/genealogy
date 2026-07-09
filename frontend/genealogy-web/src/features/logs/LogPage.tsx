@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Alert, Button, Card, Descriptions, Empty, Form, Input, Select, Space, Table, Tag, Timeline } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { Actions, Field } from '../../shared/ui/Form';
-import { DataTable, toRecordList } from '../../shared/ui/DataTable';
-import { Panel } from '../../shared/ui/Panel';
-import { ResultNotice } from '../../shared/ui/ResultNotice';
+import { toRecordList } from '../../shared/ui/DataTable';
 
 type OperationLog = {
   id?: number | string;
@@ -83,6 +81,14 @@ function statusText(value?: string) {
     archived: '已归档'
   };
   return dict[value || ''] || value || '-';
+}
+
+function statusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (['approved', 'official'].includes(status)) return 'success';
+  if (status === 'rejected') return 'error';
+  if (status === 'pending') return 'processing';
+  return 'default';
 }
 
 function actionText(value?: string) {
@@ -199,6 +205,13 @@ function buildTimeline(logs: OperationLog[], reviewTask: ReviewTask | null, diff
 function sourceText(source: TimelineItem['source']) {
   const dict: Record<TimelineItem['source'], string> = { log: '操作日志', review: '审核任务', diff: '字段变更', system: '系统' };
   return dict[source];
+}
+
+function timelineColor(status: TimelineItem['status']) {
+  if (status === 'done') return 'green';
+  if (status === 'warn') return 'red';
+  if (status === 'pending') return 'blue';
+  return 'gray';
 }
 
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
@@ -331,95 +344,114 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   return (
     <div className="audit-trace-page">
-      <section className="audit-hero">
-        <div>
-          <span>Audit Trace</span>
-          <h2>操作日志与审核流完整追踪</h2>
-          <p>把对象操作、审核任务、字段级变更和处理结果串成一条时间线，方便定位“谁改了什么、为什么进入审核、最终如何处理”。</p>
-        </div>
-        <div className="audit-hero-metrics">
-          <div><span>当前日志</span><strong>{logRows.length || '-'}</strong></div>
-          <div><span>追踪日志</span><strong>{traceLogs.length || '-'}</strong></div>
-          <div><span>字段差异</span><strong>{reviewDiff?.fields?.length || '-'}</strong></div>
-          <div><span>审核任务</span><strong>{statusText(reviewTask?.status)}</strong></div>
-        </div>
-      </section>
+      <Card title="操作日志与审核流完整追踪">
+        <Descriptions size="small" bordered column={4}>
+          <Descriptions.Item label="当前日志">{logRows.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="追踪日志">{traceLogs.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="字段差异">{reviewDiff?.fields?.length || '-'}</Descriptions.Item>
+          <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+        </Descriptions>
+      </Card>
 
       <div className="page-grid two audit-query-grid">
-        <Panel title="日志审计查询" description="支持按当前宗族、动作、对象类型、关键词和时间范围查询。">
-          <Field label="当前宗族"><input value={workspace.clanId ? '已选择当前宗族' : '未选择宗族'} disabled readOnly /></Field>
-          <Field label="动作类型"><input value={filters.actionType} onChange={e => set('actionType', e.target.value)} placeholder="例如：创建人物 / 更新人物" /></Field>
-          <Field label="对象类型"><select value={filters.targetType} onChange={e => set('targetType', e.target.value)}><option value="">全部</option><option value="person">人物</option><option value="relationship">亲属关系</option><option value="source">来源资料</option><option value="branch">支派</option><option value="clan">宗族</option><option value="review_task">审核任务</option></select></Field>
-          <Field label="关键词"><input value={filters.keyword} onChange={e => set('keyword', e.target.value)} placeholder="姓名、来源名、支派名或摘要" /></Field>
-          <Field label="开始时间"><input value={filters.startTime} onChange={e => set('startTime', e.target.value)} placeholder="2026-06-01T00:00:00" /></Field>
-          <Field label="结束时间"><input value={filters.endTime} onChange={e => set('endTime', e.target.value)} placeholder="2026-06-30T23:59:59" /></Field>
-          <Field label="每页数量"><input value={filters.pageSize} onChange={e => set('pageSize', e.target.value)} /></Field>
-          <Actions><button onClick={list}>查询</button><button className="secondary" onClick={stats}>统计</button><button className="secondary" onClick={exportCsv}>导出CSV</button></Actions>
-          <ResultNotice result={result} />
-        </Panel>
+        <Card title="日志审计查询">
+          <Form layout="vertical">
+            <Form.Item label="当前宗族"><Input value={workspace.clanId ? '已选择当前宗族' : '未选择宗族'} disabled readOnly /></Form.Item>
+            <Form.Item label="动作类型"><Input value={filters.actionType} onChange={e => set('actionType', e.target.value)} placeholder="例如：创建人物 / 更新人物" /></Form.Item>
+            <Form.Item label="对象类型">
+              <Select value={filters.targetType} onChange={value => set('targetType', value)} options={[{ value: '', label: '全部' }, { value: 'person', label: '人物' }, { value: 'relationship', label: '亲属关系' }, { value: 'source', label: '来源资料' }, { value: 'branch', label: '支派' }, { value: 'clan', label: '宗族' }, { value: 'review_task', label: '审核任务' }]} />
+            </Form.Item>
+            <Form.Item label="关键词"><Input value={filters.keyword} onChange={e => set('keyword', e.target.value)} placeholder="姓名、来源名、支派名或摘要" /></Form.Item>
+            <Form.Item label="开始时间"><Input value={filters.startTime} onChange={e => set('startTime', e.target.value)} placeholder="2026-06-01T00:00:00" /></Form.Item>
+            <Form.Item label="结束时间"><Input value={filters.endTime} onChange={e => set('endTime', e.target.value)} placeholder="2026-06-30T23:59:59" /></Form.Item>
+            <Form.Item label="每页数量"><Input value={filters.pageSize} onChange={e => set('pageSize', e.target.value)} /></Form.Item>
+          </Form>
+          <Space wrap>
+            <Button type="primary" onClick={() => void list()}>查询</Button>
+            <Button onClick={() => void stats()}>统计</Button>
+            <Button onClick={() => void exportCsv()}>导出 CSV</Button>
+          </Space>
+          {result ? <Alert type="success" showIcon message={display((result as any).message || result)} style={{ marginTop: 12 }} /> : null}
+        </Card>
 
-        <Panel title="审核流追踪" description="从日志列表选择一条业务记录后，生成从操作到审核的追踪链路。">
-          <Field label="追踪对象"><input value={traceForm.targetSummary || '请先在日志列表中选择一条记录'} disabled readOnly /></Field>
-          <Field label="对象类型"><input value={targetTypeText(traceForm.targetType)} disabled readOnly /></Field>
-          <Actions><button disabled={loading || !traceForm.targetId} onClick={loadTrace}>{loading ? '追踪中...' : '生成追踪链路'}</button></Actions>
-          <div className="audit-trace-hint">点击下方日志的“追踪”按钮带入对象；界面只展示业务摘要，不展示技术标识。</div>
-        </Panel>
+        <Card title="审核流追踪">
+          <Descriptions size="small" bordered column={1}>
+            <Descriptions.Item label="追踪对象">{traceForm.targetSummary || '请先在日志列表中选择一条记录'}</Descriptions.Item>
+            <Descriptions.Item label="对象类型">{targetTypeText(traceForm.targetType)}</Descriptions.Item>
+          </Descriptions>
+          <Space style={{ marginTop: 12 }}>
+            <Button type="primary" disabled={loading || !traceForm.targetId} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button>
+          </Space>
+          <Alert type="info" showIcon message="点击下方日志的“追踪”按钮带入对象；界面只展示业务摘要，不展示技术标识。" style={{ marginTop: 12 }} />
+        </Card>
       </div>
 
-      <section className="audit-trace-layout">
-        <Panel title="操作与审核时间线" description="按照时间顺序串联操作日志、审核任务和字段变更。">
-          <div className="audit-timeline">
-            {timeline.length ? timeline.map(item => (
-              <article key={item.key} className={`audit-timeline-item audit-timeline-item--${item.status}`}>
-                <span>{sourceText(item.source)}</span>
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.desc}</p>
-                  <em>{display(item.time, '时间未记录')} · 操作者 {actorText(item.actor)}</em>
-                </div>
-              </article>
-            )) : <div className="audit-empty">暂无追踪数据，请先从日志列表选择业务记录后生成追踪链路。</div>}
-          </div>
-        </Panel>
+      <div className="page-grid two audit-query-grid">
+        <Card title="操作与审核时间线">
+          {timeline.length ? (
+            <Timeline
+              items={timeline.map(item => ({
+                color: timelineColor(item.status),
+                children: (
+                  <div>
+                    <Space><Tag>{sourceText(item.source)}</Tag><strong>{item.title}</strong></Space>
+                    <p>{item.desc}</p>
+                    <span>{display(item.time, '时间未记录')} · 操作者 {actorText(item.actor)}</span>
+                  </div>
+                )
+              }))}
+            />
+          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无追踪数据，请先从日志列表选择业务记录后生成追踪链路。" />}
+        </Card>
 
-        <Panel title="追踪摘要" description="展示该对象相关动作分布、审核状态和字段差异。">
-          <div className="audit-summary-grid">
-            <div><span>对象</span><strong>{traceForm.targetSummary || targetText(reviewDiff?.targetType, reviewDiff?.diffSummary, reviewDiff?.targetName)}</strong></div>
-            <div><span>审核任务</span><strong>{reviewTask ? statusText(reviewTask.status) : '-'}</strong></div>
-            <div><span>审核状态</span><strong>{statusText(reviewTask?.status)}</strong></div>
-            <div><span>变更记录</span><strong>{display(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</strong></div>
-          </div>
-          <div className="audit-action-tags">
-            {actionTypes.length ? actionTypes.map(([name, count]) => <span key={name}>{actionText(name)} × {count}</span>) : <span>暂无动作分布</span>}
-          </div>
+        <Card title="追踪摘要">
+          <Descriptions size="small" bordered column={1}>
+            <Descriptions.Item label="对象">{traceForm.targetSummary || targetText(reviewDiff?.targetType, reviewDiff?.diffSummary, reviewDiff?.targetName)}</Descriptions.Item>
+            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '-'}</Descriptions.Item>
+            <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+            <Descriptions.Item label="变更记录">{display(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</Descriptions.Item>
+          </Descriptions>
+          <Space wrap style={{ marginTop: 12 }}>
+            {actionTypes.length ? actionTypes.map(([name, count]) => <Tag key={name}>{actionText(name)} × {count}</Tag>) : <Tag>暂无动作分布</Tag>}
+          </Space>
           {reviewDiff ? (
-            <DataTable
-              data={reviewDiff.fields || []}
+            <Table
+              size="small"
+              bordered
+              style={{ marginTop: 12 }}
+              rowKey={(row: any, index) => `${row.fieldName || 'field'}-${index}`}
+              dataSource={reviewDiff.fields || []}
+              pagination={false}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字段差异" /> }}
               columns={[
-                { key: 'fieldName', title: '字段' },
-                { key: 'beforeValue', title: '变更前' },
-                { key: 'afterValue', title: '变更后' },
-                { key: 'changeType', title: '类型', render: row => changeText(row.changeType) }
+                { key: 'fieldName', title: '字段', dataIndex: 'fieldName' },
+                { key: 'beforeValue', title: '变更前', dataIndex: 'beforeValue' },
+                { key: 'afterValue', title: '变更后', dataIndex: 'afterValue' },
+                { key: 'changeType', title: '类型', render: (_value, row: any) => changeText(row.changeType) }
               ]}
-              empty="暂无字段差异"
             />
           ) : null}
-        </Panel>
-      </section>
+        </Card>
+      </div>
 
-      <Panel title="审计日志列表" description="点击一条日志可快速带入追踪条件。">
-        <DataTable
-          data={data}
+      <Card title="审计日志列表">
+        <Table<OperationLog>
+          size="small"
+          bordered
+          rowKey={(row, index) => String(row.id || index)}
+          dataSource={logRows}
+          pagination={false}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计日志" /> }}
           columns={[
-            { key: 'actionType', title: '动作', render: row => actionText(row.actionType) },
-            { key: 'targetSummary', title: '业务对象', render: row => targetTextFromLog(row) },
-            { key: 'actorName', title: '操作者', render: row => actorText(row.actorId, row.actorName || row.operatorName) },
-            { key: 'summary', title: '摘要' },
-            { key: 'createdAt', title: '时间' },
-            { key: 'trace', title: '追踪', render: row => <button onClick={() => applyTraceFromLog(row)}>追踪</button> }
+            { key: 'actionType', title: '动作', render: (_value, row) => actionText(row.actionType) },
+            { key: 'targetSummary', title: '业务对象', render: (_value, row) => targetTextFromLog(row) },
+            { key: 'actorName', title: '操作者', render: (_value, row) => actorText(row.actorId, row.actorName || row.operatorName) },
+            { key: 'summary', title: '摘要', dataIndex: 'summary' },
+            { key: 'createdAt', title: '时间', dataIndex: 'createdAt' },
+            { key: 'trace', title: '追踪', width: 90, render: (_value, row) => <Button size="small" type="link" onClick={() => applyTraceFromLog(row)}>追踪</Button> }
           ]}
         />
-      </Panel>
+      </Card>
     </div>
   );
 }
