@@ -16,7 +16,7 @@ import {
   type ReviewProgressSourceLike as SourceLike,
   type ReviewProgressTaskLike as ReviewTaskLike
 } from '../../services/reviewProgressService';
-import { approveReview as approveReviewTask, submitReviewTask } from '../../services/reviewTaskService';
+import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ReviewForm = {
   targetType: ReviewTargetType;
@@ -31,7 +31,7 @@ type Props = {
 const defaultReviewForm: ReviewForm = {
   targetType: 'persons',
   targetId: '',
-  comment: '同意入谱'
+  comment: '提交审核'
 };
 
 function clanLabel(clan: ClanLike) {
@@ -51,7 +51,6 @@ export function ReviewProgressStep({ notify }: Props) {
   const [loadingClans, setLoadingClans] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [approving, setApproving] = useState(false);
 
   function toast(data: unknown, error = false) {
     notify?.(data, error);
@@ -157,26 +156,8 @@ export function ReviewProgressStep({ notify }: Props) {
     }
   }
 
-  async function approveReview(taskId?: string) {
-    const effectiveTaskId = taskId || workspace.reviewTaskId;
-    if (!effectiveTaskId) {
-      toast({ message: '请选择待审任务' }, true);
-      return;
-    }
-    setApproving(true);
-    try {
-      await approveReviewTask(effectiveTaskId, nullableString(reviewForm.comment));
-      toast({ message: '审核已通过，相关对象现在可用于下一步关联。', id: effectiveTaskId });
-      await loadReviewData();
-    } catch (error) {
-      toast({ message: (error as Error).message || '审核通过失败' }, true);
-    } finally {
-      setApproving(false);
-    }
-  }
-
   return (
-    <Panel title="审核进度" description="查看待审任务；创建页内已支持保存并提交审核，这里作为进度查看和补充提交入口。">
+    <Panel title="审核进度" description="查看待审任务；创建页内已支持保存并提交审核，这里只提供进度查询和补充提交入口。">
       <div className="wizard-form-grid">
         <Field label="适用宗族 *">
           <select value={workspace.clanId} onChange={event => changeClan(event.target.value)} disabled={loadingClans} required>
@@ -211,7 +192,6 @@ export function ReviewProgressStep({ notify }: Props) {
       </Field>
       <Actions>
         <button disabled={submitting || !reviewTargetOptions().length} onClick={() => void submitReview()}>补充提交审核</button>
-        <button className="secondary" disabled={approving || !workspace.reviewTaskId} onClick={() => void approveReview()}>通过选中任务</button>
         <button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()}>刷新审核进度</button>
       </Actions>
       {reviewForm.targetType === 'relationships' && !workspace.personId ? (
@@ -221,7 +201,7 @@ export function ReviewProgressStep({ notify }: Props) {
         <div className="step-draft-review-header">
           <div>
             <h4>待审任务列表</h4>
-            <p>点击任务行可选中，再执行“通过选中任务”。</p>
+            <p>点击任务行可选中并查看当前任务状态；审批请进入审核中心处理。</p>
           </div>
           <Space wrap>
             <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
@@ -239,15 +219,8 @@ export function ReviewProgressStep({ notify }: Props) {
           columns={[
             { key: 'title', title: '标题', render: (_value, row) => reviewTaskTitle(row) },
             { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
-            { key: 'targetId', title: '对象ID', width: 100, render: (_value, row) => row.targetId || '-' },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-            { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => createdAtText(row.createdAt) },
-            {
-              key: 'actions',
-              title: '操作',
-              width: 120,
-              render: (_value, row) => <Button size="small" type="primary" loading={approving} onClick={event => { event.stopPropagation(); void approveReview(String(row.id || '')); }}>通过</Button>
-            }
+            { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => createdAtText(row.createdAt) }
           ]}
         />
       </section>
