@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { GENDER_OPTIONS, PRIVACY_LEVEL_OPTIONS, genderText, relationTypeText, sourceTypeText, statusColor, statusText } from '../../shared/dictionaries';
 import { personArchiveService } from '../../shared/services';
 import type { BranchOptionDto, ClanOptionDto, GenerationSchemeDto, GenerationSchemeItemDto, PersonArchiveDto, PersonEventDto, PersonRelationshipDto, PersonSourceBindingDto } from '../../shared/services';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -18,23 +19,17 @@ type EditForm = {
 
 const PAGE_SIZE = 20;
 const emptySearch: SearchForm = { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '' };
-const genderOptions = [{ value: '', label: '全部' }, { value: 'male', label: '男' }, { value: 'female', label: '女' }, { value: 'unknown', label: '未知' }];
-const statusOptions = [{ value: '', label: '全部' }, { value: 'draft', label: '草稿' }, { value: 'pending_review', label: '待审核' }, { value: 'official', label: '正式' }, { value: 'rejected', label: '已驳回' }];
-const privacyOptions = [['public', '公开'], ['clan_only', '宗族内可见'], ['branch_only', '支派内可见'], ['relatives_only', '亲属可见'], ['private', '私密'], ['sealed', '封存']] as const;
+const genderOptions = [{ value: '', label: '全部' }, ...GENDER_OPTIONS];
+const statusOptions = [{ value: '', label: '全部' }, ...['draft', 'pending_review', 'official', 'rejected'].map(value => ({ value, label: statusText(value) }))];
 
 function display(value: unknown, fallback = '-') { const text = String(value ?? '').trim(); return text || fallback; }
 function asString(value: unknown) { return String(value ?? '').trim(); }
 function asDate(value: unknown) { return String(value ?? '').slice(0, 10); }
 function personName(row: PersonArchiveDto) { return display(row.name || row.personName || row.displayName, '未命名人物'); }
 function personBranchId(row: PersonArchiveDto) { return row.branchId || row.branch?.id || ''; }
-function genderText(value?: string) { const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' }; return dict[value || ''] || value || '未知'; }
-function statusText(value?: string) { const dict: Record<string, string> = { draft: '草稿', pending: '待审核', pending_review: '待审核', official: '正式', active: '正式', approved: '已通过', rejected: '已驳回', archived: '已归档' }; return dict[value || ''] || value || '待维护'; }
-function statusColor(value?: string) { const status = String(value || '').toLowerCase(); if (['official', 'active', 'approved'].includes(status)) return 'success'; if (['pending', 'pending_review'].includes(status)) return 'processing'; if (status === 'rejected') return 'error'; return 'default'; }
 function clanLabel(row: ClanOptionDto) { return `${display(row.clanName || row.name, '未命名宗族')}${row.hallName ? ` · ${row.hallName}` : ''}`; }
 function generationNoLabel(value: string) { return value ? `${value}世` : '全部'; }
 function sourceTitle(row: PersonSourceBindingDto | PersonEventDto) { return ('sourceName' in row && row.sourceName) || ('sourceTitle' in row && row.sourceTitle) || ('title' in row && row.title) || ('fileName' in row && row.fileName) || ('materialName' in row && row.materialName) || '来源资料待维护'; }
-function sourceTypeText(value: unknown) { const type = String(value || '').toLowerCase(); const dict: Record<string, string> = { genealogy_book: '族谱文献', oral: '口述材料', oral_record: '口述材料', archive: '档案材料', tombstone: '碑刻墓志', image: '图片资料', file: '附件资料' }; return dict[type] || display(value, '来源类型待维护'); }
-function relationTypeText(value: unknown) { const type = String(value || '').toLowerCase(); const dict: Record<string, string> = { father: '父亲', mother: '母亲', spouse: '配偶', parent_child: '亲子', child: '子女', son: '子', daughter: '女', adoptive: '收养', successor: '继嗣' }; return dict[type] || display(value, '亲属关系'); }
 function eventTypeText(value?: string) { const dict: Record<string, string> = { birth: '出生', death: '逝世', education: '求学', career: '职业', migration: '迁徙', marriage: '婚配' }; return dict[value || ''] || value || '人生事件'; }
 function eventDateText(event: PersonEventDto) { return display(event.eventDate, '时间未详'); }
 function uniqueTexts(values: unknown[]) { return Array.from(new Set(values.map(value => String(value ?? '').trim()).filter(Boolean))); }
@@ -89,90 +84,18 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   function patchEdit(key: keyof EditForm, value: string) { setEditForm(prev => prev ? { ...prev, [key]: value } : prev); }
   function branchText(row: PersonArchiveDto) { const branchId = String(personBranchId(row) || ''); const branch = branchOptions.find(item => String(item.id) === branchId); return row.branchName || row.branch?.branchName || branch?.branchName || '支派待维护'; }
 
-  async function run(action: () => Promise<void>) {
-    if (loading) return;
-    setLoading(true);
-    try { await action(); } catch (error) { notify({ message: (error as Error).message || '操作失败' }, true); } finally { setLoading(false); }
-  }
-
-  async function loadClans() {
-    setFilterLoading(true);
-    try {
-      const data = toRecordList<ClanOptionDto>(await personArchiveService.listClans().catch(() => []));
-      setClans(data);
-      if (!workspace.clanId && data[0]?.id) workspace.setClanId(String(data[0].id));
-    } finally { setFilterLoading(false); }
-  }
-
-  async function loadClanFilterOptions(clanId: string) {
-    if (!clanId) { setBranches([]); setGenerationItems([]); return; }
-    setFilterLoading(true);
-    try {
-      const [branchData, schemeData] = await Promise.all([personArchiveService.listBranches(clanId).catch(() => []), personArchiveService.listGenerationSchemes(clanId).catch(() => [])]);
-      setBranches(toRecordList<BranchOptionDto>(branchData));
-      const schemes = toRecordList<GenerationSchemeDto>(schemeData);
-      const defaultScheme = schemes.find(item => item.isDefault) || schemes[0];
-      if (defaultScheme?.id) setGenerationItems(toRecordList<GenerationSchemeItemDto>(await personArchiveService.listGenerationSchemeItems(defaultScheme.id).catch(() => [])));
-      else setGenerationItems([]);
-    } finally { setFilterLoading(false); }
-  }
-
-  async function changeClan(nextClanId: string) {
-    workspace.setClanId(nextClanId);
-    workspace.setBranchId('');
-    setForm({ ...emptySearch });
-    setRawData(undefined);
-    await loadClanFilterOptions(nextClanId);
-  }
-
+  async function run(action: () => Promise<void>) { if (loading) return; setLoading(true); try { await action(); } catch (error) { notify({ message: (error as Error).message || '操作失败' }, true); } finally { setLoading(false); } }
+  async function loadClans() { setFilterLoading(true); try { const data = toRecordList<ClanOptionDto>(await personArchiveService.listClans().catch(() => [])); setClans(data); if (!workspace.clanId && data[0]?.id) workspace.setClanId(String(data[0].id)); } finally { setFilterLoading(false); } }
+  async function loadClanFilterOptions(clanId: string) { if (!clanId) { setBranches([]); setGenerationItems([]); return; } setFilterLoading(true); try { const [branchData, schemeData] = await Promise.all([personArchiveService.listBranches(clanId).catch(() => []), personArchiveService.listGenerationSchemes(clanId).catch(() => [])]); setBranches(toRecordList<BranchOptionDto>(branchData)); const schemes = toRecordList<GenerationSchemeDto>(schemeData); const defaultScheme = schemes.find(item => item.isDefault) || schemes[0]; if (defaultScheme?.id) setGenerationItems(toRecordList<GenerationSchemeItemDto>(await personArchiveService.listGenerationSchemeItems(defaultScheme.id).catch(() => []))); else setGenerationItems([]); } finally { setFilterLoading(false); } }
+  async function changeClan(nextClanId: string) { workspace.setClanId(nextClanId); workspace.setBranchId(''); setForm({ ...emptySearch }); setRawData(undefined); await loadClanFilterOptions(nextClanId); }
   function changeBranch(nextBranchId: string) { workspace.setBranchId(nextBranchId); patch('branchId', nextBranchId); }
-
-  async function search(nextPage = 1) {
-    if (!workspace.clanId) return;
-    setQuerying(true);
-    try {
-      const data = await personArchiveService.searchPersons({ clanId: workspace.clanId, pageNo: nextPage, pageSize: PAGE_SIZE, ...form });
-      setRawData(data);
-      setPageNo(nextPage);
-    } catch (error) {
-      notify({ message: (error as Error).message || '查询失败' }, true);
-    } finally { setQuerying(false); }
-  }
-
+  async function search(nextPage = 1) { if (!workspace.clanId) return; setQuerying(true); try { const data = await personArchiveService.searchPersons({ clanId: workspace.clanId, pageNo: nextPage, pageSize: PAGE_SIZE, ...form }); setRawData(data); setPageNo(nextPage); } catch (error) { notify({ message: (error as Error).message || '查询失败' }, true); } finally { setQuerying(false); } }
   function reset() { setForm({ ...emptySearch }); setPageNo(1); setRawData(undefined); }
-
-  async function openDetail(row: PersonArchiveDto, mode: DrawerMode = 'view') {
-    await run(async () => {
-      const id = row.id || row.personId;
-      if (!id) throw new Error('人物信息缺少业务标识，无法打开详情');
-      const detail = await personArchiveService.getPerson(id) as PersonArchiveDto;
-      setSelected(detail);
-      setEditForm(toEditForm(detail));
-      setDrawerMode(mode);
-      workspace.setPersonId(String(id));
-      const [relationshipData, sourceData, eventData] = await Promise.all([personArchiveService.listRelationships(id).catch(() => []), personArchiveService.listSourceBindings(id).catch(() => []), personArchiveService.listEvents(id).catch(() => [])]);
-      setRelationships(toRecordList<PersonRelationshipDto>(relationshipData));
-      setSources(toRecordList<PersonSourceBindingDto>(sourceData));
-      setEvents(toRecordList<PersonEventDto>(eventData));
-    });
-  }
-
+  async function openDetail(row: PersonArchiveDto, mode: DrawerMode = 'view') { await run(async () => { const id = row.id || row.personId; if (!id) throw new Error('人物信息缺少业务标识，无法打开详情'); const detail = await personArchiveService.getPerson(id) as PersonArchiveDto; setSelected(detail); setEditForm(toEditForm(detail)); setDrawerMode(mode); workspace.setPersonId(String(id)); const [relationshipData, sourceData, eventData] = await Promise.all([personArchiveService.listRelationships(id).catch(() => []), personArchiveService.listSourceBindings(id).catch(() => []), personArchiveService.listEvents(id).catch(() => [])]); setRelationships(toRecordList<PersonRelationshipDto>(relationshipData)); setSources(toRecordList<PersonSourceBindingDto>(sourceData)); setEvents(toRecordList<PersonEventDto>(eventData)); }); }
   function closeDetail() { setSelected(undefined); setEditForm(null); setRelationships([]); setSources([]); setEvents([]); setDrawerMode('view'); }
   function startEdit() { if (selected) { setEditForm(toEditForm(selected)); setDrawerMode('edit'); } }
   function cancelEdit() { if (selected) setEditForm(toEditForm(selected)); setDrawerMode('view'); }
-
-  async function saveDetail() {
-    if (!selected || !editForm) return;
-    await run(async () => {
-      if (!editForm.name.trim()) throw new Error('姓名不能为空');
-      const data = await personArchiveService.updatePerson(selected.id || selected.personId || '', toUpdatePayload(editForm)) as PersonArchiveDto;
-      setSelected(data);
-      setEditForm(toEditForm(data));
-      setDrawerMode('view');
-      notify({ message: '人物档案已保存' });
-      void search(currentPage);
-    });
-  }
+  async function saveDetail() { if (!selected || !editForm) return; await run(async () => { if (!editForm.name.trim()) throw new Error('姓名不能为空'); const data = await personArchiveService.updatePerson(selected.id || selected.personId || '', toUpdatePayload(editForm)) as PersonArchiveDto; setSelected(data); setEditForm(toEditForm(data)); setDrawerMode('view'); notify({ message: '人物档案已保存' }); void search(currentPage); }); }
 
   const completeness = selected ? Math.min(100, [selected.name, selected.genealogyName, selected.courtesyName, selected.gender, selected.branchId, selected.generationNo, selected.generationWord, selected.birthDate, selected.deathDate, selected.birthPlace, selected.residencePlace, selected.biography, relationshipRows.length, sourceRows.length, eventRows.length].filter(Boolean).length * 6) : 0;
   const timelineItems = eventRows.map((event, index) => ({ key: String(event.id || index), children: <div className="archive-event-item"><Typography.Text strong>{display(event.eventTitle, eventTypeText(event.eventType))}</Typography.Text><br /><Typography.Text type="secondary">{eventDateText(event)} · {display(event.eventPlace, '地点未详')}</Typography.Text><p>{display(event.eventDescription, '暂无事件说明。')}</p>{event.sourceName || event.sourceTitle || event.sourceType ? <Tag>{sourceTitle(event)}</Tag> : null}</div> }));
@@ -193,33 +116,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         </Form>
         <Space wrap><Button type="primary" loading={querying} onClick={() => void search(1)}>查询人物</Button><Button onClick={reset}>重置</Button></Space>
       </Card>
-
-      <Card title={`检索结果（${total}）`} style={{ marginTop: 16 }}>
-        <Table<PersonArchiveDto>
-          size="small"
-          bordered
-          rowKey={(row, index) => String(row.id || row.personId || index)}
-          dataSource={rows}
-          pagination={{ current: currentPage, pageSize: PAGE_SIZE, total, onChange: page => void search(page) }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无人物档案" /> }}
-          columns={[
-            { key: 'name', title: '姓名', render: (_value, row) => personName(row) },
-            { key: 'branch', title: '所属支派', render: (_value, row) => branchText(row) },
-            { key: 'generation', title: '世次/字辈', render: (_value, row) => `${display(row.generationNo, '世次待维护')} · ${display(row.generationWord, '字辈待维护')}` },
-            { key: 'gender', title: '性别', render: (_value, row) => genderText(row.gender) },
-            { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row.dataStatus || row.status)}>{statusText(row.dataStatus || row.status)}</Tag> },
-            { key: 'actions', title: '操作', width: 150, render: (_value, row) => <Space><Button size="small" type="link" onClick={() => void openDetail(row)}>查看</Button><Button size="small" type="link" onClick={() => void openDetail(row, 'edit')}>编辑</Button></Space> }
-          ]}
-        />
-      </Card>
-
-      <Drawer title={selectedName ? `${selectedName} 的人物档案` : '人物档案'} width={760} open={Boolean(selected)} onClose={closeDetail} extra={selected ? <Space>{drawerMode === 'view' ? <Button type="primary" onClick={startEdit}>编辑档案</Button> : <><Button onClick={cancelEdit}>取消</Button><Button type="primary" loading={loading} onClick={() => void saveDetail()}>保存</Button></>}</Space> : null}>
-        {selected ? <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <Card size="small"><Progress percent={completeness} /><Descriptions column={1} size="small" bordered><Descriptions.Item label="姓名">{selectedName}</Descriptions.Item><Descriptions.Item label="所属支派">{branchText(selected)}</Descriptions.Item><Descriptions.Item label="世次字辈">{display(selected.generationNo, '世次待维护')} · {display(selected.generationWord, '字辈待维护')}</Descriptions.Item><Descriptions.Item label="状态"><Tag color={statusColor(selected.dataStatus || selected.status)}>{statusText(selected.dataStatus || selected.status)}</Tag></Descriptions.Item></Descriptions></Card>
-          {drawerMode === 'edit' && editForm ? <Card title="编辑档案" size="small"><Form layout="vertical"><Form.Item label="姓名" required><Input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Form.Item><Form.Item label="所属支派"><Select value={editForm.branchId} onChange={value => patchEdit('branchId', value)} options={[{ value: '', label: '暂不归属支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: display(branch.branchName, '未命名支派') }))]} /></Form.Item><Form.Item label="性别"><Select value={editForm.gender} onChange={value => patchEdit('gender', value)} options={genderOptions.filter(item => item.value !== '')} /></Form.Item><Form.Item label="代次"><Input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Form.Item><Form.Item label="字辈"><Input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Form.Item><Form.Item label="出生日期"><Input value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item><Form.Item label="逝世日期"><Input value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item><Form.Item label="隐私级别"><Select value={editForm.privacyLevel} onChange={value => patchEdit('privacyLevel', value)} options={privacyOptions.map(([value, label]) => ({ value, label }))} /></Form.Item><Form.Item label="人物传记"><Input.TextArea rows={4} value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} /></Form.Item></Form></Card> : null}
-          <Tabs items={[{ key: 'relationships', label: `亲属关系（${relationshipRows.length}）`, children: relationshipRows.length ? <Table<PersonRelationshipDto> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={relationshipRows} pagination={false} columns={[{ key: 'type', title: '关系', render: (_value, row) => relationTypeText(row.relationLabel || row.relationType) }, { key: 'person', title: '关联人物', render: (_value, row) => row.fromPersonName || row.toPersonName || row.personName || '关联人物待维护' }, { key: 'status', title: '状态', render: (_value, row) => <Tag>{display(row.confidenceLevel || row.status, '已记录')}</Tag> }]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无亲属关系" /> }, { key: 'sources', label: `来源资料（${sourceRows.length}）`, children: sourceRows.length ? <Table<PersonSourceBindingDto> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={sourceRows} pagination={false} columns={[{ key: 'title', title: '来源资料', render: (_value, row) => sourceTitle(row) }, { key: 'type', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType || row.type) }, { key: 'status', title: '状态', render: (_value, row) => <Tag>{statusText(row.dataStatus || row.status)}</Tag> }]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源资料" /> }, { key: 'events', label: `生命事件（${eventRows.length}）`, children: timelineItems.length ? <Timeline items={timelineItems} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生命事件" /> }]} />
-        </Space> : null}
-      </Drawer>
+      <Card title={`检索结果（${total}）`} style={{ marginTop: 16 }}><Table<PersonArchiveDto> size="small" bordered rowKey={(row, index) => String(row.id || row.personId || index)} dataSource={rows} pagination={{ current: currentPage, pageSize: PAGE_SIZE, total, onChange: page => void search(page) }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无人物档案" /> }} columns={[{ key: 'name', title: '姓名', render: (_value, row) => personName(row) }, { key: 'branch', title: '所属支派', render: (_value, row) => branchText(row) }, { key: 'generation', title: '世次/字辈', render: (_value, row) => `${display(row.generationNo, '世次待维护')} · ${display(row.generationWord, '字辈待维护')}` }, { key: 'gender', title: '性别', render: (_value, row) => genderText(row.gender) }, { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row.dataStatus || row.status)}>{statusText(row.dataStatus || row.status)}</Tag> }, { key: 'actions', title: '操作', width: 150, render: (_value, row) => <Space><Button size="small" type="link" onClick={() => void openDetail(row)}>查看</Button><Button size="small" type="link" onClick={() => void openDetail(row, 'edit')}>编辑</Button></Space> }]} /></Card>
+      <Drawer title={selectedName ? `${selectedName} 的人物档案` : '人物档案'} width={760} open={Boolean(selected)} onClose={closeDetail} extra={selected ? <Space>{drawerMode === 'view' ? <Button type="primary" onClick={startEdit}>编辑档案</Button> : <><Button onClick={cancelEdit}>取消</Button><Button type="primary" loading={loading} onClick={() => void saveDetail()}>保存</Button></>}</Space> : null}>{selected ? <Space direction="vertical" size="large" style={{ width: '100%' }}><Card size="small"><Progress percent={completeness} /><Descriptions column={1} size="small" bordered><Descriptions.Item label="姓名">{selectedName}</Descriptions.Item><Descriptions.Item label="所属支派">{branchText(selected)}</Descriptions.Item><Descriptions.Item label="世次字辈">{display(selected.generationNo, '世次待维护')} · {display(selected.generationWord, '字辈待维护')}</Descriptions.Item><Descriptions.Item label="状态"><Tag color={statusColor(selected.dataStatus || selected.status)}>{statusText(selected.dataStatus || selected.status)}</Tag></Descriptions.Item></Descriptions></Card>{drawerMode === 'edit' && editForm ? <Card title="编辑档案" size="small"><Form layout="vertical"><Form.Item label="姓名" required><Input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Form.Item><Form.Item label="所属支派"><Select value={editForm.branchId} onChange={value => patchEdit('branchId', value)} options={[{ value: '', label: '暂不归属支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: display(branch.branchName, '未命名支派') }))]} /></Form.Item><Form.Item label="性别"><Select value={editForm.gender} onChange={value => patchEdit('gender', value)} options={GENDER_OPTIONS} /></Form.Item><Form.Item label="代次"><Input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Form.Item><Form.Item label="字辈"><Input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Form.Item><Form.Item label="出生日期"><Input value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item><Form.Item label="逝世日期"><Input value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item><Form.Item label="隐私级别"><Select value={editForm.privacyLevel} onChange={value => patchEdit('privacyLevel', value)} options={PRIVACY_LEVEL_OPTIONS} /></Form.Item><Form.Item label="人物传记"><Input.TextArea rows={4} value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} /></Form.Item></Form></Card> : null}<Tabs items={[{ key: 'relationships', label: `亲属关系（${relationshipRows.length}）`, children: relationshipRows.length ? <Table<PersonRelationshipDto> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={relationshipRows} pagination={false} columns={[{ key: 'type', title: '关系', render: (_value, row) => relationTypeText(row.relationLabel || row.relationType) }, { key: 'person', title: '关联人物', render: (_value, row) => row.fromPersonName || row.toPersonName || row.personName || '关联人物待维护' }, { key: 'status', title: '状态', render: (_value, row) => <Tag>{display(row.confidenceLevel || row.status, '已记录')}</Tag> }]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无亲属关系" /> }, { key: 'sources', label: `来源资料（${sourceRows.length}）`, children: sourceRows.length ? <Table<PersonSourceBindingDto> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={sourceRows} pagination={false} columns={[{ key: 'title', title: '来源资料', render: (_value, row) => sourceTitle(row) }, { key: 'type', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType || row.type) }, { key: 'status', title: '状态', render: (_value, row) => <Tag>{statusText(row.dataStatus || row.status)}</Tag> }]} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源资料" /> }, { key: 'events', label: `生命事件（${eventRows.length}）`, children: timelineItems.length ? <Timeline items={timelineItems} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无生命事件" /> }]} /></Space> : null}</Drawer>
     </div>
   );
 }
