@@ -24,6 +24,14 @@ function display(value: unknown, fallback = '-') {
   return text || fallback;
 }
 
+function userStatusText(value?: string) {
+  const status = String(value || '').trim().toLowerCase();
+  if (!status) return '-';
+  if (['active', 'enabled', 'normal'].includes(status)) return '正常';
+  if (['disabled', 'inactive', 'locked'].includes(status)) return '不可用';
+  return '待确认';
+}
+
 export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -71,11 +79,11 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   return (
     <>
       <Dropdown menu={{ items: userMenuItems, onClick: onUserMenuClick }} trigger={['click']} placement="bottomRight" overlayClassName="github-user-dropdown">
-        <button className="github-user-trigger" type="button">
+        <Button className="github-user-trigger" type="text">
           <Avatar size={32} src={currentUser?.avatarUrl}>{avatarText(currentUser)}</Avatar>
           <span className="github-user-name">{currentUser?.displayName || currentUser?.username || '个人中心'}</span>
           <em>⌄</em>
-        </button>
+        </Button>
       </Dropdown>
       <Modal
         title="个人中心"
@@ -92,12 +100,11 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
             </div>
           </Space>
           <Descriptions size="small" bordered column={1} className="profile-center-descriptions">
-            <Descriptions.Item label="用户ID">{display(currentUser?.id)}</Descriptions.Item>
             <Descriptions.Item label="用户名">{display(currentUser?.username)}</Descriptions.Item>
             <Descriptions.Item label="显示名">{display(currentUser?.displayName)}</Descriptions.Item>
             <Descriptions.Item label="邮箱">{display(currentUser?.email)}</Descriptions.Item>
             <Descriptions.Item label="手机号">{display(currentUser?.phone)}</Descriptions.Item>
-            <Descriptions.Item label="状态">{display(currentUser?.status)}</Descriptions.Item>
+            <Descriptions.Item label="账号状态">{userStatusText(currentUser?.status)}</Descriptions.Item>
             <Descriptions.Item label="最近登录">{display(currentUser?.lastLoginAt)}</Descriptions.Item>
           </Descriptions>
         </div>
