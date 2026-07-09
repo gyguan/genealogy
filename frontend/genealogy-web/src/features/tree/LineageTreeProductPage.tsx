@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Avatar, Button, Card, Descriptions, Drawer, Empty, Form, Input, Segmented, Select, Space, Tag, Tooltip, Typography, theme } from 'antd';
-import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { treeService } from '../../shared/services/treeService';
 import { Panel } from '../../shared/ui/Panel';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
@@ -22,16 +22,7 @@ type PersonCard = {
   raw?: any;
 };
 
-type RelationshipCard = {
-  id: string;
-  fromPersonId: string;
-  toPersonId: string;
-  relationType: string;
-  relationLabel: string;
-  status: string;
-  raw?: any;
-};
-
+type RelationshipCard = { id: string; fromPersonId: string; toPersonId: string; relationType: string; relationLabel: string; status: string; raw?: any };
 type WorkbenchView = 'all' | 'branch' | 'person';
 
 function rows(data: any): any[] {
@@ -43,167 +34,39 @@ function rows(data: any): any[] {
   return [];
 }
 
-function edgeRows(data: any): any[] {
-  return Array.isArray(data?.edges) ? data.edges : [];
-}
-
-function firstChar(name?: string) {
-  return (name || '谱').slice(0, 1);
-}
-
-function dateText(row: any) {
-  const birth = row.birthDate || row.birthYear || row.birthDateText || '';
-  const death = row.deathDate || row.deathYear || row.deathDateText || '';
-  return birth || death ? `${birth || '?'}-${death || ''}` : '-';
-}
-
-function idOf(row: any) {
-  return String(row?.id || row?.personId || row?.targetId || '');
-}
-
-function generationNoOf(row: any): number | undefined {
-  const value = row?.generationNo ?? row?.generation ?? row?.generationNumber;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
-}
-
-function relationCn(label: string) {
-  const dict: Record<string, string> = {
-    father: '父亲',
-    mother: '母亲',
-    spouse: '配偶',
-    parent_child: '亲子',
-    child: '子女',
-    son: '子',
-    daughter: '女',
-    adoptive: '收养',
-    adoptive_father: '养父',
-    adoptive_mother: '养母',
-    heir_successor: '继嗣',
-    successor: '继嗣',
-    out_adoption: '出嗣',
-    out_adopted: '出嗣'
-  };
-  return dict[label] || label || '亲属';
-}
-
-function genderCn(value: string) {
-  const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
-  return dict[value] || value || '未知';
-}
-
-function statusCn(value: string) {
-  const status = String(value || '').toLowerCase();
-  const dict: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '正式',
-    active: '正式',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
-  };
-  return dict[status] || value || '已记录';
-}
-
-function statusColor(value: string) {
-  const status = String(value || '').toLowerCase();
-  if (['official', 'active', 'approved'].includes(status)) return 'success';
-  if (['pending', 'pending_review', 'pending'].includes(status)) return 'processing';
-  if (status === 'rejected') return 'error';
-  return 'default';
-}
+function edgeRows(data: any): any[] { return Array.isArray(data?.edges) ? data.edges : []; }
+function firstChar(name?: string) { return (name || '谱').slice(0, 1); }
+function dateText(row: any) { const birth = row.birthDate || row.birthYear || row.birthDateText || ''; const death = row.deathDate || row.deathYear || row.deathDateText || ''; return birth || death ? `${birth || '?'}-${death || ''}` : '-'; }
+function idOf(row: any) { return String(row?.id || row?.personId || row?.targetId || ''); }
+function generationNoOf(row: any): number | undefined { const value = row?.generationNo ?? row?.generation ?? row?.generationNumber; const numeric = Number(value); return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined; }
+function relationCn(label: string) { const dict: Record<string, string> = { father: '父亲', mother: '母亲', spouse: '配偶', parent_child: '亲子', child: '子女', son: '子', daughter: '女', adoptive: '收养', adoptive_father: '养父', adoptive_mother: '养母', heir_successor: '继嗣', successor: '继嗣', out_adoption: '出嗣', out_adopted: '出嗣' }; return dict[label] || label || '亲属'; }
+function genderCn(value: string) { const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' }; return dict[value] || value || '未知'; }
+function statusCn(value: string) { const status = String(value || '').toLowerCase(); const dict: Record<string, string> = { draft: '草稿', pending: '待审核', pending_review: '待审核', official: '正式', active: '正式', approved: '已通过', rejected: '已驳回', archived: '已归档' }; return dict[status] || value || '已记录'; }
+function statusColor(value: string) { const status = String(value || '').toLowerCase(); if (['official', 'active', 'approved'].includes(status)) return 'success'; if (['pending', 'pending_review', 'pending'].includes(status)) return 'processing'; if (status === 'rejected') return 'error'; return 'default'; }
 
 function toPerson(row: any, branches: any[], fallbackId = ''): PersonCard {
   const id = idOf(row) || fallbackId;
   const name = row?.name || row?.personName || row?.displayName || '未命名人物';
   const branchId = String(row?.branchId || row?.branch?.id || '');
-  const branchName = branches.find(item => String(item.id) === branchId)?.branchName || row?.branchName || row?.branch || '未归属支派';
   const generationNo = generationNoOf(row);
-  return {
-    id,
-    name,
-    avatar: firstChar(name),
-    gender: row?.gender || row?.sex || 'unknown',
-    generationNo,
-    generation: generationNo ? `${generationNo}世` : row?.generationName || '世次未维护',
-    word: row?.generationWord || row?.word || '-',
-    branchId,
-    branchName,
-    years: dateText(row || {}),
-    status: row?.status || row?.dataStatus || row?.verificationStatus || row?.reviewStatus || '已记录',
-    relation: row?.relationLabel || row?.relationType,
-    raw: row
-  };
+  return { id, name, avatar: firstChar(name), gender: row?.gender || row?.sex || 'unknown', generationNo, generation: generationNo ? `${generationNo}世` : row?.generationName || '世次未维护', word: row?.generationWord || row?.word || '-', branchId, branchName: branches.find(item => String(item.id) === branchId)?.branchName || row?.branchName || row?.branch || '未归属支派', years: dateText(row || {}), status: row?.status || row?.dataStatus || row?.verificationStatus || row?.reviewStatus || '已记录', relation: row?.relationLabel || row?.relationType, raw: row };
 }
 
 function toRelationship(row: any): RelationshipCard {
   const fromPersonId = String(row.fromPersonId || row.sourcePersonId || row.from?.id || '');
   const toPersonId = String(row.toPersonId || row.targetPersonId || row.to?.id || '');
-  return {
-    id: String(row.id || row.relationshipId || `${fromPersonId}-${toPersonId}-${row.relationLabel || row.relationType}`),
-    fromPersonId,
-    toPersonId,
-    relationType: row.relationType || '',
-    relationLabel: row.relationLabel || row.relationType || '',
-    status: row.status || row.dataStatus || row.confidenceLevel || '已记录',
-    raw: row
-  };
+  return { id: String(row.id || row.relationshipId || `${fromPersonId}-${toPersonId}-${row.relationLabel || row.relationType}`), fromPersonId, toPersonId, relationType: row.relationType || '', relationLabel: row.relationLabel || row.relationType || '', status: row.status || row.dataStatus || row.confidenceLevel || '已记录', raw: row };
 }
 
-function uniquePeople(list: PersonCard[]) {
-  const map = new Map<string, PersonCard>();
-  list.filter(item => item.id).forEach(item => map.set(item.id, item));
-  return Array.from(map.values());
-}
-
-function sortByGeneration(list: PersonCard[], direction: 'asc' | 'desc' = 'asc') {
-  return [...list].sort((a, b) => {
-    const av = a.generationNo ?? 9999;
-    const bv = b.generationNo ?? 9999;
-    return direction === 'asc' ? av - bv : bv - av;
-  });
-}
-
-function groupDescendants(list: PersonCard[]) {
-  const groups = new Map<string, PersonCard[]>();
-  list.forEach(item => {
-    const key = item.generationNo ? `${item.generationNo}世` : '后代';
-    groups.set(key, [...(groups.get(key) || []), item]);
-  });
-  return Array.from(groups.entries()).sort((a, b) => Number(a[0].replace(/\D/g, '') || 9999) - Number(b[0].replace(/\D/g, '') || 9999));
-}
-
-function branchPath(branches: any[], branchId: string) {
-  const current = branches.find(item => String(item.id) === branchId);
-  if (!current) return '未选择支派';
-  const idToBranch = new Map(branches.map(item => [String(item.id), item]));
-  const chain: string[] = [];
-  let node: any = current;
-  const guard = new Set<string>();
-  while (node && !guard.has(String(node.id))) {
-    guard.add(String(node.id));
-    chain.unshift(node.branchName || '未命名支派');
-    node = node.parentId ? idToBranch.get(String(node.parentId)) : null;
-  }
-  return chain.join(' / ');
-}
+function uniquePeople(list: PersonCard[]) { const map = new Map<string, PersonCard>(); list.filter(item => item.id).forEach(item => map.set(item.id, item)); return Array.from(map.values()); }
+function sortByGeneration(list: PersonCard[], direction: 'asc' | 'desc' = 'asc') { return [...list].sort((a, b) => { const av = a.generationNo ?? 9999; const bv = b.generationNo ?? 9999; return direction === 'asc' ? av - bv : bv - av; }); }
+function groupDescendants(list: PersonCard[]) { const groups = new Map<string, PersonCard[]>(); list.forEach(item => { const key = item.generationNo ? `${item.generationNo}世` : '后代'; groups.set(key, [...(groups.get(key) || []), item]); }); return Array.from(groups.entries()).sort((a, b) => Number(a[0].replace(/\D/g, '') || 9999) - Number(b[0].replace(/\D/g, '') || 9999)); }
+function branchPath(branches: any[], branchId: string) { const current = branches.find(item => String(item.id) === branchId); if (!current) return '未选择支派'; const idToBranch = new Map(branches.map(item => [String(item.id), item])); const chain: string[] = []; let node: any = current; const guard = new Set<string>(); while (node && !guard.has(String(node.id))) { guard.add(String(node.id)); chain.unshift(node.branchName || '未命名支派'); node = node.parentId ? idToBranch.get(String(node.parentId)) : null; } return chain.join(' / '); }
 
 function TreeNode({ person, active, hint, onClick }: { person: PersonCard; active?: boolean; hint?: string; onClick?: () => void }) {
-  return (
-    <Button type="text" className={`lineage-tree-node ${active ? 'active' : ''}`} onClick={onClick}>
-      <span className="lineage-avatar">{person.avatar}</span>
-      <strong>{person.name}</strong>
-      <em>{hint || person.relation || person.generation}</em>
-      <small>{person.generation} · {person.word}字辈</small>
-    </Button>
-  );
+  return <Button type="text" className={`lineage-tree-node ${active ? 'active' : ''}`} onClick={onClick}><span className="lineage-avatar">{person.avatar}</span><strong>{person.name}</strong><em>{hint || person.relation || person.generation}</em><small>{person.generation} · {person.word}字辈</small></Button>;
 }
-
-function EmptyLane({ text }: { text: string }) {
-  return <div className="lineage-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={text} /></div>;
-}
+function EmptyLane({ text }: { text: string }) { return <div className="lineage-empty"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={text} /></div>; }
 
 export function LineageTreeProductPage({ notify }: Props) {
   const { token } = theme.useToken();
@@ -227,100 +90,37 @@ export function LineageTreeProductPage({ notify }: Props) {
   const [workbenchView, setWorkbenchView] = useState<WorkbenchView>('all');
   const [loading, setLoading] = useState(false);
 
-  async function run(action: () => Promise<void>) {
-    if (loading) return;
-    setLoading(true);
-    try {
-      await action();
-    } catch (error) {
-      notify({ message: (error as Error).message || '操作失败' }, true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function resetLineage() {
-    setCenter(null);
-    setRelationships([]);
-    setFamilyNodes([]);
-    setAncestors([]);
-    setDescendants([]);
-    setSelectedNode(null);
-  }
-
-  function resetBranchLineage() {
-    setBranchNodes([]);
-    setBranchEdges([]);
-    setBranchRootPersonId('');
-  }
-
-  function clearClanScopedData() {
-    setBranches([]);
-    setPeople([]);
-    setSearchNotice('');
-    setSelectedBranchId('');
-    resetLineage();
-    resetBranchLineage();
-  }
-
-  function resetSearch() {
-    setSearchKeyword('');
-    setSearchNotice('');
-    workspace.patch({ personId: '', relationshipId: '' });
-    resetLineage();
-  }
-
-  function validIdInRows(id: string, list: any[]) {
-    return Boolean(id) && list.some(item => String(item.id) === String(id));
-  }
+  async function run(action: () => Promise<void>) { if (loading) return; setLoading(true); try { await action(); } catch (error) { notify({ message: (error as Error).message || '操作失败' }, true); } finally { setLoading(false); } }
+  function resetLineage() { setCenter(null); setRelationships([]); setFamilyNodes([]); setAncestors([]); setDescendants([]); setSelectedNode(null); }
+  function resetBranchLineage() { setBranchNodes([]); setBranchEdges([]); setBranchRootPersonId(''); }
+  function clearClanScopedData() { setBranches([]); setPeople([]); setSearchNotice(''); setSelectedBranchId(''); resetLineage(); resetBranchLineage(); }
+  function resetSearch() { setSearchKeyword(''); setSearchNotice(''); workspace.patch({ personId: '', relationshipId: '' }); resetLineage(); }
+  function validIdInRows(id: string, list: any[]) { return Boolean(id) && list.some(item => String(item.id) === String(id)); }
 
   async function loadClanContext(clanId: string, resetSelection = false) {
-    if (!clanId) {
-      clearClanScopedData();
-      workspace.patch({ branchId: '', personId: '', relationshipId: '' });
-      return;
-    }
-
-    const branchRows = rows(await apiClient.get(`/clans/${clanId}/branches`).catch(() => []));
+    if (!clanId) { clearClanScopedData(); workspace.patch({ branchId: '', personId: '', relationshipId: '' }); return; }
+    const branchRows = rows(await treeService.listBranches(clanId).catch(() => []));
     setBranches(branchRows);
-
-    const nextBranchId = resetSelection
-      ? String(branchRows[0]?.id || '')
-      : validIdInRows(selectedBranchId, branchRows)
-        ? selectedBranchId
-        : validIdInRows(workspace.branchId, branchRows)
-          ? workspace.branchId
-          : String(branchRows[0]?.id || '');
-
+    const nextBranchId = resetSelection ? String(branchRows[0]?.id || '') : validIdInRows(selectedBranchId, branchRows) ? selectedBranchId : validIdInRows(workspace.branchId, branchRows) ? workspace.branchId : String(branchRows[0]?.id || '');
     setSelectedBranchId(nextBranchId);
     workspace.setBranchId(nextBranchId || '');
     resetBranchLineage();
-
-    const personRes = await apiClient.get(`/persons/search?clanId=${clanId}&pageNo=1&pageSize=120`).catch(() => apiClient.get(`/clans/${clanId}/persons`));
-    const personRows = rows(personRes);
-    const nextPeople = personRows.map(row => toPerson(row, branchRows));
+    const personRes = await treeService.searchPeople(clanId, 1, 120).catch(() => treeService.listPeople(clanId));
+    const nextPeople = rows(personRes).map(row => toPerson(row, branchRows));
     setPeople(nextPeople);
     setSearchNotice('');
-
-    const nextPersonId = resetSelection
-      ? nextPeople[0]?.id || ''
-      : nextPeople.some(item => item.id === workspace.personId)
-        ? workspace.personId
-        : nextPeople[0]?.id || '';
-
+    const nextPersonId = resetSelection ? nextPeople[0]?.id || '' : nextPeople.some(item => item.id === workspace.personId) ? workspace.personId : nextPeople[0]?.id || '';
     workspace.setPersonId(nextPersonId || '');
     workspace.setRelationshipId('');
     setSelectedNode(null);
-
     if (nextPersonId) await loadLineage(nextPersonId, branchRows, nextPeople);
     else resetLineage();
-
     if (nextBranchId) await loadBranchLineage(nextBranchId, branchRows, clanId, false);
   }
 
   async function loadBase() {
     await run(async () => {
-      const clanRows = rows(await apiClient.get('/clans').catch(() => []));
+      const clanRows = rows(await treeService.listClans().catch(() => []));
       setClans(clanRows);
       const nextClanId = workspace.clanId || String(clanRows[0]?.id || '');
       if (nextClanId && !workspace.clanId) workspace.setClanId(nextClanId);
@@ -329,35 +129,22 @@ export function LineageTreeProductPage({ notify }: Props) {
   }
 
   async function handleClanChange(nextClanId: string) {
-    await run(async () => {
-      workspace.patch({ clanId: nextClanId, branchId: '', personId: '', relationshipId: '', sourceId: '', reviewTaskId: '' });
-      clearClanScopedData();
-      await loadClanContext(nextClanId, true);
-      notify({ message: nextClanId ? '宗族已切换，支派世系和中心人物世系已刷新' : '已清空宗族选择' });
-    });
+    await run(async () => { workspace.patch({ clanId: nextClanId, branchId: '', personId: '', relationshipId: '', sourceId: '', reviewTaskId: '' }); clearClanScopedData(); await loadClanContext(nextClanId, true); notify({ message: nextClanId ? '宗族已切换，支派世系和中心人物世系已刷新' : '已清空宗族选择' }); });
   }
 
   async function handleBranchChange(nextBranchId: string) {
     setSelectedBranchId(nextBranchId);
     resetBranchLineage();
-    if (!nextBranchId) {
-      workspace.setBranchId('');
-      return;
-    }
+    if (!nextBranchId) { workspace.setBranchId(''); return; }
     await run(() => loadBranchLineage(nextBranchId, branches, workspace.clanId, true));
   }
 
   async function searchPeople() {
     await run(async () => {
       if (!workspace.clanId) throw new Error('请先选择宗族');
-      const keyword = searchKeyword.trim();
-      const path = `/persons/search?clanId=${workspace.clanId}&pageNo=1&pageSize=50${keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''}`;
-      const data = await apiClient.get(path).catch(() => []);
+      const data = await treeService.searchPeople(workspace.clanId, 1, 50, searchKeyword).catch(() => []);
       const next = rows(data).map(row => toPerson(row, branches));
-      if (!next.length) {
-        setSearchNotice('未找到匹配人物，请调整搜索条件。');
-        return;
-      }
+      if (!next.length) { setSearchNotice('未找到匹配人物，请调整搜索条件。'); return; }
       const mergedPeople = uniquePeople([...next, ...people]);
       const first = next[0];
       setPeople(mergedPeople);
@@ -365,24 +152,18 @@ export function LineageTreeProductPage({ notify }: Props) {
       workspace.setPersonId(first.id);
       setSelectedNode(null);
       await loadLineage(first.id, branches, mergedPeople);
-      if (first.branchId && first.branchId !== selectedBranchId) {
-        setSelectedBranchId(first.branchId);
-        await loadBranchLineage(first.branchId, branches, workspace.clanId, false);
-      }
+      if (first.branchId && first.branchId !== selectedBranchId) { setSelectedBranchId(first.branchId); await loadBranchLineage(first.branchId, branches, workspace.clanId, false); }
     });
   }
 
   async function loadLineage(personId = workspace.personId, branchRows = branches, peopleRows = people) {
-    if (!personId) {
-      resetLineage();
-      return;
-    }
+    if (!personId) { resetLineage(); return; }
     const [detailRes, relationRes, familyRes, ancestorRes, descendantRes] = await Promise.all([
-      apiClient.get(`/persons/${personId}`).catch(() => peopleRows.find(item => item.id === personId)?.raw || { id: personId }),
-      apiClient.get(`/persons/${personId}/relationships`).catch(() => []),
-      apiClient.get(`/tree/person/${personId}/family`).catch(() => null),
-      apiClient.get(`/tree/ancestors?personId=${personId}&maxDepth=${depth}`).catch(() => null),
-      apiClient.get(`/tree/descendants?rootPersonId=${personId}&maxDepth=${depth}`).catch(() => null)
+      treeService.getPerson(personId).catch(() => peopleRows.find(item => item.id === personId)?.raw || { id: personId }),
+      treeService.getPersonRelationships(personId).catch(() => []),
+      treeService.getPersonFamilyTree(personId).catch(() => null),
+      treeService.getAncestors(personId, depth).catch(() => null),
+      treeService.getDescendants(personId, depth).catch(() => null)
     ]);
     const nextCenter = toPerson(detailRes, branchRows, personId);
     setCenter(nextCenter);
@@ -395,7 +176,7 @@ export function LineageTreeProductPage({ notify }: Props) {
   async function loadBranchLineage(branchId = selectedBranchId, branchRows = branches, clanId = workspace.clanId, showNotice = true) {
     if (!clanId) throw new Error('请先选择宗族');
     if (!branchId) throw new Error('请选择支派');
-    const data: any = await apiClient.get(`/tree/clans/${clanId}/branches/${branchId}/lineage`);
+    const data: any = await treeService.getBranchLineage(clanId, branchId);
     const nextNodes = rows(data).map(row => toPerson(row, branchRows));
     const nextEdges = edgeRows(data).map(toRelationship);
     setBranchNodes(nextNodes);
@@ -408,53 +189,25 @@ export function LineageTreeProductPage({ notify }: Props) {
   useEffect(() => { void loadBase(); }, []);
   useEffect(() => { if (workspace.personId) void run(() => loadLineage(workspace.personId)); }, [workspace.personId, depth]);
 
-  const personMap = useMemo(() => {
-    const map = new Map<string, PersonCard>();
-    [...people, ...familyNodes, ...ancestors, ...descendants, ...branchNodes, ...(center ? [center] : [])].forEach(item => item.id && map.set(item.id, item));
-    return map;
-  }, [people, familyNodes, ancestors, descendants, branchNodes, center]);
-
-  function findPerson(id: string, fallback?: any) {
-    return personMap.get(id) || toPerson(fallback || { id }, branches, id);
-  }
+  const personMap = useMemo(() => { const map = new Map<string, PersonCard>(); [...people, ...familyNodes, ...ancestors, ...descendants, ...branchNodes, ...(center ? [center] : [])].forEach(item => item.id && map.set(item.id, item)); return map; }, [people, familyNodes, ancestors, descendants, branchNodes, center]);
+  function findPerson(id: string, fallback?: any) { return personMap.get(id) || toPerson(fallback || { id }, branches, id); }
 
   const relationshipDerived = useMemo(() => {
     if (!center) return { parents: [] as PersonCard[], spouses: [] as PersonCard[], children: [] as PersonCard[], others: [] as RelationshipCard[] };
-    const parents: PersonCard[] = [];
-    const spouses: PersonCard[] = [];
-    const children: PersonCard[] = [];
-    const others: RelationshipCard[] = [];
+    const parents: PersonCard[] = [], spouses: PersonCard[] = [], children: PersonCard[] = [], others: RelationshipCard[] = [];
     relationships.forEach(rel => {
-      if (rel.relationType === 'spouse' || rel.relationLabel === 'spouse') {
-        const otherId = rel.fromPersonId === center.id ? rel.toPersonId : rel.toPersonId === center.id ? rel.fromPersonId : '';
-        if (otherId) spouses.push({ ...findPerson(otherId), relation: '配偶' });
-        else others.push(rel);
-        return;
-      }
-      if (rel.relationType === 'parent_child' || rel.relationType === 'adoptive' || rel.relationType === 'successor') {
-        if (rel.toPersonId === center.id) parents.push({ ...findPerson(rel.fromPersonId), relation: relationCn(rel.relationLabel || rel.relationType) });
-        else if (rel.fromPersonId === center.id) children.push({ ...findPerson(rel.toPersonId), relation: relationCn(rel.relationLabel || rel.relationType) });
-        else others.push(rel);
-        return;
-      }
+      if (rel.relationType === 'spouse' || rel.relationLabel === 'spouse') { const otherId = rel.fromPersonId === center.id ? rel.toPersonId : rel.toPersonId === center.id ? rel.fromPersonId : ''; if (otherId) spouses.push({ ...findPerson(otherId), relation: '配偶' }); else others.push(rel); return; }
+      if (rel.relationType === 'parent_child' || rel.relationType === 'adoptive' || rel.relationType === 'successor') { if (rel.toPersonId === center.id) parents.push({ ...findPerson(rel.fromPersonId), relation: relationCn(rel.relationLabel || rel.relationType) }); else if (rel.fromPersonId === center.id) children.push({ ...findPerson(rel.toPersonId), relation: relationCn(rel.relationLabel || rel.relationType) }); else others.push(rel); return; }
       others.push(rel);
     });
     return { parents: uniquePeople(parents), spouses: uniquePeople(spouses), children: uniquePeople(children), others };
   }, [relationships, center, personMap, branches]);
 
   const spousePersonIds = useMemo(() => new Set(relationshipDerived.spouses.map(person => person.id)), [relationshipDerived.spouses]);
-  const ancestorLane = useMemo(() => {
-    const source = ancestors.length ? ancestors.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.parents;
-    return sortByGeneration(uniquePeople(source), 'asc').slice(-10);
-  }, [ancestors, relationshipDerived.parents, spousePersonIds]);
-  const descendantGroups = useMemo(() => {
-    const source = descendants.length ? descendants.filter(person => !spousePersonIds.has(person.id)) : relationshipDerived.children;
-    return groupDescendants(uniquePeople(source));
-  }, [descendants, relationshipDerived.children, spousePersonIds]);
-
+  const ancestorLane = useMemo(() => sortByGeneration(uniquePeople((ancestors.length ? ancestors : relationshipDerived.parents).filter(person => !spousePersonIds.has(person.id))), 'asc').slice(-10), [ancestors, relationshipDerived.parents, spousePersonIds]);
+  const descendantGroups = useMemo(() => groupDescendants(uniquePeople((descendants.length ? descendants : relationshipDerived.children).filter(person => !spousePersonIds.has(person.id)))), [descendants, relationshipDerived.children, spousePersonIds]);
   const branchGroups = useMemo(() => groupDescendants(sortByGeneration(uniquePeople(branchNodes))), [branchNodes]);
   const branchRoot = useMemo(() => branchNodes.find(person => person.id === branchRootPersonId) || branchNodes[0], [branchNodes, branchRootPersonId]);
-  const branchRootName = branchNodes.length ? branchRoot?.name || '-' : '-';
   const branchName = branches.find(item => String(item.id) === selectedBranchId)?.branchName || '支派';
   const currentClanName = clans.find(item => String(item.id) === workspace.clanId)?.clanName || '族谱';
   const selectedNodeRelations = selectedNode ? [...relationships, ...branchEdges].filter(rel => rel.fromPersonId === selectedNode.id || rel.toPersonId === selectedNode.id) : [];
@@ -464,170 +217,31 @@ export function LineageTreeProductPage({ notify }: Props) {
     setCenter(nextCenter);
     workspace.setPersonId(personId);
     setSelectedNode(null);
-    if (nextCenter.branchId && nextCenter.branchId !== selectedBranchId) {
-      setSelectedBranchId(nextCenter.branchId);
-      await run(() => loadBranchLineage(nextCenter.branchId, branches, workspace.clanId, false));
-    }
+    if (nextCenter.branchId && nextCenter.branchId !== selectedBranchId) { setSelectedBranchId(nextCenter.branchId); await run(() => loadBranchLineage(nextCenter.branchId, branches, workspace.clanId, false)); }
   }
 
   return (
     <div className="lineage-page lineage-tree-page">
       <Panel title="世系图谱" description="统一在搜索区选择宗族、支派范围和中心人物；下方按支派全局到人物局部的顺序展示世系。">
         <Form layout="vertical" className="lineage-search-grid">
-          <Form.Item label="宗族">
-            <Select
-              showSearch
-              optionFilterProp="label"
-              value={workspace.clanId}
-              onChange={value => void handleClanChange(value)}
-              options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clan.clanName || clan.surname || '未命名宗族' }))]}
-            />
-          </Form.Item>
-          <Form.Item label="支派范围">
-            <Select
-              showSearch
-              optionFilterProp="label"
-              value={selectedBranchId}
-              onChange={value => void handleBranchChange(value)}
-              options={[{ value: '', label: '请选择支派' }, ...branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))]}
-            />
-          </Form.Item>
-          <Form.Item label="搜索人物">
-            <Input.Search value={searchKeyword} onChange={event => setSearchKeyword(event.target.value)} onSearch={() => void searchPeople()} placeholder="输入姓名、谱名、字号" loading={loading} />
-          </Form.Item>
-          <Form.Item label="展开深度">
-            <Select value={depth} onChange={setDepth} options={[{ value: '2', label: '2代' }, { value: '3', label: '3代' }, { value: '5', label: '5代' }, { value: '8', label: '8代' }]} />
-          </Form.Item>
-          <Form.Item label="视图模式">
-            <Segmented
-              value={workbenchView}
-              onChange={value => setWorkbenchView(value as WorkbenchView)}
-              options={[{ label: '全部', value: 'all' }, { label: '支派', value: 'branch' }, { label: '人物', value: 'person' }]}
-            />
-          </Form.Item>
-          <Form.Item label="操作">
-            <Space wrap>
-              <Tooltip title="按当前筛选条件查询人物并刷新世系">
-                <Button type="primary" loading={loading} onClick={() => void searchPeople()}>搜索</Button>
-              </Tooltip>
-              <Button disabled={loading && !searchKeyword && !center} onClick={resetSearch}>重置</Button>
-            </Space>
-          </Form.Item>
+          <Form.Item label="宗族"><Select showSearch optionFilterProp="label" value={workspace.clanId} onChange={value => void handleClanChange(value)} options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clan.clanName || clan.surname || '未命名宗族' }))]} /></Form.Item>
+          <Form.Item label="支派范围"><Select showSearch optionFilterProp="label" value={selectedBranchId} onChange={value => void handleBranchChange(value)} options={[{ value: '', label: '请选择支派' }, ...branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))]} /></Form.Item>
+          <Form.Item label="搜索人物"><Input.Search value={searchKeyword} onChange={event => setSearchKeyword(event.target.value)} onSearch={() => void searchPeople()} placeholder="输入姓名、谱名、字号" loading={loading} /></Form.Item>
+          <Form.Item label="展开深度"><Select value={depth} onChange={setDepth} options={[{ value: '2', label: '2代' }, { value: '3', label: '3代' }, { value: '5', label: '5代' }, { value: '8', label: '8代' }]} /></Form.Item>
+          <Form.Item label="视图模式"><Segmented value={workbenchView} onChange={value => setWorkbenchView(value as WorkbenchView)} options={[{ label: '全部', value: 'all' }, { label: '支派', value: 'branch' }, { label: '人物', value: 'person' }]} /></Form.Item>
+          <Form.Item label="操作"><Space wrap><Tooltip title="按当前筛选条件查询人物并刷新世系"><Button type="primary" loading={loading} onClick={() => void searchPeople()}>搜索</Button></Tooltip><Button disabled={loading && !searchKeyword && !center} onClick={resetSearch}>重置</Button></Space></Form.Item>
         </Form>
         {searchNotice ? <Alert type="success" showIcon message={searchNotice} style={{ marginTop: 12 }} /> : null}
       </Panel>
 
       <section className="lineage-workbench">
-        <Card className="lineage-workbench-head" style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }}>
-          <Space direction="vertical" size={4}>
-            <Typography.Text type="secondary">{currentClanName}</Typography.Text>
-            <Typography.Title level={3} style={{ margin: 0 }}>世系分析工作台</Typography.Title>
-            <Typography.Paragraph type="secondary" style={{ margin: 0 }}>先查看支派全局世系，再围绕中心人物查看上下延展；两块内容上下承接，便于从房支脉络定位到个人关系。</Typography.Paragraph>
-          </Space>
-        </Card>
+        {(workbenchView === 'all' || workbenchView === 'branch') ? <Card title={`${currentClanName} · ${branchName}支派世系`} style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }} extra={<Tag>{branchPath(branches, selectedBranchId)}</Tag>}><Space direction="vertical" size="middle" style={{ width: '100%' }}>{branchRoot ? <Card size="small"><Space><Avatar>{branchRoot.avatar}</Avatar><div><Typography.Text strong>{branchRoot.name}</Typography.Text><br /><Typography.Text type="secondary">支派根节点 · {branchRoot.generation}</Typography.Text></div></Space></Card> : <EmptyLane text="暂无支派世系数据，请选择支派后刷新。" />}{branchGroups.length ? branchGroups.map(([label, list]) => <div key={label}><Typography.Text strong>{label}</Typography.Text><div className="lineage-node-row">{list.map(person => <TreeNode key={person.id} person={person} active={selectedNode?.id === person.id} onClick={() => setSelectedNode(person)} />)}</div></div>) : null}{branchEdges.length ? <Tag color="processing">后端返回关系线 {branchEdges.length} 条</Tag> : <Tag>暂无后端关系线数据</Tag>}</Space></Card> : null}
 
-        <div className="summary-card lineage-workbench-summary">
-          <div><span>当前支派</span><strong>{branchName}</strong></div>
-          <div><span>支派人物</span><strong>{branchNodes.length || '-'}</strong></div>
-          <div><span>支派关系</span><strong>{branchEdges.length || '-'}</strong></div>
-          <div><span>支派根人物</span><strong>{branchRootName}</strong></div>
-          <div><span>中心人物</span><strong>{center?.name || '-'}</strong></div>
-        </div>
-
-        <div className="lineage-workbench-grid">
-          {workbenchView !== 'person' ? (
-            <Card className="lineage-logic-card lineage-logic-card--branch" title="一、支派全局世系" extra={<Tag>{branchEdges.length} 条内部关系</Tag>}>
-              <div className="lineage-tree-title">
-                <div><span>{branchPath(branches, selectedBranchId)}</span></div>
-              </div>
-              <Typography.Paragraph type="secondary" className="lineage-section-desc">先观察当前支派及下级支派的人物分布，确认“这一支有哪些人、处在第几世”。</Typography.Paragraph>
-              <div className="branch-lineage-canvas">
-                {branchGroups.length ? branchGroups.map(([label, group], index) => (
-                  <div className="branch-lineage-column" key={label}>
-                    <b>{label}</b>
-                    <div>{group.map(person => (
-                      <TreeNode
-                        key={person.id}
-                        person={person}
-                        active={person.id === branchRootPersonId}
-                        hint={person.id === branchRootPersonId ? '支派根人物' : person.id === center?.id ? '中心人物' : label}
-                        onClick={() => setSelectedNode(person)}
-                      />
-                    ))}</div>
-                    {index < branchGroups.length - 1 ? <span className="branch-lineage-arrow">→</span> : null}
-                  </div>
-                )) : <EmptyLane text="暂无支派世系数据，请选择支派后生成。" />}
-              </div>
-            </Card>
-          ) : null}
-
-          {workbenchView !== 'branch' ? (
-            <Card className="lineage-logic-card lineage-logic-card--person" title={center ? `二、${center.name} 的中心世系树` : '二、中心人物世系树'} extra={<Tag>上溯祖先 / 配偶 / 下延后代</Tag>}>
-              <div className="lineage-tree-title">
-                <div><span>{center?.branchName || branchName}</span></div>
-              </div>
-              <Typography.Paragraph type="secondary" className="lineage-section-desc">再围绕一个人检查父母、配偶、子女和后代链路，适合做关系补录与异常定位。</Typography.Paragraph>
-              <div className="lineage-tree-canvas">
-                <div className="lineage-tree-layer lineage-tree-layer--ancestors">
-                  {ancestorLane.length ? ancestorLane.map(person => <TreeNode key={person.id} person={person} hint={person.relation || '祖先'} onClick={() => setSelectedNode(person)} />) : <EmptyLane text="暂无上溯祖先" />}
-                </div>
-                <div className="lineage-tree-line" />
-                <div className="lineage-tree-layer lineage-tree-layer--center">
-                  {center ? <TreeNode person={center} active hint="中心人物" onClick={() => setSelectedNode(center)} /> : <EmptyLane text="请选择中心人物" />}
-                  {relationshipDerived.spouses.length ? <div className="lineage-spouse-tree"><b>配偶</b>{relationshipDerived.spouses.map(person => <TreeNode key={person.id} person={person} hint="配偶" onClick={() => setSelectedNode(person)} />)}</div> : null}
-                </div>
-                <div className="lineage-tree-line" />
-                <div className="lineage-tree-children">
-                  {descendantGroups.length ? descendantGroups.map(([label, group]) => (
-                    <div className="lineage-tree-generation" key={label}>
-                      <b>{label}</b>
-                      <div>{group.map(person => <TreeNode key={person.id} person={person} hint={person.relation || label} onClick={() => setSelectedNode(person)} />)}</div>
-                    </div>
-                  )) : <EmptyLane text="暂无下延后代" />}
-                </div>
-              </div>
-            </Card>
-          ) : null}
-        </div>
+        {(workbenchView === 'all' || workbenchView === 'person') ? <Card title="中心人物世系" style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }} extra={center ? <Tag color={statusColor(center.status)}>{statusCn(center.status)}</Tag> : null}><Space direction="vertical" size="middle" style={{ width: '100%' }}>{center ? <div className="lineage-center-card"><Avatar size={48}>{center.avatar}</Avatar><div><Typography.Title level={4} style={{ margin: 0 }}>{center.name}</Typography.Title><Typography.Text type="secondary">{center.branchName} · {center.generation} · {center.word}字辈 · {center.years}</Typography.Text></div><Button onClick={() => setSelectedNode(center)}>查看详情</Button></div> : <EmptyLane text="暂无中心人物，请先选择宗族或搜索人物。" />}{ancestorLane.length ? <div><Typography.Text strong>上溯世系</Typography.Text><div className="lineage-node-row">{ancestorLane.map(person => <TreeNode key={person.id} person={person} hint="上辈" onClick={() => setSelectedNode(person)} />)}</div></div> : <EmptyLane text="暂无上溯世系。" />}{relationshipDerived.spouses.length ? <div><Typography.Text strong>配偶</Typography.Text><div className="lineage-node-row">{relationshipDerived.spouses.map(person => <TreeNode key={person.id} person={person} hint="配偶" onClick={() => setSelectedNode(person)} />)}</div></div> : null}{descendantGroups.length ? descendantGroups.map(([label, list]) => <div key={label}><Typography.Text strong>{label}</Typography.Text><div className="lineage-node-row">{list.map(person => <TreeNode key={person.id} person={person} onClick={() => setSelectedNode(person)} />)}</div></div>) : <EmptyLane text="暂无下传世系。" />}</Space></Card> : null}
       </section>
 
-      <Drawer
-        title="人物详情"
-        width={520}
-        open={Boolean(selectedNode)}
-        onClose={() => setSelectedNode(null)}
-        extra={selectedNode ? <Tag color={statusColor(selectedNode.status)}>{statusCn(selectedNode.status)}</Tag> : null}
-      >
-        {selectedNode ? (
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small">
-              <Space align="center">
-                <Avatar size={56}>{selectedNode.avatar}</Avatar>
-                <div>
-                  <Typography.Title level={4} style={{ margin: 0 }}>{selectedNode.name}</Typography.Title>
-                  <Typography.Text type="secondary">{genderCn(selectedNode.gender)} · {selectedNode.generation} · {selectedNode.word}字辈</Typography.Text>
-                </div>
-              </Space>
-            </Card>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="支派">{selectedNode.branchName}</Descriptions.Item>
-              <Descriptions.Item label="生卒">{selectedNode.years}</Descriptions.Item>
-              <Descriptions.Item label="状态"><Tag color={statusColor(selectedNode.status)}>{statusCn(selectedNode.status)}</Tag></Descriptions.Item>
-              <Descriptions.Item label="关系">{relationCn(selectedNode.relation || '')}</Descriptions.Item>
-            </Descriptions>
-            <Card size="small" title="相关关系">
-              {selectedNodeRelations.length ? selectedNodeRelations.map(rel => (
-                <Typography.Paragraph key={rel.id} style={{ marginBottom: 8 }}>
-                  {relationCn(rel.relationLabel || rel.relationType)}：{findPerson(rel.fromPersonId).name} → {findPerson(rel.toPersonId).name}
-                </Typography.Paragraph>
-              )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关系记录。" />}
-            </Card>
-            <Space wrap>
-              <Button type="primary" onClick={() => void setAsCenter(selectedNode.id)}>设为中心人物</Button>
-              <Button onClick={() => setSelectedNode(null)}>关闭</Button>
-            </Space>
-          </Space>
-        ) : null}
+      <Drawer title="人物节点详情" width={520} open={Boolean(selectedNode)} onClose={() => setSelectedNode(null)} extra={selectedNode ? <Button type="primary" onClick={() => void setAsCenter(selectedNode.id)}>设为中心人物</Button> : null}>
+        {selectedNode ? <Space direction="vertical" size="large" style={{ width: '100%' }}><Card size="small"><Descriptions column={1} size="small" bordered><Descriptions.Item label="姓名">{selectedNode.name}</Descriptions.Item><Descriptions.Item label="性别">{genderCn(selectedNode.gender)}</Descriptions.Item><Descriptions.Item label="所属支派">{selectedNode.branchName}</Descriptions.Item><Descriptions.Item label="世次字辈">{selectedNode.generation} · {selectedNode.word}字辈</Descriptions.Item><Descriptions.Item label="生卒">{selectedNode.years}</Descriptions.Item><Descriptions.Item label="状态"><Tag color={statusColor(selectedNode.status)}>{statusCn(selectedNode.status)}</Tag></Descriptions.Item></Descriptions></Card><Card size="small" title="关联关系">{selectedNodeRelations.length ? <Space direction="vertical" style={{ width: '100%' }}>{selectedNodeRelations.map(rel => <Tag key={rel.id}>{findPerson(rel.fromPersonId, rel.raw?.from).name} → {findPerson(rel.toPersonId, rel.raw?.to).name}：{relationCn(rel.relationLabel || rel.relationType)}</Tag>)}</Space> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无后端关系数据" />}</Card></Space> : null}
       </Drawer>
     </div>
   );
