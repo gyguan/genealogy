@@ -4,10 +4,11 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.source.attachment.dto.SourceAttachmentResponse;
-import com.genealogy.source.attachment.entity.SourceAttachmentEntity;
-import com.genealogy.source.attachment.repository.SourceAttachmentRepository;
+import com.genealogy.source.attachment.entity.LegacySourceAttachmentEntity;
+import com.genealogy.source.attachment.repository.LegacySourceAttachmentRepository;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceRepository;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -26,7 +27,8 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
-@Service
+@Profile("legacy-source-attachment")
+@Service("legacySourceAttachmentApplicationService")
 public class SourceAttachmentApplicationService {
 
     private static final Path ROOT = Path.of("data", "uploads", "sources").toAbsolutePath().normalize();
@@ -37,13 +39,13 @@ public class SourceAttachmentApplicationService {
     public static final String ATTACHMENT_DELETE = "attachment:delete";
 
     private final SourceRepository sourceRepository;
-    private final SourceAttachmentRepository sourceAttachmentRepository;
+    private final LegacySourceAttachmentRepository sourceAttachmentRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final OperationLogApplicationService operationLogApplicationService;
 
     public SourceAttachmentApplicationService(
             SourceRepository sourceRepository,
-            SourceAttachmentRepository sourceAttachmentRepository,
+            LegacySourceAttachmentRepository sourceAttachmentRepository,
             AuthorizationApplicationService authorizationApplicationService,
             OperationLogApplicationService operationLogApplicationService
     ) {
@@ -76,7 +78,7 @@ public class SourceAttachmentApplicationService {
             throw new BusinessException("SOURCE_ATTACHMENT_UPLOAD_FAILED", "附件保存失败");
         }
 
-        SourceAttachmentEntity entity = new SourceAttachmentEntity();
+        LegacySourceAttachmentEntity entity = new LegacySourceAttachmentEntity();
         entity.setSourceId(sourceId);
         entity.setClanId(source.getClanId());
         entity.setOriginalFilename(originalFilename);
@@ -88,7 +90,7 @@ public class SourceAttachmentApplicationService {
         entity.setUploadStatus("uploaded");
         entity.setCreatedBy(actorId);
         entity.setCreatedAt(LocalDateTime.now());
-        SourceAttachmentEntity saved = sourceAttachmentRepository.save(entity);
+        LegacySourceAttachmentEntity saved = sourceAttachmentRepository.save(entity);
         operationLogApplicationService.record(source.getClanId(), actorId, "attachment_upload", "source_attachment", saved.getId(), "上传来源附件：" + saved.getOriginalFilename(), null);
         return toResponse(saved);
     }
@@ -116,7 +118,7 @@ public class SourceAttachmentApplicationService {
 
     @Transactional(readOnly = true)
     public AttachmentFile readFile(Long attachmentId, Long actorId, String permissionCode) {
-        SourceAttachmentEntity entity = getActive(attachmentId);
+        LegacySourceAttachmentEntity entity = getActive(attachmentId);
         authorizationApplicationService.requirePermission(entity.getClanId(), actorId, permissionCode == null ? ATTACHMENT_DOWNLOAD : permissionCode);
         Path path = Path.of(entity.getStoragePath()).toAbsolutePath().normalize();
         if (!path.startsWith(ROOT) || !Files.exists(path)) {
@@ -136,7 +138,7 @@ public class SourceAttachmentApplicationService {
 
     @Transactional
     public void remove(Long attachmentId, Long actorId) {
-        SourceAttachmentEntity entity = getActive(attachmentId);
+        LegacySourceAttachmentEntity entity = getActive(attachmentId);
         authorizationApplicationService.requirePermission(entity.getClanId(), actorId, ATTACHMENT_DELETE);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUploadStatus("deleted");
@@ -151,7 +153,7 @@ public class SourceAttachmentApplicationService {
                 .toList();
     }
 
-    private SourceAttachmentEntity getActive(Long attachmentId) {
+    private LegacySourceAttachmentEntity getActive(Long attachmentId) {
         return sourceAttachmentRepository.findByIdAndDeletedAtIsNull(attachmentId)
                 .orElseThrow(() -> new BusinessException("SOURCE_ATTACHMENT_NOT_FOUND", "附件不存在或已删除"));
     }
@@ -176,7 +178,7 @@ public class SourceAttachmentApplicationService {
         }
     }
 
-    private SourceAttachmentResponse toResponse(SourceAttachmentEntity entity) {
+    private SourceAttachmentResponse toResponse(LegacySourceAttachmentEntity entity) {
         return new SourceAttachmentResponse(
                 entity.getId(), entity.getSourceId(), entity.getClanId(), entity.getOriginalFilename(), entity.getStoredFilename(),
                 entity.getContentType(), entity.getFileSize(), entity.getStoragePath(), entity.getChecksum(), entity.getUploadStatus(), entity.getCreatedAt()
