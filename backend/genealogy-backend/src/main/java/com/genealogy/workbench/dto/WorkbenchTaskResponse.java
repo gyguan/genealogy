@@ -12,6 +12,13 @@ public record WorkbenchTaskResponse(
         String status,
         String statusText,
         String suggestion,
+        String problemDescription,
+        String involvedObject,
+        String riskReason,
+        boolean reviewBlocked,
+        String relatedEntryType,
+        String relatedEntryId,
+        String relatedEntryText,
         LocalDateTime updatedAt
 ) {
 }
