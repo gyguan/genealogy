@@ -91,6 +91,7 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
+  const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(apiClient.getToken()));
 
@@ -130,6 +131,11 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
+  function enterPage(key: ViewKey) {
+    setActive(key);
+    setPageEntryVersion(prev => prev + 1);
+  }
+
   function renderPage() {
     switch (active) {
       case 'home': return <StatisticsHomePage />;
@@ -138,7 +144,7 @@ function AppShell() {
       case 'personArchive': return <><PersonArchiveFocusBridge /><PersonArchiveSearchPage notify={notify} /></>;
       case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceLibraryPage notify={notify} /></>;
       case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
-      case 'editingWorkspace': return <EditingWorkspacePage onNavigate={setActive} />;
+      case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
       case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
       case 'memberManage': return <MemberPage notify={notify} />;
@@ -165,7 +171,7 @@ function AppShell() {
           mode="inline"
           theme="light"
           selectedKeys={[active]}
-          onClick={info => setActive(info.key as ViewKey)}
+          onClick={info => enterPage(info.key as ViewKey)}
           items={navItems.map(([key, label]) => ({ key, label }))}
         />
       </Sider>
@@ -178,7 +184,7 @@ function AppShell() {
           <CurrentUserMenu onLogout={logout} />
         </Header>
         <Content className="content content--compact antd-content">
-          {renderPage()}
+          <div key={`${active}-${pageEntryVersion}`}>{renderPage()}</div>
         </Content>
       </Layout>
       <ToastStack items={toasts} onClose={closeToast} />
