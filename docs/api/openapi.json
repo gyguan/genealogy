@@ -489,6 +489,13 @@
           "status": { "type": "string" },
           "statusText": { "type": "string" },
           "suggestion": { "type": "string" },
+          "problemDescription": { "type": "string" },
+          "involvedObject": { "type": "string" },
+          "riskReason": { "type": "string" },
+          "reviewBlocked": { "type": "boolean" },
+          "relatedEntryType": { "type": "string" },
+          "relatedEntryId": { "type": "string" },
+          "relatedEntryText": { "type": "string" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
