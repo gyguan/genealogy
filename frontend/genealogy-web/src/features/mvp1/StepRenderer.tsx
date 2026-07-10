@@ -5,9 +5,8 @@ import { PersonStep } from './steps/person/PersonStep';
 import { RelationshipStep } from './steps/relationship/RelationshipStep';
 import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
 import { SourceStep } from './steps/source/SourceStep';
-import { TreeStep } from './steps/tree/TreeStep';
 
-export type Mvp1StepKey = 'clan' | 'branch' | 'generation' | 'person' | 'relationship' | 'source' | 'review' | 'tree';
+export type Mvp1StepKey = 'clan' | 'branch' | 'generation' | 'person' | 'relationship' | 'source' | 'review';
 
 type StepRendererProps = {
   activeStep: Mvp1StepKey;
@@ -32,8 +31,6 @@ export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedRevi
       return <SourceStep notify={notify} onSubmittedReview={onSubmittedReview} />;
     case 'review':
       return <ReviewProgressStep notify={notify} />;
-    case 'tree':
-      return <TreeStep notify={notify} />;
     default:
       return null;
   }
