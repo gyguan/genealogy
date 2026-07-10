@@ -11,6 +11,25 @@
     }
   ],
   "paths": {
+    "/api/v1/member-management/clans/{clanId}/members/summary": {
+      "get": {
+        "operationId": "getMemberPermissionSummary",
+        "tags": ["MemberManagement"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseMemberPermissionSummaryResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clans/{clanId}/source-bindings": {
       "post": {
         "operationId": "createSourceBinding",
@@ -468,6 +487,17 @@
           "errors": { "type": "array", "items": { "type": "string" } }
         }
       },
+      "MemberPermissionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "activeMemberCount": { "type": "integer", "format": "int64" },
+          "adminCount": { "type": "integer", "format": "int64" },
+          "branchManagerCount": { "type": "integer", "format": "int64" },
+          "unassignedBranchCount": { "type": "integer", "format": "int64" },
+          "highRiskGrantCount": { "type": "integer", "format": "int64" },
+          "latestPermissionChangedAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "WorkbenchSummaryResponse": {
         "type": "object",
         "properties": {
@@ -593,6 +623,16 @@
           "code": { "type": "string" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/CsvImportResultResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseMemberPermissionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/MemberPermissionSummaryResponse" },
           "traceId": { "type": "string" }
         }
       },
