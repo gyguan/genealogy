@@ -21,6 +21,7 @@
 /api/v1/sources           资料来源
 /api/v1/source-bindings   来源绑定
 /api/v1/reviews           审核中心
+/api/v1/workbench         修谱工作台
 /api/v1/tree              世系图
 /api/v1/imports           导入管理
 /api/v1/exports           导出管理
@@ -136,6 +137,49 @@ POST /api/v1/reviews/tasks/{reviewTaskId}/reject
 GET  /api/v1/reviews/my-submissions
 ```
 
+### 修谱工作台
+
+修谱工作台用于组织“导入异常、审核退回、资料缺失、字辈/代次不一致、关系冲突、疑似重复”等修谱问题。工作台只负责发现、分派、处理和提交审核，不直接执行审核通过/驳回。
+
+```text
+GET  /api/v1/workbench/summary?clanId={clanId}&branchId={branchId}
+GET  /api/v1/workbench/tasks?clanId={clanId}&type={type}&status={status}&risk={risk}&assignee={assignee}&pageNo={pageNo}&pageSize={pageSize}
+GET  /api/v1/workbench/tasks/{taskId}
+POST /api/v1/workbench/tasks/{taskId}/assign
+POST /api/v1/workbench/tasks/{taskId}/resolve
+POST /api/v1/workbench/tasks/{taskId}/ignore
+POST /api/v1/workbench/tasks/{taskId}/submit-review
+GET  /api/v1/workbench/checks/duplicates?clanId={clanId}&branchId={branchId}
+GET  /api/v1/workbench/checks/relationship-conflicts?clanId={clanId}&branchId={branchId}
+GET  /api/v1/workbench/checks/source-missing?clanId={clanId}&branchId={branchId}
+GET  /api/v1/workbench/checks/generation-mismatch?clanId={clanId}&branchId={branchId}
+```
+
+工作台任务返回建议：
+
+```json
+{
+  "records": [
+    {
+      "taskId": 1,
+      "taskType": "missing_source",
+      "targetType": "person",
+      "targetName": "张三",
+      "branchName": "长沙支",
+      "riskLevel": "high",
+      "status": "pending",
+      "assigneeName": "支派负责人",
+      "summary": "人物档案缺少来源证据",
+      "suggestion": "请绑定族谱原文或口述材料后再提交审核",
+      "updatedAt": "2026-07-10T10:00:00"
+    }
+  ],
+  "total": 1,
+  "pageNo": 1,
+  "pageSize": 20
+}
+```
+
 ### 世系图
 
 ```text
@@ -164,3 +208,4 @@ GET /api/v1/tree/branches/{branchId}
 | 关系管理 | 是 | 是 | 本支派 | 授权支派 | 申请 |
 | 审核 | 是 | 是 | 本支派初审 | 否 | 否 |
 | 导入导出 | 是 | 是 | 本支派 | 草稿导入 | 否 |
+| 修谱工作台 | 是 | 是 | 本支派 | 授权支派 | 查看个人相关 |
