@@ -12,14 +12,11 @@ import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
-import {
-  CultureProductPage,
-  EditingWorkspaceProductPage,
-  SourceLibraryProductPage
-} from '../features/experience/GenealogyExperiencePages';
+import { CultureProductPage, SourceLibraryProductPage } from '../features/experience/GenealogyExperiencePages';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
+import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
 
 const { Sider, Content, Header } = Layout;
 
@@ -30,7 +27,7 @@ const navItems = [
   ['personArchive', '人物档案', '按姓名、字辈、性别、支派检索人物并查看档案'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
   ['sourceAttachments', '来源附件', '管理来源资料附件上传、查看和维护'],
-  ['editingWorkspace', '修谱工作台', '导入、合并、补全和关系校验'],
+  ['editingWorkspace', '修谱工作台', '修谱问题任务池、风险检查和审核前处理'],
   ['imports', '导入管理', '族谱数据导入任务、结果和异常处理'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['memberManage', '成员权限', '宗族成员、角色和权限配置'],
@@ -138,7 +135,7 @@ function AppShell() {
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
       case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
-      case 'editingWorkspace': return <EditingWorkspaceProductPage />;
+      case 'editingWorkspace': return <EditingWorkspacePage />;
       case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
       case 'memberManage': return <MemberPage notify={notify} />;
