@@ -23,9 +23,14 @@ public class SourceAttachmentEntity {
     private Long sourceId;
     private Long clanId;
     private String originalFilename;
+    private String storedFilename;
     private String contentType;
     private Long fileSize;
+    private String storagePath;
+    private String checksum;
     private String uploadStatus;
+    private String privacyLevel;
+    private String sensitiveLevel;
     private Long createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
