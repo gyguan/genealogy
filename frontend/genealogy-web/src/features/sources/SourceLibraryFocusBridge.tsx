@@ -63,6 +63,12 @@ function statusColor(source?: FocusSource | null) {
   return 'default';
 }
 
+function clearSourceFocusClasses() {
+  document.querySelectorAll('.xp-source-row--focused, .xp-source-guide-focused, .xp-source-bind-focused').forEach(item => {
+    item.classList.remove('xp-source-row--focused', 'xp-source-guide-focused', 'xp-source-bind-focused');
+  });
+}
+
 export function SourceLibraryFocusBridge() {
   const workspace = useWorkspace();
   const [source, setSource] = useState<FocusSource | null>(null);
@@ -87,11 +93,32 @@ export function SourceLibraryFocusBridge() {
       .finally(() => setLoading(false));
   }, [workspace.sourceId]);
 
+  useEffect(() => {
+    clearSourceFocusClasses();
+    if (!hasFocus) return;
+    const timer = window.setTimeout(() => {
+      if (isMissingSourceIntent && !workspace.sourceId) {
+        const cards = Array.from(document.querySelectorAll('.xp-source-layout .xp-card'));
+        cards[0]?.classList.add('xp-source-guide-focused');
+        cards[1]?.classList.add('xp-source-bind-focused');
+        cards[0]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        return;
+      }
+      const title = sourceTitle(source).trim();
+      if (!title || title === '未命名来源') return;
+      const row = Array.from(document.querySelectorAll('.xp-source-row')).find(item => item.textContent?.includes(title));
+      row?.classList.add('xp-source-row--focused');
+      row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [hasFocus, isMissingSourceIntent, source, workspace.sourceId]);
+
   function clearFocus() {
     workspace.patch({ sourceId: '', sourceFocusReason: '' });
     handledSourceIdRef.current = '';
     setSource(null);
     setOpen(false);
+    clearSourceFocusClasses();
   }
 
   if (!hasFocus) return null;
@@ -102,7 +129,7 @@ export function SourceLibraryFocusBridge() {
         type={isMissingSourceIntent ? 'warning' : 'info'}
         showIcon
         message={isMissingSourceIntent ? '来自工作台：缺来源处理' : '来自工作台：来源资料定位'}
-        description={workspace.sourceId ? `已带入来源资料定位对象：${source ? sourceTitle(source) : `来源 ${workspace.sourceId}`}。` : '当前任务没有具体来源资料，需要先新增资料，再绑定到人物、关系或支派等业务对象。'}
+        description={workspace.sourceId ? `已带入来源资料定位对象：${source ? sourceTitle(source) : `来源 ${workspace.sourceId}`}。列表命中时会自动高亮。` : '当前任务没有具体来源资料，页面已默认突出“新增资料”和“绑定来源”处理区域。'}
         action={<Button size="small" onClick={clearFocus}>清除定位</Button>}
       />
       {workspace.sourceId ? null : (
