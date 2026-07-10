@@ -112,6 +112,23 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   const activeClan = clans.find(item => String(item.id || '') === workspace.clanId) || clans[0];
   const tasks = useMemo(() => toRecordList<WorkbenchTask>(taskPage.records || []), [taskPage.records]);
   const relatedView = relatedViewOf(selectedTask?.relatedEntryType);
+  const selectedTaskLocated = selectedTask ? isTaskLocated(selectedTask) : false;
+
+  function isTaskLocated(task: WorkbenchTask) {
+    const id = task.relatedEntryId || '';
+    if (task.relatedEntryType === 'reviewCenter') return Boolean(id && workspace.reviewTaskId === id);
+    if (task.relatedEntryType === 'personArchive') return Boolean(id && workspace.personId === id);
+    if (task.relatedEntryType === 'treeProduct') return Boolean(id && workspace.personId === id);
+    if (task.relatedEntryType === 'sourceLibrary') {
+      if (id) return workspace.sourceId === id;
+      return workspace.sourceFocusReason === task.type || Boolean(workspace.sourceId);
+    }
+    return false;
+  }
+
+  function taskExistsInCurrentPage(task: WorkbenchTask) {
+    return tasks.some(item => item.key === task.key);
+  }
 
   async function loadClans() {
     const clanRows = toRecordList<ClanLike>(unwrapData(await apiClient.get('/clans').catch(() => []), []));
@@ -137,8 +154,11 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         apiClient.get(`/workbench/summary?clanId=${nextClanId}`),
         apiClient.get(`/workbench/tasks?${query.toString()}`)
       ]);
-      setSummary(unwrapData<WorkbenchSummary>(summaryPayload, {}));
-      setTaskPage(unwrapData<WorkbenchTaskPage>(taskPayload, { records: [], pageNo: nextPage, pageSize: PAGE_SIZE, total: 0, totalPages: 1 }));
+      const nextSummary = unwrapData<WorkbenchSummary>(summaryPayload, {});
+      const nextTaskPage = unwrapData<WorkbenchTaskPage>(taskPayload, { records: [], pageNo: nextPage, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
+      setSummary(nextSummary);
+      setTaskPage(nextTaskPage);
+      return nextTaskPage;
     } catch (error) {
       message.error((error as Error).message || '加载修谱工作台失败');
     } finally {
@@ -159,6 +179,21 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   function searchWorkbench() {
     setSelectedTask(null);
     void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), 1);
+  }
+
+  async function refreshTaskStatus() {
+    const task = selectedTask;
+    const nextPage = taskPage.pageNo || 1;
+    const nextTaskPage = await loadWorkbench(workspace.clanId || String(activeClan?.id || ''), nextPage);
+    if (!task || !nextTaskPage) return;
+    const nextTask = toRecordList<WorkbenchTask>(nextTaskPage.records || []).find(item => item.key === task.key);
+    if (nextTask) {
+      setSelectedTask(nextTask);
+      message.success('任务状态已刷新');
+    } else {
+      setSelectedTask(null);
+      message.success('任务状态已刷新，当前任务在最新任务池中已不存在');
+    }
   }
 
   function applyRelatedContext(task: WorkbenchTask) {
@@ -295,6 +330,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
               <Tag color={riskColor(selectedTask.risk)}>风险：{riskText(selectedTask.risk)}</Tag>
               <Tag color={statusColor(selectedTask.status)}>{selectedTask.statusText}</Tag>
               <Tag color={selectedTask.reviewBlocked ? 'error' : 'success'}>{selectedTask.reviewBlocked ? '阻塞提交审核' : '不阻塞提交审核'}</Tag>
+              <Tag color={selectedTaskLocated ? 'success' : 'warning'}>{selectedTaskLocated ? '已定位目标页面' : '未定位到目标页面'}</Tag>
             </Space>
             <Alert
               type={selectedTask.reviewBlocked ? 'warning' : 'info'}
@@ -307,16 +343,19 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
               <Descriptions.Item label="所属范围">{display(selectedTask.branchName)}</Descriptions.Item>
               <Descriptions.Item label="风险原因">{display(selectedTask.riskReason)}</Descriptions.Item>
               <Descriptions.Item label="建议处理">{display(selectedTask.suggestion)}</Descriptions.Item>
+              <Descriptions.Item label="定位状态">{selectedTaskLocated ? '已定位到目标页面，可返回目标页面继续处理。' : '尚未定位到目标页面，请先点击相关入口。'}</Descriptions.Item>
+              <Descriptions.Item label="任务刷新">{taskExistsInCurrentPage(selectedTask) ? '当前任务仍在任务池中。' : '当前任务不在本页任务池中，刷新后可能已完成或被筛选条件隐藏。'}</Descriptions.Item>
               <Descriptions.Item label="相关入口">{display(selectedTask.relatedEntryText, '暂无相关入口')}</Descriptions.Item>
             </Descriptions>
             <Alert
               type="success"
               showIcon
               message="交付体验"
-              description="当前抽屉仅解释问题和指向处理入口，不提供认领、处理、忽略、提交审核或审批动作。"
+              description="当前抽屉仅解释问题、显示定位状态并支持刷新任务池，不提供认领、处理、忽略、提交审核或审批动作。"
             />
             <Space>
               <Button type="primary" disabled={!relatedView || !onNavigate} onClick={goRelatedEntry}>{selectedTask.relatedEntryText || '前往相关页面'}</Button>
+              <Button loading={loading} onClick={() => void refreshTaskStatus()}>刷新任务状态</Button>
               <Button onClick={() => setSelectedTask(null)}>返回任务池</Button>
             </Space>
           </Space>
