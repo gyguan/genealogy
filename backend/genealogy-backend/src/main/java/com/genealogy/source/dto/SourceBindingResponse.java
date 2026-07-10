@@ -10,7 +10,10 @@ public record SourceBindingResponse(
         Long targetId,
         String bindingReason,
         String excerpt,
+        String confidenceLevel,
+        String bindingStatus,
         Long createdBy,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }
