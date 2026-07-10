@@ -163,10 +163,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
 
   function applyRelatedContext(task: WorkbenchTask) {
     const id = task.relatedEntryId || '';
-    if (task.relatedEntryType === 'reviewCenter') workspace.patch({ reviewTaskId: id, personId: '', sourceId: '' });
-    else if (task.relatedEntryType === 'personArchive') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '' });
-    else if (task.relatedEntryType === 'treeProduct') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '' });
-    else if (task.relatedEntryType === 'sourceLibrary') workspace.patch({ sourceId: id, reviewTaskId: '', personId: '' });
+    if (task.relatedEntryType === 'reviewCenter') workspace.patch({ reviewTaskId: id, personId: '', sourceId: '', sourceFocusReason: '' });
+    else if (task.relatedEntryType === 'personArchive') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '', sourceFocusReason: '' });
+    else if (task.relatedEntryType === 'treeProduct') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '', sourceFocusReason: '' });
+    else if (task.relatedEntryType === 'sourceLibrary') workspace.patch({ sourceId: id, sourceFocusReason: task.type, reviewTaskId: '', personId: '' });
   }
 
   function goRelatedEntry() {
