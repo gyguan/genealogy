@@ -89,8 +89,12 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 
 .archive-search-form,
 .lineage-search-grid { align-items: end !important; }
+.archive-search-form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; gap: 12px !important; }
 .archive-search-form .ant-form-item,
 .lineage-search-grid .ant-form-item { margin: 0 !important; }
+.archive-search-form .archive-search-actions-item { min-width: 260px; justify-self: start; }
+.archive-search-form .archive-search-actions-item .ant-form-item-control-input { min-height: 32px; }
+.archive-search-form .archive-search-actions-item .ant-space { align-items: center; }
 .archive-search-form .ant-input,
 .archive-search-form .ant-select-selector,
 .archive-search-form .ant-btn { height: 32px !important; min-height: 32px !important; border-radius: 8px !important; }
@@ -119,7 +123,6 @@ body { background: #f5f5f5; color: rgba(0,0,0,.88); }
 .system-management .ant-tabs-nav { margin-bottom: 14px; }
 
 @media (max-width: 1400px) {
-  .archive-search-form { grid-template-columns: 140px minmax(260px, 1fr) 140px 120px !important; }
   .lineage-search-grid { grid-template-columns: 140px minmax(260px, 1fr) 120px auto !important; }
 }
 
