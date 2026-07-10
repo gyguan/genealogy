@@ -59,8 +59,24 @@ type MemberPermissionSummary = {
   latestPermissionChangedAt?: string;
 };
 
+type MemberPageResponse = {
+  records?: MemberRow[];
+  total?: number;
+  pageNo?: number;
+  pageSize?: number;
+  totalPages?: number;
+};
+
+type MemberFilterValues = {
+  keyword?: string;
+  roleCode?: string;
+  scopeType?: string;
+  status?: string;
+};
+
 const manageRoleCodes = ['clan_admin', 'branch_admin', 'editor', 'reviewer'];
 const memberManagementBase = '/member-management';
+const DEFAULT_PAGE_SIZE = 10;
 
 const roleAbilityText: Record<string, string[]> = {
   clan_admin: ['可管理宗族成员与支派', '可维护全宗族人物、关系、来源', '可处理导出与审计类高风险事项'],
@@ -117,6 +133,11 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [summary, setSummary] = useState<MemberPermissionSummary>({});
+  const [memberPage, setMemberPage] = useState<MemberPageResponse>({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
+  const [memberKeyword, setMemberKeyword] = useState('');
+  const [filterRoleCode, setFilterRoleCode] = useState('');
+  const [filterScopeType, setFilterScopeType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [userId, setUserId] = useState('');
   const [roleCode, setRoleCode] = useState('');
   const [memberName, setMemberName] = useState('');
@@ -165,6 +186,25 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     ];
   }
 
+  function currentFilters(overrides: MemberFilterValues = {}) {
+    return {
+      keyword: overrides.keyword ?? memberKeyword,
+      roleCode: overrides.roleCode ?? filterRoleCode,
+      scopeType: overrides.scopeType ?? filterScopeType,
+      status: overrides.status ?? filterStatus
+    };
+  }
+
+  function memberQuery(pageNo: number, pageSize: number, overrides: MemberFilterValues = {}) {
+    const filters = currentFilters(overrides);
+    const query = new URLSearchParams({ pageNo: String(pageNo), pageSize: String(pageSize) });
+    if (filters.keyword?.trim()) query.set('keyword', filters.keyword.trim());
+    if (filters.roleCode) query.set('roleCode', filters.roleCode);
+    if (filters.scopeType) query.set('scopeType', filters.scopeType);
+    if (filters.status) query.set('status', filters.status);
+    return query.toString();
+  }
+
   async function run(action: () => Promise<void>) {
     if (loading) return;
     setLoading(true);
@@ -202,6 +242,18 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     return nextBranches;
   }
 
+  async function listMembers(clanId = selectedClanId, pageNo = memberPage.pageNo || 1, pageSize = memberPage.pageSize || DEFAULT_PAGE_SIZE, overrides: MemberFilterValues = {}) {
+    if (!clanId) {
+      notify({ message: '请先选择宗族' }, true);
+      return;
+    }
+    const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members?${memberQuery(pageNo, pageSize, overrides)}`);
+    const nextPage = (res || {}) as MemberPageResponse;
+    setMemberPage(nextPage);
+    setMembers(toRecordList(nextPage.records || []) as MemberRow[]);
+    await loadSummary(clanId);
+  }
+
   async function loadBase() {
     await run(async () => {
       const [clanRes, userRes, roleRes] = await Promise.all([
@@ -227,27 +279,14 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!roleCode) setRoleCode(defaultRoleCode(nextRoles));
       if (nextClanId) {
         await loadBranches(nextClanId);
-        const [memberRes] = await Promise.all([
-          apiClient.get(`${memberManagementBase}/clans/${nextClanId}/members`).catch(() => []),
-          loadSummary(nextClanId)
-        ]);
-        setMembers(toRecordList(memberRes) as MemberRow[]);
+        await listMembers(nextClanId, 1, DEFAULT_PAGE_SIZE);
       } else {
         setBranches([]);
         setMembers([]);
+        setMemberPage({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
         setSummary({});
       }
     });
-  }
-
-  async function listMembers(clanId = selectedClanId) {
-    if (!clanId) {
-      notify({ message: '请先选择宗族' }, true);
-      return;
-    }
-    const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members`);
-    setMembers(toRecordList(res) as MemberRow[]);
-    await loadSummary(clanId);
   }
 
   async function create() {
@@ -266,7 +305,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         branchId: effectiveBranchId()
       });
       notify({ message: '成员授权成功' });
-      await listMembers(selectedClanId);
+      await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE);
     });
   }
 
@@ -304,11 +343,12 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     if (clanId) {
       void run(async () => {
         await loadBranches(clanId);
-        await listMembers(clanId);
+        await listMembers(clanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE);
       });
     } else {
       setBranches([]);
       setMembers([]);
+      setMemberPage({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
       setSummary({});
     }
   }
@@ -317,6 +357,16 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     setUserId(nextUserId);
     const user = users.find(item => String(item.id) === nextUserId);
     if (user) setMemberName(user.displayName || user.username);
+  }
+
+  function resetMemberFilters() {
+    setMemberKeyword('');
+    setFilterRoleCode('');
+    setFilterScopeType('');
+    setFilterStatus('');
+    void run(async () => {
+      await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE, { keyword: '', roleCode: '', scopeType: '', status: '' });
+    });
   }
 
   const roleOptions = [
@@ -442,33 +492,77 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       </div>
 
       <Card title="成员与角色列表">
-        <Table<MemberRow>
-          size="small"
-          bordered
-          rowKey={(row, index) => String(row.id || index)}
-          dataSource={members}
-          pagination={false}
-          columns={[
-            { key: 'displayName', title: '成员', render: (_value, row) => row.displayName || row.memberName || '-' },
-            { key: 'roleName', title: '角色', render: (_value, row) => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
-            { key: 'scopeType', title: '授权范围', render: (_value, row) => scopeText(row) },
-            { key: 'memberStatus', title: '状态', render: (_value, row) => <Tag color={memberStatusColor(row.memberStatus)}>{memberStatusText(row.memberStatus)}</Tag> },
-            {
-              key: 'actions',
-              title: '操作',
-              render: (_value, row) => (
-                <Space size="small" wrap>
-                  <Button size="small" type="link" onClick={() => void updateRole(row, 'clan_admin')}>设为宗族管理员</Button>
-                  <Button size="small" type="link" onClick={() => void updateRole(row, 'editor')}>设为修谱编辑</Button>
-                  <Button size="small" type="link" onClick={() => void updateRole(row, 'viewer')}>设为查看者</Button>
-                  <Popconfirm title="撤销授权" description={`确认撤销“${row.displayName || row.memberName || '该成员'}”的授权吗？`} okText="撤销" cancelText="取消" onConfirm={() => void revokeRole(row)}>
-                    <Button size="small" type="link" danger>撤销授权</Button>
-                  </Popconfirm>
-                </Space>
-              )
-            }
-          ]}
-        />
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Space wrap align="end">
+            <Space direction="vertical" size={4}>
+              <Typography.Text type="secondary">成员关键词</Typography.Text>
+              <Input allowClear style={{ width: 220 }} placeholder="姓名 / 用户名 / 角色" value={memberKeyword} onChange={event => setMemberKeyword(event.target.value)} />
+            </Space>
+            <Space direction="vertical" size={4}>
+              <Typography.Text type="secondary">角色</Typography.Text>
+              <Select
+                style={{ width: 180 }}
+                value={filterRoleCode}
+                onChange={setFilterRoleCode}
+                options={[{ value: '', label: '全部角色' }, ...roles.map(role => ({ value: role.roleCode, label: role.roleName }))]}
+              />
+            </Space>
+            <Space direction="vertical" size={4}>
+              <Typography.Text type="secondary">授权范围</Typography.Text>
+              <Select
+                style={{ width: 160 }}
+                value={filterScopeType}
+                onChange={setFilterScopeType}
+                options={[{ value: '', label: '全部范围' }, { value: 'clan', label: '全宗族' }, { value: 'branch', label: '指定支派' }]}
+              />
+            </Space>
+            <Space direction="vertical" size={4}>
+              <Typography.Text type="secondary">成员状态</Typography.Text>
+              <Select
+                style={{ width: 140 }}
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={[{ value: '', label: '全部状态' }, { value: 'active', label: '有效' }, { value: 'disabled', label: '已停用' }, { value: 'revoked', label: '已撤销' }]}
+              />
+            </Space>
+            <Button type="primary" loading={loading} onClick={() => void run(async () => { await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE); })}>查询成员</Button>
+            <Button disabled={loading} onClick={resetMemberFilters}>重置</Button>
+          </Space>
+          <Table<MemberRow>
+            size="small"
+            bordered
+            rowKey={(row, index) => String(row.id || index)}
+            dataSource={members}
+            pagination={{
+              current: memberPage.pageNo || 1,
+              pageSize: memberPage.pageSize || DEFAULT_PAGE_SIZE,
+              total: memberPage.total || 0,
+              showSizeChanger: true,
+              showTotal: total => `共 ${total} 条授权记录`,
+              onChange: (page, pageSize) => void run(async () => { await listMembers(selectedClanId, page, pageSize); })
+            }}
+            columns={[
+              { key: 'displayName', title: '成员', render: (_value, row) => row.displayName || row.memberName || '-' },
+              { key: 'roleName', title: '角色', render: (_value, row) => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
+              { key: 'scopeType', title: '授权范围', render: (_value, row) => scopeText(row) },
+              { key: 'memberStatus', title: '状态', render: (_value, row) => <Tag color={memberStatusColor(row.memberStatus)}>{memberStatusText(row.memberStatus)}</Tag> },
+              {
+                key: 'actions',
+                title: '操作',
+                render: (_value, row) => (
+                  <Space size="small" wrap>
+                    <Button size="small" type="link" onClick={() => void updateRole(row, 'clan_admin')}>设为宗族管理员</Button>
+                    <Button size="small" type="link" onClick={() => void updateRole(row, 'editor')}>设为修谱编辑</Button>
+                    <Button size="small" type="link" onClick={() => void updateRole(row, 'viewer')}>设为查看者</Button>
+                    <Popconfirm title="撤销授权" description={`确认撤销“${row.displayName || row.memberName || '该成员'}”的授权吗？`} okText="撤销" cancelText="取消" onConfirm={() => void revokeRole(row)}>
+                      <Button size="small" type="link" danger>撤销授权</Button>
+                    </Popconfirm>
+                  </Space>
+                )
+              }
+            ]}
+          />
+        </Space>
       </Card>
     </div>
   );
