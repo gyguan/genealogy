@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Col, Form, Input, Popconfirm, Row, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -50,6 +50,15 @@ type MemberRow = {
   branchId?: number;
 };
 
+type MemberPermissionSummary = {
+  activeMemberCount?: number;
+  adminCount?: number;
+  branchManagerCount?: number;
+  unassignedBranchCount?: number;
+  highRiskGrantCount?: number;
+  latestPermissionChangedAt?: string;
+};
+
 const manageRoleCodes = ['clan_admin', 'branch_admin', 'editor', 'reviewer'];
 const memberManagementBase = '/member-management';
 
@@ -95,6 +104,11 @@ function isBranchScope(scopeType?: string) {
   return scopeType === 'branch' || scopeType === 'branch_subtree';
 }
 
+function formatDateTime(value?: string) {
+  if (!value) return '暂无记录';
+  return value.replace('T', ' ').slice(0, 16);
+}
+
 export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<ClanRow[]>([]);
@@ -102,6 +116,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const [users, setUsers] = useState<UserRow[]>([]);
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [summary, setSummary] = useState<MemberPermissionSummary>({});
   const [userId, setUserId] = useState('');
   const [roleCode, setRoleCode] = useState('');
   const [memberName, setMemberName] = useState('');
@@ -162,6 +177,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     }
   }
 
+  async function loadSummary(clanId = selectedClanId) {
+    if (!clanId) {
+      setSummary({});
+      return;
+    }
+    const summaryRes = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members/summary`).catch(() => ({}));
+    setSummary((summaryRes || {}) as MemberPermissionSummary);
+  }
+
   async function loadBranches(clanId: string) {
     if (!clanId) {
       setBranches([]);
@@ -203,11 +227,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       if (!roleCode) setRoleCode(defaultRoleCode(nextRoles));
       if (nextClanId) {
         await loadBranches(nextClanId);
-        const memberRes = await apiClient.get(`${memberManagementBase}/clans/${nextClanId}/members`).catch(() => []);
+        const [memberRes] = await Promise.all([
+          apiClient.get(`${memberManagementBase}/clans/${nextClanId}/members`).catch(() => []),
+          loadSummary(nextClanId)
+        ]);
         setMembers(toRecordList(memberRes) as MemberRow[]);
       } else {
         setBranches([]);
         setMembers([]);
+        setSummary({});
       }
     });
   }
@@ -219,6 +247,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     }
     const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members`);
     setMembers(toRecordList(res) as MemberRow[]);
+    await loadSummary(clanId);
   }
 
   async function create() {
@@ -280,6 +309,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     } else {
       setBranches([]);
       setMembers([]);
+      setSummary({});
     }
   }
 
@@ -303,6 +333,52 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         message="中国式族谱权限说明"
         description="权限由宗族成员身份、角色动作、授权范围、隐私规则和审核流程共同决定。界面只展示宗族名称、支派名称和成员姓名，不需要用户填写技术 ID。"
       />
+
+      <Row gutter={[12, 12]}>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">有效成员</Typography.Text>
+            <Typography.Title level={3}>{summary.activeMemberCount ?? 0}</Typography.Title>
+            <Tag>宗族身份</Tag>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">管理员</Typography.Text>
+            <Typography.Title level={3}>{summary.adminCount ?? 0}</Typography.Title>
+            <Tag color={(summary.adminCount ?? 0) > 0 ? 'success' : 'warning'}>{(summary.adminCount ?? 0) > 0 ? '治理可用' : '需配置'}</Tag>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">支派负责人</Typography.Text>
+            <Typography.Title level={3}>{summary.branchManagerCount ?? 0}</Typography.Title>
+            <Tag color={(summary.branchManagerCount ?? 0) > 0 ? 'processing' : 'default'}>支派治理</Tag>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">未配置负责人支派</Typography.Text>
+            <Typography.Title level={3}>{summary.unassignedBranchCount ?? 0}</Typography.Title>
+            <Tag color={(summary.unassignedBranchCount ?? 0) > 0 ? 'warning' : 'success'}>{(summary.unassignedBranchCount ?? 0) > 0 ? '待补齐' : '已覆盖'}</Tag>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">高风险授权</Typography.Text>
+            <Typography.Title level={3}>{summary.highRiskGrantCount ?? 0}</Typography.Title>
+            <Tag color={(summary.highRiskGrantCount ?? 0) > 0 ? 'error' : 'success'}>{(summary.highRiskGrantCount ?? 0) > 0 ? '需关注' : '暂无风险'}</Tag>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={4}>
+          <Card loading={loading}>
+            <Typography.Text type="secondary">最近权限变更</Typography.Text>
+            <Typography.Title level={5} style={{ marginTop: 8 }}>{formatDateTime(summary.latestPermissionChangedAt)}</Typography.Title>
+            <Tag>审计线索</Tag>
+          </Card>
+        </Col>
+      </Row>
+
       <div className="page-grid two">
         <Card title="新增成员授权">
           <Form layout="vertical">
