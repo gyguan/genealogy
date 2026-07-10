@@ -7,6 +7,7 @@ export type WorkspaceState = {
   personId: string;
   relationshipId: string;
   sourceId: string;
+  sourceFocusReason: string;
   attachmentId: string;
   reviewTaskId: string;
   setClanId: (value: string) => void;
@@ -14,9 +15,10 @@ export type WorkspaceState = {
   setPersonId: (value: string) => void;
   setRelationshipId: (value: string) => void;
   setSourceId: (value: string) => void;
+  setSourceFocusReason: (value: string) => void;
   setAttachmentId: (value: string) => void;
   setReviewTaskId: (value: string) => void;
-  patch: (values: Partial<Pick<WorkspaceState, 'clanId' | 'branchId' | 'personId' | 'relationshipId' | 'sourceId' | 'attachmentId' | 'reviewTaskId'>>) => void;
+  patch: (values: Partial<Pick<WorkspaceState, 'clanId' | 'branchId' | 'personId' | 'relationshipId' | 'sourceId' | 'sourceFocusReason' | 'attachmentId' | 'reviewTaskId'>>) => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -37,6 +39,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [personId, updatePersonId] = useState('');
   const [relationshipId, updateRelationshipId] = useState('');
   const [sourceId, updateSourceId] = useState('');
+  const [sourceFocusReason, updateSourceFocusReason] = useState('');
   const [attachmentId, updateAttachmentId] = useState('');
   const [reviewTaskId, updateReviewTaskId] = useState('');
 
@@ -45,6 +48,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   function setPersonId(value: string) { updatePersonId(value); }
   function setRelationshipId(value: string) { updateRelationshipId(value); }
   function setSourceId(value: string) { updateSourceId(value); }
+  function setSourceFocusReason(value: string) { updateSourceFocusReason(value); }
   function setAttachmentId(value: string) { updateAttachmentId(value); }
   function setReviewTaskId(value: string) { updateReviewTaskId(value); }
 
@@ -54,6 +58,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     personId,
     relationshipId,
     sourceId,
+    sourceFocusReason,
     attachmentId,
     reviewTaskId,
     setClanId,
@@ -61,6 +66,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setPersonId,
     setRelationshipId,
     setSourceId,
+    setSourceFocusReason,
     setAttachmentId,
     setReviewTaskId,
     patch: values => {
@@ -69,10 +75,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (values.personId !== undefined) setPersonId(values.personId);
       if (values.relationshipId !== undefined) setRelationshipId(values.relationshipId);
       if (values.sourceId !== undefined) setSourceId(values.sourceId);
+      if (values.sourceFocusReason !== undefined) setSourceFocusReason(values.sourceFocusReason);
       if (values.attachmentId !== undefined) setAttachmentId(values.attachmentId);
       if (values.reviewTaskId !== undefined) setReviewTaskId(values.reviewTaskId);
     }
-  }), [clanId, branchId, personId, relationshipId, sourceId, attachmentId, reviewTaskId]);
+  }), [clanId, branchId, personId, relationshipId, sourceId, sourceFocusReason, attachmentId, reviewTaskId]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
