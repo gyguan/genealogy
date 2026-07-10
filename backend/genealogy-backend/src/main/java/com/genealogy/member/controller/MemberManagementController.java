@@ -8,6 +8,7 @@ import com.genealogy.common.api.ApiResponse;
 import com.genealogy.member.application.MemberManagementApplicationService;
 import com.genealogy.member.dto.ClanMemberResponse;
 import com.genealogy.member.dto.CreateClanMemberRequest;
+import com.genealogy.member.dto.MemberPermissionSummaryResponse;
 import com.genealogy.member.dto.RoleResponse;
 import com.genealogy.member.dto.UpdateClanMemberRoleRequest;
 import com.genealogy.member.dto.UserSummaryResponse;
@@ -75,6 +76,16 @@ public class MemberManagementController {
     ) {
         authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(permissionApplicationService.activePermissionsForRoleId(roleId).stream().map(this::toPermissionResponse).toList());
+    }
+
+    @GetMapping("/clans/{clanId}/members/summary")
+    public ApiResponse<MemberPermissionSummaryResponse> summary(
+            @Positive @PathVariable Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_VIEW);
+        return ApiResponse.success(memberManagementApplicationService.summary(clanId));
     }
 
     @GetMapping("/clans/{clanId}/members")
