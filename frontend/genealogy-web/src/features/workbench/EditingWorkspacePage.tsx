@@ -44,6 +44,7 @@ type WorkbenchTask = {
   relatedEntryType?: string;
   relatedEntryId?: string;
   relatedEntryText?: string;
+  statusDescription?: string;
   updatedAt?: string;
 };
 
@@ -192,7 +193,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
       message.success('任务状态已刷新');
     } else {
       setSelectedTask(null);
-      message.success('任务状态已刷新，当前任务在最新任务池中已不存在');
+      message.info('任务状态已刷新：当前任务在最新任务池中已不存在，可能已处理完成，或当前筛选条件下不再命中。');
     }
   }
 
@@ -341,6 +342,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="涉及对象">{display(selectedTask.involvedObject || selectedTask.objectName)}</Descriptions.Item>
               <Descriptions.Item label="所属范围">{display(selectedTask.branchName)}</Descriptions.Item>
+              <Descriptions.Item label="当前状态说明">{display(selectedTask.statusDescription, '暂无状态说明')}</Descriptions.Item>
               <Descriptions.Item label="风险原因">{display(selectedTask.riskReason)}</Descriptions.Item>
               <Descriptions.Item label="建议处理">{display(selectedTask.suggestion)}</Descriptions.Item>
               <Descriptions.Item label="定位状态">{selectedTaskLocated ? '已定位到目标页面，可返回目标页面继续处理。' : '尚未定位到目标页面，请先点击相关入口。'}</Descriptions.Item>
