@@ -23,27 +23,40 @@ public class RevisionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "clan_id")
     private Long clanId;
+
+    @Column(name = "target_type")
     private String targetType;
+
+    @Column(name = "target_id")
     private Long targetId;
+
+    @Column(name = "change_type")
     private String changeType;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "before_data", columnDefinition = "jsonb")
     private String beforeData;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(name = "after_data", columnDefinition = "jsonb")
     private String afterData;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "diff_summary", columnDefinition = "text")
     private String diffSummary;
 
+    @Column(name = "submitter_id")
     private Long submitterId;
+
+    @Column(name = "submit_time")
     private LocalDateTime submitTime;
+
     private String status;
+
+    @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "rejected_reason", columnDefinition = "text")
     private String rejectedReason;
 }
