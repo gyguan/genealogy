@@ -5,6 +5,7 @@ import com.genealogy.common.api.ApiResponse;
 import com.genealogy.source.attachment.application.SourceAttachmentApplicationService;
 import com.genealogy.source.attachment.dto.SourceAttachmentResponse;
 import jakarta.validation.constraints.Positive;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +24,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+@Profile("legacy-source-attachment")
 @Validated
-@RestController
+@RestController("legacySourceAttachmentController")
 @RequestMapping("/api/v1")
 public class SourceAttachmentController {
 
