@@ -7,10 +7,13 @@ import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceCreateRequest;
+import com.genealogy.source.dto.SourceDetailResponse;
 import com.genealogy.source.dto.SourceResponse;
 import com.genealogy.source.dto.SourceSearchCriteria;
+import com.genealogy.source.entity.SourceAttachmentEntity;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.entity.SourceEntity;
+import com.genealogy.source.repository.SourceAttachmentRepository;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
 import org.junit.jupiter.api.Test;
@@ -39,6 +42,9 @@ class SourceApplicationServiceTest {
 
     @Mock
     private SourceBindingRepository sourceBindingRepository;
+
+    @Mock
+    private SourceAttachmentRepository sourceAttachmentRepository;
 
     @Mock
     private ClanRepository clanRepository;
@@ -189,7 +195,7 @@ class SourceApplicationServiceTest {
         when(sourceRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(source), PageRequest.of(0, 20), 1));
         when(sourceBindingRepository.countBySourceId(10L)).thenReturn(3);
-        when(sourceRepository.countAttachmentsBySourceId(10L)).thenReturn(2);
+        when(sourceAttachmentRepository.countBySourceIdAndDeletedAtIsNull(10L)).thenReturn(2);
 
         SourceSearchCriteria criteria = new SourceSearchCriteria(
                 "口述",
@@ -211,5 +217,65 @@ class SourceApplicationServiceTest {
         assertThat(first.verificationStatus()).isEqualTo("official");
         assertThat(first.bindingCount()).isEqualTo(3);
         assertThat(first.attachmentCount()).isEqualTo(2);
+    }
+
+    @Test
+    void getDetailShouldAggregatePermissionsBindingsAndAttachments() {
+        SourceEntity source = new SourceEntity();
+        source.setId(10L);
+        source.setClanId(1L);
+        source.setSourceName("张氏族谱卷一");
+        source.setSourceType("genealogy_book");
+        source.setVerificationStatus("official");
+        source.setConfidenceLevel("high");
+        source.setPrivacyLevel("clan_only");
+        source.setSensitiveLevel("normal");
+        source.setCreatedAt(LocalDateTime.now().minusDays(1));
+        source.setUpdatedAt(LocalDateTime.now());
+
+        SourceBindingEntity binding = new SourceBindingEntity();
+        binding.setId(20L);
+        binding.setSourceId(10L);
+        binding.setTargetType("person");
+        binding.setTargetId(100L);
+        binding.setBindingReason("族谱原文记录人物基础信息");
+        binding.setExcerpt("谱文摘录");
+        binding.setConfidenceLevel("high");
+        binding.setBindingStatus("official");
+        binding.setCreatedBy(2L);
+        binding.setCreatedAt(LocalDateTime.now());
+
+        SourceAttachmentEntity attachment = new SourceAttachmentEntity();
+        attachment.setId(30L);
+        attachment.setSourceId(10L);
+        attachment.setOriginalFilename("old-book.pdf");
+        attachment.setContentType("application/pdf");
+        attachment.setFileSize(1024L);
+        attachment.setUploadStatus("uploaded");
+        attachment.setCreatedBy(2L);
+        attachment.setCreatedAt(LocalDateTime.now());
+
+        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));
+        when(sourceBindingRepository.countBySourceId(10L)).thenReturn(1);
+        when(sourceAttachmentRepository.countBySourceIdAndDeletedAtIsNull(10L)).thenReturn(1);
+        when(sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(10L)).thenReturn(List.of(binding));
+        when(sourceAttachmentRepository.findTop5BySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(10L)).thenReturn(List.of(attachment));
+        when(authorizationApplicationService.can(1L, 2L, "source:bind")).thenReturn(true);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(true);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:download")).thenReturn(true);
+
+        SourceDetailResponse response = sourceApplicationService.getDetail(10L, 2L);
+
+        assertThat(response.source().id()).isEqualTo(10L);
+        assertThat(response.source().bindingCount()).isEqualTo(1);
+        assertThat(response.source().attachmentCount()).isEqualTo(1);
+        assertThat(response.permissions().canBind()).isTrue();
+        assertThat(response.permissions().canPreviewAttachment()).isTrue();
+        assertThat(response.permissions().canDownloadAttachment()).isTrue();
+        assertThat(response.bindingSummaries()).hasSize(1);
+        assertThat(response.bindingSummaries().get(0).targetDisplayName()).isEqualTo("person:100");
+        assertThat(response.attachmentSummaries()).hasSize(1);
+        assertThat(response.attachmentSummaries().get(0).fileName()).isEqualTo("old-book.pdf");
+        assertThat(response.attachmentSummaries().get(0).downloadAllowed()).isTrue();
     }
 }

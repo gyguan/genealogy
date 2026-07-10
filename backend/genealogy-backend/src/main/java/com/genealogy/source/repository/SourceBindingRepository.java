@@ -11,6 +11,8 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
 
     List<SourceBindingEntity> findBySourceIdOrderByCreatedAtDesc(Long sourceId);
 
+    List<SourceBindingEntity> findTop5BySourceIdOrderByCreatedAtDesc(Long sourceId);
+
     boolean existsBySourceIdAndTargetTypeAndTargetId(Long sourceId, String targetType, Long targetId);
 
     int countBySourceId(Long sourceId);

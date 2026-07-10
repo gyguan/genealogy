@@ -6,14 +6,19 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.source.dto.SourceAttachmentSummaryResponse;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
+import com.genealogy.source.dto.SourceBindingSummaryResponse;
 import com.genealogy.source.dto.SourceCreateRequest;
+import com.genealogy.source.dto.SourceDetailResponse;
+import com.genealogy.source.dto.SourcePermissionView;
 import com.genealogy.source.dto.SourceResponse;
 import com.genealogy.source.dto.SourceSearchCriteria;
 import com.genealogy.source.entity.SourceAttachmentEntity;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.entity.SourceEntity;
+import com.genealogy.source.repository.SourceAttachmentRepository;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -50,6 +55,11 @@ public class SourceApplicationService {
     private static final String SOURCE_UPDATE = "source:update";
     private static final String SOURCE_DELETE = "source:delete";
     private static final String SOURCE_BIND = "source:bind";
+    private static final String SOURCE_SUBMIT_REVIEW = "source:submit_review";
+    private static final String ATTACHMENT_UPLOAD = "attachment:upload";
+    private static final String ATTACHMENT_VIEW = "attachment:view";
+    private static final String ATTACHMENT_PREVIEW = "attachment:preview";
+    private static final String ATTACHMENT_DOWNLOAD = "attachment:download";
     private static final Set<String> SOURCE_STATUSES = Set.of(STATUS_DRAFT, STATUS_PENDING_REVIEW, STATUS_OFFICIAL, STATUS_REJECTED, STATUS_ARCHIVED);
     private static final Set<String> SOURCE_TYPES = Set.of("genealogy_book", "local_chronicle", "tombstone", "photo", "oral_history", "archive", "other");
     private static final Set<String> TARGET_TYPES = Set.of("person", "relationship", "branch", "clan", "generation_word");
@@ -60,6 +70,7 @@ public class SourceApplicationService {
 
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
+    private final SourceAttachmentRepository sourceAttachmentRepository;
     private final ClanRepository clanRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -67,12 +78,14 @@ public class SourceApplicationService {
     public SourceApplicationService(
             SourceRepository sourceRepository,
             SourceBindingRepository sourceBindingRepository,
+            SourceAttachmentRepository sourceAttachmentRepository,
             ClanRepository clanRepository,
             OperationLogApplicationService operationLogApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.sourceRepository = sourceRepository;
         this.sourceBindingRepository = sourceBindingRepository;
+        this.sourceAttachmentRepository = sourceAttachmentRepository;
         this.clanRepository = clanRepository;
         this.operationLogApplicationService = operationLogApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -120,6 +133,13 @@ public class SourceApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public SourceDetailResponse getDetail(Long id, Long actorId) {
+        SourceEntity entity = getEntity(id);
+        authorizationApplicationService.requirePermission(entity.getClanId(), actorId, SOURCE_VIEW);
+        return toDetailResponse(entity, actorId);
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<SourceResponse> listByClan(Long clanId, int pageNo, int pageSize) {
         return searchByClan(clanId, new SourceSearchCriteria(null, null, null, null, null, null, null, null), pageNo, pageSize, null);
     }
@@ -134,7 +154,9 @@ public class SourceApplicationService {
         if (!clanRepository.existsById(clanId)) {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
-        authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_VIEW);
+        if (actorId != null) {
+            authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_VIEW);
+        }
         SourceSearchCriteria normalizedCriteria = normalizeSearchCriteria(criteria);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, resolveSort(normalizedCriteria.sort()));
         Page<SourceResponse> page = sourceRepository.findAll(buildSourceSearchSpec(clanId, normalizedCriteria), pageRequest).map(this::toResponse);
@@ -291,12 +313,16 @@ public class SourceApplicationService {
     }
 
     private void ensureMutableSource(SourceEntity entity) {
-        if (STATUS_OFFICIAL.equals(entity.getVerificationStatus()) || STATUS_ARCHIVED.equals(entity.getVerificationStatus())) {
+        if (!isDirectlyMutableSource(entity)) {
+            if (STATUS_PENDING_REVIEW.equals(entity.getVerificationStatus())) {
+                throw new BusinessException("SOURCE_PENDING_REVIEW", "来源正在审核中，不能直接修改");
+            }
             throw new BusinessException("SOURCE_OFFICIAL_REVIEW_REQUIRED", "正式来源变更需先提交变更审核");
         }
-        if (STATUS_PENDING_REVIEW.equals(entity.getVerificationStatus())) {
-            throw new BusinessException("SOURCE_PENDING_REVIEW", "来源正在审核中，不能直接修改");
-        }
+    }
+
+    private boolean isDirectlyMutableSource(SourceEntity entity) {
+        return STATUS_DRAFT.equals(entity.getVerificationStatus()) || STATUS_REJECTED.equals(entity.getVerificationStatus());
     }
 
     private void applyRequest(SourceEntity entity, SourceCreateRequest request) {
@@ -447,11 +473,87 @@ public class SourceApplicationService {
         return Sort.by(direction, field);
     }
 
+    private SourceDetailResponse toDetailResponse(SourceEntity entity, Long actorId) {
+        SourceResponse source = toResponse(entity);
+        SourcePermissionView permissions = toPermissionView(entity, actorId, source.bindingCount());
+        List<SourceBindingSummaryResponse> bindings = sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(entity.getId())
+                .stream()
+                .map(this::toBindingSummaryResponse)
+                .toList();
+        List<SourceAttachmentSummaryResponse> attachments = sourceAttachmentRepository.findTop5BySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(entity.getId())
+                .stream()
+                .map(attachment -> toAttachmentSummaryResponse(attachment, permissions))
+                .toList();
+        return new SourceDetailResponse(source, permissions, bindings, attachments);
+    }
+
+    private SourcePermissionView toPermissionView(SourceEntity entity, Long actorId, int bindingCount) {
+        Long clanId = entity.getClanId();
+        boolean mutable = isDirectlyMutableSource(entity);
+        boolean canUpdate = authorizationApplicationService.can(clanId, actorId, SOURCE_UPDATE);
+        boolean canDeletePermission = authorizationApplicationService.can(clanId, actorId, SOURCE_DELETE);
+        boolean canBindPermission = authorizationApplicationService.can(clanId, actorId, SOURCE_BIND);
+        boolean canSubmitReview = authorizationApplicationService.can(clanId, actorId, SOURCE_SUBMIT_REVIEW) || canUpdate;
+        boolean canUploadAttachment = authorizationApplicationService.can(clanId, actorId, ATTACHMENT_UPLOAD);
+        boolean canPreviewAttachment = authorizationApplicationService.can(clanId, actorId, ATTACHMENT_PREVIEW)
+                || authorizationApplicationService.can(clanId, actorId, ATTACHMENT_VIEW)
+                || authorizationApplicationService.can(clanId, actorId, ATTACHMENT_DOWNLOAD);
+        boolean canDownloadAttachment = authorizationApplicationService.can(clanId, actorId, ATTACHMENT_DOWNLOAD);
+        return new SourcePermissionView(
+                canUpdate && mutable,
+                canDeletePermission && mutable && bindingCount == 0,
+                canBindPermission && STATUS_OFFICIAL.equals(entity.getVerificationStatus()),
+                canSubmitReview && (STATUS_DRAFT.equals(entity.getVerificationStatus()) || STATUS_REJECTED.equals(entity.getVerificationStatus())),
+                canUploadAttachment,
+                canPreviewAttachment,
+                canDownloadAttachment
+        );
+    }
+
+    private SourceBindingSummaryResponse toBindingSummaryResponse(SourceBindingEntity entity) {
+        if (entity.getConfidenceLevel() == null || entity.getConfidenceLevel().isBlank()) {
+            entity.setConfidenceLevel(CONFIDENCE_UNKNOWN);
+        }
+        if (entity.getBindingStatus() == null || entity.getBindingStatus().isBlank()) {
+            entity.setBindingStatus(STATUS_OFFICIAL);
+        }
+        return new SourceBindingSummaryResponse(
+                entity.getId(),
+                entity.getTargetType(),
+                entity.getTargetId(),
+                toTargetDisplayName(entity.getTargetType(), entity.getTargetId()),
+                entity.getBindingReason(),
+                entity.getExcerpt(),
+                entity.getConfidenceLevel(),
+                entity.getBindingStatus(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt()
+        );
+    }
+
+    private String toTargetDisplayName(String targetType, Long targetId) {
+        return targetType + ":" + targetId;
+    }
+
+    private SourceAttachmentSummaryResponse toAttachmentSummaryResponse(SourceAttachmentEntity entity, SourcePermissionView permissions) {
+        return new SourceAttachmentSummaryResponse(
+                entity.getId(),
+                entity.getOriginalFilename(),
+                entity.getContentType(),
+                entity.getFileSize(),
+                entity.getUploadStatus(),
+                permissions.canPreviewAttachment(),
+                permissions.canDownloadAttachment(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt()
+        );
+    }
+
     private SourceResponse toResponse(SourceEntity entity) {
         normalizePersistedSource(entity);
         Long sourceId = entity.getId();
         int bindingCount = sourceId == null ? 0 : sourceBindingRepository.countBySourceId(sourceId);
-        int attachmentCount = sourceId == null ? 0 : sourceRepository.countAttachmentsBySourceId(sourceId);
+        int attachmentCount = sourceId == null ? 0 : sourceAttachmentRepository.countBySourceIdAndDeletedAtIsNull(sourceId);
         return new SourceResponse(
                 entity.getId(), entity.getClanId(), entity.getSourceName(), entity.getSourceType(), entity.getProviderName(),
                 entity.getBookTitle(), entity.getVolumeNo(), entity.getPageNo(), entity.getSourceDate(), entity.getExcerpt(),
