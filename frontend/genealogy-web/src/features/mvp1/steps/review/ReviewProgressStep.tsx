@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Empty, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Empty, Select, Table, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -179,10 +179,7 @@ export function ReviewProgressStep({ notify }: Props) {
           />
         </Field>
       </div>
-      <Space wrap style={{ marginBottom: 12 }}>
-        <Button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()}>查询审核进度</Button>
-        <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
-      </Space>
+      <Button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()} style={{ marginBottom: 12 }}>查询审核进度</Button>
       {selectedTargetTypes.includes('relationships') && !workspace.personId ? (
         <Alert type="info" showIcon message="关系候选对象按当前中心人物加载；如需提交关系审核，请先在录入人物/建立关系步骤选中中心人物。" style={{ marginBottom: 12 }} />
       ) : null}
@@ -193,9 +190,6 @@ export function ReviewProgressStep({ notify }: Props) {
             <h4>可提交审核对象</h4>
             <p>草稿/已驳回对象可在列表中直接提交审核，样式与支派列表保持一致。</p>
           </div>
-          <Space wrap>
-            <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
-          </Space>
         </div>
         <Table<ReviewCandidate>
           size="small"
@@ -224,9 +218,6 @@ export function ReviewProgressStep({ notify }: Props) {
             <h4>待审任务列表</h4>
             <p>点击任务行可选中并查看当前任务状态；审批请进入审核中心处理。</p>
           </div>
-          <Space wrap>
-            <Button loading={loadingData} disabled={!workspace.clanId} onClick={() => void loadReviewData()}>刷新</Button>
-          </Space>
         </div>
         <Table<ReviewTaskLike>
           size="small"
