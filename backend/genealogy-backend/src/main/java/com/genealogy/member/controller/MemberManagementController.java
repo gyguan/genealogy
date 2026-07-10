@@ -5,6 +5,7 @@ import com.genealogy.auth.application.PermissionApplicationService;
 import com.genealogy.auth.dto.PermissionResponse;
 import com.genealogy.auth.entity.AppPermissionEntity;
 import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.api.PageResponse;
 import com.genealogy.member.application.MemberManagementApplicationService;
 import com.genealogy.member.dto.ClanMemberResponse;
 import com.genealogy.member.dto.CreateClanMemberRequest;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -89,13 +91,19 @@ public class MemberManagementController {
     }
 
     @GetMapping("/clans/{clanId}/members")
-    public ApiResponse<List<ClanMemberResponse>> members(
+    public ApiResponse<PageResponse<ClanMemberResponse>> members(
             @Positive @PathVariable Long clanId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String roleCode,
+            @RequestParam(required = false) String scopeType,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int pageNo,
+            @RequestParam(defaultValue = "20") int pageSize,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requirePermission(clanId, userId, MEMBER_VIEW);
-        return ApiResponse.success(memberManagementApplicationService.members(clanId));
+        return ApiResponse.success(memberManagementApplicationService.members(clanId, keyword, roleCode, scopeType, status, pageNo, pageSize));
     }
 
     @PostMapping("/clans/{clanId}/members")
