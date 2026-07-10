@@ -21,9 +21,16 @@ public class AuditRecordEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "clan_id")
     private Long clanId;
+
+    @Column(name = "target_type")
     private String targetType;
+
+    @Column(name = "target_id")
     private Long targetId;
+
+    @Column(name = "change_type")
     private String changeType;
 
     @Column(name = "before_data", columnDefinition = "text")
@@ -32,10 +39,20 @@ public class AuditRecordEntity {
     @Column(name = "after_data", columnDefinition = "text")
     private String newPayload;
 
+    @Column(name = "diff_summary", columnDefinition = "text")
     private String diffSummary;
+
+    @Column(name = "submitter_id")
     private Long submitterId;
+
+    @Column(name = "submit_time")
     private LocalDateTime submitTime;
+
     private String status;
+
+    @Column(name = "approved_at")
     private LocalDateTime approvedAt;
+
+    @Column(name = "rejected_reason", columnDefinition = "text")
     private String rejectedReason;
 }
