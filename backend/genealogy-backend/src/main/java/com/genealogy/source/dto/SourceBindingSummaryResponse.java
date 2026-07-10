@@ -7,6 +7,8 @@ public record SourceBindingSummaryResponse(
         String targetType,
         Long targetId,
         String targetDisplayName,
+        String targetBranchName,
+        String targetSummary,
         String bindingReason,
         String excerpt,
         String confidenceLevel,
