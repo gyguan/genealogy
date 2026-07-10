@@ -30,6 +30,13 @@ public class SourceBindingEntity {
     @Column(columnDefinition = "text")
     private String excerpt;
 
+    @Column(nullable = false)
+    private String confidenceLevel;
+
+    @Column(nullable = false)
+    private String bindingStatus;
+
     private Long createdBy;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -11,8 +11,16 @@ public record SourceResponse(
         String bookTitle,
         String volumeNo,
         String pageNo,
+        String sourceDate,
         String excerpt,
+        String description,
         String verificationStatus,
-        LocalDateTime createdAt
+        String confidenceLevel,
+        String privacyLevel,
+        String sensitiveLevel,
+        Integer bindingCount,
+        Integer attachmentCount,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

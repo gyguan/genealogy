@@ -34,15 +34,27 @@ public class SourceEntity {
     private String bookTitle;
     private String volumeNo;
     private String pageNo;
+    private String sourceDate;
 
     @Column(columnDefinition = "text")
     private String excerpt;
 
+    @Column(nullable = false)
     private String verificationStatus;
 
     @Column(columnDefinition = "text")
     private String description;
 
+    @Column(nullable = false)
+    private String confidenceLevel;
+
+    @Column(nullable = false)
+    private String privacyLevel;
+
+    @Column(nullable = false)
+    private String sensitiveLevel;
+
     private Long createdBy;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

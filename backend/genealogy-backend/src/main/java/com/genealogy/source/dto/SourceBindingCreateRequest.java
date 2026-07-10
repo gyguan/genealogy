@@ -21,6 +21,9 @@ public record SourceBindingCreateRequest(
         @Size(max = 5000, message = "摘录内容长度不能超过5000")
         String excerpt,
 
+        String confidenceLevel,
+        Boolean submitReview,
+
         Long createdBy
 ) {
 }
