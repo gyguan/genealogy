@@ -13,13 +13,25 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
 
     List<SourceBindingEntity> findBySourceIdOrderByCreatedAtDesc(Long sourceId);
 
+    List<SourceBindingEntity> findBySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus);
+
     Page<SourceBindingEntity> findBySourceIdOrderByCreatedAtDesc(Long sourceId, Pageable pageable);
+
+    Page<SourceBindingEntity> findBySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus, Pageable pageable);
 
     Page<SourceBindingEntity> findBySourceIdAndTargetTypeOrderByCreatedAtDesc(Long sourceId, String targetType, Pageable pageable);
 
+    Page<SourceBindingEntity> findBySourceIdAndTargetTypeAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String targetType, String bindingStatus, Pageable pageable);
+
     List<SourceBindingEntity> findTop5BySourceIdOrderByCreatedAtDesc(Long sourceId);
+
+    List<SourceBindingEntity> findTop5BySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus);
 
     boolean existsBySourceIdAndTargetTypeAndTargetId(Long sourceId, String targetType, Long targetId);
 
+    boolean existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(Long sourceId, String targetType, Long targetId, String bindingStatus);
+
     int countBySourceId(Long sourceId);
+
+    int countBySourceIdAndBindingStatusNot(Long sourceId, String bindingStatus);
 }
