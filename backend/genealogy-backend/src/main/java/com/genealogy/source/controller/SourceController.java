@@ -8,6 +8,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.dto.SourceCreateRequest;
 import com.genealogy.source.dto.SourceResponse;
+import com.genealogy.source.dto.SourceSearchCriteria;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -64,8 +66,36 @@ public class SourceController {
     }
 
     @GetMapping("/clans/{clanId}/sources")
-    public ApiResponse<PageResponse<SourceResponse>> listByClan(@Positive @PathVariable Long clanId, PageQuery pageQuery, HttpServletRequest servletRequest) {
+    public ApiResponse<PageResponse<SourceResponse>> listByClan(
+            @Positive @PathVariable Long clanId,
+            PageQuery pageQuery,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sourceType,
+            @RequestParam(required = false) String verificationStatus,
+            @RequestParam(required = false) String privacyLevel,
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) Boolean hasAttachment,
+            @RequestParam(required = false) Boolean hasBinding,
+            @RequestParam(required = false) String sort,
+            HttpServletRequest servletRequest
+    ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceApplicationService.listByClan(clanId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), context.userId()));
+        SourceSearchCriteria criteria = new SourceSearchCriteria(
+                keyword,
+                sourceType,
+                verificationStatus,
+                privacyLevel,
+                targetType,
+                hasAttachment,
+                hasBinding,
+                sort
+        );
+        return ApiResponse.success(sourceApplicationService.searchByClan(
+                clanId,
+                criteria,
+                pageQuery.normalizedPageNo(),
+                pageQuery.normalizedPageSize(),
+                context.userId()
+        ));
     }
 }
