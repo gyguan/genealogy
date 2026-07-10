@@ -66,12 +66,17 @@ function lifeText(person?: FocusPerson | null) {
   return `${birth || '?'} - ${death || '?'}`;
 }
 
+function cssAttributeValue(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 export function PersonArchiveFocusBridge() {
   const workspace = useWorkspace();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [person, setPerson] = useState<FocusPerson | null>(null);
   const handledPersonIdRef = useRef('');
+  const focusedPersonId = String(workspace.personId || '').trim();
 
   useEffect(() => {
     const personId = String(workspace.personId || '').trim();
@@ -100,13 +105,16 @@ export function PersonArchiveFocusBridge() {
 
   return (
     <>
+      {focusedPersonId ? (
+        <style>{`.person-archive-search .ant-table-row[data-row-key="${cssAttributeValue(focusedPersonId)}"] > td { background: #e6f4ff !important; } .person-archive-search .ant-table-row[data-row-key="${cssAttributeValue(focusedPersonId)}"] > td:first-child { box-shadow: inset 3px 0 0 #1677ff; }`}</style>
+      ) : null}
       {workspace.personId ? (
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
           message="来自工作台定位"
-          description={`已带入人物档案定位对象：${person ? personName(person) : `人物 ${workspace.personId}`}。可在弹窗中查看，或清除定位后重新检索。`}
+          description={`已带入人物档案定位对象：${person ? personName(person) : `人物 ${workspace.personId}`}。可在弹窗中查看，列表命中时会自动高亮；或清除定位后重新检索。`}
           action={<Button size="small" onClick={clearFocus}>清除定位</Button>}
         />
       ) : null}
