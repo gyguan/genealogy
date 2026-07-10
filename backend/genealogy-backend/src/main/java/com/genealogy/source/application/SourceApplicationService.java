@@ -22,17 +22,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class SourceApplicationService {
 
     private static final String STATUS_DRAFT = "draft";
+    private static final String STATUS_PENDING_REVIEW = "pending_review";
     private static final String STATUS_OFFICIAL = "official";
+    private static final String STATUS_REJECTED = "rejected";
+    private static final String STATUS_ARCHIVED = "archived";
+    private static final String CONFIDENCE_UNKNOWN = "unknown";
+    private static final String PRIVACY_CLAN_ONLY = "clan_only";
+    private static final String SENSITIVE_NORMAL = "normal";
     private static final String SOURCE_VIEW = "source:view";
     private static final String SOURCE_CREATE = "source:create";
     private static final String SOURCE_UPDATE = "source:update";
     private static final String SOURCE_DELETE = "source:delete";
     private static final String SOURCE_BIND = "source:bind";
+    private static final Set<String> SOURCE_STATUSES = Set.of(STATUS_DRAFT, STATUS_PENDING_REVIEW, STATUS_OFFICIAL, STATUS_REJECTED, STATUS_ARCHIVED);
+    private static final Set<String> CONFIDENCE_LEVELS = Set.of("high", "medium", "low", CONFIDENCE_UNKNOWN);
+    private static final Set<String> PRIVACY_LEVELS = Set.of("public", PRIVACY_CLAN_ONLY, "branch_only", "relatives_only", "private", "sealed");
+    private static final Set<String> SENSITIVE_LEVELS = Set.of(SENSITIVE_NORMAL, "sensitive", "highly_sensitive");
 
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
@@ -73,8 +84,11 @@ public class SourceApplicationService {
         SourceEntity entity = new SourceEntity();
         entity.setClanId(clanId);
         applyRequest(entity, request);
+        LocalDateTime now = LocalDateTime.now();
+        entity.setVerificationStatus(STATUS_DRAFT);
         entity.setCreatedBy(actorId);
-        entity.setCreatedAt(LocalDateTime.now());
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         SourceEntity saved = sourceRepository.save(entity);
         operationLogApplicationService.record(clanId, actorId, "source_create", "source", saved.getId(), "create source: " + saved.getSourceName(), null, requestId, clientIp);
         return toResponse(saved);
@@ -120,6 +134,7 @@ public class SourceApplicationService {
         ensureMutableSource(entity);
         String before = sourceSnapshot(entity);
         applyRequest(entity, request);
+        entity.setUpdatedAt(LocalDateTime.now());
         SourceEntity saved = sourceRepository.save(entity);
         operationLogApplicationService.record(saved.getClanId(), actorId, "source_update", "source", saved.getId(), "update source: " + saved.getSourceName(), "before=" + before + "; after=" + sourceSnapshot(saved));
         return toResponse(saved);
@@ -160,8 +175,12 @@ public class SourceApplicationService {
         entity.setTargetId(request.targetId());
         entity.setBindingReason(request.bindingReason());
         entity.setExcerpt(request.excerpt());
+        entity.setConfidenceLevel(normalizeConfidenceLevel(request.confidenceLevel(), source.getConfidenceLevel()));
+        entity.setBindingStatus(STATUS_OFFICIAL);
         entity.setCreatedBy(actorId);
-        entity.setCreatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         SourceBindingEntity saved = sourceBindingRepository.save(entity);
         operationLogApplicationService.record(clanId, actorId, "source_bind", "source_binding", saved.getId(), "bind source " + request.sourceId() + " to " + request.targetType() + ":" + request.targetId(), request.bindingReason());
         return toBindingResponse(saved);
@@ -184,13 +203,18 @@ public class SourceApplicationService {
     }
 
     private SourceEntity getEntity(Long id) {
-        return sourceRepository.findById(id)
+        SourceEntity entity = sourceRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("SOURCE_NOT_FOUND", "source not found"));
+        normalizePersistedSource(entity);
+        return entity;
     }
 
     private void ensureMutableSource(SourceEntity entity) {
-        if (STATUS_OFFICIAL.equals(entity.getVerificationStatus())) {
+        if (STATUS_OFFICIAL.equals(entity.getVerificationStatus()) || STATUS_ARCHIVED.equals(entity.getVerificationStatus())) {
             throw new BusinessException("SOURCE_OFFICIAL_REVIEW_REQUIRED", "正式来源变更需先提交变更审核");
+        }
+        if (STATUS_PENDING_REVIEW.equals(entity.getVerificationStatus())) {
+            throw new BusinessException("SOURCE_PENDING_REVIEW", "来源正在审核中，不能直接修改");
         }
     }
 
@@ -201,31 +225,110 @@ public class SourceApplicationService {
         entity.setBookTitle(request.bookTitle());
         entity.setVolumeNo(request.volumeNo());
         entity.setPageNo(request.pageNo());
+        entity.setSourceDate(request.sourceDate());
         entity.setExcerpt(request.excerpt());
+        entity.setDescription(request.description());
+        entity.setConfidenceLevel(normalizeConfidenceLevel(request.confidenceLevel(), CONFIDENCE_UNKNOWN));
+        entity.setPrivacyLevel(normalizePrivacyLevel(request.privacyLevel()));
+        entity.setSensitiveLevel(normalizeSensitiveLevel(request.sensitiveLevel()));
         if (entity.getVerificationStatus() == null || entity.getVerificationStatus().isBlank()) {
             entity.setVerificationStatus(STATUS_DRAFT);
+        } else {
+            entity.setVerificationStatus(normalizeSourceStatus(entity.getVerificationStatus()));
         }
-        entity.setDescription(request.description());
+    }
+
+    private void normalizePersistedSource(SourceEntity entity) {
+        entity.setVerificationStatus(normalizeSourceStatus(entity.getVerificationStatus()));
+        entity.setConfidenceLevel(normalizeConfidenceLevel(entity.getConfidenceLevel(), CONFIDENCE_UNKNOWN));
+        entity.setPrivacyLevel(normalizePrivacyLevel(entity.getPrivacyLevel()));
+        entity.setSensitiveLevel(normalizeSensitiveLevel(entity.getSensitiveLevel()));
+        if (entity.getUpdatedAt() == null) {
+            entity.setUpdatedAt(entity.getCreatedAt());
+        }
+    }
+
+    private String normalizeSourceStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return STATUS_DRAFT;
+        }
+        String normalized = status.trim().toLowerCase();
+        return switch (normalized) {
+            case "unverified" -> STATUS_DRAFT;
+            case "verified", "reviewed", "approved" -> STATUS_OFFICIAL;
+            default -> {
+                if (!SOURCE_STATUSES.contains(normalized)) {
+                    throw new BusinessException("SOURCE_STATUS_INVALID", "来源状态不合法");
+                }
+                yield normalized;
+            }
+        };
+    }
+
+    private String normalizeConfidenceLevel(String value, String defaultValue) {
+        String normalized = normalizeEnum(value, defaultValue);
+        if (!CONFIDENCE_LEVELS.contains(normalized)) {
+            throw new BusinessException("SOURCE_CONFIDENCE_INVALID", "来源可信度不合法");
+        }
+        return normalized;
+    }
+
+    private String normalizePrivacyLevel(String value) {
+        String normalized = normalizeEnum(value, PRIVACY_CLAN_ONLY);
+        if (!PRIVACY_LEVELS.contains(normalized)) {
+            throw new BusinessException("SOURCE_PRIVACY_INVALID", "来源隐私级别不合法");
+        }
+        return normalized;
+    }
+
+    private String normalizeSensitiveLevel(String value) {
+        String normalized = normalizeEnum(value, SENSITIVE_NORMAL);
+        if (!SENSITIVE_LEVELS.contains(normalized)) {
+            throw new BusinessException("SOURCE_SENSITIVE_INVALID", "来源敏感级别不合法");
+        }
+        return normalized;
+    }
+
+    private String normalizeEnum(String value, String defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return value.trim().toLowerCase();
     }
 
     private SourceResponse toResponse(SourceEntity entity) {
+        normalizePersistedSource(entity);
         return new SourceResponse(
                 entity.getId(), entity.getClanId(), entity.getSourceName(), entity.getSourceType(), entity.getProviderName(),
-                entity.getBookTitle(), entity.getVolumeNo(), entity.getPageNo(), entity.getExcerpt(), entity.getVerificationStatus(),
-                entity.getCreatedAt()
+                entity.getBookTitle(), entity.getVolumeNo(), entity.getPageNo(), entity.getSourceDate(), entity.getExcerpt(),
+                entity.getDescription(), entity.getVerificationStatus(), entity.getConfidenceLevel(), entity.getPrivacyLevel(),
+                entity.getSensitiveLevel(), null, null, entity.getCreatedAt(), entity.getUpdatedAt()
         );
     }
 
     private SourceBindingResponse toBindingResponse(SourceBindingEntity entity) {
+        if (entity.getConfidenceLevel() == null || entity.getConfidenceLevel().isBlank()) {
+            entity.setConfidenceLevel(CONFIDENCE_UNKNOWN);
+        }
+        if (entity.getBindingStatus() == null || entity.getBindingStatus().isBlank()) {
+            entity.setBindingStatus(STATUS_OFFICIAL);
+        }
+        if (entity.getUpdatedAt() == null) {
+            entity.setUpdatedAt(entity.getCreatedAt());
+        }
         return new SourceBindingResponse(
                 entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getTargetType(), entity.getTargetId(),
-                entity.getBindingReason(), entity.getExcerpt(), entity.getCreatedBy(), entity.getCreatedAt()
+                entity.getBindingReason(), entity.getExcerpt(), entity.getConfidenceLevel(), entity.getBindingStatus(),
+                entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()
         );
     }
 
     private String sourceSnapshot(SourceEntity entity) {
         return "name=" + entity.getSourceName()
                 + ",type=" + entity.getSourceType()
-                + ",verificationStatus=" + entity.getVerificationStatus();
+                + ",verificationStatus=" + entity.getVerificationStatus()
+                + ",confidenceLevel=" + entity.getConfidenceLevel()
+                + ",privacyLevel=" + entity.getPrivacyLevel()
+                + ",sensitiveLevel=" + entity.getSensitiveLevel();
     }
 }
