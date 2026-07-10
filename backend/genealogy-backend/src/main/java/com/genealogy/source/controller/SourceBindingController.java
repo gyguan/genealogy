@@ -4,10 +4,13 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.application.RequestContextApplicationService;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.api.PageQuery;
+import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
+import com.genealogy.source.dto.SourceBindingSummaryResponse;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -72,6 +75,23 @@ public class SourceBindingController {
         return bind(clanId, request, servletRequest);
     }
 
+    @GetMapping("/sources/{sourceId}/bindings")
+    public ApiResponse<PageResponse<SourceBindingSummaryResponse>> listSourceBindings(
+            @Positive @PathVariable Long sourceId,
+            PageQuery pageQuery,
+            @RequestParam(required = false) String targetType,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceApplicationService.listBindingSummariesBySource(
+                sourceId,
+                targetType,
+                pageQuery.normalizedPageNo(),
+                pageQuery.normalizedPageSize(),
+                context.userId()
+        ));
+    }
+
     @GetMapping("/source-bindings/sources/{sourceId}")
     public ApiResponse<List<SourceBindingResponse>> listBySource(
             @Positive @PathVariable Long sourceId,
@@ -110,7 +130,8 @@ public class SourceBindingController {
     private SourceBindingResponse toResponse(SourceBindingEntity entity) {
         return new SourceBindingResponse(
                 entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getTargetType(), entity.getTargetId(),
-                entity.getBindingReason(), entity.getExcerpt(), entity.getCreatedBy(), entity.getCreatedAt()
+                entity.getBindingReason(), entity.getExcerpt(), entity.getConfidenceLevel(), entity.getBindingStatus(),
+                entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()
         );
     }
 }

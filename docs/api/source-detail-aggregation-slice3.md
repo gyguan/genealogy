@@ -68,6 +68,8 @@ id
 targetType
 targetId
 targetDisplayName
+targetBranchName
+targetSummary
 bindingReason
 excerpt
 confidenceLevel
@@ -76,7 +78,7 @@ createdBy
 createdAt
 ```
 
-当前 Slice 3 先使用 `targetType:targetId` 作为 `targetDisplayName` 兜底值。Slice 4 来源引用情况 API 会继续补齐真实业务名称，例如人物姓名、关系摘要、支派名称、字辈名称等。
+Slice 4 已补齐 `targetDisplayName / targetBranchName / targetSummary` 的真实业务对象解析能力。若目标对象不存在、已删除或不属于当前宗族，后端返回 `targetType:targetId` 作为兜底展示名。
 
 ## attachmentSummaries
 
