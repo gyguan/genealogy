@@ -155,22 +155,28 @@ GET  /api/v1/workbench/checks/source-missing?clanId={clanId}&branchId={branchId}
 GET  /api/v1/workbench/checks/generation-mismatch?clanId={clanId}&branchId={branchId}
 ```
 
-工作台任务返回建议：
+当前 P1/P2 阶段只实现只读 `summary` 和 `tasks`。`tasks` 列表需要同时满足列表展示和详情抽屉展示，返回字段建议包括：
 
 ```json
 {
   "records": [
     {
-      "taskId": 1,
-      "taskType": "missing_source",
-      "targetType": "person",
-      "targetName": "张三",
-      "branchName": "长沙支",
-      "riskLevel": "high",
-      "status": "pending",
-      "assigneeName": "支派负责人",
-      "summary": "人物档案缺少来源证据",
-      "suggestion": "请绑定族谱原文或口述材料后再提交审核",
+      "key": "missing-source-all",
+      "type": "missing_source",
+      "typeText": "来源证据缺失",
+      "objectName": "当前宗族人物档案",
+      "branchName": "全宗族",
+      "risk": "high",
+      "status": "blocked",
+      "statusText": "阻塞入谱",
+      "suggestion": "进入来源资料库维护老谱、口述、照片等证据后再绑定对象",
+      "problemDescription": "当前宗族已有入谱人物，但尚未维护来源资料，正式提交审核前缺少证据支撑。",
+      "involvedObject": "当前宗族人物档案",
+      "riskReason": "来源证据缺失会降低谱牒可信度，也会阻塞正式入谱审核。",
+      "reviewBlocked": true,
+      "relatedEntryType": "sourceLibrary",
+      "relatedEntryId": null,
+      "relatedEntryText": "进入来源资料库",
       "updatedAt": "2026-07-10T10:00:00"
     }
   ],
