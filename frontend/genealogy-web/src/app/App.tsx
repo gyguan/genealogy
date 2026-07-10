@@ -135,7 +135,7 @@ function AppShell() {
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <SourceLibraryProductPage />;
       case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
-      case 'editingWorkspace': return <EditingWorkspacePage />;
+      case 'editingWorkspace': return <EditingWorkspacePage onNavigate={setActive} />;
       case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
       case 'memberManage': return <MemberPage notify={notify} />;
