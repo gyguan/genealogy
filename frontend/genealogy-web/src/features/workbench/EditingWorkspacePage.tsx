@@ -15,39 +15,11 @@ type ClanLike = {
   surname?: string;
 };
 
-type BranchLike = {
-  id?: number | string;
-  branchName?: string;
-  name?: string;
-};
-
-type PersonLike = {
-  id?: number | string;
-  name?: string;
-  personName?: string;
-  branchId?: number | string;
-  branchName?: string;
-  generationNo?: number | string;
-  generationWord?: string;
-  dataStatus?: string;
-  status?: string;
-};
-
-type SourceLike = {
-  id?: number | string;
-  sourceName?: string;
-  title?: string;
-  status?: string;
-  verificationStatus?: string;
-};
-
-type ReviewTaskLike = {
-  id?: number | string;
-  title?: string;
-  targetType?: string;
-  targetName?: string;
-  status?: string;
-  createdAt?: string;
+type WorkbenchSummary = {
+  pendingTaskCount?: number;
+  highRiskCount?: number;
+  missingSourceCount?: number;
+  generationIssueCount?: number;
 };
 
 type WorkbenchTask = {
@@ -60,31 +32,21 @@ type WorkbenchTask = {
   status: WorkbenchStatus;
   statusText: string;
   suggestion: string;
+  updatedAt?: string;
 };
+
+type WorkbenchTaskPage = {
+  records?: WorkbenchTask[];
+  total?: number;
+  pageNo?: number;
+  pageSize?: number;
+  totalPages?: number;
+};
+
+const PAGE_SIZE = 10;
 
 function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.name || clan.surname || '未命名宗族';
-}
-
-function branchLabel(branch?: BranchLike) {
-  return branch?.branchName || branch?.name || '支派待维护';
-}
-
-function personName(person?: PersonLike) {
-  return person?.name || person?.personName || '未命名人物';
-}
-
-function sourceName(source?: SourceLike) {
-  return source?.sourceName || source?.title || '未命名来源';
-}
-
-function statusOf(value?: string) {
-  const text = String(value || '').trim().toLowerCase();
-  if (['official', 'approved', 'reviewed'].includes(text)) return '已完成';
-  if (['pending', 'pending_review'].includes(text)) return '待审核';
-  if (text === 'rejected') return '已退回';
-  if (text === 'draft') return '草稿';
-  return text ? '处理中' : '待处理';
 }
 
 function riskColor(value: WorkbenchRisk) {
@@ -106,150 +68,49 @@ function statusColor(value: WorkbenchStatus) {
   return 'default';
 }
 
-function reviewTargetText(value?: string) {
-  const text = String(value || '').trim().toLowerCase().replace(/-/g, '_');
-  const dict: Record<string, string> = {
-    person: '人物',
-    persons: '人物',
-    relationship: '关系',
-    relationships: '关系',
-    source: '来源',
-    sources: '来源',
-    branch: '支派',
-    branches: '支派',
-    generation_scheme: '字辈方案',
-    generation_schemes: '字辈方案'
-  };
-  return dict[text] || '审核对象';
-}
-
-function reviewTaskTitle(row: ReviewTaskLike) {
-  const title = String(row.title || '').trim();
-  if (title && !/#\d+/.test(title)) return title;
-  if (row.targetName) return row.targetName;
-  return `${reviewTargetText(row.targetType)}审核任务`;
-}
-
-function branchNameForPerson(person: PersonLike, branches: BranchLike[]) {
-  const branchId = String(person.branchId || '');
-  const branch = branches.find(item => String(item.id || '') === branchId);
-  return person.branchName || branchLabel(branch);
-}
-
-function buildWorkbenchTasks(people: PersonLike[], branches: BranchLike[], sources: SourceLike[], reviewTasks: ReviewTaskLike[]): WorkbenchTask[] {
-  const tasks: WorkbenchTask[] = [];
-
-  reviewTasks.slice(0, 20).forEach((task, index) => {
-    tasks.push({
-      key: `review-${task.id || index}`,
-      type: 'review_follow_up',
-      typeText: '审核跟进',
-      objectName: reviewTaskTitle(task),
-      branchName: '按审核范围查看',
-      risk: 'medium',
-      status: 'processing',
-      statusText: statusOf(task.status),
-      suggestion: '进入审核中心查看差异并处理审核结论'
-    });
-  });
-
-  const missingGenerationPeople = people.filter(person => !person.generationNo || !person.generationWord).slice(0, 12);
-  missingGenerationPeople.forEach(person => {
-    tasks.push({
-      key: `generation-${person.id || personName(person)}`,
-      type: 'generation_mismatch',
-      typeText: '字辈/代次待补',
-      objectName: personName(person),
-      branchName: branchNameForPerson(person, branches),
-      risk: 'medium',
-      status: 'pending',
-      statusText: '待补全',
-      suggestion: '进入人物档案补充代次与字辈，提交审核前完成校验'
-    });
-  });
-
-  if (people.length && !sources.length) {
-    tasks.push({
-      key: 'missing-source-all',
-      type: 'missing_source',
-      typeText: '来源证据缺失',
-      objectName: '当前宗族人物档案',
-      branchName: '全宗族',
-      risk: 'high',
-      status: 'blocked',
-      statusText: '阻塞入谱',
-      suggestion: '进入来源资料库维护老谱、口述、照片等证据后再绑定对象'
-    });
-  }
-
-  if (people.length >= 2) {
-    tasks.push({
-      key: 'relationship-check-candidate',
-      type: 'relationship_check',
-      typeText: '关系复核建议',
-      objectName: `${personName(people[0])} 与 ${personName(people[1])}`,
-      branchName: branchNameForPerson(people[0], branches),
-      risk: 'low',
-      status: 'pending',
-      statusText: '待复核',
-      suggestion: '进入世系图谱或建谱向导核对亲属关系，避免重复或错连'
-    });
-  }
-
-  return tasks;
+function unwrapData<T>(payload: unknown, fallback: T): T {
+  if (payload && typeof payload === 'object' && 'data' in payload) return ((payload as any).data ?? fallback) as T;
+  return (payload ?? fallback) as T;
 }
 
 export function EditingWorkspacePage() {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<ClanLike[]>([]);
-  const [branches, setBranches] = useState<BranchLike[]>([]);
-  const [people, setPeople] = useState<PersonLike[]>([]);
-  const [sources, setSources] = useState<SourceLike[]>([]);
-  const [reviewTasks, setReviewTasks] = useState<ReviewTaskLike[]>([]);
-  const [logTotal, setLogTotal] = useState<number | string>('-');
+  const [summary, setSummary] = useState<WorkbenchSummary>({});
+  const [taskPage, setTaskPage] = useState<WorkbenchTaskPage>({ records: [], pageNo: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(false);
   const [taskType, setTaskType] = useState('');
   const [risk, setRisk] = useState('');
 
   const activeClan = clans.find(item => String(item.id || '') === workspace.clanId) || clans[0];
-  const workbenchTasks = useMemo(() => buildWorkbenchTasks(people, branches, sources, reviewTasks), [people, branches, sources, reviewTasks]);
-  const filteredTasks = useMemo(() => workbenchTasks.filter(task => {
-    const matchesType = !taskType || task.type === taskType;
-    const matchesRisk = !risk || task.risk === risk;
-    return matchesType && matchesRisk;
-  }), [workbenchTasks, taskType, risk]);
+  const tasks = useMemo(() => toRecordList<WorkbenchTask>(taskPage.records || []), [taskPage.records]);
 
-  const highRiskCount = workbenchTasks.filter(task => task.risk === 'high').length;
-  const sourceMissingCount = workbenchTasks.filter(task => task.type === 'missing_source').length;
-  const generationIssueCount = workbenchTasks.filter(task => task.type === 'generation_mismatch').length;
+  async function loadClans() {
+    const clanRows = toRecordList<ClanLike>(unwrapData(await apiClient.get('/clans').catch(() => []), []));
+    setClans(clanRows);
+    const nextClanId = workspace.clanId || String(clanRows[0]?.id || '');
+    if (nextClanId && !workspace.clanId) workspace.setClanId(nextClanId);
+    return nextClanId;
+  }
 
-  async function loadWorkbench(sourceClanId = workspace.clanId) {
+  async function loadWorkbench(sourceClanId = workspace.clanId, nextPage = 1) {
     setLoading(true);
     try {
-      const clanRows = toRecordList<ClanLike>(await apiClient.get('/clans').catch(() => []));
-      setClans(clanRows);
-      const nextClanId = sourceClanId || String(clanRows[0]?.id || '');
-      if (nextClanId && !workspace.clanId) workspace.setClanId(nextClanId);
+      const nextClanId = sourceClanId || await loadClans();
       if (!nextClanId) {
-        setBranches([]);
-        setPeople([]);
-        setSources([]);
-        setReviewTasks([]);
-        setLogTotal('-');
+        setSummary({});
+        setTaskPage({ records: [], pageNo: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
         return;
       }
-      const [branchData, personData, sourceData, reviewData, logData] = await Promise.all([
-        apiClient.get(`/clans/${nextClanId}/branches`).catch(() => []),
-        apiClient.get(`/clans/${nextClanId}/persons`).catch(() => []),
-        apiClient.get(`/clans/${nextClanId}/sources`).catch(() => []),
-        apiClient.get(`/clans/${nextClanId}/review-tasks/pending`).catch(() => []),
-        apiClient.get(`/logs/operations/stats?clanId=${nextClanId}`).catch(() => null)
+      const query = new URLSearchParams({ clanId: nextClanId, pageNo: String(nextPage), pageSize: String(PAGE_SIZE) });
+      if (taskType) query.set('type', taskType);
+      if (risk) query.set('risk', risk);
+      const [summaryPayload, taskPayload] = await Promise.all([
+        apiClient.get(`/workbench/summary?clanId=${nextClanId}`),
+        apiClient.get(`/workbench/tasks?${query.toString()}`)
       ]);
-      setBranches(toRecordList<BranchLike>(branchData));
-      setPeople(toRecordList<PersonLike>(personData));
-      setSources(toRecordList<SourceLike>(sourceData));
-      setReviewTasks(toRecordList<ReviewTaskLike>(reviewData));
-      setLogTotal((logData as any)?.totalCount ?? (logData as any)?.total ?? '-');
+      setSummary(unwrapData<WorkbenchSummary>(summaryPayload, {}));
+      setTaskPage(unwrapData<WorkbenchTaskPage>(taskPayload, { records: [], pageNo: nextPage, pageSize: PAGE_SIZE, total: 0, totalPages: 1 }));
     } catch (error) {
       message.error((error as Error).message || '加载修谱工作台失败');
     } finally {
@@ -257,13 +118,17 @@ export function EditingWorkspacePage() {
     }
   }
 
-  useEffect(() => { void loadWorkbench(); }, []);
+  useEffect(() => { void loadClans().then(clanId => loadWorkbench(clanId)); }, []);
 
   function changeClan(nextClanId: string) {
     workspace.setClanId(nextClanId);
     setTaskType('');
     setRisk('');
-    void loadWorkbench(nextClanId);
+    void loadWorkbench(nextClanId, 1);
+  }
+
+  function searchWorkbench() {
+    void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), 1);
   }
 
   return (
@@ -322,22 +187,22 @@ export function EditingWorkspacePage() {
               ]}
             />
           </Space>
-          <Button type="primary" loading={loading} onClick={() => void loadWorkbench()}>查询工作台</Button>
+          <Button type="primary" loading={loading} onClick={searchWorkbench}>查询工作台</Button>
         </Space>
       </Card>
 
       <Row gutter={[12, 12]}>
-        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">待处理问题</Typography.Text><Typography.Title level={3}>{workbenchTasks.length}</Typography.Title><Tag>任务池</Tag></Card></Col>
-        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">高风险阻塞</Typography.Text><Typography.Title level={3}>{highRiskCount}</Typography.Title><Tag color={highRiskCount ? 'error' : 'success'}>{highRiskCount ? '需优先处理' : '暂无阻塞'}</Tag></Card></Col>
-        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">资料缺失</Typography.Text><Typography.Title level={3}>{sourceMissingCount}</Typography.Title><Tag color={sourceMissingCount ? 'warning' : 'success'}>{sourceMissingCount ? '待补来源' : '来源正常'}</Tag></Card></Col>
-        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">代次/字辈问题</Typography.Text><Typography.Title level={3}>{generationIssueCount}</Typography.Title><Tag color={generationIssueCount ? 'processing' : 'success'}>{generationIssueCount ? '待校验' : '已校验'}</Tag></Card></Col>
+        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">待处理问题</Typography.Text><Typography.Title level={3}>{summary.pendingTaskCount ?? 0}</Typography.Title><Tag>任务池</Tag></Card></Col>
+        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">高风险阻塞</Typography.Text><Typography.Title level={3}>{summary.highRiskCount ?? 0}</Typography.Title><Tag color={summary.highRiskCount ? 'error' : 'success'}>{summary.highRiskCount ? '需优先处理' : '暂无阻塞'}</Tag></Card></Col>
+        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">资料缺失</Typography.Text><Typography.Title level={3}>{summary.missingSourceCount ?? 0}</Typography.Title><Tag color={summary.missingSourceCount ? 'warning' : 'success'}>{summary.missingSourceCount ? '待补来源' : '来源正常'}</Tag></Card></Col>
+        <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">代次/字辈问题</Typography.Text><Typography.Title level={3}>{summary.generationIssueCount ?? 0}</Typography.Title><Tag color={summary.generationIssueCount ? 'processing' : 'success'}>{summary.generationIssueCount ? '待校验' : '已校验'}</Tag></Card></Col>
       </Row>
 
       <Alert
         type="info"
         showIcon
         message="工作台定位"
-        description={`当前页面只负责发现和组织修谱问题。审批通过/驳回仍进入审核中心；人物、来源、关系的具体维护仍进入对应业务页面。当前审计记录数：${logTotal}。`}
+        description="当前页面只负责发现和组织修谱问题。审批通过/驳回仍进入审核中心；人物、来源、关系的具体维护仍进入对应业务页面。"
       />
 
       <Card title="修谱问题任务池" loading={loading}>
@@ -345,8 +210,14 @@ export function EditingWorkspacePage() {
           size="small"
           bordered
           rowKey="key"
-          dataSource={filteredTasks}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
+          dataSource={tasks}
+          pagination={{
+            current: taskPage.pageNo || 1,
+            pageSize: taskPage.pageSize || PAGE_SIZE,
+            total: taskPage.total || 0,
+            showSizeChanger: false,
+            onChange: page => void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), page)
+          }}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无修谱问题。可以先从导入管理、人物档案或来源资料库补充数据。" /> }}
           columns={[
             { key: 'type', title: '问题类型', width: 140, render: (_value, row) => row.typeText },
