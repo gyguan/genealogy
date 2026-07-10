@@ -637,7 +637,6 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             <Space wrap>
               <Button type="primary" htmlType="submit" disabled={loading || !workspace.clanId}>搜索</Button>
               <Button onClick={reset}>重置</Button>
-              <Button disabled={filterLoading} onClick={() => workspace.clanId ? void loadClanFilterOptions(workspace.clanId) : void loadClans()}>刷新选项</Button>
             </Space>
           </Form.Item>
         </Form>
@@ -760,80 +759,87 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                   },
                   {
                     key: 'relations',
-                    label: '亲属关系',
+                    label: '关系与来源',
                     children: (
-                      <Table<any>
-                        size="small"
-                        rowKey={(row, index) => String(row.id || index)}
-                        dataSource={relationshipRows}
-                        pagination={false}
-                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无亲属关系，或尚未点击人物记录。" /> }}
-                        columns={[
-                          { key: 'fromPersonName', title: '起点人物', render: (_value, row) => relationshipName(row, 'from') },
-                          { key: 'toPersonName', title: '关联人物', render: (_value, row) => relationshipName(row, 'to') },
-                          { key: 'relationType', title: '关系类型', render: (_value, row) => relationshipTypeText(row.relationLabel || row.relationType) }
-                        ]}
-                      />
-                    )
-                  },
-                  {
-                    key: 'sources',
-                    label: '来源证据',
-                    children: (
-                      <Table<any>
-                        size="small"
-                        rowKey={(row, index) => String(row.id || index)}
-                        dataSource={sourceRows}
-                        pagination={false}
-                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源绑定，或尚未点击人物记录。" /> }}
-                        columns={[
-                          { key: 'sourceName', title: '来源资料', render: (_value, row) => sourceTitle(row) },
-                          { key: 'sourceType', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType || row.type) },
-                          { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
-                        ]}
-                      />
+                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <Table<any>
+                          size="small"
+                          bordered
+                          rowKey={(row, index) => String(row.id || `${relationshipName(row, 'from')}-${relationshipName(row, 'to')}-${index}`)}
+                          dataSource={relationshipRows}
+                          pagination={false}
+                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关系记录" /> }}
+                          columns={[
+                            { key: 'from', title: '起点人物', render: (_value, row) => relationshipName(row, 'from') },
+                            { key: 'to', title: '关联人物', render: (_value, row) => relationshipName(row, 'to') },
+                            { key: 'type', title: '关系', render: (_value, row) => relationshipTypeText(row.relationType || row.relationLabel) },
+                            { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
+                          ]}
+                        />
+                        <Table<any>
+                          size="small"
+                          bordered
+                          rowKey={(row, index) => String(row.id || row.sourceId || index)}
+                          dataSource={sourceRows}
+                          pagination={false}
+                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源绑定" /> }}
+                          columns={[
+                            { key: 'sourceName', title: '来源名称', render: (_value, row) => sourceTitle(row) },
+                            { key: 'sourceType', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType) },
+                            { key: 'evidence', title: '证据说明', render: (_value, row) => display(row.evidenceText || row.description, '暂无说明') }
+                          ]}
+                        />
+                      </Space>
                     )
                   }
                 ]}
               />
             </Space>
           ) : (
-            <Form layout="vertical" className="archive-edit-section">
-              <Card size="small" title="编辑人物档案">
-                <div className="archive-edit-grid">
-                  <Form.Item label="支派"><Select value={editForm.branchId} onChange={value => patchEdit('branchId', value)} options={[{ value: '', label: '请选择支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
-                  <Form.Item label="姓名"><Input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Form.Item>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Card size="small" title="基础信息">
+                <Form layout="vertical">
+                  <Form.Item label="姓名" required><Input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Form.Item>
                   <Form.Item label="谱名"><Input value={editForm.genealogyName} onChange={e => patchEdit('genealogyName', e.target.value)} /></Form.Item>
                   <Form.Item label="字号"><Input value={editForm.courtesyName} onChange={e => patchEdit('courtesyName', e.target.value)} /></Form.Item>
                   <Form.Item label="别名"><Input value={editForm.aliasName} onChange={e => patchEdit('aliasName', e.target.value)} /></Form.Item>
-                  <Form.Item label="性别"><Select value={editForm.gender} onChange={value => patchEdit('gender', value)} options={genderOptions.filter(item => item.value)} /></Form.Item>
-                  <Form.Item label="代次"><Select value={editForm.generationNo} onChange={value => patchEdit('generationNo', value)} options={[{ value: '', label: '请选择代次' }, ...generationNoOptions.map(no => ({ value: no, label: generationNoLabel(no) }))]} /></Form.Item>
-                  <Form.Item label="字辈"><Select value={editForm.generationWord} onChange={value => patchEdit('generationWord', value)} options={[{ value: '', label: '请选择字辈' }, ...generationWordOptions.map(word => ({ value: word, label: word }))]} /></Form.Item>
+                  <Form.Item label="性别"><Select value={editForm.gender} onChange={value => patchEdit('gender', value)} options={genderOptions.filter(option => option.value)} /></Form.Item>
+                  <Form.Item label="支派"><Select value={editForm.branchId} onChange={value => patchEdit('branchId', value)} options={[{ value: '', label: '请选择支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
+                  <Form.Item label="代次"><Input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Form.Item>
+                  <Form.Item label="字辈"><Input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Form.Item>
                   <Form.Item label="排行"><Input value={editForm.rankInFamily} onChange={e => patchEdit('rankInFamily', e.target.value)} /></Form.Item>
+                </Form>
+              </Card>
+              <Card size="small" title="生卒与传记">
+                <Form layout="vertical">
                   <Form.Item label="出生日期"><Input value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item>
                   <Form.Item label="逝世日期"><Input value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item>
                   <Form.Item label="是否在世"><Select value={editForm.isLiving} onChange={value => patchEdit('isLiving', value)} options={[{ value: 'true', label: '在世' }, { value: 'false', label: '已故' }]} /></Form.Item>
-                  <Form.Item label="是否有后裔"><Select value={editForm.hasDescendant} onChange={value => patchEdit('hasDescendant', value)} options={[{ value: '', label: '未知' }, { value: 'true', label: '有' }, { value: 'false', label: '无' }]} /></Form.Item>
                   <Form.Item label="出生地"><Input value={editForm.birthPlace} onChange={e => patchEdit('birthPlace', e.target.value)} /></Form.Item>
                   <Form.Item label="居住地"><Input value={editForm.residencePlace} onChange={e => patchEdit('residencePlace', e.target.value)} /></Form.Item>
+                  <Form.Item label="人物传记"><Input.TextArea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={4} /></Form.Item>
+                  <Form.Item label="墓葬地"><Input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Form.Item>
+                  <Form.Item label="墓志铭"><Input.TextArea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={3} /></Form.Item>
+                </Form>
+              </Card>
+              <Card size="small" title="状态与隐私">
+                <Form layout="vertical">
                   <Form.Item label="职业"><Input value={editForm.occupation} onChange={e => patchEdit('occupation', e.target.value)} /></Form.Item>
                   <Form.Item label="教育程度"><Input value={editForm.education} onChange={e => patchEdit('education', e.target.value)} /></Form.Item>
                   <Form.Item label="称号荣誉"><Input value={editForm.titleOrHonor} onChange={e => patchEdit('titleOrHonor', e.target.value)} /></Form.Item>
-                  <Form.Item label="墓葬地"><Input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Form.Item>
-                  <Form.Item label="世系状态"><Select value={editForm.lineageStatus} onChange={value => patchEdit('lineageStatus', value)} options={[{ value: 'normal', label: '正常' }, { value: 'adopted_in', label: '继入' }, { value: 'adopted_out', label: '出嗣' }, { value: 'unknown', label: '未知' }]} /></Form.Item>
+                  <Form.Item label="是否有后裔"><Select value={editForm.hasDescendant} onChange={value => patchEdit('hasDescendant', value)} options={[{ value: '', label: '未知' }, { value: 'true', label: '是' }, { value: 'false', label: '否' }]} /></Form.Item>
+                  <Form.Item label="世系状态"><Select value={editForm.lineageStatus} onChange={value => patchEdit('lineageStatus', value)} options={[{ value: 'normal', label: '正常' }, { value: 'adopted_in', label: '继入' }, { value: 'adopted_out', label: '出嗣' }, { value: 'unknown', label: '待考' }]} /></Form.Item>
                   <Form.Item label="隐私级别"><Select value={editForm.privacyLevel} onChange={value => patchEdit('privacyLevel', value)} options={privacyOptions.map(([value, label]) => ({ value, label }))} /></Form.Item>
-                  <Form.Item label="档案状态"><Select value={editForm.dataStatus} onChange={value => patchEdit('dataStatus', value)} options={statusOptions.filter(item => item.value)} /></Form.Item>
-                </div>
-                <Form.Item label="人物传记"><Input.TextArea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={5} placeholder="记录生平、迁徙、功名、事迹等" /></Form.Item>
-                <Form.Item label="墓志铭"><Input.TextArea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={4} placeholder="记录墓志、碑文或相关摘录" /></Form.Item>
-                <Space>
-                  <Button type="primary" loading={loading} onClick={() => void saveDetail()}>{loading ? '保存中...' : '保存人物档案'}</Button>
-                  <Button onClick={cancelEdit}>取消</Button>
-                </Space>
+                  <Form.Item label="档案状态"><Select value={editForm.dataStatus} onChange={value => patchEdit('dataStatus', value)} options={statusOptions.filter(option => option.value)} /></Form.Item>
+                </Form>
               </Card>
-            </Form>
+              <Space>
+                <Button type="primary" loading={loading} onClick={() => void saveDetail()}>保存档案</Button>
+                <Button onClick={cancelEdit}>取消</Button>
+              </Space>
+            </Space>
           )
-        ) : null}
+        ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择人物档案" />}
       </Drawer>
     </div>
   );
