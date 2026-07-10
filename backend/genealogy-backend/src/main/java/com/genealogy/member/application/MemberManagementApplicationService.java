@@ -7,6 +7,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.dto.ClanMemberResponse;
 import com.genealogy.member.dto.CreateClanMemberRequest;
+import com.genealogy.member.dto.MemberPermissionSummaryResponse;
 import com.genealogy.member.dto.RoleResponse;
 import com.genealogy.member.dto.UpdateClanMemberRoleRequest;
 import com.genealogy.member.dto.UserSummaryResponse;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -39,6 +41,10 @@ public class MemberManagementApplicationService {
     private static final String STATUS_ACTIVE = "active";
     private static final String STATUS_REVOKED = "revoked";
     private static final String JOIN_STATUS_JOINED = "joined";
+    private static final Set<String> HIGH_RISK_ROLE_CODES = Set.of(
+            AuthorizationApplicationService.ROLE_CLAN_ADMIN,
+            AuthorizationApplicationService.ROLE_REVIEWER
+    );
 
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
@@ -81,6 +87,50 @@ public class MemberManagementApplicationService {
                 .sorted(Comparator.comparing(RoleEntity::getId))
                 .map(this::toRoleResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MemberPermissionSummaryResponse summary(Long clanId) {
+        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active);
+        List<Long> membershipIds = memberships.stream().map(ClanMembershipEntity::getId).toList();
+        List<MemberRoleEntity> roleRows = membershipIds.isEmpty()
+                ? List.of()
+                : memberRoleRepository.findByMembershipIdInAndStatus(membershipIds, STATUS_ACTIVE);
+        Map<Long, RoleEntity> roleMap = roleRepository.findAllById(
+                        roleRows.stream()
+                                .map(MemberRoleEntity::getRoleId)
+                                .filter(Objects::nonNull)
+                                .toList()
+                ).stream()
+                .collect(Collectors.toMap(RoleEntity::getId, Function.identity(), (first, second) -> first));
+        Set<Long> branchManagerScopeIds = roleRows.stream()
+                .filter(roleRow -> AuthorizationApplicationService.ROLE_BRANCH_ADMIN.equals(roleCode(roleMap.get(roleRow.getRoleId()))))
+                .map(MemberRoleEntity::getScopeId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        long branchCount = branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).size();
+        long adminCount = roleRows.stream()
+                .filter(roleRow -> AuthorizationApplicationService.ROLE_CLAN_ADMIN.equals(roleCode(roleMap.get(roleRow.getRoleId()))))
+                .count();
+        long branchManagerCount = roleRows.stream()
+                .filter(roleRow -> AuthorizationApplicationService.ROLE_BRANCH_ADMIN.equals(roleCode(roleMap.get(roleRow.getRoleId()))))
+                .count();
+        long highRiskGrantCount = roleRows.stream()
+                .filter(roleRow -> HIGH_RISK_ROLE_CODES.contains(roleCode(roleMap.get(roleRow.getRoleId()))))
+                .count();
+        LocalDateTime latestPermissionChangedAt = roleRows.stream()
+                .map(roleRow -> roleRow.getUpdatedAt() == null ? roleRow.getCreatedAt() : roleRow.getUpdatedAt())
+                .filter(Objects::nonNull)
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
+        return new MemberPermissionSummaryResponse(
+                memberships.size(),
+                adminCount,
+                branchManagerCount,
+                Math.max(0, branchCount - branchManagerScopeIds.size()),
+                highRiskGrantCount,
+                latestPermissionChangedAt
+        );
     }
 
     @Transactional(readOnly = true)
@@ -369,5 +419,9 @@ public class MemberManagementApplicationService {
 
     private String roleType(String roleCode) {
         return ROLE_VIEWER.equals(roleCode) ? "view" : "manage";
+    }
+
+    private String roleCode(RoleEntity role) {
+        return role == null ? null : role.getRoleCode();
     }
 }
