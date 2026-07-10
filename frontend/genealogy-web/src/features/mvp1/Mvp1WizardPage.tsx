@@ -13,8 +13,7 @@ const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
   { key: 'person', title: '4. 录入人物', desc: '人物需审核通过后才能建立关系。' },
   { key: 'relationship', title: '5. 建立关系', desc: '只允许选择已通过审核的人物。' },
   { key: 'source', title: '6. 绑定来源', desc: '只允许绑定已通过审核的对象。' },
-  { key: 'review', title: '7. 审核进度', desc: '查看待审任务，也可补充提交草稿对象。' },
-  { key: 'tree', title: '8. 查看世系', desc: '只展示已通过审核的人物和关系。' }
+  { key: 'review', title: '7. 审核进度', desc: '查看待审任务，也可补充提交草稿对象。' }
 ];
 
 export function Mvp1WizardPage({ notify }: Props) {
@@ -29,8 +28,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     { ...stepOrder[3], ready: Boolean(workspace.personId) },
     { ...stepOrder[4], ready: Boolean(workspace.relationshipId) },
     { ...stepOrder[5], ready: Boolean(workspace.sourceId) },
-    { ...stepOrder[6], ready: Boolean(workspace.reviewTaskId) },
-    { ...stepOrder[7], ready: Boolean(workspace.personId) }
+    { ...stepOrder[6], ready: Boolean(workspace.reviewTaskId) }
   ], [
     workspace.clanId,
     workspace.branchId,
