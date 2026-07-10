@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.entity.AppUserEntity;
 import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.dto.ClanMemberResponse;
 import com.genealogy.member.dto.CreateClanMemberRequest;
@@ -134,7 +135,34 @@ public class MemberManagementApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public PageResponse<ClanMemberResponse> members(
+            Long clanId,
+            String keyword,
+            String roleCode,
+            String scopeType,
+            String status,
+            int pageNo,
+            int pageSize
+    ) {
+        List<ClanMemberResponse> filtered = memberRows(clanId).stream()
+                .filter(member -> matchesKeyword(member, keyword))
+                .filter(member -> isBlank(roleCode) || Objects.equals(member.roleCode(), roleCode))
+                .filter(member -> isBlank(scopeType) || Objects.equals(member.scopeType(), scopeType))
+                .filter(member -> isBlank(status) || Objects.equals(member.memberStatus(), status))
+                .toList();
+        int normalizedPageNo = Math.max(1, pageNo);
+        int normalizedPageSize = Math.max(1, Math.min(pageSize, 200));
+        int fromIndex = Math.min((normalizedPageNo - 1) * normalizedPageSize, filtered.size());
+        int toIndex = Math.min(fromIndex + normalizedPageSize, filtered.size());
+        return PageResponse.of(filtered.subList(fromIndex, toIndex), filtered.size(), normalizedPageNo, normalizedPageSize);
+    }
+
+    @Transactional(readOnly = true)
     public List<ClanMemberResponse> members(Long clanId) {
+        return memberRows(clanId);
+    }
+
+    private List<ClanMemberResponse> memberRows(Long clanId) {
         List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndMemberStatus(clanId, MemberStatus.active);
         Map<Long, ClanMembershipEntity> membershipsById = memberships.stream()
                 .collect(Collectors.toMap(ClanMembershipEntity::getId, Function.identity(), (first, second) -> first));
@@ -423,5 +451,23 @@ public class MemberManagementApplicationService {
 
     private String roleCode(RoleEntity role) {
         return role == null ? null : role.getRoleCode();
+    }
+
+    private boolean matchesKeyword(ClanMemberResponse member, String keyword) {
+        if (isBlank(keyword)) return true;
+        String normalized = keyword.trim().toLowerCase(Locale.ROOT);
+        return contains(member.displayName(), normalized)
+                || contains(member.memberName(), normalized)
+                || contains(member.username(), normalized)
+                || contains(member.roleName(), normalized)
+                || contains(member.roleCode(), normalized);
+    }
+
+    private boolean contains(String value, String keyword) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(keyword);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
