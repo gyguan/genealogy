@@ -7,6 +7,7 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.dto.SourceCreateRequest;
+import com.genealogy.source.dto.SourceDetailResponse;
 import com.genealogy.source.dto.SourceResponse;
 import com.genealogy.source.dto.SourceSearchCriteria;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,9 +48,9 @@ public class SourceController {
     }
 
     @GetMapping("/sources/{id}")
-    public ApiResponse<SourceResponse> get(@Positive @PathVariable Long id, HttpServletRequest servletRequest) {
+    public ApiResponse<SourceDetailResponse> get(@Positive @PathVariable Long id, HttpServletRequest servletRequest) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceApplicationService.get(id, context.userId()));
+        return ApiResponse.success(sourceApplicationService.getDetail(id, context.userId()));
     }
 
     @PutMapping("/sources/{id}")
