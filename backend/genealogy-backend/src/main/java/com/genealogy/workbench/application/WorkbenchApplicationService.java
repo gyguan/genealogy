@@ -125,6 +125,13 @@ public class WorkbenchApplicationService {
                 "processing",
                 statusText(task.getStatus()),
                 "进入审核中心查看差异并处理审核结论",
+                "该任务已经进入审核流程，工作台只负责提醒和解释，不直接提供审批通过或驳回动作。",
+                "审核任务",
+                "审核任务可能包含正式入谱前的关键变更，需要由审核中心按规则处理，避免绕过审核。",
+                false,
+                "reviewCenter",
+                String.valueOf(task.getId()),
+                "进入审核中心",
                 task.getCreatedAt()
         );
     }
@@ -140,6 +147,13 @@ public class WorkbenchApplicationService {
                 "pending",
                 "待补全",
                 "进入人物档案补充代次与字辈，提交审核前完成校验",
+                "该人物档案缺少代次或字辈信息，可能影响世系排序、字辈校验和谱牒展示。",
+                "人物档案：" + personName(person),
+                "代次或字辈缺失会导致人物在世系中的位置不清晰，审核前建议补齐。",
+                false,
+                "personArchive",
+                String.valueOf(person.getId()),
+                "进入人物档案",
                 person.getUpdatedAt() == null ? person.getCreatedAt() : person.getUpdatedAt()
         );
     }
@@ -155,6 +169,13 @@ public class WorkbenchApplicationService {
                 "blocked",
                 "阻塞入谱",
                 "进入来源资料库维护老谱、口述、照片等证据后再绑定对象",
+                "当前宗族已有入谱人物，但尚未维护来源资料，正式提交审核前缺少证据支撑。",
+                branchId == null ? "当前宗族人物档案" : "支派人物档案：" + branchName(branchId, branchMap),
+                "来源证据缺失会降低谱牒可信度，也会阻塞正式入谱审核。",
+                true,
+                "sourceLibrary",
+                null,
+                "进入来源资料库",
                 LocalDateTime.now()
         );
     }
@@ -170,6 +191,13 @@ public class WorkbenchApplicationService {
                 "pending",
                 "待复核",
                 "进入世系图谱或建谱向导核对亲属关系，避免重复或错连",
+                "系统发现当前宗族已有多个人物档案，建议在提交前复核关键亲属关系是否完整、重复或错连。",
+                "关系对象：" + personName(left) + "、" + personName(right),
+                "关系复核可以提前发现断代、错连、重复关系等问题，降低后续审核返工。",
+                false,
+                "treeProduct",
+                String.valueOf(left.getId()),
+                "进入世系图谱",
                 LocalDateTime.now()
         );
     }
