@@ -19,6 +19,7 @@ public record WorkbenchTaskResponse(
         String relatedEntryType,
         String relatedEntryId,
         String relatedEntryText,
+        String statusDescription,
         LocalDateTime updatedAt
 ) {
 }
