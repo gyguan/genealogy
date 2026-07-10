@@ -89,6 +89,92 @@ generation_word
 
 这样可以追溯某个人物、某个父子关系、某个支派迁徙或某个字辈来自哪本谱、哪一页、哪段原文。
 
+### 来源资料库模块定位
+
+`source` 不是普通附件记录，而是族谱系统的证据中心。它负责统一管理来源资料、附件、引用关系、复核状态、权限隐私和操作留痕。
+
+来源资料库需要回答四个问题：
+
+| 问题 | 数据模型支撑 |
+|---|---|
+| 资料从哪里来 | `source.source_name/source_type/provider_name/book_title/volume_no/page_no/source_date` |
+| 资料是否可信 | `source.confidence_level/source.verification_status` |
+| 资料被谁引用 | `source_binding.target_type/target_id` 与聚合查询 |
+| 资料是否安全 | `source.privacy_level/sensitive_level` 与附件权限 |
+
+### source 推荐字段
+
+| 字段 | 说明 |
+|---|---|
+| id | 来源主键，前端普通用户不直接展示 |
+| clan_id | 所属宗族 |
+| source_name | 来源名称 |
+| source_type | 来源类型 |
+| provider_name | 提供者 / 收藏机构 |
+| book_title | 书名 / 文献名 |
+| volume_no | 卷号 |
+| page_no | 页码 / 位置 |
+| source_date | 资料年代 |
+| excerpt | 原文摘录 |
+| description | 资料说明 |
+| confidence_level | 可信度：high / medium / low / unknown |
+| verification_status | 来源状态：draft / pending_review / official / rejected / archived |
+| privacy_level | 隐私级别：public / clan_only / branch_only / relatives_only / private / sealed |
+| sensitive_level | 敏感级别：normal / sensitive / highly_sensitive |
+| created_by | 创建人 |
+| created_at | 创建时间 |
+| updated_at | 更新时间 |
+| deleted_at | 软删除时间，后续需要软删除时使用 |
+
+### source_attachment 推荐字段
+
+| 字段 | 说明 |
+|---|---|
+| id | 附件主键，前端普通用户不直接展示 |
+| source_id | 所属来源 |
+| file_name | 文件名 |
+| file_type | 文件类型 |
+| file_size | 文件大小 |
+| storage_path | 存储路径，仅后端使用，不直接返回普通前端 |
+| checksum | 文件校验值，仅后端或管理员诊断使用 |
+| privacy_level | 附件隐私级别，默认继承来源 |
+| sensitive_level | 附件敏感级别 |
+| upload_status | 上传状态 |
+| uploaded_by | 上传人 |
+| uploaded_at | 上传时间 |
+| deleted_at | 软删除时间 |
+
+### source_binding 推荐字段
+
+| 字段 | 说明 |
+|---|---|
+| id | 绑定主键 |
+| clan_id | 所属宗族 |
+| source_id | 来源 ID |
+| target_type | 绑定对象类型：person / relationship / branch / clan / generation_word |
+| target_id | 绑定对象 ID，前端展示时必须转换为业务名称 |
+| binding_reason | 绑定原因 |
+| excerpt | 本次引用摘录 |
+| confidence_level | 本次引用可信度 |
+| binding_status | 绑定状态：draft / pending_review / official / rejected / archived |
+| created_by | 创建人 |
+| created_at | 创建时间 |
+| updated_at | 更新时间 |
+| deleted_at | 软删除时间 |
+
+### 聚合展示字段
+
+以下字段不一定落表，但来源资料库列表和详情接口需要聚合返回，避免前端自行拼凑：
+
+| 字段 | 说明 |
+|---|---|
+| binding_count | 来源被引用次数 |
+| attachment_count | 来源附件数 |
+| target_display_name | 绑定对象业务名称 |
+| target_branch_name | 绑定对象所属支派 |
+| target_summary | 绑定对象摘要 |
+| permissions | 当前用户对来源的可操作权限 |
+
 ## 审核模型
 
 正式数据修改不直接落表，而是生成：
@@ -99,9 +185,19 @@ revision → review_task → approve/reject → apply
 
 审核通过后才写入正式数据。
 
+来源资料库相关审核规则：
+
+1. 新增来源默认进入 `draft`。
+2. 来源提交复核后进入 `pending_review`。
+3. 审核通过后进入 `official`，审核驳回后进入 `rejected`。
+4. `official` 来源的关键字段修改、删除和归档必须走 `revision → review_task → apply`。
+5. 正式人物、正式关系、正式支派、正式字辈的来源绑定或解绑必须走审核。
+6. 审核员不能审核自己提交的来源或来源绑定变更。
+7. 来源附件上传可以先进入来源详情，但敏感附件上传、预览、下载需要单独权限和审计。
+
 ## 状态枚举
 
-人物数据状态：
+人物、关系、来源、来源绑定统一使用以下数据状态：
 
 ```text
 draft
@@ -111,7 +207,16 @@ rejected
 archived
 ```
 
-审核状态：
+历史兼容规则：
+
+| 历史状态 | 目标状态 | 说明 |
+|---|---|---|
+| unverified | draft | 未复核来源先按草稿处理 |
+| verified | official | 已验证来源迁移为正式来源 |
+| reviewed | official | 如历史数据存在该值，迁移为正式来源 |
+| approved | official | 如历史数据存在该值，迁移为正式来源 |
+
+审核任务状态：
 
 ```text
 pending
@@ -126,5 +231,24 @@ cancelled
 public
 clan_only
 branch_only
+relatives_only
 private
+sealed
+```
+
+可信度：
+
+```text
+high
+medium
+low
+unknown
+```
+
+敏感级别：
+
+```text
+normal
+sensitive
+highly_sensitive
 ```

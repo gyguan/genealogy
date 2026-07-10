@@ -20,6 +20,7 @@
 /api/v1/relationships     人物关系
 /api/v1/sources           资料来源
 /api/v1/source-bindings   来源绑定
+/api/v1/source-attachments 来源附件
 /api/v1/reviews           审核中心
 /api/v1/workbench         修谱工作台
 /api/v1/tree              世系图
@@ -38,6 +39,20 @@
   "message": "操作成功",
   "data": {},
   "traceId": "20260625153000001"
+}
+```
+
+分页列表统一返回：
+
+```json
+{
+  "items": [],
+  "page": {
+    "pageNo": 1,
+    "pageSize": 20,
+    "totalElements": 100,
+    "totalPages": 5
+  }
 }
 ```
 
@@ -93,24 +108,192 @@ DELETE /api/v1/relationships/{relationshipId}
 POST   /api/v1/relationships/validate
 ```
 
-### 来源
+## 来源资料库接口
+
+来源资料库是独立业务模块，接口必须支持搜索、维护、查看详情、附件管理、引用情况和审核接入。
+
+### 来源列表与搜索
 
 ```text
-POST   /api/v1/clans/{clanId}/sources
-GET    /api/v1/clans/{clanId}/sources
-GET    /api/v1/sources/{sourceId}
+GET /api/v1/clans/{clanId}/sources
+```
+
+查询参数：
+
+| 参数 | 说明 |
+|---|---|
+| keyword | 搜索来源名称、提供者、书名、卷号、页码、摘录、说明 |
+| sourceType | 来源类型 |
+| verificationStatus | 来源状态 |
+| privacyLevel | 隐私级别 |
+| targetType | 引用对象类型 |
+| hasAttachment | 是否有附件 |
+| hasBinding | 是否已被引用 |
+| pageNo | 页码 |
+| pageSize | 每页数量 |
+| sort | 排序，例如 `updatedAt,desc` |
+
+响应字段必须包含：
+
+```json
+{
+  "id": 1,
+  "sourceName": "张氏族谱卷一",
+  "sourceType": "genealogy_book",
+  "providerName": "修谱委员会",
+  "bookTitle": "张氏族谱",
+  "volumeNo": "卷一",
+  "pageNo": "12",
+  "excerpt": "原文摘录",
+  "verificationStatus": "official",
+  "privacyLevel": "clan_only",
+  "sensitiveLevel": "normal",
+  "confidenceLevel": "high",
+  "bindingCount": 86,
+  "attachmentCount": 2,
+  "createdAt": "2026-07-10T10:00:00",
+  "updatedAt": "2026-07-10T10:00:00"
+}
+```
+
+### 新增来源
+
+```text
+POST /api/v1/clans/{clanId}/sources
+```
+
+请求：
+
+```json
+{
+  "sourceName": "张氏族谱卷一",
+  "sourceType": "genealogy_book",
+  "providerName": "修谱委员会",
+  "bookTitle": "张氏族谱",
+  "volumeNo": "卷一",
+  "pageNo": "12",
+  "sourceDate": "清光绪年间",
+  "excerpt": "原文摘录",
+  "description": "资料说明",
+  "confidenceLevel": "high",
+  "privacyLevel": "clan_only",
+  "sensitiveLevel": "normal",
+  "submitReview": false
+}
+```
+
+规则：
+
+1. 新增默认状态为 `draft`。
+2. `submitReview=true` 时保存后创建审核任务。
+3. 前端不得要求用户填写来源 ID、宗族 ID 等技术字段。
+
+### 来源详情
+
+```text
+GET /api/v1/sources/{sourceId}
+```
+
+详情响应需要聚合返回当前用户权限，避免前端自行判断关键操作：
+
+```json
+{
+  "id": 1,
+  "sourceName": "张氏族谱卷一",
+  "sourceType": "genealogy_book",
+  "verificationStatus": "official",
+  "privacyLevel": "clan_only",
+  "sensitiveLevel": "normal",
+  "confidenceLevel": "high",
+  "bindingCount": 86,
+  "attachmentCount": 2,
+  "permissions": {
+    "canEdit": true,
+    "canDelete": false,
+    "canBind": true,
+    "canSubmitReview": false,
+    "canUploadAttachment": true,
+    "canPreviewAttachment": true,
+    "canDownloadAttachment": false
+  }
+}
+```
+
+### 编辑与删除来源
+
+```text
 PUT    /api/v1/sources/{sourceId}
 DELETE /api/v1/sources/{sourceId}
+POST   /api/v1/sources/{sourceId}/submit-review
+```
+
+规则：
+
+1. `draft` 和 `rejected` 来源可由有权限用户直接编辑。
+2. `official` 来源关键字段修改必须走审核。
+3. `official` 来源不建议物理删除，应走归档或审核流。
+4. 删除有绑定关系的来源必须拒绝或进入解绑审核流程。
+
+### 来源附件
+
+```text
+GET    /api/v1/sources/{sourceId}/attachments
 POST   /api/v1/sources/{sourceId}/attachments
+GET    /api/v1/source-attachments/{attachmentId}/content?mode=preview
+GET    /api/v1/source-attachments/{attachmentId}/content?mode=download
+DELETE /api/v1/source-attachments/{attachmentId}
+```
+
+规则：
+
+1. 附件预览和下载必须由后端鉴权。
+2. 敏感附件下载必须写操作日志。
+3. 附件列表不返回 `storagePath`、`checksum` 等普通用户不需要的技术字段。
+4. 删除附件优先软删除。
+
+### 来源引用情况
+
+```text
+GET /api/v1/sources/{sourceId}/bindings
+```
+
+查询参数：
+
+| 参数 | 说明 |
+|---|---|
+| targetType | person / relationship / branch / clan / generation_word |
+| pageNo | 页码 |
+| pageSize | 每页数量 |
+
+响应：
+
+```json
+{
+  "id": 1,
+  "sourceId": 100,
+  "sourceName": "张氏族谱卷一",
+  "sourceType": "genealogy_book",
+  "targetType": "person",
+  "targetId": 200,
+  "targetDisplayName": "张某某",
+  "targetBranchName": "长沙支",
+  "targetSummary": "第 20 世，字家某",
+  "bindingReason": "老谱第3卷第12页记载",
+  "excerpt": "谱文摘录",
+  "confidenceLevel": "high",
+  "bindingStatus": "official",
+  "createdByName": "主编",
+  "createdAt": "2026-07-10T10:00:00"
+}
 ```
 
 ### 来源绑定
 
 ```text
-POST /api/v1/clans/{clanId}/source-bindings
-GET  /api/v1/source-bindings/sources/{sourceId}
-GET  /api/v1/source-bindings/target/{targetType}/{targetId}
-GET  /api/v1/source-bindings/target/{targetType}/{targetId}?clanId={clanId}
+POST   /api/v1/clans/{clanId}/source-bindings
+DELETE /api/v1/source-bindings/{bindingId}
+POST   /api/v1/source-bindings/{bindingId}/submit-review
+GET    /api/v1/source-bindings/target/{targetType}/{targetId}?clanId={clanId}
 ```
 
 `/api/v1/clans/{clanId}/source-links` 为历史兼容入口，新代码统一使用 `/api/v1/clans/{clanId}/source-bindings`。
@@ -123,9 +306,19 @@ GET  /api/v1/source-bindings/target/{targetType}/{targetId}?clanId={clanId}
   "targetType": "person",
   "targetId": 1001,
   "bindingReason": "老谱第3卷第12页记载",
-  "excerpt": "谱文摘录"
+  "excerpt": "谱文摘录",
+  "confidenceLevel": "high",
+  "submitReview": true
 }
 ```
+
+规则：
+
+1. 不允许跨宗族绑定。
+2. 不允许重复绑定。
+3. 正式人物、正式关系、正式支派、正式字辈的来源绑定建议进入审核。
+4. 只有 `official` 来源可以成为正式证据。
+5. 查询绑定对象时返回业务名称，前端不得直接展示技术 ID。
 
 ### 审核
 
@@ -135,6 +328,14 @@ GET  /api/v1/reviews/tasks/{reviewTaskId}
 POST /api/v1/reviews/tasks/{reviewTaskId}/approve
 POST /api/v1/reviews/tasks/{reviewTaskId}/reject
 GET  /api/v1/reviews/my-submissions
+```
+
+来源相关审核对象类型建议统一使用：
+
+```text
+source
+source_binding
+source_attachment
 ```
 
 ### 修谱工作台
@@ -212,6 +413,9 @@ GET /api/v1/tree/branches/{branchId}
 | 支派管理 | 是 | 是 | 本支派 | 否 | 查看 |
 | 人物新增 | 是 | 是 | 本支派 | 授权支派 | 申请 |
 | 关系管理 | 是 | 是 | 本支派 | 授权支派 | 申请 |
+| 来源资料库 | 是 | 是 | 本支派 | 新增草稿 | 查看授权范围 |
+| 来源附件 | 是 | 是 | 本支派 | 上传普通附件 | 查看授权范围 |
+| 来源绑定 | 是 | 是 | 本支派 | 提交绑定 | 查看 |
 | 审核 | 是 | 是 | 本支派初审 | 否 | 否 |
 | 导入导出 | 是 | 是 | 本支派 | 草稿导入 | 否 |
 | 修谱工作台 | 是 | 是 | 本支派 | 授权支派 | 查看个人相关 |
