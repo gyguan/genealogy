@@ -618,13 +618,6 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           <Form.Item label="关键词">
             <Input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" />
           </Form.Item>
-          <Form.Item>
-            <Space wrap>
-              <Button type="primary" htmlType="submit" disabled={loading || !workspace.clanId}>搜索</Button>
-              <Button onClick={reset}>重置</Button>
-              <Button onClick={() => setAdvancedOpen(prev => !prev)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
-            </Space>
-          </Form.Item>
           {advancedOpen ? (
             <>
               <Form.Item label="姓名">
@@ -664,6 +657,13 @@ export function PersonArchiveSearchPage({ notify }: Props) {
               </Form.Item>
             </>
           ) : null}
+          <Form.Item className="archive-search-actions-item">
+            <Space wrap>
+              <Button type="primary" htmlType="submit" disabled={loading || !workspace.clanId}>搜索</Button>
+              <Button onClick={reset}>重置</Button>
+              <Button onClick={() => setAdvancedOpen(prev => !prev)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
+            </Space>
+          </Form.Item>
         </Form>
 
         <Space className="archive-search-summary archive-search-summary--compact" wrap>
