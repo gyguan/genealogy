@@ -106,7 +106,7 @@ public class WorkbenchApplicationService {
                 .map(person -> generationMismatchTask(person, branchMap))
                 .forEach(tasks::add);
         if (!people.isEmpty() && sourceCount == 0) {
-            tasks.add(missingSourceTask(branchId, branchMap));
+            tasks.add(missingSourceTask(branchId, branchMap, sourceCount));
         }
         if (people.size() >= 2) {
             tasks.add(relationshipCheckTask(people.get(0), people.get(1), branchMap));
@@ -115,6 +115,7 @@ public class WorkbenchApplicationService {
     }
 
     private WorkbenchTaskResponse reviewFollowUpTask(CheckTaskEntity task) {
+        String currentStatus = statusText(task.getStatus());
         return new WorkbenchTaskResponse(
                 "review-" + task.getId(),
                 "review_follow_up",
@@ -123,7 +124,7 @@ public class WorkbenchApplicationService {
                 task.getBranchId() == null ? "按审核范围查看" : "支派范围内",
                 "medium",
                 "processing",
-                statusText(task.getStatus()),
+                currentStatus,
                 "进入审核中心查看差异并处理审核结论",
                 "该任务已经进入审核流程，工作台只负责提醒和解释，不直接提供审批通过或驳回动作。",
                 "审核任务",
@@ -132,11 +133,13 @@ public class WorkbenchApplicationService {
                 "reviewCenter",
                 String.valueOf(task.getId()),
                 "进入审核中心",
+                "当前审核状态：" + currentStatus + "。请进入审核中心查看差异、流转记录和审核意见。",
                 task.getCreatedAt()
         );
     }
 
     private WorkbenchTaskResponse generationMismatchTask(PersonEntity person, Map<Long, BranchEntity> branchMap) {
+        String missingFields = generationMissingFields(person);
         return new WorkbenchTaskResponse(
                 "generation-" + person.getId(),
                 "generation_mismatch",
@@ -154,11 +157,12 @@ public class WorkbenchApplicationService {
                 "personArchive",
                 String.valueOf(person.getId()),
                 "进入人物档案",
+                "仍缺失字段：" + missingFields + "。补齐后刷新工作台，若不再命中该问题，说明校验已通过或不再符合当前筛选条件。",
                 person.getUpdatedAt() == null ? person.getCreatedAt() : person.getUpdatedAt()
         );
     }
 
-    private WorkbenchTaskResponse missingSourceTask(Long branchId, Map<Long, BranchEntity> branchMap) {
+    private WorkbenchTaskResponse missingSourceTask(Long branchId, Map<Long, BranchEntity> branchMap, long sourceCount) {
         return new WorkbenchTaskResponse(
                 "missing-source-" + (branchId == null ? "all" : branchId),
                 "missing_source",
@@ -176,6 +180,7 @@ public class WorkbenchApplicationService {
                 "sourceLibrary",
                 null,
                 "进入来源资料库",
+                "当前来源资料数量：" + sourceCount + "。新增或选择来源资料后刷新工作台，若该任务消失，通常表示缺来源问题已处理或不再符合当前筛选条件。",
                 LocalDateTime.now()
         );
     }
@@ -198,12 +203,20 @@ public class WorkbenchApplicationService {
                 "treeProduct",
                 String.valueOf(left.getId()),
                 "进入世系图谱",
+                "当前为低风险复核建议。若世系图谱已确认关系完整，可继续关注更高风险任务。",
                 LocalDateTime.now()
         );
     }
 
     private boolean hasGenerationIssue(PersonEntity person) {
         return person.getGenerationNo() == null || isBlank(person.getGenerationWord());
+    }
+
+    private String generationMissingFields(PersonEntity person) {
+        List<String> fields = new ArrayList<>();
+        if (person.getGenerationNo() == null) fields.add("代次");
+        if (isBlank(person.getGenerationWord())) fields.add("字辈");
+        return fields.isEmpty() ? "无" : String.join("、", fields);
     }
 
     private String personName(PersonEntity person) {
