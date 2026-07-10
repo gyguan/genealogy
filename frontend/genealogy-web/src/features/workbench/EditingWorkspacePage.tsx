@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Descriptions, Drawer, Empty, Row, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
@@ -7,6 +7,11 @@ import { toRecordList } from '../../shared/utils/records';
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
 type WorkbenchTaskType = 'review_follow_up' | 'missing_source' | 'generation_mismatch' | 'relationship_check' | 'import_follow_up';
+type WorkbenchNavigateKey = 'reviewCenter' | 'personArchive' | 'sourceLibrary' | 'treeProduct' | 'mvp1Wizard';
+
+type Props = {
+  onNavigate?: (view: WorkbenchNavigateKey) => void;
+};
 
 type ClanLike = {
   id?: number | string;
@@ -32,6 +37,13 @@ type WorkbenchTask = {
   status: WorkbenchStatus;
   statusText: string;
   suggestion: string;
+  problemDescription?: string;
+  involvedObject?: string;
+  riskReason?: string;
+  reviewBlocked?: boolean;
+  relatedEntryType?: string;
+  relatedEntryId?: string;
+  relatedEntryText?: string;
   updatedAt?: string;
 };
 
@@ -73,17 +85,33 @@ function unwrapData<T>(payload: unknown, fallback: T): T {
   return (payload ?? fallback) as T;
 }
 
-export function EditingWorkspacePage() {
+function relatedViewOf(type?: string): WorkbenchNavigateKey | undefined {
+  if (type === 'reviewCenter') return 'reviewCenter';
+  if (type === 'personArchive') return 'personArchive';
+  if (type === 'sourceLibrary') return 'sourceLibrary';
+  if (type === 'treeProduct') return 'treeProduct';
+  if (type === 'mvp1Wizard') return 'mvp1Wizard';
+  return undefined;
+}
+
+function display(value: unknown, fallback = '待维护') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
+
+export function EditingWorkspacePage({ onNavigate }: Props) {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<ClanLike[]>([]);
   const [summary, setSummary] = useState<WorkbenchSummary>({});
   const [taskPage, setTaskPage] = useState<WorkbenchTaskPage>({ records: [], pageNo: 1, pageSize: PAGE_SIZE, total: 0, totalPages: 1 });
+  const [selectedTask, setSelectedTask] = useState<WorkbenchTask | null>(null);
   const [loading, setLoading] = useState(false);
   const [taskType, setTaskType] = useState('');
   const [risk, setRisk] = useState('');
 
   const activeClan = clans.find(item => String(item.id || '') === workspace.clanId) || clans[0];
   const tasks = useMemo(() => toRecordList<WorkbenchTask>(taskPage.records || []), [taskPage.records]);
+  const relatedView = relatedViewOf(selectedTask?.relatedEntryType);
 
   async function loadClans() {
     const clanRows = toRecordList<ClanLike>(unwrapData(await apiClient.get('/clans').catch(() => []), []));
@@ -124,11 +152,19 @@ export function EditingWorkspacePage() {
     workspace.setClanId(nextClanId);
     setTaskType('');
     setRisk('');
+    setSelectedTask(null);
     void loadWorkbench(nextClanId, 1);
   }
 
   function searchWorkbench() {
+    setSelectedTask(null);
     void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), 1);
+  }
+
+  function goRelatedEntry() {
+    if (!relatedView || !onNavigate) return;
+    setSelectedTask(null);
+    onNavigate(relatedView);
   }
 
   return (
@@ -219,16 +255,64 @@ export function EditingWorkspacePage() {
             onChange: page => void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), page)
           }}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无修谱问题。可以先从导入管理、人物档案或来源资料库补充数据。" /> }}
+          onRow={row => ({ onClick: () => setSelectedTask(row), style: { cursor: 'pointer' }, title: '点击查看任务详情' })}
           columns={[
             { key: 'type', title: '问题类型', width: 140, render: (_value, row) => row.typeText },
             { key: 'objectName', title: '对象名称', render: (_value, row) => row.objectName },
             { key: 'branchName', title: '所属范围', width: 160, render: (_value, row) => row.branchName },
             { key: 'risk', title: '风险', width: 90, render: (_value, row) => <Tag color={riskColor(row.risk)}>{riskText(row.risk)}</Tag> },
             { key: 'status', title: '状态', width: 120, render: (_value, row) => <Tag color={statusColor(row.status)}>{row.statusText}</Tag> },
-            { key: 'suggestion', title: '建议动作', render: (_value, row) => row.suggestion }
+            { key: 'suggestion', title: '建议动作', render: (_value, row) => row.suggestion },
+            {
+              key: 'detail',
+              title: '操作',
+              width: 90,
+              render: (_value, row) => <Button size="small" type="link" onClick={event => { event.stopPropagation(); setSelectedTask(row); }}>详情</Button>
+            }
           ]}
         />
       </Card>
+
+      <Drawer
+        title="修谱任务详情"
+        width={640}
+        open={Boolean(selectedTask)}
+        onClose={() => setSelectedTask(null)}
+        extra={<Button onClick={() => setSelectedTask(null)}>关闭</Button>}
+      >
+        {selectedTask ? (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space wrap>
+              <Tag color={riskColor(selectedTask.risk)}>风险：{riskText(selectedTask.risk)}</Tag>
+              <Tag color={statusColor(selectedTask.status)}>{selectedTask.statusText}</Tag>
+              <Tag color={selectedTask.reviewBlocked ? 'error' : 'success'}>{selectedTask.reviewBlocked ? '阻塞提交审核' : '不阻塞提交审核'}</Tag>
+            </Space>
+            <Alert
+              type={selectedTask.reviewBlocked ? 'warning' : 'info'}
+              showIcon
+              message={selectedTask.typeText}
+              description={display(selectedTask.problemDescription, selectedTask.suggestion)}
+            />
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="涉及对象">{display(selectedTask.involvedObject || selectedTask.objectName)}</Descriptions.Item>
+              <Descriptions.Item label="所属范围">{display(selectedTask.branchName)}</Descriptions.Item>
+              <Descriptions.Item label="风险原因">{display(selectedTask.riskReason)}</Descriptions.Item>
+              <Descriptions.Item label="建议处理">{display(selectedTask.suggestion)}</Descriptions.Item>
+              <Descriptions.Item label="相关入口">{display(selectedTask.relatedEntryText, '暂无相关入口')}</Descriptions.Item>
+            </Descriptions>
+            <Alert
+              type="success"
+              showIcon
+              message="交付体验"
+              description="当前抽屉仅解释问题和指向处理入口，不提供认领、处理、忽略、提交审核或审批动作。"
+            />
+            <Space>
+              <Button type="primary" disabled={!relatedView || !onNavigate} onClick={goRelatedEntry}>{selectedTask.relatedEntryText || '前往相关页面'}</Button>
+              <Button onClick={() => setSelectedTask(null)}>返回任务池</Button>
+            </Space>
+          </Space>
+        ) : null}
+      </Drawer>
     </Space>
   );
 }
