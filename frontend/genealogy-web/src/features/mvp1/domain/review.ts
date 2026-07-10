@@ -75,7 +75,7 @@ export function buildReviewTargetOptions(type: ReviewTargetType, data: ReviewTar
   if (type === 'persons') {
     return data.persons
       .filter(isReviewable)
-      .map(item => ({ value: String(item.id), label: `${item.name || `人物#${item.id}`} · ${statusText(item)}` }));
+      .map(item => ({ value: String(item.id), label: `${item.name || '未命名人物'} · ${statusText(item)}` }));
   }
   if (type === 'relationships') {
     return data.relationships
@@ -85,24 +85,25 @@ export function buildReviewTargetOptions(type: ReviewTargetType, data: ReviewTar
   if (type === 'sources') {
     return data.sources
       .filter(isReviewable)
-      .map(item => ({ value: String(item.id), label: `${item.sourceName || `来源#${item.id}`} · ${statusText(item)}` }));
+      .map(item => ({ value: String(item.id), label: `${item.sourceName || '未命名来源'} · ${statusText(item)}` }));
   }
   if (type === 'branches') {
     return data.branches
       .filter(isReviewable)
-      .map(item => ({ value: String(item.id), label: `${item.branchName || `支派#${item.id}`} · ${statusText(item)}` }));
+      .map(item => ({ value: String(item.id), label: `${item.branchName || '未命名支派'} · ${statusText(item)}` }));
   }
   if (type === 'generation-schemes') {
     return data.schemes
       .filter(isReviewable)
-      .map(item => ({ value: String(item.id), label: `${item.schemeName || `字辈方案#${item.id}`} · ${statusText(item)}` }));
+      .map(item => ({ value: String(item.id), label: `${item.schemeName || '未命名字辈方案'} · ${statusText(item)}` }));
   }
   return [];
 }
 
 export function reviewTaskTitle(row: ReviewTaskLike) {
-  if (row.title) return row.title;
-  return `${reviewTargetTypeText(row.targetType)} #${row.targetId || '-'}`;
+  const title = String(row.title || '').trim();
+  if (title && !/#\d+/.test(title)) return title;
+  return `${reviewTargetTypeText(row.targetType)}审核任务`;
 }
 
 export function createdAtText(value?: string) {
