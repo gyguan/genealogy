@@ -8,8 +8,13 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.source.application.SourceApplicationService;
+import com.genealogy.source.application.SourceBindingReviewApplicationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
+import com.genealogy.source.dto.SourceBindingRevisionDeleteRequest;
+import com.genealogy.source.dto.SourceBindingRevisionResponse;
+import com.genealogy.source.dto.SourceBindingRevisionSubmitRequest;
+import com.genealogy.source.dto.SourceBindingReviewDecisionRequest;
 import com.genealogy.source.dto.SourceBindingSummaryResponse;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
@@ -36,17 +41,20 @@ public class SourceBindingController {
     private static final String SOURCE_VIEW = "source:view";
 
     private final SourceApplicationService sourceApplicationService;
+    private final SourceBindingReviewApplicationService sourceBindingReviewApplicationService;
     private final SourceBindingRepository sourceBindingRepository;
     private final RequestContextApplicationService requestContextApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
     public SourceBindingController(
             SourceApplicationService sourceApplicationService,
+            SourceBindingReviewApplicationService sourceBindingReviewApplicationService,
             SourceBindingRepository sourceBindingRepository,
             RequestContextApplicationService requestContextApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.sourceApplicationService = sourceApplicationService;
+        this.sourceBindingReviewApplicationService = sourceBindingReviewApplicationService;
         this.sourceBindingRepository = sourceBindingRepository;
         this.requestContextApplicationService = requestContextApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -60,6 +68,56 @@ public class SourceBindingController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(sourceApplicationService.bind(clanId, request, context.userId()));
+    }
+
+    @PostMapping("/clans/{clanId}/source-bindings/revisions")
+    public ApiResponse<SourceBindingRevisionResponse> submitCreateRevision(
+            @Positive @PathVariable Long clanId,
+            @Valid @RequestBody SourceBindingRevisionSubmitRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceBindingReviewApplicationService.submitCreate(clanId, request, context.userId(), context.requestId(), context.clientIp()));
+    }
+
+    @PostMapping("/source-bindings/{bindingId}/replace-revision")
+    public ApiResponse<SourceBindingRevisionResponse> submitReplaceRevision(
+            @Positive @PathVariable Long bindingId,
+            @Valid @RequestBody SourceBindingRevisionSubmitRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceBindingReviewApplicationService.submitReplace(bindingId, request, context.userId(), context.requestId(), context.clientIp()));
+    }
+
+    @PostMapping("/source-bindings/{bindingId}/delete-revision")
+    public ApiResponse<SourceBindingRevisionResponse> submitDeleteRevision(
+            @Positive @PathVariable Long bindingId,
+            @Valid @RequestBody SourceBindingRevisionDeleteRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceBindingReviewApplicationService.submitDelete(bindingId, request, context.userId(), context.requestId(), context.clientIp()));
+    }
+
+    @PostMapping("/source-binding-revisions/{revisionId}/approve")
+    public ApiResponse<SourceBindingRevisionResponse> approveRevision(
+            @Positive @PathVariable Long revisionId,
+            @Valid @RequestBody SourceBindingReviewDecisionRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceBindingReviewApplicationService.approve(revisionId, request, context.userId(), context.requestId(), context.clientIp()));
+    }
+
+    @PostMapping("/source-binding-revisions/{revisionId}/reject")
+    public ApiResponse<SourceBindingRevisionResponse> rejectRevision(
+            @Positive @PathVariable Long revisionId,
+            @Valid @RequestBody SourceBindingReviewDecisionRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(sourceBindingReviewApplicationService.reject(revisionId, request, context.userId(), context.requestId(), context.clientIp()));
     }
 
     /**
