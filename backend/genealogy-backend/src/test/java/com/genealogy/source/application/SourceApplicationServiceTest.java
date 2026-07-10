@@ -2,11 +2,13 @@ package com.genealogy.source.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceCreateRequest;
 import com.genealogy.source.dto.SourceResponse;
+import com.genealogy.source.dto.SourceSearchCriteria;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
@@ -16,8 +18,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +84,8 @@ class SourceApplicationServiceTest {
         assertThat(response.confidenceLevel()).isEqualTo("unknown");
         assertThat(response.privacyLevel()).isEqualTo("clan_only");
         assertThat(response.sensitiveLevel()).isEqualTo("normal");
+        assertThat(response.bindingCount()).isZero();
+        assertThat(response.attachmentCount()).isZero();
         assertThat(response.updatedAt()).isNotNull();
     }
 
@@ -160,5 +169,47 @@ class SourceApplicationServiceTest {
         assertThat(response.privacyLevel()).isEqualTo("private");
         assertThat(response.sensitiveLevel()).isEqualTo("sensitive");
         assertThat(response.updatedAt()).isNotNull();
+    }
+
+    @Test
+    void searchByClanShouldReturnPagedSourcesWithCounts() {
+        SourceEntity source = new SourceEntity();
+        source.setId(10L);
+        source.setClanId(1L);
+        source.setSourceName("支派口述访谈");
+        source.setSourceType("oral_record");
+        source.setVerificationStatus("verified");
+        source.setConfidenceLevel("medium");
+        source.setPrivacyLevel("clan_only");
+        source.setSensitiveLevel("normal");
+        source.setCreatedAt(LocalDateTime.now().minusDays(1));
+        source.setUpdatedAt(LocalDateTime.now());
+
+        when(clanRepository.existsById(1L)).thenReturn(true);
+        when(sourceRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(source), PageRequest.of(0, 20), 1));
+        when(sourceBindingRepository.countBySourceId(10L)).thenReturn(3);
+        when(sourceRepository.countAttachmentsBySourceId(10L)).thenReturn(2);
+
+        SourceSearchCriteria criteria = new SourceSearchCriteria(
+                "口述",
+                "oral_record",
+                "verified",
+                "clan_only",
+                "person",
+                true,
+                true,
+                "sourceName,asc"
+        );
+
+        PageResponse<SourceResponse> response = sourceApplicationService.searchByClan(1L, criteria, 1, 20, 2L);
+
+        assertThat(response.total()).isEqualTo(1);
+        assertThat(response.records()).hasSize(1);
+        SourceResponse first = response.records().get(0);
+        assertThat(first.sourceType()).isEqualTo("oral_history");
+        assertThat(first.verificationStatus()).isEqualTo("official");
+        assertThat(first.bindingCount()).isEqualTo(3);
+        assertThat(first.attachmentCount()).isEqualTo(2);
     }
 }
