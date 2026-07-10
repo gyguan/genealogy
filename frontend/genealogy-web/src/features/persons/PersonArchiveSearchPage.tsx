@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import { Button, Card, DatePicker, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import dayjs from 'dayjs';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { toRecordList } from '../../shared/ui/DataTable';
+import { toRecordList } from '../../shared/utils/records';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type DrawerMode = 'view' | 'edit';
@@ -19,7 +20,6 @@ type SearchForm = {
 
 type EditForm = {
   branchId: string;
-  personCode: string;
   name: string;
   genealogyName: string;
   courtesyName: string;
@@ -177,6 +177,14 @@ function asDate(value: unknown) {
   return asString(value).slice(0, 10);
 }
 
+function toDateValue(value: string) {
+  return value ? dayjs(value) : null;
+}
+
+function dateString(value: string | string[]) {
+  return Array.isArray(value) ? value[0] || '' : value || '';
+}
+
 function lifeText(row: any) {
   const birth = asDate(row.birthDate);
   const death = asDate(row.deathDate);
@@ -266,7 +274,6 @@ function sourceTypeText(value: unknown) {
 function toEditForm(person: any): EditForm {
   return {
     branchId: asString(person.branchId),
-    personCode: asString(person.personCode),
     name: asString(person.name || person.personName),
     genealogyName: asString(person.genealogyName),
     courtesyName: asString(person.courtesyName),
@@ -312,7 +319,6 @@ function nullableBoolean(value: string) {
 function toUpdatePayload(form: EditForm) {
   return {
     branchId: nullableNumber(form.branchId),
-    personCode: nullableString(form.personCode),
     name: form.name.trim(),
     genealogyName: nullableString(form.genealogyName),
     courtesyName: nullableString(form.courtesyName),
@@ -354,9 +360,47 @@ function sortGenerationNos(values: string[]) {
   });
 }
 
+function numericPercent(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
+function completenessOf(person: any, relationshipCount: number, sourceCount: number, eventCount: number) {
+  const backendValue = numericPercent(person?.completeness)
+    ?? numericPercent(person?.completenessRate)
+    ?? numericPercent(person?.profileCompleteness)
+    ?? numericPercent(person?.dataCompleteness);
+  if (backendValue !== null) return backendValue;
+
+  const fields = [
+    person.name,
+    person.genealogyName,
+    person.courtesyName,
+    person.gender,
+    person.branchId,
+    person.generationNo,
+    person.generationWord,
+    person.rankInFamily,
+    person.birthDate,
+    person.deathDate,
+    person.birthPlace,
+    person.residencePlace,
+    person.biography,
+    person.tombPlace,
+    person.epitaph,
+    person.privacyLevel,
+    relationshipCount,
+    sourceCount,
+    eventCount
+  ];
+  return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+}
+
 export function PersonArchiveSearchPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<SearchForm>(emptySearch);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [pageNo, setPageNo] = useState(1);
   const [rawData, setRawData] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
@@ -425,24 +469,21 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         apiClient.get(`/clans/${clanId}/generation-schemes`).catch(() => [])
       ]);
       setBranches(branchData);
-      const schemes = toRecordList<any>(schemeData);
-      const defaultScheme = schemes.find(item => item.isDefault) || schemes[0];
-      if (defaultScheme?.id) {
-        const items = await apiClient.get(`/generation-schemes/${defaultScheme.id}/items`).catch(() => []);
-        setGenerationItems(toRecordList<any>(items));
-      } else {
-        setGenerationItems([]);
-      }
+      const schemes = toRecordList<any>(schemeData).filter(item => item?.id);
+      const schemeItems = await Promise.all(schemes.map(item => apiClient.get(`/generation-schemes/${item.id}/items`).catch(() => [])));
+      setGenerationItems(schemeItems.flatMap(item => toRecordList<any>(item)));
     } finally {
       setFilterLoading(false);
     }
   }
 
   async function changeClan(nextClanId: string) {
+    const changed = nextClanId !== workspace.clanId;
     workspace.setClanId(nextClanId);
     workspace.setBranchId('');
     setForm({ ...emptySearch });
     setRawData(undefined);
+    if (changed) notify({ message: '已切换宗族，搜索条件和结果已清空，请重新搜索。' });
     await loadClanFilterOptions(nextClanId);
   }
 
@@ -515,7 +556,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       setSelected(data);
       setEditForm(toEditForm(data));
       setDrawerMode('view');
-      notify({ message: '人物档案已保存' });
+      notify({ message: '人物档案已保存；如果当前筛选条件不再匹配，列表中可能不再显示该人物。' });
       void search(currentPage);
     });
   }
@@ -544,28 +585,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const eventRows = useMemo(() => toRecordList(events) as PersonEvent[], [events]);
   const relationshipRows = useMemo(() => toRecordList<any>(relationships), [relationships]);
   const sourceRows = useMemo(() => toRecordList<any>(sources), [sources]);
-
-  const completeness = selected ? Math.min(100, [
-    selected.name,
-    selected.genealogyName,
-    selected.courtesyName,
-    selected.gender,
-    selected.branchId,
-    selected.generationNo,
-    selected.generationWord,
-    selected.rankInFamily,
-    selected.birthDate,
-    selected.deathDate,
-    selected.birthPlace,
-    selected.residencePlace,
-    selected.biography,
-    selected.tombPlace,
-    selected.epitaph,
-    selected.privacyLevel,
-    relationshipRows.length,
-    sourceRows.length,
-    eventRows.length
-  ].filter(Boolean).length * 5) : 0;
+  const completeness = selected ? completenessOf(selected, relationshipRows.length, sourceRows.length, eventRows.length) : 0;
 
   const timelineItems = eventRows.map(event => ({
     key: String(event.id),
@@ -598,47 +618,52 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           <Form.Item label="关键词">
             <Input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" />
           </Form.Item>
-          <Form.Item label="姓名">
-            <Input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" />
-          </Form.Item>
-          <Form.Item label="性别">
-            <Select value={form.gender} onChange={value => patch('gender', value)} options={genderOptions} />
-          </Form.Item>
-          <Form.Item label="字辈">
-            <Select
-              value={form.generationWord}
-              disabled={!workspace.clanId || filterLoading}
-              onChange={value => patch('generationWord', value)}
-              options={[{ value: '', label: '全部' }, ...generationWordOptions.map(word => ({ value: word, label: word }))]}
-            />
-          </Form.Item>
-          <Form.Item label="代次">
-            <Select
-              value={form.generationNo}
-              disabled={!workspace.clanId || filterLoading}
-              onChange={value => patch('generationNo', value)}
-              options={[{ value: '', label: '全部' }, ...generationNoOptions.map(no => ({ value: no, label: generationNoLabel(no) }))]}
-            />
-          </Form.Item>
-          <Form.Item label="支派">
-            <Select
-              showSearch
-              optionFilterProp="label"
-              value={form.branchId}
-              disabled={!workspace.clanId || filterLoading}
-              onChange={changeBranch}
-              options={[{ value: '', label: '全部' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]}
-            />
-          </Form.Item>
-          <Form.Item label="档案状态">
-            <Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} />
-          </Form.Item>
           <Form.Item>
             <Space wrap>
               <Button type="primary" htmlType="submit" disabled={loading || !workspace.clanId}>搜索</Button>
               <Button onClick={reset}>重置</Button>
+              <Button onClick={() => setAdvancedOpen(prev => !prev)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
             </Space>
           </Form.Item>
+          {advancedOpen ? (
+            <>
+              <Form.Item label="姓名">
+                <Input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" />
+              </Form.Item>
+              <Form.Item label="性别">
+                <Select value={form.gender} onChange={value => patch('gender', value)} options={genderOptions} />
+              </Form.Item>
+              <Form.Item label="字辈">
+                <Select
+                  value={form.generationWord}
+                  disabled={!workspace.clanId || filterLoading}
+                  onChange={value => patch('generationWord', value)}
+                  options={[{ value: '', label: '全部' }, ...generationWordOptions.map(word => ({ value: word, label: word }))]}
+                />
+              </Form.Item>
+              <Form.Item label="代次">
+                <Select
+                  value={form.generationNo}
+                  disabled={!workspace.clanId || filterLoading}
+                  onChange={value => patch('generationNo', value)}
+                  options={[{ value: '', label: '全部' }, ...generationNoOptions.map(no => ({ value: no, label: generationNoLabel(no) }))]}
+                />
+              </Form.Item>
+              <Form.Item label="支派">
+                <Select
+                  showSearch
+                  optionFilterProp="label"
+                  value={form.branchId}
+                  disabled={!workspace.clanId || filterLoading}
+                  onChange={changeBranch}
+                  options={[{ value: '', label: '全部' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]}
+                />
+              </Form.Item>
+              <Form.Item label="档案状态">
+                <Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} />
+              </Form.Item>
+            </>
+          ) : null}
         </Form>
 
         <Space className="archive-search-summary archive-search-summary--compact" wrap>
@@ -653,10 +678,17 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           bordered
           rowKey={(row, index) => String(row.id || row.personId || index)}
           dataSource={rows}
-          pagination={false}
+          pagination={{
+            current: currentPage,
+            pageSize: PAGE_SIZE,
+            total,
+            showSizeChanger: false,
+            showTotal: value => `共 ${value} 条`,
+            onChange: nextPage => void search(nextPage)
+          }}
           loading={querying}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无人物记录，请先选择宗族并搜索，或调整筛选条件。" /> }}
-          onRow={row => ({ onClick: () => void openDetail(row, 'view'), style: { cursor: 'pointer' } })}
+          onRow={row => ({ onClick: () => void openDetail(row, 'view'), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
           columns={[
             { key: 'name', title: '姓名', render: (_value, row) => display(personName(row), '未命名人物') },
             { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) },
@@ -671,10 +703,9 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             {
               key: 'actions',
               title: '操作',
-              width: 130,
+              width: 90,
               render: (_value, row) => (
                 <Space size="small" onClick={event => event.stopPropagation()}>
-                  <Button size="small" type="link" onClick={() => void openDetail(row, 'view')}>查看</Button>
                   <Button size="small" type="link" onClick={() => void openDetail(row, 'edit')}>编辑</Button>
                 </Space>
               )
@@ -682,10 +713,6 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           ]}
           scroll={{ x: 'max-content' }}
         />
-        <Space className="antd-actions" wrap>
-          <Button disabled={currentPage <= 1 || loading} onClick={() => void search(currentPage - 1)}>上一页</Button>
-          <Button disabled={currentPage >= totalPages || loading} onClick={() => void search(currentPage + 1)}>下一页</Button>
-        </Space>
       </Card>
 
       <Drawer
@@ -812,8 +839,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
               </Card>
               <Card size="small" title="生卒与传记">
                 <Form layout="vertical">
-                  <Form.Item label="出生日期"><Input value={editForm.birthDate} onChange={e => patchEdit('birthDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item>
-                  <Form.Item label="逝世日期"><Input value={editForm.deathDate} onChange={e => patchEdit('deathDate', e.target.value)} placeholder="YYYY-MM-DD" /></Form.Item>
+                  <Form.Item label="出生日期"><DatePicker value={toDateValue(editForm.birthDate)} onChange={(_date, value) => patchEdit('birthDate', dateString(value))} style={{ width: '100%' }} /></Form.Item>
+                  <Form.Item label="逝世日期"><DatePicker value={toDateValue(editForm.deathDate)} onChange={(_date, value) => patchEdit('deathDate', dateString(value))} style={{ width: '100%' }} /></Form.Item>
                   <Form.Item label="是否在世"><Select value={editForm.isLiving} onChange={value => patchEdit('isLiving', value)} options={[{ value: 'true', label: '在世' }, { value: 'false', label: '已故' }]} /></Form.Item>
                   <Form.Item label="出生地"><Input value={editForm.birthPlace} onChange={e => patchEdit('birthPlace', e.target.value)} /></Form.Item>
                   <Form.Item label="居住地"><Input value={editForm.residencePlace} onChange={e => patchEdit('residencePlace', e.target.value)} /></Form.Item>
