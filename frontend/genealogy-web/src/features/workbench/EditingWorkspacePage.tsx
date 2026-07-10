@@ -161,8 +161,17 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), 1);
   }
 
+  function applyRelatedContext(task: WorkbenchTask) {
+    const id = task.relatedEntryId || '';
+    if (task.relatedEntryType === 'reviewCenter') workspace.patch({ reviewTaskId: id, personId: '', sourceId: '' });
+    else if (task.relatedEntryType === 'personArchive') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '' });
+    else if (task.relatedEntryType === 'treeProduct') workspace.patch({ personId: id, reviewTaskId: '', sourceId: '' });
+    else if (task.relatedEntryType === 'sourceLibrary') workspace.patch({ sourceId: id, reviewTaskId: '', personId: '' });
+  }
+
   function goRelatedEntry() {
-    if (!relatedView || !onNavigate) return;
+    if (!selectedTask || !relatedView || !onNavigate) return;
+    applyRelatedContext(selectedTask);
     setSelectedTask(null);
     onNavigate(relatedView);
   }
