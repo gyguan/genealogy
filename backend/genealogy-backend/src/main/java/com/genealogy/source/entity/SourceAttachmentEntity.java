@@ -22,5 +22,11 @@ public class SourceAttachmentEntity {
 
     private Long sourceId;
     private Long clanId;
+    private String originalFilename;
+    private String contentType;
+    private Long fileSize;
+    private String uploadStatus;
+    private Long createdBy;
+    private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
 }
