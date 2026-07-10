@@ -1,11 +1,22 @@
 package com.genealogy.source.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.branch.entity.BranchEntity;
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.generation.entity.GenerationSchemeEntity;
+import com.genealogy.generation.entity.GenerationWordEntity;
+import com.genealogy.generation.repository.GenerationSchemeRepository;
+import com.genealogy.generation.repository.GenerationWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.entity.RelationshipEntity;
+import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.source.dto.SourceAttachmentSummaryResponse;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
@@ -37,6 +48,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -71,6 +84,11 @@ public class SourceApplicationService {
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
     private final SourceAttachmentRepository sourceAttachmentRepository;
+    private final PersonRepository personRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final BranchRepository branchRepository;
+    private final GenerationWordRepository generationWordRepository;
+    private final GenerationSchemeRepository generationSchemeRepository;
     private final ClanRepository clanRepository;
     private final OperationLogApplicationService operationLogApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -79,6 +97,11 @@ public class SourceApplicationService {
             SourceRepository sourceRepository,
             SourceBindingRepository sourceBindingRepository,
             SourceAttachmentRepository sourceAttachmentRepository,
+            PersonRepository personRepository,
+            RelationshipRepository relationshipRepository,
+            BranchRepository branchRepository,
+            GenerationWordRepository generationWordRepository,
+            GenerationSchemeRepository generationSchemeRepository,
             ClanRepository clanRepository,
             OperationLogApplicationService operationLogApplicationService,
             AuthorizationApplicationService authorizationApplicationService
@@ -86,6 +109,11 @@ public class SourceApplicationService {
         this.sourceRepository = sourceRepository;
         this.sourceBindingRepository = sourceBindingRepository;
         this.sourceAttachmentRepository = sourceAttachmentRepository;
+        this.personRepository = personRepository;
+        this.relationshipRepository = relationshipRepository;
+        this.branchRepository = branchRepository;
+        this.generationWordRepository = generationWordRepository;
+        this.generationSchemeRepository = generationSchemeRepository;
         this.clanRepository = clanRepository;
         this.operationLogApplicationService = operationLogApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -227,6 +255,19 @@ public class SourceApplicationService {
         SourceEntity source = getEntity(sourceId);
         authorizationApplicationService.requirePermission(source.getClanId(), actorId, SOURCE_VIEW);
         return sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId).stream().map(this::toBindingResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<SourceBindingSummaryResponse> listBindingSummariesBySource(Long sourceId, String targetType, int pageNo, int pageSize, Long actorId) {
+        SourceEntity source = getEntity(sourceId);
+        authorizationApplicationService.requirePermission(source.getClanId(), actorId, SOURCE_VIEW);
+        String normalizedTargetType = normalizeOptionalTargetType(targetType);
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<SourceBindingSummaryResponse> page = (normalizedTargetType == null
+                ? sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId, pageRequest)
+                : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest)
+        ).map(this::toBindingSummaryResponse);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
@@ -517,11 +558,14 @@ public class SourceApplicationService {
         if (entity.getBindingStatus() == null || entity.getBindingStatus().isBlank()) {
             entity.setBindingStatus(STATUS_OFFICIAL);
         }
+        TargetDisplay targetDisplay = resolveTargetDisplay(entity.getClanId(), entity.getTargetType(), entity.getTargetId());
         return new SourceBindingSummaryResponse(
                 entity.getId(),
                 entity.getTargetType(),
                 entity.getTargetId(),
-                toTargetDisplayName(entity.getTargetType(), entity.getTargetId()),
+                targetDisplay.displayName(),
+                targetDisplay.branchName(),
+                targetDisplay.summary(),
                 entity.getBindingReason(),
                 entity.getExcerpt(),
                 entity.getConfidenceLevel(),
@@ -531,8 +575,105 @@ public class SourceApplicationService {
         );
     }
 
-    private String toTargetDisplayName(String targetType, Long targetId) {
-        return targetType + ":" + targetId;
+    private TargetDisplay resolveTargetDisplay(Long clanId, String targetType, Long targetId) {
+        if (targetType == null || targetId == null) {
+            return fallbackTargetDisplay(targetType, targetId);
+        }
+        return switch (targetType) {
+            case "person" -> resolvePersonDisplay(clanId, targetId);
+            case "relationship" -> resolveRelationshipDisplay(clanId, targetId);
+            case "branch" -> resolveBranchDisplay(clanId, targetId);
+            case "clan" -> resolveClanDisplay(clanId, targetId);
+            case "generation_word" -> resolveGenerationWordDisplay(clanId, targetId);
+            default -> fallbackTargetDisplay(targetType, targetId);
+        };
+    }
+
+    private TargetDisplay resolvePersonDisplay(Long clanId, Long personId) {
+        return personRepository.findByIdAndDeletedAtIsNull(personId)
+                .filter(person -> Objects.equals(clanId, person.getClanId()))
+                .map(person -> {
+                    String displayName = personDisplayName(person);
+                    String branchName = person.getBranchId() == null ? null : branchRepository.findByIdAndClanId(person.getBranchId(), clanId).map(BranchEntity::getBranchName).orElse(null);
+                    String summary = "人物：" + displayName + optionalPart("，字辈：", person.getGenerationWord()) + optionalPart("，排行：", person.getRankInFamily());
+                    return new TargetDisplay(displayName, branchName, summary);
+                })
+                .orElseGet(() -> fallbackTargetDisplay("person", personId));
+    }
+
+    private TargetDisplay resolveRelationshipDisplay(Long clanId, Long relationshipId) {
+        return relationshipRepository.findByIdAndClanIdAndDeletedAtIsNull(relationshipId, clanId)
+                .map(relationship -> {
+                    String fromName = personNameOrFallback(relationship.getFromPersonId());
+                    String toName = personNameOrFallback(relationship.getToPersonId());
+                    String relationName = nonBlank(relationship.getRelationLabel(), relationship.getRelationType());
+                    String displayName = fromName + " -[" + relationName + "]-> " + toName;
+                    String branchName = personRepository.findByIdAndDeletedAtIsNull(relationship.getFromPersonId())
+                            .filter(person -> Objects.equals(clanId, person.getClanId()))
+                            .map(PersonEntity::getBranchId)
+                            .flatMap(branchId -> branchId == null ? Optional.empty() : branchRepository.findByIdAndClanId(branchId, clanId))
+                            .map(BranchEntity::getBranchName)
+                            .orElse(null);
+                    String summary = "关系：" + fromName + " 与 " + toName + "，类型：" + relationName + optionalPart("，说明：", relationship.getDescription());
+                    return new TargetDisplay(displayName, branchName, summary);
+                })
+                .orElseGet(() -> fallbackTargetDisplay("relationship", relationshipId));
+    }
+
+    private TargetDisplay resolveBranchDisplay(Long clanId, Long branchId) {
+        return branchRepository.findByIdAndClanId(branchId, clanId)
+                .map(branch -> new TargetDisplay(branch.getBranchName(), branch.getBranchName(), "支派：" + branch.getBranchName() + optionalPart("，路径：", branch.getBranchPath())))
+                .orElseGet(() -> fallbackTargetDisplay("branch", branchId));
+    }
+
+    private TargetDisplay resolveClanDisplay(Long clanId, Long targetId) {
+        return clanRepository.findById(targetId)
+                .filter(clan -> Objects.equals(clanId, clan.getId()))
+                .map(clan -> new TargetDisplay(clan.getClanName(), null, "宗族：" + clan.getClanName() + optionalPart("，姓氏：", clan.getSurname()) + optionalPart("，堂号：", clan.getHallName())))
+                .orElseGet(() -> fallbackTargetDisplay("clan", targetId));
+    }
+
+    private TargetDisplay resolveGenerationWordDisplay(Long clanId, Long generationWordId) {
+        return generationWordRepository.findById(generationWordId)
+                .flatMap(word -> generationSchemeRepository.findByIdAndClanId(word.getSchemeId(), clanId).map(scheme -> toGenerationWordDisplay(word, scheme)))
+                .orElseGet(() -> fallbackTargetDisplay("generation_word", generationWordId));
+    }
+
+    private TargetDisplay toGenerationWordDisplay(GenerationWordEntity word, GenerationSchemeEntity scheme) {
+        String branchName = scheme.getBranchId() == null ? null : branchRepository.findByIdAndClanId(scheme.getBranchId(), scheme.getClanId()).map(BranchEntity::getBranchName).orElse(null);
+        String displayName = "字辈：" + word.getWord();
+        String summary = scheme.getSchemeName() + "，第" + word.getGenerationNo() + "世：" + word.getWord() + optionalPart("，说明：", word.getDescription());
+        return new TargetDisplay(displayName, branchName, summary);
+    }
+
+    private TargetDisplay fallbackTargetDisplay(String targetType, Long targetId) {
+        String fallback = nonBlank(targetType, "target") + ":" + targetId;
+        return new TargetDisplay(fallback, null, fallback);
+    }
+
+    private String personNameOrFallback(Long personId) {
+        return personRepository.findByIdAndDeletedAtIsNull(personId)
+                .map(this::personDisplayName)
+                .orElse("person:" + personId);
+    }
+
+    private String personDisplayName(PersonEntity person) {
+        String name = nonBlank(person.getGenealogyName(), person.getName());
+        if (person.getPersonCode() == null || person.getPersonCode().isBlank()) {
+            return name;
+        }
+        return name + "（" + person.getPersonCode() + "）";
+    }
+
+    private String optionalPart(String prefix, String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return prefix + value;
+    }
+
+    private String nonBlank(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
     private SourceAttachmentSummaryResponse toAttachmentSummaryResponse(SourceAttachmentEntity entity, SourcePermissionView permissions) {
@@ -586,5 +727,8 @@ public class SourceApplicationService {
                 + ",confidenceLevel=" + entity.getConfidenceLevel()
                 + ",privacyLevel=" + entity.getPrivacyLevel()
                 + ",sensitiveLevel=" + entity.getSensitiveLevel();
+    }
+
+    private record TargetDisplay(String displayName, String branchName, String summary) {
     }
 }
