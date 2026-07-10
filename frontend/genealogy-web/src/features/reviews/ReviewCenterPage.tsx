@@ -144,13 +144,24 @@ export function ReviewCenterPage({ notify }: Props) {
     if (!workspace.clanId) {
       setTasks([]);
       setSelectedRowKeys([]);
+      setDetailTask(null);
       return;
     }
     setLoading(true);
     try {
       const data = await apiClient.get(`/clans/${workspace.clanId}/review-tasks/pending`);
-      setTasks(toRecordList<ReviewTask>(data));
-      setSelectedRowKeys([]);
+      const nextTasks = toRecordList<ReviewTask>(data);
+      setTasks(nextTasks);
+      const focusTask = workspace.reviewTaskId
+        ? nextTasks.find(task => String(task.id || '') === workspace.reviewTaskId || rowKey(task) === workspace.reviewTaskId)
+        : null;
+      if (focusTask) {
+        setActiveTab('pending');
+        setDetailTask(focusTask);
+        setSelectedRowKeys([rowKey(focusTask)]);
+      } else {
+        setSelectedRowKeys([]);
+      }
     } catch (error) {
       notify({ message: (error as Error).message || '查询审核任务失败' }, true);
     } finally {
@@ -158,7 +169,7 @@ export function ReviewCenterPage({ notify }: Props) {
     }
   }
 
-  useEffect(() => { void loadTasks(); }, [workspace.clanId]);
+  useEffect(() => { void loadTasks(); }, [workspace.clanId, workspace.reviewTaskId]);
 
   async function approveOne(row: ReviewTask) {
     if (!row?.id) return;
