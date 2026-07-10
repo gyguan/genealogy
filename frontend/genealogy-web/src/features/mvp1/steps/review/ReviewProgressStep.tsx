@@ -48,6 +48,18 @@ function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
 }
 
+function normalizeTargetType(value?: string) {
+  return String(value || '').trim().toLowerCase().replace(/-/g, '_');
+}
+
+function relationshipObjectName(row?: RelationshipLike) {
+  if (!row) return '关系对象待维护';
+  const from = row.fromPersonName || row.fromName || '起点人物待维护';
+  const to = row.toPersonName || row.toName || '终点人物待维护';
+  const relation = row.relationLabel || row.relationType || '关系';
+  return `${from} → ${to} · ${relation}`;
+}
+
 export function ReviewProgressStep({ notify }: Props) {
   const workspace = useWorkspace();
   const [reviewForm, setReviewForm] = useState<ReviewForm>({ ...defaultReviewForm });
@@ -69,6 +81,28 @@ export function ReviewProgressStep({ notify }: Props) {
     targetId: option.value,
     title: option.label
   }))), [selectedTargetTypes, persons, relationships, sources, branches, schemes]);
+
+  function reviewTaskObjectName(row: ReviewTaskLike) {
+    const targetId = String(row.targetId || '');
+    if (!targetId) return '对象名称待维护';
+    const targetType = normalizeTargetType(row.targetType);
+    if (targetType === 'person' || targetType === 'persons') {
+      return persons.find(item => String(item.id || '') === targetId)?.name || '人物名称待维护';
+    }
+    if (targetType === 'relationship' || targetType === 'relationships') {
+      return relationshipObjectName(relationships.find(item => String(item.id || '') === targetId));
+    }
+    if (targetType === 'source' || targetType === 'sources') {
+      return sources.find(item => String(item.id || '') === targetId)?.sourceName || '来源名称待维护';
+    }
+    if (targetType === 'branch' || targetType === 'branches') {
+      return branches.find(item => String(item.id || '') === targetId)?.branchName || '支派名称待维护';
+    }
+    if (targetType === 'generation_scheme' || targetType === 'generation_schemes') {
+      return schemes.find(item => String(item.id || '') === targetId)?.schemeName || '字辈方案名称待维护';
+    }
+    return '对象名称待维护';
+  }
 
   function toast(data: unknown, error = false) {
     notify?.(data, error);
@@ -231,6 +265,7 @@ export function ReviewProgressStep({ notify }: Props) {
           columns={[
             { key: 'title', title: '标题', render: (_value, row) => reviewTaskTitle(row) },
             { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
+            { key: 'objectName', title: '对象名', render: (_value, row) => reviewTaskObjectName(row) },
             { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
             { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => createdAtText(row.createdAt) }
           ]}
