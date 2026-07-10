@@ -26,4 +26,14 @@ public record SourceBindingCreateRequest(
 
         Long createdBy
 ) {
+    public SourceBindingCreateRequest(
+            Long sourceId,
+            String targetType,
+            Long targetId,
+            String bindingReason,
+            String excerpt,
+            Long createdBy
+    ) {
+        this(sourceId, targetType, targetId, bindingReason, excerpt, null, null, createdBy);
+    }
 }
