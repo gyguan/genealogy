@@ -35,7 +35,7 @@ class OperationLogApplicationServiceTest {
                 1L, null, null, null, null, null, null, null, 1, 20, false
         );
 
-        OperationLogResponse response = result.records().getFirst();
+        OperationLogResponse response = result.records().get(0);
         assertThat(response.summary()).isEqualTo("更新人物档案");
         assertThat(response.detail()).isNull();
         assertThat(response.requestId()).isNull();
@@ -53,7 +53,7 @@ class OperationLogApplicationServiceTest {
                 1L, null, null, null, null, null, null, null, 1, 20, true
         );
 
-        OperationLogResponse response = result.records().getFirst();
+        OperationLogResponse response = result.records().get(0);
         assertThat(response.detail()).isEqualTo("before=A, after=B");
         assertThat(response.requestId()).isEqualTo("request-1");
         assertThat(response.clientIp()).isEqualTo("192.0.2.8");
@@ -70,7 +70,7 @@ class OperationLogApplicationServiceTest {
                 1L, null, null, null, null, null, null, null, 1, 20
         );
 
-        assertThat(result.records().getFirst().detail()).isNull();
+        assertThat(result.records().get(0).detail()).isNull();
     }
 
     @Test
