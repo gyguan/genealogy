@@ -8,17 +8,27 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Service
 public class PersonImportTemplateApplicationService {
 
     private final ImportTypeRegistry importTypeRegistry;
 
+    /**
+     * Compatibility constructor for direct unit-test and utility construction.
+     */
+    public PersonImportTemplateApplicationService() {
+        this(new ImportTypeRegistry(List.of(new PersonImportTypeDefinition())));
+    }
+
+    @Autowired
     public PersonImportTemplateApplicationService(ImportTypeRegistry importTypeRegistry) {
         this.importTypeRegistry = importTypeRegistry;
     }
