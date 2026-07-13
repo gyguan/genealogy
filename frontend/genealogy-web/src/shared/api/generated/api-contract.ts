@@ -274,6 +274,116 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseWorkbenchTaskPage"
   },
+  "POST /auth/invitations": {
+    "operationId": "createAccountInvitation",
+    "method": "POST",
+    "path": "/auth/invitations",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthInvitationCreateRequest",
+    "response": "ApiResponseAuthInvitationCreateResponse"
+  },
+  "POST /auth/invitations/accept": {
+    "operationId": "acceptAccountInvitation",
+    "method": "POST",
+    "path": "/auth/invitations/accept",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthInvitationAcceptRequest",
+    "response": "ApiResponseAuthUser"
+  },
+  "POST /auth/login": {
+    "operationId": "login",
+    "method": "POST",
+    "path": "/auth/login",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthLoginRequest",
+    "response": "ApiResponseAuthLoginResponse"
+  },
+  "POST /auth/logout": {
+    "operationId": "logout",
+    "method": "POST",
+    "path": "/auth/logout",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /auth/me": {
+    "operationId": "getCurrentAuthUser",
+    "method": "GET",
+    "path": "/auth/me",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponseAuthUser"
+  },
+  "POST /auth/password/forgot": {
+    "operationId": "requestPasswordReset",
+    "method": "POST",
+    "path": "/auth/password/forgot",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthForgotPasswordRequest",
+    "response": "ApiResponseAuthForgotPasswordResponse"
+  },
+  "POST /auth/password/reset": {
+    "operationId": "resetPassword",
+    "method": "POST",
+    "path": "/auth/password/reset",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthResetPasswordRequest",
+    "response": null
+  },
+  "POST /auth/register": {
+    "operationId": "publicRegister",
+    "method": "POST",
+    "path": "/auth/register",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": "AuthRegisterRequest",
+    "response": "ApiResponseAuthUser"
+  },
+  "POST /auth/session/refresh": {
+    "operationId": "refreshAuthSession",
+    "method": "POST",
+    "path": "/auth/session/refresh",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponseAuthLoginResponse"
+  },
+  "GET /auth/sessions": {
+    "operationId": "listAuthSessions",
+    "method": "GET",
+    "path": "/auth/sessions",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponseAuthSessionList"
+  },
+  "POST /auth/sessions/revoke-others": {
+    "operationId": "revokeOtherAuthSessions",
+    "method": "POST",
+    "path": "/auth/sessions/revoke-others",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "DELETE /auth/sessions/{sessionId}": {
+    "operationId": "revokeAuthSession",
+    "method": "DELETE",
+    "path": "/auth/sessions/{sessionId}",
+    "pathParams": [
+      "sessionId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
   "GET /clans/{clanId}/grantable-roles": {
     "operationId": "listGrantableRoles",
     "method": "GET",
