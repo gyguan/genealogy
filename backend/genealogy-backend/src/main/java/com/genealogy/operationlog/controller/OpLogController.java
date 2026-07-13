@@ -50,7 +50,7 @@ public class OpLogController {
     @GetMapping("/operations")
     public ApiResponse<PageResponse<OperationLogResponse>> listOperations(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @NotNull @RequestParam Long clanId,
+            @NotNull @RequestParam("clanId") Long clanId,
             @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String actionType,
             @RequestParam(required = false) String targetType,
@@ -86,7 +86,7 @@ public class OpLogController {
     @GetMapping("/operations/export.csv")
     public ResponseEntity<byte[]> exportOperations(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @NotNull @RequestParam Long clanId,
+            @NotNull @RequestParam("clanId") Long clanId,
             @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String actionType,
             @RequestParam(required = false) String targetType,
@@ -120,7 +120,7 @@ public class OpLogController {
     @GetMapping("/operations/stats")
     public ApiResponse<OperationLogStatsResponse> operationStats(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @NotNull @RequestParam Long clanId,
+            @NotNull @RequestParam("clanId") Long clanId,
             @RequestParam(required = false) Long actorId,
             @RequestParam(required = false) String actionType,
             @RequestParam(required = false) String targetType,
