@@ -105,7 +105,7 @@ API 变更必须 Contract First：
 - 必要测试已补充或更新；
 - 可执行的相关验证已通过；
 - 满足 Issue / Spec 验收标准；
-- PR 看板、风险和恢复检查点已同步。
+- PR 看板、实际耗时、风险和恢复检查点已同步。
 
 代码已修改但未验证时，状态仍为“进行中”。
 
@@ -135,7 +135,8 @@ API 变更必须 Contract First：
 2. 优先采用可独立 Review 的垂直切片，不一次性生成大面积代码。
 3. 每完成一个原子任务，形成独立 Commit 并更新任务看板。
 4. 长任务默认每完成 2～3 个关键任务反馈一次；高风险、失败或阻塞立即反馈。
-5. 不使用无依据的完成百分比，不虚构剩余时间。
+5. 执行看板按 `docs/ai/task-duration-standard.md` 记录每个任务的实际活跃耗时，外部等待单独说明。
+6. 不使用无依据的完成百分比，不虚构剩余时间或已发生耗时。
 
 ---
 
@@ -146,7 +147,7 @@ API 变更必须 Contract First：
 | 任务类型 | 必读规则 / 文档 |
 |---|---|
 | Issue 实现、恢复 | `docs/ai/issue-execution-governance.md` |
-| 聊天式长任务、任务看板 | `docs/ai/chat-driven-github-workflow.md` |
+| 聊天式长任务、任务看板 | `docs/ai/chat-driven-github-workflow.md`、`docs/ai/task-duration-standard.md` |
 | MVP 主流程 | `docs/01-mvp1-requirements.md` |
 | 数据模型、领域规则 | `docs/03-domain-model.md` |
 | 架构、模块边界 | `docs/04-technical-architecture.md`、`docs/08-backend-structure.md` |
@@ -184,7 +185,8 @@ API 变更必须 Contract First：
 - 创建 Issue 分支后不建立 Draft PR 和恢复检查点；
 - 会话中断后仅凭聊天记忆继续编码；
 - 将未验证的修改标记为完成；
-- 隐藏失败、阻塞、遗留风险或基线问题。
+- 隐藏失败、阻塞、遗留风险或基线问题；
+- 事后猜测、补造或用会话持续时间替代任务实际耗时。
 
 ---
 
@@ -215,6 +217,7 @@ npm run api:check
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - Issue 实现与恢复：`docs/ai/issue-execution-governance.md`
 - 聊天式开发与看板：`docs/ai/chat-driven-github-workflow.md`
+- 任务耗时记录：`docs/ai/task-duration-standard.md`
 - Skill 映射：`docs/ai/skill-mapping.md`
 - 提问模板：`docs/ai/prompt-templates.md`
 - 时间展示：`docs/ai/time-display-standard.md`

@@ -31,6 +31,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
 - [聊天式 GitHub 开发与任务看板指南](docs/ai/chat-driven-github-workflow.md)
 - [Issue 实现、状态持久化与中断恢复规范](docs/ai/issue-execution-governance.md)
+- [执行任务看板耗时记录规范](docs/ai/task-duration-standard.md)
 - [时间展示规范（北京时间）](docs/ai/time-display-standard.md)
 
 ## AI 辅助研发入口
@@ -46,13 +47,14 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
 - 聊天式开发、短指令和任务看板：`docs/ai/chat-driven-github-workflow.md`
 - Issue 启动门禁、Draft PR 持久化与中断恢复：`docs/ai/issue-execution-governance.md`
+- 任务活跃耗时、外部等待与历史任务过渡：`docs/ai/task-duration-standard.md`
 - 时间与时区展示：`docs/ai/time-display-standard.md`
 - AI 任务、执行看板与恢复文件：`tasks/`
 - PR 质量门禁模板：`.github/pull_request_template.md`
-- Issue 实现 PR 自动结构检查：`.github/workflows/issue-delivery-governance.yml`
+- Issue 实现 PR 自动结构与耗时检查：`.github/workflows/issue-delivery-governance.yml`
 - Flyway 迁移自动检查：`.github/workflows/database-migration-governance.yml`
 
-规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。实现或继续 Issue 时，必须刷新 `main` 最新规则，先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一使用北京时间。
+规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。实现或继续 Issue 时，必须刷新 `main` 最新规则，先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一使用北京时间；执行任务看板记录已经发生的实际活跃耗时，不使用预计时间或无依据的补算值。
 
 ## 可点击原型
 
