@@ -1,0 +1,396 @@
+from pathlib import Path
+import json
+
+
+def replace_once(path: str, old: str, new: str) -> None:
+    file = Path(path)
+    text = file.read_text(encoding="utf-8")
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{path}: expected one match, found {count}")
+    file.write_text(text.replace(old, new), encoding="utf-8")
+
+
+revision_repository = "backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java"
+replace_once(
+    revision_repository,
+    "import java.util.Optional;\n",
+    "import java.util.Collection;\nimport java.util.List;\nimport java.util.Optional;\n",
+)
+replace_once(
+    revision_repository,
+    "    boolean existsByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);\n}",
+    "    boolean existsByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);\n\n"
+    "    List<RevisionEntity> findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(\n"
+    "            String targetType, Collection<Long> targetIds, String status, Collection<String> changeTypes\n"
+    "    );\n}",
+)
+
+summary_response = "backend/genealogy-backend/src/main/java/com/genealogy/source/dto/SourceBindingSummaryResponse.java"
+replace_once(
+    summary_response,
+    "        String confidenceLevel,\n        String bindingStatus,\n        Long createdBy,",
+    "        String confidenceLevel,\n        String bindingStatus,\n        boolean hasPendingRevision,\n        String pendingChangeType,\n        Long createdBy,",
+)
+
+service_path = "backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java"
+replace_once(
+    service_path,
+    "import com.genealogy.operationlog.application.OperationLogApplicationService;\n",
+    "import com.genealogy.operationlog.application.OperationLogApplicationService;\n"
+    "import com.genealogy.review.entity.RevisionEntity;\n"
+    "import com.genealogy.review.repository.RevisionRepository;\n",
+)
+replace_once(
+    service_path,
+    "import java.util.ArrayList;\nimport java.util.List;\n",
+    "import java.util.ArrayList;\nimport java.util.LinkedHashMap;\nimport java.util.List;\nimport java.util.Map;\n",
+)
+replace_once(
+    service_path,
+    '    private static final String STATUS_ARCHIVED = "archived";\n    private static final String CONFIDENCE_UNKNOWN = "unknown";',
+    '    private static final String STATUS_ARCHIVED = "archived";\n'
+    '    private static final String TARGET_TYPE_SOURCE_BINDING = "source_binding";\n'
+    '    private static final String REVISION_STATUS_PENDING = "pending";\n'
+    '    private static final Set<String> PENDING_BINDING_CHANGE_TYPES = Set.of("replace", "delete");\n'
+    '    private static final String CONFIDENCE_UNKNOWN = "unknown";',
+)
+replace_once(
+    service_path,
+    "    private final SourceBindingRepository sourceBindingRepository;\n    private final SourceAttachmentRepository sourceAttachmentRepository;",
+    "    private final SourceBindingRepository sourceBindingRepository;\n"
+    "    private final RevisionRepository revisionRepository;\n"
+    "    private final SourceAttachmentRepository sourceAttachmentRepository;",
+)
+replace_once(
+    service_path,
+    "            SourceBindingRepository sourceBindingRepository,\n            SourceAttachmentRepository sourceAttachmentRepository,",
+    "            SourceBindingRepository sourceBindingRepository,\n"
+    "            RevisionRepository revisionRepository,\n"
+    "            SourceAttachmentRepository sourceAttachmentRepository,",
+)
+replace_once(
+    service_path,
+    "        this.sourceBindingRepository = sourceBindingRepository;\n        this.sourceAttachmentRepository = sourceAttachmentRepository;",
+    "        this.sourceBindingRepository = sourceBindingRepository;\n"
+    "        this.revisionRepository = revisionRepository;\n"
+    "        this.sourceAttachmentRepository = sourceAttachmentRepository;",
+)
+replace_once(
+    service_path,
+    """        Page<SourceBindingSummaryResponse> page = (normalizedTargetType == null
+                ? sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId, pageRequest)
+                : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest)
+        ).map(this::toBindingSummaryResponse);
+        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);""",
+    """        Page<SourceBindingEntity> page = normalizedTargetType == null
+                ? sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId, pageRequest)
+                : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest);
+        Map<Long, RevisionEntity> pendingRevisions = pendingBindingRevisions(page.getContent());
+        List<SourceBindingSummaryResponse> records = page.getContent().stream()
+                .map(binding -> toBindingSummaryResponse(binding, pendingRevisions.get(binding.getId())))
+                .toList();
+        return PageResponse.of(records, page.getTotalElements(), pageNo, pageSize);""",
+)
+replace_once(
+    service_path,
+    """        List<SourceBindingSummaryResponse> bindings = sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(entity.getId())
+                .stream()
+                .map(this::toBindingSummaryResponse)
+                .toList();""",
+    """        List<SourceBindingEntity> bindingRows = sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(entity.getId());
+        Map<Long, RevisionEntity> pendingRevisions = pendingBindingRevisions(bindingRows);
+        List<SourceBindingSummaryResponse> bindings = bindingRows.stream()
+                .map(binding -> toBindingSummaryResponse(binding, pendingRevisions.get(binding.getId())))
+                .toList();""",
+)
+replace_once(
+    service_path,
+    """    private SourceBindingSummaryResponse toBindingSummaryResponse(SourceBindingEntity entity) {
+        if (entity.getConfidenceLevel() == null || entity.getConfidenceLevel().isBlank()) {
+            entity.setConfidenceLevel(CONFIDENCE_UNKNOWN);
+        }
+        if (entity.getBindingStatus() == null || entity.getBindingStatus().isBlank()) {
+            entity.setBindingStatus(STATUS_OFFICIAL);
+        }
+        TargetDisplay targetDisplay = resolveTargetDisplay(entity.getClanId(), entity.getTargetType(), entity.getTargetId());
+        return new SourceBindingSummaryResponse(
+                entity.getId(),
+                entity.getTargetType(),
+                entity.getTargetId(),
+                targetDisplay.displayName(),
+                targetDisplay.branchName(),
+                targetDisplay.summary(),
+                entity.getBindingReason(),
+                entity.getExcerpt(),
+                entity.getConfidenceLevel(),
+                entity.getBindingStatus(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt()
+        );
+    }
+
+    private TargetDisplay resolveTargetDisplay""",
+    """    private SourceBindingSummaryResponse toBindingSummaryResponse(SourceBindingEntity entity, RevisionEntity pendingRevision) {
+        if (entity.getConfidenceLevel() == null || entity.getConfidenceLevel().isBlank()) {
+            entity.setConfidenceLevel(CONFIDENCE_UNKNOWN);
+        }
+        if (entity.getBindingStatus() == null || entity.getBindingStatus().isBlank()) {
+            entity.setBindingStatus(STATUS_OFFICIAL);
+        }
+        TargetDisplay targetDisplay = resolveTargetDisplay(entity.getClanId(), entity.getTargetType(), entity.getTargetId());
+        return new SourceBindingSummaryResponse(
+                entity.getId(),
+                entity.getTargetType(),
+                entity.getTargetId(),
+                targetDisplay.displayName(),
+                targetDisplay.branchName(),
+                targetDisplay.summary(),
+                entity.getBindingReason(),
+                entity.getExcerpt(),
+                entity.getConfidenceLevel(),
+                entity.getBindingStatus(),
+                pendingRevision != null,
+                pendingRevision == null ? null : pendingRevision.getChangeType(),
+                entity.getCreatedBy(),
+                entity.getCreatedAt()
+        );
+    }
+
+    private Map<Long, RevisionEntity> pendingBindingRevisions(List<SourceBindingEntity> bindings) {
+        List<Long> bindingIds = bindings.stream()
+                .map(SourceBindingEntity::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (bindingIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, RevisionEntity> result = new LinkedHashMap<>();
+        revisionRepository.findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(
+                TARGET_TYPE_SOURCE_BINDING,
+                bindingIds,
+                REVISION_STATUS_PENDING,
+                PENDING_BINDING_CHANGE_TYPES
+        ).forEach(revision -> result.put(revision.getTargetId(), revision));
+        return result;
+    }
+
+    private TargetDisplay resolveTargetDisplay""",
+)
+
+test_path = "backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceApplicationServiceTest.java"
+replace_once(
+    test_path,
+    "import com.genealogy.operationlog.application.OperationLogApplicationService;\n",
+    "import com.genealogy.operationlog.application.OperationLogApplicationService;\n"
+    "import com.genealogy.review.entity.RevisionEntity;\n"
+    "import com.genealogy.review.repository.RevisionRepository;\n",
+)
+replace_once(
+    test_path,
+    "import java.util.Optional;\n",
+    "import java.util.Optional;\nimport java.util.Set;\n",
+)
+replace_once(
+    test_path,
+    "    private SourceBindingRepository sourceBindingRepository;\n\n    @Mock\n    private SourceAttachmentRepository sourceAttachmentRepository;",
+    "    private SourceBindingRepository sourceBindingRepository;\n\n"
+    "    @Mock\n    private RevisionRepository revisionRepository;\n\n"
+    "    @Mock\n    private SourceAttachmentRepository sourceAttachmentRepository;",
+)
+replace_once(
+    test_path,
+    """        PersonEntity person = person(100L, "P100", "张三", 11L);
+        BranchEntity branch = branch(11L, "长房");
+
+        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));""",
+    """        PersonEntity person = person(100L, "P100", "张三", 11L);
+        BranchEntity branch = branch(11L, "长房");
+        RevisionEntity pendingRevision = new RevisionEntity();
+        pendingRevision.setTargetType("source_binding");
+        pendingRevision.setTargetId(20L);
+        pendingRevision.setChangeType("replace");
+        pendingRevision.setStatus("pending");
+
+        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));""",
+)
+replace_once(
+    test_path,
+    '        when(branchRepository.findByIdAndClanId(11L, 1L)).thenReturn(Optional.of(branch));\n        when(authorizationApplicationService.can(1L, 2L, "source:bind")).thenReturn(true);',
+    '        when(branchRepository.findByIdAndClanId(11L, 1L)).thenReturn(Optional.of(branch));\n'
+    '        when(revisionRepository.findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(\n'
+    '                "source_binding", List.of(20L), "pending", Set.of("replace", "delete")\n'
+    '        )).thenReturn(List.of(pendingRevision));\n'
+    '        when(authorizationApplicationService.can(1L, 2L, "source:bind")).thenReturn(true);',
+)
+replace_once(
+    test_path,
+    '        assertThat(response.bindingSummaries().get(0).targetBranchName()).isEqualTo("长房");\n        assertThat(response.attachmentSummaries()).hasSize(1);',
+    '        assertThat(response.bindingSummaries().get(0).targetBranchName()).isEqualTo("长房");\n'
+    '        assertThat(response.bindingSummaries().get(0).hasPendingRevision()).isTrue();\n'
+    '        assertThat(response.bindingSummaries().get(0).pendingChangeType()).isEqualTo("replace");\n'
+    '        assertThat(response.attachmentSummaries()).hasSize(1);',
+)
+
+frontend_service = "frontend/genealogy-web/src/features/sources/sourceLibraryService.ts"
+replace_once(
+    frontend_service,
+    "  bindingStatus?: string;\n  createdBy?: number;",
+    "  bindingStatus?: string;\n  hasPendingRevision?: boolean;\n  pendingChangeType?: string;\n  createdBy?: number;",
+)
+
+page_path = "frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx"
+replace_once(
+    page_path,
+    """function bindingTargetTypeText(value?: string) {
+  return bindingTargetTypeOptions.find(item => item.value === value)?.label || '其他对象';
+}
+
+function statusColor""",
+    """function bindingTargetTypeText(value?: string) {
+  return bindingTargetTypeOptions.find(item => item.value === value)?.label || '其他对象';
+}
+
+function pendingBindingChangeText(value?: string) {
+  if (value === 'replace') return '变更审核中';
+  if (value === 'delete') return '解除审核中';
+  return '审核中';
+}
+
+function statusColor""",
+)
+replace_once(
+    page_path,
+    """      setLastRevision(response);
+      setBindingModalOpen(false);
+      notify({ message: '来源绑定变更已提交审核' });""",
+    """      setLastRevision(response);
+      setBindingModalOpen(false);
+      await reloadDetail();
+      notify({ message: '来源绑定变更已提交审核' });""",
+)
+replace_once(
+    page_path,
+    """      const response = await submitDeleteBindingRevision(row.id, '来源绑定删除申请');
+      setLastRevision(response);
+      notify({ message: '删除绑定申请已提交审核' });
+    } catch (error) {
+      notify({ message: (error as Error).message || '删除绑定审核提交失败' }, true);""",
+    """      const response = await submitDeleteBindingRevision(row.id, '来源绑定解除申请');
+      setLastRevision(response);
+      await reloadDetail();
+      notify({ message: '解除绑定申请已提交审核' });
+    } catch (error) {
+      notify({ message: (error as Error).message || '解除绑定审核提交失败' }, true);""",
+)
+replace_once(
+    page_path,
+    """      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '提交替换绑定审核' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
+        <Form form={bindingForm} layout="vertical" onFinish={submitBindingRevision}>
+          {bindingMode === 'create' ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="新建绑定关系提交后需审核通过才会正式生效。" /> : null}""",
+    """      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '变更绑定关系' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
+        <Form form={bindingForm} layout="vertical" onFinish={submitBindingRevision}>
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={bindingMode === 'replace'
+              ? '变更绑定提交后需审核通过才会生效，审核期间原绑定继续有效。'
+              : '新建绑定关系提交后需审核通过才会正式生效。'}
+          />""",
+)
+replace_once(
+    page_path,
+    """function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBindingSummary[]; canBind: boolean; onReplace: (row: SourceBindingSummary) => void; onDelete: (row: SourceBindingSummary) => void }) {
+  return (
+    <Table<SourceBindingSummary>
+      size="small"
+      rowKey={(row, index) => String(row.id || index)}
+      dataSource={rows}
+      pagination={false}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }}
+      columns={[
+        { title: '引用对象类型', width: 120, render: (_value, row) => <Tag>{bindingTargetTypeText(row.targetType)}</Tag> },
+        { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
+        { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
+        { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
+        { title: '状态', width: 100, render: (_value, row) => <Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag> },
+        { title: '创建时间', width: 170, render: (_value, row) => row.createdAt || '待维护' },
+        { title: '操作', width: 160, render: (_value, row) => canBind ? <Space><Button size="small" type="link" onClick={() => onReplace(row)}>替换审核</Button><Popconfirm title="提交删除绑定审核" description="删除不会立即生效，需审核通过后归档该绑定。" onConfirm={() => onDelete(row)}><Button size="small" type="link" danger>删除审核</Button></Popconfirm></Space> : <Text type="secondary">暂无权限</Text> }
+      ]}
+    />
+  );
+}""",
+    """function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBindingSummary[]; canBind: boolean; onReplace: (row: SourceBindingSummary) => void; onDelete: (row: SourceBindingSummary) => void }) {
+  return (
+    <Table<SourceBindingSummary>
+      size="small"
+      rowKey={(row, index) => String(row.id || index)}
+      dataSource={rows}
+      pagination={false}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }}
+      columns={[
+        { title: '引用对象类型', width: 120, render: (_value, row) => <Tag>{bindingTargetTypeText(row.targetType)}</Tag> },
+        { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
+        { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
+        { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
+        {
+          title: '状态',
+          width: 130,
+          render: (_value, row) => (
+            <Space direction="vertical" size={0}>
+              <Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag>
+              {row.hasPendingRevision ? <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag> : null}
+            </Space>
+          )
+        },
+        { title: '创建时间', width: 170, render: (_value, row) => row.createdAt || '待维护' },
+        {
+          title: '操作',
+          width: 180,
+          render: (_value, row) => {
+            if (!canBind) return <Text type="secondary">暂无权限</Text>;
+            const bindingStatus = String(row.bindingStatus || '').toLowerCase();
+            if (bindingStatus !== 'official') {
+              return <Text type="secondary">{bindingStatus === 'archived' ? '已归档' : '不可变更'}</Text>;
+            }
+            if (row.hasPendingRevision) {
+              return <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag>;
+            }
+            return (
+              <Space>
+                <Button size="small" type="link" onClick={() => onReplace(row)}>变更绑定</Button>
+                <Popconfirm
+                  title="提交解除绑定审核"
+                  description="解除绑定不会立即生效，审核通过后该绑定将归档。"
+                  onConfirm={() => onDelete(row)}
+                >
+                  <Button size="small" type="link" danger>解除绑定</Button>
+                </Popconfirm>
+              </Space>
+            );
+          }
+        }
+      ]}
+    />
+  );
+}""",
+)
+
+openapi_path = Path("docs/api/openapi.json")
+openapi = json.loads(openapi_path.read_text(encoding="utf-8"))
+schema = openapi.get("components", {}).get("schemas", {}).get("SourceBindingSummaryResponse")
+if schema is None:
+    raise SystemExit("docs/api/openapi.json: SourceBindingSummaryResponse schema not found")
+properties = schema.setdefault("properties", {})
+properties["hasPendingRevision"] = {
+    "type": "boolean",
+    "description": "当前绑定是否存在待审核的变更或解除申请",
+}
+properties["pendingChangeType"] = {
+    "type": "string",
+    "nullable": True,
+    "enum": ["replace", "delete"],
+    "description": "待审核变更类型：replace-变更绑定，delete-解除绑定",
+}
+openapi_path.write_text(json.dumps(openapi, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
