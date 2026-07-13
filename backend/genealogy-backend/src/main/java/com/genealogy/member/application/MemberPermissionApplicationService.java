@@ -282,7 +282,7 @@ public class MemberPermissionApplicationService {
                 "member status changed for user " + saved.getUserId(),
                 "before=" + beforeStatus + "; after=" + targetStatus + "; reason=" + request.reason().trim()
         );
-        return aggregateMembers(clanId, actorId, List.of(saved)).getFirst();
+        return aggregateMembers(clanId, actorId, List.of(saved)).get(0);
     }
 
     private List<MemberAggregateResponse> aggregateMembers(
