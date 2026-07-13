@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -96,6 +96,7 @@ class ImportJobApplicationServiceTest {
 
         ImportJobResponse result = service.getJob(1L, 11L, 9L);
 
+        verify(authorizationApplicationService).requireClanMember(1L, 9L);
         verify(authorizationApplicationService).requireBranchWriteScope(1L, 9L, 5L);
         assertThat(result.id()).isEqualTo(11L);
         assertThat(result.errors()).singleElement().satisfies(row -> {
@@ -106,15 +107,18 @@ class ImportJobApplicationServiceTest {
     }
 
     @Test
-    void getJobShouldNotLeakWhetherAnotherClanJobExists() {
+    void getJobShouldCheckClanMembershipBeforeReturningNotFound() {
         when(importJobRepository.findByIdAndClanId(11L, 1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getJob(1L, 11L, 9L))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("导入任务不存在")
-                .extracting(error -> ((BusinessException) error).getCode())
-                .isEqualTo("IMPORT_JOB_NOT_FOUND");
+        BusinessException error = catchThrowableOfType(
+                () -> service.getJob(1L, 11L, 9L),
+                BusinessException.class
+        );
 
+        assertThat(error).isNotNull();
+        assertThat(error.getCode()).isEqualTo("IMPORT_JOB_NOT_FOUND");
+        assertThat(error).hasMessage("导入任务不存在");
+        verify(authorizationApplicationService).requireClanMember(1L, 9L);
         verify(authorizationApplicationService, never()).requireBranchWriteScope(any(), any(), any());
         verify(importJobErrorRepository, never()).findByJobIdOrderByRowNoAsc(any());
     }
