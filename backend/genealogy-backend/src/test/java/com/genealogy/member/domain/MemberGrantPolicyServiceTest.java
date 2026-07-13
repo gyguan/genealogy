@@ -13,11 +13,14 @@ import com.genealogy.member.repository.MemberRoleRepository;
 import com.genealogy.member.repository.RoleRepository;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,7 +41,7 @@ class MemberGrantPolicyServiceTest {
 
     @Test
     void branchAdminCannotGrantClanAdmin() {
-        prepareBranchAdminActor(1L, 100L, 200L);
+        prepareBranchAdminActor(1L, 100L, 200L, List.of(200L, 203L));
 
         assertThatThrownBy(() -> service.validateCreate(
                 1L,
@@ -47,14 +50,13 @@ class MemberGrantPolicyServiceTest {
                 MemberRoleScopeType.clan,
                 1L,
                 "越级授权测试"
-        )).hasMessageContaining("只能授予编辑或查看角色");
+        )).hasMessageContaining("超出当前操作者");
     }
 
     @Test
     void branchAdminCanGrantViewerInsideOwnSubtree() {
-        prepareBranchAdminActor(1L, 100L, 200L);
+        prepareBranchAdminActor(1L, 100L, 200L, List.of(200L, 203L));
         when(branchRepository.findByIdAndClanId(203L, 1L)).thenReturn(Optional.of(branch(1L, 203L)));
-        when(branchRepository.isDescendantOrSelf(1L, 200L, 203L)).thenReturn(true);
 
         assertThatCode(() -> service.validateCreate(
                 1L,
@@ -63,6 +65,58 @@ class MemberGrantPolicyServiceTest {
                 MemberRoleScopeType.branch_subtree,
                 203L,
                 "授权下级支派查看权限"
+        )).doesNotThrowAnyException();
+    }
+
+    @Test
+    void branchAdminCannotDisableMemberInSiblingBranch() {
+        prepareBranchAdminActor(1L, 100L, 200L, List.of(200L, 203L));
+        ClanMembershipEntity target = membership(80L, 1L, 300L);
+        RoleEntity viewer = role(81L, AuthorizationApplicationService.ROLE_VIEWER);
+        MemberRoleEntity siblingGrant = grant(
+                82L,
+                target.getId(),
+                viewer.getId(),
+                MemberRoleScopeType.branch_subtree,
+                300L
+        );
+        when(clanMembershipRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        when(memberRoleRepository.findByMembershipIdAndStatus(target.getId(), "active"))
+                .thenReturn(List.of(siblingGrant));
+        when(roleRepository.findAllById(List.of(viewer.getId()))).thenReturn(List.of(viewer));
+
+        assertThatThrownBy(() -> service.validateMemberStatusChange(
+                1L,
+                100L,
+                target.getId(),
+                MemberStatus.disabled,
+                "停用兄弟支派成员"
+        )).hasMessageContaining("超出当前操作者");
+    }
+
+    @Test
+    void branchAdminCanDisableViewerFullyInsideOwnSubtree() {
+        prepareBranchAdminActor(1L, 100L, 200L, List.of(200L, 203L));
+        ClanMembershipEntity target = membership(80L, 1L, 300L);
+        RoleEntity viewer = role(81L, AuthorizationApplicationService.ROLE_VIEWER);
+        MemberRoleEntity insideGrant = grant(
+                82L,
+                target.getId(),
+                viewer.getId(),
+                MemberRoleScopeType.branch_subtree,
+                203L
+        );
+        when(clanMembershipRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        when(memberRoleRepository.findByMembershipIdAndStatus(target.getId(), "active"))
+                .thenReturn(List.of(insideGrant));
+        when(roleRepository.findAllById(List.of(viewer.getId()))).thenReturn(List.of(viewer));
+
+        assertThatCode(() -> service.validateMemberStatusChange(
+                1L,
+                100L,
+                target.getId(),
+                MemberStatus.disabled,
+                "停用本支派成员"
         )).doesNotThrowAnyException();
     }
 
@@ -85,7 +139,12 @@ class MemberGrantPolicyServiceTest {
                 .hasMessageContaining("至少保留一名有效管理员");
     }
 
-    private void prepareBranchAdminActor(Long clanId, Long actorId, Long scopeId) {
+    private void prepareBranchAdminActor(
+            Long clanId,
+            Long actorId,
+            Long scopeId,
+            Collection<Long> subtreeIds
+    ) {
         when(authorizationApplicationService.isCrossClanAdmin(actorId)).thenReturn(false);
         ClanMembershipEntity membership = membership(50L, clanId, actorId);
         RoleEntity role = role(60L, AuthorizationApplicationService.ROLE_BRANCH_ADMIN);
@@ -95,6 +154,8 @@ class MemberGrantPolicyServiceTest {
         when(memberRoleRepository.findByMembershipIdAndStatus(membership.getId(), "active"))
                 .thenReturn(List.of(grant));
         when(roleRepository.findAllById(List.of(role.getId()))).thenReturn(List.of(role));
+        when(branchRepository.findSubtreeIds(eq(clanId), anyCollection()))
+                .thenReturn(subtreeIds.stream().toList());
     }
 
     private ClanMembershipEntity membership(Long id, Long clanId, Long userId) {
