@@ -1,0 +1,45 @@
+name: Issue 101 Contract Sync
+
+on:
+  push:
+    branches:
+      - agent/issue-101-member-permission-p0
+    paths:
+      - '.github/workflows/issue-101-contract-sync.yml'
+      - 'docs/api/openapi.member-permission.json'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-101-member-permission-p0
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Retire legacy member contract and regenerate client
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'docs/api/openapi.json';
+          const spec = JSON.parse(fs.readFileSync(file, 'utf8'));
+          delete spec.paths['/api/v1/member-management/clans/{clanId}/members'];
+          fs.writeFileSync(file, `${JSON.stringify(spec, null, 2)}\n`);
+          NODE
+          node scripts/api/generate-frontend-client.mjs
+      - name: Commit generated contract
+        run: |
+          if git diff --quiet; then
+            echo 'Contract already synchronized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/api/openapi.json frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          git commit -m 'contract(member): retire legacy member list operation'
+          git push origin HEAD:agent/issue-101-member-permission-p0
