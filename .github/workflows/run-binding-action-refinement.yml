@@ -32,7 +32,7 @@ jobs:
               script = workflow.split(marker, 1)[1].split(end_marker, 1)[0]
               script = '\n'.join(line[10:] if line.startswith('          ') else line for line in script.splitlines())
               exec(compile(script, 'apply-binding-action-refinement.py', 'exec'))
-          except Exception:
+          except BaseException:
               Path('.github/binding-refinement-error.txt').write_text(traceback.format_exc(), encoding='utf-8')
               raise
           PY
