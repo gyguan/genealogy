@@ -8,6 +8,8 @@ import {
   getSourceDetail,
   listBranches,
   listClans,
+  listGenerationSchemes,
+  listGenerationWords,
   listPersons,
   listSourceAttachments,
   listSourceBindings,
@@ -21,6 +23,8 @@ import {
 import type {
   BindingRevisionResponse,
   BranchOption,
+  GenerationSchemeOption,
+  GenerationWordOption,
   PersonOption,
   SourceAttachmentRecord,
   SourceBindingSummary,
@@ -31,13 +35,15 @@ import type {
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
+const OFFICIAL_GENERATION_SCHEME_STATUSES = new Set(['official', 'active', 'approved']);
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type BindingMode = 'create' | 'replace';
-type BindingTargetType = 'person' | 'branch' | 'clan';
+type BindingTargetType = 'person' | 'branch' | 'clan' | 'generation_word';
 
 type BindingFormValues = {
   targetType: BindingTargetType;
+  generationSchemeId?: number;
   targetId?: number;
   bindingReason?: string;
   excerpt?: string;
@@ -95,7 +101,8 @@ const confidenceOptions = [
 const bindingTargetTypeOptions = [
   { value: 'person', label: '人物' },
   { value: 'branch', label: '支派' },
-  { value: 'clan', label: '宗族' }
+  { value: 'clan', label: '宗族' },
+  { value: 'generation_word', label: '字辈' }
 ];
 
 function optionText(options: Array<{ value: string; label: string }>, value?: string) {
@@ -162,6 +169,34 @@ function branchOptionLabel(row: BranchOption) {
   return row.branchName || row.branchPath || '未命名支派';
 }
 
+function generationSchemeOptionLabel(row: GenerationSchemeOption) {
+  return row.schemeName || '未命名字辈方案';
+}
+
+function generationWordOptionLabel(row: GenerationWordOption) {
+  const generation = row.generationNo ? `第${row.generationNo}世 · ` : '';
+  return `${generation}${row.word || '未命名字辈'}`;
+}
+
+function isOfficialGenerationScheme(row: GenerationSchemeOption) {
+  return OFFICIAL_GENERATION_SCHEME_STATUSES.has(String(row.status || '').toLowerCase());
+}
+
+function normalizeBindingTargetType(value?: string): BindingTargetType {
+  if (value === 'branch' || value === 'clan' || value === 'generation_word') return value;
+  return 'person';
+}
+
+function currentGenerationWord(row: SourceBindingSummary): GenerationWordOption[] {
+  if (!row.targetId) return [];
+  const displayName = String(row.targetDisplayName || '').replace(/^字辈[：:]/, '').trim();
+  return [{
+    id: row.targetId,
+    word: displayName || '当前字辈',
+    description: row.targetSummary
+  }];
+}
+
 export function SourceLibraryPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<Array<{ id?: number; clanName?: string; surname?: string }>>([]);
@@ -179,6 +214,10 @@ export function SourceLibraryPage({ notify }: Props) {
   const [attachmentLoading, setAttachmentLoading] = useState(false);
   const [people, setPeople] = useState<PersonOption[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [generationSchemes, setGenerationSchemes] = useState<GenerationSchemeOption[]>([]);
+  const [generationWords, setGenerationWords] = useState<GenerationWordOption[]>([]);
+  const [generationSchemeLoading, setGenerationSchemeLoading] = useState(false);
+  const [generationWordLoading, setGenerationWordLoading] = useState(false);
   const [bindingModalOpen, setBindingModalOpen] = useState(false);
   const [bindingMode, setBindingMode] = useState<BindingMode>('create');
   const [bindingTargetType, setBindingTargetType] = useState<BindingTargetType>('person');
@@ -222,6 +261,37 @@ export function SourceLibraryPage({ notify }: Props) {
     ]);
     setPeople(nextPeople);
     setBranches(nextBranches);
+  }
+
+  async function loadOfficialGenerationSchemes() {
+    if (!clanId) return;
+    setGenerationSchemeLoading(true);
+    try {
+      const rows = await listGenerationSchemes(clanId);
+      setGenerationSchemes(rows.filter(isOfficialGenerationScheme));
+    } catch (error) {
+      setGenerationSchemes([]);
+      notify({ message: (error as Error).message || '字辈方案加载失败' }, true);
+    } finally {
+      setGenerationSchemeLoading(false);
+    }
+  }
+
+  async function loadGenerationWordOptions(schemeId?: number) {
+    if (!schemeId) {
+      setGenerationWords([]);
+      return;
+    }
+    setGenerationWordLoading(true);
+    try {
+      const rows = await listGenerationWords(schemeId);
+      setGenerationWords(rows);
+    } catch (error) {
+      setGenerationWords([]);
+      notify({ message: (error as Error).message || '字辈明细加载失败' }, true);
+    } finally {
+      setGenerationWordLoading(false);
+    }
   }
 
   async function loadAttachments(sourceId: number, pageNo = 1, pageSize = ATTACHMENT_PAGE_SIZE) {
@@ -355,6 +425,7 @@ export function SourceLibraryPage({ notify }: Props) {
     setBindingMode('create');
     setBindingTarget(null);
     setBindingTargetType('person');
+    setGenerationWords([]);
     bindingForm.resetFields();
     bindingForm.setFieldsValue({ targetType: 'person', confidenceLevel: selectedSource.confidenceLevel || 'unknown' });
     setBindingModalOpen(true);
@@ -362,12 +433,19 @@ export function SourceLibraryPage({ notify }: Props) {
 
   function openReplaceBinding(row: SourceBindingSummary) {
     if (!selectedSource?.id) return;
-    const targetType: BindingTargetType = row.targetType === 'branch' || row.targetType === 'clan' ? row.targetType : 'person';
+    const targetType = normalizeBindingTargetType(row.targetType);
     setBindingMode('replace');
     setBindingTarget(row);
     setBindingTargetType(targetType);
+    if (targetType === 'generation_word') {
+      setGenerationWords(currentGenerationWord(row));
+      void loadOfficialGenerationSchemes();
+    } else {
+      setGenerationWords([]);
+    }
     bindingForm.setFieldsValue({
       targetType,
+      generationSchemeId: undefined,
       targetId: row.targetId,
       bindingReason: row.bindingReason,
       excerpt: row.excerpt,
@@ -375,6 +453,18 @@ export function SourceLibraryPage({ notify }: Props) {
       changeReason: '修正来源绑定证据'
     });
     setBindingModalOpen(true);
+  }
+
+  function changeBindingTargetType(value: BindingTargetType) {
+    setBindingTargetType(value);
+    setGenerationWords([]);
+    bindingForm.setFieldsValue({ generationSchemeId: undefined, targetId: undefined });
+    if (value === 'generation_word') void loadOfficialGenerationSchemes();
+  }
+
+  function changeGenerationScheme(schemeId?: number) {
+    bindingForm.setFieldValue('targetId', undefined);
+    void loadGenerationWordOptions(schemeId);
   }
 
   async function submitBindingRevision(values: BindingFormValues) {
@@ -419,8 +509,14 @@ export function SourceLibraryPage({ notify }: Props) {
   const targetOptions = useMemo(() => {
     if (bindingTargetType === 'branch') return branches.map(row => ({ value: row.id, label: branchOptionLabel(row) }));
     if (bindingTargetType === 'clan') return clans.filter(row => String(row.id) === clanId).map(row => ({ value: row.id, label: row.clanName || `${row.surname || ''}宗族` }));
+    if (bindingTargetType === 'generation_word') return generationWords.map(row => ({ value: row.id, label: generationWordOptionLabel(row) }));
     return people.map(row => ({ value: row.id, label: personOptionLabel(row) }));
-  }, [bindingTargetType, people, branches, clans, clanId]);
+  }, [bindingTargetType, people, branches, clans, clanId, generationWords]);
+
+  const generationSchemeOptions = useMemo(
+    () => generationSchemes.map(row => ({ value: row.id, label: generationSchemeOptionLabel(row) })),
+    [generationSchemes]
+  );
 
   const uploadProps: UploadProps = {
     maxCount: 1,
@@ -428,6 +524,10 @@ export function SourceLibraryPage({ notify }: Props) {
     onRemove: () => { setFile(null); return true; },
     fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
   };
+
+  const targetPlaceholder = bindingTargetType === 'generation_word'
+    ? '请选择具体字辈'
+    : '请选择人物、支派或宗族';
 
   return (
     <div className="source-library-page">
@@ -551,13 +651,33 @@ export function SourceLibraryPage({ notify }: Props) {
           <Form.Item name="targetType" label="绑定对象类型" rules={[{ required: true, message: '请选择绑定对象类型' }]}>
             <Select
               options={bindingTargetTypeOptions}
-              onChange={(value: BindingTargetType) => { setBindingTargetType(value); bindingForm.setFieldValue('targetId', undefined); }}
+              onChange={changeBindingTargetType}
             />
           </Form.Item>
+          {bindingTargetType === 'generation_word' ? (
+            <Form.Item name="generationSchemeId" label="字辈方案">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                loading={generationSchemeLoading}
+                options={generationSchemeOptions.filter(item => item.value)}
+                placeholder={generationSchemes.length ? '请选择已生效字辈方案' : '暂无已生效字辈方案'}
+                onChange={changeGenerationScheme}
+              />
+            </Form.Item>
+          ) : null}
           <Form.Item name="targetId" label="绑定对象" rules={[{ required: true, message: '请选择绑定对象' }]}>
-            <Select showSearch optionFilterProp="label" options={targetOptions.filter(item => item.value)} placeholder="请选择人物、支派或宗族" />
+            <Select
+              showSearch
+              optionFilterProp="label"
+              loading={bindingTargetType === 'generation_word' && generationWordLoading}
+              options={targetOptions.filter(item => item.value)}
+              placeholder={targetPlaceholder}
+              disabled={bindingTargetType === 'generation_word' && !generationWordLoading && !generationWords.length}
+              notFoundContent={bindingTargetType === 'generation_word' ? '请选择字辈方案后加载字辈明细' : '暂无可选对象'}
+            />
           </Form.Item>
-          <Alert type="info" showIcon style={{ marginBottom: 12 }} message="关系、字辈等对象的真实名称展示已由后端支持；前端目标选择器将在对应对象检索接口补齐后继续扩展。" />
           <Form.Item name="bindingReason" label="绑定理由"><Input.TextArea rows={2} placeholder="说明该来源为何能证明该对象" /></Form.Item>
           <Form.Item name="excerpt" label="来源摘录"><Input.TextArea rows={2} placeholder="摘录来源中与绑定对象相关的内容" /></Form.Item>
           <Form.Item name="confidenceLevel" label="可信度"><Select options={confidenceOptions} /></Form.Item>
