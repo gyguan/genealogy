@@ -17,10 +17,12 @@ type ReviewTask = {
   reviewStatus?: string;
   taskStatus?: string;
   createdAt?: string;
+  submitTime?: string;
   updatedAt?: string;
   submitterId?: number | string;
   submitterName?: string;
   reviewerName?: string;
+  diffSummary?: string;
   comment?: string;
   reviewComment?: string;
   rejectReason?: string;
@@ -45,12 +47,14 @@ function targetTypeText(value?: string) {
     relationships: '关系',
     source: '来源',
     sources: '来源',
+    source_binding: '来源绑定',
     branch: '支派',
     branches: '支派',
     generation_scheme: '字辈方案',
     generation_schemes: '字辈方案',
     generation_scheme_item: '字辈明细',
     generation_schemes_item: '字辈明细',
+    import_job: '人物导入批次',
     clan: '宗族'
   };
   return dict[normalized] || (value ? '其他对象' : '未知对象');
@@ -96,6 +100,10 @@ function reviewComment(row: ReviewTask) {
   return row.reviewComment || row.rejectReason || row.comment || '暂无审核意见';
 }
 
+function submittedAt(row: ReviewTask) {
+  return row.submitTime || row.createdAt || '提交时间待维护';
+}
+
 function isProcessed(row: ReviewTask) {
   return ['approved', 'passed', 'rejected', 'cancelled', 'canceled', 'completed'].includes(statusValue(row));
 }
@@ -109,7 +117,7 @@ function reviewTimelineItems(row: ReviewTask) {
         <div>
           <Typography.Text strong>提交审核</Typography.Text>
           <br />
-          <Typography.Text type="secondary">{row.createdAt || '提交时间待维护'} · {submitterText(row)}</Typography.Text>
+          <Typography.Text type="secondary">{submittedAt(row)} · {submitterText(row)}</Typography.Text>
         </div>
       )
     },
@@ -273,9 +281,10 @@ export function ReviewCenterPage({ notify }: Props) {
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前没有待审核任务' : '请先选择宗族'} /> }}
           columns={[
             { key: 'title', title: '审核事项', ellipsis: true, render: (_value, row) => taskTitle(row) },
-            { key: 'targetType', title: '审核对象', width: 130, render: (_value, row) => targetTypeText(row.targetType) },
+            { key: 'targetType', title: '审核对象', width: 150, render: (_value, row) => targetTypeText(row.targetType) },
+            { key: 'diffSummary', title: '变更摘要', dataIndex: 'diffSummary', ellipsis: true },
             { key: 'status', title: '审核状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-            { key: 'createdAt', title: '提交时间', width: 180, render: (_value, row) => row.createdAt || '待维护' },
+            { key: 'createdAt', title: '提交时间', width: 180, render: (_value, row) => submittedAt(row) },
             {
               key: 'actions',
               title: '审核操作',
@@ -315,7 +324,7 @@ export function ReviewCenterPage({ notify }: Props) {
 
       <Drawer
         title="审核详情"
-        width={520}
+        width={560}
         open={Boolean(detailTask)}
         onClose={() => setDetailTask(null)}
         extra={detailTask ? (
@@ -331,8 +340,9 @@ export function ReviewCenterPage({ notify }: Props) {
             <Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="审核事项">{taskTitle(detailTask)}</Descriptions.Item>
               <Descriptions.Item label="审核对象">{targetTypeText(detailTask.targetType)}</Descriptions.Item>
+              <Descriptions.Item label="变更摘要">{detailTask.diffSummary || '暂无摘要'}</Descriptions.Item>
               <Descriptions.Item label="审核状态"><Tag color={statusColor(detailTask)}>{statusText(detailTask)}</Tag></Descriptions.Item>
-              <Descriptions.Item label="提交时间">{detailTask.createdAt || '待维护'}</Descriptions.Item>
+              <Descriptions.Item label="提交时间">{submittedAt(detailTask)}</Descriptions.Item>
               <Descriptions.Item label="审核意见">{reviewComment(detailTask)}</Descriptions.Item>
             </Descriptions>
             <div>
