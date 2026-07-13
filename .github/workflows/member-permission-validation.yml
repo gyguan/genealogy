@@ -141,7 +141,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution Node \
+          npx tsc --ignoreConfig --noEmit --target ES2020 --module ESNext --moduleResolution Node \
             --jsx react-jsx --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck \
             src/features/members/MemberPage.tsx src/features/members/memberPermissionApi.ts \
             > member-typecheck.log 2>&1
