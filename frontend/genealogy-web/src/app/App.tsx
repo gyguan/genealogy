@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Typography, theme } from 'antd';
+import { ConfigProvider, Layout, Menu, Space, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
+import { BookletActions } from '../features/booklets/BookletActions';
+import { PersonDataExportActions } from '../features/exports/PersonDataExportActions';
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
@@ -150,6 +152,12 @@ function AppShell() {
     }
   }
 
+  function renderModuleActions() {
+    if (active === 'personArchive') return <PersonDataExportActions notify={notify} />;
+    if (active === 'treeProduct') return <BookletActions notify={notify} />;
+    return null;
+  }
+
   if (!isAuthenticated) {
     return (
       <>
@@ -177,7 +185,10 @@ function AppShell() {
             <Typography.Text type="secondary">当前模块</Typography.Text>
             <Typography.Text strong>{navItems.find(([key]) => key === active)?.[1] || '族谱管理'}</Typography.Text>
           </div>
-          <CurrentUserMenu onLogout={logout} />
+          <Space>
+            {renderModuleActions()}
+            <CurrentUserMenu onLogout={logout} />
+          </Space>
         </Header>
         <Content className="content content--compact antd-content">
           <div key={`${active}-${pageEntryVersion}`}>{renderPage()}</div>
