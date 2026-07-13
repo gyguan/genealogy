@@ -4,6 +4,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
+import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
 import { importTypeRegistry } from './import-type-registry';
 import type { ImportTypeKey } from './import-type-registry';
 
@@ -78,7 +79,7 @@ export function ImportPage({ notify }: Props) {
       <Card>
         <Typography.Title level={3} style={{ marginTop: 0 }}>导入管理</Typography.Title>
         <Typography.Paragraph type="secondary">
-          统一创建、修正、审核和追踪族谱数据导入批次。当前已支持人物导入，其他数据类型将复用同一批次与审核流程逐步接入。
+          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物与人物关系导入，其他数据类型将复用同一批次与审核流程逐步接入。
         </Typography.Paragraph>
         <Tabs
           activeKey={activeType}
@@ -128,7 +129,9 @@ export function ImportPage({ notify }: Props) {
             <Alert
               type="success"
               showIcon
-              message={`本批次中的全部人物将归入“${selectedBranch.branchName || '未命名支派'}”，文件中无需填写支派信息。`}
+              message={activeType === 'relationship'
+                ? `“${selectedBranch.branchName || '未命名支派'}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`
+                : `本批次中的全部人物将归入“${selectedBranch.branchName || '未命名支派'}”，文件中无需填写支派信息。`}
             />
           ) : (
             workspace.clanId && branches.length > 0
@@ -140,6 +143,16 @@ export function ImportPage({ notify }: Props) {
 
       {activeType === 'person' ? (
         <PersonImportWorkspace
+          notify={notify}
+          clanId={workspace.clanId}
+          branchId={selectedBranchId}
+          branchName={selectedBranch?.branchName || ''}
+          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
+        />
+      ) : null}
+
+      {activeType === 'relationship' ? (
+        <RelationshipImportWorkspace
           notify={notify}
           clanId={workspace.clanId}
           branchId={selectedBranchId}
