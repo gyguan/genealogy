@@ -1,0 +1,511 @@
+{
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthLoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login succeeded and secure session cookies were issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthLoginResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "429": { "$ref": "#/components/responses/AuthTooManyRequests" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/AuthEmptySuccess" },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "403": { "$ref": "#/components/responses/AuthForbidden" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "getCurrentAuthUser",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current authenticated user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthUser" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "publicRegister",
+        "tags": ["Authentication"],
+        "description": "Compatibility endpoint. Disabled by default in production; invitation acceptance is the preferred onboarding path.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthRegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account created when public registration is explicitly enabled",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthUser" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "403": { "$ref": "#/components/responses/AuthForbidden" },
+          "409": { "$ref": "#/components/responses/AuthConflict" }
+        }
+      }
+    },
+    "/auth/invitations": {
+      "post": {
+        "operationId": "createAccountInvitation",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthInvitationCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One-time invitation token and expiry",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthInvitationCreateResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "403": { "$ref": "#/components/responses/AuthForbidden" },
+          "409": { "$ref": "#/components/responses/AuthConflict" }
+        }
+      }
+    },
+    "/auth/invitations/accept": {
+      "post": {
+        "operationId": "acceptAccountInvitation",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthInvitationAcceptRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account created and approved membership/role granted",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthUser" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "409": { "$ref": "#/components/responses/AuthConflict" }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthForgotPasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generic response that does not reveal whether the account exists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthForgotPasswordResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "429": { "$ref": "#/components/responses/AuthTooManyRequests" }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "operationId": "resetPassword",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AuthResetPasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/AuthEmptySuccess" },
+          "400": { "$ref": "#/components/responses/AuthBadRequest" },
+          "409": { "$ref": "#/components/responses/AuthConflict" }
+        }
+      }
+    },
+    "/auth/session/refresh": {
+      "post": {
+        "operationId": "refreshAuthSession",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Session token and CSRF token rotated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthLoginResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "403": { "$ref": "#/components/responses/AuthForbidden" }
+        }
+      }
+    },
+    "/auth/sessions": {
+      "get": {
+        "operationId": "listAuthSessions",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user's active sessions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseAuthSessionList" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" }
+        }
+      }
+    },
+    "/auth/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "revokeAuthSession",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/AuthEmptySuccess" },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "404": { "$ref": "#/components/responses/AuthNotFound" }
+        }
+      }
+    },
+    "/auth/sessions/revoke-others": {
+      "post": {
+        "operationId": "revokeOtherAuthSessions",
+        "tags": ["Authentication"],
+        "security": [{ "sessionCookie": [] }, { "bearerAuth": [] }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/AuthEmptySuccess" },
+          "401": { "$ref": "#/components/responses/AuthUnauthorized" },
+          "403": { "$ref": "#/components/responses/AuthForbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "GENEALOGY_SESSION"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "responses": {
+      "AuthEmptySuccess": {
+        "description": "Operation succeeded",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthEmptyApiResponse" }
+          }
+        }
+      },
+      "AuthBadRequest": {
+        "description": "Invalid request",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      },
+      "AuthUnauthorized": {
+        "description": "Authentication required or session expired",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      },
+      "AuthForbidden": {
+        "description": "Operation is not allowed",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      },
+      "AuthNotFound": {
+        "description": "Requested authentication resource was not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      },
+      "AuthConflict": {
+        "description": "Authentication state conflict",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      },
+      "AuthTooManyRequests": {
+        "description": "Request rate or login failure limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/AuthErrorResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "AuthLoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "maxLength": 100 },
+          "password": { "type": "string", "format": "password", "maxLength": 128 },
+          "rememberMe": { "type": "boolean", "default": false }
+        }
+      },
+      "AuthRegisterRequest": {
+        "type": "object",
+        "required": ["username", "password", "displayName"],
+        "properties": {
+          "username": { "type": "string", "maxLength": 80 },
+          "password": { "type": "string", "format": "password", "minLength": 8, "maxLength": 64 },
+          "displayName": { "type": "string", "maxLength": 120 },
+          "phone": { "type": "string", "maxLength": 30 },
+          "email": { "type": "string", "format": "email", "maxLength": 120 }
+        }
+      },
+      "AuthInvitationCreateRequest": {
+        "type": "object",
+        "required": ["clanId", "roleCode", "scopeType", "scopeId"],
+        "properties": {
+          "clanId": { "type": "integer", "format": "int64" },
+          "email": { "type": "string", "format": "email", "maxLength": 120 },
+          "roleCode": { "type": "string", "maxLength": 64 },
+          "scopeType": { "type": "string", "enum": ["clan", "branch_subtree"] },
+          "scopeId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "AuthInvitationCreateResponse": {
+        "type": "object",
+        "properties": {
+          "invitationId": { "type": "integer", "format": "int64" },
+          "invitationToken": { "type": "string", "description": "Returned once to the authorized inviter; never stored in plaintext" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthInvitationAcceptRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/AuthRegisterRequest" },
+          {
+            "type": "object",
+            "required": ["invitationToken"],
+            "properties": {
+              "invitationToken": { "type": "string", "minLength": 32 }
+            }
+          }
+        ]
+      },
+      "AuthForgotPasswordRequest": {
+        "type": "object",
+        "required": ["account"],
+        "properties": {
+          "account": { "type": "string", "maxLength": 120 }
+        }
+      },
+      "AuthForgotPasswordResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" },
+          "developmentToken": { "type": "string", "nullable": true, "description": "Only returned when an explicit non-production switch is enabled" }
+        }
+      },
+      "AuthResetPasswordRequest": {
+        "type": "object",
+        "required": ["resetToken", "newPassword"],
+        "properties": {
+          "resetToken": { "type": "string", "minLength": 32 },
+          "newPassword": { "type": "string", "format": "password", "minLength": 8, "maxLength": 64 }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "username": { "type": "string" },
+          "phone": { "type": "string", "nullable": true },
+          "email": { "type": "string", "nullable": true },
+          "displayName": { "type": "string" },
+          "avatarUrl": { "type": "string", "nullable": true },
+          "status": { "type": "string" },
+          "lastLoginAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthLoginResponse": {
+        "type": "object",
+        "properties": {
+          "tokenType": { "type": "string", "nullable": true, "deprecated": true },
+          "accessToken": { "type": "string", "nullable": true, "deprecated": true, "description": "Only returned during explicitly enabled Bearer compatibility" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "csrfToken": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/AuthUser" }
+        }
+      },
+      "AuthSession": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "integer", "format": "int64" },
+          "current": { "type": "boolean" },
+          "issuedAt": { "type": "string", "format": "date-time" },
+          "lastAccessAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "clientIp": { "type": "string", "description": "Masked IP" },
+          "device": { "type": "string" }
+        }
+      },
+      "AuthErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthEmptyApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAuthUser": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AuthUser" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAuthLoginResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AuthLoginResponse" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAuthInvitationCreateResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AuthInvitationCreateResponse" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAuthForgotPasswordResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AuthForgotPasswordResponse" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAuthSessionList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AuthSession" }
+          },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
