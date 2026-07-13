@@ -128,6 +128,18 @@ export const API_OPERATIONS = {
     "requestBody": "PersonImportRowRetryRequest",
     "response": "ApiResponseImportJobRowResponse"
   },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/submit-review": {
+    "operationId": "submitImportJobReview",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/submit-review",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": "ImportJobReviewSubmitRequest",
+    "response": "ApiResponseCheckTaskResponse"
+  },
   "POST /api/v1/clans/{clanId}/review-tasks": {
     "operationId": "submitReviewTask",
     "method": "POST",

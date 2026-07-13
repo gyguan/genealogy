@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ApprovalApplicationService {
@@ -226,12 +228,19 @@ public class ApprovalApplicationService {
         task.setCreatedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         operationLogApplicationService.record(clanId, submitterId, "review_submit", targetType, targetId, logSummary, diffSummary);
-        return toTaskResponse(savedTask);
+        return toTaskResponse(savedTask, savedRecord);
     }
 
     @Transactional(readOnly = true)
     public List<CheckTaskResponse> listPending(Long clanId) {
-        return checkTaskRepository.findByClanIdAndStatus(clanId, STATUS_PENDING).stream().map(this::toTaskResponse).toList();
+        List<CheckTaskEntity> tasks = checkTaskRepository.findByClanIdAndStatus(clanId, STATUS_PENDING);
+        Map<Long, AuditRecordEntity> records = auditRecordRepository.findAllById(
+                        tasks.stream().map(CheckTaskEntity::getRevisionId).toList()
+                ).stream()
+                .collect(Collectors.toMap(AuditRecordEntity::getId, Function.identity()));
+        return tasks.stream()
+                .map(task -> toTaskResponse(task, records.get(task.getRevisionId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -242,14 +251,15 @@ public class ApprovalApplicationService {
 
     @Transactional(readOnly = true)
     public CheckTaskResponse getTask(Long taskId) {
-        return toTaskResponse(getActiveTask(taskId));
+        CheckTaskEntity task = getActiveTask(taskId);
+        return toTaskResponse(task, getRecord(task.getRevisionId()));
     }
 
     @Transactional(readOnly = true)
     public ReviewTaskDetailResponse getTaskDetail(Long taskId) {
         CheckTaskEntity task = getActiveTask(taskId);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        return new ReviewTaskDetailResponse(toTaskResponse(task), toRecordResponse(record));
+        return new ReviewTaskDetailResponse(toTaskResponse(task, record), toRecordResponse(record));
     }
 
     @Transactional(readOnly = true)
@@ -257,7 +267,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = getActiveTask(taskId);
         authorizationApplicationService.requirePermission(task.getClanId(), actorId, REVIEW_VIEW);
         AuditRecordEntity record = getRecord(task.getRevisionId());
-        return new ReviewTaskDetailResponse(toTaskResponse(task), toRecordResponse(record));
+        return new ReviewTaskDetailResponse(toTaskResponse(task, record), toRecordResponse(record));
     }
 
     @Transactional(readOnly = true)
@@ -298,6 +308,7 @@ public class ApprovalApplicationService {
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_APPROVE);
+        ensureNotSelfReview(record, request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
         record.setStatus(STATUS_APPROVED);
         record.setApprovedAt(now);
@@ -309,7 +320,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         revisionApplyService.apply(record, now);
         operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "approve review", request.comment());
-        return toTaskResponse(savedTask);
+        return toTaskResponse(savedTask, record);
     }
 
     @Transactional
@@ -318,6 +329,7 @@ public class ApprovalApplicationService {
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_REJECT);
+        ensureNotSelfReview(record, request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
         String comment = trimToNull(request.comment());
         record.setStatus(STATUS_REJECTED);
@@ -330,7 +342,7 @@ public class ApprovalApplicationService {
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         revisionApplyService.reject(record, now);
         operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "reject review", comment);
-        return toTaskResponse(savedTask);
+        return toTaskResponse(savedTask, record);
     }
 
     private void ensureReviewSubmitAllowed(String targetType, Long targetId, String status) {
@@ -348,6 +360,12 @@ public class ApprovalApplicationService {
             throw new BusinessException("REVIEW_TARGET_ARCHIVED", "对象已归档，不能提交审核");
         }
         throw new BusinessException("REVIEW_TARGET_STATUS_NOT_SUBMITTABLE", "对象当前状态不允许提交审核: " + targetType + "#" + targetId + " status=" + (status == null ? "null" : status));
+    }
+
+    private void ensureNotSelfReview(AuditRecordEntity record, Long reviewerId) {
+        if (Objects.equals(record.getSubmitterId(), reviewerId)) {
+            throw new BusinessException("REVIEW_SELF_FORBIDDEN", "审核员不能审核自己提交的变更");
+        }
     }
 
     private Long relationshipBranchId(RelationshipEntity relationship) {
@@ -373,8 +391,42 @@ public class ApprovalApplicationService {
         }
     }
 
-    private CheckTaskResponse toTaskResponse(CheckTaskEntity task) {
-        return new CheckTaskResponse(task.getId(), task.getClanId(), task.getRevisionId(), task.getReviewLevel(), task.getReviewerId(), task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(), task.getReviewedAt(), task.getCreatedAt());
+    private CheckTaskResponse toTaskResponse(CheckTaskEntity task, AuditRecordEntity record) {
+        return new CheckTaskResponse(
+                task.getId(),
+                task.getClanId(),
+                task.getRevisionId(),
+                task.getReviewLevel(),
+                task.getReviewerId(),
+                task.getReviewerRole(),
+                task.getBranchId(),
+                task.getStatus(),
+                task.getReviewComment(),
+                task.getReviewedAt(),
+                task.getCreatedAt(),
+                record == null ? null : record.getTargetType(),
+                record == null ? null : record.getTargetId(),
+                reviewTitle(record),
+                record == null ? null : record.getDiffSummary(),
+                record == null ? null : record.getSubmitterId(),
+                record == null ? null : record.getSubmitTime()
+        );
+    }
+
+    private String reviewTitle(AuditRecordEntity record) {
+        if (record == null) {
+            return "审核任务";
+        }
+        return switch (normalize(record.getTargetType())) {
+            case "person" -> "人物变更审核";
+            case "relationship" -> "关系变更审核";
+            case "source" -> "来源资料审核";
+            case "source_binding" -> "来源绑定审核";
+            case "branch" -> "支派变更审核";
+            case "generation_scheme" -> "字辈方案审核";
+            case "import_job" -> "人物导入批次审核";
+            default -> "业务变更审核";
+        };
     }
 
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {

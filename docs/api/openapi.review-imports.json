@@ -1,0 +1,103 @@
+{
+  "paths": {
+    "/api/v1/clans/{clanId}/imports/{jobId}/submit-review": {
+      "post": {
+        "operationId": "submitImportJobReview",
+        "tags": ["Import", "Review"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ImportJobReviewSubmitRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Import batch review task created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImportJobReviewSubmitRequest": {
+        "type": "object",
+        "properties": {
+          "comment": { "type": "string", "maxLength": 500 }
+        }
+      },
+      "ImportJobSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "importType": { "type": "string" },
+          "originalFilename": { "type": "string" },
+          "totalCount": { "type": "integer" },
+          "successCount": { "type": "integer" },
+          "failureCount": { "type": "integer" },
+          "status": { "type": "string" },
+          "errorSummary": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "processingStatus": { "type": "string", "enum": ["processing", "correction_required", "ready_for_review"] },
+          "reviewStatus": { "type": "string", "enum": ["not_submitted", "pending", "approved", "rejected", "cancelled"] },
+          "reviewRound": { "type": "integer" },
+          "latestReviewTaskId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ImportJobResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "branchId": { "type": "integer", "format": "int64" },
+          "importType": { "type": "string" },
+          "originalFilename": { "type": "string" },
+          "totalCount": { "type": "integer" },
+          "successCount": { "type": "integer" },
+          "failureCount": { "type": "integer" },
+          "status": { "type": "string" },
+          "errorSummary": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "errors": { "type": "array", "items": { "$ref": "#/components/schemas/ImportRowErrorResponse" } },
+          "processingStatus": { "type": "string", "enum": ["processing", "correction_required", "ready_for_review"] },
+          "reviewStatus": { "type": "string", "enum": ["not_submitted", "pending", "approved", "rejected", "cancelled"] },
+          "reviewRound": { "type": "integer" },
+          "latestReviewTaskId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "CheckTaskResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "revisionId": { "type": "integer", "format": "int64" },
+          "reviewLevel": { "type": "integer" },
+          "reviewerId": { "type": "integer", "format": "int64" },
+          "reviewerRole": { "type": "string" },
+          "branchId": { "type": "integer", "format": "int64" },
+          "status": { "type": "string" },
+          "reviewComment": { "type": "string" },
+          "reviewedAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "title": { "type": "string" },
+          "diffSummary": { "type": "string" },
+          "submitterId": { "type": "integer", "format": "int64" },
+          "submitTime": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

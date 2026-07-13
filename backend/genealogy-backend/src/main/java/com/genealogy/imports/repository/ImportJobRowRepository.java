@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity, Long> {
@@ -19,6 +20,8 @@ public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity
             Collection<String> rowStatuses,
             Pageable pageable
     );
+
+    List<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long jobId, String rowStatus);
 
     Optional<ImportJobRowEntity> findByIdAndJobId(Long id, Long jobId);
 

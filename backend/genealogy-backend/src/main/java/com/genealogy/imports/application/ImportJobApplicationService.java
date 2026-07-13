@@ -85,7 +85,11 @@ public class ImportJobApplicationService {
                 job.getStatus(),
                 job.getErrorSummary(),
                 job.getCreatedAt(),
-                errors
+                errors,
+                job.getProcessingStatus(),
+                job.getReviewStatus(),
+                job.getReviewRound(),
+                job.getLatestReviewTaskId()
         );
     }
 
@@ -121,7 +125,11 @@ public class ImportJobApplicationService {
                 job.getFailureCount(),
                 job.getStatus(),
                 job.getErrorSummary(),
-                job.getCreatedAt()
+                job.getCreatedAt(),
+                job.getProcessingStatus(),
+                job.getReviewStatus(),
+                job.getReviewRound(),
+                job.getLatestReviewTaskId()
         );
     }
 

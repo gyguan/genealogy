@@ -7,6 +7,10 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.imports.entity.ImportJobEntity;
+import com.genealogy.imports.entity.ImportJobRowEntity;
+import com.genealogy.imports.repository.ImportJobRepository;
+import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -18,6 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 public class RevisionApplyService {
@@ -27,8 +34,11 @@ public class RevisionApplyService {
     private static final String TARGET_SOURCE = "source";
     private static final String TARGET_BRANCH = "branch";
     private static final String TARGET_GENERATION_SCHEME = "generation_scheme";
+    private static final String TARGET_IMPORT_JOB = "import_job";
     private static final String STATUS_OFFICIAL = "official";
     private static final String STATUS_REJECTED = "rejected";
+    private static final String STATUS_DRAFT = "draft";
+    private static final String STATUS_PENDING_REVIEW = "pending_review";
     private static final String CHANGE_PERSON_DELETE = "person_delete";
 
     private final PersonRepository personRepository;
@@ -36,6 +46,8 @@ public class RevisionApplyService {
     private final SourceRepository sourceRepository;
     private final BranchRepository branchRepository;
     private final GenSchemeRepository genSchemeRepository;
+    private final ImportJobRepository importJobRepository;
+    private final ImportJobRowRepository importJobRowRepository;
     private final ObjectMapper objectMapper;
 
     public RevisionApplyService(
@@ -44,6 +56,8 @@ public class RevisionApplyService {
             SourceRepository sourceRepository,
             BranchRepository branchRepository,
             GenSchemeRepository genSchemeRepository,
+            ImportJobRepository importJobRepository,
+            ImportJobRowRepository importJobRowRepository,
             ObjectMapper objectMapper
     ) {
         this.personRepository = personRepository;
@@ -51,6 +65,8 @@ public class RevisionApplyService {
         this.sourceRepository = sourceRepository;
         this.branchRepository = branchRepository;
         this.genSchemeRepository = genSchemeRepository;
+        this.importJobRepository = importJobRepository;
+        this.importJobRowRepository = importJobRowRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -77,6 +93,10 @@ public class RevisionApplyService {
             applyGenerationScheme(revision);
             return;
         }
+        if (TARGET_IMPORT_JOB.equals(targetType)) {
+            applyImportJob(revision, applyTime);
+            return;
+        }
         throw new BusinessException("REVISION_TARGET_UNSUPPORTED", "暂不支持该对象类型的审核生效");
     }
 
@@ -101,6 +121,10 @@ public class RevisionApplyService {
         }
         if (TARGET_GENERATION_SCHEME.equals(targetType)) {
             rejectGenerationScheme(revision);
+            return;
+        }
+        if (TARGET_IMPORT_JOB.equals(targetType)) {
+            rejectImportJob(revision, rejectTime);
         }
     }
 
@@ -231,6 +255,68 @@ public class RevisionApplyService {
             entity.setStatus(STATUS_REJECTED);
             genSchemeRepository.save(entity);
         });
+    }
+
+    private void applyImportJob(AuditRecordEntity revision, LocalDateTime applyTime) {
+        ImportJobEntity job = requireImportJob(revision);
+        List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
+        for (PersonEntity person : persons) {
+            person.setDataStatus(STATUS_OFFICIAL);
+            person.setUpdatedAt(applyTime);
+        }
+        personRepository.saveAll(persons);
+        job.setReviewStatus(ImportJobEntity.REVIEW_APPROVED);
+        job.setUpdatedAt(applyTime);
+        importJobRepository.save(job);
+    }
+
+    private void rejectImportJob(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        ImportJobEntity job = requireImportJob(revision);
+        List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
+        for (PersonEntity person : persons) {
+            person.setDataStatus(STATUS_DRAFT);
+            person.setUpdatedAt(rejectTime);
+        }
+        personRepository.saveAll(persons);
+        job.setReviewStatus(ImportJobEntity.REVIEW_REJECTED);
+        job.setUpdatedAt(rejectTime);
+        importJobRepository.save(job);
+    }
+
+    private ImportJobEntity requireImportJob(AuditRecordEntity revision) {
+        ImportJobEntity job = importJobRepository.findByIdAndClanId(revision.getTargetId(), revision.getClanId())
+                .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入批次不存在"));
+        if (!ImportJobEntity.REVIEW_PENDING.equals(job.getReviewStatus())) {
+            throw new BusinessException("IMPORT_JOB_REVIEW_NOT_PENDING", "导入批次不是待审核状态");
+        }
+        return job;
+    }
+
+    private List<PersonEntity> requireImportPersons(ImportJobEntity job, String expectedStatus) {
+        List<ImportJobRowEntity> rows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(
+                job.getId(),
+                ImportJobRowEntity.STATUS_DRAFT_CREATED
+        );
+        if (rows.isEmpty()) {
+            throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_EMPTY", "导入批次没有可生效的人物草稿");
+        }
+        List<PersonEntity> persons = new ArrayList<>();
+        for (ImportJobRowEntity row : rows) {
+            if (row.getDraftPersonId() == null) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_MISSING", "导入批次存在未关联人物草稿的数据行");
+            }
+            PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(row.getDraftPersonId())
+                    .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_PERSON_NOT_FOUND", "导入批次关联的人物草稿不存在"));
+            if (!Objects.equals(person.getClanId(), job.getClanId())
+                    || !Objects.equals(person.getBranchId(), job.getBranchId())) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_SCOPE_MISMATCH", "导入人物不属于批次宗族或支派");
+            }
+            if (!expectedStatus.equals(normalize(person.getDataStatus()))) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_STATUS_INVALID", "导入人物状态与批次审核状态不一致");
+            }
+            persons.add(person);
+        }
+        return persons;
     }
 
     private <T> T readPayload(String payload, Class<T> type) {
