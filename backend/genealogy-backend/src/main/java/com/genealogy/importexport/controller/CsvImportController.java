@@ -42,19 +42,14 @@ public class CsvImportController {
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
-    @GetMapping("/imports/templates/persons.csv")
-    public ResponseEntity<byte[]> downloadPersonCsvTemplate() {
-        return csvResponse("person-template.csv", csvImportApplicationService.buildPersonTemplate());
-    }
-
     @GetMapping("/imports/templates/relations.csv")
     public ResponseEntity<byte[]> downloadRelationCsvTemplate() {
         return csvResponse("relation-template.csv", csvImportApplicationService.buildRelationTemplate());
     }
 
     /**
-     * Compatibility endpoint used by the current frontend. Person preview and
-     * import-job management remain owned by com.genealogy.imports.controller.ImportController.
+     * Compatibility endpoint used by older clients. New person imports use the
+     * task-based /clans/{clanId}/imports/persons.csv endpoint.
      */
     @PostMapping(value = "/clans/{clanId}/imports/persons", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> importPersons(
