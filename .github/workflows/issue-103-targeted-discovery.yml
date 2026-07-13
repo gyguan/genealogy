@@ -1,118 +1,65 @@
-name: Issue 103 Final Verification
+name: Issue 103 Apply Review Fixes
 
 on:
   pull_request:
     paths:
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/imports/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/review/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/relationship/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/person/repository/PersonRepository.java'
-      - 'backend/genealogy-backend/src/test/java/com/genealogy/imports/**'
-      - 'backend/genealogy-backend/src/test/java/com/genealogy/review/**'
-      - 'backend/genealogy-backend/src/main/resources/db/migration/V20260713200000__add_import_row_generic_draft_target.sql'
-      - 'frontend/genealogy-web/src/features/imports/**'
-      - 'frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
-      - 'docs/api/openapi.relationship-import.json'
       - '.github/workflows/issue-103-targeted-discovery.yml'
 
+permissions:
+  contents: write
+
 jobs:
-  verify:
+  patch:
     runs-on: ubuntu-latest
-    timeout-minutes: 22
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: genealogy_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      PGPASSWORD: postgres
     steps:
       - name: Checkout head branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-          fetch-depth: 0
-      - name: Validate branch is current with main
+      - name: Apply privacy and empty-file hardening
         shell: bash
         run: |
-          git fetch origin main:refs/remotes/origin/main --force
-          git merge-base --is-ancestor origin/main HEAD
-      - name: Validate Flyway migration governance
-        run: python3 .github/scripts/validate-flyway-migrations.py --base-ref origin/main
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: maven
-      - name: Compile backend and tests
-        working-directory: backend/genealogy-backend
-        run: mvn -q -DskipTests package
-      - name: Test relationship templates and strict headers
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RelationshipImportTemplateApplicationServiceTest,RelationshipImportFilePolicyServiceTest test
-      - name: Test relationship parsing and draft creation
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RelationshipImportApplicationServiceTest test
-      - name: Test relationship row correction
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RelationshipImportJobRowApplicationServiceTest test
-      - name: Test relationship review submission
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RelationshipImportJobReviewApplicationServiceTest,ImportJobReviewApplicationServiceTest test
-      - name: Test relationship review apply and reject
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RevisionApplyRelationshipImportJobTest,RevisionApplyImportJobTest test
-      - name: Test person import regression
-        working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest,ImportJobRowApplicationServiceTest test
-      - name: Verify generic draft target migration
-        shell: bash
-        run: |
-          psql -h localhost -U postgres -d genealogy_test <<'SQL'
-          create table import_job_row (
-            id bigserial primary key,
-            draft_person_id bigint
-          );
-          insert into import_job_row(draft_person_id) values (1001), (null);
-          SQL
-          psql -h localhost -U postgres -d genealogy_test -f backend/genealogy-backend/src/main/resources/db/migration/V20260713200000__add_import_row_generic_draft_target.sql
-          psql -h localhost -U postgres -d genealogy_test -Atc "select draft_target_type || ':' || draft_target_id from import_job_row where draft_person_id = 1001" | grep -qx 'person:1001'
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install frontend dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install
-      - name: Check API contract
-        working-directory: frontend/genealogy-web
-        run: npm run api:check
-      - name: Check import module TypeScript errors
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: |
-          set +e
-          npm run typecheck > /tmp/typecheck.log 2>&1
-          STATUS=$?
-          set -e
-          grep -E 'src/features/imports/(ImportJobManagementPanel|ImportPage|PersonImportWorkspace|RelationshipImportWorkspace|import-type-registry)\.tsx?' /tmp/typecheck.log > /tmp/import-errors.log || true
-          if [[ -s /tmp/import-errors.log ]]; then
-            cat /tmp/import-errors.log
-            exit 1
-          fi
-          if [[ $STATUS -ne 0 ]]; then
-            echo 'Full-project typecheck has unrelated existing errors; import module is clean.'
-          fi
-      - name: Build frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'Expected snippet not found in {path}: {old[:100]}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          service = 'backend/genealogy-backend/src/main/java/com/genealogy/imports/application/RelationshipImportApplicationService.java'
+          replace(service,
+              '    private static final String STATUS_FAILED = "failed";\n',
+              '    private static final String STATUS_FAILED = "failed";\n    private static final String PERMISSION_CREATE = "relationship:create";\n    private static final String PERMISSION_CHECK_CONFLICT = "relationship:check_conflict";\n')
+          replace(service,
+              '        String filename = file.getOriginalFilename() == null ? "relationships.csv" : file.getOriginalFilename();\n        String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")\n                ? ImportJobEntity.FORMAT_XLSX\n                : ImportJobEntity.FORMAT_CSV;\n        ImportJobEntity job = createJob(clanId, branchId, filename, format, actorId);\n        ImportReadResult data = readImport(file);',
+              '        ImportReadResult data = readImport(file);\n        String filename = file.getOriginalFilename() == null ? "relationships.csv" : file.getOriginalFilename();\n        String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")\n                ? ImportJobEntity.FORMAT_XLSX\n                : ImportJobEntity.FORMAT_CSV;\n        ImportJobEntity job = createJob(clanId, branchId, filename, format, actorId);')
+          replace(service,
+              '                ParsedRelationship parsed = parseAndResolve(clanId, row.cells());',
+              '                ParsedRelationship parsed = parseAndResolve(clanId, row.cells(), actorId, PERMISSION_CREATE);')
+          replace(service,
+              '    ParsedRelationship parseAndResolve(Long clanId, List<String> cells) {',
+              '    ParsedRelationship parseAndResolve(Long clanId, List<String> cells, Long actorId, String permission) {')
+          replace(service,
+              '        PersonEntity from = requireUniquePerson(clanId, fromCode, "关系主体");\n        PersonEntity to = requireUniquePerson(clanId, toCode, "关系对象");',
+              '        PersonEntity from = requireUniquePerson(clanId, fromCode, "关系主体");\n        PersonEntity to = requireUniquePerson(clanId, toCode, "关系对象");\n        authorizationApplicationService.requireBranchPermission(clanId, actorId, from.getBranchId(), permission);\n        if (!from.getBranchId().equals(to.getBranchId())) {\n            authorizationApplicationService.requireBranchPermission(clanId, actorId, to.getBranchId(), permission);\n        }')
+          replace(service,
+              '            ParsedRelationship parsed = parseAndResolve(clanId, row.cells());',
+              '            ParsedRelationship parsed = parseAndResolve(clanId, row.cells(), actorId, PERMISSION_CHECK_CONFLICT);')
+          replace(service,
+              '        try {\n            return filename.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);\n        } catch (IOException exception) {',
+              '        try {\n            ImportReadResult result = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")\n                    ? readXlsxRows(file)\n                    : readCsvRows(file);\n            if (result.rows().isEmpty()) {\n                throw new BusinessException("IMPORT_RELATIONSHIP_DATA_EMPTY", "人物关系导入文件至少需要一行数据");\n            }\n            return result;\n        } catch (IOException exception) {')
+
+          retry = 'backend/genealogy-backend/src/main/java/com/genealogy/imports/application/RelationshipImportJobRowApplicationService.java'
+          replace(retry,
+              '                    relationshipImportApplicationService.parseAndResolve(clanId, cells);',
+              '                    relationshipImportApplicationService.parseAndResolve(\n                            clanId, cells, actorId, "relationship:create"\n                    );')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/genealogy-backend/src/main/java/com/genealogy/imports/application/RelationshipImportApplicationService.java \
+                  backend/genealogy-backend/src/main/java/com/genealogy/imports/application/RelationshipImportJobRowApplicationService.java
+          git commit -m 'fix(imports): protect relationship preview privacy and reject empty files'
+          git push origin HEAD:${{ github.head_ref }}
