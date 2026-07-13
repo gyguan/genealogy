@@ -1,8 +1,9 @@
 package com.genealogy.importexport.controller;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.AnnotatedGenericBeanDefinition;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.AnnotationBeanNameGenerator;
-import org.springframework.core.type.StandardAnnotationMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,17 +13,18 @@ class CsvImportControllerNamingTest {
 
     @Test
     void importControllersUseDistinctDefaultBeanNames() {
-        String importJobControllerBeanName = beanNameGenerator.generateBeanName(
-                new StandardAnnotationMetadata(com.genealogy.imports.controller.ImportController.class),
-                null
-        );
-        String csvImportControllerBeanName = beanNameGenerator.generateBeanName(
-                new StandardAnnotationMetadata(CsvImportController.class),
-                null
-        );
+        String importJobControllerBeanName = beanName(com.genealogy.imports.controller.ImportController.class);
+        String csvImportControllerBeanName = beanName(CsvImportController.class);
 
         assertThat(importJobControllerBeanName).isEqualTo("importController");
         assertThat(csvImportControllerBeanName).isEqualTo("csvImportController");
         assertThat(csvImportControllerBeanName).isNotEqualTo(importJobControllerBeanName);
+    }
+
+    private String beanName(Class<?> controllerType) {
+        return beanNameGenerator.generateBeanName(
+                new AnnotatedGenericBeanDefinition(controllerType),
+                new DefaultListableBeanFactory()
+        );
     }
 }
