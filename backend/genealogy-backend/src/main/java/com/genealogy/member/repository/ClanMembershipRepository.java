@@ -33,6 +33,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
 
     boolean existsByClanIdAndUserIdAndMemberStatus(Long clanId, Long userId, MemberStatus memberStatus);
 
+    // PostgreSQL cannot infer the type of a nullable parameter used only by IS NULL/concat reliably.
+    // Keep the explicit string cast so an omitted keyword is never bound as bytea.
     @Query(
             value = """
                     select distinct membership
@@ -42,8 +44,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                       and appUser.deletedAt is null
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
-                           or lower(appUser.username) like concat('%', :keyword, '%')
-                           or lower(appUser.displayName) like concat('%', :keyword, '%'))
+                           or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
+                           or lower(appUser.displayName) like concat('%', cast(:keyword as string), '%'))
                       and (:roleCode is null or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
@@ -68,8 +70,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                       and appUser.deletedAt is null
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
-                           or lower(appUser.username) like concat('%', :keyword, '%')
-                           or lower(appUser.displayName) like concat('%', :keyword, '%'))
+                           or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
+                           or lower(appUser.displayName) like concat('%', cast(:keyword as string), '%'))
                       and (:roleCode is null or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
