@@ -35,6 +35,20 @@ function paramsOf(pathItem, operation, location) {
     .sort();
 }
 
+function mergeComponents(baseComponents = {}, overlayComponents = {}) {
+  const merged = { ...baseComponents, ...overlayComponents };
+  for (const section of ['schemas', 'parameters', 'responses', 'requestBodies', 'headers', 'securitySchemes', 'links', 'callbacks']) {
+    merged[section] = {
+      ...(baseComponents[section] || {}),
+      ...(overlayComponents[section] || {})
+    };
+    if (Object.keys(merged[section]).length === 0) {
+      delete merged[section];
+    }
+  }
+  return merged;
+}
+
 function loadEffectiveOpenApi() {
   const base = JSON.parse(fs.readFileSync(input, 'utf8'));
   const overlayFiles = fs.readdirSync(apiDir)
@@ -44,11 +58,7 @@ function loadEffectiveOpenApi() {
   for (const filename of overlayFiles) {
     const overlay = JSON.parse(fs.readFileSync(path.join(apiDir, filename), 'utf8'));
     base.paths = { ...(base.paths || {}), ...(overlay.paths || {}) };
-    base.components = base.components || {};
-    base.components.schemas = {
-      ...(base.components.schemas || {}),
-      ...(overlay.components?.schemas || {})
-    };
+    base.components = mergeComponents(base.components, overlay.components);
   }
 
   return { openapi: base, overlayFiles };
