@@ -26,6 +26,8 @@ export type MemberGrant = {
   grantedBy?: number;
   grantedAt?: string;
   updatedAt?: string;
+  canEditGrant: boolean;
+  canRevokeGrant: boolean;
 };
 
 export type MemberAllowedActions = {
