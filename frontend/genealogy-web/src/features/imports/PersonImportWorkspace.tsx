@@ -44,13 +44,11 @@ const defaultMapping = {
   genderIndex: '2',
   generationNoIndex: '3',
   generationWordIndex: '4',
-  branchIdIndex: '',
   birthDateIndex: '5',
   isLivingIndex: '6'
 };
 
-function toZeroBased(value: string, allowEmpty = false) {
-  if (allowEmpty && !String(value || '').trim()) return -1;
+function toZeroBased(value: string) {
   const parsed = Number(value || '1');
   return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
 }
@@ -69,12 +67,13 @@ export function PersonImportWorkspace({ notify }: Props) {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobRefreshKey, setJobRefreshKey] = useState(0);
+  const branchSelected = Boolean(workspace.branchId);
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
     params.set('autoMapping', String(autoMapping));
     Object.entries(mapping).forEach(([key, value]) => {
-      params.set(key, String(toZeroBased(value, key === 'branchIdIndex')));
+      params.set(key, String(toZeroBased(value)));
     });
     if (workspace.branchId) params.set('branchId', String(workspace.branchId));
     return params.toString();
@@ -112,6 +111,10 @@ export function PersonImportWorkspace({ notify }: Props) {
       notify({ message: '请先选择宗族' }, true);
       return null;
     }
+    if (!workspace.branchId) {
+      notify({ message: '请先选择目标支派' }, true);
+      return null;
+    }
     if (!file) {
       notify({ message: '请选择 CSV 或 XLSX 文件' }, true);
       return null;
@@ -143,6 +146,10 @@ export function PersonImportWorkspace({ notify }: Props) {
     if (loading) return;
     if (!workspace.clanId) {
       notify({ message: '请先选择宗族' }, true);
+      return;
+    }
+    if (!workspace.branchId) {
+      notify({ message: '请先选择目标支派' }, true);
       return;
     }
     if (!file) {
@@ -188,6 +195,7 @@ export function PersonImportWorkspace({ notify }: Props) {
   const uploadProps: UploadProps = {
     maxCount: 1,
     accept: '.csv,.xlsx',
+    disabled: !branchSelected,
     beforeUpload: nextFile => {
       setFile(nextFile);
       setPreview(null);
@@ -206,13 +214,22 @@ export function PersonImportWorkspace({ notify }: Props) {
       <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Alert type="info" showIcon message="导入人物默认进入草稿状态，需要审核通过后正式入谱。" />
+          {!branchSelected ? (
+            <Alert type="warning" showIcon message="请先在工作区选择目标支派，再选择文件并执行导入。" />
+          ) : (
+            <Alert type="success" showIcon message="所有人物将归入当前所选支派，文件中无需填写支派或支派ID。" />
+          )}
           <Upload {...uploadProps}>
-            <Button>选择 CSV / XLSX 文件</Button>
+            <Button disabled={!branchSelected}>选择 CSV / XLSX 文件</Button>
           </Upload>
-          <Checkbox checked={autoMapping} onChange={event => { setAutoMapping(event.target.checked); setPreview(null); }}>
+          <Checkbox
+            disabled={!branchSelected}
+            checked={autoMapping}
+            onChange={event => { setAutoMapping(event.target.checked); setPreview(null); }}
+          >
             自动识别表头字段；识别失败时使用下方列号兜底
           </Checkbox>
-          <Form layout="vertical" className="archive-search-form">
+          <Form layout="vertical" className="archive-search-form" disabled={!branchSelected}>
             <Form.Item label="姓名列"><InputNumber min={1} value={Number(mapping.nameIndex || 1)} onChange={value => patchMapping('nameIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="性别列"><InputNumber min={1} value={Number(mapping.genderIndex || 1)} onChange={value => patchMapping('genderIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="代次列"><InputNumber min={1} value={Number(mapping.generationNoIndex || 1)} onChange={value => patchMapping('generationNoIndex', value)} style={{ width: '100%' }} /></Form.Item>
@@ -220,15 +237,18 @@ export function PersonImportWorkspace({ notify }: Props) {
             <Form.Item label="出生日期列"><InputNumber min={1} value={Number(mapping.birthDateIndex || 1)} onChange={value => patchMapping('birthDateIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="是否在世列"><InputNumber min={1} value={Number(mapping.isLivingIndex || 1)} onChange={value => patchMapping('isLivingIndex', value)} style={{ width: '100%' }} /></Form.Item>
           </Form>
-          <Checkbox checked={confirmDuplicates} onChange={event => setConfirmDuplicates(event.target.checked)}>
+          <Checkbox
+            disabled={!branchSelected}
+            checked={confirmDuplicates}
+            onChange={event => setConfirmDuplicates(event.target.checked)}
+          >
             我已确认疑似重复人物，仍继续导入
           </Checkbox>
           <Space wrap>
-            <Button onClick={resetAutoMapping}>恢复自动识别</Button>
-            <Button disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
-            <Button type="primary" disabled={loading} loading={loading} onClick={() => void upload()}>确认导入</Button>
+            <Button disabled={!branchSelected} onClick={resetAutoMapping}>恢复自动识别</Button>
+            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
+            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>确认导入</Button>
           </Space>
-          <Alert type="warning" showIcon message="支派不在文件中填写系统 ID；需要按支派导入时，请先选择当前支派。" />
         </Space>
       </Card>
 
