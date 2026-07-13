@@ -1,6 +1,7 @@
 package com.genealogy.imports.application;
 
 import com.genealogy.common.exception.BusinessException;
+import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -84,13 +85,16 @@ public class PersonImportFilePolicyService {
             DataFormatter formatter = new DataFormatter();
             int lastCell = Math.max(0, row.getLastCellNum());
             return java.util.stream.IntStream.range(0, lastCell)
-                    .mapToObj(index -> formatter.formatCellValue(row.getCell(index)).trim())
+                    .mapToObj(index -> {
+                        Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                        return cell == null ? "" : formatter.formatCellValue(cell).trim();
+                    })
                     .toList();
         }
     }
 
     private String normalizeHeader(String value) {
-        return String.valueOf(value == null ? "" : value)
+        return (value == null ? "" : value)
                 .trim()
                 .toLowerCase(Locale.ROOT)
                 .replace("\ufeff", "")
