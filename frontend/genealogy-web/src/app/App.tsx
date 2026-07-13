@@ -14,7 +14,6 @@ import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
 import { CultureProductPage } from '../features/experience/GenealogyExperiencePages';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
-import { SourceAttachmentPage } from '../features/sources/SourceAttachmentPage';
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryPage } from '../features/sources/SourceLibraryPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
@@ -28,7 +27,6 @@ const navItems = [
   ['treeProduct', '世系图谱', '按上溯祖先、中心人物、下延后代查看世系'],
   ['personArchive', '人物档案', '按姓名、字辈、性别、支派检索人物并查看档案'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
-  ['sourceAttachments', '来源附件', '管理来源资料附件上传、查看和维护'],
   ['editingWorkspace', '修谱工作台', '修谱问题任务池、风险检查和审核前处理'],
   ['imports', '导入管理', '族谱数据导入任务、结果和异常处理'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
@@ -142,7 +140,6 @@ function AppShell() {
       case 'treeProduct': return <LineageTreeProductPage notify={notify} />;
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceLibraryPage notify={notify} /></>;
-      case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
       case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
       case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;

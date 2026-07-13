@@ -30,6 +30,7 @@ import type {
 } from './sourceLibraryService';
 
 const { Text, Title } = Typography;
+const ATTACHMENT_PAGE_SIZE = 20;
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type BindingMode = 'create' | 'replace';
@@ -103,6 +104,25 @@ function statusColor(value?: string) {
   return 'default';
 }
 
+function uploadStatusText(value?: string) {
+  const status = String(value || '').toLowerCase();
+  const dict: Record<string, string> = {
+    uploaded: '已上传',
+    success: '已上传',
+    failed: '上传失败',
+    processing: '处理中'
+  };
+  return dict[status] || value || '待维护';
+}
+
+function uploadStatusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (status === 'uploaded' || status === 'success') return 'success';
+  if (status === 'failed') return 'error';
+  if (status === 'processing') return 'processing';
+  return 'default';
+}
+
 function fileSizeText(value?: number) {
   if (!value) return '-';
   if (value < 1024) return `${value} B`;
@@ -145,6 +165,8 @@ export function SourceLibraryPage({ notify }: Props) {
   const [bindingTotal, setBindingTotal] = useState(0);
   const [attachments, setAttachments] = useState<SourceAttachmentRecord[]>([]);
   const [attachmentTotal, setAttachmentTotal] = useState(0);
+  const [attachmentPage, setAttachmentPage] = useState({ pageNo: 1, pageSize: ATTACHMENT_PAGE_SIZE });
+  const [attachmentLoading, setAttachmentLoading] = useState(false);
   const [people, setPeople] = useState<PersonOption[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [bindingModalOpen, setBindingModalOpen] = useState(false);
@@ -192,16 +214,31 @@ export function SourceLibraryPage({ notify }: Props) {
     setBranches(nextBranches);
   }
 
+  async function loadAttachments(sourceId: number, pageNo = 1, pageSize = ATTACHMENT_PAGE_SIZE) {
+    setAttachmentLoading(true);
+    try {
+      const data = await listSourceAttachments(sourceId, pageNo, pageSize);
+      setAttachments(data.records || []);
+      setAttachmentTotal(data.total || 0);
+      setAttachmentPage({ pageNo, pageSize });
+    } catch (error) {
+      notify({ message: (error as Error).message || '附件列表加载失败' }, true);
+    } finally {
+      setAttachmentLoading(false);
+    }
+  }
+
   async function openDetail(row: SourceRecord) {
     if (!row.id) return;
     workspace.setSourceId(String(row.id));
     setDrawerOpen(true);
     setLastRevision(null);
+    setAttachmentPage({ pageNo: 1, pageSize: ATTACHMENT_PAGE_SIZE });
     try {
       const [nextDetail, nextBindings, nextAttachments] = await Promise.all([
         getSourceDetail(row.id),
         listSourceBindings(row.id, 1, 10),
-        listSourceAttachments(row.id, 1, 10)
+        listSourceAttachments(row.id, 1, ATTACHMENT_PAGE_SIZE)
       ]);
       setDetail(nextDetail);
       setBindings(nextBindings.records || []);
@@ -217,7 +254,18 @@ export function SourceLibraryPage({ notify }: Props) {
   async function reloadDetail() {
     const sourceId = selectedSource?.id || Number(workspace.sourceId || 0);
     if (!sourceId) return;
-    await openDetail({ id: sourceId });
+    try {
+      const [nextDetail, nextBindings] = await Promise.all([
+        getSourceDetail(sourceId),
+        listSourceBindings(sourceId, 1, 10)
+      ]);
+      setDetail(nextDetail);
+      setBindings(nextBindings.records || []);
+      setBindingTotal(nextBindings.total || 0);
+      await loadAttachments(sourceId, attachmentPage.pageNo, attachmentPage.pageSize);
+    } catch (error) {
+      notify({ message: (error as Error).message || '来源详情刷新失败' }, true);
+    }
   }
 
   async function submitSearch(values: SourceSearchFormValues) {
@@ -240,7 +288,7 @@ export function SourceLibraryPage({ notify }: Props) {
       setFile(null);
       attachmentForm.resetFields();
       notify({ message: '附件上传成功' });
-      await reloadDetail();
+      await loadAttachments(selectedSource.id, 1, attachmentPage.pageSize);
     } catch (error) {
       notify({ message: (error as Error).message || '附件上传失败' }, true);
     }
@@ -279,11 +327,14 @@ export function SourceLibraryPage({ notify }: Props) {
   }
 
   async function removeAttachment(row: SourceAttachmentRecord) {
-    if (!row.id) return;
+    if (!row.id || !selectedSource?.id) return;
     try {
       await deleteSourceAttachment(row.id);
       notify({ message: '附件已删除' });
-      await reloadDetail();
+      const nextPageNo = attachments.length === 1 && attachmentPage.pageNo > 1
+        ? attachmentPage.pageNo - 1
+        : attachmentPage.pageNo;
+      await loadAttachments(selectedSource.id, nextPageNo, attachmentPage.pageSize);
     } catch (error) {
       notify({ message: (error as Error).message || '附件删除失败' }, true);
     }
@@ -449,7 +500,7 @@ export function SourceLibraryPage({ notify }: Props) {
                 { key: 'bindings', label: `引用情况（${bindingTotal || bindings.length}）`, children: <BindingTable rows={bindings} canBind={canBind} onReplace={openReplaceBinding} onDelete={submitDeleteRevision} /> },
                 {
                   key: 'attachments',
-                  label: `附件（${attachmentTotal || attachments.length}）`,
+                  label: `附件（${attachmentTotal}）`,
                   children: (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                       {canUploadAttachment ? (
@@ -458,11 +509,23 @@ export function SourceLibraryPage({ notify }: Props) {
                             <Form.Item label="附件"><Upload {...uploadProps}><Button>选择文件</Button></Upload></Form.Item>
                             <Form.Item name="privacyLevel" label="可见范围"><Select options={privacyOptions} style={{ width: 150 }} /></Form.Item>
                             <Form.Item name="sensitiveLevel" label="敏感级别"><Select options={sensitiveOptions} style={{ width: 120 }} /></Form.Item>
-                            <Form.Item><Button type="primary" disabled={!file} onClick={() => void uploadAttachment()}>上传</Button></Form.Item>
+                            <Form.Item><Button type="primary" disabled={!file || attachmentLoading} loading={attachmentLoading} onClick={() => void uploadAttachment()}>上传</Button></Form.Item>
                           </Form>
                         </Card>
                       ) : <Alert type="info" showIcon message="当前账号暂无附件上传权限" />}
-                      <AttachmentTable rows={attachments} onPreview={preview} onDownload={download} onDelete={removeAttachment} />
+                      <AttachmentTable
+                        rows={attachments}
+                        total={attachmentTotal}
+                        pageNo={attachmentPage.pageNo}
+                        pageSize={attachmentPage.pageSize}
+                        loading={attachmentLoading}
+                        onPageChange={(pageNo, pageSize) => {
+                          if (selectedSource.id) void loadAttachments(selectedSource.id, pageNo, pageSize);
+                        }}
+                        onPreview={preview}
+                        onDownload={download}
+                        onDelete={removeAttachment}
+                      />
                     </Space>
                   )
                 },
@@ -529,19 +592,39 @@ function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBind
   );
 }
 
-function AttachmentTable({ rows, onPreview, onDownload, onDelete }: { rows: SourceAttachmentRecord[]; onPreview: (row: SourceAttachmentRecord) => void; onDownload: (row: SourceAttachmentRecord) => void; onDelete: (row: SourceAttachmentRecord) => void }) {
+function AttachmentTable({ rows, total, pageNo, pageSize, loading, onPageChange, onPreview, onDownload, onDelete }: {
+  rows: SourceAttachmentRecord[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+  loading: boolean;
+  onPageChange: (pageNo: number, pageSize: number) => void;
+  onPreview: (row: SourceAttachmentRecord) => void;
+  onDownload: (row: SourceAttachmentRecord) => void;
+  onDelete: (row: SourceAttachmentRecord) => void;
+}) {
   return (
     <Table<SourceAttachmentRecord>
       size="small"
       rowKey={(row, index) => String(row.id || index)}
       dataSource={rows}
-      pagination={false}
+      loading={loading}
+      pagination={{
+        current: pageNo,
+        pageSize,
+        total,
+        showSizeChanger: true,
+        pageSizeOptions: [10, 20, 50],
+        showTotal: value => `共 ${value} 个附件`,
+        onChange: onPageChange
+      }}
       locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }}
       columns={[
         { title: '文件名', render: (_value, row) => row.fileName || '未命名附件' },
-        { title: '类型', width: 140, render: (_value, row) => row.fileType || '待维护' },
-        { title: '大小', width: 100, render: (_value, row) => fileSizeText(row.fileSize) },
-        { title: '敏感级别', width: 110, render: (_value, row) => <Tag>{optionText(sensitiveOptions, row.sensitiveLevel)}</Tag> },
+        { title: '类型', width: 120, render: (_value, row) => row.fileType || '待维护' },
+        { title: '大小', width: 90, render: (_value, row) => fileSizeText(row.fileSize) },
+        { title: '敏感级别', width: 100, render: (_value, row) => <Tag>{optionText(sensitiveOptions, row.sensitiveLevel)}</Tag> },
+        { title: '上传状态', width: 100, render: (_value, row) => <Tag color={uploadStatusColor(row.uploadStatus)}>{uploadStatusText(row.uploadStatus)}</Tag> },
         { title: '上传时间', width: 170, render: (_value, row) => row.uploadedAt || '待维护' },
         { title: '操作', width: 190, render: (_value, row) => <Space size="small"><Button size="small" type="link" disabled={!row.previewAllowed} onClick={() => onPreview(row)}>预览</Button><Button size="small" type="link" disabled={!row.downloadAllowed} onClick={() => onDownload(row)}>下载</Button><Popconfirm title="删除附件" description={`确认删除附件“${row.fileName || '当前附件'}”吗？`} onConfirm={() => onDelete(row)}><Button size="small" type="link" danger>删除</Button></Popconfirm></Space> }
       ]}
