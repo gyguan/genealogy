@@ -13,6 +13,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -40,11 +41,11 @@ public class ImportJobRowEntity {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "normalized_data", columnDefinition = "jsonb")
-    private String normalizedData;
+    private Map<String, Object> normalizedData;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "corrected_data", columnDefinition = "jsonb")
-    private String correctedData;
+    private Map<String, Object> correctedData;
 
     @Column(name = "row_status", nullable = false)
     private String rowStatus;
