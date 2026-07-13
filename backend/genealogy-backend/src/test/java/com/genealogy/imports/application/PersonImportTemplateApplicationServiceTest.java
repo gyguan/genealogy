@@ -1,5 +1,7 @@
 package com.genealogy.imports.application;
 
+import com.genealogy.imports.domain.ImportTypeRegistry;
+import com.genealogy.imports.domain.PersonImportTypeDefinition;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -15,7 +17,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PersonImportTemplateApplicationServiceTest {
 
-    private final PersonImportTemplateApplicationService service = new PersonImportTemplateApplicationService();
+    private final PersonImportTemplateApplicationService service = new PersonImportTemplateApplicationService(
+            new ImportTypeRegistry(List.of(new PersonImportTypeDefinition()))
+    );
 
     @Test
     void csvTemplateShouldUseStrictBusinessHeadersAndChineseValues() {
