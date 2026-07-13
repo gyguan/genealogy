@@ -113,6 +113,12 @@ function bindingTargetTypeText(value?: string) {
   return bindingTargetTypeOptions.find(item => item.value === value)?.label || '其他对象';
 }
 
+function pendingBindingChangeText(value?: string) {
+  if (value === 'replace') return '变更审核中';
+  if (value === 'delete') return '解除审核中';
+  return '审核中';
+}
+
 function statusColor(value?: string) {
   const status = String(value || '').toLowerCase();
   if (status === 'official' || status === 'uploaded' || status === 'approved') return 'success';
@@ -486,6 +492,7 @@ export function SourceLibraryPage({ notify }: Props) {
         : await submitCreateBindingRevision(clanId, payload);
       setLastRevision(response);
       setBindingModalOpen(false);
+      await reloadDetail();
       notify({ message: '来源绑定变更已提交审核' });
     } catch (error) {
       notify({ message: (error as Error).message || '来源绑定审核提交失败' }, true);
@@ -495,11 +502,12 @@ export function SourceLibraryPage({ notify }: Props) {
   async function submitDeleteRevision(row: SourceBindingSummary) {
     if (!row.id) return;
     try {
-      const response = await submitDeleteBindingRevision(row.id, '来源绑定删除申请');
+      const response = await submitDeleteBindingRevision(row.id, '来源绑定解除申请');
       setLastRevision(response);
-      notify({ message: '删除绑定申请已提交审核' });
+      await reloadDetail();
+      notify({ message: '解除绑定申请已提交审核' });
     } catch (error) {
-      notify({ message: (error as Error).message || '删除绑定审核提交失败' }, true);
+      notify({ message: (error as Error).message || '解除绑定审核提交失败' }, true);
     }
   }
 
@@ -645,9 +653,16 @@ export function SourceLibraryPage({ notify }: Props) {
         )}
       </Drawer>
 
-      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '提交替换绑定审核' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
+      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '变更绑定关系' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
         <Form form={bindingForm} layout="vertical" onFinish={submitBindingRevision}>
-          {bindingMode === 'create' ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="新建绑定关系提交后需审核通过才会正式生效。" /> : null}
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={bindingMode === 'replace'
+              ? '变更绑定提交后需审核通过才会生效，审核期间原绑定继续有效。'
+              : '新建绑定关系提交后需审核通过才会正式生效。'}
+          />
           <Form.Item name="targetType" label="绑定对象类型" rules={[{ required: true, message: '请选择绑定对象类型' }]}>
             <Select
               options={bindingTargetTypeOptions}
@@ -701,9 +716,43 @@ function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBind
         { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
         { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
         { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
-        { title: '状态', width: 100, render: (_value, row) => <Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag> },
+        {
+          title: '状态',
+          width: 130,
+          render: (_value, row) => (
+            <Space direction="vertical" size={0}>
+              <Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag>
+              {row.hasPendingRevision ? <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag> : null}
+            </Space>
+          )
+        },
         { title: '创建时间', width: 170, render: (_value, row) => row.createdAt || '待维护' },
-        { title: '操作', width: 160, render: (_value, row) => canBind ? <Space><Button size="small" type="link" onClick={() => onReplace(row)}>替换审核</Button><Popconfirm title="提交删除绑定审核" description="删除不会立即生效，需审核通过后归档该绑定。" onConfirm={() => onDelete(row)}><Button size="small" type="link" danger>删除审核</Button></Popconfirm></Space> : <Text type="secondary">暂无权限</Text> }
+        {
+          title: '操作',
+          width: 180,
+          render: (_value, row) => {
+            if (!canBind) return <Text type="secondary">暂无权限</Text>;
+            const bindingStatus = String(row.bindingStatus || '').toLowerCase();
+            if (bindingStatus !== 'official') {
+              return <Text type="secondary">{bindingStatus === 'archived' ? '已归档' : '不可变更'}</Text>;
+            }
+            if (row.hasPendingRevision) {
+              return <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag>;
+            }
+            return (
+              <Space>
+                <Button size="small" type="link" onClick={() => onReplace(row)}>变更绑定</Button>
+                <Popconfirm
+                  title="提交解除绑定审核"
+                  description="解除绑定不会立即生效，审核通过后该绑定将归档。"
+                  onConfirm={() => onDelete(row)}
+                >
+                  <Button size="small" type="link" danger>解除绑定</Button>
+                </Popconfirm>
+              </Space>
+            );
+          }
+        }
       ]}
     />
   );
