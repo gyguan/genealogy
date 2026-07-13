@@ -38,6 +38,22 @@ public class ImportJobApplicationService {
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
+    /**
+     * Compatibility overload for callers that do not yet provide a file-format filter.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<ImportJobSummaryResponse> listJobs(
+            Long clanId,
+            Long branchId,
+            String status,
+            String importType,
+            int pageNo,
+            int pageSize,
+            Long actorId
+    ) {
+        return listJobs(clanId, branchId, status, importType, null, pageNo, pageSize, actorId);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<ImportJobSummaryResponse> listJobs(
             Long clanId,
@@ -126,7 +142,7 @@ public class ImportJobApplicationService {
                         criteriaBuilder.equal(root.get("fileFormat"), filter.fileFormat()),
                         criteriaBuilder.and(
                                 criteriaBuilder.isNull(root.get("fileFormat")),
-                                criteriaBuilder.like(root.get("importType"), "%_" + filter.fileFormat())
+                                criteriaBuilder.like(root.<String>get("importType"), "%_" + filter.fileFormat())
                         )
                 ));
             }
