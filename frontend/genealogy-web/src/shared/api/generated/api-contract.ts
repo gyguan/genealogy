@@ -153,24 +153,6 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": null
   },
-  "GET /api/v1/member-management/clans/{clanId}/members": {
-    "operationId": "listClanMembers",
-    "method": "GET",
-    "path": "/api/v1/member-management/clans/{clanId}/members",
-    "pathParams": [
-      "clanId"
-    ],
-    "queryParams": [
-      "keyword",
-      "pageNo",
-      "pageSize",
-      "roleCode",
-      "scopeType",
-      "status"
-    ],
-    "requestBody": null,
-    "response": "ApiResponseClanMemberPage"
-  },
   "GET /api/v1/member-management/clans/{clanId}/members/summary": {
     "operationId": "getMemberPermissionSummary",
     "method": "GET",
