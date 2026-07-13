@@ -14,41 +14,28 @@
     "/api/v1/member-management/clans/{clanId}/members/summary": {
       "get": {
         "operationId": "getMemberPermissionSummary",
-        "tags": ["MemberManagement"],
-        "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        "tags": [
+          "MemberManagement"
         ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberPermissionSummaryResponse" }
-              }
+        "parameters": [
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
             }
           }
-        }
-      }
-    },
-    "/api/v1/member-management/clans/{clanId}/members": {
-      "get": {
-        "operationId": "listClanMembers",
-        "tags": ["MemberManagement"],
-        "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "roleCode", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "scopeType", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
-          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseClanMemberPage" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberPermissionSummaryResponse"
+                }
               }
             }
           }
@@ -58,15 +45,27 @@
     "/api/v1/clans/{clanId}/source-bindings": {
       "post": {
         "operationId": "createSourceBinding",
-        "tags": ["SourceBinding"],
+        "tags": [
+          "SourceBinding"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/SourceBindingCreateRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/SourceBindingCreateRequest"
+              }
             }
           }
         },
@@ -75,7 +74,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSourceBindingResponse"
+                }
               }
             }
           }
@@ -85,16 +86,28 @@
     "/api/v1/source-bindings/sources/{sourceId}": {
       "get": {
         "operationId": "listSourceBindingsBySource",
-        "tags": ["SourceBinding"],
+        "tags": [
+          "SourceBinding"
+        ],
         "parameters": [
-          { "name": "sourceId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "sourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSourceBindingList"
+                }
               }
             }
           }
@@ -104,18 +117,45 @@
     "/api/v1/source-bindings/target/{targetType}/{targetId}": {
       "get": {
         "operationId": "listSourceBindingsByTarget",
-        "tags": ["SourceBinding"],
+        "tags": [
+          "SourceBinding"
+        ],
         "parameters": [
-          { "name": "targetType", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "targetId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "clanId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "targetType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "clanId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseSourceBindingList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSourceBindingList"
+                }
               }
             }
           }
@@ -125,15 +165,27 @@
     "/api/v1/clans/{clanId}/review-tasks": {
       "post": {
         "operationId": "submitReviewTask",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ReviewSubmitRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/ReviewSubmitRequest"
+              }
             }
           }
         },
@@ -142,7 +194,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckTaskResponse"
+                }
               }
             }
           }
@@ -152,16 +206,28 @@
     "/api/v1/clans/{clanId}/review-tasks/pending": {
       "get": {
         "operationId": "listPendingReviewTasks",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckTaskList"
+                }
               }
             }
           }
@@ -171,16 +237,28 @@
     "/api/v1/review-tasks/my-submissions": {
       "get": {
         "operationId": "listMyReviewSubmissions",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseAuditRecordList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAuditRecordList"
+                }
               }
             }
           }
@@ -190,16 +268,28 @@
     "/api/v1/review-tasks/{reviewTaskId}": {
       "get": {
         "operationId": "getReviewTask",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "reviewTaskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseReviewTaskDetailResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReviewTaskDetailResponse"
+                }
               }
             }
           }
@@ -209,16 +299,28 @@
     "/api/v1/review-tasks/{reviewTaskId}/diff": {
       "get": {
         "operationId": "getReviewTaskDiff",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "reviewTaskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseReviewDiffResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReviewDiffResponse"
+                }
               }
             }
           }
@@ -228,15 +330,27 @@
     "/api/v1/review-tasks/{reviewTaskId}/approve": {
       "post": {
         "operationId": "approveReviewTask",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "reviewTaskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ReviewDecisionRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
             }
           }
         },
@@ -245,7 +359,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckTaskResponse"
+                }
               }
             }
           }
@@ -255,15 +371,27 @@
     "/api/v1/review-tasks/{reviewTaskId}/reject": {
       "post": {
         "operationId": "rejectReviewTask",
-        "tags": ["ReviewTask"],
+        "tags": [
+          "ReviewTask"
+        ],
         "parameters": [
-          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "reviewTaskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ReviewDecisionRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
             }
           }
         },
@@ -272,7 +400,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCheckTaskResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCheckTaskResponse"
+                }
               }
             }
           }
@@ -282,17 +412,37 @@
     "/api/v1/workbench/summary": {
       "get": {
         "operationId": "getWorkbenchSummary",
-        "tags": ["Workbench"],
+        "tags": [
+          "Workbench"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseWorkbenchSummaryResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWorkbenchSummaryResponse"
+                }
               }
             }
           }
@@ -302,22 +452,79 @@
     "/api/v1/workbench/tasks": {
       "get": {
         "operationId": "listWorkbenchTasks",
-        "tags": ["Workbench"],
+        "tags": [
+          "Workbench"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "type", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "risk", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
-          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+          {
+            "name": "clanId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "risk",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseWorkbenchTaskPage" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWorkbenchTaskPage"
+                }
               }
             }
           }
@@ -327,24 +534,100 @@
     "/api/v1/clans/{clanId}/imports/persons/preview": {
       "post": {
         "operationId": "previewPersonImport",
-        "tags": ["Import"],
+        "tags": [
+          "Import"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
-          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchIdIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "autoMapping",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "nameIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "genderIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "generationNoIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "generationWordIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "branchIdIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "birthDateIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "isLivingIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
-              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/MultipartFileRequest"
+              }
             }
           }
         },
@@ -353,7 +636,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse"
+                }
               }
             }
           }
@@ -363,25 +648,108 @@
     "/api/v1/clans/{clanId}/imports/persons": {
       "post": {
         "operationId": "importPersons",
-        "tags": ["Import"],
+        "tags": [
+          "Import"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
-          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchIdIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "confirmDuplicates", "in": "query", "required": false, "schema": { "type": "boolean" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "autoMapping",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "nameIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "genderIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "generationNoIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "generationWordIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "branchIdIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "birthDateIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "isLivingIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "confirmDuplicates",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
-              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/MultipartFileRequest"
+              }
             }
           }
         },
@@ -390,7 +758,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse"
+                }
               }
             }
           }
@@ -402,325 +772,754 @@
     "schemas": {
       "SourceBindingCreateRequest": {
         "type": "object",
-        "required": ["sourceId", "targetType", "targetId"],
+        "required": [
+          "sourceId",
+          "targetType",
+          "targetId"
+        ],
         "properties": {
-          "sourceId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "bindingReason": { "type": "string" },
-          "excerpt": { "type": "string" }
+          "sourceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bindingReason": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          }
         }
       },
       "SourceBindingResponse": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "sourceId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "bindingReason": { "type": "string" },
-          "excerpt": { "type": "string" },
-          "createdBy": { "type": "integer", "format": "int64" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sourceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bindingReason": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ClanMemberResponse": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "userId": { "type": "integer", "format": "int64" },
-          "username": { "type": "string" },
-          "displayName": { "type": "string" },
-          "branchId": { "type": "integer", "format": "int64" },
-          "roleId": { "type": "integer", "format": "int64" },
-          "roleCode": { "type": "string" },
-          "roleName": { "type": "string" },
-          "roleType": { "type": "string" },
-          "memberName": { "type": "string" },
-          "memberStatus": { "type": "string" },
-          "scopeType": { "type": "string" },
-          "scopeId": { "type": "integer", "format": "int64" },
-          "joinedAt": { "type": "string", "format": "date-time" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roleCode": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "roleType": {
+            "type": "string"
+          },
+          "memberName": {
+            "type": "string"
+          },
+          "memberStatus": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ClanMemberPage": {
         "type": "object",
         "properties": {
-          "records": { "type": "array", "items": { "$ref": "#/components/schemas/ClanMemberResponse" } },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClanMemberResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       },
       "ReviewSubmitRequest": {
         "type": "object",
-        "required": ["targetType", "targetId"],
+        "required": [
+          "targetType",
+          "targetId"
+        ],
         "properties": {
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "comment": { "type": "string" }
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "comment": {
+            "type": "string"
+          }
         }
       },
       "ReviewDecisionRequest": {
         "type": "object",
         "properties": {
-          "comment": { "type": "string" }
+          "comment": {
+            "type": "string"
+          }
         }
       },
       "CheckTaskResponse": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "revisionId": { "type": "integer", "format": "int64" },
-          "reviewLevel": { "type": "integer" },
-          "reviewerId": { "type": "integer", "format": "int64" },
-          "reviewerRole": { "type": "string" },
-          "branchId": { "type": "integer", "format": "int64" },
-          "status": { "type": "string" },
-          "reviewComment": { "type": "string" },
-          "reviewedAt": { "type": "string", "format": "date-time" },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reviewLevel": {
+            "type": "integer"
+          },
+          "reviewerId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reviewerRole": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "reviewComment": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "AuditRecordResponse": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "changeType": { "type": "string" },
-          "oldPayload": { "type": "string" },
-          "newPayload": { "type": "string" },
-          "diffSummary": { "type": "string" },
-          "submitterId": { "type": "integer", "format": "int64" },
-          "submitTime": { "type": "string", "format": "date-time" },
-          "status": { "type": "string" },
-          "approvedAt": { "type": "string", "format": "date-time" },
-          "rejectedReason": { "type": "string" }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changeType": {
+            "type": "string"
+          },
+          "oldPayload": {
+            "type": "string"
+          },
+          "newPayload": {
+            "type": "string"
+          },
+          "diffSummary": {
+            "type": "string"
+          },
+          "submitterId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "submitTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rejectedReason": {
+            "type": "string"
+          }
         }
       },
       "ReviewTaskDetailResponse": {
         "type": "object",
         "properties": {
-          "task": { "$ref": "#/components/schemas/CheckTaskResponse" },
-          "record": { "$ref": "#/components/schemas/AuditRecordResponse" }
+          "task": {
+            "$ref": "#/components/schemas/CheckTaskResponse"
+          },
+          "record": {
+            "$ref": "#/components/schemas/AuditRecordResponse"
+          }
         }
       },
       "ReviewDiffResponse": {
         "type": "object",
         "properties": {
-          "taskId": { "type": "integer", "format": "int64" },
-          "revisionId": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "changeType": { "type": "string" },
-          "diffSummary": { "type": "string" },
-          "fields": { "type": "array", "items": { "$ref": "#/components/schemas/FieldDiff" } }
+          "taskId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changeType": {
+            "type": "string"
+          },
+          "diffSummary": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldDiff"
+            }
+          }
         }
       },
       "FieldDiff": {
         "type": "object",
         "properties": {
-          "field": { "type": "string" },
-          "beforeValue": { "type": "string" },
-          "afterValue": { "type": "string" },
-          "changeType": { "type": "string" }
+          "field": {
+            "type": "string"
+          },
+          "beforeValue": {
+            "type": "string"
+          },
+          "afterValue": {
+            "type": "string"
+          },
+          "changeType": {
+            "type": "string"
+          }
         }
       },
       "CsvImportResultResponse": {
         "type": "object",
         "properties": {
-          "totalCount": { "type": "integer" },
-          "successCount": { "type": "integer" },
-          "failureCount": { "type": "integer" },
-          "errors": { "type": "array", "items": { "type": "string" } }
+          "totalCount": {
+            "type": "integer"
+          },
+          "successCount": {
+            "type": "integer"
+          },
+          "failureCount": {
+            "type": "integer"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "MemberPermissionSummaryResponse": {
         "type": "object",
         "properties": {
-          "activeMemberCount": { "type": "integer", "format": "int64" },
-          "adminCount": { "type": "integer", "format": "int64" },
-          "branchManagerCount": { "type": "integer", "format": "int64" },
-          "unassignedBranchCount": { "type": "integer", "format": "int64" },
-          "highRiskGrantCount": { "type": "integer", "format": "int64" },
-          "latestPermissionChangedAt": { "type": "string", "format": "date-time" }
+          "activeMemberCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "adminCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "branchManagerCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unassignedBranchCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "highRiskGrantCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "latestPermissionChangedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "WorkbenchSummaryResponse": {
         "type": "object",
         "properties": {
-          "pendingTaskCount": { "type": "integer", "format": "int64" },
-          "highRiskCount": { "type": "integer", "format": "int64" },
-          "missingSourceCount": { "type": "integer", "format": "int64" },
-          "generationIssueCount": { "type": "integer", "format": "int64" }
+          "pendingTaskCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "highRiskCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missingSourceCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "generationIssueCount": {
+            "type": "integer",
+            "format": "int64"
+          }
         }
       },
       "WorkbenchTaskResponse": {
         "type": "object",
         "properties": {
-          "key": { "type": "string" },
-          "type": { "type": "string" },
-          "typeText": { "type": "string" },
-          "objectName": { "type": "string" },
-          "branchName": { "type": "string" },
-          "risk": { "type": "string" },
-          "status": { "type": "string" },
-          "statusText": { "type": "string" },
-          "suggestion": { "type": "string" },
-          "problemDescription": { "type": "string" },
-          "involvedObject": { "type": "string" },
-          "riskReason": { "type": "string" },
-          "reviewBlocked": { "type": "boolean" },
-          "relatedEntryType": { "type": "string" },
-          "relatedEntryId": { "type": "string" },
-          "relatedEntryText": { "type": "string" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "typeText": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "risk": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "statusText": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          },
+          "problemDescription": {
+            "type": "string"
+          },
+          "involvedObject": {
+            "type": "string"
+          },
+          "riskReason": {
+            "type": "string"
+          },
+          "reviewBlocked": {
+            "type": "boolean"
+          },
+          "relatedEntryType": {
+            "type": "string"
+          },
+          "relatedEntryId": {
+            "type": "string"
+          },
+          "relatedEntryText": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "WorkbenchTaskPage": {
         "type": "object",
         "properties": {
-          "records": { "type": "array", "items": { "$ref": "#/components/schemas/WorkbenchTaskResponse" } },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkbenchTaskResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       },
       "MultipartFileRequest": {
         "type": "object",
-        "required": ["file"],
+        "required": [
+          "file"
+        ],
         "properties": {
-          "file": { "type": "string", "format": "binary" }
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
         }
       },
       "ApiResponseSourceBindingResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/SourceBindingResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/SourceBindingResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseSourceBindingList": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/SourceBindingResponse" } },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceBindingResponse"
+            }
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseCheckTaskResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/CheckTaskResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CheckTaskResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseCheckTaskList": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/CheckTaskResponse" } },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckTaskResponse"
+            }
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseAuditRecordList": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditRecordResponse" } },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditRecordResponse"
+            }
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseReviewTaskDetailResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/ReviewTaskDetailResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReviewTaskDetailResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseReviewDiffResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/ReviewDiffResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ReviewDiffResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseCsvImportResultResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/CsvImportResultResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/CsvImportResultResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseMemberPermissionSummaryResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/MemberPermissionSummaryResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberPermissionSummaryResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseClanMemberPage": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/ClanMemberPage" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/ClanMemberPage"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseWorkbenchSummaryResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/WorkbenchSummaryResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkbenchSummaryResponse"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       },
       "ApiResponseWorkbenchTaskPage": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/WorkbenchTaskPage" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/WorkbenchTaskPage"
+          },
+          "traceId": {
+            "type": "string"
+          }
         }
       }
     }

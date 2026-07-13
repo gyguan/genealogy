@@ -258,7 +258,9 @@
           "grantStatus": { "type": "string", "enum": ["active", "revoked"] },
           "grantedBy": { "type": "integer", "format": "int64" },
           "grantedAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "canEditGrant": { "type": "boolean" },
+          "canRevokeGrant": { "type": "boolean" }
         }
       },
       "MemberAllowedActionsResponse": {

@@ -33,8 +33,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
 
     boolean existsByClanIdAndUserIdAndMemberStatus(Long clanId, Long userId, MemberStatus memberStatus);
 
-    // PostgreSQL cannot infer the type of a nullable parameter used only by IS NULL/concat reliably.
-    // Keep the explicit string cast so an omitted keyword is never bound as bytea.
+    // Nullable text parameters must be explicitly cast for PostgreSQL. Actor scope is applied
+    // before pagination so totals never include members outside the current manager's branches.
     @Query(
             value = """
                     select distinct membership
@@ -42,6 +42,19 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                     where membership.clanId = :clanId
                       and appUser.id = membership.userId
                       and appUser.deletedAt is null
+                      and (:fullClanAccess = true or exists (
+                           select visibleRole.id
+                           from MemberRoleEntity visibleRole
+                           where visibleRole.membershipId = membership.id
+                             and visibleRole.status = 'active'
+                             and (
+                                  (visibleRole.scopeType = :branchScope
+                                   and visibleRole.scopeId in :visibleBranchIds)
+                                  or
+                                  (visibleRole.scopeType = :branchSubtreeScope
+                                   and visibleRole.scopeId in :visibleSubtreeIds)
+                             )
+                      ))
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
                            or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
@@ -68,6 +81,19 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                     where membership.clanId = :clanId
                       and appUser.id = membership.userId
                       and appUser.deletedAt is null
+                      and (:fullClanAccess = true or exists (
+                           select visibleRole.id
+                           from MemberRoleEntity visibleRole
+                           where visibleRole.membershipId = membership.id
+                             and visibleRole.status = 'active'
+                             and (
+                                  (visibleRole.scopeType = :branchScope
+                                   and visibleRole.scopeId in :visibleBranchIds)
+                                  or
+                                  (visibleRole.scopeType = :branchSubtreeScope
+                                   and visibleRole.scopeId in :visibleSubtreeIds)
+                             )
+                      ))
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
                            or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
@@ -95,10 +121,15 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
             @Param("roleCode") String roleCode,
             @Param("scopeType") MemberRoleScopeType scopeType,
             @Param("memberStatus") MemberStatus memberStatus,
+            @Param("fullClanAccess") boolean fullClanAccess,
+            @Param("branchScope") MemberRoleScopeType branchScope,
+            @Param("branchSubtreeScope") MemberRoleScopeType branchSubtreeScope,
+            @Param("visibleBranchIds") Collection<Long> visibleBranchIds,
+            @Param("visibleSubtreeIds") Collection<Long> visibleSubtreeIds,
             Pageable pageable
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select membership from ClanMembershipEntity membership where membership.clanId = :clanId")
+    @Query("select membership from ClanMembershipEntity membership where membership.clanId = :clanId order by membership.id")
     List<ClanMembershipEntity> lockByClanId(@Param("clanId") Long clanId);
 }
