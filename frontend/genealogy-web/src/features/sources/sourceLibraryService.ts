@@ -44,6 +44,8 @@ export type SourceBindingSummary = {
   excerpt?: string;
   confidenceLevel?: string;
   bindingStatus?: string;
+  hasPendingRevision?: boolean;
+  pendingChangeType?: string;
   createdBy?: number;
   createdAt?: string;
 };

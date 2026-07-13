@@ -13,6 +13,8 @@ public record SourceBindingSummaryResponse(
         String excerpt,
         String confidenceLevel,
         String bindingStatus,
+        boolean hasPendingRevision,
+        String pendingChangeType,
         Long createdBy,
         LocalDateTime createdAt
 ) {

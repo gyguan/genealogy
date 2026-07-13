@@ -8,6 +8,8 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.review.entity.RevisionEntity;
+import com.genealogy.review.repository.RevisionRepository;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -38,6 +40,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +54,9 @@ class SourceApplicationServiceTest {
 
     @Mock
     private SourceBindingRepository sourceBindingRepository;
+
+    @Mock
+    private RevisionRepository revisionRepository;
 
     @Mock
     private SourceAttachmentRepository sourceAttachmentRepository;
@@ -250,6 +256,11 @@ class SourceApplicationServiceTest {
         SourceAttachmentEntity attachment = attachment();
         PersonEntity person = person(100L, "P100", "张三", 11L);
         BranchEntity branch = branch(11L, "长房");
+        RevisionEntity pendingRevision = new RevisionEntity();
+        pendingRevision.setTargetType("source_binding");
+        pendingRevision.setTargetId(20L);
+        pendingRevision.setChangeType("replace");
+        pendingRevision.setStatus("pending");
 
         when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));
         when(sourceBindingRepository.countBySourceId(10L)).thenReturn(1);
@@ -258,6 +269,9 @@ class SourceApplicationServiceTest {
         when(sourceAttachmentRepository.findTop5BySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(10L)).thenReturn(List.of(attachment));
         when(personRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(person));
         when(branchRepository.findByIdAndClanId(11L, 1L)).thenReturn(Optional.of(branch));
+        when(revisionRepository.findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(
+                "source_binding", List.of(20L), "pending", Set.of("replace", "delete")
+        )).thenReturn(List.of(pendingRevision));
         when(authorizationApplicationService.can(1L, 2L, "source:bind")).thenReturn(true);
         when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(true);
         when(authorizationApplicationService.can(1L, 2L, "attachment:download")).thenReturn(true);
@@ -273,6 +287,8 @@ class SourceApplicationServiceTest {
         assertThat(response.bindingSummaries()).hasSize(1);
         assertThat(response.bindingSummaries().get(0).targetDisplayName()).isEqualTo("张三（P100）");
         assertThat(response.bindingSummaries().get(0).targetBranchName()).isEqualTo("长房");
+        assertThat(response.bindingSummaries().get(0).hasPendingRevision()).isTrue();
+        assertThat(response.bindingSummaries().get(0).pendingChangeType()).isEqualTo("replace");
         assertThat(response.attachmentSummaries()).hasSize(1);
         assertThat(response.attachmentSummaries().get(0).fileName()).isEqualTo("old-book.pdf");
         assertThat(response.attachmentSummaries().get(0).downloadAllowed()).isTrue();

@@ -13,6 +13,8 @@ import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.review.entity.RevisionEntity;
+import com.genealogy.review.repository.RevisionRepository;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -46,7 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,6 +64,9 @@ public class SourceApplicationService {
     private static final String STATUS_OFFICIAL = "official";
     private static final String STATUS_REJECTED = "rejected";
     private static final String STATUS_ARCHIVED = "archived";
+    private static final String TARGET_TYPE_SOURCE_BINDING = "source_binding";
+    private static final String REVISION_STATUS_PENDING = "pending";
+    private static final Set<String> PENDING_BINDING_CHANGE_TYPES = Set.of("replace", "delete");
     private static final String CONFIDENCE_UNKNOWN = "unknown";
     private static final String PRIVACY_CLAN_ONLY = "clan_only";
     private static final String SENSITIVE_NORMAL = "normal";
@@ -83,6 +90,7 @@ public class SourceApplicationService {
 
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
+    private final RevisionRepository revisionRepository;
     private final SourceAttachmentRepository sourceAttachmentRepository;
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
@@ -96,6 +104,7 @@ public class SourceApplicationService {
     public SourceApplicationService(
             SourceRepository sourceRepository,
             SourceBindingRepository sourceBindingRepository,
+            RevisionRepository revisionRepository,
             SourceAttachmentRepository sourceAttachmentRepository,
             PersonRepository personRepository,
             RelationshipRepository relationshipRepository,
@@ -108,6 +117,7 @@ public class SourceApplicationService {
     ) {
         this.sourceRepository = sourceRepository;
         this.sourceBindingRepository = sourceBindingRepository;
+        this.revisionRepository = revisionRepository;
         this.sourceAttachmentRepository = sourceAttachmentRepository;
         this.personRepository = personRepository;
         this.relationshipRepository = relationshipRepository;
@@ -263,11 +273,14 @@ public class SourceApplicationService {
         authorizationApplicationService.requirePermission(source.getClanId(), actorId, SOURCE_VIEW);
         String normalizedTargetType = normalizeOptionalTargetType(targetType);
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<SourceBindingSummaryResponse> page = (normalizedTargetType == null
+        Page<SourceBindingEntity> page = normalizedTargetType == null
                 ? sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId, pageRequest)
-                : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest)
-        ).map(this::toBindingSummaryResponse);
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+                : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest);
+        Map<Long, RevisionEntity> pendingRevisions = pendingBindingRevisions(page.getContent());
+        List<SourceBindingSummaryResponse> records = page.getContent().stream()
+                .map(binding -> toBindingSummaryResponse(binding, pendingRevisions.get(binding.getId())))
+                .toList();
+        return PageResponse.of(records, page.getTotalElements(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
@@ -517,9 +530,10 @@ public class SourceApplicationService {
     private SourceDetailResponse toDetailResponse(SourceEntity entity, Long actorId) {
         SourceResponse source = toResponse(entity);
         SourcePermissionView permissions = toPermissionView(entity, actorId, source.bindingCount());
-        List<SourceBindingSummaryResponse> bindings = sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(entity.getId())
-                .stream()
-                .map(this::toBindingSummaryResponse)
+        List<SourceBindingEntity> bindingRows = sourceBindingRepository.findTop5BySourceIdOrderByCreatedAtDesc(entity.getId());
+        Map<Long, RevisionEntity> pendingRevisions = pendingBindingRevisions(bindingRows);
+        List<SourceBindingSummaryResponse> bindings = bindingRows.stream()
+                .map(binding -> toBindingSummaryResponse(binding, pendingRevisions.get(binding.getId())))
                 .toList();
         List<SourceAttachmentSummaryResponse> attachments = sourceAttachmentRepository.findTop5BySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(entity.getId())
                 .stream()
@@ -551,7 +565,7 @@ public class SourceApplicationService {
         );
     }
 
-    private SourceBindingSummaryResponse toBindingSummaryResponse(SourceBindingEntity entity) {
+    private SourceBindingSummaryResponse toBindingSummaryResponse(SourceBindingEntity entity, RevisionEntity pendingRevision) {
         if (entity.getConfidenceLevel() == null || entity.getConfidenceLevel().isBlank()) {
             entity.setConfidenceLevel(CONFIDENCE_UNKNOWN);
         }
@@ -570,9 +584,29 @@ public class SourceApplicationService {
                 entity.getExcerpt(),
                 entity.getConfidenceLevel(),
                 entity.getBindingStatus(),
+                pendingRevision != null,
+                pendingRevision == null ? null : pendingRevision.getChangeType(),
                 entity.getCreatedBy(),
                 entity.getCreatedAt()
         );
+    }
+
+    private Map<Long, RevisionEntity> pendingBindingRevisions(List<SourceBindingEntity> bindings) {
+        List<Long> bindingIds = bindings.stream()
+                .map(SourceBindingEntity::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (bindingIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, RevisionEntity> result = new LinkedHashMap<>();
+        revisionRepository.findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(
+                TARGET_TYPE_SOURCE_BINDING,
+                bindingIds,
+                REVISION_STATUS_PENDING,
+                PENDING_BINDING_CHANGE_TYPES
+        ).forEach(revision -> result.put(revision.getTargetId(), revision));
+        return result;
     }
 
     private TargetDisplay resolveTargetDisplay(Long clanId, String targetType, Long targetId) {

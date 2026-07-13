@@ -1,1 +1,0 @@
-docs/api/openapi.json: SourceBindingSummaryResponse schema not found
