@@ -121,7 +121,7 @@ class RelationshipImportJobReviewApplicationServiceTest {
 
         CheckTaskResponse result = service.submit(1L, 101L, new ImportJobReviewSubmitRequest("请审核关系"), 9L);
 
-        assertThat(result.targetTitle()).isEqualTo("人物关系导入批次审核");
+        assertThat(result.title()).isEqualTo("人物关系导入批次审核");
         assertThat(relationship.getDataStatus()).isEqualTo("pending_review");
         assertThat(job.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_PENDING);
         verify(authorizationApplicationService).requireBranchPermission(1L, 9L, 5L, "relationship:submit_review");
