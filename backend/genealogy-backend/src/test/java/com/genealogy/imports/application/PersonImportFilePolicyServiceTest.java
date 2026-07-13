@@ -6,8 +6,9 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 class PersonImportFilePolicyServiceTest {
 
@@ -17,31 +18,41 @@ class PersonImportFilePolicyServiceTest {
     void shouldRequireTargetBranchBeforeReadingPersonFile() {
         MockMultipartFile file = csv("姓名,性别\n张三,male\n");
 
-        assertThatThrownBy(() -> service.validate(null, file))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("请先选择目标支派，再导入人物")
-                .extracting(error -> ((BusinessException) error).getCode())
-                .isEqualTo("IMPORT_BRANCH_REQUIRED");
+        BusinessException error = catchThrowableOfType(
+                () -> service.validate(null, file),
+                BusinessException.class
+        );
+
+        assertThat(error).isNotNull();
+        assertThat(error.getCode()).isEqualTo("IMPORT_BRANCH_REQUIRED");
+        assertThat(error).hasMessage("请先选择目标支派，再导入人物");
     }
 
     @Test
     void shouldRejectTechnicalBranchIdColumn() {
         MockMultipartFile file = csv("branchId,姓名\n5,张三\n");
 
-        assertThatThrownBy(() -> service.validate(5L, file))
-                .isInstanceOf(BusinessException.class)
-                .hasMessage("导入文件不能填写支派ID或支派列，请在页面中选择目标支派")
-                .extracting(error -> ((BusinessException) error).getCode())
-                .isEqualTo("IMPORT_BRANCH_COLUMN_FORBIDDEN");
+        BusinessException error = catchThrowableOfType(
+                () -> service.validate(5L, file),
+                BusinessException.class
+        );
+
+        assertThat(error).isNotNull();
+        assertThat(error.getCode()).isEqualTo("IMPORT_BRANCH_COLUMN_FORBIDDEN");
+        assertThat(error).hasMessage("导入文件不能填写支派ID或支派列，请在页面中选择目标支派");
     }
 
     @Test
     void shouldRejectChineseBranchColumnAlias() {
         MockMultipartFile file = csv("支派,姓名\n长房,张三\n");
 
-        assertThatThrownBy(() -> service.validate(5L, file))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不能填写支派ID或支派列");
+        BusinessException error = catchThrowableOfType(
+                () -> service.validate(5L, file),
+                BusinessException.class
+        );
+
+        assertThat(error).isNotNull();
+        assertThat(error).hasMessageContaining("不能填写支派ID或支派列");
     }
 
     @Test
