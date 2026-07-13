@@ -36,25 +36,31 @@ function optionSearchText(label: unknown) {
   return String(label ?? '');
 }
 
+function asElement(node: ReactNode): ReactElement<AnyProps> | null {
+  return isValidElement(node) ? node as ReactElement<AnyProps> : null;
+}
+
 function nodeText(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node).trim();
   if (Array.isArray(node)) return node.map(nodeText).join('').trim();
-  if (isValidElement<AnyProps>(node)) return nodeText(node.props.children);
-  return '';
+  const element = asElement(node);
+  return element ? nodeText(element.props.children) : '';
 }
 
 function buttonText(node: ReactNode) {
-  if (!isValidElement<AnyProps>(node) || node.type !== 'button') return '';
-  return nodeText(node.props.children);
+  const element = asElement(node);
+  if (!element || element.type !== 'button') return '';
+  return nodeText(element.props.children);
 }
 
 function cloneButtonLabel(node: ReactNode, label: string, primary = false): ReactNode {
-  if (!isValidElement<AnyProps>(node) || node.type !== 'button') return node;
-  const { className = '', ...props } = node.props;
+  const element = asElement(node);
+  if (!element || element.type !== 'button') return node;
+  const { className = '', ...props } = element.props;
   const nextClassName = primary
     ? String(className).split(/\s+/).filter(item => item && !['secondary', 'ghost', 'danger'].includes(item)).join(' ')
     : className;
-  return cloneElement(node as ReactElement<AnyProps>, { ...props, className: nextClassName, children: label });
+  return cloneElement(element, { ...props, className: nextClassName, children: label });
 }
 
 function normalizeReviewActions(children: ReactNode) {
@@ -71,20 +77,21 @@ function normalizeReviewActions(children: ReactNode) {
 }
 
 function toAntdControl(child: ReactNode): ReactNode {
-  if (!isValidElement<AnyProps>(child)) return child;
-  if (typeof child.type !== 'string') return child;
+  const element = asElement(child);
+  if (!element || typeof element.type !== 'string') return child;
 
-  const { children, ...props } = child.props;
-  if (child.type === 'textarea') {
+  const { children, ...props } = element.props;
+  if (element.type === 'textarea') {
     return <Input.TextArea {...props} value={props.value} onChange={props.onChange} />;
   }
-  if (child.type === 'select') {
+  if (element.type === 'select') {
     const options = Children.toArray(children)
-      .filter(isValidElement)
+      .map(asElement)
+      .filter((option): option is ReactElement<AnyProps> => option !== null)
       .map(option => ({
-        label: (option as ReactElement<AnyProps>).props.children,
-        value: String((option as ReactElement<AnyProps>).props.value ?? ''),
-        searchText: optionSearchText((option as ReactElement<AnyProps>).props.children)
+        label: option.props.children,
+        value: String(option.props.value ?? ''),
+        searchText: optionSearchText(option.props.children)
       }));
     return (
       <Select
@@ -98,17 +105,18 @@ function toAntdControl(child: ReactNode): ReactNode {
       />
     );
   }
-  if (child.type === 'input') {
+  if (element.type === 'input') {
     return <Input {...props} value={props.value} onChange={props.onChange} />;
   }
   return child;
 }
 
 function toAntdAction(child: ReactNode): ReactNode {
-  if (!isValidElement<AnyProps>(child) || child.type !== 'button') return child;
-  const { className = '', children, onClick, ...rest } = child.props;
-  const isSecondary = className.includes('secondary') || className.includes('ghost');
-  const isDanger = className.includes('danger');
+  const element = asElement(child);
+  if (!element || element.type !== 'button') return child;
+  const { className = '', children, onClick, ...rest } = element.props;
+  const isSecondary = String(className).includes('secondary') || String(className).includes('ghost');
+  const isDanger = String(className).includes('danger');
   const text = nodeText(children);
   const isDraftSave = REVIEW_DRAFT_ALIASES.includes(text);
   const nextOnClick = isDraftSave

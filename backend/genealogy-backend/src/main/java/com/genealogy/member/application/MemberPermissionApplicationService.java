@@ -342,6 +342,7 @@ public class MemberPermissionApplicationService {
         boolean canEditPermission = canGrantPermission;
         boolean canRevokePermission = authorizationApplicationService.can(clanId, actorId, "member.revoke_role");
         boolean canDisablePermission = authorizationApplicationService.can(clanId, actorId, "member.disable");
+        boolean canViewHistoryPermission = authorizationApplicationService.can(clanId, actorId, "operation_log.view");
         boolean canGrantRole = canGrantPermission
                 && !memberGrantPolicyService.grantableRoleCodes(clanId, actorId).isEmpty();
         long activeAdminCount = canDisablePermission
@@ -352,7 +353,14 @@ public class MemberPermissionApplicationService {
             AppUserEntity user = users.get(membership.getUserId());
             List<MemberRoleEntity> membershipGrants = grantsByMembership
                     .getOrDefault(membership.getId(), List.of());
-            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
+            List<MemberRoleEntity> visibleMembershipGrants = membershipGrants.stream()
+                    .filter(grant -> memberGrantPolicyService.canViewGrant(
+                            actorScope,
+                            grant.getScopeType(),
+                            grant.getScopeId()
+                    ))
+                    .toList();
+            List<MemberGrantResponse> memberGrants = visibleMembershipGrants.stream()
                     .sorted(Comparator.comparing(MemberRoleEntity::getId))
                     .map(grant -> {
                         RoleEntity role = roles.get(grant.getRoleId());
@@ -379,7 +387,8 @@ public class MemberPermissionApplicationService {
                     canEditAny,
                     canRevokeAny,
                     canDisableMember,
-                    canEditAny || canRevokeAny || canDisableMember
+                    canViewHistoryPermission
+                            && (actorScope.fullClanAccess() || !visibleMembershipGrants.isEmpty())
             );
             return new MemberAggregateResponse(
                     membership.getId(),
