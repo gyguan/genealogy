@@ -1,22 +1,18 @@
 name: Issue 102 Diagnostics
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/issue-102-member-permission-p1
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagnose:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/issue-102-member-permission-p1
-          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -31,37 +27,21 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p tasks
+          mkdir -p diagnostics
           (
             cd backend/genealogy-backend
             mvn -Dtest=GlobalExceptionHandlerTest,MemberGrantVisibilityPolicyTest,MemberPermissionAuditControllerTest,MemberPermissionAuditApplicationServiceTest,MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest test
-          ) > /tmp/backend.log 2>&1
+          ) > diagnostics/backend.log 2>&1
           backend_status=$?
           (
             cd frontend/genealogy-web
             npm ci && npm run test:members && npm run api:check && npm run typecheck && npm run build
-          ) > /tmp/frontend.log 2>&1
+          ) > diagnostics/frontend.log 2>&1
           frontend_status=$?
-          {
-            echo '# Issue #102 CI 诊断'
-            echo
-            echo "- Backend focused status: ${backend_status}"
-            echo "- Frontend status: ${frontend_status}"
-            echo
-            echo '## Backend tail'
-            echo '```text'
-            tail -n 220 /tmp/backend.log
-            echo '```'
-            echo
-            echo '## Frontend tail'
-            echo '```text'
-            tail -n 220 /tmp/frontend.log
-            echo '```'
-          } > tasks/issue-102-diagnostics.md
-      - name: Commit diagnostics
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tasks/issue-102-diagnostics.md
-          git commit -m "chore: capture issue 102 CI diagnostics [skip ci]"
-          git push origin HEAD:agent/issue-102-member-permission-p1
+          printf 'backend_status=%s\nfrontend_status=%s\n' "$backend_status" "$frontend_status" > diagnostics/status.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-102-diagnostics
+          path: diagnostics
+          if-no-files-found: error
