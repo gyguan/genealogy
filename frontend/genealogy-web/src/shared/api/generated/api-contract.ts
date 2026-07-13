@@ -14,6 +14,7 @@ export const API_OPERATIONS = {
     ],
     "queryParams": [
       "branchId",
+      "fileFormat",
       "importType",
       "pageNo",
       "pageSize",
