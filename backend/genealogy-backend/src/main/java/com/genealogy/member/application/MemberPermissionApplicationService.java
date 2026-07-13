@@ -8,6 +8,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.domain.MemberGrantPolicyService;
+import com.genealogy.member.domain.MemberGrantPolicyService.ActorScope;
 import com.genealogy.member.dto.CreateMemberGrantRequest;
 import com.genealogy.member.dto.GrantableRoleResponse;
 import com.genealogy.member.dto.MemberAggregateResponse;
@@ -100,15 +101,26 @@ public class MemberPermissionApplicationService {
                 normalizedPageSize,
                 Sort.by(Sort.Direction.ASC, "id")
         );
+        ActorScope actorScope = memberGrantPolicyService.actorScope(clanId, actorId);
         Page<ClanMembershipEntity> membershipPage = clanMembershipRepository.searchMembers(
                 clanId,
                 normalizeFilter(keyword),
                 normalizeFilter(roleCode),
                 parseOptionalScopeType(scopeType),
                 parseOptionalMemberStatus(status),
+                actorScope.fullClanAccess(),
+                MemberRoleScopeType.branch,
+                MemberRoleScopeType.branch_subtree,
+                actorScope.queryVisibleBranchIds(),
+                actorScope.queryVisibleSubtreeIds(),
                 pageable
         );
-        List<MemberAggregateResponse> records = aggregateMembers(clanId, actorId, membershipPage.getContent());
+        List<MemberAggregateResponse> records = aggregateMembers(
+                clanId,
+                actorId,
+                actorScope,
+                membershipPage.getContent()
+        );
         return PageResponse.of(records, membershipPage.getTotalElements(), normalizedPageNo, normalizedPageSize);
     }
 
@@ -174,7 +186,12 @@ public class MemberPermissionApplicationService {
         AppUserEntity user = appUserRepository.findById(request.userId())
                 .filter(candidate -> candidate.getDeletedAt() == null)
                 .orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "候选用户不存在"));
-        ClanMembershipEntity membership = findOrCreateMembership(clanId, user.getId(), actorId);
+        ClanMembershipEntity membership = findOrCreateMembership(
+                clanId,
+                user.getId(),
+                actorId,
+                request.reason()
+        );
         if (memberRoleRepository.existsByMembershipIdAndRoleIdAndScopeTypeAndScopeIdAndStatus(
                 membership.getId(), role.getId(), scopeType, request.scopeId(), STATUS_ACTIVE
         )) {
@@ -196,7 +213,7 @@ public class MemberPermissionApplicationService {
         grant.setUpdatedAt(now);
         MemberRoleEntity saved = memberRoleRepository.save(grant);
         recordGrantChange(clanId, actorId, "member_grant_create", saved, role, null, request.reason());
-        return toGrantResponse(saved, role, scopeName(clanId, saved));
+        return grantResponseForActor(clanId, actorId, saved, role, scopeName(clanId, saved));
     }
 
     @Transactional
@@ -237,7 +254,7 @@ public class MemberPermissionApplicationService {
         grant.setUpdatedAt(LocalDateTime.now());
         MemberRoleEntity saved = memberRoleRepository.save(grant);
         recordGrantChange(clanId, actorId, "member_grant_update", saved, targetRole, before, request.reason());
-        return toGrantResponse(saved, targetRole, scopeName(clanId, saved));
+        return grantResponseForActor(clanId, actorId, saved, targetRole, scopeName(clanId, saved));
     }
 
     @Transactional
@@ -265,9 +282,13 @@ public class MemberPermissionApplicationService {
                 .filter(item -> clanId.equals(item.getClanId()))
                 .orElseThrow(() -> new BusinessException("MEMBER_NOT_FOUND", "宗族成员不存在"));
         MemberStatus targetStatus = parseWriteMemberStatus(request.status());
-        if (targetStatus == MemberStatus.disabled || targetStatus == MemberStatus.removed) {
-            memberGrantPolicyService.validateDisableMember(clanId, membershipId, request.reason());
-        }
+        memberGrantPolicyService.validateMemberStatusChange(
+                clanId,
+                actorId,
+                membershipId,
+                targetStatus,
+                request.reason()
+        );
         MemberStatus beforeStatus = membership.getMemberStatus();
         membership.setMemberStatus(targetStatus);
         membership.setUpdatedBy(actorId);
@@ -282,12 +303,14 @@ public class MemberPermissionApplicationService {
                 "member status changed for user " + saved.getUserId(),
                 "before=" + beforeStatus + "; after=" + targetStatus + "; reason=" + request.reason().trim()
         );
-        return aggregateMembers(clanId, actorId, List.of(saved)).get(0);
+        ActorScope actorScope = memberGrantPolicyService.actorScope(clanId, actorId);
+        return aggregateMembers(clanId, actorId, actorScope, List.of(saved)).get(0);
     }
 
     private List<MemberAggregateResponse> aggregateMembers(
             Long clanId,
             Long actorId,
+            ActorScope actorScope,
             List<ClanMembershipEntity> memberships
     ) {
         if (memberships.isEmpty()) {
@@ -314,19 +337,50 @@ public class MemberPermissionApplicationService {
                                 .toList()
                 ).stream()
                 .collect(Collectors.toMap(BranchEntity::getId, Function.identity()));
-        MemberAllowedActionsResponse actions = allowedActions(clanId, actorId);
+
+        boolean canGrantPermission = authorizationApplicationService.can(clanId, actorId, "member.grant_role");
+        boolean canEditPermission = canGrantPermission;
+        boolean canRevokePermission = authorizationApplicationService.can(clanId, actorId, "member.revoke_role");
+        boolean canDisablePermission = authorizationApplicationService.can(clanId, actorId, "member.disable");
+        boolean canGrantRole = canGrantPermission
+                && !memberGrantPolicyService.grantableRoleCodes(clanId, actorId).isEmpty();
+        long activeAdminCount = canDisablePermission
+                ? memberGrantPolicyService.activeClanAdminCount(clanId)
+                : 0L;
 
         return memberships.stream().map(membership -> {
             AppUserEntity user = users.get(membership.getUserId());
-            List<MemberGrantResponse> memberGrants = grantsByMembership
-                    .getOrDefault(membership.getId(), List.of())
-                    .stream()
+            List<MemberRoleEntity> membershipGrants = grantsByMembership
+                    .getOrDefault(membership.getId(), List.of());
+            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
                     .sorted(Comparator.comparing(MemberRoleEntity::getId))
                     .map(grant -> {
                         RoleEntity role = roles.get(grant.getRoleId());
-                        return toGrantResponse(grant, role, scopeName(clanId, grant, branches));
+                        return toGrantResponse(
+                                grant,
+                                role,
+                                scopeName(clanId, grant, branches),
+                                actorScope,
+                                canEditPermission,
+                                canRevokePermission
+                        );
                     })
                     .toList();
+            boolean canEditAny = memberGrants.stream().anyMatch(MemberGrantResponse::canEditGrant);
+            boolean canRevokeAny = memberGrants.stream().anyMatch(MemberGrantResponse::canRevokeGrant);
+            boolean isLastActiveAdmin = membership.getMemberStatus() == MemberStatus.active
+                    && activeAdminCount <= 1
+                    && memberGrantPolicyService.containsClanAdminGrant(membershipGrants, roles);
+            boolean canDisableMember = canDisablePermission
+                    && memberGrantPolicyService.canManageMembership(actorScope, membershipGrants, roles)
+                    && !isLastActiveAdmin;
+            MemberAllowedActionsResponse actions = new MemberAllowedActionsResponse(
+                    canGrantRole,
+                    canEditAny,
+                    canRevokeAny,
+                    canDisableMember,
+                    canEditAny || canRevokeAny || canDisableMember
+            );
             return new MemberAggregateResponse(
                     membership.getId(),
                     membership.getUserId(),
@@ -341,16 +395,33 @@ public class MemberPermissionApplicationService {
         }).toList();
     }
 
-    private ClanMembershipEntity findOrCreateMembership(Long clanId, Long userId, Long actorId) {
+    private ClanMembershipEntity findOrCreateMembership(
+            Long clanId,
+            Long userId,
+            Long actorId,
+            String reason
+    ) {
         return clanMembershipRepository.findByClanIdAndUserId(clanId, userId)
-                .map(existing -> activateMembership(existing, actorId))
+                .map(existing -> activateMembership(clanId, existing, actorId, reason))
                 .orElseGet(() -> createMembership(clanId, userId, actorId));
     }
 
-    private ClanMembershipEntity activateMembership(ClanMembershipEntity membership, Long actorId) {
+    private ClanMembershipEntity activateMembership(
+            Long clanId,
+            ClanMembershipEntity membership,
+            Long actorId,
+            String reason
+    ) {
         if (membership.getMemberStatus() == MemberStatus.active) {
             return membership;
         }
+        memberGrantPolicyService.validateMemberStatusChange(
+                clanId,
+                actorId,
+                membership.getId(),
+                MemberStatus.active,
+                reason
+        );
         membership.setMemberStatus(MemberStatus.active);
         membership.setUpdatedBy(actorId);
         membership.setUpdatedAt(LocalDateTime.now());
@@ -395,10 +466,42 @@ public class MemberPermissionApplicationService {
                 .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "授权角色不存在"));
     }
 
-    private MemberGrantResponse toGrantResponse(MemberRoleEntity grant, RoleEntity role, String scopeName) {
+    private MemberGrantResponse grantResponseForActor(
+            Long clanId,
+            Long actorId,
+            MemberRoleEntity grant,
+            RoleEntity role,
+            String scopeName
+    ) {
+        ActorScope actorScope = memberGrantPolicyService.actorScope(clanId, actorId);
+        return toGrantResponse(
+                grant,
+                role,
+                scopeName,
+                actorScope,
+                authorizationApplicationService.can(clanId, actorId, "member.grant_role"),
+                authorizationApplicationService.can(clanId, actorId, "member.revoke_role")
+        );
+    }
+
+    private MemberGrantResponse toGrantResponse(
+            MemberRoleEntity grant,
+            RoleEntity role,
+            String scopeName,
+            ActorScope actorScope,
+            boolean canEditPermission,
+            boolean canRevokePermission
+    ) {
+        String roleCode = role == null ? null : role.getRoleCode();
+        boolean manageable = roleCode != null && memberGrantPolicyService.canManageGrant(
+                actorScope,
+                roleCode,
+                grant.getScopeType(),
+                grant.getScopeId()
+        );
         return new MemberGrantResponse(
                 grant.getId(),
-                role == null ? null : role.getRoleCode(),
+                roleCode,
                 role == null ? null : role.getRoleName(),
                 grant.getScopeType() == null ? null : grant.getScopeType().name(),
                 grant.getScopeId(),
@@ -406,7 +509,9 @@ public class MemberPermissionApplicationService {
                 grant.getStatus(),
                 grant.getGrantedBy(),
                 grant.getGrantedAt(),
-                grant.getUpdatedAt()
+                grant.getUpdatedAt(),
+                canEditPermission && manageable,
+                canRevokePermission && manageable
         );
     }
 
@@ -427,14 +532,6 @@ public class MemberPermissionApplicationService {
                 allowedScopeTypes,
                 HIGH_RISK_ROLES.contains(role.getRoleCode()) ? "high" : "normal"
         );
-    }
-
-    private MemberAllowedActionsResponse allowedActions(Long clanId, Long actorId) {
-        boolean canGrant = authorizationApplicationService.can(clanId, actorId, "member.grant_role")
-                && !memberGrantPolicyService.grantableRoleCodes(clanId, actorId).isEmpty();
-        boolean canRevoke = authorizationApplicationService.can(clanId, actorId, "member.revoke_role");
-        boolean canDisable = authorizationApplicationService.can(clanId, actorId, "member.disable");
-        return new MemberAllowedActionsResponse(canGrant, canGrant, canRevoke, canDisable, canGrant || canRevoke);
     }
 
     private String scopeName(Long clanId, MemberRoleEntity grant) {
