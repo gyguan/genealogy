@@ -17,6 +17,14 @@ import java.time.LocalDateTime;
 @Table(name = "import_job")
 public class ImportJobEntity {
 
+    public static final String TYPE_PERSON = "person";
+    public static final String TYPE_RELATIONSHIP = "relationship";
+    public static final String TYPE_GENERATION = "generation";
+    public static final String TYPE_SOURCE = "source";
+
+    public static final String FORMAT_CSV = "csv";
+    public static final String FORMAT_XLSX = "xlsx";
+
     public static final String PROCESSING_PROCESSING = "processing";
     public static final String PROCESSING_CORRECTION_REQUIRED = "correction_required";
     public static final String PROCESSING_READY_FOR_REVIEW = "ready_for_review";
@@ -37,8 +45,11 @@ public class ImportJobEntity {
     @Column(name = "branch_id")
     private Long branchId;
 
-    @Column(name = "import_type")
+    @Column(name = "import_type", nullable = false)
     private String importType;
+
+    @Column(name = "file_format", nullable = false)
+    private String fileFormat;
 
     @Column(name = "original_filename")
     private String originalFilename;
