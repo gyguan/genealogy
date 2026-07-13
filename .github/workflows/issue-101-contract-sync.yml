@@ -7,6 +7,7 @@ on:
       - '.github/workflows/issue-101-contract-sync.yml'
       - 'docs/api/openapi.member-permission.json'
       - 'docs/api/openapi.json'
+      - 'docs/api/issue-101-contract-trigger.txt'
 
 permissions:
   contents: write
