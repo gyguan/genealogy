@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Empty, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { saveDownloadedBlob } from '../../shared/utils/download';
@@ -43,19 +43,7 @@ type ImportPreview = {
   rows?: PreviewRow[];
 };
 
-const defaultMapping = {
-  nameIndex: '1',
-  genderIndex: '2',
-  generationNoIndex: '3',
-  generationWordIndex: '4',
-  birthDateIndex: '5',
-  isLivingIndex: '6'
-};
-
-function toZeroBased(value: string) {
-  const parsed = Number(value || '1');
-  return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
-}
+type TemplateFormat = 'csv' | 'xlsx';
 
 function genderText(value?: string) {
   const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
@@ -70,8 +58,6 @@ export function PersonImportWorkspace({
   onBatchCreated
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
-  const [mapping, setMapping] = useState(defaultMapping);
-  const [autoMapping, setAutoMapping] = useState(true);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -83,40 +69,26 @@ export function PersonImportWorkspace({
     setConfirmDuplicates(false);
   }, [branchId]);
 
-  const mappingQuery = useMemo(() => {
-    const params = new URLSearchParams();
-    params.set('autoMapping', String(autoMapping));
-    Object.entries(mapping).forEach(([key, value]) => {
-      params.set(key, String(toZeroBased(value)));
-    });
-    if (branchId) params.set('branchId', branchId);
-    return params.toString();
-  }, [mapping, branchId, autoMapping]);
-
-  function patchMapping(key: keyof typeof mapping, value: number | null) {
-    setMapping(previous => ({ ...previous, [key]: value === null ? '' : String(value) }));
-    setAutoMapping(false);
-    setPreview(null);
-  }
-
-  function resetAutoMapping() {
-    setMapping(defaultMapping);
-    setAutoMapping(true);
-    setPreview(null);
-  }
-
-  async function downloadTemplate() {
+  async function downloadTemplate(format: TemplateFormat) {
     if (loading) return;
     setLoading(true);
     try {
-      const blob = await apiClient.download('/imports/templates/persons.csv');
-      saveDownloadedBlob(blob, 'person-import-template.csv');
-      notify({ message: '人物导入模板已下载' });
+      const blob = await apiClient.download(`/imports/templates/persons.${format}`);
+      saveDownloadedBlob(blob, `person-import-template.${format}`);
+      notify({ message: `人物导入 ${format.toUpperCase()} 模板已下载` });
     } catch (error) {
       notify({ message: (error as Error).message || '导入模板下载失败' }, true);
     } finally {
       setLoading(false);
     }
+  }
+
+  function requestQuery(includeDuplicateConfirmation = false) {
+    const params = new URLSearchParams({ branchId });
+    if (includeDuplicateConfirmation) {
+      params.set('confirmDuplicates', String(confirmDuplicates));
+    }
+    return params.toString();
   }
 
   async function previewFile() {
@@ -130,7 +102,7 @@ export function PersonImportWorkspace({
       return null;
     }
     if (!file) {
-      notify({ message: '请选择 CSV 或 XLSX 文件' }, true);
+      notify({ message: '请上传填写后的 CSV 或 XLSX 标准模板' }, true);
       return null;
     }
 
@@ -139,7 +111,7 @@ export function PersonImportWorkspace({
       const formData = new FormData();
       formData.append('file', file);
       const result = await apiClient.upload<ImportPreview>(
-        `/clans/${clanId}/imports/persons/preview?${mappingQuery}`,
+        `/clans/${clanId}/imports/persons/preview?${requestQuery()}`,
         formData
       );
       setPreview(result);
@@ -167,7 +139,7 @@ export function PersonImportWorkspace({
       return;
     }
     if (!file) {
-      notify({ message: '请选择 CSV 或 XLSX 文件' }, true);
+      notify({ message: '请上传填写后的 CSV 或 XLSX 标准模板' }, true);
       return;
     }
 
@@ -182,9 +154,8 @@ export function PersonImportWorkspace({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const separator = mappingQuery ? '&' : '';
       const result = await apiClient.upload<ImportJobResult>(
-        `/clans/${clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
+        `/clans/${clanId}/imports/persons.csv?${requestQuery(true)}`,
         formData
       );
       const failureCount = result.failureCount || 0;
@@ -209,13 +180,20 @@ export function PersonImportWorkspace({
     accept: '.csv,.xlsx',
     disabled: !branchSelected,
     beforeUpload: nextFile => {
+      const filename = nextFile.name.toLowerCase();
+      if (!filename.endsWith('.csv') && !filename.endsWith('.xlsx')) {
+        notify({ message: '只支持上传系统提供的 CSV 或 XLSX 模板' }, true);
+        return Upload.LIST_IGNORE;
+      }
       setFile(nextFile);
       setPreview(null);
+      setConfirmDuplicates(false);
       return false;
     },
     onRemove: () => {
       setFile(null);
       setPreview(null);
+      setConfirmDuplicates(false);
       return true;
     },
     fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
@@ -223,32 +201,36 @@ export function PersonImportWorkspace({
 
   return (
     <div className="person-import-workspace">
-      <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>} style={{ marginTop: 16 }}>
+      <Card
+        title="人物导入"
+        extra={(
+          <Space wrap>
+            <Button disabled={loading} onClick={() => void downloadTemplate('csv')}>下载 CSV 模板</Button>
+            <Button disabled={loading} onClick={() => void downloadTemplate('xlsx')}>下载 XLSX 模板</Button>
+          </Space>
+        )}
+        style={{ marginTop: 16 }}
+      >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert type="info" showIcon message="导入人物默认进入草稿状态；错误行可在导入任务中修正，全部处理完成后再提交审核。" />
+          <Alert
+            type="info"
+            showIcon
+            message="请先下载标准模板，填写后原样上传"
+            description="表头必须依次为：姓名、性别、代次、字辈、出生日期、是否在世。请勿增加、删除、改名或调整顺序。性别填写男/女/未知，是否在世填写是/否，代次填写正整数，日期格式为 yyyy-MM-dd。"
+          />
+          <Alert
+            type="info"
+            showIcon
+            message="导入人物默认进入草稿状态；模板结构错误会整文件拒绝，行数据错误可在导入任务中修正。"
+          />
           {!branchSelected ? (
-            <Alert type="warning" showIcon message="请在本页上方选择本次导入的目标支派，再选择文件并执行导入。" />
+            <Alert type="warning" showIcon message="请在本页上方选择本次导入的目标支派，再上传填写后的模板。" />
           ) : (
             <Alert type="success" showIcon message={`当前目标支派：${branchName || '未命名支派'}。文件中无需填写支派或支派 ID。`} />
           )}
           <Upload {...uploadProps}>
-            <Button disabled={!branchSelected}>选择 CSV / XLSX 文件</Button>
+            <Button disabled={!branchSelected}>上传填写后的模板</Button>
           </Upload>
-          <Checkbox
-            disabled={!branchSelected}
-            checked={autoMapping}
-            onChange={event => { setAutoMapping(event.target.checked); setPreview(null); }}
-          >
-            自动识别表头字段；识别失败时使用下方列号兜底
-          </Checkbox>
-          <Form layout="vertical" className="archive-search-form" disabled={!branchSelected}>
-            <Form.Item label="姓名列"><InputNumber min={1} value={Number(mapping.nameIndex || 1)} onChange={value => patchMapping('nameIndex', value)} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="性别列"><InputNumber min={1} value={Number(mapping.genderIndex || 1)} onChange={value => patchMapping('genderIndex', value)} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="代次列"><InputNumber min={1} value={Number(mapping.generationNoIndex || 1)} onChange={value => patchMapping('generationNoIndex', value)} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="字辈列"><InputNumber min={1} value={Number(mapping.generationWordIndex || 1)} onChange={value => patchMapping('generationWordIndex', value)} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="出生日期列"><InputNumber min={1} value={Number(mapping.birthDateIndex || 1)} onChange={value => patchMapping('birthDateIndex', value)} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="是否在世列"><InputNumber min={1} value={Number(mapping.isLivingIndex || 1)} onChange={value => patchMapping('isLivingIndex', value)} style={{ width: '100%' }} /></Form.Item>
-          </Form>
           <Checkbox
             disabled={!branchSelected}
             checked={confirmDuplicates}
@@ -257,9 +239,12 @@ export function PersonImportWorkspace({
             我已确认疑似重复人物，仍继续导入
           </Checkbox>
           <Space wrap>
-            <Button disabled={!branchSelected} onClick={resetAutoMapping}>恢复自动识别</Button>
-            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
-            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>创建导入批次</Button>
+            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>
+              {loading ? '处理中...' : '预览并查重'}
+            </Button>
+            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>
+              创建导入批次
+            </Button>
           </Space>
         </Space>
       </Card>
@@ -270,7 +255,7 @@ export function PersonImportWorkspace({
             <Alert
               type="warning"
               showIcon
-              message={`发现 ${preview.errorCount} 条错误数据。仍可创建导入批次，之后在任务详情中逐行修正。`}
+              message={`发现 ${preview.errorCount} 条数据错误。仍可创建导入批次，之后在任务详情中逐行修正。`}
               style={{ marginBottom: 12 }}
             />
           ) : null}
