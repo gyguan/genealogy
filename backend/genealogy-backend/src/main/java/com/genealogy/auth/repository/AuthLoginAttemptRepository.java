@@ -8,4 +8,5 @@ import java.time.LocalDateTime;
 public interface AuthLoginAttemptRepository extends JpaRepository<AuthLoginAttemptEntity, Long> {
     long countByAccountHashAndSuccessFalseAndCreatedAtAfter(String accountHash, LocalDateTime createdAt);
     long countByIpHashAndSuccessFalseAndCreatedAtAfter(String ipHash, LocalDateTime createdAt);
+    long deleteByAccountHashAndSuccessFalse(String accountHash);
 }
