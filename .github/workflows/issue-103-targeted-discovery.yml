@@ -15,15 +15,24 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Fetch main and print migration versions
+      - name: Export migration diagnostic
         shell: bash
         run: |
           git fetch origin main:refs/remotes/origin/main --force
-          echo '=== latest base migrations ==='
-          git ls-tree -r --name-only origin/main -- backend/genealogy-backend/src/main/resources/db/migration \
-            | sed 's#^.*/##' \
-            | grep '^V' \
-            | sort -V \
-            | tail -20
-          echo '=== governance result ==='
-          python3 .github/scripts/validate-flyway-migrations.py --base-ref origin/main || true
+          {
+            echo '=== latest base migrations ==='
+            git ls-tree -r --name-only origin/main -- backend/genealogy-backend/src/main/resources/db/migration \
+              | sed 's#^.*/##' \
+              | grep '^V' \
+              | sort -V \
+              | tail -20
+            echo '=== governance result ==='
+            python3 .github/scripts/validate-flyway-migrations.py --base-ref origin/main || true
+          } > /tmp/migration-diagnostic.txt 2>&1
+          cat /tmp/migration-diagnostic.txt
+      - name: Upload migration diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-103-migration-diagnostic
+          path: /tmp/migration-diagnostic.txt
+          retention-days: 1
