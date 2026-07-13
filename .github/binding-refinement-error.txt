@@ -1,5 +1,1 @@
-Traceback (most recent call last):
-  File "<stdin>", line 10, in <module>
-  File "apply-binding-action-refinement.py", line 75, in <module>
-  File "apply-binding-action-refinement.py", line 9, in replace_once
-SystemExit: backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java: expected one match, found 0
+docs/api/openapi.json: SourceBindingSummaryResponse schema not found
