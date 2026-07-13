@@ -54,7 +54,8 @@ class ImportApplicationServiceRowStateTest {
                 importJobErrorRepository,
                 importJobRowRepository,
                 personRepository,
-                authorizationApplicationService
+                authorizationApplicationService,
+                new PersonImportFilePolicyService()
         );
         when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> {
             ImportJobEntity entity = invocation.getArgument(0);
@@ -77,15 +78,13 @@ class ImportApplicationServiceRowStateTest {
     void successfulRowsShouldBeLinkedToDraftPersonsAndBecomeReadyForReview() {
         MockMultipartFile file = csv("""
                 姓名,性别,代次,字辈,出生日期,是否在世
-                张三,male,5,德,1980-01-01,是
+                张三,男,5,德,1980-01-01,是
                 """);
 
         ImportJobResponse result = service.importPersonsCsv(
                 1L,
                 5L,
                 file,
-                personMapping(),
-                true,
                 false,
                 9L
         );
@@ -98,30 +97,36 @@ class ImportApplicationServiceRowStateTest {
         assertThat(savedJob.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_NOT_SUBMITTED);
         assertThat(savedJob.getReviewRound()).isZero();
 
+        ArgumentCaptor<PersonEntity> personCaptor = ArgumentCaptor.forClass(PersonEntity.class);
+        verify(personRepository).save(personCaptor.capture());
+        assertThat(personCaptor.getValue().getGender()).isEqualTo("male");
+        assertThat(personCaptor.getValue().getIsLiving()).isTrue();
+        assertThat(personCaptor.getValue().getBranchId()).isEqualTo(5L);
+
         List<ImportJobRowEntity> rows = capturedRows();
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).getRowStatus()).isEqualTo(ImportJobRowEntity.STATUS_DRAFT_CREATED);
         assertThat(rows.get(0).getDraftPersonId()).isEqualTo(1001L);
         assertThat(rows.get(0).getNormalizedData())
                 .containsEntry("name", "张三")
+                .containsEntry("gender", "male")
                 .containsEntry("branchId", 5L)
-                .containsEntry("birthDate", "1980-01-01");
+                .containsEntry("birthDate", "1980-01-01")
+                .containsEntry("isLiving", true);
     }
 
     @Test
     void invalidRowsShouldRemainTraceableAndRequireCorrection() {
         MockMultipartFile file = csv("""
                 姓名,性别,代次,字辈,出生日期,是否在世
-                张三,male,5,德,1980-01-01,是
-                李四,male,六,明,1982-01-01,是
+                张三,男,5,德,1980-01-01,是
+                李四,男,六,明,1982-01-01,是
                 """);
 
         ImportJobResponse result = service.importPersonsCsv(
                 1L,
                 5L,
                 file,
-                personMapping(),
-                true,
                 false,
                 9L
         );
@@ -143,12 +148,39 @@ class ImportApplicationServiceRowStateTest {
         ImportJobRowEntity invalidRow = rows.get(1);
         assertThat(invalidRow.getRowNo()).isEqualTo(3);
         assertThat(invalidRow.getErrorCode()).isEqualTo("IMPORT_ROW_INVALID");
-        assertThat(invalidRow.getErrorMessage()).contains("代次必须是数字");
+        assertThat(invalidRow.getErrorMessage()).contains("代次必须是正整数");
         assertThat(invalidRow.getRawData()).contains("李四", "六");
     }
 
-    private ImportApplicationService.FieldMapping personMapping() {
-        return new ImportApplicationService.FieldMapping(0, 1, 2, 3, -1, 4, 5);
+    @Test
+    void invalidBusinessValuesShouldBecomeCorrectableRows() {
+        MockMultipartFile file = csv("""
+                姓名,性别,代次,字辈,出生日期,是否在世
+                张三,male,5,德,1980-01-01,是
+                李四,女,5,明,1982-01-01,true
+                王五,男,0,承,1985-01-01,否
+                """);
+
+        ImportJobResponse result = service.importPersonsCsv(
+                1L,
+                5L,
+                file,
+                false,
+                9L
+        );
+
+        assertThat(result.status()).isEqualTo("failed");
+        assertThat(result.successCount()).isZero();
+        assertThat(result.failureCount()).isEqualTo(3);
+
+        List<ImportJobRowEntity> rows = capturedRows();
+        assertThat(rows).allMatch(row -> ImportJobRowEntity.STATUS_INVALID.equals(row.getRowStatus()));
+        assertThat(rows).extracting(ImportJobRowEntity::getErrorMessage)
+                .containsExactly(
+                        "性别必须填写男、女或未知",
+                        "是否在世必须填写是或否",
+                        "代次必须是正整数"
+                );
     }
 
     private MockMultipartFile csv(String content) {
