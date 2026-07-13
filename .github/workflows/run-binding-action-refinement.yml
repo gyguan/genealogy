@@ -18,10 +18,19 @@ jobs:
           fetch-depth: 0
       - name: Apply focused changes
         shell: bash
-        run: python .github/scripts/apply_binding_action_refinement.py
-      - name: Commit changes
-        shell: bash
         run: |
+          set +e
+          python .github/scripts/apply_binding_action_refinement.py > .github/binding-refinement-error.txt 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/binding-refinement-error.txt
+            git commit -m "chore: capture binding refinement error"
+            git push origin HEAD:${{ github.head_ref }}
+            exit 0
+          fi
+          rm -f .github/binding-refinement-error.txt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
