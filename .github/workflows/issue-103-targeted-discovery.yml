@@ -13,18 +13,26 @@ jobs:
       - name: Build targeted context
         shell: bash
         run: |
-          mkdir -p /tmp/issue-103-context
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/relationship /tmp/issue-103-context/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/review /tmp/issue-103-context/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/imports /tmp/issue-103-context/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/person /tmp/issue-103-context/
+          mkdir -p /tmp/issue-103-context/main /tmp/issue-103-context/test /tmp/issue-103-context/frontend
+          cp -R backend/genealogy-backend/src/main/java/com/genealogy/relationship /tmp/issue-103-context/main/
+          cp -R backend/genealogy-backend/src/main/java/com/genealogy/review /tmp/issue-103-context/main/
+          cp -R backend/genealogy-backend/src/main/java/com/genealogy/imports /tmp/issue-103-context/main/
+          cp -R backend/genealogy-backend/src/main/java/com/genealogy/person /tmp/issue-103-context/main/
+          cp -R backend/genealogy-backend/src/test/java/com/genealogy/imports /tmp/issue-103-context/test/ || true
+          cp -R backend/genealogy-backend/src/test/java/com/genealogy/relationship /tmp/issue-103-context/test/ || true
+          cp -R backend/genealogy-backend/src/test/java/com/genealogy/review /tmp/issue-103-context/test/ || true
+          cp -R backend/genealogy-backend/src/main/resources/db/migration /tmp/issue-103-context/
+          cp backend/genealogy-backend/pom.xml /tmp/issue-103-context/
           cp docs/api/openapi.imports.json /tmp/issue-103-context/
-          cp frontend/genealogy-web/src/features/imports/ImportPage.tsx /tmp/issue-103-context/
-          cp frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx /tmp/issue-103-context/
-          cp frontend/genealogy-web/src/features/imports/import-type-registry.ts /tmp/issue-103-context/
+          cp docs/api/openapi.relationship-import.json /tmp/issue-103-context/
+          cp frontend/genealogy-web/src/features/imports/ImportPage.tsx /tmp/issue-103-context/frontend/
+          cp frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx /tmp/issue-103-context/frontend/
+          cp frontend/genealogy-web/src/features/imports/PersonImportWorkspace.tsx /tmp/issue-103-context/frontend/
+          cp frontend/genealogy-web/src/features/imports/import-type-registry.ts /tmp/issue-103-context/frontend/
+          cp frontend/genealogy-web/package.json /tmp/issue-103-context/frontend/
       - name: Upload targeted context
         uses: actions/upload-artifact@v4
         with:
-          name: issue-103-targeted-context
+          name: issue-103-targeted-context-expanded
           path: /tmp/issue-103-context
           retention-days: 1
