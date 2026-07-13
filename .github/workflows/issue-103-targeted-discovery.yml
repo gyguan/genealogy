@@ -1,0 +1,25 @@
+name: Issue 103 Targeted Discovery
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-103-targeted-discovery.yml'
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List targeted files
+        shell: bash
+        run: |
+          echo '=== relationship files ==='
+          find backend/genealogy-backend/src/main/java/com/genealogy/relationship -type f | sort
+          echo '=== review files ==='
+          find backend/genealogy-backend/src/main/java/com/genealogy/review -type f | sort
+          echo '=== import files ==='
+          find backend/genealogy-backend/src/main/java/com/genealogy/imports -type f | sort
+          echo '=== import review references ==='
+          grep -R -n -E 'import_job|ImportJobReview|TARGET_IMPORT_JOB' backend/genealogy-backend/src/main/java/com/genealogy/review backend/genealogy-backend/src/main/java/com/genealogy/imports || true
+          echo '=== person code references ==='
+          grep -R -n -E 'personCode|findBy.*PersonCode' backend/genealogy-backend/src/main/java/com/genealogy/person backend/genealogy-backend/src/main/java/com/genealogy/imports || true
