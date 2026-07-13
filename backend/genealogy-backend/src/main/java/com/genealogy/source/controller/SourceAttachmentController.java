@@ -10,6 +10,7 @@ import com.genealogy.source.dto.SourceAttachmentFileResponse;
 import com.genealogy.source.dto.SourceAttachmentResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Positive;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 
+@Profile("!legacy-source-attachment")
 @Validated
 @RestController
 @RequestMapping("/api/v1")

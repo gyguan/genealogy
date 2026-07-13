@@ -124,9 +124,4 @@ public class SourceEvidenceController {
                 .contentType(mediaType)
                 .body(download.content());
     }
-
-    @GetMapping("/sources/{sourceId}/attachments")
-    public ApiResponse<List<AttachmentResponse>> listAttachmentsBySource(@Positive @PathVariable Long sourceId) {
-        return ApiResponse.success(sourceEvidenceApplicationService.listAttachmentsBySource(sourceId));
-    }
 }
