@@ -7,6 +7,15 @@ public record LoginRequest(
         String username,
 
         @NotBlank(message = "密码不能为空")
-        String password
+        String password,
+
+        Boolean rememberMe
 ) {
+    public LoginRequest(String username, String password) {
+        this(username, password, false);
+    }
+
+    public boolean rememberMeEnabled() {
+        return Boolean.TRUE.equals(rememberMe);
+    }
 }
