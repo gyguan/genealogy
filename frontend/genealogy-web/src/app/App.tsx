@@ -11,7 +11,6 @@ import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
-import { PersonArchiveFocusBridge } from '../features/persons/PersonArchiveFocusBridge';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
 import { CultureProductPage } from '../features/experience/GenealogyExperiencePages';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
@@ -141,7 +140,7 @@ function AppShell() {
       case 'home': return <StatisticsHomePage />;
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
       case 'treeProduct': return <LineageTreeProductPage notify={notify} />;
-      case 'personArchive': return <><PersonArchiveFocusBridge /><PersonArchiveSearchPage notify={notify} /></>;
+      case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceLibraryPage notify={notify} /></>;
       case 'sourceAttachments': return <SourceAttachmentPage notify={notify} />;
       case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
