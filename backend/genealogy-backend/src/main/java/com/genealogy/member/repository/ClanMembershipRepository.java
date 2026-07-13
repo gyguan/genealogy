@@ -42,8 +42,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                       and appUser.deletedAt is null
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
-                           or lower(appUser.username) like lower(concat('%', :keyword, '%'))
-                           or lower(appUser.displayName) like lower(concat('%', :keyword, '%')))
+                           or lower(appUser.username) like concat('%', :keyword, '%')
+                           or lower(appUser.displayName) like concat('%', :keyword, '%'))
                       and (:roleCode is null or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
@@ -68,8 +68,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                       and appUser.deletedAt is null
                       and (:memberStatus is null or membership.memberStatus = :memberStatus)
                       and (:keyword is null
-                           or lower(appUser.username) like lower(concat('%', :keyword, '%'))
-                           or lower(appUser.displayName) like lower(concat('%', :keyword, '%')))
+                           or lower(appUser.username) like concat('%', :keyword, '%')
+                           or lower(appUser.displayName) like concat('%', :keyword, '%'))
                       and (:roleCode is null or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
