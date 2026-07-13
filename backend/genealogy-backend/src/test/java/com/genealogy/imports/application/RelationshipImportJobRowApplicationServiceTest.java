@@ -75,7 +75,9 @@ class RelationshipImportJobRowApplicationServiceTest {
 
         when(importJobRepository.findByIdAndClanId(101L, 1L)).thenReturn(Optional.of(job));
         when(importJobRowRepository.findByIdAndJobId(201L, 101L)).thenReturn(Optional.of(row));
-        when(relationshipImportApplicationService.parseAndResolve(eq(1L), any())).thenReturn(parsed);
+        when(relationshipImportApplicationService.parseAndResolve(
+                eq(1L), any(), eq(9L), eq("relationship:create")
+        )).thenReturn(parsed);
         when(relationshipImportApplicationService.createRequest(parsed)).thenReturn(createRequest);
         when(relationshipApplicationService.create(1L, createRequest, 9L)).thenReturn(relationshipResponse(501L));
         when(importJobRowRepository.saveAndFlush(any(ImportJobRowEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
