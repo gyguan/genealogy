@@ -22,8 +22,19 @@ import {
   type GrantableRole,
   type MemberAggregate,
   type MemberCandidate,
-  type MemberGrant
+  type MemberGrant,
+  type MemberPermissionAudit
 } from './memberPermissionApi';
+import {
+  auditActionText,
+  createMemberQuery,
+  formatAuditValue,
+  memberPermissionErrorMessage,
+  resetMemberQuery,
+  roleCapabilityText,
+  scopePreview,
+  type MemberQuery
+} from './memberPageModel.js';
 
 const { TextArea } = Input;
 const DEFAULT_PAGE_SIZE = 10;
@@ -78,6 +89,20 @@ function dateTime(value?: string) {
   return value ? value.replace('T', ' ').slice(0, 16) : '-';
 }
 
+function confirmHighRiskGrant(roleName: string, scopeText: string) {
+  return new Promise<boolean>(resolve => {
+    Modal.confirm({
+      title: `确认授予高风险角色“${roleName}”`,
+      content: `${scopeText}。请再次确认人员职责和授权边界。`,
+      okText: '确认授权',
+      cancelText: '返回检查',
+      okButtonProps: { danger: true },
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false)
+    });
+  });
+}
+
 export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [grantForm] = Form.useForm<GrantFormValues>();
@@ -90,8 +115,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const [candidates, setCandidates] = useState<MemberCandidate[]>([]);
   const [members, setMembers] = useState<MemberAggregate[]>([]);
   const [total, setTotal] = useState(0);
-  const [pageNo, setPageNo] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [query, setQuery] = useState<MemberQuery>(() => resetMemberQuery(DEFAULT_PAGE_SIZE));
+
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [scopeFilter, setScopeFilter] = useState('');
@@ -108,9 +133,18 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);
 
+  const [audits, setAudits] = useState<MemberPermissionAudit[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPageNo, setAuditPageNo] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(10);
+  const [auditTotal, setAuditTotal] = useState(0);
+
   const selectedClanId = String(workspace.clanId || clans[0]?.id || '');
-  const selectedRole = roles.find(role => role.roleCode === grantForm.getFieldValue('roleCode'));
+  const selectedClanName = clans.find(clan => String(clan.id) === selectedClanId)?.clanName || '当前宗族';
+  const selectedRoleCode = Form.useWatch('roleCode', grantForm);
+  const selectedRole = roles.find(role => role.roleCode === selectedRoleCode);
   const selectedScopeType = Form.useWatch('scopeType', grantForm);
+  const selectedScopeId = Form.useWatch('scopeId', grantForm);
 
   const roleOptions = useMemo(
     () => roles.map(role => ({
@@ -125,37 +159,43 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     try {
       await action();
     } catch (error) {
-      notify({ message: (error as Error).message || '操作失败' }, true);
+      notify({ message: memberPermissionErrorMessage(error) }, true);
     } finally {
       setLoading(false);
     }
   }
 
-  async function loadMembers(clanId = selectedClanId, nextPage = pageNo, nextPageSize = pageSize) {
+  async function loadMembers(clanId: string, nextQuery: MemberQuery, selectedMembershipId?: number) {
     if (!clanId) {
       setMembers([]);
       setTotal(0);
       return;
     }
     const result = await memberPermissionApi.listMembers(clanId, {
-      keyword: keyword.trim() || undefined,
-      roleCode: roleFilter || undefined,
-      scopeType: scopeFilter || undefined,
-      status: statusFilter || undefined,
-      pageNo: nextPage,
-      pageSize: nextPageSize
+      keyword: nextQuery.keyword || undefined,
+      roleCode: nextQuery.roleCode || undefined,
+      scopeType: nextQuery.scopeType || undefined,
+      status: nextQuery.status || undefined,
+      pageNo: nextQuery.pageNo,
+      pageSize: nextQuery.pageSize
     });
+    const resolvedQuery = createMemberQuery(
+      nextQuery,
+      result.pageNo || nextQuery.pageNo,
+      result.pageSize || nextQuery.pageSize
+    );
+    setQuery(resolvedQuery);
     setMembers(result.records || []);
     setTotal(result.total || 0);
-    setPageNo(result.pageNo || nextPage);
-    setPageSize(result.pageSize || nextPageSize);
-    if (selectedMember) {
-      const refreshed = (result.records || []).find(item => item.membershipId === selectedMember.membershipId);
+
+    const membershipId = selectedMembershipId ?? selectedMember?.membershipId;
+    if (membershipId) {
+      const refreshed = (result.records || []).find(item => item.membershipId === membershipId);
       if (refreshed) setSelectedMember(refreshed);
     }
   }
 
-  async function loadClanContext(clanId: string) {
+  async function loadClanContext(clanId: string, nextQuery: MemberQuery) {
     if (!clanId) return;
     const [branchResult, roleResult] = await Promise.all([
       apiClient.get(`/clans/${clanId}/branches`).catch(() => []),
@@ -163,7 +203,33 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     ]);
     setBranches(toRecordList(branchResult) as BranchRow[]);
     setRoles(roleResult || []);
-    await loadMembers(clanId, 1, pageSize);
+    await loadMembers(clanId, nextQuery);
+  }
+
+  async function loadMemberAudits(
+    clanId: string,
+    membershipId: number,
+    nextPage = 1,
+    nextPageSize = auditPageSize
+  ) {
+    setAuditLoading(true);
+    try {
+      const result = await memberPermissionApi.listAudits(clanId, {
+        membershipId,
+        pageNo: nextPage,
+        pageSize: nextPageSize
+      });
+      setAudits(result.records || []);
+      setAuditTotal(result.total || 0);
+      setAuditPageNo(result.pageNo || nextPage);
+      setAuditPageSize(result.pageSize || nextPageSize);
+    } catch (error) {
+      setAudits([]);
+      setAuditTotal(0);
+      notify({ message: memberPermissionErrorMessage(error, '权限变更记录加载失败') }, true);
+    } finally {
+      setAuditLoading(false);
+    }
   }
 
   async function initialize() {
@@ -175,7 +241,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         ? workspace.clanId
         : String(nextClans[0]?.id || '');
       if (nextClanId && nextClanId !== workspace.clanId) workspace.setClanId(nextClanId);
-      if (nextClanId) await loadClanContext(nextClanId);
+      if (nextClanId) await loadClanContext(nextClanId, resetMemberQuery(DEFAULT_PAGE_SIZE));
     });
   }
 
@@ -191,7 +257,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     setRoleFilter('');
     setScopeFilter('');
     setStatusFilter('');
-    void execute(async () => { await loadClanContext(clanId); });
+    const nextQuery = resetMemberQuery(query.pageSize);
+    void execute(async () => { await loadClanContext(clanId, nextQuery); });
   }
 
   async function searchCandidates(searchText: string) {
@@ -205,7 +272,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       const result = await memberPermissionApi.searchCandidates(selectedClanId, value);
       setCandidates(result.records || []);
     } catch (error) {
-      notify({ message: (error as Error).message || '候选成员搜索失败' }, true);
+      notify({ message: memberPermissionErrorMessage(error, '候选成员搜索失败') }, true);
     } finally {
       setCandidateLoading(false);
     }
@@ -252,6 +319,13 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   async function submitGrant() {
     const values = await grantForm.validateFields();
+    if (selectedRole?.riskLevel === 'high') {
+      const confirmed = await confirmHighRiskGrant(
+        selectedRole.roleName,
+        scopePreview(values.scopeType, values.scopeId, selectedClanName, branches)
+      );
+      if (!confirmed) return;
+    }
     await execute(async () => {
       if (editingGrant) {
         await memberPermissionApi.updateGrant(selectedClanId, editingGrant.grantId, {
@@ -272,13 +346,22 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         notify({ message: '成员授权已创建' });
       }
       setGrantModalOpen(false);
-      await loadMembers(selectedClanId, editingGrant ? pageNo : 1, pageSize);
+      const refreshQuery = createMemberQuery(query, editingGrant ? query.pageNo : 1, query.pageSize);
+      await loadMembers(selectedClanId, refreshQuery, selectedMember?.membershipId);
+      if (selectedMember?.allowedActions?.canViewHistory) {
+        await loadMemberAudits(selectedClanId, selectedMember.membershipId, 1, auditPageSize);
+      }
     });
   }
 
   function openMember(member: MemberAggregate) {
     setSelectedMember(member);
     setMemberDrawerOpen(true);
+    setAudits([]);
+    setAuditTotal(0);
+    if (member.allowedActions?.canViewHistory) {
+      void loadMemberAudits(selectedClanId, member.membershipId, 1, auditPageSize);
+    }
   }
 
   function openStatus(member: MemberAggregate) {
@@ -303,7 +386,10 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       );
       notify({ message: values.status === 'active' ? '成员已恢复' : '成员已停用' });
       setStatusModalOpen(false);
-      await loadMembers();
+      await loadMembers(selectedClanId, query, statusTarget.membershipId);
+      if (statusTarget.allowedActions?.canViewHistory) {
+        await loadMemberAudits(selectedClanId, statusTarget.membershipId, 1, auditPageSize);
+      }
     });
   }
 
@@ -320,7 +406,10 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       await memberPermissionApi.revokeGrant(selectedClanId, revokeTarget.grantId, values.reason.trim());
       notify({ message: '成员授权已撤销' });
       setRevokeModalOpen(false);
-      await loadMembers();
+      await loadMembers(selectedClanId, query, selectedMember?.membershipId);
+      if (selectedMember?.allowedActions?.canViewHistory) {
+        await loadMemberAudits(selectedClanId, selectedMember.membershipId, 1, auditPageSize);
+      }
     });
   }
 
@@ -335,7 +424,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
         type="info"
         showIcon
         message="成员权限按角色与数据范围共同生效"
-        description="支派管理员只能管理授权支派及下级支派；高风险授权和成员停用均需填写原因，并由后端执行越级、范围和最后管理员校验。"
+        description="支派管理员只能查看和管理授权支派及下级支派；高风险授权和成员停用均需填写原因，后端会执行越级、范围和最后管理员校验。"
       />
 
       <Card
@@ -400,7 +489,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               ]}
             />
           </Space>
-          <Button type="primary" loading={loading} onClick={() => void execute(async () => { await loadMembers(selectedClanId, 1, pageSize); })}>
+          <Button type="primary" loading={loading} onClick={() => {
+            const nextQuery = createMemberQuery({
+              keyword,
+              roleCode: roleFilter,
+              scopeType: scopeFilter,
+              status: statusFilter
+            }, 1, query.pageSize);
+            void execute(async () => { await loadMembers(selectedClanId, nextQuery); });
+          }}>
             查询
           </Button>
           <Button onClick={() => {
@@ -408,7 +505,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
             setRoleFilter('');
             setScopeFilter('');
             setStatusFilter('');
-            void execute(async () => { await loadMembers(selectedClanId, 1, pageSize); });
+            const nextQuery = resetMemberQuery(query.pageSize);
+            void execute(async () => { await loadMembers(selectedClanId, nextQuery); });
           }}>
             重置
           </Button>
@@ -419,12 +517,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           loading={loading}
           dataSource={members}
           pagination={{
-            current: pageNo,
-            pageSize,
+            current: query.pageNo,
+            pageSize: query.pageSize,
             total,
             showSizeChanger: true,
             showTotal: value => `共 ${value} 名成员`,
-            onChange: (nextPage, nextPageSize) => void execute(async () => { await loadMembers(selectedClanId, nextPage, nextPageSize); })
+            onChange: (nextPage, nextPageSize) => {
+              const nextQuery = createMemberQuery(query, nextPage, nextPageSize);
+              void execute(async () => { await loadMembers(selectedClanId, nextQuery); });
+            }
           }}
           columns={[
             {
@@ -442,7 +543,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               title: '当前角色',
               render: (_value, row) => row.grants.length
                 ? <Space wrap>{row.grants.map(grant => <Tag key={grant.grantId} color={grant.roleCode === 'clan_admin' ? 'red' : 'blue'}>{grant.roleName || grant.roleCode}</Tag>)}</Space>
-                : <Typography.Text type="secondary">暂无有效授权</Typography.Text>
+                : <Typography.Text type="secondary">暂无可见有效授权</Typography.Text>
             },
             {
               key: 'scopes',
@@ -466,7 +567,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               title: '操作',
               render: (_value, row) => (
                 <Space>
-                  <Button type="link" onClick={() => openMember(row)}>管理授权</Button>
+                  <Button type="link" onClick={() => openMember(row)}>查看详情</Button>
                   {row.allowedActions?.canDisableMember ? (
                     <Button type="link" danger={row.membershipStatus === 'active'} onClick={() => openStatus(row)}>
                       {row.membershipStatus === 'active' ? '停用成员' : '恢复成员'}
@@ -527,15 +628,25 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           <Form.Item name="reason" label="变更原因" rules={[{ required: true, whitespace: true, message: '请填写权限变更原因' }]}>
             <TextArea rows={3} maxLength={500} showCount placeholder="用于安全校验和审计追溯" />
           </Form.Item>
-          {selectedRole?.riskLevel === 'high' ? (
-            <Alert type="warning" showIcon message="高风险授权" description="该角色具有全宗族治理或审核能力，请确认人员、职责和授权范围。" />
+          {selectedRole ? (
+            <Alert
+              type={selectedRole.riskLevel === 'high' ? 'warning' : 'info'}
+              showIcon
+              message={`${selectedRole.roleName}${selectedRole.riskLevel === 'high' ? ' · 高风险角色' : ''}`}
+              description={(
+                <Space direction="vertical" size={2}>
+                  <span>{roleCapabilityText(selectedRole)}</span>
+                  <span>{scopePreview(selectedScopeType, selectedScopeId, selectedClanName, branches)}</span>
+                </Space>
+              )}
+            />
           ) : null}
         </Form>
       </Modal>
 
       <Drawer
-        title={selectedMember ? `${selectedMember.displayName} · 授权管理` : '授权管理'}
-        width={620}
+        title={selectedMember ? `${selectedMember.displayName} · 权限详情` : '权限详情'}
+        width={760}
         open={memberDrawerOpen}
         onClose={() => setMemberDrawerOpen(false)}
       >
@@ -545,7 +656,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
               <Descriptions.Item label="成员状态"><Tag color={statusColor(selectedMember.membershipStatus)}>{statusText(selectedMember.membershipStatus)}</Tag></Descriptions.Item>
               <Descriptions.Item label="加入时间">{dateTime(selectedMember.joinedAt)}</Descriptions.Item>
             </Descriptions>
-            <Typography.Title level={5} style={{ marginTop: 20 }}>当前有效授权</Typography.Title>
+            <Typography.Title level={5} style={{ marginTop: 20 }}>当前可见授权</Typography.Title>
             <Table<MemberGrant>
               size="small"
               rowKey="grantId"
@@ -567,6 +678,46 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
                 }
               ]}
             />
+            {selectedMember.allowedActions?.canViewHistory ? (
+              <>
+                <Typography.Title level={5} style={{ marginTop: 24 }}>权限变更记录</Typography.Title>
+                <Table<MemberPermissionAudit>
+                  size="small"
+                  rowKey="auditId"
+                  loading={auditLoading}
+                  dataSource={audits}
+                  pagination={{
+                    current: auditPageNo,
+                    pageSize: auditPageSize,
+                    total: auditTotal,
+                    showSizeChanger: true,
+                    showTotal: value => `共 ${value} 条记录`,
+                    onChange: (nextPage, nextPageSize) => void loadMemberAudits(
+                      selectedClanId,
+                      selectedMember.membershipId,
+                      nextPage,
+                      nextPageSize
+                    )
+                  }}
+                  columns={[
+                    { dataIndex: 'actionType', title: '动作', width: 100, render: value => auditActionText(value) },
+                    { key: 'actor', title: '操作者', width: 130, render: (_value, row) => `${row.actorDisplayName} · ${row.actorMaskedAccount}` },
+                    {
+                      key: 'change',
+                      title: '变更内容',
+                      render: (_value, row) => (
+                        <Space direction="vertical" size={0}>
+                          <Typography.Text type="secondary">变更前：{formatAuditValue(row.beforeValue, branches)}</Typography.Text>
+                          <Typography.Text>变更后：{formatAuditValue(row.afterValue, branches)}</Typography.Text>
+                          <Typography.Text type="secondary">原因：{row.reason || '-'}</Typography.Text>
+                        </Space>
+                      )
+                    },
+                    { dataIndex: 'changedAt', title: '时间', width: 140, render: value => dateTime(value) }
+                  ]}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
       </Drawer>
