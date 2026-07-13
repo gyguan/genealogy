@@ -3,6 +3,7 @@ package com.genealogy.imports.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.imports.domain.ImportJobDescriptor;
 import com.genealogy.imports.dto.ImportJobResponse;
 import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.dto.ImportRowErrorResponse;
@@ -37,6 +38,9 @@ public class ImportJobApplicationService {
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
+    /**
+     * Compatibility overload for callers that do not yet provide a file-format filter.
+     */
     @Transactional(readOnly = true)
     public PageResponse<ImportJobSummaryResponse> listJobs(
             Long clanId,
@@ -47,8 +51,23 @@ public class ImportJobApplicationService {
             int pageSize,
             Long actorId
     ) {
+        return listJobs(clanId, branchId, status, importType, null, pageNo, pageSize, actorId);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ImportJobSummaryResponse> listJobs(
+            Long clanId,
+            Long branchId,
+            String status,
+            String importType,
+            String fileFormat,
+            int pageNo,
+            int pageSize,
+            Long actorId
+    ) {
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
-        Specification<ImportJobEntity> specification = jobSpecification(clanId, branchId, status, importType);
+        ImportJobDescriptor filter = parseFilter(importType, fileFormat);
+        Specification<ImportJobEntity> specification = jobSpecification(clanId, branchId, status, filter);
         PageRequest pageRequest = PageRequest.of(
                 Math.max(0, pageNo - 1),
                 pageSize,
@@ -73,11 +92,14 @@ public class ImportJobApplicationService {
                 .stream()
                 .map(error -> new ImportRowErrorResponse(error.getRowNo(), error.getErrorMessage(), error.getRawData()))
                 .toList();
+        ImportJobDescriptor descriptor = descriptor(job);
         return new ImportJobResponse(
                 job.getId(),
                 job.getClanId(),
                 job.getBranchId(),
-                job.getImportType(),
+                descriptor.importType(),
+                descriptor.fileFormat(),
+                descriptor.legacyImportType(),
                 job.getOriginalFilename(),
                 job.getTotalCount(),
                 job.getSuccessCount(),
@@ -97,7 +119,7 @@ public class ImportJobApplicationService {
             Long clanId,
             Long branchId,
             String status,
-            String importType
+            ImportJobDescriptor filter
     ) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -108,17 +130,33 @@ public class ImportJobApplicationService {
             if (!isBlank(status)) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status.trim().toLowerCase()));
             }
-            if (!isBlank(importType)) {
-                predicates.add(criteriaBuilder.equal(root.get("importType"), importType.trim().toLowerCase()));
+            if (filter.hasImportType()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.equal(root.get("importType"), filter.importType()),
+                        criteriaBuilder.equal(root.get("importType"), filter.importType() + "_csv"),
+                        criteriaBuilder.equal(root.get("importType"), filter.importType() + "_xlsx")
+                ));
+            }
+            if (filter.hasFileFormat()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.equal(root.get("fileFormat"), filter.fileFormat()),
+                        criteriaBuilder.and(
+                                criteriaBuilder.isNull(root.get("fileFormat")),
+                                criteriaBuilder.like(root.<String>get("importType"), "%_" + filter.fileFormat())
+                        )
+                ));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
     }
 
     private ImportJobSummaryResponse toSummary(ImportJobEntity job) {
+        ImportJobDescriptor descriptor = descriptor(job);
         return new ImportJobSummaryResponse(
                 job.getId(),
-                job.getImportType(),
+                descriptor.importType(),
+                descriptor.fileFormat(),
+                descriptor.legacyImportType(),
                 job.getOriginalFilename(),
                 job.getTotalCount(),
                 job.getSuccessCount(),
@@ -131,6 +169,18 @@ public class ImportJobApplicationService {
                 job.getReviewRound(),
                 job.getLatestReviewTaskId()
         );
+    }
+
+    private ImportJobDescriptor descriptor(ImportJobEntity job) {
+        return ImportJobDescriptor.resolve(job.getImportType(), job.getFileFormat(), job.getOriginalFilename());
+    }
+
+    private ImportJobDescriptor parseFilter(String importType, String fileFormat) {
+        try {
+            return ImportJobDescriptor.fromFilter(importType, fileFormat);
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException("IMPORT_FILE_FORMAT_INVALID", "文件格式必须是 csv 或 xlsx");
+        }
     }
 
     private boolean isBlank(String value) {

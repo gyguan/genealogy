@@ -1,10 +1,14 @@
 package com.genealogy.imports.entity;
 
+import com.genealogy.imports.domain.ImportJobDescriptor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +20,14 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "import_job")
 public class ImportJobEntity {
+
+    public static final String TYPE_PERSON = "person";
+    public static final String TYPE_RELATIONSHIP = "relationship";
+    public static final String TYPE_GENERATION = "generation";
+    public static final String TYPE_SOURCE = "source";
+
+    public static final String FORMAT_CSV = "csv";
+    public static final String FORMAT_XLSX = "xlsx";
 
     public static final String PROCESSING_PROCESSING = "processing";
     public static final String PROCESSING_CORRECTION_REQUIRED = "correction_required";
@@ -37,8 +49,11 @@ public class ImportJobEntity {
     @Column(name = "branch_id")
     private Long branchId;
 
-    @Column(name = "import_type")
+    @Column(name = "import_type", nullable = false)
     private String importType;
+
+    @Column(name = "file_format", nullable = false)
+    private String fileFormat;
 
     @Column(name = "original_filename")
     private String originalFilename;
@@ -83,4 +98,33 @@ public class ImportJobEntity {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public void setImportType(String importType) {
+        if (importType == null || importType.isBlank()) {
+            this.importType = importType;
+            return;
+        }
+        ImportJobDescriptor descriptor = ImportJobDescriptor.fromFilter(importType, this.fileFormat);
+        this.importType = descriptor.importType();
+        this.fileFormat = descriptor.fileFormat();
+    }
+
+    public void setFileFormat(String fileFormat) {
+        if (fileFormat == null || fileFormat.isBlank()) {
+            this.fileFormat = fileFormat;
+            return;
+        }
+        ImportJobDescriptor descriptor = ImportJobDescriptor.fromFilter(this.importType, fileFormat);
+        this.importType = descriptor.importType();
+        this.fileFormat = descriptor.fileFormat();
+    }
+
+    @PrePersist
+    @PreUpdate
+    @PostLoad
+    void normalizeDescriptor() {
+        ImportJobDescriptor descriptor = ImportJobDescriptor.resolve(importType, fileFormat, originalFilename);
+        this.importType = descriptor.importType();
+        this.fileFormat = descriptor.fileFormat();
+    }
 }

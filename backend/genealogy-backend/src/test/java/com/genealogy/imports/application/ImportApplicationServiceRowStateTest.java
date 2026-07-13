@@ -91,9 +91,15 @@ class ImportApplicationServiceRowStateTest {
         );
 
         assertThat(result.status()).isEqualTo("completed");
+        assertThat(result.importType()).isEqualTo("person");
+        assertThat(result.fileFormat()).isEqualTo("csv");
+        assertThat(result.legacyImportType()).isEqualTo("person_csv");
+
         ArgumentCaptor<ImportJobEntity> jobCaptor = ArgumentCaptor.forClass(ImportJobEntity.class);
         verify(importJobRepository, org.mockito.Mockito.atLeast(2)).save(jobCaptor.capture());
         ImportJobEntity savedJob = jobCaptor.getAllValues().get(jobCaptor.getAllValues().size() - 1);
+        assertThat(savedJob.getImportType()).isEqualTo(ImportJobEntity.TYPE_PERSON);
+        assertThat(savedJob.getFileFormat()).isEqualTo(ImportJobEntity.FORMAT_CSV);
         assertThat(savedJob.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_READY_FOR_REVIEW);
         assertThat(savedJob.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_NOT_SUBMITTED);
         assertThat(savedJob.getReviewRound()).isZero();

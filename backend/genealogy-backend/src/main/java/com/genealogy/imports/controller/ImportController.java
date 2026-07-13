@@ -133,6 +133,7 @@ public class ImportController {
             @RequestParam(required = false) Long branchId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String importType,
+            @RequestParam(required = false) String fileFormat,
             PageQuery pageQuery,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
@@ -142,6 +143,7 @@ public class ImportController {
                 branchId,
                 status,
                 importType,
+                fileFormat,
                 pageQuery.normalizedPageNo(),
                 pageQuery.normalizedPageSize(),
                 actorId
