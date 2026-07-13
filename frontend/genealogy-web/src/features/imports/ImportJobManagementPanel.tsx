@@ -3,6 +3,12 @@ import { Alert, Button, Card, Checkbox, Empty, Form, Input, InputNumber, Modal, 
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import {
+  importFileFormatOptions,
+  importFileFormatText,
+  importTypeOptions,
+  importTypeText
+} from './import-type-registry';
 
 type Props = {
   notify: (data: unknown, error?: boolean) => void;
@@ -12,6 +18,8 @@ type Props = {
 type ImportJobSummary = {
   id: number;
   importType?: string;
+  fileFormat?: string;
+  legacyImportType?: string;
   originalFilename?: string;
   totalCount?: number;
   successCount?: number;
@@ -67,11 +75,6 @@ const statusOptions = [
   { value: 'failed', label: '失败' }
 ];
 
-const typeOptions = [
-  { value: 'person_csv', label: '人物 CSV' },
-  { value: 'person_xlsx', label: '人物 Excel' }
-];
-
 const genderOptions = [
   { value: 'male', label: '男' },
   { value: 'female', label: '女' },
@@ -120,7 +123,6 @@ function reviewStatusColor(value?: string) {
   if (status === 'approved') return 'success';
   if (status === 'rejected') return 'error';
   if (status === 'pending') return 'processing';
-  if (status === 'cancelled') return 'default';
   return 'default';
 }
 
@@ -142,14 +144,6 @@ function rowStatusColor(value?: string) {
   return 'default';
 }
 
-function importTypeText(value?: string) {
-  const dict: Record<string, string> = {
-    person_csv: '人物 CSV',
-    person_xlsx: '人物 Excel'
-  };
-  return dict[String(value || '').toLowerCase()] || value || '-';
-}
-
 function formatDateTime(value?: string) {
   if (!value) return '-';
   const date = new Date(value);
@@ -161,8 +155,15 @@ function payloadValue(payload: ImportRowPayload, key: string) {
   return value === null || value === undefined ? undefined : value;
 }
 
-function retryable(row: ImportJobRow) {
-  return ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase()) && !row.draftCreated;
+function normalizedImportType(row?: ImportJobSummary | null) {
+  const value = String(row?.importType || row?.legacyImportType || '').toLowerCase();
+  return value.replace(/_(csv|xlsx)$/, '');
+}
+
+function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
+  return normalizedImportType(job) === 'person'
+    && ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase())
+    && !row.draftCreated;
 }
 
 function canSubmitReview(job: ImportJobSummary) {
@@ -180,6 +181,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [selectedJob, setSelectedJob] = useState<ImportJobDetail | null>(null);
   const [status, setStatus] = useState<string>();
   const [importType, setImportType] = useState<string>();
+  const [fileFormat, setFileFormat] = useState<string>();
   const [pageNo, setPageNo] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
@@ -213,6 +215,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
       if (workspace.branchId) params.set('branchId', String(workspace.branchId));
       if (status) params.set('status', status);
       if (importType) params.set('importType', importType);
+      if (fileFormat) params.set('fileFormat', fileFormat);
       const page = await apiClient.get<PageResponse<ImportJobSummary>>(
         `/clans/${workspace.clanId}/imports?${params.toString()}`
       );
@@ -312,13 +315,10 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     try {
       const result = await apiClient.post<ImportJobRow>(
         `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`,
-        {
-          ...values,
-          expectedVersion: editingRow.version ?? 0
-        }
+        { ...values, expectedVersion: editingRow.version ?? 0 }
       );
       if (result.rowStatus === 'draft_created') {
-        notify({ message: `第 ${result.rowNo || editingRow.rowNo || '-'} 行修正成功，已生成人物草稿` });
+        notify({ message: `第 ${result.rowNo || editingRow.rowNo || '-'} 行修正成功，已生成草稿` });
         setEditingRow(null);
         form.resetFields();
       } else {
@@ -343,9 +343,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
         `/clans/${workspace.clanId}/imports/${reviewJob.id}/submit-review`,
         { comment: reviewComment.trim() || undefined }
       );
-      if (task.id) {
-        workspace.setReviewTaskId(String(task.id));
-      }
+      if (task.id) workspace.setReviewTaskId(String(task.id));
       notify({ message: `导入批次已提交第 ${(reviewJob.reviewRound || 0) + 1} 轮审核` });
       setReviewJob(null);
       setReviewComment('');
@@ -360,7 +358,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
 
   useEffect(() => {
     void loadJobs();
-  }, [workspace.clanId, workspace.branchId, status, importType, pageNo, pageSize, refreshKey]);
+  }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);
 
   useEffect(() => {
     if (selectedJob && (selectedJob.failureCount || 0) > 0) {
@@ -386,11 +384,19 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           />
           <Select
             allowClear
-            placeholder="全部导入类型"
+            placeholder="全部业务类型"
             value={importType}
-            options={typeOptions}
+            options={importTypeOptions}
             style={{ width: 180 }}
             onChange={value => { setImportType(value); setPageNo(1); clearSelection(); }}
+          />
+          <Select
+            allowClear
+            placeholder="全部文件格式"
+            value={fileFormat}
+            options={[...importFileFormatOptions]}
+            style={{ width: 160 }}
+            onChange={value => { setFileFormat(value); setPageNo(1); clearSelection(); }}
           />
           <Typography.Text type="secondary">
             {workspace.branchId ? '当前仅显示所选支派的导入任务' : '当前显示全宗族导入任务'}
@@ -419,7 +425,8 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             }
           }}
           columns={[
-            { key: 'importType', title: '导入类型', render: (_value, row) => importTypeText(row.importType) },
+            { key: 'importType', title: '业务类型', width: 130, render: (_value, row) => importTypeText(row.importType || row.legacyImportType) },
+            { key: 'fileFormat', title: '文件格式', width: 100, render: (_value, row) => importFileFormatText(row.fileFormat, row.legacyImportType) },
             { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename', ellipsis: true },
             { key: 'totalCount', title: '总数', dataIndex: 'totalCount', width: 72 },
             { key: 'successCount', title: '草稿', dataIndex: 'successCount', width: 72 },
@@ -452,7 +459,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
 
       {selectedJob ? (
         <Card
-          title={`批次处理 · ${selectedJob.originalFilename || '人物导入'}`}
+          title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`}
           loading={detailLoading}
           style={{ marginTop: 16 }}
           extra={canSubmitReview(selectedJob) ? (
@@ -462,6 +469,8 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           ) : null}
         >
           <Space wrap style={{ marginBottom: 12 }}>
+            <Tag>{importTypeText(selectedJob.importType || selectedJob.legacyImportType)}</Tag>
+            <Tag>{importFileFormatText(selectedJob.fileFormat, selectedJob.legacyImportType)}</Tag>
             <Tag color={processingStatusColor(selectedJob)}>{processingStatusText(selectedJob)}</Tag>
             <Tag color={reviewStatusColor(selectedJob.reviewStatus)}>{reviewStatusText(selectedJob.reviewStatus)}</Tag>
             {(selectedJob.reviewRound || 0) > 0 ? <Typography.Text type="secondary">已提交 {selectedJob.reviewRound} 轮</Typography.Text> : null}
@@ -470,7 +479,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             type={(selectedJob.failureCount || 0) > 0 ? 'warning' : selectedJob.reviewStatus === 'approved' ? 'success' : 'info'}
             showIcon
             message={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved'
-              ? '审核已通过，批次人物已正式入谱。'
+              ? '审核已通过，批次数据已正式生效。'
               : selectedJob.reviewStatus === 'pending'
                 ? '批次正在审核中，暂不能继续修改。'
                 : selectedJob.reviewStatus === 'rejected'
@@ -511,7 +520,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
                   width: 100,
                   fixed: 'right',
                   render: (_value, row) => (
-                    <Button size="small" type="primary" disabled={!retryable(row)} onClick={() => openCorrection(row)}>
+                    <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>
                       修正
                     </Button>
                   )
@@ -520,7 +529,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
               scroll={{ x: 'max-content' }}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式入谱' : '当前批次没有失败行'} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />
           )}
         </Card>
       ) : null}
@@ -537,7 +546,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
       >
         {editingRow ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert type="info" showIcon message="原始数据仅作对照；保存后将使用下方业务字段重新校验，不会修改原始导入记录。" />
+            <Alert type="info" showIcon message="原始数据仅作对照；保存后将使用对应业务类型的修正规则重新校验，不会修改原始导入记录。" />
             <Typography.Paragraph type="secondary" copyable={{ text: editingRow.rawData || '' }}>
               原始数据：{editingRow.rawData || '-'}
             </Typography.Paragraph>
@@ -583,10 +592,11 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           <Alert
             type="info"
             showIcon
-            message="提交后，批次中的人物草稿将锁定，审核通过后统一正式入谱；提交人不能审核自己的批次。"
+            message="提交后，批次草稿将锁定，审核通过后统一正式生效；提交人不能审核自己的批次。"
           />
+          <Typography.Text>业务类型：{importTypeText(reviewJob?.importType || reviewJob?.legacyImportType)}</Typography.Text>
           <Typography.Text>文件：{reviewJob?.originalFilename || '-'}</Typography.Text>
-          <Typography.Text>人物草稿：{reviewJob?.successCount || 0} 人</Typography.Text>
+          <Typography.Text>草稿数据：{reviewJob?.successCount || 0} 条</Typography.Text>
           <Input.TextArea
             value={reviewComment}
             maxLength={500}
