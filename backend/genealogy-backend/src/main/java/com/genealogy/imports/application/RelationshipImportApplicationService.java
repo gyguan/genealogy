@@ -52,6 +52,8 @@ public class RelationshipImportApplicationService {
     private static final String STATUS_COMPLETED = "completed";
     private static final String STATUS_PARTIAL = "partial_completed";
     private static final String STATUS_FAILED = "failed";
+    private static final String PERMISSION_CREATE = "relationship:create";
+    private static final String PERMISSION_CHECK_CONFLICT = "relationship:check_conflict";
 
     private final ImportJobRepository importJobRepository;
     private final ImportJobErrorRepository importJobErrorRepository;
@@ -112,12 +114,12 @@ public class RelationshipImportApplicationService {
     ) {
         filePolicyService.validate(branchId, file);
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
+        ImportReadResult data = readImport(file);
         String filename = file.getOriginalFilename() == null ? "relationships.csv" : file.getOriginalFilename();
         String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
                 ? ImportJobEntity.FORMAT_XLSX
                 : ImportJobEntity.FORMAT_CSV;
         ImportJobEntity job = createJob(clanId, branchId, filename, format, actorId);
-        ImportReadResult data = readImport(file);
         int success = 0;
         int failure = 0;
         List<ImportJobRowEntity> jobRows = new ArrayList<>();
@@ -126,7 +128,7 @@ public class RelationshipImportApplicationService {
         for (ImportRow row : data.rows()) {
             ImportJobRowEntity jobRow = newJobRow(job.getId(), row);
             try {
-                ParsedRelationship parsed = parseAndResolve(clanId, row.cells());
+                ParsedRelationship parsed = parseAndResolve(clanId, row.cells(), actorId, PERMISSION_CREATE);
                 jobRow.setNormalizedData(normalizedData(parsed));
                 RelationshipResponse relationship = relationshipApplicationService.create(
                         clanId,
@@ -175,7 +177,7 @@ public class RelationshipImportApplicationService {
         return toResponse(saved, errors);
     }
 
-    ParsedRelationship parseAndResolve(Long clanId, List<String> cells) {
+    ParsedRelationship parseAndResolve(Long clanId, List<String> cells, Long actorId, String permission) {
         ensureNoExtraColumns(cells);
         String fromCode = requiredCell(cells, RelationshipImportTemplateDefinition.FROM_PERSON_CODE_INDEX, "关系主体编码不能为空");
         String toCode = requiredCell(cells, RelationshipImportTemplateDefinition.TO_PERSON_CODE_INDEX, "关系对象编码不能为空");
@@ -187,6 +189,10 @@ public class RelationshipImportApplicationService {
         }
         PersonEntity from = requireUniquePerson(clanId, fromCode, "关系主体");
         PersonEntity to = requireUniquePerson(clanId, toCode, "关系对象");
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, from.getBranchId(), permission);
+        if (!from.getBranchId().equals(to.getBranchId())) {
+            authorizationApplicationService.requireBranchPermission(clanId, actorId, to.getBranchId(), permission);
+        }
         if ("父子".equals(displayType) && !"male".equalsIgnoreCase(from.getGender())) {
             throw new BusinessException("IMPORT_RELATIONSHIP_FATHER_GENDER_INVALID", "父子关系的主体人物性别必须为男");
         }
@@ -226,7 +232,7 @@ public class RelationshipImportApplicationService {
         String type = cell(row.cells(), RelationshipImportTemplateDefinition.RELATIONSHIP_TYPE_INDEX);
         String description = cell(row.cells(), RelationshipImportTemplateDefinition.DESCRIPTION_INDEX);
         try {
-            ParsedRelationship parsed = parseAndResolve(clanId, row.cells());
+            ParsedRelationship parsed = parseAndResolve(clanId, row.cells(), actorId, PERMISSION_CHECK_CONFLICT);
             RelationshipConflictCheckResponse conflict = relationshipApplicationService.checkConflict(
                     clanId,
                     createRequest(parsed),
@@ -321,7 +327,13 @@ public class RelationshipImportApplicationService {
     private ImportReadResult readImport(MultipartFile file) {
         String filename = file.getOriginalFilename() == null ? "relationships.csv" : file.getOriginalFilename();
         try {
-            return filename.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);
+            ImportReadResult result = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
+                    ? readXlsxRows(file)
+                    : readCsvRows(file);
+            if (result.rows().isEmpty()) {
+                throw new BusinessException("IMPORT_RELATIONSHIP_DATA_EMPTY", "人物关系导入文件至少需要一行数据");
+            }
+            return result;
         } catch (IOException exception) {
             throw new BusinessException("IMPORT_FILE_READ_FAILED", "人物关系导入文件读取失败");
         }

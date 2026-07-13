@@ -86,7 +86,9 @@ public class RelationshipImportJobRowApplicationService {
                     request.description() == null ? "" : request.description()
             );
             RelationshipImportApplicationService.ParsedRelationship parsed =
-                    relationshipImportApplicationService.parseAndResolve(clanId, cells);
+                    relationshipImportApplicationService.parseAndResolve(
+                            clanId, cells, actorId, "relationship:create"
+                    );
             RelationshipResponse relationship = relationshipApplicationService.create(
                     clanId,
                     relationshipImportApplicationService.createRequest(parsed),
