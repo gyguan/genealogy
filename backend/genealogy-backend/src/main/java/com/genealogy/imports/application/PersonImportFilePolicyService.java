@@ -14,48 +14,43 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 @Service
 public class PersonImportFilePolicyService {
-
-    private static final Set<String> BRANCH_HEADER_ALIASES = Set.of(
-            "branchid",
-            "branch",
-            "支派id",
-            "支派编号",
-            "支派"
-    );
 
     public void validate(Long branchId, MultipartFile file) {
         if (branchId == null) {
             throw new BusinessException("IMPORT_BRANCH_REQUIRED", "请先选择目标支派，再导入人物");
         }
         if (file == null || file.isEmpty()) {
-            return;
+            throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
         }
-        List<String> headers = readHeaders(file);
-        boolean containsBranchColumn = headers.stream()
-                .map(this::normalizeHeader)
-                .anyMatch(BRANCH_HEADER_ALIASES::contains);
-        if (containsBranchColumn) {
-            throw new BusinessException(
-                    "IMPORT_BRANCH_COLUMN_FORBIDDEN",
-                    "导入文件不能填写支派ID或支派列，请在页面中选择目标支派"
-            );
-        }
+
+        FileFormat format = resolveFormat(file.getOriginalFilename());
+        List<String> headers = readHeaders(file, format);
+        validateHeaders(headers);
     }
 
-    private List<String> readHeaders(MultipartFile file) {
-        String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
+    private FileFormat resolveFormat(String originalFilename) {
+        String filename = originalFilename == null ? "" : originalFilename.trim().toLowerCase(Locale.ROOT);
+        if (filename.endsWith(".csv")) {
+            return FileFormat.CSV;
+        }
+        if (filename.endsWith(".xlsx")) {
+            return FileFormat.XLSX;
+        }
+        throw new BusinessException("IMPORT_FILE_TYPE_UNSUPPORTED", "人物导入只支持系统提供的 CSV 或 XLSX 模板");
+    }
+
+    private List<String> readHeaders(MultipartFile file, FileFormat format) {
         try {
-            return filename.endsWith(".xlsx") ? readXlsxHeaders(file) : readCsvHeaders(file);
-        } catch (BusinessException ex) {
-            throw ex;
-        } catch (Exception ex) {
+            return format == FileFormat.XLSX ? readXlsxHeaders(file) : readCsvHeaders(file);
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
             throw new BusinessException("IMPORT_HEADER_READ_FAILED", "无法读取导入文件表头");
         }
     }
@@ -66,9 +61,7 @@ public class PersonImportFilePolicyService {
             if (line == null) {
                 return List.of();
             }
-            return Arrays.stream(line.replace("\ufeff", "").split(",", -1))
-                    .map(value -> value.replace("\"", "").trim())
-                    .toList();
+            return parseCsvLine(line);
         }
     }
 
@@ -84,22 +77,66 @@ public class PersonImportFilePolicyService {
             }
             DataFormatter formatter = new DataFormatter();
             int lastCell = Math.max(0, row.getLastCellNum());
-            return java.util.stream.IntStream.range(0, lastCell)
-                    .mapToObj(index -> {
-                        Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                        return cell == null ? "" : formatter.formatCellValue(cell).trim();
-                    })
-                    .toList();
+            List<String> headers = new ArrayList<>(lastCell);
+            for (int index = 0; index < lastCell; index++) {
+                Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                headers.add(cell == null ? "" : formatter.formatCellValue(cell));
+            }
+            return headers;
         }
     }
 
-    private String normalizeHeader(String value) {
-        return (value == null ? "" : value)
-                .trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("\ufeff", "")
-                .replace(" ", "")
-                .replace("_", "")
-                .replace("-", "");
+    private void validateHeaders(List<String> headers) {
+        List<String> actual = PersonImportTemplateDefinition.normalizeHeaders(headers);
+        if (actual.isEmpty() || actual.stream().allMatch(String::isBlank)) {
+            throw new BusinessException(
+                    "IMPORT_TEMPLATE_HEADER_REQUIRED",
+                    "上传文件缺少人物导入模板表头，请重新下载模板填写后上传"
+            );
+        }
+        if (!PersonImportTemplateDefinition.HEADERS.equals(actual)) {
+            String actualText = actual.stream().allMatch(String::isBlank)
+                    ? "空表头"
+                    : String.join("、", actual);
+            throw new BusinessException(
+                    "IMPORT_TEMPLATE_HEADER_MISMATCH",
+                    "上传文件与人物导入模板不一致。标准表头："
+                            + PersonImportTemplateDefinition.expectedHeaderText()
+                            + "；当前表头："
+                            + actualText
+            );
+        }
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> cells = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean quoted = false;
+        for (int index = 0; index < line.length(); index++) {
+            char character = line.charAt(index);
+            if (character == '"') {
+                if (quoted && index + 1 < line.length() && line.charAt(index + 1) == '"') {
+                    current.append('"');
+                    index++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (character == ',' && !quoted) {
+                cells.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(character);
+            }
+        }
+        if (quoted) {
+            throw new BusinessException("IMPORT_HEADER_READ_FAILED", "CSV 模板表头格式不正确");
+        }
+        cells.add(current.toString());
+        return cells;
+    }
+
+    private enum FileFormat {
+        CSV,
+        XLSX
     }
 }
