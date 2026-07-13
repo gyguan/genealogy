@@ -35,27 +35,29 @@
 | 6 | 完善能力说明、范围预览、高风险确认和错误提示 | ✅ 已完成 | 统一客户端保留业务错误码，高风险角色二次确认 |
 | 7 | 在成员 Drawer 接入权限变更历史 | ✅ 已完成 | 展示操作者、前后值、原因和时间，不展示技术 ID |
 | 8 | 统一权限文档和角色范围矩阵 | ✅ 已完成 | docs/09、docs/11、OpenAPI 与代码术语一致 |
-| 9 | 补充测试、执行验证和五轴 Review | 🔄 进行中 | 最终验证工作流已启动；治理门禁因 PR 描述结构未更新而失败，正在修复 |
-| 10 | 更新 PR/Issue、清理临时资产并完成合入 | ⏳ 待处理 | 待验证通过后删除临时脚本/工作流、转 Ready 并合入 |
+| 9 | 补充测试、执行验证和五轴 Review | ✅ 已完成 | 后端 16 个聚焦测试、前端 4 个模型测试、API Check、全量 Typecheck、生产构建和治理门禁通过 |
+| 10 | 更新 PR/Issue、清理临时资产并完成合入 | 🔄 进行中 | 临时脚本与工作流已删除，收口文档已提交，待 PR 转 Ready 并 squash 合入 |
 
-## 验证范围
+## 验证结果
 
-### 后端
+### 后端专项
 
-- Java 17 编译。
-- `GlobalExceptionHandlerTest`
-- `MemberGrantVisibilityPolicyTest`
-- `MemberPermissionAuditControllerTest`
-- `MemberPermissionAuditApplicationServiceTest`
-- 原有成员权限、范围和分页测试。
+- Java 17 编译：通过。
+- 16 个成员权限与错误契约聚焦测试：全部通过。
+- 全量后端测试中的 4 个失败均来自 Source/Attachment 既有 Mockito 权限码桩，与本 Issue 无关。
+- PostgreSQL 启动检查失败原因是仓库存在两个 Flyway `V3` 迁移，发生在 Bean 初始化前，与本 Issue 无关。
 
 ### 前端与契约
 
-- `npm run test:members`
-- `npm run api:check`
-- `npm run typecheck`
-- `npm run build`
-- OpenAPI 和文档契约检查。
+- `npm run test:members`：4 个通过。
+- `npm run api:check`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- API Contract：通过。
+- Issue Delivery Governance：通过。
+- Commercial Frontend Build：通过。
+
+正式验证记录：`docs/13-member-permission-issue-102-closure.md`。
 
 ## 五轴 Review
 
@@ -70,11 +72,11 @@
 - 当前 Issue：#102
 - 当前分支：`agent/issue-102-member-permission-p1`
 - 当前 Draft PR：#115
-- 最后完成任务：代码、OpenAPI、前端页面、聚焦测试和文档实现完成
-- 当前进行中：修复 PR 治理描述并等待最终验证结果
-- 最新 Commit：`8846063c500e5d33c7d15e6a03fbf06560cee9a5`
-- CI 状态：Issue Delivery Governance 因 PR 必填章节缺失失败；API Contract、Backend CI 和专项验证正在运行
+- 最后完成任务：实现、测试、文档、五轴 Review 和临时资产清理全部完成
+- 当前进行中：PR 转 Ready 并 squash 合入 `main`
+- 最新 Commit：`f2e6cfa56d6841e12fbf2579e0c5b5d457ac96fc` 之后的收口提交
+- CI 状态：API Contract、Issue Delivery Governance、Commercial Frontend Build、专项后端、Typecheck 和生产构建通过；默认 Backend CI 的两个失败已归因为既有基线
 - 未解决 Review：无
-- 已知阻塞：无业务阻塞；需完成最终验证和临时资产清理
-- 下一步最小任务：更新 PR 描述满足治理模板，读取各验证 Job 结果并修复回归
-- 最后更新时间：2026-07-13 20:30 CST
+- 已知阻塞：无
+- 下一步最小任务：更新 PR 最终状态，转 Ready，squash merge，确认 Issue 自动关闭并回写完成评论
+- 最后更新时间：2026-07-13 19:48 CST
