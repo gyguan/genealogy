@@ -41,6 +41,23 @@ springdoc:
 genealogy:
   attachment:
     storage-root: ./data/attachments
+  auth:
+    public-registration-enabled: ${GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED:false}
+    demo-mode-enabled: ${GENEALOGY_AUTH_DEMO_MODE_ENABLED:false}
+    expose-bearer-token: ${GENEALOGY_AUTH_EXPOSE_BEARER_TOKEN:false}
+    expose-reset-token: ${GENEALOGY_AUTH_EXPOSE_RESET_TOKEN:false}
+    cookie-secure: ${GENEALOGY_AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${GENEALOGY_AUTH_COOKIE_SAME_SITE:Strict}
+    session-hours: ${GENEALOGY_AUTH_SESSION_HOURS:8}
+    remember-me-hours: ${GENEALOGY_AUTH_REMEMBER_ME_HOURS:720}
+    activity-touch-minutes: ${GENEALOGY_AUTH_ACTIVITY_TOUCH_MINUTES:5}
+    login-window-minutes: ${GENEALOGY_AUTH_LOGIN_WINDOW_MINUTES:15}
+    account-max-failures: ${GENEALOGY_AUTH_ACCOUNT_MAX_FAILURES:5}
+    ip-max-failures: ${GENEALOGY_AUTH_IP_MAX_FAILURES:20}
+    invite-hours: ${GENEALOGY_AUTH_INVITE_HOURS:72}
+    reset-minutes: ${GENEALOGY_AUTH_RESET_MINUTES:30}
+    reset-base-url: ${GENEALOGY_AUTH_RESET_BASE_URL:http://localhost:5179/?auth=reset&resetToken=}
+    reset-delivery-url: ${GENEALOGY_AUTH_RESET_DELIVERY_URL:}
 
 logging:
   level:
