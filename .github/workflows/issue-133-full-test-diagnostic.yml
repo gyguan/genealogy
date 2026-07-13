@@ -1,0 +1,54 @@
+name: Issue 133 Full Test Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Run full backend tests
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set +e
+          mvn -q test >/tmp/full-test.log 2>&1
+          status=$?
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          failures = []
+          for report in sorted(Path('target/surefire-reports').glob('TEST-*.xml')):
+              try:
+                  root = ET.parse(report).getroot()
+              except Exception:
+                  continue
+              for case in root.findall('testcase'):
+                  node = case.find('failure')
+                  if node is None:
+                      node = case.find('error')
+                  if node is None:
+                      continue
+                  message = ' '.join((node.get('message') or '').split())
+                  body = ' '.join((node.text or '').split())
+                  failures.append((root.get('name'), case.get('name'), message or body[:1000]))
+          print(f'FULL_TEST_FAILURE_COUNT={len(failures)}')
+          for suite, case, message in failures:
+              print(f'FULL_TEST_FAILURE={suite}#{case} :: {message[:1200]}')
+          if not failures:
+              lines = Path('/tmp/full-test.log').read_text(errors='replace').splitlines()
+              for line in [line for line in lines if '[ERROR]' in line][-40:]:
+                  print(f'FULL_TEST_LOG={line[:1200]}')
+          PY
+          exit $status
