@@ -27,8 +27,19 @@ function responseName(operation) {
   return refName(response.content?.['application/json']?.schema);
 }
 
-function paramsOf(pathItem, operation, location) {
+function resolveParameter(openapi, parameter) {
+  const reference = parameter?.['$ref'];
+  const prefix = '#/components/parameters/';
+  if (!reference || !reference.startsWith(prefix)) {
+    return parameter;
+  }
+  const name = reference.slice(prefix.length);
+  return openapi.components?.parameters?.[name] || parameter;
+}
+
+function paramsOf(openapi, pathItem, operation, location) {
   return [...(pathItem.parameters || []), ...(operation.parameters || [])]
+    .map(item => resolveParameter(openapi, item))
     .filter(item => item.in === location)
     .map(item => item.name)
     .filter(Boolean)
@@ -77,8 +88,8 @@ function collect(openapi) {
         operationId: operation.operationId || key.replace(/[^a-zA-Z0-9]+/g, '_'),
         method: method.toUpperCase(),
         path: route,
-        pathParams: paramsOf(pathItem, operation, 'path'),
-        queryParams: paramsOf(pathItem, operation, 'query'),
+        pathParams: paramsOf(openapi, pathItem, operation, 'path'),
+        queryParams: paramsOf(openapi, pathItem, operation, 'query'),
         requestBody: requestBodyName(operation),
         response: responseName(operation)
       };
