@@ -92,8 +92,18 @@ const confidenceOptions = [
   { value: 'unknown', label: '待评估' }
 ];
 
+const bindingTargetTypeOptions = [
+  { value: 'person', label: '人物' },
+  { value: 'branch', label: '支派' },
+  { value: 'clan', label: '宗族' }
+];
+
 function optionText(options: Array<{ value: string; label: string }>, value?: string) {
   return options.find(item => item.value === value)?.label || value || '待维护';
+}
+
+function bindingTargetTypeText(value?: string) {
+  return bindingTargetTypeOptions.find(item => item.value === value)?.label || '其他对象';
 }
 
 function statusColor(value?: string) {
@@ -477,7 +487,7 @@ export function SourceLibraryPage({ notify }: Props) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={sourceTitle(selectedSource)}
-        extra={<Space><Button onClick={() => void reloadDetail()}>刷新</Button>{canBind ? <Button type="primary" onClick={openCreateBinding}>提交绑定审核</Button> : null}</Space>}
+        extra={<Space><Button onClick={() => void reloadDetail()}>刷新</Button>{canBind ? <Button type="primary" onClick={openCreateBinding}>新建绑定关系</Button> : null}</Space>}
       >
         {!selectedSource ? <Empty description="请选择来源资料" /> : (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -528,21 +538,6 @@ export function SourceLibraryPage({ notify }: Props) {
                       />
                     </Space>
                   )
-                },
-                {
-                  key: 'review',
-                  label: '绑定审核入口',
-                  children: (
-                    <Card size="small">
-                      <Space direction="vertical" size="middle">
-                        <Text>正式来源绑定的新增、替换、删除都会先提交审核；审核通过后才会写入或归档绑定记录。</Text>
-                        <Space wrap>
-                          <Button type="primary" disabled={!canBind} onClick={openCreateBinding}>新增绑定审核</Button>
-                          <Text type="secondary">替换/删除请在“引用情况”表格行内发起。</Text>
-                        </Space>
-                      </Space>
-                    </Card>
-                  )
                 }
               ]}
             />
@@ -550,11 +545,12 @@ export function SourceLibraryPage({ notify }: Props) {
         )}
       </Drawer>
 
-      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '提交替换绑定审核' : '提交新增绑定审核'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
+      <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '提交替换绑定审核' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
         <Form form={bindingForm} layout="vertical" onFinish={submitBindingRevision}>
+          {bindingMode === 'create' ? <Alert type="info" showIcon style={{ marginBottom: 12 }} message="新建绑定关系提交后需审核通过才会正式生效。" /> : null}
           <Form.Item name="targetType" label="绑定对象类型" rules={[{ required: true, message: '请选择绑定对象类型' }]}>
             <Select
-              options={[{ value: 'person', label: '人物' }, { value: 'branch', label: '支派' }, { value: 'clan', label: '宗族' }]}
+              options={bindingTargetTypeOptions}
               onChange={(value: BindingTargetType) => { setBindingTargetType(value); bindingForm.setFieldValue('targetId', undefined); }}
             />
           </Form.Item>
@@ -581,6 +577,7 @@ function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBind
       pagination={false}
       locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }}
       columns={[
+        { title: '引用对象类型', width: 120, render: (_value, row) => <Tag>{bindingTargetTypeText(row.targetType)}</Tag> },
         { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
         { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
         { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
