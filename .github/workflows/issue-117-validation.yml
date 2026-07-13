@@ -1,0 +1,58 @@
+name: Issue 117 Validation
+
+on:
+  push:
+    branches:
+      - agent/issue-117-operation-log-access
+    paths:
+      - 'backend/genealogy-backend/**'
+      - 'database/rollback/issue-117-operation-log-permissions.sql'
+      - 'docs/api/openapi.operation-log-security.json'
+      - 'frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
+      - 'scripts/api/generate-frontend-client.mjs'
+      - '.github/scripts/validate-flyway-migrations.py'
+      - '.github/workflows/issue-117-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Flyway migration history
+        run: python3 .github/scripts/validate-flyway-migrations.py --base-ref origin/main
+
+      - name: Validate effective OpenAPI and generated operation contract
+        run: |
+          node -e "const fs=require('fs'); for (const f of fs.readdirSync('docs/api').filter(x=>x.endsWith('.json'))) JSON.parse(fs.readFileSync('docs/api/'+f,'utf8'));"
+          node scripts/api/generate-frontend-client.mjs
+          git diff --exit-code -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+
+      - name: Run focused Issue 117 tests
+        working-directory: backend/genealogy-backend
+        run: >-
+          mvn -B
+          -Dtest=AuthorizationApplicationServiceTest,OperationLogApplicationServiceTest,OperationLogExportApplicationServiceTest,OpLogControllerTest
+          test
+
+      - name: Run backend test suite
+        working-directory: backend/genealogy-backend
+        run: mvn -B test
