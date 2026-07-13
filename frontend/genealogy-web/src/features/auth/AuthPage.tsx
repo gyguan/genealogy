@@ -10,15 +10,6 @@ import {
   Tag,
   Typography
 } from 'antd';
-import {
-  ArrowLeftOutlined,
-  BookOutlined,
-  CheckCircleOutlined,
-  LockOutlined,
-  SafetyCertificateOutlined,
-  TeamOutlined,
-  UserOutlined
-} from '@ant-design/icons';
 import { apiClient } from '../../shared/api/client';
 import {
   AUTH_REMEMBERED_USERNAME_KEY,
@@ -57,9 +48,9 @@ type InvitationValues = {
 type AuthNotice = { type: 'success' | 'info'; message: string; description?: string };
 
 const productCapabilities = [
-  { icon: <TeamOutlined />, title: '世系协同管理', description: '围绕宗族、支派与人物建立清晰可信的世系关系。' },
-  { icon: <BookOutlined />, title: '来源证据可追溯', description: '族谱原文、照片和口述材料均可关联、复核与回溯。' },
-  { icon: <SafetyCertificateOutlined />, title: '权限与审核内建', description: '按角色和支派范围协作，关键变更全程留痕。' }
+  { icon: '世', title: '世系协同管理', description: '围绕宗族、支派与人物建立清晰可信的世系关系。' },
+  { icon: '据', title: '来源证据可追溯', description: '族谱原文、照片和口述材料均可关联、复核与回溯。' },
+  { icon: '审', title: '权限与审核内建', description: '按角色和支派范围协作，关键变更全程留痕。' }
 ];
 
 function errorMessage(error: unknown, fallback: string) {
@@ -182,10 +173,10 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
           autoComplete="on"
         >
           <Form.Item name="username" label="账号" rules={[{ required: true, whitespace: true, message: '请输入账号' }]}>
-            <Input prefix={<UserOutlined />} autoComplete="username" placeholder="请输入用户名" size="large" maxLength={100} />
+            <Input prefix={<span className="commercial-auth-input-mark">用</span>} autoComplete="username" placeholder="请输入用户名" size="large" maxLength={100} />
           </Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password prefix={<LockOutlined />} autoComplete="current-password" placeholder="请输入密码" size="large" />
+            <Input.Password prefix={<span className="commercial-auth-input-mark">密</span>} autoComplete="current-password" placeholder="请输入密码" size="large" />
           </Form.Item>
           <div className="commercial-auth-options">
             <Space size={16} wrap>
@@ -213,7 +204,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
   function renderForgot() {
     return (
       <>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => switchMode('login')} className="commercial-auth-back">返回登录</Button>
+        <Button type="text" onClick={() => switchMode('login')} className="commercial-auth-back">← 返回登录</Button>
         <div className="commercial-auth-heading">
           <Text className="commercial-auth-eyebrow">账号恢复</Text>
           <Title level={2}>找回密码</Title>
@@ -221,7 +212,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
         </div>
         <Form<ForgotValues> form={forgotForm} layout="vertical" requiredMark={false} onFinish={requestPasswordReset}>
           <Form.Item name="account" label="账号信息" rules={[{ required: true, whitespace: true, message: '请输入用户名、邮箱或手机号' }]}>
-            <Input prefix={<UserOutlined />} placeholder="用户名 / 邮箱 / 手机号" size="large" maxLength={120} />
+            <Input prefix={<span className="commercial-auth-input-mark">用</span>} placeholder="用户名 / 邮箱 / 手机号" size="large" maxLength={120} />
           </Form.Item>
           <Button type="primary" htmlType="submit" block size="large" loading={loading}>提交重置申请</Button>
         </Form>
@@ -233,7 +224,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
   function renderReset() {
     return (
       <>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => switchMode('login')} className="commercial-auth-back">返回登录</Button>
+        <Button type="text" onClick={() => switchMode('login')} className="commercial-auth-back">← 返回登录</Button>
         <div className="commercial-auth-heading">
           <Text className="commercial-auth-eyebrow">安全重置</Text>
           <Title level={2}>设置新密码</Title>
@@ -272,7 +263,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
   function renderInvitation() {
     return (
       <>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => switchMode('login')} className="commercial-auth-back">返回登录</Button>
+        <Button type="text" onClick={() => switchMode('login')} className="commercial-auth-back">← 返回登录</Button>
         <div className="commercial-auth-heading">
           <Text className="commercial-auth-eyebrow">受控准入</Text>
           <Title level={2}>接受宗族邀请</Title>
@@ -357,7 +348,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
           {mode === 'forgot' ? renderForgot() : null}
           {mode === 'reset' ? renderReset() : null}
           {mode === 'invite' ? renderInvitation() : null}
-          <div className="commercial-auth-security-note"><CheckCircleOutlined /> 使用加密连接和服务端安全会话保护您的账号</div>
+          <div className="commercial-auth-security-note"><span aria-hidden="true">✓</span> 使用加密连接和服务端安全会话保护您的账号</div>
         </div>
         <footer className="commercial-auth-footer">
           <Text type="secondary">© 2026 Genealogy</Text>
