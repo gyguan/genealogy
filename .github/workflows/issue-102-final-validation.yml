@@ -1,0 +1,86 @@
+name: Issue 102 Final Validation
+
+on:
+  push:
+    branches:
+      - agent/issue-102-member-permission-p1
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-102-member-permission-p1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Compile backend
+        working-directory: backend/genealogy-backend
+        run: mvn -DskipTests package
+      - name: Run issue 102 focused tests
+        working-directory: backend/genealogy-backend
+        run: >-
+          mvn -Dtest=GlobalExceptionHandlerTest,MemberGrantVisibilityPolicyTest,MemberPermissionAuditControllerTest,MemberPermissionAuditApplicationServiceTest,MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest test
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-102-member-permission-p1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+      - name: Run member page model tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:members
+      - name: Check generated API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Production build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+
+  contract-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-102-member-permission-p1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate OpenAPI and required contracts
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const api = JSON.parse(fs.readFileSync('docs/api/openapi.member-permission.json', 'utf8'));
+          const audit = api.paths['/clans/{clanId}/member-permission-audits']?.get;
+          if (!audit) throw new Error('audit contract missing');
+          for (const path of Object.values(api.paths)) {
+            for (const operation of Object.values(path)) {
+              for (const status of ['200', '400', '401', '403', '404', '409']) {
+                if (!operation.responses?.[status]) throw new Error(`response ${status} missing`);
+              }
+            }
+          }
+          const docs09 = fs.readFileSync('docs/09-permission-management.md', 'utf8');
+          const docs11 = fs.readFileSync('docs/11-member-permission-hardening.md', 'utf8');
+          for (const value of ['active / disabled / removed', 'active / revoked', 'branch_subtree', 'operation_log.view']) {
+            if (!docs09.includes(value) || !docs11.includes(value)) throw new Error(`document contract missing: ${value}`);
+          }
+          NODE
