@@ -9,7 +9,6 @@ import com.genealogy.imports.application.ImportJobApplicationService;
 import com.genealogy.imports.application.ImportJobReviewApplicationService;
 import com.genealogy.imports.application.ImportJobRowApplicationService;
 import com.genealogy.imports.application.PersonImportCommandApplicationService;
-import com.genealogy.imports.application.PersonImportFilePolicyService;
 import com.genealogy.imports.application.PersonImportTemplateApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
 import com.genealogy.imports.dto.ImportJobReviewSubmitRequest;
@@ -42,12 +41,15 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/v1")
 public class ImportController {
 
+    private static final MediaType XLSX_MEDIA_TYPE = MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
     private final ImportApplicationService importApplicationService;
     private final PersonImportCommandApplicationService personImportCommandApplicationService;
     private final ImportJobApplicationService importJobApplicationService;
     private final ImportJobRowApplicationService importJobRowApplicationService;
     private final ImportJobReviewApplicationService importJobReviewApplicationService;
-    private final PersonImportFilePolicyService personImportFilePolicyService;
     private final PersonImportTemplateApplicationService personImportTemplateApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
@@ -57,7 +59,6 @@ public class ImportController {
             ImportJobApplicationService importJobApplicationService,
             ImportJobRowApplicationService importJobRowApplicationService,
             ImportJobReviewApplicationService importJobReviewApplicationService,
-            PersonImportFilePolicyService personImportFilePolicyService,
             PersonImportTemplateApplicationService personImportTemplateApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
@@ -66,7 +67,6 @@ public class ImportController {
         this.importJobApplicationService = importJobApplicationService;
         this.importJobRowApplicationService = importJobRowApplicationService;
         this.importJobReviewApplicationService = importJobReviewApplicationService;
-        this.personImportFilePolicyService = personImportFilePolicyService;
         this.personImportTemplateApplicationService = personImportTemplateApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
@@ -79,32 +79,32 @@ public class ImportController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-                .body(personImportTemplateApplicationService.buildTemplate());
+                .body(personImportTemplateApplicationService.buildCsvTemplate());
+    }
+
+    @GetMapping("/imports/templates/persons.xlsx")
+    public ResponseEntity<byte[]> downloadPersonXlsxTemplate() {
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("person-import-template.xlsx", StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(XLSX_MEDIA_TYPE)
+                .body(personImportTemplateApplicationService.buildXlsxTemplate());
     }
 
     @PostMapping("/clans/{clanId}/imports/persons/preview")
     public ApiResponse<ImportPreviewResponse> previewPersons(
             @Positive @PathVariable Long clanId,
-            @RequestParam(value = "branchId", required = false) Long branchId,
+            @Positive @RequestParam("branchId") Long branchId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "autoMapping", defaultValue = "true") boolean autoMapping,
-            @RequestParam(value = "nameIndex", defaultValue = "0") int nameIndex,
-            @RequestParam(value = "genderIndex", defaultValue = "1") int genderIndex,
-            @RequestParam(value = "generationNoIndex", defaultValue = "2") int generationNoIndex,
-            @RequestParam(value = "generationWordIndex", defaultValue = "3") int generationWordIndex,
-            @RequestParam(value = "branchIdIndex", defaultValue = "-1") int branchIdIndex,
-            @RequestParam(value = "birthDateIndex", defaultValue = "4") int birthDateIndex,
-            @RequestParam(value = "isLivingIndex", defaultValue = "5") int isLivingIndex,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        personImportFilePolicyService.validate(branchId, file);
         return ApiResponse.success(importApplicationService.previewPersons(
                 clanId,
                 branchId,
                 file,
-                mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, birthDateIndex, isLivingIndex),
-                autoMapping,
                 actorId
         ));
     }
@@ -112,27 +112,16 @@ public class ImportController {
     @PostMapping("/clans/{clanId}/imports/persons.csv")
     public ApiResponse<ImportJobResponse> importPersonsCsv(
             @Positive @PathVariable Long clanId,
-            @RequestParam(value = "branchId", required = false) Long branchId,
+            @Positive @RequestParam("branchId") Long branchId,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "confirmDuplicates", defaultValue = "false") boolean confirmDuplicates,
-            @RequestParam(value = "autoMapping", defaultValue = "true") boolean autoMapping,
-            @RequestParam(value = "nameIndex", defaultValue = "0") int nameIndex,
-            @RequestParam(value = "genderIndex", defaultValue = "1") int genderIndex,
-            @RequestParam(value = "generationNoIndex", defaultValue = "2") int generationNoIndex,
-            @RequestParam(value = "generationWordIndex", defaultValue = "3") int generationWordIndex,
-            @RequestParam(value = "branchIdIndex", defaultValue = "-1") int branchIdIndex,
-            @RequestParam(value = "birthDateIndex", defaultValue = "4") int birthDateIndex,
-            @RequestParam(value = "isLivingIndex", defaultValue = "5") int isLivingIndex,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        personImportFilePolicyService.validate(branchId, file);
         return ApiResponse.success(personImportCommandApplicationService.importPersonsCsv(
                 clanId,
                 branchId,
                 file,
-                mapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, birthDateIndex, isLivingIndex),
-                autoMapping,
                 confirmDuplicates,
                 actorId
         ));
@@ -215,24 +204,5 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(importJobReviewApplicationService.submit(clanId, jobId, request, actorId));
-    }
-
-    private ImportApplicationService.FieldMapping mapping(
-            int nameIndex,
-            int genderIndex,
-            int generationNoIndex,
-            int generationWordIndex,
-            int birthDateIndex,
-            int isLivingIndex
-    ) {
-        return new ImportApplicationService.FieldMapping(
-                nameIndex,
-                genderIndex,
-                generationNoIndex,
-                generationWordIndex,
-                -1,
-                birthDateIndex,
-                isLivingIndex
-        );
     }
 }
