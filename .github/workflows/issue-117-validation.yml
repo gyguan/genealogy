@@ -12,6 +12,17 @@ on:
       - 'scripts/api/generate-frontend-client.mjs'
       - '.github/scripts/validate-flyway-migrations.py'
       - '.github/workflows/issue-117-validation.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/genealogy-backend/**'
+      - 'database/rollback/issue-117-operation-log-permissions.sql'
+      - 'docs/api/openapi.operation-log-security.json'
+      - 'frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
+      - 'scripts/api/generate-frontend-client.mjs'
+      - '.github/scripts/validate-flyway-migrations.py'
+      - '.github/workflows/issue-117-validation.yml'
 
 permissions:
   contents: read
