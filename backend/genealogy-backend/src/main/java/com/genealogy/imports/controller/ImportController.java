@@ -6,6 +6,7 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.imports.application.ImportApplicationService;
 import com.genealogy.imports.application.ImportJobApplicationService;
+import com.genealogy.imports.application.PersonImportCommandApplicationService;
 import com.genealogy.imports.application.PersonImportFilePolicyService;
 import com.genealogy.imports.application.PersonImportTemplateApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
@@ -34,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 public class ImportController {
 
     private final ImportApplicationService importApplicationService;
+    private final PersonImportCommandApplicationService personImportCommandApplicationService;
     private final ImportJobApplicationService importJobApplicationService;
     private final PersonImportFilePolicyService personImportFilePolicyService;
     private final PersonImportTemplateApplicationService personImportTemplateApplicationService;
@@ -41,12 +43,14 @@ public class ImportController {
 
     public ImportController(
             ImportApplicationService importApplicationService,
+            PersonImportCommandApplicationService personImportCommandApplicationService,
             ImportJobApplicationService importJobApplicationService,
             PersonImportFilePolicyService personImportFilePolicyService,
             PersonImportTemplateApplicationService personImportTemplateApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.importApplicationService = importApplicationService;
+        this.personImportCommandApplicationService = personImportCommandApplicationService;
         this.importJobApplicationService = importJobApplicationService;
         this.personImportFilePolicyService = personImportFilePolicyService;
         this.personImportTemplateApplicationService = personImportTemplateApplicationService;
@@ -109,7 +113,7 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         personImportFilePolicyService.validate(branchId, file);
-        return ApiResponse.success(importApplicationService.importPersonsCsv(
+        return ApiResponse.success(personImportCommandApplicationService.importPersonsCsv(
                 clanId,
                 branchId,
                 file,
