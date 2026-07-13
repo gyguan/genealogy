@@ -9,6 +9,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -36,9 +38,11 @@ public class ImportJobRowEntity {
     @Column(name = "raw_data", nullable = false, columnDefinition = "text")
     private String rawData;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "normalized_data", columnDefinition = "jsonb")
     private String normalizedData;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "corrected_data", columnDefinition = "jsonb")
     private String correctedData;
 
