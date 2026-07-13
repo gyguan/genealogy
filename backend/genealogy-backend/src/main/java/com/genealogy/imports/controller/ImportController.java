@@ -2,8 +2,12 @@ package com.genealogy.imports.controller;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.api.PageQuery;
+import com.genealogy.common.api.PageResponse;
 import com.genealogy.imports.application.ImportApplicationService;
+import com.genealogy.imports.application.ImportJobApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
+import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.dto.ImportPreviewResponse;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
@@ -16,18 +20,22 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 @Validated
 @RestController
 @RequestMapping("/api/v1")
 public class ImportController {
 
     private final ImportApplicationService importApplicationService;
+    private final ImportJobApplicationService importJobApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ImportController(ImportApplicationService importApplicationService, AuthorizationApplicationService authorizationApplicationService) {
+    public ImportController(
+            ImportApplicationService importApplicationService,
+            ImportJobApplicationService importJobApplicationService,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.importApplicationService = importApplicationService;
+        this.importJobApplicationService = importJobApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
@@ -71,8 +79,34 @@ public class ImportController {
     }
 
     @GetMapping("/clans/{clanId}/imports")
-    public ApiResponse<List<ImportJobResponse>> listJobs(@Positive @PathVariable Long clanId) {
-        return ApiResponse.success(importApplicationService.listJobs(clanId));
+    public ApiResponse<PageResponse<ImportJobSummaryResponse>> listJobs(
+            @Positive @PathVariable Long clanId,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String importType,
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(importJobApplicationService.listJobs(
+                clanId,
+                branchId,
+                status,
+                importType,
+                pageQuery.normalizedPageNo(),
+                pageQuery.normalizedPageSize(),
+                actorId
+        ));
+    }
+
+    @GetMapping("/clans/{clanId}/imports/{jobId}")
+    public ApiResponse<ImportJobResponse> getJob(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long jobId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(importJobApplicationService.getJob(clanId, jobId, actorId));
     }
 
     private ImportApplicationService.FieldMapping mapping(int nameIndex, int genderIndex, int generationNoIndex, int generationWordIndex, int branchIdIndex, int birthDateIndex, int isLivingIndex) {
