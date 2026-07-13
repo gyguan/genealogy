@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,8 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
     Optional<ClanMembershipEntity> findByClanIdAndUserId(Long clanId, Long userId);
 
     Optional<ClanMembershipEntity> findByClanIdAndUserIdAndMemberStatus(Long clanId, Long userId, MemberStatus memberStatus);
+
+    List<ClanMembershipEntity> findByClanIdAndUserIdIn(Long clanId, Collection<Long> userIds);
 
     List<ClanMembershipEntity> findByClanIdAndMemberStatus(Long clanId, MemberStatus memberStatus);
 
