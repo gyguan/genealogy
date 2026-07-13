@@ -71,7 +71,19 @@ DEFINE → PLAN → BUILD → VERIFY → REVIEW
 - **VERIFY**：执行与改动相关的构建、测试、契约或静态检查。
 - **REVIEW**：检查 Correctness、Readability、Architecture、Security、Performance。
 
-### 3.2 Issue 实现门禁
+### 3.2 Issue 创建门禁
+
+创建 Issue 时，必须遵循 `docs/ai/issue-creation-standard.md`。核心要求：
+
+1. 同一功能点拆分多个 Issue 前，先明确统一功能前缀、总目标和拆分边界；
+2. 同一功能点下的 Issue 标题必须包含统一前缀和执行序号，例如 `[来源资料库 P0-01] 建立来源资料分页搜索接口`；
+3. Issue 正文必须说明功能组、组内序号、前置 Issue、后续 Issue、是否可并行和建议执行顺序；
+4. 强依赖任务不得标记为可并行；
+5. 超过 3 个 Issue 的功能点，建议创建总控 Issue 并回填子 Issue 清单。
+
+禁止先零散创建多个 Issue，再事后补顺序和依赖。
+
+### 3.3 Issue 实现门禁
 
 执行或恢复 Issue 时，必须遵循 `docs/ai/issue-execution-governance.md`。核心要求：
 
@@ -85,7 +97,7 @@ DEFINE → PLAN → BUILD → VERIFY → REVIEW
 
 以上启动门禁未完成前，不得修改业务代码。历史任务缺少 PR、看板或恢复点时，必须先补齐治理现场。
 
-### 3.3 API 契约门禁
+### 3.4 API 契约门禁
 
 API 变更必须 Contract First：
 
@@ -96,7 +108,7 @@ API 变更必须 Contract First：
 
 不得通过前端兼容逻辑掩盖接口不一致，不得绕过统一响应、权限、隐私或审核语义。
 
-### 3.4 验证与完成判定
+### 3.5 验证与完成判定
 
 任务只有同时满足以下条件才可标记完成：
 
@@ -146,6 +158,7 @@ API 变更必须 Contract First：
 
 | 任务类型 | 必读规则 / 文档 |
 |---|---|
+| Issue 创建、拆分、批量建单 | `docs/ai/issue-creation-standard.md` |
 | Issue 实现、恢复 | `docs/ai/issue-execution-governance.md` |
 | 聊天式长任务、任务看板 | `docs/ai/chat-driven-github-workflow.md`、`docs/ai/task-duration-standard.md` |
 | MVP 主流程 | `docs/01-mvp1-requirements.md` |
@@ -182,6 +195,7 @@ API 变更必须 Contract First：
 - 未更新 OpenAPI 就修改接口调用；
 - 只在前端实现权限控制；
 - 绕过审核修改正式数据；
+- 同一功能点下创建多个无统一前缀、无执行顺序、无依赖关系的零散 Issue；
 - 创建 Issue 分支后不建立 Draft PR 和恢复检查点；
 - 会话中断后仅凭聊天记忆继续编码；
 - 将未验证的修改标记为完成；
@@ -215,6 +229,7 @@ npm run api:check
 ## 10. 专项规范索引
 
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
+- Issue 创建与分组：`docs/ai/issue-creation-standard.md`
 - Issue 实现与恢复：`docs/ai/issue-execution-governance.md`
 - 聊天式开发与看板：`docs/ai/chat-driven-github-workflow.md`
 - 任务耗时记录：`docs/ai/task-duration-standard.md`
