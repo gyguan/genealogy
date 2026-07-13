@@ -66,4 +66,21 @@ class AuthSecurityServiceTest {
         assertEquals(service.ipHash("192.168.10.20"), saved.getIpHash());
         verify(events).save(any(AuthSecurityEventEntity.class));
     }
+
+    @Test
+    void successfulLoginClearsOnlyAccountFailureCounterRows() {
+        AuthLoginAttemptRepository attempts = mock(AuthLoginAttemptRepository.class);
+        AuthSecurityEventRepository events = mock(AuthSecurityEventRepository.class);
+        PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        AuthSecurityService service = new AuthSecurityService(
+                attempts, events, new AuthProperties(), transactionManager
+        );
+
+        service.recordLoginAttempt("member", "192.168.10.20", 7L, true, "SUCCESS", "agent");
+
+        verify(attempts).deleteByAccountHashAndSuccessFalse(service.accountHash("member"));
+        verify(attempts).save(any(AuthLoginAttemptEntity.class));
+        verify(events).save(any(AuthSecurityEventEntity.class));
+    }
 }
