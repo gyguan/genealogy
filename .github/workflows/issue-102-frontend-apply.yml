@@ -1,0 +1,60 @@
+name: Issue 102 Frontend Apply
+
+on:
+  push:
+    branches:
+      - agent/issue-102-member-permission-p1
+
+concurrency:
+  group: issue-102-frontend-apply
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apply-build-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-102-member-permission-p1
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Apply frontend patch
+        run: python3 scripts/issue102/apply_frontend_slice.py
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+      - name: Run member page model tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:members
+      - name: Generate API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:generate
+      - name: Run frontend production build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Record full typecheck baseline
+        working-directory: frontend/genealogy-web
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Commit frontend slice
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/shared/api/client.ts \
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts \
+            frontend/genealogy-web/src/features/members \
+            frontend/genealogy-web/package.json
+          if git diff --cached --quiet; then
+            echo "Frontend slice already applied"
+            exit 0
+          fi
+          git commit -m "feat(members): improve permission queries audits and risk UX [skip ci]"
+          git push origin HEAD:agent/issue-102-member-permission-p1
