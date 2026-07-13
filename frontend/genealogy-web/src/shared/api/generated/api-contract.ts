@@ -99,6 +99,35 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobResponse"
   },
+  "GET /api/v1/clans/{clanId}/imports/{jobId}/rows": {
+    "operationId": "listImportJobRows",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [
+      "pageNo",
+      "pageSize",
+      "status"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseImportJobRowPage"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/retry": {
+    "operationId": "retryPersonImportRow",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/retry",
+    "pathParams": [
+      "clanId",
+      "jobId",
+      "rowId"
+    ],
+    "queryParams": [],
+    "requestBody": "PersonImportRowRetryRequest",
+    "response": "ApiResponseImportJobRowResponse"
+  },
   "POST /api/v1/clans/{clanId}/review-tasks": {
     "operationId": "submitReviewTask",
     "method": "POST",

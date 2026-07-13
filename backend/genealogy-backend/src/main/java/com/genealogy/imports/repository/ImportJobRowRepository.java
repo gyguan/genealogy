@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity, Long> {
@@ -13,9 +14,19 @@ public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity
 
     Page<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long jobId, String rowStatus, Pageable pageable);
 
+    Page<ImportJobRowEntity> findByJobIdAndRowStatusInOrderByRowNoAsc(
+            Long jobId,
+            Collection<String> rowStatuses,
+            Pageable pageable
+    );
+
     Optional<ImportJobRowEntity> findByIdAndJobId(Long id, Long jobId);
 
     Optional<ImportJobRowEntity> findByJobIdAndRowNo(Long jobId, Integer rowNo);
 
+    long countByJobId(Long jobId);
+
     long countByJobIdAndRowStatus(Long jobId, String rowStatus);
+
+    long countByJobIdAndRowStatusIn(Long jobId, Collection<String> rowStatuses);
 }

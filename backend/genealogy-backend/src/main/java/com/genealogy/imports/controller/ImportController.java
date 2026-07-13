@@ -6,12 +6,16 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.imports.application.ImportApplicationService;
 import com.genealogy.imports.application.ImportJobApplicationService;
+import com.genealogy.imports.application.ImportJobRowApplicationService;
 import com.genealogy.imports.application.PersonImportCommandApplicationService;
 import com.genealogy.imports.application.PersonImportFilePolicyService;
 import com.genealogy.imports.application.PersonImportTemplateApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
+import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.dto.ImportPreviewResponse;
+import com.genealogy.imports.dto.PersonImportRowRetryRequest;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,6 +42,7 @@ public class ImportController {
     private final ImportApplicationService importApplicationService;
     private final PersonImportCommandApplicationService personImportCommandApplicationService;
     private final ImportJobApplicationService importJobApplicationService;
+    private final ImportJobRowApplicationService importJobRowApplicationService;
     private final PersonImportFilePolicyService personImportFilePolicyService;
     private final PersonImportTemplateApplicationService personImportTemplateApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -45,6 +51,7 @@ public class ImportController {
             ImportApplicationService importApplicationService,
             PersonImportCommandApplicationService personImportCommandApplicationService,
             ImportJobApplicationService importJobApplicationService,
+            ImportJobRowApplicationService importJobRowApplicationService,
             PersonImportFilePolicyService personImportFilePolicyService,
             PersonImportTemplateApplicationService personImportTemplateApplicationService,
             AuthorizationApplicationService authorizationApplicationService
@@ -52,6 +59,7 @@ public class ImportController {
         this.importApplicationService = importApplicationService;
         this.personImportCommandApplicationService = personImportCommandApplicationService;
         this.importJobApplicationService = importJobApplicationService;
+        this.importJobRowApplicationService = importJobRowApplicationService;
         this.personImportFilePolicyService = personImportFilePolicyService;
         this.personImportTemplateApplicationService = personImportTemplateApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -153,6 +161,43 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(importJobApplicationService.getJob(clanId, jobId, actorId));
+    }
+
+    @GetMapping("/clans/{clanId}/imports/{jobId}/rows")
+    public ApiResponse<PageResponse<ImportJobRowResponse>> listRows(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long jobId,
+            @RequestParam(required = false, defaultValue = "failed") String status,
+            PageQuery pageQuery,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(importJobRowApplicationService.listRows(
+                clanId,
+                jobId,
+                status,
+                pageQuery.normalizedPageNo(),
+                pageQuery.normalizedPageSize(),
+                actorId
+        ));
+    }
+
+    @PostMapping("/clans/{clanId}/imports/{jobId}/rows/{rowId}/retry")
+    public ApiResponse<ImportJobRowResponse> retryRow(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long jobId,
+            @Positive @PathVariable Long rowId,
+            @Valid @RequestBody PersonImportRowRetryRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(importJobRowApplicationService.retryPersonRow(
+                clanId,
+                jobId,
+                rowId,
+                request,
+                actorId
+        ));
     }
 
     private ImportApplicationService.FieldMapping mapping(

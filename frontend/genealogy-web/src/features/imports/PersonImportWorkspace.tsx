@@ -165,10 +165,6 @@ export function PersonImportWorkspace({ notify }: Props) {
 
     const effectivePreview = preview || await previewFile();
     if (!effectivePreview) return;
-    if ((effectivePreview.errorCount || 0) > 0) {
-      notify({ message: '存在错误行，请修正后再导入' }, true);
-      return;
-    }
     if ((effectivePreview.duplicateCount || 0) > 0 && !confirmDuplicates) {
       notify({ message: '存在疑似重复人物，请勾选确认后再导入' }, true);
       return;
@@ -183,10 +179,12 @@ export function PersonImportWorkspace({ notify }: Props) {
         `/clans/${workspace.clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
         formData
       );
-      notify(
-        { message: `导入完成：成功 ${result.successCount || 0} 行，失败 ${result.failureCount || 0} 行` },
-        Boolean(result.failureCount)
-      );
+      const failureCount = result.failureCount || 0;
+      notify({
+        message: failureCount > 0
+          ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行`
+          : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
+      });
       setPreview(null);
       setFile(null);
       setConfirmDuplicates(false);
@@ -219,7 +217,7 @@ export function PersonImportWorkspace({ notify }: Props) {
     <div className="import-page">
       <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert type="info" showIcon message="导入人物默认进入草稿状态，需要审核通过后正式入谱。" />
+          <Alert type="info" showIcon message="导入人物默认进入草稿状态；错误行可在导入任务中修正，全部处理完成后再提交审核。" />
           {!branchSelected ? (
             <Alert type="warning" showIcon message="请先在工作区选择目标支派，再选择文件并执行导入。" />
           ) : (
@@ -253,13 +251,21 @@ export function PersonImportWorkspace({ notify }: Props) {
           <Space wrap>
             <Button disabled={!branchSelected} onClick={resetAutoMapping}>恢复自动识别</Button>
             <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
-            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>确认导入</Button>
+            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>创建导入批次</Button>
           </Space>
         </Space>
       </Card>
 
       {preview ? (
         <Card title="导入预览与查重" style={{ marginTop: 16 }}>
+          {(preview.errorCount || 0) > 0 ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={`发现 ${preview.errorCount} 条错误数据。仍可创建导入批次，之后在任务详情中逐行修正。`}
+              style={{ marginBottom: 12 }}
+            />
+          ) : null}
           <Table<PreviewRow>
             size="small"
             bordered
