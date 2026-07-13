@@ -20,7 +20,7 @@ export function MemberInvitationAction({ notify }: { notify: (data: unknown, err
     if (!clanId) {
       setRoles([]);
       setBranches([]);
-      return;
+      return [] as GrantableRole[];
     }
     setLoading(true);
     try {
@@ -28,12 +28,15 @@ export function MemberInvitationAction({ notify }: { notify: (data: unknown, err
         memberPermissionApi.grantableRoles(String(clanId)),
         apiClient.get(`/clans/${clanId}/branches`).catch(() => [])
       ]);
-      setRoles(roleResult || []);
+      const nextRoles = roleResult || [];
+      setRoles(nextRoles);
       setBranches(toRecordList(branchResult) as Branch[]);
+      return nextRoles;
     } catch (error) {
       notify({ message: error instanceof Error ? error.message : '邀请上下文加载失败' }, true);
       setRoles([]);
       setBranches([]);
+      return [] as GrantableRole[];
     } finally {
       setLoading(false);
     }
@@ -44,15 +47,13 @@ export function MemberInvitationAction({ notify }: { notify: (data: unknown, err
   }, [clanId]);
 
   async function showInvitation() {
-    if (!clanId || !roles.length) {
-      await loadContext();
-    }
-    setOpen(true);
+    const availableRoles = roles.length ? roles : await loadContext();
+    if (availableRoles.length) setOpen(true);
   }
 
   return (
     <>
-      <Button loading={loading} disabled={!clanId} onClick={() => void showInvitation()}>
+      <Button loading={loading} disabled={!clanId || (!loading && !roles.length)} onClick={() => void showInvitation()}>
         邀请新成员
       </Button>
       <MemberInvitationModal
