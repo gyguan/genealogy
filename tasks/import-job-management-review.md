@@ -39,12 +39,22 @@
 
 ## Verification Status
 
-已完成文件级静态复核及以下回归测试代码：
+已完成并通过：
 
-- 导入任务分页、权限与错误按需加载。
-- 支派文件策略。
-- 业务模板不含技术 ID。
-- 导入成功审计记录。
-- Controller Bean 名和路由唯一性。
+- API 契约生成一致性检查。
+- 商业前端构建。
+- 导入模块定向 TypeScript 检查：`PersonImportWorkspace` 与 `ImportJobManagementPanel` 无类型错误。
+- 导入任务分页、权限与错误按需加载测试。
+- 支派文件策略测试。
+- 业务模板不含技术 ID 测试。
+- 导入成功审计记录测试。
+- Controller Bean 名和路由唯一性测试。
+- 后端打包成功，主代码可编译。
 
-当前执行环境无法拉取完整仓库，尚未实际执行 Maven、TypeScript、Vite 和 API check；PR 保持 Draft，待 CI 或本地验证通过后再合入。
+仓库仍存在与本 PR 无关的既有问题：
+
+- 全量前端 typecheck 在其他历史页面失败。
+- 全量后端测试存在历史失败。
+- PostgreSQL 启动检查因重复 Flyway `V3` 迁移失败。
+
+PR 保持 Draft，避免把仓库既有红灯误当成本次变更已全部验证通过。
