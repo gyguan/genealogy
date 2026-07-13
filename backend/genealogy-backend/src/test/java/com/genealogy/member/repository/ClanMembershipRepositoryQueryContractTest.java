@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ClanMembershipRepositoryQueryContractTest {
 
     @Test
-    void nullableKeywordMustNotBePassedToLowerFunction() throws NoSuchMethodException {
+    void nullableKeywordMustBeExplicitlyCastAsString() throws NoSuchMethodException {
         Method method = ClanMembershipRepository.class.getMethod(
                 "searchMembers",
                 Long.class,
@@ -34,8 +34,8 @@ class ClanMembershipRepositoryQueryContractTest {
 
     private void assertKeywordContract(String query) {
         String compact = query.replaceAll("\\s+", " ");
-        assertTrue(compact.contains("lower(appUser.username) like concat('%', :keyword, '%')"));
-        assertTrue(compact.contains("lower(appUser.displayName) like concat('%', :keyword, '%')"));
+        assertTrue(compact.contains("lower(appUser.username) like concat('%', cast(:keyword as string), '%')"));
+        assertTrue(compact.contains("lower(appUser.displayName) like concat('%', cast(:keyword as string), '%')"));
         assertFalse(compact.contains("lower(concat('%', :keyword, '%'))"));
     }
 }
