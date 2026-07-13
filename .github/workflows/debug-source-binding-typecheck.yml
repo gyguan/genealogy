@@ -1,0 +1,31 @@
+name: Debug Source Binding Typecheck
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  capture-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Capture typecheck
+        shell: bash
+        run: |
+          set +e
+          cd frontend/genealogy-web
+          npm run typecheck > ../../source-binding-typecheck.log 2>&1
+          echo "$?" > ../../source-binding-typecheck.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-binding-typecheck-log
+          path: |
+            source-binding-typecheck.log
+            source-binding-typecheck.status
+          if-no-files-found: error
