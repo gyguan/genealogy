@@ -95,6 +95,40 @@ public class AuthorizationApplicationService {
                 .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
     }
 
+    /**
+     * Requires a real active membership in the target clan. Unlike {@link #requireClanMember(Long, Long)},
+     * this method deliberately does not grant a cross-clan administrator bypass. Use it for sensitive
+     * read/export endpoints whose data must remain confined to clans the caller has explicitly joined.
+     */
+    @Transactional(readOnly = true)
+    public ClanMembershipEntity requireDirectClanMember(Long clanId, Long userId) {
+        if (userId == null) {
+            throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
+        }
+        if (clanId == null) {
+            throw new BusinessException("VALIDATION_ERROR", "宗族不能为空");
+        }
+        return activeMembership(clanId, userId)
+                .orElseThrow(() -> new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
+    }
+
+    /**
+     * Requires both direct target-clan membership and an RBAC grant in that same clan. This prevents a
+     * global/cross-clan role from implicitly satisfying a sensitive clan-local permission.
+     */
+    @Transactional(readOnly = true)
+    public ClanMembershipEntity requireDirectClanPermission(Long clanId, Long userId, String permissionCode) {
+        ClanMembershipEntity membership = requireDirectClanMember(clanId, userId);
+        rbacAuthorizationApplicationService.requirePermission(userId, clanId, permissionCode);
+        return membership;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasDirectClanPermission(Long clanId, Long userId, String permissionCode) {
+        return rbacAuthorizationApplicationService.isActiveClanMember(userId, clanId)
+                && rbacAuthorizationApplicationService.hasPermission(userId, clanId, permissionCode);
+    }
+
     @Transactional(readOnly = true)
     public ClanMembershipEntity requirePermission(Long clanId, Long userId, String permissionCode) {
         if (userId == null) {

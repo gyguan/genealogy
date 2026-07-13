@@ -27,12 +27,37 @@ function responseName(operation) {
   return refName(response.content?.['application/json']?.schema);
 }
 
-function paramsOf(pathItem, operation, location) {
+function resolveParameter(openapi, parameter) {
+  const reference = parameter?.['$ref'];
+  const prefix = '#/components/parameters/';
+  if (!reference || !reference.startsWith(prefix)) {
+    return parameter;
+  }
+  const name = reference.slice(prefix.length);
+  return openapi.components?.parameters?.[name] || parameter;
+}
+
+function paramsOf(openapi, pathItem, operation, location) {
   return [...(pathItem.parameters || []), ...(operation.parameters || [])]
+    .map(item => resolveParameter(openapi, item))
     .filter(item => item.in === location)
     .map(item => item.name)
     .filter(Boolean)
     .sort();
+}
+
+function mergeComponents(baseComponents = {}, overlayComponents = {}) {
+  const merged = { ...baseComponents, ...overlayComponents };
+  for (const section of ['schemas', 'parameters', 'responses', 'requestBodies', 'headers', 'securitySchemes', 'links', 'callbacks']) {
+    merged[section] = {
+      ...(baseComponents[section] || {}),
+      ...(overlayComponents[section] || {})
+    };
+    if (Object.keys(merged[section]).length === 0) {
+      delete merged[section];
+    }
+  }
+  return merged;
 }
 
 function loadEffectiveOpenApi() {
@@ -44,11 +69,7 @@ function loadEffectiveOpenApi() {
   for (const filename of overlayFiles) {
     const overlay = JSON.parse(fs.readFileSync(path.join(apiDir, filename), 'utf8'));
     base.paths = { ...(base.paths || {}), ...(overlay.paths || {}) };
-    base.components = base.components || {};
-    base.components.schemas = {
-      ...(base.components.schemas || {}),
-      ...(overlay.components?.schemas || {})
-    };
+    base.components = mergeComponents(base.components, overlay.components);
   }
 
   return { openapi: base, overlayFiles };
@@ -67,8 +88,8 @@ function collect(openapi) {
         operationId: operation.operationId || key.replace(/[^a-zA-Z0-9]+/g, '_'),
         method: method.toUpperCase(),
         path: route,
-        pathParams: paramsOf(pathItem, operation, 'path'),
-        queryParams: paramsOf(pathItem, operation, 'query'),
+        pathParams: paramsOf(openapi, pathItem, operation, 'path'),
+        queryParams: paramsOf(openapi, pathItem, operation, 'query'),
         requestBody: requestBodyName(operation),
         response: responseName(operation)
       };
