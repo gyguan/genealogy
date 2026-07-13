@@ -1,1 +1,0 @@
-Issue #101 final contract and actor-visible scope synchronization trigger: execute.
