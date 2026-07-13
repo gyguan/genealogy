@@ -4,9 +4,6 @@ import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
-import com.genealogy.source.dto.SourceBindingCreateRequest;
-import com.genealogy.source.entity.SourceEntity;
-import com.genealogy.source.repository.SourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,9 +21,6 @@ import static org.mockito.Mockito.when;
 class SourceBindingTargetValidationServiceTest {
 
     @Mock
-    private SourceRepository sourceRepository;
-
-    @Mock
     private GenerationWordRepository generationWordRepository;
 
     @Mock
@@ -37,7 +31,6 @@ class SourceBindingTargetValidationServiceTest {
     @BeforeEach
     void setUp() {
         service = new SourceBindingTargetValidationService(
-                sourceRepository,
                 generationWordRepository,
                 generationSchemeRepository
         );
@@ -50,7 +43,7 @@ class SourceBindingTargetValidationServiceTest {
         when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
         when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.of(scheme));
 
-        assertThatCode(() -> service.validate(1L, generationWordRequest()))
+        assertThatCode(() -> service.validate(1L, "generation_word", 100L))
                 .doesNotThrowAnyException();
     }
 
@@ -58,21 +51,17 @@ class SourceBindingTargetValidationServiceTest {
     void validateShouldRejectMissingGenerationWord() {
         when(generationWordRepository.findById(100L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.validate(1L, generationWordRequest()))
+        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
                 .hasMessageContaining("字辈明细不存在");
     }
 
     @Test
     void validateShouldRejectGenerationWordFromAnotherClan() {
-        SourceEntity source = new SourceEntity();
-        source.setId(10L);
-        source.setClanId(1L);
         GenerationWordEntity word = generationWord(100L, 200L);
-        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));
         when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
         when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.validate(generationWordRequest()))
+        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
                 .hasMessageContaining("字辈不属于当前宗族");
     }
 
@@ -83,21 +72,26 @@ class SourceBindingTargetValidationServiceTest {
         when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
         when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.of(scheme));
 
-        assertThatThrownBy(() -> service.validate(1L, generationWordRequest()))
+        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
+                .hasMessageContaining("字辈方案审核通过后才能绑定来源资料");
+    }
+
+    @Test
+    void validateShouldRejectLegacyApprovedAlias() {
+        GenerationWordEntity word = generationWord(100L, 200L);
+        GenerationSchemeEntity scheme = generationScheme(200L, 1L, "approved");
+        when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
+        when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.of(scheme));
+
+        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
                 .hasMessageContaining("字辈方案审核通过后才能绑定来源资料");
     }
 
     @Test
     void validateShouldIgnoreOtherTargetTypes() {
-        SourceBindingCreateRequest personRequest = new SourceBindingCreateRequest(10L, "person", 300L, "reason", "excerpt", 2L);
-
-        assertThatCode(() -> service.validate(1L, personRequest))
+        assertThatCode(() -> service.validate(1L, "person", 300L))
                 .doesNotThrowAnyException();
-        verifyNoInteractions(sourceRepository, generationWordRepository, generationSchemeRepository);
-    }
-
-    private SourceBindingCreateRequest generationWordRequest() {
-        return new SourceBindingCreateRequest(10L, "generation_word", 100L, "reason", "excerpt", 2L);
+        verifyNoInteractions(generationWordRepository, generationSchemeRepository);
     }
 
     private GenerationWordEntity generationWord(Long id, Long schemeId) {
