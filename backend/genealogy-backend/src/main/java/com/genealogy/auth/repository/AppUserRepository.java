@@ -27,6 +27,16 @@ public interface AppUserRepository extends JpaRepository<AppUserEntity, Long> {
             select appUser
             from AppUserEntity appUser
             where appUser.deletedAt is null
+              and (lower(appUser.username) = lower(:account)
+                   or lower(coalesce(appUser.email, '')) = lower(:account)
+                   or coalesce(appUser.phone, '') = :account)
+            """)
+    Optional<AppUserEntity> findRecoverableAccount(@Param("account") String account);
+
+    @Query("""
+            select appUser
+            from AppUserEntity appUser
+            where appUser.deletedAt is null
               and appUser.status = 'active'
               and (lower(appUser.username) like lower(concat('%', :keyword, '%'))
                    or lower(appUser.displayName) like lower(concat('%', :keyword, '%')))
