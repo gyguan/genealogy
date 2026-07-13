@@ -155,10 +155,15 @@ function hasImplicitErrorPayload(payload: unknown) {
 export class ApiClient {
   private baseUrl: string;
   private token: string;
+  private csrfToken: string;
 
   constructor() {
     this.baseUrl = localStorage.getItem('genealogy.apiBase') || '/api/v1';
+    // Compatibility window: consume a historical Bearer token once, then remove
+    // it from persistent browser storage. New sessions use secure cookies.
     this.token = localStorage.getItem('genealogy.token') || '';
+    localStorage.removeItem('genealogy.token');
+    this.csrfToken = this.readCookie('GENEALOGY_CSRF');
   }
 
   getBaseUrl() {
@@ -177,12 +182,19 @@ export class ApiClient {
 
   setToken(token: string) {
     this.token = token || '';
-    localStorage.setItem('genealogy.token', this.token);
+    localStorage.removeItem('genealogy.token');
     this.clearPendingGetRequests();
   }
 
+  setCsrfToken(token: string) {
+    this.csrfToken = token || this.readCookie('GENEALOGY_CSRF');
+  }
+
   clearToken() {
-    this.setToken('');
+    this.token = '';
+    this.csrfToken = '';
+    localStorage.removeItem('genealogy.token');
+    this.clearPendingGetRequests();
   }
 
   async get<T = unknown>(path: string): Promise<T> {
@@ -249,7 +261,8 @@ export class ApiClient {
   }
 
   async download(path: string): Promise<Blob> {
-    const res = await fetch(this.resolve(path), { headers: this.authHeaders() });
+    const headers = new Headers(this.authHeaders());
+    const res = await fetch(this.resolve(path), { headers, credentials: 'include' });
     if (!res.ok) throw new Error(`下载失败：HTTP ${res.status}`);
     return res.blob();
   }
@@ -266,17 +279,29 @@ export class ApiClient {
     const headers = new Headers(init.headers || undefined);
     const auth = this.authHeaders();
     Object.entries(auth).forEach(([key, value]) => headers.set(key, value));
-    const res = await fetch(this.resolve(path), { ...init, headers });
+    const method = String(init.method || 'GET').toUpperCase();
+    const csrfToken = this.csrfToken || this.readCookie('GENEALOGY_CSRF');
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && csrfToken) {
+      headers.set('X-CSRF-Token', csrfToken);
+    }
+    const res = await fetch(this.resolve(path), { ...init, headers, credentials: 'include' });
     const type = res.headers.get('content-type') || '';
     const payload = type.includes('application/json') ? await res.json() : await res.text();
     const explicitFailure = payload && typeof payload === 'object' && (payload as Record<string, unknown>).success === false;
     const implicitFailure = res.ok && hasImplicitErrorPayload(payload);
     if (!res.ok || explicitFailure || implicitFailure) {
+      if (res.status === 401 && !path.endsWith('/auth/login')) {
+        window.dispatchEvent(new Event('genealogy:unauthorized'));
+      }
       throw new ApiRequestError(
         extractApiErrorMessage(payload, res.status),
         extractApiErrorCode(payload),
         res.status
       );
+    }
+    if (payload && typeof payload === 'object') {
+      const data = (payload as Record<string, any>).data;
+      if (data?.csrfToken) this.setCsrfToken(String(data.csrfToken));
     }
     return payload?.data ?? payload;
   }
@@ -295,6 +320,16 @@ export class ApiClient {
 
   private authHeaders(): Record<string, string> {
     return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  }
+
+  private readCookie(name: string) {
+    if (typeof document === 'undefined') return '';
+    const prefix = `${encodeURIComponent(name)}=`;
+    return document.cookie
+      .split(';')
+      .map(item => item.trim())
+      .find(item => item.startsWith(prefix))
+      ?.slice(prefix.length) || '';
   }
 }
 
