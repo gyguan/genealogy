@@ -34,7 +34,11 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 
 ## AI 辅助研发入口
 
-- 项目级 Agent 规则：`AGENTS.md`
+规则采用分层结构，AI 应先读取根规则，再读取目标目录最近的 `AGENTS.md`：
+
+- 全仓优先级、P0 红线与 P1 门禁：`AGENTS.md`
+- 后端分层、数据库、权限与测试细则：`backend/genealogy-backend/AGENTS.md`
+- 前端组件、契约、交互与性能细则：`frontend/genealogy-web/AGENTS.md`
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
@@ -45,7 +49,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - PR 质量门禁模板：`.github/pull_request_template.md`
 - Issue 实现 PR 自动结构检查：`.github/workflows/issue-delivery-governance.yml`
 
-AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。通过聊天连接 GitHub 执行长任务时，还应遵循 `docs/ai/chat-driven-github-workflow.md`。实现或继续 Issue 时，必须重新读取 `main` 最新规则，并按 `docs/ai/issue-execution-governance.md` 先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一按 `docs/ai/time-display-standard.md` 转换并标注为北京时间。
+规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。实现或继续 Issue 时，必须刷新 `main` 最新规则，先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一使用北京时间。
 
 ## 可点击原型
 
