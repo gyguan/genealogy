@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,7 +29,7 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
                 FROM branch
                 WHERE id = :ancestorId
                   AND clan_id = :clanId
-                UNION ALL
+                UNION
                 SELECT child.id, child.parent_id, child.clan_id
                 FROM branch child
                 JOIN branch_tree parent ON child.parent_id = parent.id
@@ -44,5 +45,26 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
             @Param("clanId") Long clanId,
             @Param("ancestorId") Long ancestorId,
             @Param("candidateId") Long candidateId
+    );
+
+    @Query(value = """
+            WITH RECURSIVE branch_tree AS (
+                SELECT id, parent_id, clan_id
+                FROM branch
+                WHERE clan_id = :clanId
+                  AND id IN (:ancestorIds)
+                UNION
+                SELECT child.id, child.parent_id, child.clan_id
+                FROM branch child
+                JOIN branch_tree parent ON child.parent_id = parent.id
+                WHERE child.clan_id = :clanId
+            )
+            SELECT DISTINCT id
+            FROM branch_tree
+            ORDER BY id
+            """, nativeQuery = true)
+    List<Long> findSubtreeIds(
+            @Param("clanId") Long clanId,
+            @Param("ancestorIds") Collection<Long> ancestorIds
     );
 }
