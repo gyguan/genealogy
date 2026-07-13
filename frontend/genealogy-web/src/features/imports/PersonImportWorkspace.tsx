@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
@@ -68,6 +68,12 @@ export function PersonImportWorkspace({ notify }: Props) {
   const [loading, setLoading] = useState(false);
   const [jobRefreshKey, setJobRefreshKey] = useState(0);
   const branchSelected = Boolean(workspace.branchId);
+
+  useEffect(() => {
+    setFile(null);
+    setPreview(null);
+    setConfirmDuplicates(false);
+  }, [workspace.branchId]);
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
