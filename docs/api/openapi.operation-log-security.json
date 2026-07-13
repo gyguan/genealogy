@@ -127,7 +127,7 @@
         "description": "参数错误，例如缺少 clanId 或分页参数越界",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
           }
         }
       },
@@ -135,7 +135,7 @@
         "description": "未登录或认证信息无效",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
           }
         }
       },
@@ -143,7 +143,7 @@
         "description": "不是目标宗族有效成员或缺少 operation_log.view/export 权限",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ApiErrorResponse" }
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
           }
         }
       }
@@ -231,7 +231,7 @@
           "traceId": { "type": "string", "nullable": true }
         }
       },
-      "ApiErrorResponse": {
+      "OperationLogApiErrorResponse": {
         "type": "object",
         "properties": {
           "success": { "type": "boolean", "example": false },
