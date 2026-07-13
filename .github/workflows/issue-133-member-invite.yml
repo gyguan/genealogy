@@ -1,0 +1,231 @@
+name: Issue 133 Member Invitation UI
+
+on:
+  push:
+    branches:
+      - agent/issue-133-auth-commercialization
+    paths:
+      - .github/workflows/issue-133-member-invite.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-133-auth-commercialization
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Add invitation workflow to member page
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/features/members/MemberPage.tsx')
+          text = path.read_text()
+
+          def replace_once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one marker, found {count}: {old[:80]}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          """type RevokeFormValues = {
+            reason: string;
+          };
+          """,
+          """type RevokeFormValues = {
+            reason: string;
+          };
+
+          type InvitationFormValues = {
+            email?: string;
+            roleCode: string;
+            scopeType: string;
+            scopeId: number;
+          };
+          """)
+
+          replace_once(
+          """  const [revokeForm] = Form.useForm<RevokeFormValues>();
+          """,
+          """  const [revokeForm] = Form.useForm<RevokeFormValues>();
+            const [invitationForm] = Form.useForm<InvitationFormValues>();
+          """)
+
+          replace_once(
+          """  const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);
+          """,
+          """  const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);
+            const [invitationModalOpen, setInvitationModalOpen] = useState(false);
+            const [invitationToken, setInvitationToken] = useState('');
+            const [invitationExpiresAt, setInvitationExpiresAt] = useState('');
+          """)
+
+          replace_once(
+          """  const selectedScopeId = Form.useWatch('scopeId', grantForm);
+          """,
+          """  const selectedScopeId = Form.useWatch('scopeId', grantForm);
+            const invitationRoleCode = Form.useWatch('roleCode', invitationForm);
+            const invitationScopeType = Form.useWatch('scopeType', invitationForm);
+            const invitationRole = roles.find(role => role.roleCode === invitationRoleCode);
+          """)
+
+          replace_once(
+          """  function openCreateGrant() {
+          """,
+          """  function openInvitation() {
+              const defaultRole = roles[0];
+              const defaultScopeType = defaultRole?.allowedScopeTypes?.[0] || 'clan';
+              invitationForm.resetFields();
+              invitationForm.setFieldsValue({
+                roleCode: defaultRole?.roleCode,
+                scopeType: defaultScopeType,
+                scopeId: defaultScopeType === 'clan' ? Number(selectedClanId) : undefined
+              });
+              setInvitationToken('');
+              setInvitationExpiresAt('');
+              setInvitationModalOpen(true);
+            }
+
+            function onInvitationRoleChange(roleCode: string) {
+              const role = roles.find(item => item.roleCode === roleCode);
+              const allowedScopes = role?.allowedScopeTypes || ['clan'];
+              const currentScope = invitationForm.getFieldValue('scopeType');
+              const nextScope = allowedScopes.includes(currentScope) ? currentScope : allowedScopes[0];
+              invitationForm.setFieldsValue({
+                roleCode,
+                scopeType: nextScope,
+                scopeId: nextScope === 'clan' ? Number(selectedClanId) : undefined
+              });
+            }
+
+            async function submitInvitation() {
+              const values = await invitationForm.validateFields();
+              await execute(async () => {
+                const result: any = await apiClient.post('/auth/invitations', {
+                  clanId: Number(selectedClanId),
+                  email: values.email?.trim() || undefined,
+                  roleCode: values.roleCode,
+                  scopeType: values.scopeType,
+                  scopeId: Number(values.scopeId)
+                });
+                setInvitationToken(result.invitationToken || '');
+                setInvitationExpiresAt(result.expiresAt || '');
+                notify({ message: '成员邀请已生成，请通过安全渠道发送给受邀人' });
+              });
+            }
+
+            async function copyInvitationLink() {
+              if (!invitationToken) return;
+              const link = `${window.location.origin}/?auth=invite&invitationToken=${encodeURIComponent(invitationToken)}`;
+              await navigator.clipboard.writeText(link);
+              notify({ message: '邀请链接已复制' });
+            }
+
+            function openCreateGrant() {
+          """)
+
+          replace_once(
+          """            <Button type=\"primary\" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
+                          新增成员授权
+                        </Button>
+          """,
+          """            <Button onClick={openInvitation} disabled={!selectedClanId || !roles.length}>
+                          邀请新成员
+                        </Button>
+                        <Button type=\"primary\" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
+                          新增成员授权
+                        </Button>
+          """)
+
+          replace_once(
+          """      <Modal
+                  title={editingGrant ? '编辑成员授权' : '新增成员授权'}
+          """,
+          """      <Modal
+                  title=\"邀请新成员\"
+                  open={invitationModalOpen}
+                  onCancel={() => setInvitationModalOpen(false)}
+                  onOk={invitationToken ? () => setInvitationModalOpen(false) : () => void submitInvitation()}
+                  okText={invitationToken ? '完成' : '生成邀请'}
+                  confirmLoading={loading}
+                  destroyOnClose
+                >
+                  {invitationToken ? (
+                    <Space direction=\"vertical\" size={16} style={{ width: '100%' }}>
+                      <Alert
+                        type=\"success\"
+                        showIcon
+                        message=\"一次性邀请已生成\"
+                        description={`有效期至 ${dateTime(invitationExpiresAt)}。邀请凭据只在当前窗口展示一次，请通过可信渠道发送。`}
+                      />
+                      <Input.TextArea
+                        readOnly
+                        autoSize={{ minRows: 3, maxRows: 5 }}
+                        value={`${window.location.origin}/?auth=invite&invitationToken=${encodeURIComponent(invitationToken)}`}
+                      />
+                      <Button type=\"primary\" onClick={() => void copyInvitationLink()}>复制邀请链接</Button>
+                    </Space>
+                  ) : (
+                    <Form form={invitationForm} layout=\"vertical\">
+                      <Form.Item name=\"email\" label=\"受邀人邮箱（选填）\" rules={[{ type: 'email', message: '请输入有效邮箱' }]}>
+                        <Input placeholder=\"填写后，接受邀请时必须使用相同邮箱\" />
+                      </Form.Item>
+                      <Form.Item name=\"roleCode\" label=\"预设角色\" rules={[{ required: true, message: '请选择角色' }]}>
+                        <Select options={roleOptions} onChange={onInvitationRoleChange} />
+                      </Form.Item>
+                      <Form.Item name=\"scopeType\" label=\"授权范围\" rules={[{ required: true, message: '请选择授权范围' }]}>
+                        <Select
+                          options={(invitationRole?.allowedScopeTypes || ['clan']).map(scope => ({
+                            value: scope,
+                            label: scope === 'clan' ? '全宗族' : '指定支派及下级支派'
+                          }))}
+                          onChange={value => invitationForm.setFieldValue('scopeId', value === 'clan' ? Number(selectedClanId) : undefined)}
+                        />
+                      </Form.Item>
+                      {invitationScopeType === 'branch_subtree' ? (
+                        <Form.Item name=\"scopeId\" label=\"选择支派\" rules={[{ required: true, message: '请选择支派' }]}>
+                          <Select showSearch optionFilterProp=\"label\" options={branches.map(branch => ({ value: branch.id, label: `${branch.branchName}及下级支派` }))} />
+                        </Form.Item>
+                      ) : <Form.Item name=\"scopeId\" hidden><Input /></Form.Item>}
+                      <Alert
+                        type={invitationRole?.riskLevel === 'high' ? 'warning' : 'info'}
+                        showIcon
+                        message=\"邀请接受时会再次校验邀请人的当前权限\"
+                        description=\"邀请无法绕过角色层级、支派范围和最后管理员等后端安全规则。\"
+                      />
+                    </Form>
+                  )}
+                </Modal>
+
+                <Modal
+                  title={editingGrant ? '编辑成员授权' : '新增成员授权'}
+          """)
+
+          path.write_text(text)
+          PY
+      - name: Verify frontend
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install --no-audit --no-fund
+          npm run test:auth
+          npm run test:members
+          npm run typecheck
+          npm run api:check
+          npm run build
+      - name: Remove workflow and commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-133-member-invite.yml
+          git add frontend/genealogy-web
+          git commit -m "feat(auth): add controlled member invitation entry"
+          git push origin HEAD:agent/issue-133-auth-commercialization
