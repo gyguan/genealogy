@@ -8,6 +8,7 @@ on:
       - 'frontend/genealogy-web/src/features/imports/PersonImportWorkspace.tsx'
       - 'frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
       - 'docs/api/openapi.imports.json'
+      - 'docs/api/openapi.zz-removals.json'
       - '.github/workflows/strict-person-import-focused.yml'
 
 jobs:
@@ -26,12 +27,18 @@ jobs:
       - name: Compile backend and tests
         working-directory: backend/genealogy-backend
         run: mvn -q -DskipTests package
-      - name: Run focused import tests
+      - name: Verify CSV and XLSX templates
         working-directory: backend/genealogy-backend
-        run: >-
-          mvn -q
-          -Dtest=PersonImportTemplateApplicationServiceTest,PersonImportFilePolicyServiceTest,ImportApplicationServiceRowStateTest,PersonImportCommandApplicationServiceTest
-          test
+        run: mvn -q -Dtest=PersonImportTemplateApplicationServiceTest test
+      - name: Verify strict template headers
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=PersonImportFilePolicyServiceTest test
+      - name: Verify fixed mapping and business values
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest test
+      - name: Verify import audit command
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=PersonImportCommandApplicationServiceTest test
 
   frontend-strict-import-check:
     runs-on: ubuntu-latest
