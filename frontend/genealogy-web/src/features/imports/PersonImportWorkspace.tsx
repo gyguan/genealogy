@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
-import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { saveDownloadedBlob } from '../../shared/utils/download';
-import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {
+  notify: (data: unknown, error?: boolean) => void;
+  clanId: string;
+  branchId: string;
+  branchName: string;
+  onBatchCreated: () => void;
+};
 
 type ImportJobResult = {
   id?: number;
@@ -58,22 +62,26 @@ function genderText(value?: string) {
   return dict[value || ''] || value || '-';
 }
 
-export function PersonImportWorkspace({ notify }: Props) {
-  const workspace = useWorkspace();
+export function PersonImportWorkspace({
+  notify,
+  clanId,
+  branchId,
+  branchName,
+  onBatchCreated
+}: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [mapping, setMapping] = useState(defaultMapping);
   const [autoMapping, setAutoMapping] = useState(true);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [loading, setLoading] = useState(false);
-  const [jobRefreshKey, setJobRefreshKey] = useState(0);
-  const branchSelected = Boolean(workspace.branchId);
+  const branchSelected = Boolean(branchId);
 
   useEffect(() => {
     setFile(null);
     setPreview(null);
     setConfirmDuplicates(false);
-  }, [workspace.branchId]);
+  }, [branchId]);
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -81,12 +89,12 @@ export function PersonImportWorkspace({ notify }: Props) {
     Object.entries(mapping).forEach(([key, value]) => {
       params.set(key, String(toZeroBased(value)));
     });
-    if (workspace.branchId) params.set('branchId', String(workspace.branchId));
+    if (branchId) params.set('branchId', branchId);
     return params.toString();
-  }, [mapping, workspace.branchId, autoMapping]);
+  }, [mapping, branchId, autoMapping]);
 
   function patchMapping(key: keyof typeof mapping, value: number | null) {
-    setMapping(prev => ({ ...prev, [key]: value === null ? '' : String(value) }));
+    setMapping(previous => ({ ...previous, [key]: value === null ? '' : String(value) }));
     setAutoMapping(false);
     setPreview(null);
   }
@@ -113,12 +121,12 @@ export function PersonImportWorkspace({ notify }: Props) {
 
   async function previewFile() {
     if (loading) return null;
-    if (!workspace.clanId) {
+    if (!clanId) {
       notify({ message: '请先选择宗族' }, true);
       return null;
     }
-    if (!workspace.branchId) {
-      notify({ message: '请先选择目标支派' }, true);
+    if (!branchId) {
+      notify({ message: '请在本页选择目标支派' }, true);
       return null;
     }
     if (!file) {
@@ -131,7 +139,7 @@ export function PersonImportWorkspace({ notify }: Props) {
       const formData = new FormData();
       formData.append('file', file);
       const result = await apiClient.upload<ImportPreview>(
-        `/clans/${workspace.clanId}/imports/persons/preview?${mappingQuery}`,
+        `/clans/${clanId}/imports/persons/preview?${mappingQuery}`,
         formData
       );
       setPreview(result);
@@ -150,12 +158,12 @@ export function PersonImportWorkspace({ notify }: Props) {
 
   async function upload() {
     if (loading) return;
-    if (!workspace.clanId) {
+    if (!clanId) {
       notify({ message: '请先选择宗族' }, true);
       return;
     }
-    if (!workspace.branchId) {
-      notify({ message: '请先选择目标支派' }, true);
+    if (!branchId) {
+      notify({ message: '请在本页选择目标支派' }, true);
       return;
     }
     if (!file) {
@@ -176,7 +184,7 @@ export function PersonImportWorkspace({ notify }: Props) {
       formData.append('file', file);
       const separator = mappingQuery ? '&' : '';
       const result = await apiClient.upload<ImportJobResult>(
-        `/clans/${workspace.clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
+        `/clans/${clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
         formData
       );
       const failureCount = result.failureCount || 0;
@@ -188,7 +196,7 @@ export function PersonImportWorkspace({ notify }: Props) {
       setPreview(null);
       setFile(null);
       setConfirmDuplicates(false);
-      setJobRefreshKey(value => value + 1);
+      onBatchCreated();
     } catch (error) {
       notify({ message: (error as Error).message || '导入失败' }, true);
     } finally {
@@ -214,14 +222,14 @@ export function PersonImportWorkspace({ notify }: Props) {
   };
 
   return (
-    <div className="import-page">
-      <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>}>
+    <div className="person-import-workspace">
+      <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>} style={{ marginTop: 16 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Alert type="info" showIcon message="导入人物默认进入草稿状态；错误行可在导入任务中修正，全部处理完成后再提交审核。" />
           {!branchSelected ? (
-            <Alert type="warning" showIcon message="请先在工作区选择目标支派，再选择文件并执行导入。" />
+            <Alert type="warning" showIcon message="请在本页上方选择本次导入的目标支派，再选择文件并执行导入。" />
           ) : (
-            <Alert type="success" showIcon message="所有人物将归入当前所选支派，文件中无需填写支派或支派ID。" />
+            <Alert type="success" showIcon message={`当前目标支派：${branchName || '未命名支派'}。文件中无需填写支派或支派 ID。`} />
           )}
           <Upload {...uploadProps}>
             <Button disabled={!branchSelected}>选择 CSV / XLSX 文件</Button>
@@ -294,8 +302,6 @@ export function PersonImportWorkspace({ notify }: Props) {
           />
         </Card>
       ) : null}
-
-      <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
     </div>
   );
 }
