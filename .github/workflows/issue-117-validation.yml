@@ -67,3 +67,49 @@ jobs:
       - name: Run backend test suite
         working-directory: backend/genealogy-backend
         run: mvn -B test
+
+      - name: Upload Maven test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-117-surefire-reports
+          path: backend/genealogy-backend/target/surefire-reports
+          if-no-files-found: ignore
+          retention-days: 3
+
+  startup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run PostgreSQL startup check
+        id: startup_check
+        continue-on-error: true
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+        run: bash .github/scripts/backend-startup-check.sh
+
+      - name: Upload startup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-117-startup-diagnostics
+          path: |
+            /tmp/genealogy-backend-startup.log
+            /tmp/genealogy-maven-package.log
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Fail when startup check failed
+        if: steps.startup_check.outcome == 'failure'
+        run: exit 1
