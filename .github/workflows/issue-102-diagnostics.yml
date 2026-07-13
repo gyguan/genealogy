@@ -28,15 +28,21 @@ jobs:
           mkdir -p diagnostics
           (
             cd backend/genealogy-backend
+            mvn -B clean test
+          ) > diagnostics/backend-full.log 2>&1
+          backend_full_status=$?
+          (
+            cd backend/genealogy-backend
             mvn -Dtest=GlobalExceptionHandlerTest,MemberGrantVisibilityPolicyTest,MemberPermissionAuditControllerTest,MemberPermissionAuditApplicationServiceTest,MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest test
-          ) > diagnostics/backend.log 2>&1
-          backend_status=$?
+          ) > diagnostics/backend-focused.log 2>&1
+          backend_focused_status=$?
           (
             cd frontend/genealogy-web
             npm install --no-audit --no-fund && npm run test:members && npm run api:check && npm run typecheck && npm run build
           ) > diagnostics/frontend.log 2>&1
           frontend_status=$?
-          printf 'backend_status=%s\nfrontend_status=%s\n' "$backend_status" "$frontend_status" > diagnostics/status.txt
+          printf 'backend_full_status=%s\nbackend_focused_status=%s\nfrontend_status=%s\n' \
+            "$backend_full_status" "$backend_focused_status" "$frontend_status" > diagnostics/status.txt
           exit 0
       - uses: actions/upload-artifact@v4
         with:
