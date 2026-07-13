@@ -23,12 +23,7 @@ jobs:
         run: mvn -DskipTests package
       - name: Run focused member permission tests
         working-directory: backend/genealogy-backend
-        run: >-
-          mvn -Dtest=MemberGrantPolicyServiceTest,
-          MemberPermissionApplicationServiceTest,
-          ClanMembershipRepositoryQueryContractTest,
-          MemberManagementControllerContractTest,
-          RbacAuthorizationApplicationServiceTest test
+        run: mvn -q "-Dtest=MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest,MemberManagementControllerContractTest,RbacAuthorizationApplicationServiceTest" test
 
   postgres:
     name: PostgreSQL migration, scope and index validation
