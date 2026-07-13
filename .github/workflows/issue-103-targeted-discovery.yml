@@ -1,13 +1,15 @@
-name: Issue 103 Migration Version Diagnostic
+name: Issue 103 Sync Main
 
 on:
   pull_request:
     paths:
-      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
       - '.github/workflows/issue-103-targeted-discovery.yml'
 
+permissions:
+  contents: write
+
 jobs:
-  inspect:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout head branch
@@ -15,24 +17,11 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Export migration diagnostic
+      - name: Merge latest main
         shell: bash
         run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch origin main:refs/remotes/origin/main --force
-          {
-            echo '=== latest base migrations ==='
-            git ls-tree -r --name-only origin/main -- backend/genealogy-backend/src/main/resources/db/migration \
-              | sed 's#^.*/##' \
-              | grep '^V' \
-              | sort -V \
-              | tail -20
-            echo '=== governance result ==='
-            python3 .github/scripts/validate-flyway-migrations.py --base-ref origin/main || true
-          } > /tmp/migration-diagnostic.txt 2>&1
-          cat /tmp/migration-diagnostic.txt
-      - name: Upload migration diagnostic
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-103-migration-diagnostic
-          path: /tmp/migration-diagnostic.txt
-          retention-days: 1
+          git merge --no-edit origin/main
+          git push origin HEAD:${{ github.head_ref }}
