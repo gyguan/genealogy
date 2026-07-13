@@ -17,36 +17,9 @@ jobs:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
       - name: Apply focused changes
-        id: apply
-        continue-on-error: true
         shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import traceback
-
-          try:
-              workflow = Path('.github/workflows/apply-binding-action-refinement.yml').read_text(encoding='utf-8')
-              marker = "          python - <<'PY'\n"
-              end_marker = "\n          PY\n"
-              script = workflow.split(marker, 1)[1].split(end_marker, 1)[0]
-              script = '\n'.join(line[10:] if line.startswith('          ') else line for line in script.splitlines())
-              exec(compile(script, 'apply-binding-action-refinement.py', 'exec'))
-          except BaseException:
-              Path('.github/binding-refinement-error.txt').write_text(traceback.format_exc(), encoding='utf-8')
-              raise
-          PY
-      - name: Commit diagnostics
-        if: steps.apply.outcome == 'failure'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/binding-refinement-error.txt
-          git commit -m "chore: capture binding refinement error"
-          git push origin HEAD:${{ github.head_ref }}
+        run: python .github/scripts/apply_binding_action_refinement.py
       - name: Commit changes
-        if: steps.apply.outcome == 'success'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
