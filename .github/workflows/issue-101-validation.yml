@@ -83,6 +83,10 @@ jobs:
             user_id BIGINT NOT NULL,
             member_status VARCHAR(32) NOT NULL
           );
+          CREATE TABLE app_role (
+            id BIGINT PRIMARY KEY,
+            role_code VARCHAR(64) NOT NULL
+          );
           CREATE TABLE member_role (
             id BIGSERIAL PRIMARY KEY,
             membership_id BIGINT NOT NULL,
@@ -96,19 +100,25 @@ jobs:
             clan_id BIGINT NOT NULL,
             parent_id BIGINT
           );
+          INSERT INTO app_role(id, role_code) VALUES
+            (1, 'branch_admin'), (2, 'viewer');
           INSERT INTO branch(id, clan_id, parent_id) VALUES
             (10, 1, NULL), (11, 1, 10), (12, 1, 11), (20, 1, NULL), (30, 2, NULL);
           INSERT INTO clan_membership(clan_id, user_id, member_status)
           SELECT 1, n, CASE WHEN n % 4 = 0 THEN 'disabled' ELSE 'active' END
           FROM generate_series(1, 2000) AS n;
           INSERT INTO member_role(membership_id, role_id, scope_type, scope_id, status)
-          VALUES (1, 1, 'branch', 10, 'active');
+          VALUES
+            (1, 1, 'branch', 10, 'active'),
+            (2, 2, 'branch', 20, 'active');
           SQL
       - name: Apply Issue 101 migration
         run: psql -h localhost -U postgres -d genealogy_test -v ON_ERROR_STOP=1 -f backend/genealogy-backend/src/main/resources/db/migration/V2026071301__member_permission_scope_and_indexes.sql
       - name: Verify migration, recursive scope and indexes
         run: |
           test "$(psql -h localhost -U postgres -d genealogy_test -Atc "SELECT scope_type FROM member_role WHERE id=1")" = "branch_subtree"
+          test "$(psql -h localhost -U postgres -d genealogy_test -Atc "SELECT scope_type FROM member_role WHERE id=2")" = "branch"
+          test "$(psql -h localhost -U postgres -d genealogy_test -Atc "SELECT count(*) FROM member_role_scope_migration_2026071301")" = "1"
           test "$(psql -h localhost -U postgres -d genealogy_test -Atc "WITH RECURSIVE t AS (SELECT id,parent_id,clan_id FROM branch WHERE clan_id=1 AND id IN (10) UNION SELECT c.id,c.parent_id,c.clan_id FROM branch c JOIN t p ON c.parent_id=p.id WHERE c.clan_id=1) SELECT string_agg(id::text, ',' ORDER BY id) FROM t")" = "10,11,12"
           for index_name in \
             idx_clan_membership_clan_status_id \
