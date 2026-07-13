@@ -182,6 +182,14 @@
 
 ---
 
+## 合入策略
+
+- [ ] Issue 实现 PR 满足 `docs/ai/issue-execution-governance.md` 合入门禁后，默认直接合入 `main`。
+- [ ] 不自动合入，原因：<!-- 只创建 PR / 检查失败 / Review 阻塞 / 高风险未关闭 / 权限不足 / 其他 -->
+- [ ] 不适用：本 PR 不对应 Issue 实现任务。
+
+---
+
 ## Review 五轴自检
 
 - [ ] Correctness：满足需求和验收标准，异常路径已处理。
