@@ -27,7 +27,7 @@ import java.util.Set;
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public class AuthCookieBridgeFilter extends OncePerRequestFilter {
 
-    private static final Set<String> CSRF_EXEMPT_PATHS = Set.of(
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/invitations/accept",
@@ -47,6 +47,11 @@ public class AuthCookieBridgeFilter extends OncePerRequestFilter {
         this.cookieService = cookieService;
         this.authApplicationService = authApplicationService;
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return PUBLIC_AUTH_PATHS.contains(request.getRequestURI());
     }
 
     @Override
@@ -70,6 +75,7 @@ public class AuthCookieBridgeFilter extends OncePerRequestFilter {
             filterChain.doFilter(new BearerRequestWrapper(request, sessionToken), response);
         } catch (BusinessException exception) {
             int status = "AUTH_CSRF_INVALID".equals(exception.getCode()) ? 403 : 401;
+            if (status == 401) cookieService.clear(response);
             response.setStatus(status);
             response.setCharacterEncoding("UTF-8");
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -79,8 +85,7 @@ public class AuthCookieBridgeFilter extends OncePerRequestFilter {
 
     private boolean requiresCsrf(HttpServletRequest request) {
         String method = request.getMethod().toUpperCase(Locale.ROOT);
-        if (!Set.of("POST", "PUT", "PATCH", "DELETE").contains(method)) return false;
-        return !CSRF_EXEMPT_PATHS.contains(request.getRequestURI());
+        return Set.of("POST", "PUT", "PATCH", "DELETE").contains(method);
     }
 
     private static final class BearerRequestWrapper extends HttpServletRequestWrapper {
