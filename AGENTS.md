@@ -171,6 +171,7 @@ AI 生成代码时必须优先遵守以下业务规则：
 | 权限 / 隐私 / 审计 | `docs/09-permission-management.md` |
 | 导入导出 | `docs/01-mvp1-requirements.md`、`docs/03-domain-model.md` |
 | 聊天式长任务 / GitHub 远程开发 | `docs/ai/chat-driven-github-workflow.md` |
+| 时间展示 / 时区转换 | `docs/ai/time-display-standard.md` |
 
 源码读取规则：
 
@@ -365,3 +366,16 @@ AI 禁止执行以下行为：
 8. 上一次任务看板。
 
 恢复时以 GitHub 实际状态为准，禁止重复执行已完成的修改。
+
+### 11.6 时间展示规则
+
+所有面向用户的时间统一使用北京时间：
+
+- 标准时区：`Asia/Shanghai`；
+- UTC 偏移：`UTC+8`；
+- 展示时明确标注“北京时间”；
+- GitHub、CI、日志或第三方接口返回 UTC 或其他时区时，先转换为北京时间再汇报；
+- 排查问题需要保留原始时间时，可同时展示原始时间，但必须明确标注各自时区；
+- 日期存在歧义时使用完整年月日，不只使用“今天、明天、昨天”等相对表达。
+
+详细规则见：`docs/ai/time-display-standard.md`。
