@@ -1,26 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, InputNumber, Space, Table, Tag, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { saveDownloadedBlob } from '../../shared/utils/download';
-import { toRecordList } from '../../shared/ui/DataTable';
+import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
-type ImportJob = {
+type ImportJobResult = {
   id?: number;
-  clanId?: number;
-  branchId?: number;
-  importType?: string;
-  originalFilename?: string;
   totalCount?: number;
   successCount?: number;
   failureCount?: number;
   status?: string;
-  errorSummary?: string;
-  createdAt?: string;
-  errors?: { rowNo?: number; errorMessage?: string; rawData?: string }[];
 };
 
 type PreviewRow = {
@@ -62,26 +55,6 @@ function toZeroBased(value: string, allowEmpty = false) {
   return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
 }
 
-function importStatusText(value?: string) {
-  const status = String(value || '').toLowerCase();
-  const dict: Record<string, string> = {
-    success: '成功',
-    completed: '已完成',
-    failed: '失败',
-    processing: '处理中',
-    pending: '待处理'
-  };
-  return dict[status] || value || '待维护';
-}
-
-function importStatusColor(value?: string) {
-  const status = String(value || '').toLowerCase();
-  if (['success', 'completed'].includes(status)) return 'success';
-  if (status === 'failed') return 'error';
-  if (['processing', 'pending'].includes(status)) return 'processing';
-  return 'default';
-}
-
 function genderText(value?: string) {
   const dict: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
   return dict[value || ''] || value || '-';
@@ -94,9 +67,8 @@ export function PersonImportWorkspace({ notify }: Props) {
   const [autoMapping, setAutoMapping] = useState(true);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
-  const [selectedJob, setSelectedJob] = useState<ImportJob | null>(null);
   const [loading, setLoading] = useState(false);
+  const [jobRefreshKey, setJobRefreshKey] = useState(0);
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
@@ -104,7 +76,7 @@ export function PersonImportWorkspace({ notify }: Props) {
     Object.entries(mapping).forEach(([key, value]) => {
       params.set(key, String(toZeroBased(value, key === 'branchIdIndex')));
     });
-    if (workspace.branchId) params.set('branchId', workspace.branchId);
+    if (workspace.branchId) params.set('branchId', String(workspace.branchId));
     return params.toString();
   }, [mapping, workspace.branchId, autoMapping]);
 
@@ -119,22 +91,6 @@ export function PersonImportWorkspace({ notify }: Props) {
     setAutoMapping(true);
     setPreview(null);
   }
-
-  async function loadJobs() {
-    if (!workspace.clanId) {
-      setJobs([]);
-      setSelectedJob(null);
-      return;
-    }
-    const data = await apiClient.get(`/clans/${workspace.clanId}/imports`).catch(() => []);
-    const rows = toRecordList<ImportJob>(data);
-    setJobs(rows);
-    setSelectedJob(current => current || rows[0] || null);
-  }
-
-  useEffect(() => {
-    void loadJobs();
-  }, [workspace.clanId]);
 
   async function downloadTemplate() {
     if (loading) return;
@@ -210,19 +166,18 @@ export function PersonImportWorkspace({ notify }: Props) {
       const formData = new FormData();
       formData.append('file', file);
       const separator = mappingQuery ? '&' : '';
-      const result = await apiClient.upload<ImportJob>(
-        `/clans/${workspace.clanId}/imports/persons?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
+      const result = await apiClient.upload<ImportJobResult>(
+        `/clans/${workspace.clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
         formData
       );
       notify(
         { message: `导入完成：成功 ${result.successCount || 0} 行，失败 ${result.failureCount || 0} 行` },
         Boolean(result.failureCount)
       );
-      setSelectedJob(result);
       setPreview(null);
       setFile(null);
       setConfirmDuplicates(false);
-      await loadJobs();
+      setJobRefreshKey(value => value + 1);
     } catch (error) {
       notify({ message: (error as Error).message || '导入失败' }, true);
     } finally {
@@ -272,7 +227,6 @@ export function PersonImportWorkspace({ notify }: Props) {
             <Button onClick={resetAutoMapping}>恢复自动识别</Button>
             <Button disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
             <Button type="primary" disabled={loading} loading={loading} onClick={() => void upload()}>确认导入</Button>
-            <Button onClick={() => void loadJobs()}>刷新导入任务</Button>
           </Space>
           <Alert type="warning" showIcon message="支派不在文件中填写系统 ID；需要按支派导入时，请先选择当前支派。" />
         </Space>
@@ -309,45 +263,7 @@ export function PersonImportWorkspace({ notify }: Props) {
         </Card>
       ) : null}
 
-      <Card title="导入任务记录" style={{ marginTop: 16 }}>
-        <Table<ImportJob>
-          size="small"
-          bordered
-          rowKey={(row, index) => String(row.id || index)}
-          dataSource={jobs}
-          pagination={false}
-          onRow={row => ({ onClick: () => setSelectedJob(row), style: { cursor: 'pointer' } })}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
-          columns={[
-            { key: 'importType', title: '导入类型', dataIndex: 'importType' },
-            { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename' },
-            { key: 'totalCount', title: '总数', dataIndex: 'totalCount' },
-            { key: 'successCount', title: '成功', dataIndex: 'successCount' },
-            { key: 'failureCount', title: '失败', dataIndex: 'failureCount' },
-            { key: 'status', title: '状态', render: (_value, row) => <Tag color={importStatusColor(row.status)}>{importStatusText(row.status)}</Tag> },
-            { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt' }
-          ]}
-        />
-      </Card>
-
-      {selectedJob ? (
-        <Card title="错误明细" style={{ marginTop: 16 }}>
-          <Alert type="info" showIcon message={selectedJob.errorSummary || '当前任务无错误明细。'} style={{ marginBottom: 12 }} />
-          <Table
-            size="small"
-            bordered
-            rowKey={(row: any, index) => String(row.rowNo || index)}
-            dataSource={selectedJob.errors || []}
-            pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无错误行" /> }}
-            columns={[
-              { key: 'rowNo', title: '行号', dataIndex: 'rowNo' },
-              { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' },
-              { key: 'rawData', title: '原始数据', dataIndex: 'rawData' }
-            ]}
-          />
-        </Card>
-      ) : null}
+      <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
     </div>
   );
 }
