@@ -81,12 +81,20 @@
 
 ## 6. 数据库与 Flyway
 
+数据库变更必须遵循 `docs/database-development-standard.md`。
+
 - Schema 变更必须通过 Flyway 交付，不手工依赖环境状态。
-- 迁移脚本必须考虑历史数据、幂等边界、回滚或补偿方案。
-- 不修改已经在共享环境执行过的历史迁移；新增后续版本迁移。
+- 新增版本化迁移统一使用 `VyyyyMMddHHmmss[_NN]__action_object_detail.sql`，时间使用北京时间。
+- 新版本必须大于 `main` 当前最大版本，并且在整个迁移目录中唯一。
+- 迁移描述使用小写 `snake_case`，以 `create/add/alter/rename/backfill/migrate/normalize/fix/rebuild/drop` 等明确动作开头。
+- 不修改、删除或重命名已经存在于基线分支或可能在共享环境执行过的版本化迁移；使用更高版本的前向补偿迁移。
+- 迁移脚本必须说明锁影响、历史数据、兼容策略、验证方式和回滚或补偿方案。
 - 索引应对应实际查询条件和排序，不为“可能有用”盲目添加。
 - 涉及高数据量查询时，应提供 SQL 或 `EXPLAIN ANALYZE` 证据。
 - 避免无条件全表读取、内存分页、N+1 和无边界递归 CTE。
+- 当前历史重复 `V3` 属于独立治理问题，禁止在普通业务 PR 中随意改名或使用 `flyway repair` 掩盖。
+
+迁移文件由 `.github/scripts/validate-flyway-migrations.py` 和 `Database Migration Governance` 工作流执行自动检查。
 
 ---
 

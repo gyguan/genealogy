@@ -392,6 +392,26 @@ export const API_OPERATIONS = {
     "requestBody": "RevokeMemberGrantRequest",
     "response": "ApiResponseVoid"
   },
+  "GET /clans/{clanId}/member-permission-audits": {
+    "operationId": "listMemberPermissionAudits",
+    "method": "GET",
+    "path": "/clans/{clanId}/member-permission-audits",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "actionType",
+      "actorId",
+      "endTime",
+      "grantId",
+      "membershipId",
+      "pageNo",
+      "pageSize",
+      "startTime"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseMemberPermissionAuditPage"
+  },
   "GET /clans/{clanId}/members": {
     "operationId": "listAggregatedClanMembers",
     "method": "GET",

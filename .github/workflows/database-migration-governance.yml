@@ -1,0 +1,36 @@
+name: Database Migration Governance
+
+on:
+  pull_request:
+    paths:
+      - "backend/genealogy-backend/src/main/resources/db/migration/**"
+      - ".github/scripts/validate-flyway-migrations.py"
+      - ".github/workflows/database-migration-governance.yml"
+      - "docs/database-development-standard.md"
+      - "backend/genealogy-backend/AGENTS.md"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-flyway-migrations:
+    name: Validate Flyway migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: git fetch origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" --force
+
+      - name: Validate migration naming and history
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: >-
+          python3 .github/scripts/validate-flyway-migrations.py
+          --base-ref "origin/${BASE_BRANCH}"

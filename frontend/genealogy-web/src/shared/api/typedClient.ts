@@ -38,21 +38,25 @@ export async function typedApiRequest<TResponse, K extends ApiOperation>(
   const meta = API_OPERATIONS[operation];
   const pathWithParams = applyPathParams(toClientPath(meta.path), options.pathParams);
   const path = applyQuery(pathWithParams, options.query);
+  const method = String(meta.method);
 
-  if (meta.method === 'GET') {
+  if (method === 'GET') {
     return apiClient.get<TResponse>(path);
   }
-  if (meta.method === 'POST') {
+  if (method === 'POST') {
     if (options.formData) {
       return apiClient.upload<TResponse>(path, options.formData);
     }
     return apiClient.post<TResponse>(path, options.body);
   }
-  if (meta.method === 'PUT') {
+  if (method === 'PUT') {
     return apiClient.put<TResponse>(path, options.body);
   }
-  if (meta.method === 'DELETE') {
+  if (method === 'PATCH') {
+    return apiClient.patch<TResponse>(path, options.body);
+  }
+  if (method === 'DELETE') {
     return apiClient.delete<TResponse>(path);
   }
-  throw new Error(`Unsupported API method: ${meta.method}`);
+  throw new Error(`Unsupported API method: ${method}`);
 }

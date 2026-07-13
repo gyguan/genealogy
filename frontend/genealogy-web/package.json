@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
-    "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts"
+    "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts",
+    "test:members": "node --test src/features/members/memberPageModel.test.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

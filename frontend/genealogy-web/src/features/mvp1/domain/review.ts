@@ -2,6 +2,7 @@ import { relationshipName, type RelationshipLike } from './relationship';
 import { isReviewable, statusText, type StatusLike } from './status';
 
 export type ReviewTargetType = 'persons' | 'relationships' | 'sources' | 'branches' | 'generation-schemes';
+export type ApiReviewTargetType = 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
 
 export type ReviewTaskLike = {
   id?: number | string;
@@ -60,8 +61,8 @@ export function reviewTargetTypeText(value?: string) {
   return dict[normalized] || value || '-';
 }
 
-export function toApiReviewTargetType(type: ReviewTargetType) {
-  const dict: Record<ReviewTargetType, string> = {
+export function toApiReviewTargetType(type: ReviewTargetType): ApiReviewTargetType {
+  const dict: Record<ReviewTargetType, ApiReviewTargetType> = {
     persons: 'person',
     relationships: 'relationship',
     sources: 'source',

@@ -3,22 +3,131 @@
     "/clans/{clanId}/members": {
       "get": {
         "operationId": "listAggregatedClanMembers",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "roleCode", "in": "query", "required": false, "schema": { "type": "string" } },
-          { "name": "scopeType", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/MemberScopeType" } },
-          { "name": "status", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/MembershipStatus" } },
-          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "default": 1, "minimum": 1 } },
-          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MemberScopeType"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MembershipStatus"
+            }
+          },
+          {
+            "name": "pageNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Aggregated member page",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberAggregatePage" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberAggregatePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -28,19 +137,108 @@
     "/clans/{clanId}/member-candidates": {
       "get": {
         "operationId": "searchMemberCandidates",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "keyword", "in": "query", "required": true, "schema": { "type": "string", "minLength": 2 } },
-          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "default": 1, "minimum": 1 } },
-          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            }
+          },
+          {
+            "name": "pageNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Privacy-safe candidate page",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberCandidatePage" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberCandidatePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -50,16 +248,78 @@
     "/clans/{clanId}/grantable-roles": {
       "get": {
         "operationId": "listGrantableRoles",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Roles the current actor may grant",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseGrantableRoleList" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGrantableRoleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -69,15 +329,27 @@
     "/clans/{clanId}/member-grants": {
       "post": {
         "operationId": "createMemberGrant",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateMemberGrantRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemberGrantRequest"
+              }
             }
           }
         },
@@ -86,7 +358,59 @@
             "description": "Created member grant",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberGrant" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberGrant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -96,16 +420,36 @@
     "/clans/{clanId}/member-grants/{grantId}": {
       "put": {
         "operationId": "updateMemberGrant",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "grantId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateMemberGrantRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberGrantRequest"
+              }
             }
           }
         },
@@ -114,7 +458,59 @@
             "description": "Updated member grant",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberGrant" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberGrant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -124,16 +520,36 @@
     "/clans/{clanId}/member-grants/{grantId}/revoke": {
       "post": {
         "operationId": "revokeMemberGrant",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "grantId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/RevokeMemberGrantRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/RevokeMemberGrantRequest"
+              }
             }
           }
         },
@@ -142,7 +558,59 @@
             "description": "Grant revoked",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -152,16 +620,36 @@
     "/clans/{clanId}/members/{membershipId}/status": {
       "patch": {
         "operationId": "updateClanMembershipStatus",
-        "tags": ["MemberPermission"],
+        "tags": [
+          "MemberPermission"
+        ],
         "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "membershipId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/UpdateMemberStatusRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberStatusRequest"
+              }
             }
           }
         },
@@ -170,7 +658,214 @@
             "description": "Updated membership",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseMemberAggregate" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clans/{clanId}/member-permission-audits": {
+      "get": {
+        "operationId": "listMemberPermissionAudits",
+        "tags": [
+          "MemberPermission"
+        ],
+        "parameters": [
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "membershipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "grantId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "actionType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MemberPermissionAuditAction"
+            }
+          },
+          {
+            "name": "startTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "pageNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member permission audit page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberPermissionAuditPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
               }
             }
           }
@@ -182,192 +877,586 @@
     "schemas": {
       "MemberScopeType": {
         "type": "string",
-        "enum": ["clan", "branch_subtree"]
+        "enum": [
+          "clan",
+          "branch_subtree"
+        ]
       },
       "MembershipStatus": {
         "type": "string",
-        "enum": ["active", "disabled", "removed"]
+        "enum": [
+          "active",
+          "disabled",
+          "removed"
+        ]
+      },
+      "MemberPermissionAuditAction": {
+        "type": "string",
+        "enum": [
+          "member_grant_create",
+          "member_grant_update",
+          "member_grant_revoke",
+          "member_status_update"
+        ]
       },
       "CreateMemberGrantRequest": {
         "type": "object",
-        "required": ["userId", "roleCode", "scopeType", "scopeId", "reason"],
+        "required": [
+          "userId",
+          "roleCode",
+          "scopeType",
+          "scopeId",
+          "reason"
+        ],
         "properties": {
-          "userId": { "type": "integer", "format": "int64" },
-          "roleCode": { "type": "string" },
-          "scopeType": { "$ref": "#/components/schemas/MemberScopeType" },
-          "scopeId": { "type": "integer", "format": "int64" },
-          "reason": { "type": "string", "maxLength": 500 }
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roleCode": {
+            "type": "string"
+          },
+          "scopeType": {
+            "$ref": "#/components/schemas/MemberScopeType"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
         }
       },
       "UpdateMemberGrantRequest": {
         "type": "object",
-        "required": ["roleCode", "scopeType", "scopeId", "reason"],
+        "required": [
+          "roleCode",
+          "scopeType",
+          "scopeId",
+          "reason"
+        ],
         "properties": {
-          "roleCode": { "type": "string" },
-          "scopeType": { "$ref": "#/components/schemas/MemberScopeType" },
-          "scopeId": { "type": "integer", "format": "int64" },
-          "reason": { "type": "string", "maxLength": 500 }
+          "roleCode": {
+            "type": "string"
+          },
+          "scopeType": {
+            "$ref": "#/components/schemas/MemberScopeType"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
         }
       },
       "RevokeMemberGrantRequest": {
         "type": "object",
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "properties": {
-          "reason": { "type": "string", "maxLength": 500 }
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
         }
       },
       "UpdateMemberStatusRequest": {
         "type": "object",
-        "required": ["status", "reason"],
+        "required": [
+          "status",
+          "reason"
+        ],
         "properties": {
-          "status": { "$ref": "#/components/schemas/MembershipStatus" },
-          "reason": { "type": "string", "maxLength": 500 }
+          "status": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
         }
       },
       "MemberCandidateResponse": {
         "type": "object",
         "properties": {
-          "userId": { "type": "integer", "format": "int64" },
-          "displayName": { "type": "string" },
-          "maskedAccount": { "type": "string" },
-          "alreadyMember": { "type": "boolean" }
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "maskedAccount": {
+            "type": "string"
+          },
+          "alreadyMember": {
+            "type": "boolean"
+          }
         }
       },
       "GrantableRoleResponse": {
         "type": "object",
         "properties": {
-          "roleCode": { "type": "string" },
-          "roleName": { "type": "string" },
-          "description": { "type": "string" },
+          "roleCode": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
           "allowedScopeTypes": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/MemberScopeType" }
+            "items": {
+              "$ref": "#/components/schemas/MemberScopeType"
+            }
           },
-          "riskLevel": { "type": "string", "enum": ["normal", "high"] }
+          "riskLevel": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high"
+            ]
+          }
         }
       },
       "MemberGrantResponse": {
         "type": "object",
         "properties": {
-          "grantId": { "type": "integer", "format": "int64" },
-          "roleCode": { "type": "string" },
-          "roleName": { "type": "string" },
-          "scopeType": { "$ref": "#/components/schemas/MemberScopeType" },
-          "scopeId": { "type": "integer", "format": "int64" },
-          "scopeName": { "type": "string" },
-          "grantStatus": { "type": "string", "enum": ["active", "revoked"] },
-          "grantedBy": { "type": "integer", "format": "int64" },
-          "grantedAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" },
-          "canEditGrant": { "type": "boolean" },
-          "canRevokeGrant": { "type": "boolean" }
+          "grantId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roleCode": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "$ref": "#/components/schemas/MemberScopeType"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "grantStatus": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked"
+            ]
+          },
+          "grantedBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canEditGrant": {
+            "type": "boolean"
+          },
+          "canRevokeGrant": {
+            "type": "boolean"
+          }
         }
       },
       "MemberAllowedActionsResponse": {
         "type": "object",
         "properties": {
-          "canGrantRole": { "type": "boolean" },
-          "canEditGrant": { "type": "boolean" },
-          "canRevokeGrant": { "type": "boolean" },
-          "canDisableMember": { "type": "boolean" },
-          "canViewHistory": { "type": "boolean" }
+          "canGrantRole": {
+            "type": "boolean"
+          },
+          "canEditGrant": {
+            "type": "boolean"
+          },
+          "canRevokeGrant": {
+            "type": "boolean"
+          },
+          "canDisableMember": {
+            "type": "boolean"
+          },
+          "canViewHistory": {
+            "type": "boolean"
+          }
         }
       },
       "MemberAggregateResponse": {
         "type": "object",
         "properties": {
-          "membershipId": { "type": "integer", "format": "int64" },
-          "userId": { "type": "integer", "format": "int64" },
-          "displayName": { "type": "string" },
-          "maskedAccount": { "type": "string" },
-          "membershipStatus": { "$ref": "#/components/schemas/MembershipStatus" },
-          "joinedAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" },
+          "membershipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "maskedAccount": {
+            "type": "string"
+          },
+          "membershipStatus": {
+            "$ref": "#/components/schemas/MembershipStatus"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "grants": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/MemberGrantResponse" }
+            "items": {
+              "$ref": "#/components/schemas/MemberGrantResponse"
+            }
           },
-          "allowedActions": { "$ref": "#/components/schemas/MemberAllowedActionsResponse" }
+          "allowedActions": {
+            "$ref": "#/components/schemas/MemberAllowedActionsResponse"
+          }
         }
       },
       "MemberAggregatePage": {
         "type": "object",
         "properties": {
-          "records": { "type": "array", "items": { "$ref": "#/components/schemas/MemberAggregateResponse" } },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberAggregateResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       },
       "MemberCandidatePage": {
         "type": "object",
         "properties": {
-          "records": { "type": "array", "items": { "$ref": "#/components/schemas/MemberCandidateResponse" } },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberCandidateResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "MemberPermissionAuditResponse": {
+        "type": "object",
+        "properties": {
+          "auditId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actorId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actorDisplayName": {
+            "type": "string"
+          },
+          "actorMaskedAccount": {
+            "type": "string"
+          },
+          "actionType": {
+            "$ref": "#/components/schemas/MemberPermissionAuditAction"
+          },
+          "membershipId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grantId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "targetMemberDisplayName": {
+            "type": "string"
+          },
+          "targetMemberMaskedAccount": {
+            "type": "string"
+          },
+          "beforeValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "afterValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MemberPermissionAuditPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberPermissionAuditResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "MemberPermissionErrorResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "timestamp"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "COMMON_BAD_REQUEST",
+              "AUTH_UNAUTHORIZED",
+              "AUTH_FORBIDDEN",
+              "MEMBER_GRANT_FORBIDDEN",
+              "MEMBER_PERMISSION_REASON_REQUIRED",
+              "MEMBER_GRANT_DUPLICATED",
+              "LAST_CLAN_ADMIN_REQUIRED",
+              "MEMBER_ROLE_SCOPE_INVALID",
+              "MEMBER_SCOPE_INVALID",
+              "BRANCH_CLAN_MISMATCH",
+              "MEMBER_NOT_FOUND",
+              "MEMBER_GRANT_NOT_FOUND",
+              "ROLE_NOT_FOUND",
+              "USER_NOT_FOUND",
+              "MEMBER_PERMISSION_AUDIT_ACTION_INVALID",
+              "MEMBER_PERMISSION_AUDIT_TIME_INVALID"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseMemberAggregatePage": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/MemberAggregatePage" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberAggregatePage"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseMemberCandidatePage": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/MemberCandidatePage" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberCandidatePage"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseGrantableRoleList": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/GrantableRoleResponse" } },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GrantableRoleResponse"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseMemberGrant": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/MemberGrantResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberGrantResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseMemberAggregate": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/MemberAggregateResponse" },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberAggregateResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseMemberPermissionAuditPage": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MemberPermissionAuditPage"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "ApiResponseVoid": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean" },
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "nullable": true },
-          "traceId": { "type": "string" }
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       }
     }

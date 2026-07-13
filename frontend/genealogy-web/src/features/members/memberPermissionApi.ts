@@ -58,28 +58,39 @@ export type MemberGrantPayload = {
   reason: string;
 };
 
+export type MemberPermissionAudit = {
+  auditId: number;
+  actorId: number;
+  actorDisplayName: string;
+  actorMaskedAccount: string;
+  actionType: string;
+  membershipId: number;
+  grantId?: number;
+  targetMemberDisplayName: string;
+  targetMemberMaskedAccount: string;
+  beforeValue?: string;
+  afterValue?: string;
+  reason?: string;
+  changedAt: string;
+};
+
+export type MemberAuditQuery = {
+  membershipId?: number;
+  grantId?: number;
+  actorId?: number;
+  actionType?: string;
+  startTime?: string;
+  endTime?: string;
+  pageNo?: number;
+  pageSize?: number;
+};
+
 function queryString(params: Record<string, string | number | undefined>) {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') query.set(key, String(value));
   });
   return query.toString();
-}
-
-async function patch<T>(path: string, body: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = apiClient.getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${apiClient.getBaseUrl()}${path}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(body)
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.message || payload?.errorMessage || `HTTP ${response.status}`);
-  }
-  return (payload?.data ?? payload) as T;
 }
 
 export const memberPermissionApi = {
@@ -102,6 +113,11 @@ export const memberPermissionApi = {
     return apiClient.post<void>(`/clans/${clanId}/member-grants/${grantId}/revoke`, { reason });
   },
   updateMemberStatus(clanId: string, membershipId: number, status: string, reason: string) {
-    return patch<MemberAggregate>(`/clans/${clanId}/members/${membershipId}/status`, { status, reason });
+    return apiClient.patch<MemberAggregate>(`/clans/${clanId}/members/${membershipId}/status`, { status, reason });
+  },
+  listAudits(clanId: string, params: MemberAuditQuery) {
+    return apiClient.get<PageResponse<MemberPermissionAudit>>(
+      `/clans/${clanId}/member-permission-audits?${queryString(params as Record<string, string | number | undefined>)}`
+    );
   }
 };

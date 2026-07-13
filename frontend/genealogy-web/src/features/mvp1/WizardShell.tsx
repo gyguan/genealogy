@@ -50,7 +50,7 @@ export function WizardShell<TKey extends string = string>({
           }))}
         />
       </Panel>
-      {result ? <ResultNotice data={result} /> : null}
+      {result ? <ResultNotice result={result} /> : null}
       {!loaded ? <div className="wizard-step-hint">点击步骤后加载本步骤数据。</div> : null}
       {children}
     </div>
