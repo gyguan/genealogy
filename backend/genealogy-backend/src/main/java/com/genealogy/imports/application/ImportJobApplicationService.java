@@ -65,6 +65,7 @@ public class ImportJobApplicationService {
 
     @Transactional(readOnly = true)
     public ImportJobResponse getJob(Long clanId, Long jobId, Long actorId) {
+        authorizationApplicationService.requireClanMember(clanId, actorId);
         ImportJobEntity job = importJobRepository.findByIdAndClanId(jobId, clanId)
                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入任务不存在"));
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, job.getBranchId());
