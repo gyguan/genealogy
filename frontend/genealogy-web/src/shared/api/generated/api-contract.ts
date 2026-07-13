@@ -81,35 +81,6 @@ export const API_OPERATIONS = {
     "requestBody": "SourceBindingCreateRequest",
     "response": "ApiResponseSourceBindingResponse"
   },
-  "GET /api/v1/member-management/clans/{clanId}/members": {
-    "operationId": "listClanMembers",
-    "method": "GET",
-    "path": "/api/v1/member-management/clans/{clanId}/members",
-    "pathParams": [
-      "clanId"
-    ],
-    "queryParams": [
-      "keyword",
-      "pageNo",
-      "pageSize",
-      "roleCode",
-      "scopeType",
-      "status"
-    ],
-    "requestBody": null,
-    "response": "ApiResponseClanMemberPage"
-  },
-  "GET /api/v1/member-management/clans/{clanId}/members/summary": {
-    "operationId": "getMemberPermissionSummary",
-    "method": "GET",
-    "path": "/api/v1/member-management/clans/{clanId}/members/summary",
-    "pathParams": [
-      "clanId"
-    ],
-    "queryParams": [],
-    "requestBody": null,
-    "response": "ApiResponseMemberPermissionSummaryResponse"
-  },
   "GET /api/v1/review-tasks/my-submissions": {
     "operationId": "listMyReviewSubmissions",
     "method": "GET",
@@ -189,35 +160,6 @@ export const API_OPERATIONS = {
     ],
     "requestBody": null,
     "response": "ApiResponseSourceBindingList"
-  },
-  "GET /api/v1/workbench/summary": {
-    "operationId": "getWorkbenchSummary",
-    "method": "GET",
-    "path": "/api/v1/workbench/summary",
-    "pathParams": [],
-    "queryParams": [
-      "branchId",
-      "clanId"
-    ],
-    "requestBody": null,
-    "response": "ApiResponseWorkbenchSummaryResponse"
-  },
-  "GET /api/v1/workbench/tasks": {
-    "operationId": "listWorkbenchTasks",
-    "method": "GET",
-    "path": "/api/v1/workbench/tasks",
-    "pathParams": [],
-    "queryParams": [
-      "branchId",
-      "clanId",
-      "pageNo",
-      "pageSize",
-      "risk",
-      "status",
-      "type"
-    ],
-    "requestBody": null,
-    "response": "ApiResponseWorkbenchTaskPage"
   }
 } as const;
 
