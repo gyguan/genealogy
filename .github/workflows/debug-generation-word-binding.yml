@@ -1,0 +1,39 @@
+name: Debug Generation Word Binding
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  debug-backend:
+    name: Capture targeted backend test log
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Run targeted test and capture log
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set +e
+          mvn -B -Dtest=SourceBindingTargetValidationServiceTest test > generation-word-binding-test.log 2>&1
+          status=$?
+          echo "$status" > generation-word-binding-test.status
+          exit 0
+
+      - name: Upload diagnostic log
+        uses: actions/upload-artifact@v4
+        with:
+          name: generation-word-binding-test-log
+          path: |
+            backend/genealogy-backend/generation-word-binding-test.log
+            backend/genealogy-backend/generation-word-binding-test.status
+          if-no-files-found: error
