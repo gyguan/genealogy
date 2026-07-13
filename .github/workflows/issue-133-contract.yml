@@ -1,0 +1,34 @@
+name: Issue 133 Contract Generation
+
+on:
+  push:
+    branches:
+      - agent/issue-133-auth-commercialization
+    paths:
+      - .github/workflows/issue-133-contract.yml
+
+permissions:
+  contents: write
+
+jobs:
+  generate-contract:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-133-auth-commercialization
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate frontend API contract
+        run: node scripts/api/generate-frontend-client.mjs
+      - name: Remove one-shot workflow and commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-133-contract.yml
+          git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          git commit -m "docs(auth): generate commercialization API contract"
+          git push origin HEAD:agent/issue-133-auth-commercialization
