@@ -9,6 +9,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.application.SourceBindingReviewApplicationService;
+import com.genealogy.source.application.SourceBindingTargetValidationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceBindingRevisionDeleteRequest;
@@ -42,6 +43,7 @@ public class SourceBindingController {
 
     private final SourceApplicationService sourceApplicationService;
     private final SourceBindingReviewApplicationService sourceBindingReviewApplicationService;
+    private final SourceBindingTargetValidationService sourceBindingTargetValidationService;
     private final SourceBindingRepository sourceBindingRepository;
     private final RequestContextApplicationService requestContextApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -49,12 +51,14 @@ public class SourceBindingController {
     public SourceBindingController(
             SourceApplicationService sourceApplicationService,
             SourceBindingReviewApplicationService sourceBindingReviewApplicationService,
+            SourceBindingTargetValidationService sourceBindingTargetValidationService,
             SourceBindingRepository sourceBindingRepository,
             RequestContextApplicationService requestContextApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.sourceApplicationService = sourceApplicationService;
         this.sourceBindingReviewApplicationService = sourceBindingReviewApplicationService;
+        this.sourceBindingTargetValidationService = sourceBindingTargetValidationService;
         this.sourceBindingRepository = sourceBindingRepository;
         this.requestContextApplicationService = requestContextApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -67,6 +71,7 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        sourceBindingTargetValidationService.validate(clanId, request);
         return ApiResponse.success(sourceApplicationService.bind(clanId, request, context.userId()));
     }
 
@@ -77,6 +82,7 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        sourceBindingTargetValidationService.validate(clanId, request.binding());
         return ApiResponse.success(sourceBindingReviewApplicationService.submitCreate(clanId, request, context.userId(), context.requestId(), context.clientIp()));
     }
 
@@ -87,6 +93,7 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        sourceBindingTargetValidationService.validate(request.binding());
         return ApiResponse.success(sourceBindingReviewApplicationService.submitReplace(bindingId, request, context.userId(), context.requestId(), context.clientIp()));
     }
 
