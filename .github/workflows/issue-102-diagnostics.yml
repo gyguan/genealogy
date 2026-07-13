@@ -33,7 +33,7 @@ jobs:
           backend_status=$?
           (
             cd frontend/genealogy-web
-            npm ci && npm run test:members && npm run api:check && npm run typecheck && npm run build
+            npm install --no-audit --no-fund && npm run test:members && npm run api:check && npm run typecheck && npm run build
           ) > diagnostics/frontend.log 2>&1
           frontend_status=$?
           printf 'backend_status=%s\nfrontend_status=%s\n' "$backend_status" "$frontend_status" > diagnostics/status.txt
