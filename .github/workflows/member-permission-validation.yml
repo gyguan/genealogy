@@ -136,11 +136,29 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm run api:check
       - name: Focused member TypeScript check
+        id: focused_typecheck
         working-directory: frontend/genealogy-web
-        run: >-
-          npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution Node
-          --jsx react-jsx --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck
-          src/features/members/MemberPage.tsx src/features/members/memberPermissionApi.ts
+        shell: bash
+        run: |
+          set +e
+          npx tsc --noEmit --target ES2020 --module ESNext --moduleResolution Node \
+            --jsx react-jsx --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck \
+            src/features/members/MemberPage.tsx src/features/members/memberPermissionApi.ts \
+            > member-typecheck.log 2>&1
+          status=$?
+          cat member-typecheck.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload focused typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: member-typecheck-diagnostics
+          path: frontend/genealogy-web/member-typecheck.log
+          if-no-files-found: error
+      - name: Fail on focused typecheck errors
+        if: steps.focused_typecheck.outputs.status != '0'
+        run: exit 1
       - name: Build frontend
         working-directory: frontend/genealogy-web
         run: npm run build
