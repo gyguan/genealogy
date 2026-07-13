@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
 @Validated
 @RestController
 @RequestMapping("/api/v1")
-public class ImportController {
+public class CsvImportController {
 
     private static final String PERSON_CREATE = "person:create";
     private static final String RELATIONSHIP_CREATE = "relationship:create";
@@ -34,7 +34,7 @@ public class ImportController {
     private final CsvImportApplicationService csvImportApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
-    public ImportController(
+    public CsvImportController(
             CsvImportApplicationService csvImportApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
@@ -52,25 +52,11 @@ public class ImportController {
         return csvResponse("relation-template.csv", csvImportApplicationService.buildRelationTemplate());
     }
 
-    @PostMapping(value = {
-            "/clans/{clanId}/imports/persons/preview",
-            "/clans/{clanId}/imports/persons.csv/preview"
-    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CsvImportResultResponse> previewPersons(
-            @Positive @PathVariable Long clanId,
-            @RequestParam("file") MultipartFile file,
-            @ModelAttribute PersonImportOptions options,
-            @RequestHeader HttpHeaders headers
-    ) {
-        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
-        authorizationApplicationService.requirePermission(clanId, actorId, PERSON_CREATE);
-        return ApiResponse.success(csvImportApplicationService.previewPersons(clanId, file, options));
-    }
-
-    @PostMapping(value = {
-            "/clans/{clanId}/imports/persons",
-            "/clans/{clanId}/imports/persons.csv"
-    }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    /**
+     * Compatibility endpoint used by the current frontend. Person preview and
+     * import-job management remain owned by com.genealogy.imports.controller.ImportController.
+     */
+    @PostMapping(value = "/clans/{clanId}/imports/persons", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<CsvImportResultResponse> importPersons(
             @Positive @PathVariable Long clanId,
             @RequestParam("file") MultipartFile file,
