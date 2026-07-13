@@ -6,6 +6,10 @@ public record LoginResponse(
         String tokenType,
         String accessToken,
         LocalDateTime expiresAt,
-        AuthUserResponse user
+        AuthUserResponse user,
+        String csrfToken
 ) {
+    public LoginResponse(String tokenType, String accessToken, LocalDateTime expiresAt, AuthUserResponse user) {
+        this(tokenType, accessToken, expiresAt, user, null);
+    }
 }

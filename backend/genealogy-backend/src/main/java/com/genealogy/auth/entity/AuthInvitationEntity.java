@@ -13,22 +13,21 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "app_auth_session")
-public class AuthSessionEntity {
-
+@Table(name = "app_account_invite")
+public class AuthInvitationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    private Long userId;
     private String tokenHash;
-    private String csrfTokenHash;
-    private LocalDateTime issuedAt;
-    private LocalDateTime lastAccessAt;
+    private Long clanId;
+    private String email;
+    private String roleCode;
+    private String scopeType;
+    private Long scopeId;
+    private Long invitedBy;
+    private String status;
     private LocalDateTime expiresAt;
-    private LocalDateTime revokedAt;
-    private String clientIp;
-    private String userAgent;
-    private String deviceName;
-    private boolean rememberMe;
+    private LocalDateTime acceptedAt;
+    private Long acceptedUserId;
+    private LocalDateTime createdAt;
 }

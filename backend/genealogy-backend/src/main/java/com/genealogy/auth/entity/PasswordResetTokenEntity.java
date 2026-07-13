@@ -13,22 +13,16 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "app_auth_session")
-public class AuthSessionEntity {
-
+@Table(name = "app_password_reset_token")
+public class PasswordResetTokenEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private Long userId;
     private String tokenHash;
-    private String csrfTokenHash;
-    private LocalDateTime issuedAt;
-    private LocalDateTime lastAccessAt;
     private LocalDateTime expiresAt;
+    private LocalDateTime usedAt;
     private LocalDateTime revokedAt;
-    private String clientIp;
-    private String userAgent;
-    private String deviceName;
-    private boolean rememberMe;
+    private LocalDateTime createdAt;
+    private String requestedIpHash;
 }

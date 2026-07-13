@@ -9,7 +9,7 @@ public record RegisterRequest(
         String username,
 
         @NotBlank(message = "密码不能为空")
-        @Size(min = 6, max = 64, message = "密码长度必须在6到64之间")
+        @Size(min = 8, max = 64, message = "密码长度必须在8到64之间")
         String password,
 
         @NotBlank(message = "显示名称不能为空")

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Space, Typography, theme } from 'antd';
+import { ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { ToastStack } from '../shared/ui/ToastStack';
@@ -11,6 +11,7 @@ import { PersonDataExportActions } from '../features/exports/PersonDataExportAct
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
+import { MemberInvitationAction } from '../features/members/MemberInvitationAction';
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
@@ -38,6 +39,7 @@ const navItems = [
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
+type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
 
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
@@ -92,7 +94,7 @@ function AppShell() {
   const [active, setActive] = useState<ViewKey>('home');
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(apiClient.getToken()));
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
 
   function closeToast(id: number) {
     setToasts(prev => prev.filter(item => item.id !== id));
@@ -110,16 +112,37 @@ function AppShell() {
   }
 
   function onLoginChanged() {
-    setIsAuthenticated(Boolean(apiClient.getToken()));
+    setAuthStatus('authenticated');
   }
 
   function logout() {
     apiClient.post('/auth/logout').catch(() => undefined).finally(() => {
       apiClient.clearToken();
-      setIsAuthenticated(false);
+      setAuthStatus('anonymous');
       notify({ message: '已退出登录' });
     });
   }
+
+  useEffect(() => {
+    let activeRequest = true;
+    apiClient.get('/auth/me')
+      .then(() => {
+        if (activeRequest) setAuthStatus('authenticated');
+      })
+      .catch(() => {
+        if (activeRequest) setAuthStatus('anonymous');
+      });
+
+    const onUnauthorized = () => {
+      apiClient.clearToken();
+      setAuthStatus('anonymous');
+    };
+    window.addEventListener('genealogy:unauthorized', onUnauthorized);
+    return () => {
+      activeRequest = false;
+      window.removeEventListener('genealogy:unauthorized', onUnauthorized);
+    };
+  }, []);
 
   useEffect(() => {
     const onUnhandled = (event: PromiseRejectionEvent) => {
@@ -155,10 +178,22 @@ function AppShell() {
   function renderModuleActions() {
     if (active === 'personArchive') return <PersonDataExportActions notify={notify} />;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
+    if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
     return null;
   }
 
-  if (!isAuthenticated) {
+  if (authStatus === 'checking') {
+    return (
+      <div className="commercial-auth-shell" aria-label="正在检查登录状态">
+        <Space direction="vertical" align="center" size={16}>
+          <Spin size="large" />
+          <Typography.Text type="secondary">正在安全验证登录状态…</Typography.Text>
+        </Space>
+      </div>
+    );
+  }
+
+  if (authStatus === 'anonymous') {
     return (
       <>
         <AuthPage notify={notify} onChanged={onLoginChanged} standalone />

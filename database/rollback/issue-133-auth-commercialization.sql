@@ -1,0 +1,20 @@
+-- Issue #133 rollback and compatibility guidance.
+--
+-- Authentication data is security/audit evidence. Do not drop the new tables or
+-- columns during an application rollback. Roll back behavior through configuration:
+--
+-- 1. Keep Bearer compatibility enabled temporarily for the previous frontend.
+-- 2. Relax or disable login thresholds through environment configuration if a
+--    policy error blocks legitimate users.
+-- 3. Keep cookie names stable; an older application can ignore the cookies.
+-- 4. Preserve invitations, reset records, login attempts and security events.
+-- 5. Use a forward Flyway compensation migration for any schema correction.
+--
+-- Optional operational invalidation when reverting a faulty release:
+-- update app_auth_session
+-- set revoked_at = now()
+-- where revoked_at is null
+--   and issued_at >= timestamp '<release-start-time>';
+--
+-- Never restore demo credentials, plaintext reset tokens or persistent browser
+-- token storage as part of rollback.
