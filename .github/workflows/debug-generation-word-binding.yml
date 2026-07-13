@@ -37,3 +37,41 @@ jobs:
             backend/genealogy-backend/generation-word-binding-test.log
             backend/genealogy-backend/generation-word-binding-test.status
           if-no-files-found: error
+
+  debug-api-contract:
+    name: Capture generated API contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Generate contract and typecheck
+        shell: bash
+        run: |
+          set +e
+          node scripts/api/generate-frontend-client.mjs
+          git diff -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts > api-contract.diff
+          cd frontend/genealogy-web
+          npm run typecheck > ../../frontend-typecheck.log 2>&1
+          echo "$?" > ../../frontend-typecheck.status
+          exit 0
+
+      - name: Upload API diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-api-contract
+          path: |
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+            api-contract.diff
+            frontend-typecheck.log
+            frontend-typecheck.status
+          if-no-files-found: error
