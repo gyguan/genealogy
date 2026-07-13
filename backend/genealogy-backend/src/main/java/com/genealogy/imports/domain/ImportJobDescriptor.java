@@ -14,25 +14,14 @@ public record ImportJobDescriptor(String importType, String fileFormat) {
     public static final String FORMAT_XLSX = "xlsx";
 
     public ImportJobDescriptor {
-        importType = normalizeBusinessType(importType);
+        importType = normalize(importType);
         fileFormat = normalizeFormat(fileFormat);
     }
 
     public static ImportJobDescriptor resolve(String importType, String fileFormat, String filename) {
-        String normalizedType = normalize(importType);
-        String normalizedFormat = normalize(fileFormat);
-
-        if (normalizedType.endsWith("_csv")) {
-            normalizedType = normalizedType.substring(0, normalizedType.length() - 4);
-            if (normalizedFormat.isBlank()) {
-                normalizedFormat = FORMAT_CSV;
-            }
-        } else if (normalizedType.endsWith("_xlsx")) {
-            normalizedType = normalizedType.substring(0, normalizedType.length() - 5);
-            if (normalizedFormat.isBlank()) {
-                normalizedFormat = FORMAT_XLSX;
-            }
-        }
+        ImportJobDescriptor parsed = splitLegacyValue(importType, fileFormat);
+        String normalizedType = parsed.importType();
+        String normalizedFormat = parsed.fileFormat();
 
         if (normalizedType.isBlank()) {
             normalizedType = "person";
@@ -44,10 +33,7 @@ public record ImportJobDescriptor(String importType, String fileFormat) {
     }
 
     public static ImportJobDescriptor fromFilter(String importType, String fileFormat) {
-        if (isBlank(importType) && isBlank(fileFormat)) {
-            return new ImportJobDescriptor("", "");
-        }
-        return resolve(importType, fileFormat, null);
+        return splitLegacyValue(importType, fileFormat);
     }
 
     public String legacyImportType() {
@@ -65,8 +51,22 @@ public record ImportJobDescriptor(String importType, String fileFormat) {
         return !fileFormat.isBlank();
     }
 
-    private static String normalizeBusinessType(String value) {
-        return normalize(value);
+    private static ImportJobDescriptor splitLegacyValue(String importType, String fileFormat) {
+        String normalizedType = normalize(importType);
+        String normalizedFormat = normalize(fileFormat);
+
+        if (normalizedType.endsWith("_csv")) {
+            normalizedType = normalizedType.substring(0, normalizedType.length() - 4);
+            if (normalizedFormat.isBlank()) {
+                normalizedFormat = FORMAT_CSV;
+            }
+        } else if (normalizedType.endsWith("_xlsx")) {
+            normalizedType = normalizedType.substring(0, normalizedType.length() - 5);
+            if (normalizedFormat.isBlank()) {
+                normalizedFormat = FORMAT_XLSX;
+            }
+        }
+        return new ImportJobDescriptor(normalizedType, normalizedFormat);
     }
 
     private static String normalizeFormat(String value) {
@@ -87,9 +87,5 @@ public record ImportJobDescriptor(String importType, String fileFormat) {
 
     private static String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }
