@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
 import { RuntimeErrorBoundary } from './shared/ui/RuntimeErrorBoundary';
+import './auth-commercial.css';
 import './styles.css';
 import './experience.css';
 import './mvp1-wizard.css';
