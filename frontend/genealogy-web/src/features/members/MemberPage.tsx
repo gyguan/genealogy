@@ -1,14 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, Popconfirm, Row, Select, Space, Table, Tag, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  Drawer,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography
+} from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
+import {
+  memberPermissionApi,
+  type GrantableRole,
+  type MemberAggregate,
+  type MemberCandidate,
+  type MemberGrant
+} from './memberPermissionApi';
+
+const { TextArea } = Input;
+const DEFAULT_PAGE_SIZE = 10;
 
 type ClanRow = {
   id: number;
   clanName: string;
-  surname?: string;
-  clanCode?: string;
   hallName?: string;
 };
 
@@ -16,197 +38,89 @@ type BranchRow = {
   id: number;
   branchName: string;
   parentId?: number;
-  status?: string;
 };
 
-type UserRow = {
-  id: number;
-  username: string;
-  displayName: string;
-  email?: string;
-  status?: string;
-};
-
-type RoleRow = {
-  id: number;
+type GrantFormValues = {
+  userId?: number;
   roleCode: string;
-  roleName: string;
-  roleType: 'manage' | 'view' | string;
-  description?: string;
-};
-
-type MemberRow = {
-  id: number;
-  userId: number;
-  username: string;
-  displayName: string;
-  roleCode: string;
-  roleName: string;
-  roleType: 'manage' | 'view' | string;
-  memberName: string;
-  memberStatus: string;
   scopeType: string;
-  scopeId?: number;
-  branchId?: number;
+  scopeId: number;
+  reason: string;
 };
 
-type MemberPermissionSummary = {
-  activeMemberCount?: number;
-  adminCount?: number;
-  branchManagerCount?: number;
-  unassignedBranchCount?: number;
-  highRiskGrantCount?: number;
-  latestPermissionChangedAt?: string;
+type StatusFormValues = {
+  status: string;
+  reason: string;
 };
 
-type MemberPageResponse = {
-  records?: MemberRow[];
-  total?: number;
-  pageNo?: number;
-  pageSize?: number;
-  totalPages?: number;
+type RevokeFormValues = {
+  reason: string;
 };
 
-type MemberFilterValues = {
-  keyword?: string;
-  roleCode?: string;
-  scopeType?: string;
-  status?: string;
-};
-
-const manageRoleCodes = ['clan_admin', 'branch_admin', 'editor', 'reviewer'];
-const memberManagementBase = '/member-management';
-const DEFAULT_PAGE_SIZE = 10;
-
-const roleAbilityText: Record<string, string[]> = {
-  clan_admin: ['可管理宗族成员与支派', '可维护全宗族人物、关系、来源', '可处理导出与审计类高风险事项'],
-  branch_admin: ['可管理授权支派范围内资料', '可维护授权支派下人物、关系、来源', '删除和审核通过仍需更高权限'],
-  editor: ['可录入和编辑授权范围内资料', '可提交入谱审核', '不可调整成员权限或直接审核通过'],
-  reviewer: ['可查看待审内容', '可通过或驳回审核任务', '不可直接维护业务资料'],
-  viewer: ['可查看允许范围内人物、世系和来源摘要', '不可新增、编辑、审核或导出']
-};
-
-function roleTypeText(roleType?: string) {
-  return roleType === 'view' ? '查看角色' : '管理角色';
+function statusText(status?: string) {
+  const map: Record<string, string> = {
+    active: '有效',
+    disabled: '已停用',
+    inactive: '已停用',
+    invited: '待加入',
+    removed: '已移除'
+  };
+  return map[String(status || '').toLowerCase()] || status || '-';
 }
 
-function roleTypeColor(roleType?: string) {
-  return roleType === 'view' ? 'blue' : 'green';
+function statusColor(status?: string) {
+  if (status === 'active') return 'success';
+  if (status === 'invited') return 'processing';
+  return 'default';
 }
 
-function memberStatusText(status?: string) {
-  const value = String(status || '').toLowerCase();
-  const dict: Record<string, string> = { active: '有效', disabled: '已停用', revoked: '已撤销' };
-  return dict[value] || status || '-';
-}
-
-function memberStatusColor(status?: string) {
-  const value = String(status || '').toLowerCase();
-  if (value === 'active') return 'success';
-  if (['disabled', 'revoked'].includes(value)) return 'default';
-  return 'processing';
-}
-
-function defaultRoleCode(roles: RoleRow[]) {
-  return roles.find(role => role.roleCode === 'viewer')?.roleCode || roles[0]?.roleCode || '';
-}
-
-function display(value: unknown, fallback = '-') {
-  const text = String(value ?? '').trim();
-  return text || fallback;
-}
-
-function isBranchScope(scopeType?: string) {
-  return scopeType === 'branch' || scopeType === 'branch_subtree';
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return '暂无记录';
-  return value.replace('T', ' ').slice(0, 16);
+function dateTime(value?: string) {
+  return value ? value.replace('T', ' ').slice(0, 16) : '-';
 }
 
 export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
+  const [grantForm] = Form.useForm<GrantFormValues>();
+  const [statusForm] = Form.useForm<StatusFormValues>();
+  const [revokeForm] = Form.useForm<RevokeFormValues>();
+
   const [clans, setClans] = useState<ClanRow[]>([]);
   const [branches, setBranches] = useState<BranchRow[]>([]);
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [roles, setRoles] = useState<RoleRow[]>([]);
-  const [members, setMembers] = useState<MemberRow[]>([]);
-  const [summary, setSummary] = useState<MemberPermissionSummary>({});
-  const [memberPage, setMemberPage] = useState<MemberPageResponse>({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
-  const [memberKeyword, setMemberKeyword] = useState('');
-  const [filterRoleCode, setFilterRoleCode] = useState('');
-  const [filterScopeType, setFilterScopeType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [userId, setUserId] = useState('');
-  const [roleCode, setRoleCode] = useState('');
-  const [memberName, setMemberName] = useState('');
-  const [scopeType, setScopeType] = useState('clan');
-  const [scopeBranchId, setScopeBranchId] = useState('');
+  const [roles, setRoles] = useState<GrantableRole[]>([]);
+  const [candidates, setCandidates] = useState<MemberCandidate[]>([]);
+  const [members, setMembers] = useState<MemberAggregate[]>([]);
+  const [total, setTotal] = useState(0);
+  const [pageNo, setPageNo] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [keyword, setKeyword] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [scopeFilter, setScopeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(false);
+  const [candidateLoading, setCandidateLoading] = useState(false);
 
-  const manageRoles = useMemo(() => roles.filter(role => role.roleType !== 'view' || manageRoleCodes.includes(role.roleCode)), [roles]);
-  const viewRoles = useMemo(() => roles.filter(role => role.roleType === 'view'), [roles]);
-  const selectedRole = roles.find(role => role.roleCode === roleCode);
-  const selectedClan = useMemo(() => {
-    const targetId = String(workspace.clanId || '');
-    return clans.find(clan => String(clan.id) === targetId) || clans[0] || null;
-  }, [clans, workspace.clanId]);
-  const selectedClanId = String(selectedClan?.id || workspace.clanId || '');
+  const [grantModalOpen, setGrantModalOpen] = useState(false);
+  const [editingGrant, setEditingGrant] = useState<MemberGrant | null>(null);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<MemberAggregate | null>(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<MemberAggregate | null>(null);
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);
 
-  function branchName(branchId?: number | string) {
-    const id = String(branchId || '');
-    return branches.find(branch => String(branch.id) === id)?.branchName || '';
-  }
+  const selectedClanId = String(workspace.clanId || clans[0]?.id || '');
+  const selectedRole = roles.find(role => role.roleCode === grantForm.getFieldValue('roleCode'));
+  const selectedScopeType = Form.useWatch('scopeType', grantForm);
 
-  function scopeText(row?: Pick<MemberRow, 'scopeType' | 'scopeId' | 'branchId'>) {
-    const type = row?.scopeType || scopeType;
-    const targetBranchId = row ? (row.scopeId || row.branchId) : scopeBranchId;
-    if (isBranchScope(type)) {
-      return branchName(targetBranchId) ? `指定支派：${branchName(targetBranchId)}` : '指定支派';
-    }
-    return selectedClan?.clanName ? `全宗族：${selectedClan.clanName}` : '全宗族';
-  }
+  const roleOptions = useMemo(
+    () => roles.map(role => ({
+      value: role.roleCode,
+      label: `${role.roleName}${role.riskLevel === 'high' ? '（高风险）' : ''}`
+    })),
+    [roles]
+  );
 
-  function effectiveScopeId() {
-    if (isBranchScope(scopeType)) return Number(scopeBranchId);
-    return Number(selectedClanId);
-  }
-
-  function effectiveBranchId() {
-    return isBranchScope(scopeType) && scopeBranchId ? Number(scopeBranchId) : null;
-  }
-
-  function permissionPreview() {
-    const roleItems = selectedRole ? (roleAbilityText[selectedRole.roleCode] || [selectedRole.description || '按该角色权限执行']) : [];
-    return [
-      selectedClan?.clanName ? `授权宗族：${selectedClan.clanName}` : '请先选择宗族',
-      `授权范围：${scopeText()}`,
-      ...roleItems
-    ];
-  }
-
-  function currentFilters(overrides: MemberFilterValues = {}) {
-    return {
-      keyword: overrides.keyword ?? memberKeyword,
-      roleCode: overrides.roleCode ?? filterRoleCode,
-      scopeType: overrides.scopeType ?? filterScopeType,
-      status: overrides.status ?? filterStatus
-    };
-  }
-
-  function memberQuery(pageNo: number, pageSize: number, overrides: MemberFilterValues = {}) {
-    const filters = currentFilters(overrides);
-    const query = new URLSearchParams({ pageNo: String(pageNo), pageSize: String(pageSize) });
-    if (filters.keyword?.trim()) query.set('keyword', filters.keyword.trim());
-    if (filters.roleCode) query.set('roleCode', filters.roleCode);
-    if (filters.scopeType) query.set('scopeType', filters.scopeType);
-    if (filters.status) query.set('status', filters.status);
-    return query.toString();
-  }
-
-  async function run(action: () => Promise<void>) {
-    if (loading) return;
+  async function execute(action: () => Promise<void>) {
     setLoading(true);
     try {
       await action();
@@ -217,353 +131,481 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     }
   }
 
-  async function loadSummary(clanId = selectedClanId) {
+  async function loadMembers(clanId = selectedClanId, nextPage = pageNo, nextPageSize = pageSize) {
     if (!clanId) {
-      setSummary({});
+      setMembers([]);
+      setTotal(0);
       return;
     }
-    const summaryRes = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members/summary`).catch(() => ({}));
-    setSummary((summaryRes || {}) as MemberPermissionSummary);
+    const result = await memberPermissionApi.listMembers(clanId, {
+      keyword: keyword.trim() || undefined,
+      roleCode: roleFilter || undefined,
+      scopeType: scopeFilter || undefined,
+      status: statusFilter || undefined,
+      pageNo: nextPage,
+      pageSize: nextPageSize
+    });
+    setMembers(result.records || []);
+    setTotal(result.total || 0);
+    setPageNo(result.pageNo || nextPage);
+    setPageSize(result.pageSize || nextPageSize);
+    if (selectedMember) {
+      const refreshed = (result.records || []).find(item => item.membershipId === selectedMember.membershipId);
+      if (refreshed) setSelectedMember(refreshed);
+    }
   }
 
-  async function loadBranches(clanId: string) {
-    if (!clanId) {
-      setBranches([]);
-      setScopeBranchId('');
-      return [] as BranchRow[];
-    }
-    const branchRes = await apiClient.get(`/clans/${clanId}/branches`).catch(() => []);
-    const nextBranches = toRecordList(branchRes) as BranchRow[];
-    setBranches(nextBranches);
-    if (nextBranches.length && !nextBranches.some(branch => String(branch.id) === scopeBranchId)) {
-      setScopeBranchId(String(nextBranches[0].id));
-    }
-    if (!nextBranches.length) setScopeBranchId('');
-    return nextBranches;
+  async function loadClanContext(clanId: string) {
+    if (!clanId) return;
+    const [branchResult, roleResult] = await Promise.all([
+      apiClient.get(`/clans/${clanId}/branches`).catch(() => []),
+      memberPermissionApi.grantableRoles(clanId).catch(() => [])
+    ]);
+    setBranches(toRecordList(branchResult) as BranchRow[]);
+    setRoles(roleResult || []);
+    await loadMembers(clanId, 1, pageSize);
   }
 
-  async function listMembers(clanId = selectedClanId, pageNo = memberPage.pageNo || 1, pageSize = memberPage.pageSize || DEFAULT_PAGE_SIZE, overrides: MemberFilterValues = {}) {
-    if (!clanId) {
-      notify({ message: '请先选择宗族' }, true);
-      return;
-    }
-    const res = await apiClient.get(`${memberManagementBase}/clans/${clanId}/members?${memberQuery(pageNo, pageSize, overrides)}`);
-    const nextPage = (res || {}) as MemberPageResponse;
-    setMemberPage(nextPage);
-    setMembers(toRecordList(nextPage.records || []) as MemberRow[]);
-    await loadSummary(clanId);
-  }
-
-  async function loadBase() {
-    await run(async () => {
-      const [clanRes, userRes, roleRes] = await Promise.all([
-        apiClient.get('/clans').catch(() => []),
-        apiClient.get(`${memberManagementBase}/users`).catch(() => []),
-        apiClient.get(`${memberManagementBase}/roles`).catch(() => [])
-      ]);
-      const nextClans = toRecordList(clanRes) as ClanRow[];
-      const nextUsers = toRecordList(userRes) as UserRow[];
-      const nextRoles = toRecordList(roleRes) as RoleRow[];
+  async function initialize() {
+    await execute(async () => {
+      const clanResult = await apiClient.get('/clans').catch(() => []);
+      const nextClans = toRecordList(clanResult) as ClanRow[];
+      setClans(nextClans);
       const nextClanId = workspace.clanId && nextClans.some(clan => String(clan.id) === workspace.clanId)
         ? workspace.clanId
         : String(nextClans[0]?.id || '');
-
-      setClans(nextClans);
-      setUsers(nextUsers);
-      setRoles(nextRoles);
-      if (nextClanId && workspace.clanId !== nextClanId) workspace.setClanId(nextClanId);
-      if (!userId && nextUsers[0]?.id) {
-        setUserId(String(nextUsers[0].id));
-        setMemberName(nextUsers[0].displayName || nextUsers[0].username);
-      }
-      if (!roleCode) setRoleCode(defaultRoleCode(nextRoles));
-      if (nextClanId) {
-        await loadBranches(nextClanId);
-        await listMembers(nextClanId, 1, DEFAULT_PAGE_SIZE);
-      } else {
-        setBranches([]);
-        setMembers([]);
-        setMemberPage({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
-        setSummary({});
-      }
+      if (nextClanId && nextClanId !== workspace.clanId) workspace.setClanId(nextClanId);
+      if (nextClanId) await loadClanContext(nextClanId);
     });
   }
 
-  async function create() {
-    await run(async () => {
-      if (!selectedClanId) throw new Error('请先选择宗族');
-      if (!userId) throw new Error('请选择用户');
-      if (!roleCode) throw new Error('请选择角色');
-      if (isBranchScope(scopeType) && !scopeBranchId) throw new Error('支派范围授权需要先选择支派');
-      const selectedUser = users.find(user => String(user.id) === userId);
-      await apiClient.post(`${memberManagementBase}/clans/${selectedClanId}/members`, {
-        userId: Number(userId),
-        roleCode,
-        memberName: memberName.trim() || selectedUser?.displayName || selectedUser?.username || `用户${userId}`,
-        scopeType,
-        scopeId: effectiveScopeId(),
-        branchId: effectiveBranchId()
-      });
-      notify({ message: '成员授权成功' });
-      await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE);
-    });
-  }
+  useEffect(() => {
+    void initialize();
+  }, []);
 
-  async function updateRole(member: MemberRow, nextRoleCode: string) {
-    await run(async () => {
-      if (!selectedClanId) throw new Error('请先选择宗族');
-      const nextScopeType = isBranchScope(member.scopeType) ? 'branch' : 'clan';
-      const nextScopeId = isBranchScope(nextScopeType) ? (member.scopeId || member.branchId) : Number(selectedClanId);
-      await apiClient.put(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`, {
-        roleCode: nextRoleCode,
-        memberStatus: member.memberStatus || 'active',
-        scopeType: nextScopeType,
-        scopeId: nextScopeId,
-        branchId: member.branchId || (isBranchScope(nextScopeType) ? nextScopeId : null)
-      });
-      notify({ message: '成员角色已更新' });
-      await listMembers(selectedClanId);
-    });
-  }
-
-  async function revokeRole(member: MemberRow) {
-    await run(async () => {
-      if (!selectedClanId) throw new Error('请先选择宗族');
-      await apiClient.delete(`${memberManagementBase}/clans/${selectedClanId}/members/${member.id}`);
-      notify({ message: '成员授权已撤销' });
-      await listMembers(selectedClanId);
-    });
-  }
-
-  useEffect(() => { void loadBase(); }, []);
-
-  function onClanChange(nextClanId: string) {
-    const clanId = String(nextClanId || '').trim();
+  function changeClan(clanId: string) {
     workspace.patch({ clanId, branchId: '', personId: '', relationshipId: '', sourceId: '', attachmentId: '', reviewTaskId: '' });
-    if (clanId) {
-      void run(async () => {
-        await loadBranches(clanId);
-        await listMembers(clanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE);
-      });
-    } else {
-      setBranches([]);
-      setMembers([]);
-      setMemberPage({ records: [], total: 0, pageNo: 1, pageSize: DEFAULT_PAGE_SIZE, totalPages: 0 });
-      setSummary({});
+    setSelectedMember(null);
+    setMemberDrawerOpen(false);
+    setKeyword('');
+    setRoleFilter('');
+    setScopeFilter('');
+    setStatusFilter('');
+    void execute(async () => { await loadClanContext(clanId); });
+  }
+
+  async function searchCandidates(searchText: string) {
+    const value = searchText.trim();
+    if (!selectedClanId || value.length < 2) {
+      setCandidates([]);
+      return;
+    }
+    setCandidateLoading(true);
+    try {
+      const result = await memberPermissionApi.searchCandidates(selectedClanId, value);
+      setCandidates(result.records || []);
+    } catch (error) {
+      notify({ message: (error as Error).message || '候选成员搜索失败' }, true);
+    } finally {
+      setCandidateLoading(false);
     }
   }
 
-  function onUserChange(nextUserId: string) {
-    setUserId(nextUserId);
-    const user = users.find(item => String(item.id) === nextUserId);
-    if (user) setMemberName(user.displayName || user.username);
+  function openCreateGrant() {
+    setEditingGrant(null);
+    setCandidates([]);
+    const defaultRole = roles[0];
+    const defaultScopeType = defaultRole?.allowedScopeTypes?.[0] || 'clan';
+    grantForm.resetFields();
+    grantForm.setFieldsValue({
+      roleCode: defaultRole?.roleCode,
+      scopeType: defaultScopeType,
+      scopeId: defaultScopeType === 'clan' ? Number(selectedClanId) : undefined,
+      reason: ''
+    });
+    setGrantModalOpen(true);
   }
 
-  function resetMemberFilters() {
-    setMemberKeyword('');
-    setFilterRoleCode('');
-    setFilterScopeType('');
-    setFilterStatus('');
-    void run(async () => {
-      await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE, { keyword: '', roleCode: '', scopeType: '', status: '' });
+  function openEditGrant(grant: MemberGrant) {
+    setEditingGrant(grant);
+    grantForm.resetFields();
+    grantForm.setFieldsValue({
+      roleCode: grant.roleCode,
+      scopeType: grant.scopeType === 'branch' ? 'branch_subtree' : grant.scopeType,
+      scopeId: grant.scopeId,
+      reason: ''
+    });
+    setGrantModalOpen(true);
+  }
+
+  function onRoleChange(roleCode: string) {
+    const role = roles.find(item => item.roleCode === roleCode);
+    const allowedScopes = role?.allowedScopeTypes || ['clan'];
+    const currentScope = grantForm.getFieldValue('scopeType');
+    const nextScope = allowedScopes.includes(currentScope) ? currentScope : allowedScopes[0];
+    grantForm.setFieldsValue({
+      roleCode,
+      scopeType: nextScope,
+      scopeId: nextScope === 'clan' ? Number(selectedClanId) : undefined
     });
   }
 
-  const roleOptions = [
-    ...(manageRoles.length ? [{ label: '管理与协作角色', options: manageRoles.map(role => ({ value: role.roleCode, label: role.roleName })) }] : []),
-    ...(viewRoles.length ? [{ label: '查看角色', options: viewRoles.map(role => ({ value: role.roleCode, label: role.roleName })) }] : [])
-  ];
+  async function submitGrant() {
+    const values = await grantForm.validateFields();
+    await execute(async () => {
+      if (editingGrant) {
+        await memberPermissionApi.updateGrant(selectedClanId, editingGrant.grantId, {
+          roleCode: values.roleCode,
+          scopeType: values.scopeType,
+          scopeId: Number(values.scopeId),
+          reason: values.reason.trim()
+        });
+        notify({ message: '成员授权已更新' });
+      } else {
+        await memberPermissionApi.createGrant(selectedClanId, {
+          userId: Number(values.userId),
+          roleCode: values.roleCode,
+          scopeType: values.scopeType,
+          scopeId: Number(values.scopeId),
+          reason: values.reason.trim()
+        });
+        notify({ message: '成员授权已创建' });
+      }
+      setGrantModalOpen(false);
+      await loadMembers(selectedClanId, editingGrant ? pageNo : 1, pageSize);
+    });
+  }
+
+  function openMember(member: MemberAggregate) {
+    setSelectedMember(member);
+    setMemberDrawerOpen(true);
+  }
+
+  function openStatus(member: MemberAggregate) {
+    setStatusTarget(member);
+    statusForm.resetFields();
+    statusForm.setFieldsValue({
+      status: member.membershipStatus === 'active' ? 'disabled' : 'active',
+      reason: ''
+    });
+    setStatusModalOpen(true);
+  }
+
+  async function submitStatus() {
+    if (!statusTarget) return;
+    const values = await statusForm.validateFields();
+    await execute(async () => {
+      await memberPermissionApi.updateMemberStatus(
+        selectedClanId,
+        statusTarget.membershipId,
+        values.status,
+        values.reason.trim()
+      );
+      notify({ message: values.status === 'active' ? '成员已恢复' : '成员已停用' });
+      setStatusModalOpen(false);
+      await loadMembers();
+    });
+  }
+
+  function openRevoke(grant: MemberGrant) {
+    setRevokeTarget(grant);
+    revokeForm.resetFields();
+    setRevokeModalOpen(true);
+  }
+
+  async function submitRevoke() {
+    if (!revokeTarget) return;
+    const values = await revokeForm.validateFields();
+    await execute(async () => {
+      await memberPermissionApi.revokeGrant(selectedClanId, revokeTarget.grantId, values.reason.trim());
+      notify({ message: '成员授权已撤销' });
+      setRevokeModalOpen(false);
+      await loadMembers();
+    });
+  }
+
+  const scopeOptions = (selectedRole?.allowedScopeTypes || ['clan']).map(scope => ({
+    value: scope,
+    label: scope === 'clan' ? '全宗族' : '指定支派及下级支派'
+  }));
 
   return (
     <div className="member-role-page">
       <Alert
         type="info"
         showIcon
-        className="member-role-tip"
-        message="中国式族谱权限说明"
-        description="权限由宗族成员身份、角色动作、授权范围、隐私规则和审核流程共同决定。界面只展示宗族名称、支派名称和成员姓名，不需要用户填写技术 ID。"
+        message="成员权限按角色与数据范围共同生效"
+        description="支派管理员只能管理授权支派及下级支派；高风险授权和成员停用均需填写原因，并由后端执行越级、范围和最后管理员校验。"
       />
 
-      <Row gutter={[12, 12]}>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">有效成员</Typography.Text>
-            <Typography.Title level={3}>{summary.activeMemberCount ?? 0}</Typography.Title>
-            <Tag>宗族身份</Tag>
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">管理员</Typography.Text>
-            <Typography.Title level={3}>{summary.adminCount ?? 0}</Typography.Title>
-            <Tag color={(summary.adminCount ?? 0) > 0 ? 'success' : 'warning'}>{(summary.adminCount ?? 0) > 0 ? '治理可用' : '需配置'}</Tag>
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">支派负责人</Typography.Text>
-            <Typography.Title level={3}>{summary.branchManagerCount ?? 0}</Typography.Title>
-            <Tag color={(summary.branchManagerCount ?? 0) > 0 ? 'processing' : 'default'}>支派治理</Tag>
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">未配置负责人支派</Typography.Text>
-            <Typography.Title level={3}>{summary.unassignedBranchCount ?? 0}</Typography.Title>
-            <Tag color={(summary.unassignedBranchCount ?? 0) > 0 ? 'warning' : 'success'}>{(summary.unassignedBranchCount ?? 0) > 0 ? '待补齐' : '已覆盖'}</Tag>
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">高风险授权</Typography.Text>
-            <Typography.Title level={3}>{summary.highRiskGrantCount ?? 0}</Typography.Title>
-            <Tag color={(summary.highRiskGrantCount ?? 0) > 0 ? 'error' : 'success'}>{(summary.highRiskGrantCount ?? 0) > 0 ? '需关注' : '暂无风险'}</Tag>
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={4}>
-          <Card loading={loading}>
-            <Typography.Text type="secondary">最近权限变更</Typography.Text>
-            <Typography.Title level={5} style={{ marginTop: 8 }}>{formatDateTime(summary.latestPermissionChangedAt)}</Typography.Title>
-            <Tag>审计线索</Tag>
-          </Card>
-        </Col>
-      </Row>
-
-      <div className="page-grid two">
-        <Card title="新增成员授权">
-          <Form layout="vertical">
-            <Form.Item label="宗族名称">
-              <Select
-                showSearch
-                optionFilterProp="label"
-                value={selectedClanId}
-                onChange={onClanChange}
-                disabled={loading || !clans.length}
-                options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: `${display(clan.clanName, '未命名宗族')}${clan.hallName ? ` · ${clan.hallName}` : ''}` }))]}
-              />
-            </Form.Item>
-            <Form.Item label="选择成员">
-              <Select
-                showSearch
-                optionFilterProp="label"
-                value={userId}
-                onChange={onUserChange}
-                options={[{ value: '', label: '请选择成员' }, ...users.map(user => ({ value: String(user.id), label: user.displayName || user.username }))]}
-              />
-            </Form.Item>
-            <Form.Item label="族内称呼"><Input value={memberName} onChange={e => setMemberName(e.target.value)} placeholder="默认使用用户显示名" /></Form.Item>
-            <Form.Item label="授权角色"><Select value={roleCode} onChange={setRoleCode} options={roleOptions} /></Form.Item>
-            <Form.Item label="授权范围">
-              <Select value={scopeType} onChange={setScopeType} options={[{ value: 'clan', label: '全宗族' }, { value: 'branch', label: '指定支派' }]} />
-            </Form.Item>
-            {isBranchScope(scopeType) ? (
-              <Form.Item label="选择支派">
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  value={scopeBranchId}
-                  onChange={setScopeBranchId}
-                  disabled={!branches.length}
-                  options={[{ value: '', label: '请选择支派' }, ...branches.map(branch => ({ value: String(branch.id), label: display(branch.branchName, '未命名支派') }))]}
-                />
-              </Form.Item>
-            ) : null}
-          </Form>
-          <Card size="small" title="数据权限预览" className="permission-preview-card">
-            {permissionPreview().map(item => <Typography.Paragraph key={item} type="secondary">• {item}</Typography.Paragraph>)}
-          </Card>
-          {selectedRole ? <Tag color={roleTypeColor(selectedRole.roleType)}>{selectedRole.roleName}：{roleTypeText(selectedRole.roleType)}</Tag> : null}
-          <Space style={{ marginTop: 12 }} wrap>
-            <Button type="primary" disabled={loading} loading={loading} onClick={() => void create()}>新增授权</Button>
-            <Button disabled={loading} onClick={() => void run(async () => { await listMembers(); })}>刷新成员</Button>
+      <Card
+        title="成员权限"
+        extra={(
+          <Space wrap>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              style={{ width: 240 }}
+              value={selectedClanId}
+              onChange={changeClan}
+              options={clans.map(clan => ({
+                value: String(clan.id),
+                label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
+              }))}
+            />
+            <Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
+              新增成员授权
+            </Button>
           </Space>
-        </Card>
-
-        <Card title="角色清单">
-          <div className="role-card-grid">
-            {roles.map(role => (
-              <Card key={role.roleCode} size="small" title={<Space><span>{role.roleName}</span><Tag color={roleTypeColor(role.roleType)}>{roleTypeText(role.roleType)}</Tag></Space>}>
-                <Typography.Paragraph type="secondary">{role.description || '-'}</Typography.Paragraph>
-                {(roleAbilityText[role.roleCode] || []).map(item => <Typography.Text key={item} type="secondary">• {item}<br /></Typography.Text>)}
-              </Card>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card title="成员与角色列表">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Space wrap align="end">
-            <Space direction="vertical" size={4}>
-              <Typography.Text type="secondary">成员关键词</Typography.Text>
-              <Input allowClear style={{ width: 220 }} placeholder="姓名 / 用户名 / 角色" value={memberKeyword} onChange={event => setMemberKeyword(event.target.value)} />
-            </Space>
-            <Space direction="vertical" size={4}>
-              <Typography.Text type="secondary">角色</Typography.Text>
-              <Select
-                style={{ width: 180 }}
-                value={filterRoleCode}
-                onChange={setFilterRoleCode}
-                options={[{ value: '', label: '全部角色' }, ...roles.map(role => ({ value: role.roleCode, label: role.roleName }))]}
-              />
-            </Space>
-            <Space direction="vertical" size={4}>
-              <Typography.Text type="secondary">授权范围</Typography.Text>
-              <Select
-                style={{ width: 160 }}
-                value={filterScopeType}
-                onChange={setFilterScopeType}
-                options={[{ value: '', label: '全部范围' }, { value: 'clan', label: '全宗族' }, { value: 'branch', label: '指定支派' }]}
-              />
-            </Space>
-            <Space direction="vertical" size={4}>
-              <Typography.Text type="secondary">成员状态</Typography.Text>
-              <Select
-                style={{ width: 140 }}
-                value={filterStatus}
-                onChange={setFilterStatus}
-                options={[{ value: '', label: '全部状态' }, { value: 'active', label: '有效' }, { value: 'disabled', label: '已停用' }, { value: 'revoked', label: '已撤销' }]}
-              />
-            </Space>
-            <Button type="primary" loading={loading} onClick={() => void run(async () => { await listMembers(selectedClanId, 1, memberPage.pageSize || DEFAULT_PAGE_SIZE); })}>查询成员</Button>
-            <Button disabled={loading} onClick={resetMemberFilters}>重置</Button>
+        )}
+      >
+        <Space wrap align="end" style={{ marginBottom: 16 }}>
+          <Space direction="vertical" size={4}>
+            <Typography.Text type="secondary">成员关键词</Typography.Text>
+            <Input allowClear style={{ width: 220 }} value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="姓名 / 账号" />
           </Space>
-          <Table<MemberRow>
-            size="small"
-            bordered
-            rowKey={(row, index) => String(row.id || index)}
-            dataSource={members}
-            pagination={{
-              current: memberPage.pageNo || 1,
-              pageSize: memberPage.pageSize || DEFAULT_PAGE_SIZE,
-              total: memberPage.total || 0,
-              showSizeChanger: true,
-              showTotal: total => `共 ${total} 条授权记录`,
-              onChange: (page, pageSize) => void run(async () => { await listMembers(selectedClanId, page, pageSize); })
-            }}
-            columns={[
-              { key: 'displayName', title: '成员', render: (_value, row) => row.displayName || row.memberName || '-' },
-              { key: 'roleName', title: '角色', render: (_value, row) => <Space><Tag color={roleTypeColor(row.roleType)}>{roleTypeText(row.roleType)}</Tag><span>{row.roleName || row.roleCode}</span></Space> },
-              { key: 'scopeType', title: '授权范围', render: (_value, row) => scopeText(row) },
-              { key: 'memberStatus', title: '状态', render: (_value, row) => <Tag color={memberStatusColor(row.memberStatus)}>{memberStatusText(row.memberStatus)}</Tag> },
-              {
-                key: 'actions',
-                title: '操作',
-                render: (_value, row) => (
-                  <Space size="small" wrap>
-                    <Button size="small" type="link" onClick={() => void updateRole(row, 'clan_admin')}>设为宗族管理员</Button>
-                    <Button size="small" type="link" onClick={() => void updateRole(row, 'editor')}>设为修谱编辑</Button>
-                    <Button size="small" type="link" onClick={() => void updateRole(row, 'viewer')}>设为查看者</Button>
-                    <Popconfirm title="撤销授权" description={`确认撤销“${row.displayName || row.memberName || '该成员'}”的授权吗？`} okText="撤销" cancelText="取消" onConfirm={() => void revokeRole(row)}>
-                      <Button size="small" type="link" danger>撤销授权</Button>
-                    </Popconfirm>
-                  </Space>
-                )
-              }
-            ]}
-          />
+          <Space direction="vertical" size={4}>
+            <Typography.Text type="secondary">角色</Typography.Text>
+            <Select
+              style={{ width: 180 }}
+              value={roleFilter}
+              onChange={setRoleFilter}
+              options={[{ value: '', label: '全部角色' }, ...roles.map(role => ({ value: role.roleCode, label: role.roleName }))]}
+            />
+          </Space>
+          <Space direction="vertical" size={4}>
+            <Typography.Text type="secondary">授权范围</Typography.Text>
+            <Select
+              style={{ width: 190 }}
+              value={scopeFilter}
+              onChange={setScopeFilter}
+              options={[
+                { value: '', label: '全部范围' },
+                { value: 'clan', label: '全宗族' },
+                { value: 'branch_subtree', label: '支派及下级支派' }
+              ]}
+            />
+          </Space>
+          <Space direction="vertical" size={4}>
+            <Typography.Text type="secondary">成员状态</Typography.Text>
+            <Select
+              style={{ width: 140 }}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: '', label: '全部状态' },
+                { value: 'active', label: '有效' },
+                { value: 'disabled', label: '已停用' },
+                { value: 'removed', label: '已移除' }
+              ]}
+            />
+          </Space>
+          <Button type="primary" loading={loading} onClick={() => void execute(async () => { await loadMembers(selectedClanId, 1, pageSize); })}>
+            查询
+          </Button>
+          <Button onClick={() => {
+            setKeyword('');
+            setRoleFilter('');
+            setScopeFilter('');
+            setStatusFilter('');
+            void execute(async () => { await loadMembers(selectedClanId, 1, pageSize); });
+          }}>
+            重置
+          </Button>
         </Space>
+
+        <Table<MemberAggregate>
+          rowKey="membershipId"
+          loading={loading}
+          dataSource={members}
+          pagination={{
+            current: pageNo,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: value => `共 ${value} 名成员`,
+            onChange: (nextPage, nextPageSize) => void execute(async () => { await loadMembers(selectedClanId, nextPage, nextPageSize); })
+          }}
+          columns={[
+            {
+              key: 'member',
+              title: '成员',
+              render: (_value, row) => (
+                <Space direction="vertical" size={0}>
+                  <Typography.Text strong>{row.displayName || '未命名成员'}</Typography.Text>
+                  <Typography.Text type="secondary">{row.maskedAccount || '***'}</Typography.Text>
+                </Space>
+              )
+            },
+            {
+              key: 'roles',
+              title: '当前角色',
+              render: (_value, row) => row.grants.length
+                ? <Space wrap>{row.grants.map(grant => <Tag key={grant.grantId} color={grant.roleCode === 'clan_admin' ? 'red' : 'blue'}>{grant.roleName || grant.roleCode}</Tag>)}</Space>
+                : <Typography.Text type="secondary">暂无有效授权</Typography.Text>
+            },
+            {
+              key: 'scopes',
+              title: '授权范围',
+              render: (_value, row) => row.grants.length
+                ? <Space direction="vertical" size={2}>{row.grants.map(grant => <span key={grant.grantId}>{grant.scopeName}</span>)}</Space>
+                : '-'
+            },
+            {
+              dataIndex: 'membershipStatus',
+              title: '状态',
+              render: value => <Tag color={statusColor(value)}>{statusText(value)}</Tag>
+            },
+            {
+              dataIndex: 'updatedAt',
+              title: '最近变更',
+              render: value => dateTime(value)
+            },
+            {
+              key: 'actions',
+              title: '操作',
+              render: (_value, row) => (
+                <Space>
+                  <Button type="link" onClick={() => openMember(row)}>管理授权</Button>
+                  {row.allowedActions?.canDisableMember ? (
+                    <Button type="link" danger={row.membershipStatus === 'active'} onClick={() => openStatus(row)}>
+                      {row.membershipStatus === 'active' ? '停用成员' : '恢复成员'}
+                    </Button>
+                  ) : null}
+                </Space>
+              )
+            }
+          ]}
+        />
       </Card>
+
+      <Modal
+        title={editingGrant ? '编辑成员授权' : '新增成员授权'}
+        open={grantModalOpen}
+        onCancel={() => setGrantModalOpen(false)}
+        onOk={() => void submitGrant()}
+        confirmLoading={loading}
+        destroyOnClose
+      >
+        <Form form={grantForm} layout="vertical">
+          {!editingGrant ? (
+            <Form.Item name="userId" label="选择成员" rules={[{ required: true, message: '请搜索并选择成员' }]}>
+              <Select
+                showSearch
+                filterOption={false}
+                onSearch={value => void searchCandidates(value)}
+                loading={candidateLoading}
+                placeholder="输入至少两个字符搜索"
+                options={candidates.map(candidate => ({
+                  value: candidate.userId,
+                  disabled: candidate.alreadyMember,
+                  label: `${candidate.displayName} · ${candidate.maskedAccount}${candidate.alreadyMember ? '（已是成员）' : ''}`
+                }))}
+              />
+            </Form.Item>
+          ) : null}
+          <Form.Item name="roleCode" label="授权角色" rules={[{ required: true, message: '请选择角色' }]}>
+            <Select options={roleOptions} onChange={onRoleChange} />
+          </Form.Item>
+          <Form.Item name="scopeType" label="授权范围" rules={[{ required: true, message: '请选择授权范围' }]}>
+            <Select
+              options={scopeOptions}
+              onChange={value => grantForm.setFieldValue('scopeId', value === 'clan' ? Number(selectedClanId) : undefined)}
+            />
+          </Form.Item>
+          {selectedScopeType === 'branch_subtree' ? (
+            <Form.Item name="scopeId" label="选择支派" rules={[{ required: true, message: '请选择支派' }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={branches.map(branch => ({ value: branch.id, label: `${branch.branchName}及下级支派` }))}
+              />
+            </Form.Item>
+          ) : (
+            <Form.Item name="scopeId" hidden><Input /></Form.Item>
+          )}
+          <Form.Item name="reason" label="变更原因" rules={[{ required: true, whitespace: true, message: '请填写权限变更原因' }]}>
+            <TextArea rows={3} maxLength={500} showCount placeholder="用于安全校验和审计追溯" />
+          </Form.Item>
+          {selectedRole?.riskLevel === 'high' ? (
+            <Alert type="warning" showIcon message="高风险授权" description="该角色具有全宗族治理或审核能力，请确认人员、职责和授权范围。" />
+          ) : null}
+        </Form>
+      </Modal>
+
+      <Drawer
+        title={selectedMember ? `${selectedMember.displayName} · 授权管理` : '授权管理'}
+        width={620}
+        open={memberDrawerOpen}
+        onClose={() => setMemberDrawerOpen(false)}
+      >
+        {selectedMember ? (
+          <>
+            <Descriptions column={2} size="small" bordered>
+              <Descriptions.Item label="成员状态"><Tag color={statusColor(selectedMember.membershipStatus)}>{statusText(selectedMember.membershipStatus)}</Tag></Descriptions.Item>
+              <Descriptions.Item label="加入时间">{dateTime(selectedMember.joinedAt)}</Descriptions.Item>
+            </Descriptions>
+            <Typography.Title level={5} style={{ marginTop: 20 }}>当前有效授权</Typography.Title>
+            <Table<MemberGrant>
+              size="small"
+              rowKey="grantId"
+              pagination={false}
+              dataSource={selectedMember.grants}
+              columns={[
+                { dataIndex: 'roleName', title: '角色' },
+                { dataIndex: 'scopeName', title: '范围' },
+                { dataIndex: 'updatedAt', title: '最近变更', render: value => dateTime(value) },
+                {
+                  key: 'actions',
+                  title: '操作',
+                  render: (_value, grant) => (
+                    <Space>
+                      {selectedMember.allowedActions?.canEditGrant ? <Button type="link" onClick={() => openEditGrant(grant)}>编辑</Button> : null}
+                      {selectedMember.allowedActions?.canRevokeGrant ? <Button type="link" danger onClick={() => openRevoke(grant)}>撤销</Button> : null}
+                    </Space>
+                  )
+                }
+              ]}
+            />
+          </>
+        ) : null}
+      </Drawer>
+
+      <Modal
+        title={statusTarget?.membershipStatus === 'active' ? '停用成员' : '恢复成员'}
+        open={statusModalOpen}
+        onCancel={() => setStatusModalOpen(false)}
+        onOk={() => void submitStatus()}
+        confirmLoading={loading}
+      >
+        <Form form={statusForm} layout="vertical">
+          <Form.Item name="status" hidden><Input /></Form.Item>
+          <Alert
+            type="warning"
+            showIcon
+            message={statusTarget?.membershipStatus === 'active' ? '停用后该成员不能继续访问宗族数据' : '恢复后该成员重新获得有效授权范围内的访问能力'}
+          />
+          <Form.Item name="reason" label="操作原因" style={{ marginTop: 16 }} rules={[{ required: true, whitespace: true, message: '请填写操作原因' }]}>
+            <TextArea rows={3} maxLength={500} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="撤销成员授权"
+        open={revokeModalOpen}
+        onCancel={() => setRevokeModalOpen(false)}
+        onOk={() => void submitRevoke()}
+        okButtonProps={{ danger: true }}
+        confirmLoading={loading}
+      >
+        <Alert type="warning" showIcon message={`将撤销“${revokeTarget?.roleName || ''}”授权，最后管理员保护由后端强制执行。`} />
+        <Form form={revokeForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="reason" label="撤销原因" rules={[{ required: true, whitespace: true, message: '请填写撤销原因' }]}>
+            <TextArea rows={3} maxLength={500} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
