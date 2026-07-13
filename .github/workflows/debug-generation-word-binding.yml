@@ -6,7 +6,7 @@ on:
 
 jobs:
   debug-backend:
-    name: Capture targeted backend test log
+    name: Capture full backend test log
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,12 +19,12 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Run targeted test and capture log
+      - name: Run full backend test and capture log
         working-directory: backend/genealogy-backend
         shell: bash
         run: |
           set +e
-          mvn -B -Dtest=SourceBindingTargetValidationServiceTest test > generation-word-binding-test.log 2>&1
+          mvn -B clean test > generation-word-binding-test.log 2>&1
           status=$?
           echo "$status" > generation-word-binding-test.status
           exit 0
@@ -32,7 +32,7 @@ jobs:
       - name: Upload diagnostic log
         uses: actions/upload-artifact@v4
         with:
-          name: generation-word-binding-test-log
+          name: generation-word-binding-full-test-log
           path: |
             backend/genealogy-backend/generation-word-binding-test.log
             backend/genealogy-backend/generation-word-binding-test.status
