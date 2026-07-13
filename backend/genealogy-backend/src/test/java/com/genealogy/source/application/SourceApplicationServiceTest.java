@@ -272,8 +272,12 @@ class SourceApplicationServiceTest {
         when(revisionRepository.findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(
                 "source_binding", List.of(20L), "pending", Set.of("replace", "delete")
         )).thenReturn(List.of(pendingRevision));
+        when(authorizationApplicationService.can(1L, 2L, "source:update")).thenReturn(false);
+        when(authorizationApplicationService.can(1L, 2L, "source:delete")).thenReturn(false);
         when(authorizationApplicationService.can(1L, 2L, "source:bind")).thenReturn(true);
-        when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(true);
+        when(authorizationApplicationService.can(1L, 2L, "source:submit_review")).thenReturn(false);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:upload")).thenReturn(false);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:preview")).thenReturn(true);
         when(authorizationApplicationService.can(1L, 2L, "attachment:download")).thenReturn(true);
 
         SourceDetailResponse response = sourceApplicationService.getDetail(10L, 2L);

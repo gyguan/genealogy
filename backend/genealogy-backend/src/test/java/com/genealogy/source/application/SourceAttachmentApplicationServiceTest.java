@@ -74,7 +74,7 @@ class SourceAttachmentApplicationServiceTest {
             savedRef.set(entity);
             return entity;
         });
-        when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(true);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:preview")).thenReturn(true);
 
         MockMultipartFile file = new MockMultipartFile("file", "族谱.pdf", "application/pdf", "hello".getBytes());
 
@@ -100,6 +100,8 @@ class SourceAttachmentApplicationServiceTest {
         attachment.setStoragePath(filePath.toString());
 
         when(sourceAttachmentRepository.findByIdAndDeletedAtIsNull(30L)).thenReturn(Optional.of(attachment));
+        when(authorizationApplicationService.can(1L, 2L, "attachment:preview")).thenReturn(false);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(false);
         when(authorizationApplicationService.can(1L, 2L, "attachment:download")).thenReturn(true);
 
         SourceAttachmentFileResponse response = service.preview(30L, 2L, "req-2", "127.0.0.1");
@@ -116,7 +118,7 @@ class SourceAttachmentApplicationServiceTest {
         when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));
         when(sourceAttachmentRepository.findBySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(attachment), PageRequest.of(0, 20), 1));
-        when(authorizationApplicationService.can(1L, 2L, "attachment:view")).thenReturn(true);
+        when(authorizationApplicationService.can(1L, 2L, "attachment:preview")).thenReturn(true);
 
         PageResponse<SourceAttachmentResponse> response = service.listBySource(10L, 1, 20, 2L);
 
