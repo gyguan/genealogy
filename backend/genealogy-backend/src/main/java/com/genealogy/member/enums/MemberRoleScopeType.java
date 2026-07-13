@@ -4,5 +4,6 @@ public enum MemberRoleScopeType {
     global,
     clan,
     branch,
+    branch_subtree,
     self
 }
