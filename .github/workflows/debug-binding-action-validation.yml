@@ -1,0 +1,27 @@
+name: Validate Source Binding Action Refinement
+
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  targeted-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Run focused backend test
+        working-directory: backend/genealogy-backend
+        run: mvn -B -Dtest=SourceApplicationServiceTest test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install
+          npm run build
