@@ -39,7 +39,22 @@ jobs:
         run: mvn -DskipTests package
       - name: Run focused member permission tests
         working-directory: backend/genealogy-backend
-        run: mvn -q "-Dtest=MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest,ClanMembershipRepositoryPostgresTest,MemberManagementControllerContractTest,RbacAuthorizationApplicationServiceTest" test
+        shell: bash
+        run: |
+          set +e
+          mvn -q "-Dtest=MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest,ClanMembershipRepositoryPostgresTest,MemberManagementControllerContractTest,RbacAuthorizationApplicationServiceTest" test > /tmp/issue-101-maven.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo '===== Failing Surefire reports ====='
+            for report in target/surefire-reports/*.txt; do
+              if grep -Eq 'Failures: [1-9]|Errors: [1-9]' "$report"; then
+                cat "$report"
+              fi
+            done
+            echo '===== Maven log tail ====='
+            tail -n 120 /tmp/issue-101-maven.log
+          fi
+          exit "$status"
 
   postgres:
     name: PostgreSQL migration, scope and index validation
