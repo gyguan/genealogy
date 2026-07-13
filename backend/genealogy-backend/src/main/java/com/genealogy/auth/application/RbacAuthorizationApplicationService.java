@@ -1,5 +1,6 @@
 package com.genealogy.auth.application;
 
+import com.genealogy.branch.domain.BranchScopeDomainService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMembershipEntity;
 import com.genealogy.member.entity.MemberRoleEntity;
@@ -23,17 +24,20 @@ public class RbacAuthorizationApplicationService {
     private final PermissionApplicationService permissionApplicationService;
     private final ClanMembershipRepository clanMembershipRepository;
     private final MemberRoleRepository memberRoleRepository;
+    private final BranchScopeDomainService branchScopeDomainService;
 
     public RbacAuthorizationApplicationService(
             AuthApplicationService authApplicationService,
             PermissionApplicationService permissionApplicationService,
             ClanMembershipRepository clanMembershipRepository,
-            MemberRoleRepository memberRoleRepository
+            MemberRoleRepository memberRoleRepository,
+            BranchScopeDomainService branchScopeDomainService
     ) {
         this.authApplicationService = authApplicationService;
         this.permissionApplicationService = permissionApplicationService;
         this.clanMembershipRepository = clanMembershipRepository;
         this.memberRoleRepository = memberRoleRepository;
+        this.branchScopeDomainService = branchScopeDomainService;
     }
 
     @Transactional(readOnly = true)
@@ -104,24 +108,22 @@ public class RbacAuthorizationApplicationService {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    private boolean scopeCovers(Long clanId, MemberRoleEntity role, MemberRoleScopeType targetScopeType, Long targetScopeId) {
+    @Transactional(readOnly = true)
+    public boolean scopeCovers(
+            Long clanId,
+            MemberRoleEntity role,
+            MemberRoleScopeType targetScopeType,
+            Long targetScopeId
+    ) {
         if (targetScopeType == null || targetScopeId == null) {
             return true;
         }
-        if (role.getScopeType() == MemberRoleScopeType.global) {
-            return true;
-        }
-        if (role.getScopeType() == MemberRoleScopeType.clan) {
-            return targetScopeType == MemberRoleScopeType.clan && role.getScopeId().equals(targetScopeId)
-                    || targetScopeType == MemberRoleScopeType.branch && role.getScopeId().equals(clanId)
-                    || targetScopeType == MemberRoleScopeType.self && role.getScopeId().equals(clanId);
-        }
-        if (role.getScopeType() == MemberRoleScopeType.branch) {
-            return targetScopeType == MemberRoleScopeType.branch && role.getScopeId().equals(targetScopeId);
-        }
-        if (role.getScopeType() == MemberRoleScopeType.self) {
-            return targetScopeType == MemberRoleScopeType.self && role.getScopeId().equals(targetScopeId);
-        }
-        return false;
+        return branchScopeDomainService.scopeCovers(
+                clanId,
+                role.getScopeType(),
+                role.getScopeId(),
+                targetScopeType,
+                targetScopeId
+        );
     }
 }
