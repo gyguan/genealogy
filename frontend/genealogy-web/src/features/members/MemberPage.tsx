@@ -560,8 +560,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
                   title: '操作',
                   render: (_value, grant) => (
                     <Space>
-                      {selectedMember.allowedActions?.canEditGrant ? <Button type="link" onClick={() => openEditGrant(grant)}>编辑</Button> : null}
-                      {selectedMember.allowedActions?.canRevokeGrant ? <Button type="link" danger onClick={() => openRevoke(grant)}>撤销</Button> : null}
+                      {grant.canEditGrant ? <Button type="link" onClick={() => openEditGrant(grant)}>编辑</Button> : null}
+                      {grant.canRevokeGrant ? <Button type="link" danger onClick={() => openRevoke(grant)}>撤销</Button> : null}
                     </Space>
                   )
                 }
