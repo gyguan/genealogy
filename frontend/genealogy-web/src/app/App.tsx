@@ -11,6 +11,7 @@ import { PersonDataExportActions } from '../features/exports/PersonDataExportAct
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
+import { MemberInvitationAction } from '../features/members/MemberInvitationAction';
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
@@ -177,6 +178,7 @@ function AppShell() {
   function renderModuleActions() {
     if (active === 'personArchive') return <PersonDataExportActions notify={notify} />;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
+    if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
     return null;
   }
 
