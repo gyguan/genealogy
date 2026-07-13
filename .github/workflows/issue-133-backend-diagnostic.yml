@@ -17,15 +17,38 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Run full tests and print focused failure summary
+      - name: Run full tests and print concise failure summary
         working-directory: backend/genealogy-backend
         shell: bash
         run: |
           set +e
-          mvn -B test > /tmp/maven-test.log 2>&1
+          mvn -q test > /tmp/maven-test.log 2>&1
           status=$?
-          echo "===== FAILURE SUMMARY ====="
-          grep -E "(^\[ERROR\]|Tests run:|Failures:|Errors:|Caused by:|expected:|but was:)" /tmp/maven-test.log | tail -n 180 || true
-          echo "===== SUREFIRE REPORT FILES ====="
-          find target/surefire-reports -maxdepth 1 -type f -name '*.txt' -print -exec tail -n 60 {} \; 2>/dev/null | tail -n 240 || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          print('===== FULL BACKEND FAILURE SUMMARY =====')
+          failures = []
+          for report in sorted(Path('target/surefire-reports').glob('TEST-*.xml')):
+              try:
+                  root = ET.parse(report).getroot()
+              except Exception:
+                  continue
+              for testcase in root.findall('testcase'):
+                  node = testcase.find('failure') or testcase.find('error')
+                  if node is None:
+                      continue
+                  text = ' '.join((node.get('message') or (node.text or '')).split())
+                  failures.append(f"{root.get('name')}#{testcase.get('name')}: {text[:500]}")
+          if failures:
+              for failure in failures[:30]:
+                  print(f'::error::{failure}')
+          else:
+              log = Path('/tmp/maven-test.log').read_text(errors='replace').splitlines()
+              errors = [line for line in log if '[ERROR]' in line or 'COMPILATION ERROR' in line]
+              for line in errors[-30:]:
+                  print(f'::error::{line[:700]}')
+          print(f'FAILURE_COUNT={len(failures)}')
+          PY
           exit $status
