@@ -220,7 +220,8 @@ export async function listBranches(clanId: string) {
 }
 
 export async function listGenerationSchemes(clanId: string) {
-  return toRows<GenerationSchemeOption>(await apiClient.get(`/clans/${clanId}/generation-schemes`));
+  const rows = toRows<GenerationSchemeOption>(await apiClient.get(`/clans/${clanId}/generation-schemes`));
+  return rows.filter(row => String(row.status || '').toLowerCase() === 'official');
 }
 
 export async function listGenerationWords(schemeId: number | string) {
