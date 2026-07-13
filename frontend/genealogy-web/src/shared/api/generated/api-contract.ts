@@ -162,6 +162,7 @@ export const API_OPERATIONS = {
     "queryParams": [
       "actionType",
       "actorId",
+      "clanId",
       "endTime",
       "keyword",
       "pageNo",
@@ -181,6 +182,7 @@ export const API_OPERATIONS = {
     "queryParams": [
       "actionType",
       "actorId",
+      "clanId",
       "endTime",
       "keyword",
       "startTime",
@@ -198,6 +200,7 @@ export const API_OPERATIONS = {
     "queryParams": [
       "actionType",
       "actorId",
+      "clanId",
       "endTime",
       "keyword",
       "startTime",
