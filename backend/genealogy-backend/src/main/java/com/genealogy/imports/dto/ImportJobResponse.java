@@ -43,13 +43,38 @@ public record ImportJobResponse(
             LocalDateTime createdAt,
             List<ImportRowErrorResponse> errors
     ) {
+        this(id, clanId, branchId, importType, originalFilename, totalCount, successCount, failureCount, status,
+                errorSummary, createdAt, errors, null, null, null, null);
+    }
+
+    /**
+     * Compatibility constructor for callers using the previous full response shape.
+     */
+    public ImportJobResponse(
+            Long id,
+            Long clanId,
+            Long branchId,
+            String importType,
+            String originalFilename,
+            Integer totalCount,
+            Integer successCount,
+            Integer failureCount,
+            String status,
+            String errorSummary,
+            LocalDateTime createdAt,
+            List<ImportRowErrorResponse> errors,
+            String processingStatus,
+            String reviewStatus,
+            Integer reviewRound,
+            Long latestReviewTaskId
+    ) {
         this(
                 id,
                 clanId,
                 branchId,
-                ImportJobDescriptor.resolve(importType, null, originalFilename).importType(),
-                ImportJobDescriptor.resolve(importType, null, originalFilename).fileFormat(),
-                ImportJobDescriptor.resolve(importType, null, originalFilename).legacyImportType(),
+                descriptor(importType, originalFilename).importType(),
+                descriptor(importType, originalFilename).fileFormat(),
+                descriptor(importType, originalFilename).legacyImportType(),
                 originalFilename,
                 totalCount,
                 successCount,
@@ -58,10 +83,14 @@ public record ImportJobResponse(
                 errorSummary,
                 createdAt,
                 errors,
-                null,
-                null,
-                null,
-                null
+                processingStatus,
+                reviewStatus,
+                reviewRound,
+                latestReviewTaskId
         );
+    }
+
+    private static ImportJobDescriptor descriptor(String importType, String originalFilename) {
+        return ImportJobDescriptor.resolve(importType, null, originalFilename);
     }
 }
