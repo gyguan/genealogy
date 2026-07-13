@@ -29,6 +29,9 @@ public class AuthProductionSafetyValidator implements ApplicationRunner {
         if (properties.isExposeResetToken()) {
             throw new IllegalStateException("Production must not expose password reset tokens");
         }
+        if (properties.isExposeBearerToken()) {
+            throw new IllegalStateException("Production must not expose Bearer compatibility tokens");
+        }
         if (!properties.isCookieSecure()) {
             throw new IllegalStateException("Production authentication cookies must use Secure=true");
         }
