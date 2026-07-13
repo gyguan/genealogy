@@ -53,9 +53,14 @@ public class MemberManagementController {
         this.permissionApplicationService = permissionApplicationService;
     }
 
+    @Deprecated
     @GetMapping("/users")
-    public ApiResponse<List<UserSummaryResponse>> users(@RequestHeader(value = "Authorization", required = false) String authorization) {
-        authorizationApplicationService.requireLogin(authorization);
+    public ApiResponse<List<UserSummaryResponse>> users(
+            @Positive @RequestParam Long clanId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requirePermission(clanId, userId, MEMBER_INVITE);
         return ApiResponse.success(memberManagementApplicationService.users());
     }
 
