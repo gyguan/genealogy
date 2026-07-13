@@ -12,6 +12,8 @@ public record MemberGrantResponse(
         String grantStatus,
         Long grantedBy,
         LocalDateTime grantedAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        boolean canEditGrant,
+        boolean canRevokeGrant
 ) {
 }
