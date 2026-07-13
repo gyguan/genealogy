@@ -23,8 +23,6 @@ public class PersonImportCommandApplicationService {
             Long clanId,
             Long branchId,
             MultipartFile file,
-            ImportApplicationService.FieldMapping mapping,
-            boolean autoMapping,
             boolean confirmDuplicates,
             Long actorId
     ) {
@@ -32,8 +30,6 @@ public class PersonImportCommandApplicationService {
                 clanId,
                 branchId,
                 file,
-                mapping,
-                autoMapping,
                 confirmDuplicates,
                 actorId
         );

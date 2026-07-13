@@ -2,13 +2,29 @@
   "paths": {
     "/api/v1/imports/templates/persons.csv": {
       "get": {
-        "operationId": "downloadPersonImportTemplate",
+        "operationId": "downloadPersonImportCsvTemplate",
         "tags": ["Import"],
         "responses": {
           "200": {
-            "description": "Person import CSV template",
+            "description": "Strict person import CSV template",
             "content": {
               "text/csv": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/imports/templates/persons.xlsx": {
+      "get": {
+        "operationId": "downloadPersonImportXlsxTemplate",
+        "tags": ["Import"],
+        "responses": {
+          "200": {
+            "description": "Strict person import XLSX template",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": { "type": "string", "format": "binary" }
               }
             }
@@ -22,14 +38,6 @@
         "tags": ["Import"],
         "parameters": [
           { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
-          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchIdIndex", "in": "query", "required": false, "deprecated": true, "description": "Compatibility parameter; branch IDs in files are ignored and rejected.", "schema": { "type": "integer", "default": -1 } },
-          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
           { "name": "branchId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
@@ -52,61 +60,14 @@
         }
       }
     },
-    "/api/v1/clans/{clanId}/imports/persons": {
-      "post": {
-        "operationId": "importPersonsLegacy",
-        "deprecated": true,
-        "description": "Compatibility endpoint. New clients use the task-based persons.csv endpoint.",
-        "tags": ["Import"],
-        "parameters": [
-          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
-          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchIdIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "confirmDuplicates", "in": "query", "required": false, "schema": { "type": "boolean" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseCsvImportResultResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/clans/{clanId}/imports/persons.csv": {
       "post": {
         "operationId": "importPersonsAsJob",
         "tags": ["Import"],
         "parameters": [
           { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "autoMapping", "in": "query", "required": false, "schema": { "type": "boolean" } },
-          { "name": "nameIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "genderIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationNoIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "generationWordIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "branchIdIndex", "in": "query", "required": false, "deprecated": true, "description": "Compatibility parameter; branch IDs in files are ignored and rejected.", "schema": { "type": "integer", "default": -1 } },
-          { "name": "birthDateIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
-          { "name": "isLivingIndex", "in": "query", "required": false, "schema": { "type": "integer" } },
           { "name": "branchId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
-          { "name": "confirmDuplicates", "in": "query", "required": false, "schema": { "type": "boolean" } }
+          { "name": "confirmDuplicates", "in": "query", "required": false, "schema": { "type": "boolean", "default": false } }
         ],
         "requestBody": {
           "required": true,

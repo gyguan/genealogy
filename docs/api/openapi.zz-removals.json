@@ -1,0 +1,5 @@
+{
+  "paths": {
+    "/api/v1/clans/{clanId}/imports/persons": {}
+  }
+}

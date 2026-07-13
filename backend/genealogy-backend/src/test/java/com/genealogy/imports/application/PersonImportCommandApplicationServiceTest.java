@@ -42,8 +42,12 @@ class PersonImportCommandApplicationServiceTest {
 
     @Test
     void successfulImportShouldRecordBatchSummaryWithoutRawRows() {
-        MockMultipartFile file = new MockMultipartFile("file", "persons.csv", "text/csv", "姓名\n张三".getBytes());
-        ImportApplicationService.FieldMapping mapping = ImportApplicationService.FieldMapping.defaults();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "persons.csv",
+                "text/csv",
+                "姓名,性别,代次,字辈,出生日期,是否在世\n张三,男,5,德,1980-01-01,是".getBytes()
+        );
         ImportJobResponse response = new ImportJobResponse(
                 11L,
                 1L,
@@ -58,10 +62,10 @@ class PersonImportCommandApplicationServiceTest {
                 LocalDateTime.of(2026, 7, 13, 12, 0),
                 List.of()
         );
-        when(importApplicationService.importPersonsCsv(1L, 5L, file, mapping, true, true, 9L))
+        when(importApplicationService.importPersonsCsv(1L, 5L, file, true, 9L))
                 .thenReturn(response);
 
-        ImportJobResponse result = service.importPersonsCsv(1L, 5L, file, mapping, true, true, 9L);
+        ImportJobResponse result = service.importPersonsCsv(1L, 5L, file, true, 9L);
 
         assertThat(result).isSameAs(response);
         ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
@@ -82,11 +86,10 @@ class PersonImportCommandApplicationServiceTest {
     @Test
     void failedImportShouldNotWriteSuccessAuditRecord() {
         MockMultipartFile file = new MockMultipartFile("file", "persons.csv", "text/csv", new byte[0]);
-        ImportApplicationService.FieldMapping mapping = ImportApplicationService.FieldMapping.defaults();
-        when(importApplicationService.importPersonsCsv(1L, 5L, file, mapping, true, false, 9L))
+        when(importApplicationService.importPersonsCsv(1L, 5L, file, false, 9L))
                 .thenThrow(new BusinessException("IMPORT_FAILED", "导入失败"));
 
-        assertThatThrownBy(() -> service.importPersonsCsv(1L, 5L, file, mapping, true, false, 9L))
+        assertThatThrownBy(() -> service.importPersonsCsv(1L, 5L, file, false, 9L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("导入失败");
 
