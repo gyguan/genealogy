@@ -1,0 +1,95 @@
+name: Issue 133 Integrate Invitation Modal
+
+on:
+  push:
+    branches:
+      - agent/issue-133-auth-commercialization
+    paths:
+      - .github/workflows/issue-133-integrate-invite.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-133-auth-commercialization
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate invitation component
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/features/members/MemberPage.tsx')
+          text = path.read_text()
+
+          def replace_once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one marker, found {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "} from './memberPageModel.js';\n",
+              "} from './memberPageModel.js';\nimport { MemberInvitationModal } from './MemberInvitationModal';\n"
+          )
+          replace_once(
+              "  const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);\n",
+              "  const [revokeTarget, setRevokeTarget] = useState<MemberGrant | null>(null);\n  const [invitationOpen, setInvitationOpen] = useState(false);\n"
+          )
+          replace_once(
+              """            <Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
+              新增成员授权
+            </Button>
+          """,
+              """            <Button onClick={() => setInvitationOpen(true)} disabled={!selectedClanId || !roles.length}>
+              邀请新成员
+            </Button>
+            <Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
+              新增成员授权
+            </Button>
+          """
+          )
+          replace_once(
+              """      <Modal
+        title={editingGrant ? '编辑成员授权' : '新增成员授权'}
+          """,
+              """      <MemberInvitationModal
+        open={invitationOpen}
+        clanId={Number(selectedClanId)}
+        roles={roles}
+        branches={branches}
+        onClose={() => setInvitationOpen(false)}
+        notify={notify}
+      />
+
+      <Modal
+        title={editingGrant ? '编辑成员授权' : '新增成员授权'}
+          """
+          )
+          path.write_text(text)
+          PY
+      - name: Verify frontend
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install --no-audit --no-fund
+          npm run test:auth
+          npm run test:members
+          npm run typecheck
+          npm run api:check
+          npm run build
+      - name: Commit integration and clean workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-133-integrate-invite.yml
+          git add frontend/genealogy-web/src/features/members/MemberPage.tsx frontend/genealogy-web/package-lock.json frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          git commit -m "feat(auth): integrate controlled member invitations"
+          git push origin HEAD:agent/issue-133-auth-commercialization
