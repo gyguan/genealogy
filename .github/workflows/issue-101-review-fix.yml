@@ -24,35 +24,33 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
           policy_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java')
           policy = policy_path.read_text()
-          old_manage = '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode) || targetScopeId == null) {
-              return false;
-          }
-          if (targetScopeType == MemberRoleScopeType.branch) {
-              return actorScope.visibleBranchIds().contains(targetScopeId);
-          }
-          if (targetScopeType == MemberRoleScopeType.branch_subtree) {
-              return actorScope.visibleSubtreeIds().contains(targetScopeId);
-          }
-          return false;
-          '''
-          new_manage = '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)) {
+
+          if 'return actorScope.coversGrantScope(targetScopeType, targetScopeId);' not in policy:
+              start_marker = '        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)'
+              end_marker = '    public boolean canManageMembership('
+              start = policy.find(start_marker)
+              end = policy.find(end_marker, start)
+              if start < 0 or end < 0:
+                  raise SystemExit('canManageGrant markers not found')
+              replacement = '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)) {
               return false;
           }
           return actorScope.coversGrantScope(targetScopeType, targetScopeId);
-          '''
-          if old_manage in policy:
-              policy = policy.replace(old_manage, new_manage, 1)
-          elif new_manage not in policy:
-              raise SystemExit('canManageGrant replacement target not found')
+      }
 
-          old_record = '''        public List<Long> queryVisibleBranchIds() {
-              return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
-          }
-          '''
-          new_record = '''        public boolean coversGrantScope(MemberRoleScopeType scopeType, Long scopeId) {
+  '''
+              policy = policy[:start] + replacement + policy[end:]
+
+          if 'public boolean coversGrantScope' not in policy:
+              marker = '        public List<Long> queryVisibleBranchIds() {'
+              position = policy.find(marker)
+              if position < 0:
+                  raise SystemExit('ActorScope query marker not found')
+              method = '''        public boolean coversGrantScope(MemberRoleScopeType scopeType, Long scopeId) {
               if (fullClanAccess()) {
                   return true;
               }
@@ -68,29 +66,23 @@ jobs:
               return false;
           }
 
-          public List<Long> queryVisibleBranchIds() {
-              return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
-          }
-          '''
-          if old_record in policy:
-              policy = policy.replace(old_record, new_record, 1)
-          elif 'public boolean coversGrantScope' not in policy:
-              raise SystemExit('ActorScope replacement target not found')
+  '''
+              policy = policy[:position] + method + policy[position:]
           policy_path.write_text(policy)
 
           service_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java')
           service = service_path.read_text()
-          old_stream = '''            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
-                      .sorted(Comparator.comparing(MemberRoleEntity::getId))
-          '''
-          new_stream = '''            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
-                      .filter(grant -> actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId()))
-                      .sorted(Comparator.comparing(MemberRoleEntity::getId))
-          '''
-          if old_stream in service:
-              service = service.replace(old_stream, new_stream, 1)
-          elif new_stream not in service:
-              raise SystemExit('aggregate grant stream replacement target not found')
+          if 'actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId())' not in service:
+              pattern = re.compile(
+                  r'(List<MemberGrantResponse> memberGrants = membershipGrants\.stream\(\)\s*\n)(\s*\.sorted\(Comparator\.comparing\(MemberRoleEntity::getId\)\))'
+              )
+              service, count = pattern.subn(
+                  r'\1                    .filter(grant -> actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId()))\n\2',
+                  service,
+                  count=1
+              )
+              if count != 1:
+                  raise SystemExit('aggregate grant stream marker not found')
           service_path.write_text(service)
           PY
       - name: Commit review fix
