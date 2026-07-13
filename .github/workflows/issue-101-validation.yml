@@ -38,23 +38,20 @@ jobs:
         working-directory: backend/genealogy-backend
         run: mvn -DskipTests package
       - name: Run focused member permission tests
+        id: focused-tests
+        continue-on-error: true
         working-directory: backend/genealogy-backend
-        shell: bash
-        run: |
-          set +e
-          mvn -q "-Dtest=MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest,ClanMembershipRepositoryPostgresTest,MemberManagementControllerContractTest,RbacAuthorizationApplicationServiceTest" test > /tmp/issue-101-maven.log 2>&1
-          status=$?
-          if [ "$status" -ne 0 ]; then
-            echo '===== Failing Surefire reports ====='
-            for report in target/surefire-reports/*.txt; do
-              if grep -Eq 'Failures: [1-9]|Errors: [1-9]' "$report"; then
-                cat "$report"
-              fi
-            done
-            echo '===== Maven log tail ====='
-            tail -n 120 /tmp/issue-101-maven.log
-          fi
-          exit "$status"
+        run: mvn -q "-Dtest=MemberGrantPolicyServiceTest,MemberPermissionApplicationServiceTest,ClanMembershipRepositoryQueryContractTest,ClanMembershipRepositoryPostgresTest,MemberManagementControllerContractTest,RbacAuthorizationApplicationServiceTest" test
+      - name: Upload focused test diagnostics
+        if: steps.focused-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-101-surefire-${{ github.run_number }}
+          path: backend/genealogy-backend/target/surefire-reports
+          if-no-files-found: error
+      - name: Fail on focused test errors
+        if: steps.focused-tests.outcome == 'failure'
+        run: exit 1
 
   postgres:
     name: PostgreSQL migration, scope and index validation
