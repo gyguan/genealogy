@@ -25,6 +25,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [08. 后端工程结构设计](docs/08-backend-structure.md)
 - [09. 中国式族谱权限管理方案](docs/09-permission-management.md)
 - [10. 前端统一设计与实现规范（Ant Design 版）](docs/10-frontend-design-guidelines.md)
+- [数据库开发与 Flyway 迁移规范](docs/database-development-standard.md)
 - [AI 工程流程适配方案](docs/ai/ai-engineering-workflow.md)
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
@@ -38,6 +39,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 
 - 全仓优先级、P0 红线与 P1 门禁：`AGENTS.md`
 - 后端分层、数据库、权限与测试细则：`backend/genealogy-backend/AGENTS.md`
+- 数据库对象、SQL 与 Flyway 迁移规范：`docs/database-development-standard.md`
 - 前端组件、契约、交互与性能细则：`frontend/genealogy-web/AGENTS.md`
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
@@ -48,6 +50,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - AI 任务、执行看板与恢复文件：`tasks/`
 - PR 质量门禁模板：`.github/pull_request_template.md`
 - Issue 实现 PR 自动结构检查：`.github/workflows/issue-delivery-governance.yml`
+- Flyway 迁移自动检查：`.github/workflows/database-migration-governance.yml`
 
 规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。实现或继续 Issue 时，必须刷新 `main` 最新规则，先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一使用北京时间。
 
