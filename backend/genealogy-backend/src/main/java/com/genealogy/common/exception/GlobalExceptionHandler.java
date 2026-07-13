@@ -16,7 +16,8 @@ public class GlobalExceptionHandler {
 
     private static final Set<String> UNAUTHORIZED_CODES = Set.of(
             "AUTH_UNAUTHORIZED",
-            "AUTH_LOGIN_FAILED"
+            "AUTH_LOGIN_FAILED",
+            "AUTH_USER_NOT_FOUND"
     );
     private static final Set<String> FORBIDDEN_CODES = Set.of(
             "AUTH_FORBIDDEN",
