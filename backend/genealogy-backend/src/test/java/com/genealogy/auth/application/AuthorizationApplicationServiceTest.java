@@ -16,6 +16,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AuthorizationApplicationServiceTest {
@@ -76,6 +78,52 @@ class AuthorizationApplicationServiceTest {
         when(rbacAuthorizationApplicationService.hasPermission(40L, 1L, "review_task:approve")).thenReturn(false);
 
         assertThat(service.can(1L, 40L, "review_task:approve")).isFalse();
+    }
+
+    @Test
+    void requireDirectClanMemberDoesNotAllowCrossClanBypass() {
+        when(clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(9L, 50L, MemberStatus.active))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.requireDirectClanMember(9L, 50L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不是该宗族成员");
+
+        verify(memberRoleRepository, never()).findByMembershipIdAndStatus(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void requireDirectClanPermissionChecksMembershipBeforeRbac() {
+        when(clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(9L, 60L, MemberStatus.active))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.requireDirectClanPermission(9L, 60L, "operation_log.view"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不是该宗族成员");
+
+        verify(rbacAuthorizationApplicationService, never())
+                .requirePermission(60L, 9L, "operation_log.view");
+    }
+
+    @Test
+    void requireDirectClanPermissionUsesTargetClanRbacGrant() {
+        ClanMembershipEntity membership = membership(200L, 9L, 70L);
+        when(clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(9L, 70L, MemberStatus.active))
+                .thenReturn(Optional.of(membership));
+
+        ClanMembershipEntity result = service.requireDirectClanPermission(9L, 70L, "operation_log.export");
+
+        assertThat(result).isSameAs(membership);
+        verify(rbacAuthorizationApplicationService)
+                .requirePermission(70L, 9L, "operation_log.export");
+    }
+
+    @Test
+    void hasDirectClanPermissionRequiresMembershipAndPermissionInSameClan() {
+        when(rbacAuthorizationApplicationService.isActiveClanMember(80L, 9L)).thenReturn(true);
+        when(rbacAuthorizationApplicationService.hasPermission(80L, 9L, "operation_log.export")).thenReturn(true);
+
+        assertThat(service.hasDirectClanPermission(9L, 80L, "operation_log.export")).isTrue();
     }
 
     private void givenUserHasNoCrossClanRole(Long userId, ClanMembershipEntity membership) {

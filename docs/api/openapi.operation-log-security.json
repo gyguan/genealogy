@@ -1,0 +1,245 @@
+{
+  "paths": {
+    "/api/v1/logs/operations": {
+      "get": {
+        "operationId": "listOperationLogs",
+        "tags": ["OperationLog"],
+        "summary": "分页查询当前宗族操作日志",
+        "description": "要求当前用户为目标宗族有效成员并具备 operation_log.view 权限。仅具备查看权限时，detail、requestId、clientIp 返回 null；具备 operation_log.export 权限时可查看完整技术字段。",
+        "parameters": [
+          { "$ref": "#/components/parameters/OperationLogAuthorization" },
+          { "$ref": "#/components/parameters/OperationLogClanId" },
+          { "name": "actorId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "actionType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "startTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseOperationLogPage" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/OperationLogBadRequest" },
+          "401": { "$ref": "#/components/responses/OperationLogUnauthorized" },
+          "403": { "$ref": "#/components/responses/OperationLogForbidden" }
+        }
+      }
+    },
+    "/api/v1/logs/operations/stats": {
+      "get": {
+        "operationId": "getOperationLogStats",
+        "tags": ["OperationLog"],
+        "summary": "统计当前宗族操作日志",
+        "description": "要求当前用户为目标宗族有效成员并具备 operation_log.view 权限。统计范围与查询筛选条件一致。",
+        "parameters": [
+          { "$ref": "#/components/parameters/OperationLogAuthorization" },
+          { "$ref": "#/components/parameters/OperationLogClanId" },
+          { "name": "actorId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "actionType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "startTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseOperationLogStats" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/OperationLogBadRequest" },
+          "401": { "$ref": "#/components/responses/OperationLogUnauthorized" },
+          "403": { "$ref": "#/components/responses/OperationLogForbidden" }
+        }
+      }
+    },
+    "/api/v1/logs/operations/export.csv": {
+      "get": {
+        "operationId": "exportOperationLogs",
+        "tags": ["OperationLog"],
+        "summary": "导出当前宗族操作日志",
+        "description": "要求当前用户为目标宗族有效成员并具备 operation_log.export 权限。最多导出 10000 条，导出动作本身写入操作日志。",
+        "parameters": [
+          { "$ref": "#/components/parameters/OperationLogAuthorization" },
+          { "$ref": "#/components/parameters/OperationLogClanId" },
+          { "name": "actorId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "actionType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetType", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "targetId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "startTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "endTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 CSV with BOM; maximum 10000 rows",
+            "headers": {
+              "Content-Disposition": {
+                "schema": { "type": "string" },
+                "description": "attachment filename"
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/OperationLogBadRequest" },
+          "401": { "$ref": "#/components/responses/OperationLogUnauthorized" },
+          "403": { "$ref": "#/components/responses/OperationLogForbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "OperationLogAuthorization": {
+        "name": "Authorization",
+        "in": "header",
+        "required": true,
+        "description": "Bearer access token",
+        "schema": { "type": "string" }
+      },
+      "OperationLogClanId": {
+        "name": "clanId",
+        "in": "query",
+        "required": true,
+        "description": "目标宗族；后端强制校验当前用户为该宗族有效成员",
+        "schema": { "type": "integer", "format": "int64" }
+      }
+    },
+    "responses": {
+      "OperationLogBadRequest": {
+        "description": "参数错误，例如缺少 clanId 或分页参数越界",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
+          }
+        }
+      },
+      "OperationLogUnauthorized": {
+        "description": "未登录或认证信息无效",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
+          }
+        }
+      },
+      "OperationLogForbidden": {
+        "description": "不是目标宗族有效成员或缺少 operation_log.view/export 权限",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/OperationLogApiErrorResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OperationLogResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "actorId": { "type": "integer", "format": "int64", "nullable": true },
+          "actionType": { "type": "string" },
+          "targetType": { "type": "string", "nullable": true },
+          "targetId": { "type": "integer", "format": "int64", "nullable": true },
+          "summary": { "type": "string", "nullable": true },
+          "detail": {
+            "type": "string",
+            "nullable": true,
+            "description": "仅具备 operation_log.export 权限时返回；普通查看者为 null"
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true,
+            "description": "仅具备 operation_log.export 权限时返回；普通查看者为 null"
+          },
+          "clientIp": {
+            "type": "string",
+            "nullable": true,
+            "description": "仅具备 operation_log.export 权限时返回；普通查看者为 null"
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OperationLogPage": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OperationLogResponse" }
+          },
+          "total": { "type": "integer", "format": "int64" },
+          "pageNo": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "OperationLogStatsItem": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "count": { "type": "integer", "format": "int64" }
+        }
+      },
+      "OperationLogStatsResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "byAction": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OperationLogStatsItem" }
+          },
+          "byActor": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OperationLogStatsItem" }
+          }
+        }
+      },
+      "ApiResponseOperationLogPage": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/OperationLogPage" },
+          "traceId": { "type": "string", "nullable": true }
+        }
+      },
+      "ApiResponseOperationLogStats": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/OperationLogStatsResponse" },
+          "traceId": { "type": "string", "nullable": true }
+        }
+      },
+      "OperationLogApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "traceId": { "type": "string", "nullable": true }
+        }
+      }
+    }
+  }
+}

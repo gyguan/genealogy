@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class OperationLogApplicationService {
 
-    private static final int EXPORT_LIMIT = 10000;
+    public static final int EXPORT_LIMIT = 10000;
 
     private final OperationLogRepository operationLogRepository;
 
@@ -62,9 +62,12 @@ public class OperationLogApplicationService {
 
     @Transactional(readOnly = true)
     public PageResponse<OperationLogResponse> list(Long clanId, String targetType, Long targetId, int pageNo, int pageSize) {
-        return search(clanId, null, null, targetType, targetId, null, null, null, pageNo, pageSize);
+        return search(clanId, null, null, targetType, targetId, null, null, null, pageNo, pageSize, false);
     }
 
+    /**
+     * Compatibility overload with secure-by-default response minimization.
+     */
     @Transactional(readOnly = true)
     public PageResponse<OperationLogResponse> search(
             Long clanId,
@@ -78,11 +81,33 @@ public class OperationLogApplicationService {
             int pageNo,
             int pageSize
     ) {
+        return search(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword, pageNo, pageSize, false);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OperationLogResponse> search(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword,
+            int pageNo,
+            int pageSize,
+            boolean includeTechnicalFields
+    ) {
         PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<OperationLogEntity> page = operationLogRepository.findAll(buildSpecification(
                 clanId, actorId, normalize(actionType), normalize(targetType), targetId, startTime, endTime, trimToNull(keyword)
         ), pageRequest);
-        return PageResponse.of(page.map(this::toResponse).getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(
+                page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
+                page.getTotalElements(),
+                pageNo,
+                pageSize
+        );
     }
 
     @Transactional(readOnly = true)
@@ -182,10 +207,19 @@ public class OperationLogApplicationService {
         };
     }
 
-    private OperationLogResponse toResponse(OperationLogEntity entity) {
+    private OperationLogResponse toResponse(OperationLogEntity entity, boolean includeTechnicalFields) {
         return new OperationLogResponse(
-                entity.getId(), entity.getClanId(), entity.getActorId(), entity.getActionType(), entity.getTargetType(),
-                entity.getTargetId(), entity.getSummary(), entity.getDetail(), entity.getRequestId(), entity.getClientIp(), entity.getCreatedAt()
+                entity.getId(),
+                entity.getClanId(),
+                entity.getActorId(),
+                entity.getActionType(),
+                entity.getTargetType(),
+                entity.getTargetId(),
+                entity.getSummary(),
+                includeTechnicalFields ? entity.getDetail() : null,
+                includeTechnicalFields ? entity.getRequestId() : null,
+                includeTechnicalFields ? entity.getClientIp() : null,
+                entity.getCreatedAt()
         );
     }
 

@@ -211,6 +211,62 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": null
   },
+  "GET /api/v1/logs/operations": {
+    "operationId": "listOperationLogs",
+    "method": "GET",
+    "path": "/api/v1/logs/operations",
+    "pathParams": [],
+    "queryParams": [
+      "actionType",
+      "actorId",
+      "clanId",
+      "endTime",
+      "keyword",
+      "pageNo",
+      "pageSize",
+      "startTime",
+      "targetId",
+      "targetType"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseOperationLogPage"
+  },
+  "GET /api/v1/logs/operations/export.csv": {
+    "operationId": "exportOperationLogs",
+    "method": "GET",
+    "path": "/api/v1/logs/operations/export.csv",
+    "pathParams": [],
+    "queryParams": [
+      "actionType",
+      "actorId",
+      "clanId",
+      "endTime",
+      "keyword",
+      "startTime",
+      "targetId",
+      "targetType"
+    ],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/logs/operations/stats": {
+    "operationId": "getOperationLogStats",
+    "method": "GET",
+    "path": "/api/v1/logs/operations/stats",
+    "pathParams": [],
+    "queryParams": [
+      "actionType",
+      "actorId",
+      "clanId",
+      "endTime",
+      "keyword",
+      "startTime",
+      "targetId",
+      "targetType"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseOperationLogStats"
+  },
   "GET /api/v1/member-management/clans/{clanId}/members/summary": {
     "operationId": "getMemberPermissionSummary",
     "method": "GET",
