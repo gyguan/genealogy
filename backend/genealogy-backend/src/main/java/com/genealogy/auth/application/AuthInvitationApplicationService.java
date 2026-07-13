@@ -119,9 +119,13 @@ public class AuthInvitationApplicationService {
         invitation.setAcceptedAt(LocalDateTime.now());
         invitation.setAcceptedUserId(user.id());
         invitationRepository.save(invitation);
+        // The user is still uncommitted in the surrounding transaction. Keep the
+        // independent security event free of a foreign key to that row and carry
+        // the identifier in the non-sensitive detail instead.
         authSecurityService.recordEvent(
-                user.id(), "account_invitation_accepted", "SUCCESS", "low", clientIp, userAgent, null,
+                null, "account_invitation_accepted", "SUCCESS", "low", clientIp, userAgent, null,
                 "invitationId=" + invitation.getId() + ",clanId=" + invitation.getClanId()
+                        + ",acceptedUserId=" + user.id()
         );
         return user;
     }
