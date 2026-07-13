@@ -9,7 +9,7 @@ on:
       - 'backend/genealogy-backend/src/main/java/com/genealogy/person/repository/PersonRepository.java'
       - 'backend/genealogy-backend/src/test/java/com/genealogy/imports/**'
       - 'backend/genealogy-backend/src/test/java/com/genealogy/review/**'
-      - 'backend/genealogy-backend/src/main/resources/db/migration/V2026071302__import_row_generic_draft_target.sql'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/V20260713200000__add_import_row_generic_draft_target.sql'
       - 'frontend/genealogy-web/src/features/imports/**'
       - 'docs/api/openapi.relationship-import.json'
       - '.github/workflows/issue-103-targeted-discovery.yml'
@@ -20,7 +20,7 @@ permissions:
 jobs:
   backend-and-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -71,12 +71,21 @@ jobs:
       - name: Compile backend and tests
         working-directory: backend/genealogy-backend
         run: mvn -q -DskipTests package
-      - name: Run focused relationship import tests
+      - name: Test relationship templates and headers
         working-directory: backend/genealogy-backend
-        run: >-
-          mvn -q
-          -Dtest=RelationshipImportTemplateApplicationServiceTest,RelationshipImportFilePolicyServiceTest,RelationshipImportApplicationServiceTest,RelationshipImportJobReviewApplicationServiceTest,ImportJobReviewApplicationServiceTest,ImportApplicationServiceRowStateTest,ImportJobRowApplicationServiceTest,RevisionApplyImportJobTest,RevisionApplyRelationshipImportJobTest
-          test
+        run: mvn -q -Dtest=RelationshipImportTemplateApplicationServiceTest,RelationshipImportFilePolicyServiceTest test
+      - name: Test relationship parsing and draft creation
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=RelationshipImportApplicationServiceTest test
+      - name: Test relationship review submission
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=RelationshipImportJobReviewApplicationServiceTest,ImportJobReviewApplicationServiceTest test
+      - name: Test relationship review apply and reject
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=RevisionApplyRelationshipImportJobTest,RevisionApplyImportJobTest test
+      - name: Test person import regression
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest,ImportJobRowApplicationServiceTest test
       - name: Verify generic draft target migration
         shell: bash
         run: |
@@ -87,7 +96,7 @@ jobs:
           );
           insert into import_job_row(draft_person_id) values (1001), (null);
           SQL
-          psql -h localhost -U postgres -d genealogy_test -f backend/genealogy-backend/src/main/resources/db/migration/V2026071302__import_row_generic_draft_target.sql
+          psql -h localhost -U postgres -d genealogy_test -f backend/genealogy-backend/src/main/resources/db/migration/V20260713200000__add_import_row_generic_draft_target.sql
           psql -h localhost -U postgres -d genealogy_test -Atc "select draft_target_type || ':' || draft_target_id from import_job_row where draft_person_id = 1001" | grep -qx 'person:1001'
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
