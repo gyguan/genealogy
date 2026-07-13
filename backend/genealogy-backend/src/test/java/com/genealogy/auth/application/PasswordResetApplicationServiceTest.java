@@ -69,7 +69,7 @@ class PasswordResetApplicationServiceTest {
         user.setCreatedAt(LocalDateTime.now().minusDays(2));
         user.setUpdatedAt(LocalDateTime.now().minusDays(1));
 
-        when(tokens.findByTokenHash(PasswordHashUtil.sha256(rawToken))).thenReturn(Optional.of(token));
+        when(tokens.findForUpdateByTokenHash(PasswordHashUtil.sha256(rawToken))).thenReturn(Optional.of(token));
         when(users.findById(7L)).thenReturn(Optional.of(user));
         when(users.save(any(AppUserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(tokens.save(any(PasswordResetTokenEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
