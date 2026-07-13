@@ -5,25 +5,28 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   diagnose:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-133-auth-commercialization
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - name: Run full backend tests
+      - name: Run full backend tests and write summary
         working-directory: backend/genealogy-backend
         shell: bash
         run: |
           set +e
           mvn -q test >/tmp/full-test.log 2>&1
-          status=$?
           python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
@@ -42,13 +45,20 @@ jobs:
                       continue
                   message = ' '.join((node.get('message') or '').split())
                   body = ' '.join((node.text or '').split())
-                  failures.append((root.get('name'), case.get('name'), message or body[:1000]))
-          print(f'FULL_TEST_FAILURE_COUNT={len(failures)}')
-          for suite, case, message in failures:
-              print(f'FULL_TEST_FAILURE={suite}#{case} :: {message[:1200]}')
+                  failures.append((root.get('name'), case.get('name'), message or body[:1200]))
+
+          lines = [f'FULL_TEST_FAILURE_COUNT={len(failures)}']
+          lines.extend(f'{suite}#{case} :: {message}' for suite, case, message in failures)
           if not failures:
-              lines = Path('/tmp/full-test.log').read_text(errors='replace').splitlines()
-              for line in [line for line in lines if '[ERROR]' in line][-40:]:
-                  print(f'FULL_TEST_LOG={line[:1200]}')
+              log = Path('/tmp/full-test.log').read_text(errors='replace').splitlines()
+              lines.extend(line for line in log if '[ERROR]' in line)
+          Path('../../tasks/issue-133-full-test-diagnostic.txt').write_text('\n'.join(lines[-80:]) + '\n')
           PY
-          exit $status
+      - name: Commit summary and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-133-full-test-diagnostic.yml
+          git add tasks/issue-133-full-test-diagnostic.txt
+          git commit -m "test(auth): capture full backend test diagnostic"
+          git push origin HEAD:agent/issue-133-auth-commercialization
