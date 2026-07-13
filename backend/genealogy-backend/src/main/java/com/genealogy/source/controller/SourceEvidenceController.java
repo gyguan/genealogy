@@ -71,15 +71,6 @@ public class SourceEvidenceController {
         return ApiResponse.success(sourceEvidenceApplicationService.listByTarget(targetType, targetId, userId));
     }
 
-    @GetMapping("/sources/{sourceId}/bindings")
-    public ApiResponse<List<SourceBindingResponse>> listBySource(
-            @Positive @PathVariable Long sourceId,
-            @RequestHeader(value = "Authorization", required = false) String authorization
-    ) {
-        Long userId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(sourceEvidenceApplicationService.listBySource(sourceId, userId));
-    }
-
     @DeleteMapping("/source-bindings/{bindingId}")
     public ApiResponse<Void> unbind(
             @Positive @PathVariable Long bindingId,
