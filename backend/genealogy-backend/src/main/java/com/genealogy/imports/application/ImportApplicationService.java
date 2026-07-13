@@ -37,7 +37,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 public class ImportApplicationService {
@@ -52,58 +51,81 @@ public class ImportApplicationService {
     private final ImportJobRowRepository importJobRowRepository;
     private final PersonRepository personRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final PersonImportFilePolicyService personImportFilePolicyService;
 
     public ImportApplicationService(
             ImportJobRepository importJobRepository,
             ImportJobErrorRepository importJobErrorRepository,
             ImportJobRowRepository importJobRowRepository,
             PersonRepository personRepository,
-            AuthorizationApplicationService authorizationApplicationService
+            AuthorizationApplicationService authorizationApplicationService,
+            PersonImportFilePolicyService personImportFilePolicyService
     ) {
         this.importJobRepository = importJobRepository;
         this.importJobErrorRepository = importJobErrorRepository;
         this.importJobRowRepository = importJobRowRepository;
         this.personRepository = personRepository;
         this.authorizationApplicationService = authorizationApplicationService;
+        this.personImportFilePolicyService = personImportFilePolicyService;
     }
 
     @Transactional(readOnly = true)
-    public ImportPreviewResponse previewPersons(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, boolean autoMapping, Long actorId) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
-        }
+    public ImportPreviewResponse previewPersons(
+            Long clanId,
+            Long branchId,
+            MultipartFile file,
+            Long actorId
+    ) {
+        personImportFilePolicyService.validate(branchId, file);
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
         ImportReadResult importData = readImport(file);
-        FieldMapping effectiveMapping = autoMapping ? mapping.withDetected(importData.detectedMapping()) : mapping;
         List<ImportPreviewRowResponse> previewRows = importData.rows().stream()
-                .map(row -> previewRow(clanId, branchId, effectiveMapping, row))
+                .map(row -> previewRow(clanId, branchId, row))
                 .toList();
-        int validCount = (int) previewRows.stream().filter(row -> row.errorMessage() == null || row.errorMessage().isBlank()).count();
-        int duplicateCount = (int) previewRows.stream().filter(ImportPreviewRowResponse::duplicated).count();
-        int errorCount = (int) previewRows.stream().filter(row -> row.errorMessage() != null && !row.errorMessage().isBlank()).count();
+        int validCount = (int) previewRows.stream()
+                .filter(row -> row.errorMessage() == null || row.errorMessage().isBlank())
+                .count();
+        int duplicateCount = (int) previewRows.stream()
+                .filter(ImportPreviewRowResponse::duplicated)
+                .count();
+        int errorCount = (int) previewRows.stream()
+                .filter(row -> row.errorMessage() != null && !row.errorMessage().isBlank())
+                .count();
         return new ImportPreviewResponse(previewRows.size(), validCount, duplicateCount, errorCount, previewRows);
     }
 
     @Transactional
-    public ImportJobResponse importPersonsCsv(Long clanId, Long branchId, MultipartFile file, FieldMapping mapping, boolean autoMapping, boolean confirmDuplicates, Long actorId) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
-        }
+    public ImportJobResponse importPersonsCsv(
+            Long clanId,
+            Long branchId,
+            MultipartFile file,
+            boolean confirmDuplicates,
+            Long actorId
+    ) {
+        personImportFilePolicyService.validate(branchId, file);
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
 
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
         boolean xlsx = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx");
         ImportReadResult importData = readImport(file);
-        FieldMapping effectiveMapping = autoMapping ? mapping.withDetected(importData.detectedMapping()) : mapping;
         List<ImportPreviewRowResponse> previewRows = importData.rows().stream()
-                .map(row -> previewRow(clanId, branchId, effectiveMapping, row))
+                .map(row -> previewRow(clanId, branchId, row))
                 .toList();
         boolean hasDuplicate = previewRows.stream().anyMatch(ImportPreviewRowResponse::duplicated);
         if (hasDuplicate && !confirmDuplicates) {
-            throw new BusinessException("IMPORT_DUPLICATE_CONFIRM_REQUIRED", "导入文件存在疑似重复人物，请先预览并确认后再导入");
+            throw new BusinessException(
+                    "IMPORT_DUPLICATE_CONFIRM_REQUIRED",
+                    "导入文件存在疑似重复人物，请先预览并确认后再导入"
+            );
         }
 
-        ImportJobEntity job = createJob(clanId, branchId, filename, xlsx ? "person_xlsx" : "person_csv", actorId);
+        ImportJobEntity job = createJob(
+                clanId,
+                branchId,
+                filename,
+                xlsx ? "person_xlsx" : "person_csv",
+                actorId
+        );
         int total = 0;
         int success = 0;
         int failure = 0;
@@ -114,22 +136,22 @@ public class ImportApplicationService {
             total++;
             ImportJobRowEntity jobRow = newJobRow(job.getId(), row);
             try {
-                ImportPreviewRowResponse preview = previewRow(clanId, branchId, effectiveMapping, row);
+                ImportPreviewRowResponse preview = previewRow(clanId, branchId, row);
                 jobRow.setNormalizedData(normalizedData(preview));
                 if (preview.errorMessage() != null && !preview.errorMessage().isBlank()) {
                     throw new BusinessException("IMPORT_ROW_INVALID", preview.errorMessage());
                 }
                 PersonEntity savedPerson = personRepository.save(
-                        toPerson(clanId, branchId, actorId, effectiveMapping, row.cells())
+                        toPerson(clanId, branchId, actorId, row.cells())
                 );
                 jobRow.setDraftPersonId(savedPerson == null ? null : savedPerson.getId());
                 jobRow.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
                 success++;
-            } catch (RuntimeException ex) {
+            } catch (RuntimeException exception) {
                 failure++;
-                String message = errorMessage(ex);
+                String message = errorMessage(exception);
                 jobRow.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
-                jobRow.setErrorCode(errorCode(ex));
+                jobRow.setErrorCode(errorCode(exception));
                 jobRow.setErrorMessage(message);
                 errors.add(error(job.getId(), row.rowNo(), message, row.rawData()));
             }
@@ -151,7 +173,9 @@ public class ImportApplicationService {
         job.setProcessingStatus(failure == 0
                 ? ImportJobEntity.PROCESSING_READY_FOR_REVIEW
                 : ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
-        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行导入失败，请修正后再提交审核");
+        job.setErrorSummary(failure == 0
+                ? null
+                : "存在 " + failure + " 行导入失败，请修正后再提交审核");
         job.setUpdatedAt(LocalDateTime.now());
         return toResponse(importJobRepository.save(job), errors);
     }
@@ -167,61 +191,71 @@ public class ImportApplicationService {
     private ImportReadResult readImport(MultipartFile file) {
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
         try {
-            return filename.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);
-        } catch (IOException ex) {
+            return filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
+                    ? readXlsxRows(file)
+                    : readCsvRows(file);
+        } catch (IOException exception) {
             throw new BusinessException("IMPORT_FILE_READ_FAILED", "导入文件读取失败");
         }
     }
 
     private ImportReadResult readCsvRows(MultipartFile file) throws IOException {
         List<ImportRow> importRows = new ArrayList<>();
-        FieldMapping detectedMapping = null;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            int rowNo = 0;
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)
+        )) {
+            String line = reader.readLine();
+            int rowNo = 1;
             while ((line = reader.readLine()) != null) {
                 rowNo++;
-                List<String> cells = parseCsv(line);
-                if (rowNo == 1 && looksLikeHeader(cells)) {
-                    detectedMapping = detectMapping(cells);
+                if (line.isBlank()) {
                     continue;
                 }
-                if (line.isBlank()) continue;
+                List<String> cells = parseCsv(line);
                 importRows.add(new ImportRow(rowNo, cells, line));
             }
         }
-        return new ImportReadResult(importRows, detectedMapping);
+        return new ImportReadResult(importRows);
     }
 
     private ImportReadResult readXlsxRows(MultipartFile file) throws IOException {
         List<ImportRow> importRows = new ArrayList<>();
-        FieldMapping detectedMapping = null;
         DataFormatter formatter = new DataFormatter();
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
             if (sheet == null) {
                 throw new BusinessException("IMPORT_XLSX_EMPTY", "Excel 工作表不能为空");
             }
+            int headerRowIndex = sheet.getFirstRowNum();
             for (Row row : sheet) {
-                int rowNo = row.getRowNum() + 1;
-                List<String> cells = rowToCells(row, formatter);
-                String rawData = String.join(",", cells);
-                if (rowNo == 1 && looksLikeHeader(cells)) {
-                    detectedMapping = detectMapping(cells);
+                if (row.getRowNum() == headerRowIndex) {
                     continue;
                 }
-                if (cells.stream().allMatch(String::isBlank)) continue;
-                importRows.add(new ImportRow(rowNo, cells, rawData));
+                List<String> cells = rowToCells(row, formatter);
+                if (cells.stream().allMatch(String::isBlank)) {
+                    continue;
+                }
+                importRows.add(new ImportRow(
+                        row.getRowNum() + 1,
+                        cells,
+                        String.join(",", cells)
+                ));
             }
-        } catch (BusinessException ex) {
-            throw ex;
-        } catch (Exception ex) {
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
             throw new BusinessException("IMPORT_XLSX_PARSE_FAILED", "Excel 解析失败，请确认文件格式为 .xlsx");
         }
-        return new ImportReadResult(importRows, detectedMapping);
+        return new ImportReadResult(importRows);
     }
 
-    private ImportJobEntity createJob(Long clanId, Long branchId, String filename, String importType, Long actorId) {
+    private ImportJobEntity createJob(
+            Long clanId,
+            Long branchId,
+            String filename,
+            String importType,
+            Long actorId
+    ) {
         LocalDateTime now = LocalDateTime.now();
         ImportJobEntity job = new ImportJobEntity();
         job.setClanId(clanId);
@@ -287,54 +321,120 @@ public class ImportApplicationService {
         return message == null || message.isBlank() ? "导入行处理失败" : message;
     }
 
-    private ImportPreviewRowResponse previewRow(Long clanId, Long defaultBranchId, FieldMapping mapping, ImportRow row) {
+    private ImportPreviewRowResponse previewRow(Long clanId, Long branchId, ImportRow row) {
         try {
-            String name = cell(row.cells(), mapping.nameIndex());
-            if (name.isBlank()) {
-                return new ImportPreviewRowResponse(row.rowNo(), "", "", null, "", null, "", null, false, 0, "姓名不能为空", row.rawData());
-            }
-            String gender = defaultIfBlank(cell(row.cells(), mapping.genderIndex()), "unknown");
-            Integer generationNo = parseInteger(cell(row.cells(), mapping.generationNoIndex()));
-            String generationWord = cell(row.cells(), mapping.generationWordIndex());
-            Long branchId = parseLong(cell(row.cells(), mapping.branchIdIndex()), defaultBranchId);
-            LocalDate birthDate = parseDate(cell(row.cells(), mapping.birthDateIndex()));
-            Boolean living = parseBoolean(cell(row.cells(), mapping.isLivingIndex()), true);
-            int duplicateCount = countDuplicates(clanId, branchId, name, generationNo, generationWord, birthDate);
-            return new ImportPreviewRowResponse(row.rowNo(), name, gender, generationNo, generationWord, branchId, birthDate == null ? null : birthDate.toString(), living, duplicateCount > 0, duplicateCount, null, row.rawData());
-        } catch (RuntimeException ex) {
-            return new ImportPreviewRowResponse(row.rowNo(), "", "", null, "", null, "", null, false, 0, ex.getMessage(), row.rawData());
+            ParsedPersonRow parsed = parsePersonRow(branchId, row.cells());
+            int duplicateCount = countDuplicates(
+                    clanId,
+                    branchId,
+                    parsed.name(),
+                    parsed.generationNo(),
+                    parsed.generationWord(),
+                    parsed.birthDate()
+            );
+            return new ImportPreviewRowResponse(
+                    row.rowNo(),
+                    parsed.name(),
+                    parsed.gender(),
+                    parsed.generationNo(),
+                    parsed.generationWord(),
+                    branchId,
+                    parsed.birthDate() == null ? null : parsed.birthDate().toString(),
+                    parsed.isLiving(),
+                    duplicateCount > 0,
+                    duplicateCount,
+                    null,
+                    row.rawData()
+            );
+        } catch (RuntimeException exception) {
+            return new ImportPreviewRowResponse(
+                    row.rowNo(),
+                    "",
+                    "",
+                    null,
+                    "",
+                    branchId,
+                    "",
+                    null,
+                    false,
+                    0,
+                    errorMessage(exception),
+                    row.rawData()
+            );
         }
     }
 
-    private int countDuplicates(Long clanId, Long branchId, String name, Integer generationNo, String generationWord, LocalDate birthDate) {
-        Specification<PersonEntity> spec = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), name.trim().toLowerCase(Locale.ROOT)));
-            if (branchId != null) predicates.add(criteriaBuilder.equal(root.get("branchId"), branchId));
-            if (generationNo != null) predicates.add(criteriaBuilder.equal(root.get("generationNo"), generationNo));
-            if (generationWord != null && !generationWord.isBlank()) predicates.add(criteriaBuilder.equal(root.get("generationWord"), generationWord.trim()));
-            if (birthDate != null) predicates.add(criteriaBuilder.equal(root.get("birthDate"), birthDate));
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
-        return (int) personRepository.count(spec);
-    }
-
-    private PersonEntity toPerson(Long clanId, Long defaultBranchId, Long actorId, FieldMapping mapping, List<String> cells) {
-        String name = cell(cells, mapping.nameIndex());
+    private ParsedPersonRow parsePersonRow(Long branchId, List<String> cells) {
+        ensureNoExtraColumns(cells);
+        String name = cell(cells, PersonImportTemplateDefinition.NAME_INDEX);
         if (name.isBlank()) {
             throw new BusinessException("IMPORT_PERSON_NAME_REQUIRED", "姓名不能为空");
         }
+        String gender = parseGender(cell(cells, PersonImportTemplateDefinition.GENDER_INDEX));
+        Integer generationNo = parseGenerationNo(cell(cells, PersonImportTemplateDefinition.GENERATION_NO_INDEX));
+        String generationWord = cell(cells, PersonImportTemplateDefinition.GENERATION_WORD_INDEX);
+        LocalDate birthDate = parseDate(cell(cells, PersonImportTemplateDefinition.BIRTH_DATE_INDEX));
+        Boolean isLiving = parseLiving(cell(cells, PersonImportTemplateDefinition.IS_LIVING_INDEX));
+        return new ParsedPersonRow(
+                branchId,
+                name,
+                gender,
+                generationNo,
+                generationWord,
+                birthDate,
+                isLiving
+        );
+    }
+
+    private int countDuplicates(
+            Long clanId,
+            Long branchId,
+            String name,
+            Integer generationNo,
+            String generationWord,
+            LocalDate birthDate
+    ) {
+        Specification<PersonEntity> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
+            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
+            predicates.add(criteriaBuilder.equal(
+                    criteriaBuilder.lower(root.get("name")),
+                    name.trim().toLowerCase(Locale.ROOT)
+            ));
+            if (branchId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("branchId"), branchId));
+            }
+            if (generationNo != null) {
+                predicates.add(criteriaBuilder.equal(root.get("generationNo"), generationNo));
+            }
+            if (generationWord != null && !generationWord.isBlank()) {
+                predicates.add(criteriaBuilder.equal(root.get("generationWord"), generationWord.trim()));
+            }
+            if (birthDate != null) {
+                predicates.add(criteriaBuilder.equal(root.get("birthDate"), birthDate));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+        return (int) personRepository.count(specification);
+    }
+
+    private PersonEntity toPerson(
+            Long clanId,
+            Long branchId,
+            Long actorId,
+            List<String> cells
+    ) {
+        ParsedPersonRow parsed = parsePersonRow(branchId, cells);
         PersonEntity person = new PersonEntity();
         person.setClanId(clanId);
-        person.setBranchId(parseLong(cell(cells, mapping.branchIdIndex()), defaultBranchId));
-        person.setName(name);
-        person.setGender(defaultIfBlank(cell(cells, mapping.genderIndex()), "unknown"));
-        person.setGenerationNo(parseInteger(cell(cells, mapping.generationNoIndex())));
-        person.setGenerationWord(cell(cells, mapping.generationWordIndex()));
-        person.setBirthDate(parseDate(cell(cells, mapping.birthDateIndex())));
-        person.setIsLiving(parseBoolean(cell(cells, mapping.isLivingIndex()), true));
+        person.setBranchId(parsed.branchId());
+        person.setName(parsed.name());
+        person.setGender(parsed.gender());
+        person.setGenerationNo(parsed.generationNo());
+        person.setGenerationWord(parsed.generationWord());
+        person.setBirthDate(parsed.birthDate());
+        person.setIsLiving(parsed.isLiving());
         person.setPrivacyLevel("clan_only");
         person.setDataStatus("draft");
         person.setLineageStatus("normal");
@@ -348,135 +448,102 @@ public class ImportApplicationService {
     }
 
     private List<String> rowToCells(Row row, DataFormatter formatter) {
-        List<String> cells = new ArrayList<>();
-        int max = Math.max(7, row.getLastCellNum());
-        for (int i = 0; i < max; i++) {
-            Cell cell = row.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+        int max = Math.max(PersonImportTemplateDefinition.HEADERS.size(), row.getLastCellNum());
+        List<String> cells = new ArrayList<>(max);
+        for (int index = 0; index < max; index++) {
+            Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
             cells.add(cell == null ? "" : formatter.formatCellValue(cell).trim());
         }
         return cells;
     }
 
-    private boolean looksLikeHeader(List<String> cells) {
-        return cells.stream().map(this::normalizeHeader).anyMatch(value -> headerField(value) != null);
-    }
-
-    private FieldMapping detectMapping(List<String> headerCells) {
-        int nameIndex = -1;
-        int genderIndex = -1;
-        int generationNoIndex = -1;
-        int generationWordIndex = -1;
-        int branchIdIndex = -1;
-        int birthDateIndex = -1;
-        int isLivingIndex = -1;
-        for (int i = 0; i < headerCells.size(); i++) {
-            String field = headerField(normalizeHeader(headerCells.get(i)));
-            if (field == null) continue;
-            switch (field) {
-                case "name" -> nameIndex = firstIndex(nameIndex, i);
-                case "gender" -> genderIndex = firstIndex(genderIndex, i);
-                case "generationNo" -> generationNoIndex = firstIndex(generationNoIndex, i);
-                case "generationWord" -> generationWordIndex = firstIndex(generationWordIndex, i);
-                case "branchId" -> branchIdIndex = firstIndex(branchIdIndex, i);
-                case "birthDate" -> birthDateIndex = firstIndex(birthDateIndex, i);
-                case "isLiving" -> isLivingIndex = firstIndex(isLivingIndex, i);
-                default -> { }
-            }
-        }
-        return new FieldMapping(nameIndex, genderIndex, generationNoIndex, generationWordIndex, branchIdIndex, birthDateIndex, isLivingIndex);
-    }
-
-    private int firstIndex(int current, int candidate) {
-        return current >= 0 ? current : candidate;
-    }
-
-    private String headerField(String normalized) {
-        if (Set.of("name", "personname", "姓名", "名字", "名讳").contains(normalized)) return "name";
-        if (Set.of("gender", "sex", "性别").contains(normalized)) return "gender";
-        if (Set.of("generation", "generationno", "generationnumber", "genno", "代次", "世代", "第几代").contains(normalized)) return "generationNo";
-        if (Set.of("generationword", "generationname", "字辈", "字派", "派语", "行辈").contains(normalized)) return "generationWord";
-        if (Set.of("branchid", "branch", "支派id", "分支id", "房支id").contains(normalized)) return "branchId";
-        if (Set.of("birthdate", "birthday", "出生日期", "出生时间", "生辰").contains(normalized)) return "birthDate";
-        if (Set.of("isliving", "living", "alive", "是否在世", "在世", "健在").contains(normalized)) return "isLiving";
-        return null;
-    }
-
-    private String normalizeHeader(String value) {
-        if (value == null) return "";
-        return value.trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("\ufeff", "")
-                .replace(" ", "")
-                .replace("_", "")
-                .replace("-", "")
-                .replace("/", "")
-                .replace(":", "")
-                .replace("：", "");
-    }
-
     private List<String> parseCsv(String line) {
         List<String> cells = new ArrayList<>();
         StringBuilder current = new StringBuilder();
-        boolean quote = false;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (ch == '"') {
-                if (quote && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+        boolean quoted = false;
+        for (int index = 0; index < line.length(); index++) {
+            char character = line.charAt(index);
+            if (character == '"') {
+                if (quoted && index + 1 < line.length() && line.charAt(index + 1) == '"') {
                     current.append('"');
-                    i++;
+                    index++;
                 } else {
-                    quote = !quote;
+                    quoted = !quoted;
                 }
-            } else if (ch == ',' && !quote) {
+            } else if (character == ',' && !quoted) {
                 cells.add(current.toString().trim());
                 current.setLength(0);
             } else {
-                current.append(ch);
+                current.append(character);
             }
+        }
+        if (quoted) {
+            throw new BusinessException("IMPORT_ROW_CSV_INVALID", "CSV 数据行格式不正确");
         }
         cells.add(current.toString().trim());
         return cells;
+    }
+
+    private void ensureNoExtraColumns(List<String> cells) {
+        if (cells.size() <= PersonImportTemplateDefinition.HEADERS.size()) {
+            return;
+        }
+        boolean hasExtraValue = cells.subList(
+                        PersonImportTemplateDefinition.HEADERS.size(),
+                        cells.size()
+                ).stream()
+                .anyMatch(value -> value != null && !value.isBlank());
+        if (hasExtraValue) {
+            throw new BusinessException("IMPORT_ROW_EXTRA_COLUMNS", "数据行包含人物导入模板之外的字段");
+        }
     }
 
     private String cell(List<String> cells, int index) {
         return index >= 0 && index < cells.size() ? cells.get(index).trim() : "";
     }
 
-    private String defaultIfBlank(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value;
-    }
-
-    private Integer parseInteger(String value) {
-        if (value == null || value.isBlank()) return null;
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (NumberFormatException ex) {
-            throw new BusinessException("IMPORT_NUMBER_INVALID", "代次必须是数字");
+    private String parseGender(String value) {
+        String normalized = value == null ? "" : value.trim();
+        String gender = PersonImportTemplateDefinition.GENDER_CODES.get(normalized);
+        if (gender == null) {
+            throw new BusinessException("IMPORT_GENDER_INVALID", "性别必须填写男、女或未知");
         }
+        return gender;
     }
 
-    private Long parseLong(String value, Long fallback) {
-        if (value == null || value.isBlank()) return fallback;
+    private Integer parseGenerationNo(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         try {
-            return Long.parseLong(value.trim());
-        } catch (NumberFormatException ex) {
-            throw new BusinessException("IMPORT_BRANCH_INVALID", "支派ID必须是数字");
+            int generationNo = Integer.parseInt(value.trim());
+            if (generationNo <= 0) {
+                throw new BusinessException("IMPORT_GENERATION_INVALID", "代次必须是正整数");
+            }
+            return generationNo;
+        } catch (NumberFormatException exception) {
+            throw new BusinessException("IMPORT_GENERATION_INVALID", "代次必须是正整数");
         }
     }
 
     private LocalDate parseDate(String value) {
-        if (value == null || value.isBlank()) return null;
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         try {
             return LocalDate.parse(value.trim());
-        } catch (RuntimeException ex) {
+        } catch (RuntimeException exception) {
             throw new BusinessException("IMPORT_DATE_INVALID", "出生日期格式必须是 yyyy-MM-dd");
         }
     }
 
-    private Boolean parseBoolean(String value, boolean fallback) {
-        if (value == null || value.isBlank()) return fallback;
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
-        return normalized.equals("true") || normalized.equals("1") || normalized.equals("是") || normalized.equals("在世");
+    private Boolean parseLiving(String value) {
+        String normalized = value == null ? "" : value.trim();
+        Boolean living = PersonImportTemplateDefinition.LIVING_VALUES.get(normalized);
+        if (living == null) {
+            throw new BusinessException("IMPORT_LIVING_INVALID", "是否在世必须填写是或否");
+        }
+        return living;
     }
 
     private ImportJobErrorEntity error(Long jobId, int rowNo, String message, String rawData) {
@@ -489,40 +556,46 @@ public class ImportApplicationService {
         return error;
     }
 
-    private ImportJobResponse toResponse(ImportJobEntity job, List<ImportJobErrorEntity> errors) {
+    private ImportJobResponse toResponse(
+            ImportJobEntity job,
+            List<ImportJobErrorEntity> errors
+    ) {
         return new ImportJobResponse(
-                job.getId(), job.getClanId(), job.getBranchId(), job.getImportType(), job.getOriginalFilename(),
-                job.getTotalCount(), job.getSuccessCount(), job.getFailureCount(), job.getStatus(), job.getErrorSummary(), job.getCreatedAt(),
-                errors.stream().map(item -> new ImportRowErrorResponse(item.getRowNo(), item.getErrorMessage(), item.getRawData())).toList()
+                job.getId(),
+                job.getClanId(),
+                job.getBranchId(),
+                job.getImportType(),
+                job.getOriginalFilename(),
+                job.getTotalCount(),
+                job.getSuccessCount(),
+                job.getFailureCount(),
+                job.getStatus(),
+                job.getErrorSummary(),
+                job.getCreatedAt(),
+                errors.stream()
+                        .map(item -> new ImportRowErrorResponse(
+                                item.getRowNo(),
+                                item.getErrorMessage(),
+                                item.getRawData()
+                        ))
+                        .toList()
         );
     }
 
-    public record FieldMapping(int nameIndex, int genderIndex, int generationNoIndex, int generationWordIndex, int branchIdIndex, int birthDateIndex, int isLivingIndex) {
-        public static FieldMapping defaults() {
-            return new FieldMapping(0, 1, 2, 3, 4, 5, 6);
-        }
-
-        public FieldMapping withDetected(FieldMapping detected) {
-            if (detected == null) {
-                return this;
-            }
-            return new FieldMapping(
-                    detectedOrFallback(detected.nameIndex(), nameIndex),
-                    detectedOrFallback(detected.genderIndex(), genderIndex),
-                    detectedOrFallback(detected.generationNoIndex(), generationNoIndex),
-                    detectedOrFallback(detected.generationWordIndex(), generationWordIndex),
-                    detectedOrFallback(detected.branchIdIndex(), branchIdIndex),
-                    detectedOrFallback(detected.birthDateIndex(), birthDateIndex),
-                    detectedOrFallback(detected.isLivingIndex(), isLivingIndex)
-            );
-        }
-
-        private static int detectedOrFallback(int detectedIndex, int fallbackIndex) {
-            return detectedIndex >= 0 ? detectedIndex : fallbackIndex;
-        }
+    private record ImportReadResult(List<ImportRow> rows) {
     }
 
-    private record ImportReadResult(List<ImportRow> rows, FieldMapping detectedMapping) {}
+    private record ImportRow(int rowNo, List<String> cells, String rawData) {
+    }
 
-    private record ImportRow(int rowNo, List<String> cells, String rawData) {}
+    private record ParsedPersonRow(
+            Long branchId,
+            String name,
+            String gender,
+            Integer generationNo,
+            String generationWord,
+            LocalDate birthDate,
+            Boolean isLiving
+    ) {
+    }
 }
