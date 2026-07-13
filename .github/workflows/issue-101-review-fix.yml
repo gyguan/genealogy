@@ -1,0 +1,108 @@
+name: Issue 101 Review Scope Fix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-101-review-fix.yml'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Restrict aggregated grants to actor-visible scopes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          policy_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java')
+          policy = policy_path.read_text()
+          old_manage = '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode) || targetScopeId == null) {
+              return false;
+          }
+          if (targetScopeType == MemberRoleScopeType.branch) {
+              return actorScope.visibleBranchIds().contains(targetScopeId);
+          }
+          if (targetScopeType == MemberRoleScopeType.branch_subtree) {
+              return actorScope.visibleSubtreeIds().contains(targetScopeId);
+          }
+          return false;
+          '''
+          new_manage = '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)) {
+              return false;
+          }
+          return actorScope.coversGrantScope(targetScopeType, targetScopeId);
+          '''
+          if old_manage in policy:
+              policy = policy.replace(old_manage, new_manage, 1)
+          elif new_manage not in policy:
+              raise SystemExit('canManageGrant replacement target not found')
+
+          old_record = '''        public List<Long> queryVisibleBranchIds() {
+              return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
+          }
+          '''
+          new_record = '''        public boolean coversGrantScope(MemberRoleScopeType scopeType, Long scopeId) {
+              if (fullClanAccess()) {
+                  return true;
+              }
+              if (scopeId == null) {
+                  return false;
+              }
+              if (scopeType == MemberRoleScopeType.branch) {
+                  return visibleBranchIds.contains(scopeId);
+              }
+              if (scopeType == MemberRoleScopeType.branch_subtree) {
+                  return visibleSubtreeIds.contains(scopeId);
+              }
+              return false;
+          }
+
+          public List<Long> queryVisibleBranchIds() {
+              return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
+          }
+          '''
+          if old_record in policy:
+              policy = policy.replace(old_record, new_record, 1)
+          elif 'public boolean coversGrantScope' not in policy:
+              raise SystemExit('ActorScope replacement target not found')
+          policy_path.write_text(policy)
+
+          service_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java')
+          service = service_path.read_text()
+          old_stream = '''            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
+                      .sorted(Comparator.comparing(MemberRoleEntity::getId))
+          '''
+          new_stream = '''            List<MemberGrantResponse> memberGrants = membershipGrants.stream()
+                      .filter(grant -> actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId()))
+                      .sorted(Comparator.comparing(MemberRoleEntity::getId))
+          '''
+          if old_stream in service:
+              service = service.replace(old_stream, new_stream, 1)
+          elif new_stream not in service:
+              raise SystemExit('aggregate grant stream replacement target not found')
+          service_path.write_text(service)
+          PY
+      - name: Commit review fix
+        run: |
+          if git diff --quiet; then
+            echo 'Review fix already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java \
+            backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java
+          git commit -m 'security(member): hide grants outside actor scope'
+          git push origin HEAD:${{ github.head_ref }}
