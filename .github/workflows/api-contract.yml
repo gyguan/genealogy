@@ -3,7 +3,9 @@ name: API Contract
 on:
   pull_request:
     paths:
+      - '.github/workflows/api-contract.yml'
       - 'docs/api/openapi.json'
+      - 'docs/api/openapi.*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
       - 'frontend/genealogy-web/package.json'
@@ -15,13 +17,67 @@ on:
       - master
     paths:
       - 'docs/api/openapi.json'
+      - 'docs/api/openapi.*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
       - 'frontend/genealogy-web/package.json'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
 
+permissions:
+  contents: write
+
 jobs:
+  sync-main:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Merge latest main and regenerate API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main:refs/remotes/origin/main --force
+
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo 'Feature branch already contains latest main.'
+          else
+            set +e
+            git merge --no-commit --no-ff origin/main
+            MERGE_STATUS=$?
+            set -e
+            if [[ ${MERGE_STATUS} -ne 0 ]]; then
+              mapfile -t CONFLICTS < <(git diff --name-only --diff-filter=U)
+              printf 'Conflicts: %s\n' "${CONFLICTS[*]:-none}"
+              EXPECTED='frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
+              if [[ ${#CONFLICTS[@]} -ne 1 || "${CONFLICTS[0]}" != "${EXPECTED}" ]]; then
+                echo 'Unexpected merge conflicts; refusing automatic resolution.'
+                exit 1
+              fi
+              git checkout --ours "${EXPECTED}"
+              git add "${EXPECTED}"
+            fi
+          fi
+
+          node scripts/api/generate-frontend-client.mjs
+          git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          if git diff --cached --quiet && git merge-base --is-ancestor origin/main HEAD; then
+            echo 'Nothing to commit.'
+            exit 0
+          fi
+          git commit -m 'chore(issue-103): merge latest main into relationship import branch'
+          git push origin HEAD:${{ github.head_ref }}
+
   api-contract:
     runs-on: ubuntu-latest
     steps:
