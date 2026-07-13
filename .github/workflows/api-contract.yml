@@ -15,7 +15,9 @@ on:
     branches:
       - main
       - master
+      - agent/issue-103-relationship-import
     paths:
+      - '.github/workflows/api-contract.yml'
       - 'docs/api/openapi.json'
       - 'docs/api/openapi.*.json'
       - 'scripts/api/**'
@@ -29,13 +31,13 @@ permissions:
 
 jobs:
   sync-main:
-    if: github.event_name == 'pull_request'
+    if: github.ref == 'refs/heads/agent/issue-103-relationship-import'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout head branch
+      - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: agent/issue-103-relationship-import
           fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -76,7 +78,7 @@ jobs:
             exit 0
           fi
           git commit -m 'chore(issue-103): merge latest main into relationship import branch'
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:agent/issue-103-relationship-import
 
   api-contract:
     runs-on: ubuntu-latest
