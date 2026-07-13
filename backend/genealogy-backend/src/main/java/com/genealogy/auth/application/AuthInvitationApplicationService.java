@@ -91,9 +91,9 @@ public class AuthInvitationApplicationService {
 
     @Transactional
     public AuthUserResponse accept(InvitationAcceptRequest request, String clientIp, String userAgent) {
-        AuthInvitationEntity invitation = invitationRepository.findByTokenHash(
+        AuthInvitationEntity invitation = invitationRepository.findForUpdateByTokenHash(
                         PasswordHashUtil.sha256(request.invitationToken().trim()))
-                .orElseThrow(() -> invalidInvitation());
+                .orElseThrow(this::invalidInvitation);
         if (!STATUS_ACTIVE.equals(invitation.getStatus())
                 || invitation.getAcceptedAt() != null
                 || invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
