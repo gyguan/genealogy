@@ -1,5 +1,6 @@
 package com.genealogy.auth.application;
 
+import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMembershipEntity;
 import com.genealogy.member.entity.MemberRoleEntity;
@@ -23,17 +24,20 @@ public class RbacAuthorizationApplicationService {
     private final PermissionApplicationService permissionApplicationService;
     private final ClanMembershipRepository clanMembershipRepository;
     private final MemberRoleRepository memberRoleRepository;
+    private final BranchRepository branchRepository;
 
     public RbacAuthorizationApplicationService(
             AuthApplicationService authApplicationService,
             PermissionApplicationService permissionApplicationService,
             ClanMembershipRepository clanMembershipRepository,
-            MemberRoleRepository memberRoleRepository
+            MemberRoleRepository memberRoleRepository,
+            BranchRepository branchRepository
     ) {
         this.authApplicationService = authApplicationService;
         this.permissionApplicationService = permissionApplicationService;
         this.clanMembershipRepository = clanMembershipRepository;
         this.memberRoleRepository = memberRoleRepository;
+        this.branchRepository = branchRepository;
     }
 
     @Transactional(readOnly = true)
@@ -113,15 +117,23 @@ public class RbacAuthorizationApplicationService {
         }
         if (role.getScopeType() == MemberRoleScopeType.clan) {
             return targetScopeType == MemberRoleScopeType.clan && role.getScopeId().equals(targetScopeId)
-                    || targetScopeType == MemberRoleScopeType.branch && role.getScopeId().equals(clanId)
+                    || isBranchTarget(targetScopeType) && role.getScopeId().equals(clanId)
                     || targetScopeType == MemberRoleScopeType.self && role.getScopeId().equals(clanId);
         }
         if (role.getScopeType() == MemberRoleScopeType.branch) {
-            return targetScopeType == MemberRoleScopeType.branch && role.getScopeId().equals(targetScopeId);
+            return isBranchTarget(targetScopeType) && role.getScopeId().equals(targetScopeId);
+        }
+        if (role.getScopeType() == MemberRoleScopeType.branch_subtree) {
+            return isBranchTarget(targetScopeType)
+                    && branchRepository.isDescendantOrSelf(clanId, role.getScopeId(), targetScopeId);
         }
         if (role.getScopeType() == MemberRoleScopeType.self) {
             return targetScopeType == MemberRoleScopeType.self && role.getScopeId().equals(targetScopeId);
         }
         return false;
+    }
+
+    private boolean isBranchTarget(MemberRoleScopeType targetScopeType) {
+        return targetScopeType == MemberRoleScopeType.branch || targetScopeType == MemberRoleScopeType.branch_subtree;
     }
 }

@@ -290,6 +290,97 @@ export const API_OPERATIONS = {
     ],
     "requestBody": null,
     "response": "ApiResponseWorkbenchTaskPage"
+  },
+  "GET /clans/{clanId}/grantable-roles": {
+    "operationId": "listGrantableRoles",
+    "method": "GET",
+    "path": "/clans/{clanId}/grantable-roles",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponseGrantableRoleList"
+  },
+  "GET /clans/{clanId}/member-candidates": {
+    "operationId": "searchMemberCandidates",
+    "method": "GET",
+    "path": "/clans/{clanId}/member-candidates",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "keyword",
+      "pageNo",
+      "pageSize"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseMemberCandidatePage"
+  },
+  "POST /clans/{clanId}/member-grants": {
+    "operationId": "createMemberGrant",
+    "method": "POST",
+    "path": "/clans/{clanId}/member-grants",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [],
+    "requestBody": "CreateMemberGrantRequest",
+    "response": "ApiResponseMemberGrant"
+  },
+  "PUT /clans/{clanId}/member-grants/{grantId}": {
+    "operationId": "updateMemberGrant",
+    "method": "PUT",
+    "path": "/clans/{clanId}/member-grants/{grantId}",
+    "pathParams": [
+      "clanId",
+      "grantId"
+    ],
+    "queryParams": [],
+    "requestBody": "UpdateMemberGrantRequest",
+    "response": "ApiResponseMemberGrant"
+  },
+  "POST /clans/{clanId}/member-grants/{grantId}/revoke": {
+    "operationId": "revokeMemberGrant",
+    "method": "POST",
+    "path": "/clans/{clanId}/member-grants/{grantId}/revoke",
+    "pathParams": [
+      "clanId",
+      "grantId"
+    ],
+    "queryParams": [],
+    "requestBody": "RevokeMemberGrantRequest",
+    "response": "ApiResponseVoid"
+  },
+  "GET /clans/{clanId}/members": {
+    "operationId": "listAggregatedClanMembers",
+    "method": "GET",
+    "path": "/clans/{clanId}/members",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "keyword",
+      "pageNo",
+      "pageSize",
+      "roleCode",
+      "scopeType",
+      "status"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseMemberAggregatePage"
+  },
+  "PATCH /clans/{clanId}/members/{membershipId}/status": {
+    "operationId": "updateClanMembershipStatus",
+    "method": "PATCH",
+    "path": "/clans/{clanId}/members/{membershipId}/status",
+    "pathParams": [
+      "clanId",
+      "membershipId"
+    ],
+    "queryParams": [],
+    "requestBody": "UpdateMemberStatusRequest",
+    "response": "ApiResponseMemberAggregate"
   }
 } as const;
 
