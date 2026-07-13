@@ -179,7 +179,7 @@ public class AuthorizationApplicationService {
         if (!ROLE_CLAN_ADMIN.equals(actualRoleCode) && !ROLE_BRANCH_ADMIN.equals(actualRoleCode) && !ROLE_EDITOR.equals(actualRoleCode)) {
             throw new BusinessException("BRANCH_MANAGER_ROLE_FORBIDDEN", "支派负责人必须具备宗族管理员、支派管理员或编辑角色");
         }
-        if (branchId != null && !scopeCoversBranch(memberRole, branchId)) {
+        if (branchId != null && !scopeCoversBranch(clanId, memberRole, branchId)) {
             throw new BusinessException("BRANCH_MANAGER_SCOPE_FORBIDDEN", "支派负责人授权范围不覆盖该支派");
         }
         return memberRole;
@@ -248,19 +248,13 @@ public class AuthorizationApplicationService {
                 .orElseThrow(() -> new BusinessException("ROLE_NOT_FOUND", "成员角色不存在"));
     }
 
-    private boolean scopeCoversBranch(MemberRoleEntity memberRole, Long branchId) {
-        if (memberRole.getScopeType() == MemberRoleScopeType.clan || memberRole.getScopeType() == MemberRoleScopeType.global) {
-            return true;
-        }
-        if (memberRole.getScopeType() != MemberRoleScopeType.branch) {
-            return false;
-        }
-        if (memberRole.getScopeId().equals(branchId)) {
-            return true;
-        }
-        return branchRepository.findById(memberRole.getScopeId()).isPresent()
-                && branchRepository.findById(branchId).isPresent()
-                && memberRole.getScopeId().equals(branchId);
+    private boolean scopeCoversBranch(Long clanId, MemberRoleEntity memberRole, Long branchId) {
+        return rbacAuthorizationApplicationService.scopeCovers(
+                clanId,
+                memberRole,
+                MemberRoleScopeType.branch,
+                branchId
+        );
     }
 
     private boolean isLegacyAttachmentControllerPermission(String permissionCode) {
