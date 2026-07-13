@@ -8,8 +8,10 @@ import com.genealogy.imports.dto.ImportPreviewRowResponse;
 import com.genealogy.imports.dto.ImportRowErrorResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobErrorEntity;
+import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
+import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -31,26 +33,36 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
 public class ImportApplicationService {
 
+    private static final String LEGACY_STATUS_RUNNING = "running";
+    private static final String LEGACY_STATUS_COMPLETED = "completed";
+    private static final String LEGACY_STATUS_PARTIAL_COMPLETED = "partial_completed";
+    private static final String LEGACY_STATUS_FAILED = "failed";
+
     private final ImportJobRepository importJobRepository;
     private final ImportJobErrorRepository importJobErrorRepository;
+    private final ImportJobRowRepository importJobRowRepository;
     private final PersonRepository personRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
 
     public ImportApplicationService(
             ImportJobRepository importJobRepository,
             ImportJobErrorRepository importJobErrorRepository,
+            ImportJobRowRepository importJobRowRepository,
             PersonRepository personRepository,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.importJobRepository = importJobRepository;
         this.importJobErrorRepository = importJobErrorRepository;
+        this.importJobRowRepository = importJobRowRepository;
         this.personRepository = personRepository;
         this.authorizationApplicationService = authorizationApplicationService;
     }
@@ -80,7 +92,7 @@ public class ImportApplicationService {
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
 
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
-        boolean xlsx = filename.toLowerCase().endsWith(".xlsx");
+        boolean xlsx = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx");
         ImportReadResult importData = readImport(file);
         FieldMapping effectiveMapping = autoMapping ? mapping.withDetected(importData.detectedMapping()) : mapping;
         List<ImportPreviewRowResponse> previewRows = importData.rows().stream()
@@ -96,30 +108,51 @@ public class ImportApplicationService {
         int success = 0;
         int failure = 0;
         List<ImportJobErrorEntity> errors = new ArrayList<>();
+        List<ImportJobRowEntity> jobRows = new ArrayList<>();
 
         for (ImportRow row : importData.rows()) {
             total++;
+            ImportJobRowEntity jobRow = newJobRow(job.getId(), row);
             try {
                 ImportPreviewRowResponse preview = previewRow(clanId, branchId, effectiveMapping, row);
+                jobRow.setNormalizedData(normalizedData(preview));
                 if (preview.errorMessage() != null && !preview.errorMessage().isBlank()) {
                     throw new BusinessException("IMPORT_ROW_INVALID", preview.errorMessage());
                 }
-                personRepository.save(toPerson(clanId, branchId, actorId, effectiveMapping, row.cells()));
+                PersonEntity savedPerson = personRepository.save(
+                        toPerson(clanId, branchId, actorId, effectiveMapping, row.cells())
+                );
+                jobRow.setDraftPersonId(savedPerson == null ? null : savedPerson.getId());
+                jobRow.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
                 success++;
             } catch (RuntimeException ex) {
                 failure++;
-                errors.add(error(job.getId(), row.rowNo(), ex.getMessage(), row.rawData()));
+                String message = errorMessage(ex);
+                jobRow.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
+                jobRow.setErrorCode(errorCode(ex));
+                jobRow.setErrorMessage(message);
+                errors.add(error(job.getId(), row.rowNo(), message, row.rawData()));
             }
+            jobRow.setUpdatedAt(LocalDateTime.now());
+            jobRows.add(jobRow);
         }
 
+        if (!jobRows.isEmpty()) {
+            importJobRowRepository.saveAll(jobRows);
+        }
         if (!errors.isEmpty()) {
             importJobErrorRepository.saveAll(errors);
         }
+
         job.setTotalCount(total);
         job.setSuccessCount(success);
         job.setFailureCount(failure);
-        job.setStatus(failure == 0 ? "completed" : success == 0 ? "failed" : "partial_completed");
-        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行导入失败，请查看错误明细");
+        job.setStatus(legacyStatus(success, failure));
+        job.setProcessingStatus(failure == 0
+                ? ImportJobEntity.PROCESSING_READY_FOR_REVIEW
+                : ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
+        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行导入失败，请修正后再提交审核");
+        job.setUpdatedAt(LocalDateTime.now());
         return toResponse(importJobRepository.save(job), errors);
     }
 
@@ -134,7 +167,7 @@ public class ImportApplicationService {
     private ImportReadResult readImport(MultipartFile file) {
         String filename = file.getOriginalFilename() == null ? "persons.csv" : file.getOriginalFilename();
         try {
-            return filename.toLowerCase().endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);
+            return filename.toLowerCase(Locale.ROOT).endsWith(".xlsx") ? readXlsxRows(file) : readCsvRows(file);
         } catch (IOException ex) {
             throw new BusinessException("IMPORT_FILE_READ_FAILED", "导入文件读取失败");
         }
@@ -189,18 +222,69 @@ public class ImportApplicationService {
     }
 
     private ImportJobEntity createJob(Long clanId, Long branchId, String filename, String importType, Long actorId) {
+        LocalDateTime now = LocalDateTime.now();
         ImportJobEntity job = new ImportJobEntity();
         job.setClanId(clanId);
         job.setBranchId(branchId);
         job.setImportType(importType);
         job.setOriginalFilename(filename);
-        job.setStatus("running");
+        job.setStatus(LEGACY_STATUS_RUNNING);
+        job.setProcessingStatus(ImportJobEntity.PROCESSING_PROCESSING);
+        job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
+        job.setReviewRound(0);
         job.setTotalCount(0);
         job.setSuccessCount(0);
         job.setFailureCount(0);
         job.setCreatedBy(actorId);
-        job.setCreatedAt(LocalDateTime.now());
+        job.setCreatedAt(now);
+        job.setUpdatedAt(now);
         return importJobRepository.save(job);
+    }
+
+    private ImportJobRowEntity newJobRow(Long jobId, ImportRow row) {
+        LocalDateTime now = LocalDateTime.now();
+        ImportJobRowEntity entity = new ImportJobRowEntity();
+        entity.setJobId(jobId);
+        entity.setRowNo(row.rowNo());
+        entity.setRawData(row.rawData());
+        entity.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
+        entity.setRetryCount(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        return entity;
+    }
+
+    private Map<String, Object> normalizedData(ImportPreviewRowResponse preview) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", preview.name());
+        data.put("gender", preview.gender());
+        data.put("generationNo", preview.generationNo());
+        data.put("generationWord", preview.generationWord());
+        data.put("branchId", preview.branchId());
+        data.put("birthDate", preview.birthDate());
+        data.put("isLiving", preview.isLiving());
+        data.put("duplicated", preview.duplicated());
+        data.put("duplicateCount", preview.duplicateCount());
+        return data;
+    }
+
+    private String legacyStatus(int success, int failure) {
+        if (failure == 0) {
+            return LEGACY_STATUS_COMPLETED;
+        }
+        return success == 0 ? LEGACY_STATUS_FAILED : LEGACY_STATUS_PARTIAL_COMPLETED;
+    }
+
+    private String errorCode(RuntimeException exception) {
+        if (exception instanceof BusinessException businessException) {
+            return businessException.getCode();
+        }
+        return "IMPORT_ROW_PROCESS_FAILED";
+    }
+
+    private String errorMessage(RuntimeException exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? "导入行处理失败" : message;
     }
 
     private ImportPreviewRowResponse previewRow(Long clanId, Long defaultBranchId, FieldMapping mapping, ImportRow row) {
@@ -227,7 +311,7 @@ public class ImportApplicationService {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
             predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), name.trim().toLowerCase()));
+            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), name.trim().toLowerCase(Locale.ROOT)));
             if (branchId != null) predicates.add(criteriaBuilder.equal(root.get("branchId"), branchId));
             if (generationNo != null) predicates.add(criteriaBuilder.equal(root.get("generationNo"), generationNo));
             if (generationWord != null && !generationWord.isBlank()) predicates.add(criteriaBuilder.equal(root.get("generationWord"), generationWord.trim()));
@@ -391,7 +475,7 @@ public class ImportApplicationService {
 
     private Boolean parseBoolean(String value, boolean fallback) {
         if (value == null || value.isBlank()) return fallback;
-        String normalized = value.trim().toLowerCase();
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
         return normalized.equals("true") || normalized.equals("1") || normalized.equals("是") || normalized.equals("在世");
     }
 
