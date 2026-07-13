@@ -1,6 +1,9 @@
 package com.genealogy.imports.application;
 
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.imports.domain.ImportJobDescriptor;
+import com.genealogy.imports.domain.ImportTypeRegistry;
+import com.genealogy.imports.domain.PersonImportTypeDefinition;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -14,7 +17,14 @@ import java.nio.charset.StandardCharsets;
 @Service
 public class PersonImportTemplateApplicationService {
 
+    private final ImportTypeRegistry importTypeRegistry;
+
+    public PersonImportTemplateApplicationService(ImportTypeRegistry importTypeRegistry) {
+        this.importTypeRegistry = importTypeRegistry;
+    }
+
     public byte[] buildCsvTemplate() {
+        importTypeRegistry.require(PersonImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_CSV);
         String content = "\ufeff"
                 + String.join(",", PersonImportTemplateDefinition.HEADERS)
                 + "\n"
@@ -24,6 +34,7 @@ public class PersonImportTemplateApplicationService {
     }
 
     public byte[] buildXlsxTemplate() {
+        importTypeRegistry.require(PersonImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_XLSX);
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("人物导入");
             writeRow(sheet.createRow(0), PersonImportTemplateDefinition.HEADERS);
