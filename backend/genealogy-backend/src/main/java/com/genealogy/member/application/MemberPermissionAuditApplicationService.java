@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -191,15 +190,15 @@ public class MemberPermissionAuditApplicationService {
             if (endTime != null) {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
             }
-            predicates.add(targetPredicate(criteriaBuilder, root.get("targetType"), root.get("targetId"), targetFilter));
+            predicates.add(targetPredicate(criteriaBuilder, root.<String>get("targetType"), root.<Long>get("targetId"), targetFilter));
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }
 
     private Predicate targetPredicate(
             jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
-            jakarta.persistence.criteria.Path<Object> targetType,
-            jakarta.persistence.criteria.Path<Object> targetId,
+            jakarta.persistence.criteria.Path<String> targetType,
+            jakarta.persistence.criteria.Path<Long> targetId,
             AuditTargetFilter filter
     ) {
         if (filter.unrestricted()) {
@@ -217,6 +216,9 @@ public class MemberPermissionAuditApplicationService {
                     criteriaBuilder.equal(targetType, TARGET_GRANT),
                     targetId.in(filter.grantIds())
             ));
+        }
+        if (targets.isEmpty()) {
+            return criteriaBuilder.disjunction();
         }
         return targets.size() == 1
                 ? targets.get(0)

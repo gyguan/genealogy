@@ -186,6 +186,26 @@ public class MemberGrantPolicyService {
         );
     }
 
+    public boolean canViewGrant(
+            ActorScope actorScope,
+            MemberRoleScopeType targetScopeType,
+            Long targetScopeId
+    ) {
+        if (actorScope.fullClanAccess()) {
+            return true;
+        }
+        if (targetScopeId == null) {
+            return false;
+        }
+        if (targetScopeType == MemberRoleScopeType.branch) {
+            return actorScope.visibleBranchIds().contains(targetScopeId);
+        }
+        if (targetScopeType == MemberRoleScopeType.branch_subtree) {
+            return actorScope.visibleSubtreeIds().contains(targetScopeId);
+        }
+        return false;
+    }
+
     public boolean canManageGrant(
             ActorScope actorScope,
             String targetRoleCode,
