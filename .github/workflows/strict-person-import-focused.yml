@@ -33,10 +33,17 @@ jobs:
       - name: Verify strict template headers
         working-directory: backend/genealogy-backend
         run: mvn -q -Dtest=PersonImportFilePolicyServiceTest test
-      - name: Verify fixed mapping and business values
+      - name: Verify successful fixed mapping
         working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest test
+        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest#successfulRowsShouldBeLinkedToDraftPersonsAndBecomeReadyForReview test
+      - name: Verify correctable invalid row
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest#invalidRowsShouldRemainTraceableAndRequireCorrection test
+      - name: Verify strict business values
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=ImportApplicationServiceRowStateTest#invalidBusinessValuesShouldBecomeCorrectableRows test
       - name: Verify import audit command
+        if: always()
         working-directory: backend/genealogy-backend
         run: mvn -q -Dtest=PersonImportCommandApplicationServiceTest test
 
