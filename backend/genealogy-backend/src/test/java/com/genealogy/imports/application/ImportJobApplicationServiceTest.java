@@ -54,8 +54,8 @@ class ImportJobApplicationServiceTest {
     }
 
     @Test
-    void listJobsShouldPageSummariesWithoutLoadingErrorRows() {
-        ImportJobEntity job = job(11L, 1L, 5L, "partial_completed");
+    void listJobsShouldAcceptLegacyCombinedFilterAndReturnSplitDescriptor() {
+        ImportJobEntity job = job(11L, 1L, 5L, "partial_completed", "xlsx");
         when(importJobRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(job), org.springframework.data.domain.PageRequest.of(1, 20), 21));
 
@@ -63,14 +63,19 @@ class ImportJobApplicationServiceTest {
                 1L,
                 5L,
                 "partial_completed",
-                "person_csv",
+                "person_xlsx",
+                null,
                 2,
                 20,
                 9L
         );
 
-        assertThat(result.records()).hasSize(1);
-        assertThat(result.records().get(0).id()).isEqualTo(11L);
+        assertThat(result.records()).singleElement().satisfies(summary -> {
+            assertThat(summary.id()).isEqualTo(11L);
+            assertThat(summary.importType()).isEqualTo("person");
+            assertThat(summary.fileFormat()).isEqualTo("xlsx");
+            assertThat(summary.legacyImportType()).isEqualTo("person_xlsx");
+        });
         assertThat(result.total()).isEqualTo(21);
         assertThat(result.pageNo()).isEqualTo(2);
         assertThat(result.pageSize()).isEqualTo(20);
@@ -84,8 +89,8 @@ class ImportJobApplicationServiceTest {
     }
 
     @Test
-    void getJobShouldAuthorizeAgainstJobBranchBeforeReturningRawRows() {
-        ImportJobEntity job = job(11L, 1L, 5L, "failed");
+    void getJobShouldAuthorizeAgainstJobBranchAndReturnCompatibilityValue() {
+        ImportJobEntity job = job(11L, 1L, 5L, "failed", "csv");
         ImportJobErrorEntity error = new ImportJobErrorEntity();
         error.setJobId(11L);
         error.setRowNo(3);
@@ -99,11 +104,26 @@ class ImportJobApplicationServiceTest {
         verify(authorizationApplicationService).requireClanMember(1L, 9L);
         verify(authorizationApplicationService).requireBranchWriteScope(1L, 9L, 5L);
         assertThat(result.id()).isEqualTo(11L);
+        assertThat(result.importType()).isEqualTo("person");
+        assertThat(result.fileFormat()).isEqualTo("csv");
+        assertThat(result.legacyImportType()).isEqualTo("person_csv");
         assertThat(result.errors()).singleElement().satisfies(row -> {
             assertThat(row.rowNo()).isEqualTo(3);
             assertThat(row.errorMessage()).isEqualTo("姓名不能为空");
             assertThat(row.rawData()).isEqualTo(",male");
         });
+    }
+
+    @Test
+    void invalidFileFormatFilterShouldFailBeforeRepositoryQuery() {
+        BusinessException error = catchThrowableOfType(
+                () -> service.listJobs(1L, null, null, "person", "pdf", 1, 20, 9L),
+                BusinessException.class
+        );
+
+        assertThat(error).isNotNull();
+        assertThat(error.getCode()).isEqualTo("IMPORT_FILE_FORMAT_INVALID");
+        verify(importJobRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -123,13 +143,14 @@ class ImportJobApplicationServiceTest {
         verify(importJobErrorRepository, never()).findByJobIdOrderByRowNoAsc(any());
     }
 
-    private ImportJobEntity job(Long id, Long clanId, Long branchId, String status) {
+    private ImportJobEntity job(Long id, Long clanId, Long branchId, String status, String fileFormat) {
         ImportJobEntity job = new ImportJobEntity();
         job.setId(id);
         job.setClanId(clanId);
         job.setBranchId(branchId);
-        job.setImportType("person_csv");
-        job.setOriginalFilename("persons.csv");
+        job.setImportType("person");
+        job.setFileFormat(fileFormat);
+        job.setOriginalFilename("persons." + fileFormat);
         job.setTotalCount(10);
         job.setSuccessCount(8);
         job.setFailureCount(2);
