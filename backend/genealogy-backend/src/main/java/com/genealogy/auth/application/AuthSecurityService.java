@@ -60,8 +60,15 @@ public class AuthSecurityService {
             String userAgent
     ) {
         requiresNew.executeWithoutResult(status -> {
+            String accountHash = accountHash(account);
+            if (success) {
+                // Security events remain immutable audit evidence; the lightweight
+                // failure counter rows are cleared so a legitimate login resets
+                // the account-specific cooldown window.
+                loginAttemptRepository.deleteByAccountHashAndSuccessFalse(accountHash);
+            }
             AuthLoginAttemptEntity attempt = new AuthLoginAttemptEntity();
-            attempt.setAccountHash(accountHash(account));
+            attempt.setAccountHash(accountHash);
             attempt.setIpHash(ipHash(clientIp));
             attempt.setUserId(userId);
             attempt.setSuccess(success);
