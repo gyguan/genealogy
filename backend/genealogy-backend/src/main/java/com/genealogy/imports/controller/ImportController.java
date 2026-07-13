@@ -6,15 +6,18 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.imports.application.ImportApplicationService;
 import com.genealogy.imports.application.ImportJobApplicationService;
+import com.genealogy.imports.application.ImportJobReviewApplicationService;
 import com.genealogy.imports.application.ImportJobRowApplicationService;
 import com.genealogy.imports.application.PersonImportCommandApplicationService;
 import com.genealogy.imports.application.PersonImportFilePolicyService;
 import com.genealogy.imports.application.PersonImportTemplateApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
+import com.genealogy.imports.dto.ImportJobReviewSubmitRequest;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.dto.ImportPreviewResponse;
 import com.genealogy.imports.dto.PersonImportRowRetryRequest;
+import com.genealogy.review.dto.CheckTaskResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
@@ -43,6 +46,7 @@ public class ImportController {
     private final PersonImportCommandApplicationService personImportCommandApplicationService;
     private final ImportJobApplicationService importJobApplicationService;
     private final ImportJobRowApplicationService importJobRowApplicationService;
+    private final ImportJobReviewApplicationService importJobReviewApplicationService;
     private final PersonImportFilePolicyService personImportFilePolicyService;
     private final PersonImportTemplateApplicationService personImportTemplateApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
@@ -52,6 +56,7 @@ public class ImportController {
             PersonImportCommandApplicationService personImportCommandApplicationService,
             ImportJobApplicationService importJobApplicationService,
             ImportJobRowApplicationService importJobRowApplicationService,
+            ImportJobReviewApplicationService importJobReviewApplicationService,
             PersonImportFilePolicyService personImportFilePolicyService,
             PersonImportTemplateApplicationService personImportTemplateApplicationService,
             AuthorizationApplicationService authorizationApplicationService
@@ -60,6 +65,7 @@ public class ImportController {
         this.personImportCommandApplicationService = personImportCommandApplicationService;
         this.importJobApplicationService = importJobApplicationService;
         this.importJobRowApplicationService = importJobRowApplicationService;
+        this.importJobReviewApplicationService = importJobReviewApplicationService;
         this.personImportFilePolicyService = personImportFilePolicyService;
         this.personImportTemplateApplicationService = personImportTemplateApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
@@ -198,6 +204,17 @@ public class ImportController {
                 request,
                 actorId
         ));
+    }
+
+    @PostMapping("/clans/{clanId}/imports/{jobId}/submit-review")
+    public ApiResponse<CheckTaskResponse> submitReview(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long jobId,
+            @Valid @RequestBody ImportJobReviewSubmitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(importJobReviewApplicationService.submit(clanId, jobId, request, actorId));
     }
 
     private ImportApplicationService.FieldMapping mapping(
