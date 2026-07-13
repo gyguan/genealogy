@@ -91,7 +91,7 @@ public class PasswordResetApplicationService {
 
     @Transactional
     public void reset(ResetPasswordRequest request, String clientIp, String userAgent) {
-        PasswordResetTokenEntity token = resetTokenRepository.findByTokenHash(
+        PasswordResetTokenEntity token = resetTokenRepository.findForUpdateByTokenHash(
                         PasswordHashUtil.sha256(request.resetToken().trim()))
                 .orElseThrow(this::invalidToken);
         if (token.getUsedAt() != null || token.getRevokedAt() != null || token.getExpiresAt().isBefore(LocalDateTime.now())) {
