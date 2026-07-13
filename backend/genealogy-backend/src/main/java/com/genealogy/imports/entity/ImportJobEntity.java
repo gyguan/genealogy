@@ -104,7 +104,7 @@ public class ImportJobEntity {
             this.importType = importType;
             return;
         }
-        ImportJobDescriptor descriptor = ImportJobDescriptor.resolve(importType, this.fileFormat, this.originalFilename);
+        ImportJobDescriptor descriptor = ImportJobDescriptor.fromFilter(importType, this.fileFormat);
         this.importType = descriptor.importType();
         this.fileFormat = descriptor.fileFormat();
     }
@@ -114,7 +114,7 @@ public class ImportJobEntity {
             this.fileFormat = fileFormat;
             return;
         }
-        ImportJobDescriptor descriptor = ImportJobDescriptor.resolve(this.importType, fileFormat, this.originalFilename);
+        ImportJobDescriptor descriptor = ImportJobDescriptor.fromFilter(this.importType, fileFormat);
         this.importType = descriptor.importType();
         this.fileFormat = descriptor.fileFormat();
     }
