@@ -1,0 +1,36 @@
+name: Issue 133 Backend Compile
+
+on:
+  push:
+    branches:
+      - agent/issue-133-auth-commercialization
+    paths:
+      - .github/workflows/issue-133-backend-compile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  compile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-133-auth-commercialization
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Compile backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests compile
+      - name: Remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-133-backend-compile.yml
+          git commit -m "test(auth): compile commercial authentication backend"
+          git push origin HEAD:agent/issue-133-auth-commercialization
