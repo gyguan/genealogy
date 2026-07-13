@@ -4,23 +4,16 @@ import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { saveDownloadedBlob } from '../../shared/utils/download';
-import { toRecordList } from '../../shared/ui/DataTable';
+import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
-type ImportJob = {
+type ImportJobResult = {
   id?: number;
-  clanId?: number;
-  branchId?: number;
-  importType?: string;
-  originalFilename?: string;
   totalCount?: number;
   successCount?: number;
   failureCount?: number;
   status?: string;
-  errorSummary?: string;
-  createdAt?: string;
-  errors?: { rowNo?: number; errorMessage?: string; rawData?: string }[];
 };
 
 type PreviewRow = {
@@ -51,35 +44,13 @@ const defaultMapping = {
   genderIndex: '2',
   generationNoIndex: '3',
   generationWordIndex: '4',
-  branchIdIndex: '',
   birthDateIndex: '5',
   isLivingIndex: '6'
 };
 
-function toZeroBased(value: string, allowEmpty = false) {
-  if (allowEmpty && !String(value || '').trim()) return -1;
+function toZeroBased(value: string) {
   const parsed = Number(value || '1');
   return Math.max(0, Number.isFinite(parsed) ? parsed - 1 : 0);
-}
-
-function importStatusText(value?: string) {
-  const status = String(value || '').toLowerCase();
-  const dict: Record<string, string> = {
-    success: '成功',
-    completed: '已完成',
-    failed: '失败',
-    processing: '处理中',
-    pending: '待处理'
-  };
-  return dict[status] || value || '待维护';
-}
-
-function importStatusColor(value?: string) {
-  const status = String(value || '').toLowerCase();
-  if (['success', 'completed'].includes(status)) return 'success';
-  if (status === 'failed') return 'error';
-  if (['processing', 'pending'].includes(status)) return 'processing';
-  return 'default';
 }
 
 function genderText(value?: string) {
@@ -94,17 +65,23 @@ export function PersonImportWorkspace({ notify }: Props) {
   const [autoMapping, setAutoMapping] = useState(true);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
-  const [selectedJob, setSelectedJob] = useState<ImportJob | null>(null);
   const [loading, setLoading] = useState(false);
+  const [jobRefreshKey, setJobRefreshKey] = useState(0);
+  const branchSelected = Boolean(workspace.branchId);
+
+  useEffect(() => {
+    setFile(null);
+    setPreview(null);
+    setConfirmDuplicates(false);
+  }, [workspace.branchId]);
 
   const mappingQuery = useMemo(() => {
     const params = new URLSearchParams();
     params.set('autoMapping', String(autoMapping));
     Object.entries(mapping).forEach(([key, value]) => {
-      params.set(key, String(toZeroBased(value, key === 'branchIdIndex')));
+      params.set(key, String(toZeroBased(value)));
     });
-    if (workspace.branchId) params.set('branchId', workspace.branchId);
+    if (workspace.branchId) params.set('branchId', String(workspace.branchId));
     return params.toString();
   }, [mapping, workspace.branchId, autoMapping]);
 
@@ -119,22 +96,6 @@ export function PersonImportWorkspace({ notify }: Props) {
     setAutoMapping(true);
     setPreview(null);
   }
-
-  async function loadJobs() {
-    if (!workspace.clanId) {
-      setJobs([]);
-      setSelectedJob(null);
-      return;
-    }
-    const data = await apiClient.get(`/clans/${workspace.clanId}/imports`).catch(() => []);
-    const rows = toRecordList<ImportJob>(data);
-    setJobs(rows);
-    setSelectedJob(current => current || rows[0] || null);
-  }
-
-  useEffect(() => {
-    void loadJobs();
-  }, [workspace.clanId]);
 
   async function downloadTemplate() {
     if (loading) return;
@@ -154,6 +115,10 @@ export function PersonImportWorkspace({ notify }: Props) {
     if (loading) return null;
     if (!workspace.clanId) {
       notify({ message: '请先选择宗族' }, true);
+      return null;
+    }
+    if (!workspace.branchId) {
+      notify({ message: '请先选择目标支派' }, true);
       return null;
     }
     if (!file) {
@@ -189,6 +154,10 @@ export function PersonImportWorkspace({ notify }: Props) {
       notify({ message: '请先选择宗族' }, true);
       return;
     }
+    if (!workspace.branchId) {
+      notify({ message: '请先选择目标支派' }, true);
+      return;
+    }
     if (!file) {
       notify({ message: '请选择 CSV 或 XLSX 文件' }, true);
       return;
@@ -210,19 +179,18 @@ export function PersonImportWorkspace({ notify }: Props) {
       const formData = new FormData();
       formData.append('file', file);
       const separator = mappingQuery ? '&' : '';
-      const result = await apiClient.upload<ImportJob>(
-        `/clans/${workspace.clanId}/imports/persons?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
+      const result = await apiClient.upload<ImportJobResult>(
+        `/clans/${workspace.clanId}/imports/persons.csv?${mappingQuery}${separator}confirmDuplicates=${confirmDuplicates}`,
         formData
       );
       notify(
         { message: `导入完成：成功 ${result.successCount || 0} 行，失败 ${result.failureCount || 0} 行` },
         Boolean(result.failureCount)
       );
-      setSelectedJob(result);
       setPreview(null);
       setFile(null);
       setConfirmDuplicates(false);
-      await loadJobs();
+      setJobRefreshKey(value => value + 1);
     } catch (error) {
       notify({ message: (error as Error).message || '导入失败' }, true);
     } finally {
@@ -233,6 +201,7 @@ export function PersonImportWorkspace({ notify }: Props) {
   const uploadProps: UploadProps = {
     maxCount: 1,
     accept: '.csv,.xlsx',
+    disabled: !branchSelected,
     beforeUpload: nextFile => {
       setFile(nextFile);
       setPreview(null);
@@ -251,13 +220,22 @@ export function PersonImportWorkspace({ notify }: Props) {
       <Card title="人物导入" extra={<Button disabled={loading} onClick={() => void downloadTemplate()}>下载模板</Button>}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Alert type="info" showIcon message="导入人物默认进入草稿状态，需要审核通过后正式入谱。" />
+          {!branchSelected ? (
+            <Alert type="warning" showIcon message="请先在工作区选择目标支派，再选择文件并执行导入。" />
+          ) : (
+            <Alert type="success" showIcon message="所有人物将归入当前所选支派，文件中无需填写支派或支派ID。" />
+          )}
           <Upload {...uploadProps}>
-            <Button>选择 CSV / XLSX 文件</Button>
+            <Button disabled={!branchSelected}>选择 CSV / XLSX 文件</Button>
           </Upload>
-          <Checkbox checked={autoMapping} onChange={event => { setAutoMapping(event.target.checked); setPreview(null); }}>
+          <Checkbox
+            disabled={!branchSelected}
+            checked={autoMapping}
+            onChange={event => { setAutoMapping(event.target.checked); setPreview(null); }}
+          >
             自动识别表头字段；识别失败时使用下方列号兜底
           </Checkbox>
-          <Form layout="vertical" className="archive-search-form">
+          <Form layout="vertical" className="archive-search-form" disabled={!branchSelected}>
             <Form.Item label="姓名列"><InputNumber min={1} value={Number(mapping.nameIndex || 1)} onChange={value => patchMapping('nameIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="性别列"><InputNumber min={1} value={Number(mapping.genderIndex || 1)} onChange={value => patchMapping('genderIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="代次列"><InputNumber min={1} value={Number(mapping.generationNoIndex || 1)} onChange={value => patchMapping('generationNoIndex', value)} style={{ width: '100%' }} /></Form.Item>
@@ -265,16 +243,18 @@ export function PersonImportWorkspace({ notify }: Props) {
             <Form.Item label="出生日期列"><InputNumber min={1} value={Number(mapping.birthDateIndex || 1)} onChange={value => patchMapping('birthDateIndex', value)} style={{ width: '100%' }} /></Form.Item>
             <Form.Item label="是否在世列"><InputNumber min={1} value={Number(mapping.isLivingIndex || 1)} onChange={value => patchMapping('isLivingIndex', value)} style={{ width: '100%' }} /></Form.Item>
           </Form>
-          <Checkbox checked={confirmDuplicates} onChange={event => setConfirmDuplicates(event.target.checked)}>
+          <Checkbox
+            disabled={!branchSelected}
+            checked={confirmDuplicates}
+            onChange={event => setConfirmDuplicates(event.target.checked)}
+          >
             我已确认疑似重复人物，仍继续导入
           </Checkbox>
           <Space wrap>
-            <Button onClick={resetAutoMapping}>恢复自动识别</Button>
-            <Button disabled={loading} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
-            <Button type="primary" disabled={loading} loading={loading} onClick={() => void upload()}>确认导入</Button>
-            <Button onClick={() => void loadJobs()}>刷新导入任务</Button>
+            <Button disabled={!branchSelected} onClick={resetAutoMapping}>恢复自动识别</Button>
+            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
+            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>确认导入</Button>
           </Space>
-          <Alert type="warning" showIcon message="支派不在文件中填写系统 ID；需要按支派导入时，请先选择当前支派。" />
         </Space>
       </Card>
 
@@ -309,45 +289,7 @@ export function PersonImportWorkspace({ notify }: Props) {
         </Card>
       ) : null}
 
-      <Card title="导入任务记录" style={{ marginTop: 16 }}>
-        <Table<ImportJob>
-          size="small"
-          bordered
-          rowKey={(row, index) => String(row.id || index)}
-          dataSource={jobs}
-          pagination={false}
-          onRow={row => ({ onClick: () => setSelectedJob(row), style: { cursor: 'pointer' } })}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
-          columns={[
-            { key: 'importType', title: '导入类型', dataIndex: 'importType' },
-            { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename' },
-            { key: 'totalCount', title: '总数', dataIndex: 'totalCount' },
-            { key: 'successCount', title: '成功', dataIndex: 'successCount' },
-            { key: 'failureCount', title: '失败', dataIndex: 'failureCount' },
-            { key: 'status', title: '状态', render: (_value, row) => <Tag color={importStatusColor(row.status)}>{importStatusText(row.status)}</Tag> },
-            { key: 'createdAt', title: '创建时间', dataIndex: 'createdAt' }
-          ]}
-        />
-      </Card>
-
-      {selectedJob ? (
-        <Card title="错误明细" style={{ marginTop: 16 }}>
-          <Alert type="info" showIcon message={selectedJob.errorSummary || '当前任务无错误明细。'} style={{ marginBottom: 12 }} />
-          <Table
-            size="small"
-            bordered
-            rowKey={(row: any, index) => String(row.rowNo || index)}
-            dataSource={selectedJob.errors || []}
-            pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无错误行" /> }}
-            columns={[
-              { key: 'rowNo', title: '行号', dataIndex: 'rowNo' },
-              { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' },
-              { key: 'rawData', title: '原始数据', dataIndex: 'rawData' }
-            ]}
-          />
-        </Card>
-      ) : null}
+      <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
     </div>
   );
 }
