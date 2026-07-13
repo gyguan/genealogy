@@ -87,6 +87,22 @@ export type BranchOption = {
   branchPath?: string;
 };
 
+export type GenerationSchemeOption = {
+  id?: number;
+  clanId?: number;
+  branchId?: number;
+  schemeName?: string;
+  status?: string;
+};
+
+export type GenerationWordOption = {
+  id?: number;
+  generationNo?: number;
+  word?: string;
+  description?: string;
+  sortOrder?: number;
+};
+
 export type BindingRevisionSubmitPayload = {
   binding: {
     sourceId: number;
@@ -201,6 +217,15 @@ export async function listPersons(clanId: string, keyword?: string) {
 
 export async function listBranches(clanId: string) {
   return toRows<BranchOption>(await apiClient.get(`/clans/${clanId}/branches`));
+}
+
+export async function listGenerationSchemes(clanId: string) {
+  const rows = toRows<GenerationSchemeOption>(await apiClient.get(`/clans/${clanId}/generation-schemes`));
+  return rows.filter(row => String(row.status || '').toLowerCase() === 'official');
+}
+
+export async function listGenerationWords(schemeId: number | string) {
+  return toRows<GenerationWordOption>(await apiClient.get(`/generation-schemes/${schemeId}/items`));
 }
 
 export async function submitCreateBindingRevision(clanId: string, payload: BindingRevisionSubmitPayload) {
