@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,9 +62,9 @@ class RelationshipImportApplicationServiceTest {
                 new RelationshipImportFilePolicyService(),
                 operationLogApplicationService
         );
-        when(personRepository.findByClanIdAndPersonCodeAndDeletedAtIsNull(1L, "P1"))
+        lenient().when(personRepository.findByClanIdAndPersonCodeAndDeletedAtIsNull(1L, "P1"))
                 .thenReturn(List.of(person(11L, "P1", "父亲", "male", 1, 5L)));
-        when(personRepository.findByClanIdAndPersonCodeAndDeletedAtIsNull(1L, "P2"))
+        lenient().when(personRepository.findByClanIdAndPersonCodeAndDeletedAtIsNull(1L, "P2"))
                 .thenReturn(List.of(person(12L, "P2", "儿子", "male", 2, 5L)));
     }
 
