@@ -29,6 +29,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
 - [聊天式 GitHub 开发与任务看板指南](docs/ai/chat-driven-github-workflow.md)
+- [Issue 实现、状态持久化与中断恢复规范](docs/ai/issue-execution-governance.md)
 - [时间展示规范（北京时间）](docs/ai/time-display-standard.md)
 
 ## AI 辅助研发入口
@@ -37,12 +38,14 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
-- 聊天式开发、短指令、任务看板与中断恢复：`docs/ai/chat-driven-github-workflow.md`
+- 聊天式开发、短指令和任务看板：`docs/ai/chat-driven-github-workflow.md`
+- Issue 启动门禁、Draft PR 持久化与中断恢复：`docs/ai/issue-execution-governance.md`
 - 时间与时区展示：`docs/ai/time-display-standard.md`
-- AI 临时任务工作区：`tasks/`
+- AI 任务、执行看板与恢复文件：`tasks/`
 - PR 质量门禁模板：`.github/pull_request_template.md`
+- Issue 实现 PR 自动结构检查：`.github/workflows/issue-delivery-governance.yml`
 
-AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。通过聊天连接 GitHub 执行长任务时，还应遵循 `docs/ai/chat-driven-github-workflow.md`，使用一句话指令、任务看板、阶段反馈和恢复检查点。所有面向用户的时间统一按 `docs/ai/time-display-standard.md` 转换并标注为北京时间。
+AI Coding Agent 参与非平凡变更时，应先阅读 `AGENTS.md`，再按 `docs/ai/ai-engineering-workflow.md` 和 `docs/ai/skill-mapping.md` 选择上下文、拆分任务、执行验证和提交 Review。通过聊天连接 GitHub 执行长任务时，还应遵循 `docs/ai/chat-driven-github-workflow.md`。实现或继续 Issue 时，必须重新读取 `main` 最新规则，并按 `docs/ai/issue-execution-governance.md` 先建立任务文件、远程分支、Draft PR 和 Issue 关联，再修改业务代码。所有面向用户的时间统一按 `docs/ai/time-display-standard.md` 转换并标注为北京时间。
 
 ## 可点击原型
 
