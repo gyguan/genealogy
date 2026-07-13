@@ -11,18 +11,43 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout head branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Merge latest main
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Merge latest main and regenerate contract conflict
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git fetch origin main:refs/remotes/origin/main --force
-          git merge --no-edit origin/main
+
+          set +e
+          git merge --no-commit --no-ff origin/main
+          MERGE_STATUS=$?
+          set -e
+
+          if [[ ${MERGE_STATUS} -ne 0 ]]; then
+            mapfile -t CONFLICTS < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicts: %s\n' "${CONFLICTS[*]:-none}"
+            EXPECTED='frontend/genealogy-web/src/shared/api/generated/api-contract.ts'
+            if [[ ${#CONFLICTS[@]} -ne 1 || "${CONFLICTS[0]}" != "${EXPECTED}" ]]; then
+              echo 'Unexpected merge conflicts; refusing automatic resolution.'
+              exit 1
+            fi
+            git checkout --ours "${EXPECTED}"
+            git add "${EXPECTED}"
+          fi
+
+          node scripts/api/generate-frontend-client.mjs
+          git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          git commit -m 'chore(issue-103): merge latest main into relationship import branch'
           git push origin HEAD:${{ github.head_ref }}
