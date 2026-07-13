@@ -1,38 +1,24 @@
-name: Issue 103 Targeted Discovery
+name: Issue 103 Intermediate Compile
 
 on:
   pull_request:
     paths:
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/imports/**'
+      - 'backend/genealogy-backend/src/main/java/com/genealogy/person/repository/PersonRepository.java'
+      - 'backend/genealogy-backend/src/main/resources/db/migration/V2026071302__import_row_generic_draft_target.sql'
       - '.github/workflows/issue-103-targeted-discovery.yml'
 
 jobs:
-  discover:
+  compile:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Build targeted context
-        shell: bash
-        run: |
-          mkdir -p /tmp/issue-103-context/main /tmp/issue-103-context/test /tmp/issue-103-context/frontend
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/relationship /tmp/issue-103-context/main/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/review /tmp/issue-103-context/main/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/imports /tmp/issue-103-context/main/
-          cp -R backend/genealogy-backend/src/main/java/com/genealogy/person /tmp/issue-103-context/main/
-          cp -R backend/genealogy-backend/src/test/java/com/genealogy/imports /tmp/issue-103-context/test/ || true
-          cp -R backend/genealogy-backend/src/test/java/com/genealogy/relationship /tmp/issue-103-context/test/ || true
-          cp -R backend/genealogy-backend/src/test/java/com/genealogy/review /tmp/issue-103-context/test/ || true
-          cp -R backend/genealogy-backend/src/main/resources/db/migration /tmp/issue-103-context/
-          cp backend/genealogy-backend/pom.xml /tmp/issue-103-context/
-          cp docs/api/openapi.imports.json /tmp/issue-103-context/
-          cp docs/api/openapi.relationship-import.json /tmp/issue-103-context/
-          cp frontend/genealogy-web/src/features/imports/ImportPage.tsx /tmp/issue-103-context/frontend/
-          cp frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx /tmp/issue-103-context/frontend/
-          cp frontend/genealogy-web/src/features/imports/PersonImportWorkspace.tsx /tmp/issue-103-context/frontend/
-          cp frontend/genealogy-web/src/features/imports/import-type-registry.ts /tmp/issue-103-context/frontend/
-          cp frontend/genealogy-web/package.json /tmp/issue-103-context/frontend/
-      - name: Upload targeted context
-        uses: actions/upload-artifact@v4
+      - uses: actions/setup-java@v4
         with:
-          name: issue-103-targeted-context-expanded
-          path: /tmp/issue-103-context
-          retention-days: 1
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Compile backend and test sources
+        working-directory: backend/genealogy-backend
+        run: mvn -q -DskipTests package
