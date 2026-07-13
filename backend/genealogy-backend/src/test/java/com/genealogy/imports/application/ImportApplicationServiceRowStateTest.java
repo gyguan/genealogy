@@ -24,6 +24,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,8 +65,8 @@ class ImportApplicationServiceRowStateTest {
             }
             return entity;
         });
-        when(personRepository.count(any(Specification.class))).thenReturn(0L);
-        when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
+        lenient().when(personRepository.count(any(Specification.class))).thenReturn(0L);
+        lenient().when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity entity = invocation.getArgument(0);
             if (entity.getId() == null) {
                 entity.setId(1001L);
