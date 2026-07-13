@@ -22,28 +22,6 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobPage"
   },
-  "POST /api/v1/clans/{clanId}/imports/persons": {
-    "operationId": "importPersonsLegacy",
-    "method": "POST",
-    "path": "/api/v1/clans/{clanId}/imports/persons",
-    "pathParams": [
-      "clanId"
-    ],
-    "queryParams": [
-      "autoMapping",
-      "birthDateIndex",
-      "branchId",
-      "branchIdIndex",
-      "confirmDuplicates",
-      "genderIndex",
-      "generationNoIndex",
-      "generationWordIndex",
-      "isLivingIndex",
-      "nameIndex"
-    ],
-    "requestBody": "MultipartFileRequest",
-    "response": "ApiResponseCsvImportResultResponse"
-  },
   "POST /api/v1/clans/{clanId}/imports/persons.csv": {
     "operationId": "importPersonsAsJob",
     "method": "POST",
@@ -52,16 +30,8 @@ export const API_OPERATIONS = {
       "clanId"
     ],
     "queryParams": [
-      "autoMapping",
-      "birthDateIndex",
       "branchId",
-      "branchIdIndex",
-      "confirmDuplicates",
-      "genderIndex",
-      "generationNoIndex",
-      "generationWordIndex",
-      "isLivingIndex",
-      "nameIndex"
+      "confirmDuplicates"
     ],
     "requestBody": "MultipartFileRequest",
     "response": "ApiResponseImportJobResponse"
@@ -74,15 +44,7 @@ export const API_OPERATIONS = {
       "clanId"
     ],
     "queryParams": [
-      "autoMapping",
-      "birthDateIndex",
-      "branchId",
-      "branchIdIndex",
-      "genderIndex",
-      "generationNoIndex",
-      "generationWordIndex",
-      "isLivingIndex",
-      "nameIndex"
+      "branchId"
     ],
     "requestBody": "MultipartFileRequest",
     "response": "ApiResponseImportPreviewResponse"
@@ -174,9 +136,18 @@ export const API_OPERATIONS = {
     "response": "ApiResponseSourceBindingResponse"
   },
   "GET /api/v1/imports/templates/persons.csv": {
-    "operationId": "downloadPersonImportTemplate",
+    "operationId": "downloadPersonImportCsvTemplate",
     "method": "GET",
     "path": "/api/v1/imports/templates/persons.csv",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/persons.xlsx": {
+    "operationId": "downloadPersonImportXlsxTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/persons.xlsx",
     "pathParams": [],
     "queryParams": [],
     "requestBody": null,
