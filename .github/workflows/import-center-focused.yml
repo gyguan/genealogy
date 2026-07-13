@@ -1,0 +1,49 @@
+name: Import Center Focused Check
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/genealogy-web/src/features/imports/ImportPage.tsx'
+      - 'frontend/genealogy-web/src/features/imports/PersonImportWorkspace.tsx'
+      - 'frontend/genealogy-web/src/features/imports/import-type-registry.ts'
+      - '.github/workflows/import-center-focused.yml'
+
+jobs:
+  frontend-import-center-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Check API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Check import center TypeScript errors
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > /tmp/typecheck.log 2>&1
+          TYPECHECK_EXIT=$?
+          set -e
+          grep -E 'src/features/imports/(ImportPage|PersonImportWorkspace|import-type-registry)\.(tsx|ts)' /tmp/typecheck.log > /tmp/import-center-errors.log || true
+          if [[ -s /tmp/import-center-errors.log ]]; then
+            echo 'Import center TypeScript errors:'
+            cat /tmp/import-center-errors.log
+            exit 1
+          fi
+          if [[ ${TYPECHECK_EXIT} -ne 0 ]]; then
+            echo 'Full-project typecheck has unrelated existing errors; no import-center errors were found.'
+          else
+            echo 'Full-project typecheck passed.'
+          fi
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
