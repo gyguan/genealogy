@@ -19,6 +19,10 @@ type ImportJobSummary = {
   status?: string;
   errorSummary?: string;
   createdAt?: string;
+  processingStatus?: string;
+  reviewStatus?: string;
+  reviewRound?: number;
+  latestReviewTaskId?: number;
 };
 
 type ImportJobDetail = ImportJobSummary & {
@@ -52,6 +56,10 @@ type RetryFormValues = {
   confirmDuplicates?: boolean;
 };
 
+type ReviewTaskCreated = {
+  id?: number;
+};
+
 const statusOptions = [
   { value: 'running', label: '处理中' },
   { value: 'completed', label: '已完成' },
@@ -70,22 +78,49 @@ const genderOptions = [
   { value: 'unknown', label: '未知' }
 ];
 
-function importStatusText(value?: string) {
+function processingStatusText(row: ImportJobSummary) {
+  const status = String(row.processingStatus || '').toLowerCase();
   const dict: Record<string, string> = {
+    processing: '处理中',
+    correction_required: '待修正',
+    ready_for_review: '可提交审核'
+  };
+  if (dict[status]) return dict[status];
+  const legacy: Record<string, string> = {
     running: '处理中',
     completed: '已完成',
     partial_completed: '待修正',
     failed: '全部失败'
   };
-  return dict[String(value || '').toLowerCase()] || value || '待维护';
+  return legacy[String(row.status || '').toLowerCase()] || row.status || '待维护';
 }
 
-function importStatusColor(value?: string) {
-  const status = String(value || '').toLowerCase();
-  if (status === 'completed') return 'success';
-  if (status === 'partial_completed') return 'warning';
+function processingStatusColor(row: ImportJobSummary) {
+  const status = String(row.processingStatus || row.status || '').toLowerCase();
+  if (['ready_for_review', 'completed'].includes(status)) return 'success';
+  if (['correction_required', 'partial_completed'].includes(status)) return 'warning';
   if (status === 'failed') return 'error';
-  if (status === 'running') return 'processing';
+  if (['processing', 'running'].includes(status)) return 'processing';
+  return 'default';
+}
+
+function reviewStatusText(value?: string) {
+  const dict: Record<string, string> = {
+    not_submitted: '未提交',
+    pending: '审核中',
+    approved: '已通过',
+    rejected: '已驳回',
+    cancelled: '已取消'
+  };
+  return dict[String(value || '').toLowerCase()] || value || '未提交';
+}
+
+function reviewStatusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'error';
+  if (status === 'pending') return 'processing';
+  if (status === 'cancelled') return 'default';
   return 'default';
 }
 
@@ -130,6 +165,14 @@ function retryable(row: ImportJobRow) {
   return ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase()) && !row.draftCreated;
 }
 
+function canSubmitReview(job: ImportJobSummary) {
+  const processingStatus = String(job.processingStatus || '').toLowerCase();
+  const reviewStatus = String(job.reviewStatus || 'not_submitted').toLowerCase();
+  return processingStatus === 'ready_for_review'
+    && (job.failureCount || 0) === 0
+    && ['not_submitted', 'rejected'].includes(reviewStatus);
+}
+
 export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const workspace = useWorkspace();
   const [form] = Form.useForm<RetryFormValues>();
@@ -151,6 +194,10 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [rowLoading, setRowLoading] = useState(false);
   const [editingRow, setEditingRow] = useState<ImportJobRow | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
+
+  const [reviewJob, setReviewJob] = useState<ImportJobSummary | null>(null);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   async function loadJobs() {
     if (!workspace.clanId) {
@@ -208,15 +255,21 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     }
   }
 
+  async function refreshDetail(jobId: number) {
+    if (!workspace.clanId) return null;
+    const detail = await apiClient.get<ImportJobDetail>(`/clans/${workspace.clanId}/imports/${jobId}`);
+    setSelectedJob(detail);
+    return detail;
+  }
+
   async function loadDetail(job: ImportJobSummary) {
     if (!workspace.clanId) return;
     setDetailLoading(true);
     setRowPageNo(1);
     setEditingRow(null);
     try {
-      const detail = await apiClient.get<ImportJobDetail>(`/clans/${workspace.clanId}/imports/${job.id}`);
-      setSelectedJob(detail);
-      if ((detail.failureCount || 0) > 0) {
+      const detail = await refreshDetail(job.id);
+      if ((detail?.failureCount || 0) > 0) {
         await loadRows(job.id, 1, rowPageSize);
       } else {
         setRows([]);
@@ -272,14 +325,36 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
         setEditingRow(result);
         notify({ message: result.errorMessage || '修正后仍未通过校验' }, true);
       }
-      const refreshed = await apiClient.get<ImportJobDetail>(`/clans/${workspace.clanId}/imports/${selectedJob.id}`);
-      setSelectedJob(refreshed);
+      await refreshDetail(selectedJob.id);
       await loadRows(selectedJob.id, rowPageNo, rowPageSize);
       await loadJobs();
     } catch (error) {
       notify({ message: (error as Error).message || '失败行重试失败' }, true);
     } finally {
       setRetryLoading(false);
+    }
+  }
+
+  async function submitReview() {
+    if (!workspace.clanId || !reviewJob) return;
+    setReviewLoading(true);
+    try {
+      const task = await apiClient.post<ReviewTaskCreated>(
+        `/clans/${workspace.clanId}/imports/${reviewJob.id}/submit-review`,
+        { comment: reviewComment.trim() || undefined }
+      );
+      if (task.id) {
+        workspace.setReviewTaskId(String(task.id));
+      }
+      notify({ message: `导入批次已提交第 ${(reviewJob.reviewRound || 0) + 1} 轮审核` });
+      setReviewJob(null);
+      setReviewComment('');
+      await refreshDetail(reviewJob.id);
+      await loadJobs();
+    } catch (error) {
+      notify({ message: (error as Error).message || '提交审核失败' }, true);
+    } finally {
+      setReviewLoading(false);
     }
   }
 
@@ -346,21 +421,61 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           columns={[
             { key: 'importType', title: '导入类型', render: (_value, row) => importTypeText(row.importType) },
             { key: 'originalFilename', title: '文件名', dataIndex: 'originalFilename', ellipsis: true },
-            { key: 'totalCount', title: '总数', dataIndex: 'totalCount', width: 80 },
-            { key: 'successCount', title: '草稿', dataIndex: 'successCount', width: 80 },
-            { key: 'failureCount', title: '待修正', dataIndex: 'failureCount', width: 90 },
-            { key: 'status', title: '处理状态', width: 110, render: (_value, row) => <Tag color={importStatusColor(row.status)}>{importStatusText(row.status)}</Tag> },
-            { key: 'createdAt', title: '创建时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) }
+            { key: 'totalCount', title: '总数', dataIndex: 'totalCount', width: 72 },
+            { key: 'successCount', title: '草稿', dataIndex: 'successCount', width: 72 },
+            { key: 'failureCount', title: '待修正', dataIndex: 'failureCount', width: 88 },
+            { key: 'processingStatus', title: '处理状态', width: 115, render: (_value, row) => <Tag color={processingStatusColor(row)}>{processingStatusText(row)}</Tag> },
+            { key: 'reviewStatus', title: '审核状态', width: 105, render: (_value, row) => <Tag color={reviewStatusColor(row.reviewStatus)}>{reviewStatusText(row.reviewStatus)}</Tag> },
+            { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => formatDateTime(row.createdAt) },
+            {
+              key: 'actions',
+              title: '操作',
+              width: 110,
+              fixed: 'right',
+              render: (_value, row) => (
+                <Space onClick={event => event.stopPropagation()}>
+                  <Button
+                    size="small"
+                    type="primary"
+                    disabled={!canSubmitReview(row)}
+                    onClick={() => { setReviewJob(row); setReviewComment(''); }}
+                  >
+                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}
+                  </Button>
+                </Space>
+              )
+            }
           ]}
+          scroll={{ x: 'max-content' }}
         />
       </Card>
 
       {selectedJob ? (
-        <Card title={`批次处理 · ${selectedJob.originalFilename || '人物导入'}`} loading={detailLoading} style={{ marginTop: 16 }}>
+        <Card
+          title={`批次处理 · ${selectedJob.originalFilename || '人物导入'}`}
+          loading={detailLoading}
+          style={{ marginTop: 16 }}
+          extra={canSubmitReview(selectedJob) ? (
+            <Button type="primary" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>
+              {selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}
+            </Button>
+          ) : null}
+        >
+          <Space wrap style={{ marginBottom: 12 }}>
+            <Tag color={processingStatusColor(selectedJob)}>{processingStatusText(selectedJob)}</Tag>
+            <Tag color={reviewStatusColor(selectedJob.reviewStatus)}>{reviewStatusText(selectedJob.reviewStatus)}</Tag>
+            {(selectedJob.reviewRound || 0) > 0 ? <Typography.Text type="secondary">已提交 {selectedJob.reviewRound} 轮</Typography.Text> : null}
+          </Space>
           <Alert
-            type={(selectedJob.failureCount || 0) > 0 ? 'warning' : 'success'}
+            type={(selectedJob.failureCount || 0) > 0 ? 'warning' : selectedJob.reviewStatus === 'approved' ? 'success' : 'info'}
             showIcon
-            message={selectedJob.errorSummary || '全部数据已生成草稿，可以进入下一步审核。'}
+            message={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved'
+              ? '审核已通过，批次人物已正式入谱。'
+              : selectedJob.reviewStatus === 'pending'
+                ? '批次正在审核中，暂不能继续修改。'
+                : selectedJob.reviewStatus === 'rejected'
+                  ? '批次已驳回，可按审核意见调整后重新提交。'
+                  : '全部数据已生成草稿，可以提交审核。')}
             description={(selectedJob.failureCount || 0) > 0 ? '修正失败行后系统会重新计算批次状态；原始行始终保留，不会被覆盖。' : undefined}
             style={{ marginBottom: 12 }}
           />
@@ -405,7 +520,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
               scroll={{ x: 'max-content' }}
             />
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前批次没有失败行" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式入谱' : '当前批次没有失败行'} />
           )}
         </Card>
       ) : null}
@@ -452,6 +567,35 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             </Form>
           </Space>
         ) : null}
+      </Modal>
+
+      <Modal
+        title={reviewJob?.reviewStatus === 'rejected' ? '重新提交导入批次审核' : '提交导入批次审核'}
+        open={Boolean(reviewJob)}
+        confirmLoading={reviewLoading}
+        okText="确认提交"
+        cancelText="取消"
+        onOk={() => void submitReview()}
+        onCancel={() => { setReviewJob(null); setReviewComment(''); }}
+        destroyOnHidden
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert
+            type="info"
+            showIcon
+            message="提交后，批次中的人物草稿将锁定，审核通过后统一正式入谱；提交人不能审核自己的批次。"
+          />
+          <Typography.Text>文件：{reviewJob?.originalFilename || '-'}</Typography.Text>
+          <Typography.Text>人物草稿：{reviewJob?.successCount || 0} 人</Typography.Text>
+          <Input.TextArea
+            value={reviewComment}
+            maxLength={500}
+            showCount
+            rows={4}
+            placeholder="填写本轮审核说明（可选）"
+            onChange={event => setReviewComment(event.target.value)}
+          />
+        </Space>
       </Modal>
     </>
   );
