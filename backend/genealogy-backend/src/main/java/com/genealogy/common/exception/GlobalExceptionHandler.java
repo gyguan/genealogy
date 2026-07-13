@@ -14,6 +14,10 @@ import java.util.Set;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Set<String> UNAUTHORIZED_CODES = Set.of(
+            "AUTH_UNAUTHORIZED",
+            "AUTH_LOGIN_FAILED"
+    );
     private static final Set<String> FORBIDDEN_CODES = Set.of(
             "AUTH_FORBIDDEN",
             "AUTH_CSRF_INVALID",
@@ -61,7 +65,7 @@ public class GlobalExceptionHandler {
     }
 
     private HttpStatus statusFor(String code) {
-        if ("AUTH_UNAUTHORIZED".equals(code)) return HttpStatus.UNAUTHORIZED;
+        if (UNAUTHORIZED_CODES.contains(code)) return HttpStatus.UNAUTHORIZED;
         if ("AUTH_LOGIN_THROTTLED".equals(code)) return HttpStatus.TOO_MANY_REQUESTS;
         if (FORBIDDEN_CODES.contains(code)) return HttpStatus.FORBIDDEN;
         if (code != null && code.endsWith("_NOT_FOUND")) return HttpStatus.NOT_FOUND;
