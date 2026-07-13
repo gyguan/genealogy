@@ -63,7 +63,7 @@ docs/api/openapi.json          API 契约源文件
 prototype/                     早期 HTML 原型，仅作参考
 database/                      数据库脚本和迁移草案
 scripts/                       生成、启动、检查脚本
-tasks/                         AI 任务拆解与临时执行计划
+tasks/                         AI 任务拆解、执行看板与恢复检查点
 ```
 
 ---
@@ -171,6 +171,7 @@ AI 生成代码时必须优先遵守以下业务规则：
 | 权限 / 隐私 / 审计 | `docs/09-permission-management.md` |
 | 导入导出 | `docs/01-mvp1-requirements.md`、`docs/03-domain-model.md` |
 | 聊天式长任务 / GitHub 远程开发 | `docs/ai/chat-driven-github-workflow.md` |
+| Issue 实现 / 中断恢复 | `docs/ai/issue-execution-governance.md` |
 | 时间展示 / 时区转换 | `docs/ai/time-display-standard.md` |
 
 源码读取规则：
@@ -179,6 +180,7 @@ AI 生成代码时必须优先遵守以下业务规则：
 2. 新增实现前必须查找同类模块模式。
 3. 修改接口前必须检查前端调用、OpenAPI 契约和后端实现是否一致。
 4. 修改领域规则前必须补充或调整测试。
+5. 实现或继续 Issue 时，必须重新读取 `main` 最新版 `AGENTS.md`，不得沿用会话早期缓存规则。
 
 ---
 
@@ -255,6 +257,9 @@ AI 禁止执行以下行为：
 - 用技术 ID 替代业务名称暴露给最终用户
 - 一次性生成大面积不可 Review 的代码
 - 未更新 OpenAPI 就修改接口调用
+- 实现 Issue 时只创建分支或写启动评论，却不创建 Draft PR
+- 在 Draft PR 和 Issue 关联建立前修改业务代码
+- 会话中断后仅凭聊天记忆继续编码
 
 ---
 
@@ -279,7 +284,7 @@ AI 禁止执行以下行为：
 
 ## 11. 聊天式 GitHub 开发、任务看板与进度反馈
 
-通过聊天连接 GitHub 执行分析、编码、PR Review 或 CI 修复时，必须遵循 `docs/ai/chat-driven-github-workflow.md`。
+通过聊天连接 GitHub 执行分析、编码、PR Review 或 CI 修复时，必须遵循 `docs/ai/chat-driven-github-workflow.md`。实现或继续 Issue 时，还必须遵循 `docs/ai/issue-execution-governance.md`；后者对 Issue 启动、持久化和恢复具有更高优先级。
 
 ### 11.1 短指令默认语义
 
@@ -289,7 +294,8 @@ AI 禁止执行以下行为：
 |---|---|
 | `分析：<问题>` | 只分析，不修改代码，不创建 PR |
 | `实现：<需求>` | 定位范围、建立看板、创建分支和 Draft PR、分批实现与验证 |
-| `实现 Issue #N` | 从 Issue 自动补全背景、范围和验收标准 |
+| `实现 Issue #N` | 刷新最新规则，检查既有现场，完成 Issue 启动门禁后再修改业务代码 |
+| `继续 Issue #N` | 从 Issue、关联 PR、任务文件、Commit、CI 和 Review 恢复 |
 | `继续 PR #N` | 从 PR、diff、Commit、CI、Review 和待办恢复，不重复全仓分析 |
 | `修复 PR #N 的 CI` | 只聚焦失败日志、本批提交和直接相关代码 |
 | `检视 PR #N` | 按五轴 Review，默认不修改代码 |
@@ -344,30 +350,73 @@ AI 禁止执行以下行为：
 
 执行过程中新增任务时，必须说明新增原因、范围变化和风险，不得静默扩大范围。取消的任务应标记为“⏭️ 已跳过”，不得直接从看板删除。
 
-### 11.5 Draft PR 与恢复检查点
+### 11.5 Issue 实现强制启动门禁
 
-长任务应尽早创建 Draft PR，并持续维护：
+收到 `实现 Issue #N` 时，必须依次完成以下步骤：
 
-- 当前任务看板；
-- 已完成、进行中和待处理任务；
+1. 重新读取 `main` 最新版 `AGENTS.md` 和 `docs/ai/issue-execution-governance.md`；
+2. 读取 Issue 正文、全部评论，并搜索已有 PR、分支、Commit、CI 和 Review；
+3. 建立 `tasks/issue-<N>-execution.md`，写入任务看板、验证方案、风险和恢复检查点；
+4. 从最新 `main` 创建或恢复 `agent/issue-<N>-<slug>` 远程分支；
+5. 在修改业务代码前，先提交任务执行文件；
+6. 立即创建 Draft PR，关联 Issue，并填写任务看板、当前进行中、验证结果和恢复检查点；
+7. Draft PR 创建成功后，将真实分支和 PR 链接评论回 Issue。
+
+Gate 1～7 未全部完成前，禁止修改业务代码。不得只在 Issue 评论中声明“计划创建”的分支或 PR。
+
+默认一个 Issue 对应一个 Draft PR。拆分多个切片时，每个 PR 使用 `Refs #N`，最终完整交付 PR 使用 `Closes/Fixes/Resolves #N`。
+
+详细启动顺序、历史任务补救和合入门禁见 `docs/ai/issue-execution-governance.md`。
+
+### 11.6 Draft PR、Issue 回写与恢复检查点
+
+每完成一个原子任务，必须形成独立 Commit，并同步更新：
+
+- `tasks/issue-<N>-execution.md`；
+- Draft PR 当前任务看板；
 - 验证与 CI 结果；
 - 已知风险；
-- 页面中断后的恢复检查点。
+- 下一步最小任务；
+- 页面中断后的恢复检查点；
+- 北京时间的最后更新时间。
+
+Issue 在开始实现、发生阻塞、完成重要阶段和最终合入时回写评论，不承载每个文件级细节。
 
 页面中断或新开会话后，按以下顺序恢复：
 
-1. `AGENTS.md`；
-2. 关联 Issue；
+1. `main/AGENTS.md` 和 Issue 执行规范；
+2. 关联 Issue 及评论；
 3. Draft PR 描述；
-4. 当前 diff；
-5. Commit；
+4. `tasks/issue-<N>-execution.md`；
+5. 当前 diff 与 Commit；
 6. CI 状态；
 7. Review 意见；
-8. 上一次任务看板。
+8. 下一步最小任务。
+
+已经开始但缺少 Draft PR 或任务看板的历史 Issue，必须先暂停业务代码，反向补齐任务文件、Draft PR、Issue 关联和恢复检查点，再继续实现。
 
 恢复时以 GitHub 实际状态为准，禁止重复执行已完成的修改。
 
-### 11.6 时间展示规则
+### 11.7 自动治理检查
+
+分支名符合以下格式的 PR：
+
+```text
+agent/issue-<N>-*
+feature/issue-<N>-*
+fix/issue-<N>-*
+```
+
+由 `.github/workflows/issue-delivery-governance.yml` 检查：
+
+- 是否关联同一 Issue；
+- 是否包含有效任务看板；
+- 是否包含当前进行中、恢复检查点和验证结果；
+- 是否仍保留未替换的模板占位内容。
+
+自动检查只验证结构，不能替代代码 Review 和验收。建议将该检查配置为 `main` 分支保护的必需状态检查。
+
+### 11.8 时间展示规则
 
 所有面向用户的时间统一使用北京时间：
 
