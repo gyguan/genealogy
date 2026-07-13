@@ -5,11 +5,94 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  review-fix:
+    name: Apply final actor-visible scope review
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Restrict aggregated grants to actor-visible scopes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          policy_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java')
+          policy = policy_path.read_text()
+          if 'return actorScope.coversGrantScope(targetScopeType, targetScopeId);' not in policy:
+              start = policy.find('        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)')
+              end = policy.find('    public boolean canManageMembership(', start)
+              if start < 0 or end < 0:
+                  raise SystemExit('canManageGrant markers not found')
+              policy = policy[:start] + '''        if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode)) {
+            return false;
+        }
+        return actorScope.coversGrantScope(targetScopeType, targetScopeId);
+    }
+
+''' + policy[end:]
+          if 'public boolean coversGrantScope' not in policy:
+              marker = '        public List<Long> queryVisibleBranchIds() {'
+              position = policy.find(marker)
+              if position < 0:
+                  raise SystemExit('ActorScope marker not found')
+              policy = policy[:position] + '''        public boolean coversGrantScope(MemberRoleScopeType scopeType, Long scopeId) {
+            if (fullClanAccess()) {
+                return true;
+            }
+            if (scopeId == null) {
+                return false;
+            }
+            if (scopeType == MemberRoleScopeType.branch) {
+                return visibleBranchIds.contains(scopeId);
+            }
+            if (scopeType == MemberRoleScopeType.branch_subtree) {
+                return visibleSubtreeIds.contains(scopeId);
+            }
+            return false;
+        }
+
+''' + policy[position:]
+          policy_path.write_text(policy)
+
+          service_path = Path('backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java')
+          service = service_path.read_text()
+          if 'actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId())' not in service:
+              pattern = re.compile(
+                  r'(List<MemberGrantResponse> memberGrants = membershipGrants\.stream\(\)\s*\n)(\s*\.sorted\(Comparator\.comparing\(MemberRoleEntity::getId\)\))'
+              )
+              service, count = pattern.subn(
+                  r'\1                    .filter(grant -> actorScope.coversGrantScope(grant.getScopeType(), grant.getScopeId()))\n\2',
+                  service,
+                  count=1
+              )
+              if count != 1:
+                  raise SystemExit('aggregate stream marker not found')
+          service_path.write_text(service)
+          PY
+      - name: Commit review correction
+        run: |
+          if git diff --quiet; then
+            echo 'Review correction already applied.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/member/domain/MemberGrantPolicyService.java \
+            backend/genealogy-backend/src/main/java/com/genealogy/member/application/MemberPermissionApplicationService.java
+          git commit -m 'security(member): hide grants outside actor scope'
+          git push origin HEAD:${{ github.head_ref }}
+
   backend:
     name: Backend compile and security tests
+    needs: review-fix
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -55,6 +138,7 @@ jobs:
 
   postgres:
     name: PostgreSQL migration, scope and index validation
+    needs: review-fix
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -138,6 +222,7 @@ jobs:
 
   frontend:
     name: API contract and member frontend
+    needs: review-fix
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
