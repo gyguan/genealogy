@@ -67,7 +67,7 @@ class AuthInvitationApplicationServiceTest {
         invitation.setStatus("active");
         invitation.setExpiresAt(LocalDateTime.now().plusHours(2));
         invitation.setCreatedAt(LocalDateTime.now());
-        when(fixture.repository.findByTokenHash(PasswordHashUtil.sha256(rawToken))).thenReturn(Optional.of(invitation));
+        when(fixture.repository.findForUpdateByTokenHash(PasswordHashUtil.sha256(rawToken))).thenReturn(Optional.of(invitation));
         when(fixture.repository.save(any(AuthInvitationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         AuthUserResponse user = new AuthUserResponse(
                 7L, "newmember", null, "member@example.com", "新成员", null, "active",
