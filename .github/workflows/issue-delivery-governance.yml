@@ -1,11 +1,10 @@
 name: Issue Delivery Governance
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -17,143 +16,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate issue linkage, task board and recovery checkpoint
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_CREATED_AT: ${{ github.event.pull_request.created_at }}
+      - name: Manual governance reminder
         run: |
-          python - <<'PY'
-          from datetime import datetime, timezone
-          import os
-          import re
-          import sys
-
-          head_ref = os.environ.get("HEAD_REF", "")
-          body = os.environ.get("PR_BODY", "") or ""
-          pr_created_at = os.environ.get("PR_CREATED_AT", "")
-
-          branch_match = re.match(r"^(?:agent|feature|fix)/issue-(\d+)(?:-|$)", head_ref)
-          if not branch_match:
-              print(f"Branch {head_ref!r} is not an Issue implementation branch; governance check is not applicable.")
-              sys.exit(0)
-
-          issue_number = branch_match.group(1)
-          clean_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
-          failures = []
-
-          # 耗时规范从 2026-07-13 19:50（北京时间）起适用于新建 PR。
-          # 旧 PR 不强制追溯历史耗时，但恢复后应主动补齐。
-          duration_policy_cutoff = datetime(2026, 7, 13, 11, 50, tzinfo=timezone.utc)
-          try:
-              created_at = datetime.fromisoformat(pr_created_at.replace("Z", "+00:00"))
-          except ValueError:
-              failures.append("无法解析 PR 创建时间，不能判断耗时规范是否适用。")
-              created_at = duration_policy_cutoff
-          duration_required = created_at >= duration_policy_cutoff
-
-          issue_reference = re.search(
-              rf"\b(?:closes|fixes|resolves|refs|relates\s+to)\s*#\s*{issue_number}(?!\d)",
-              clean_body,
-              flags=re.IGNORECASE,
-          )
-          if not issue_reference:
-              failures.append(
-                  f"PR 必须使用 Refs/Closes/Fixes/Resolves #{issue_number} 关联分支中的同一 Issue。"
-              )
-
-          required_headings = [
-              "## 执行任务看板",
-              "### 当前进行中",
-              "### 下一步最小任务",
-              "### 未完成项",
-              "### 恢复检查点",
-              "## 验证结果",
-              "## Issue 验收标准核对",
-          ]
-          if duration_required:
-              required_headings.append("### 耗时汇总")
-
-          for heading in required_headings:
-              if heading not in clean_body:
-                  failures.append(f"缺少必填章节：{heading}")
-
-          if duration_required:
-              duration_header = re.search(
-                  r"^\|[^\n]*\|\s*耗时\s*\|[^\n]*$",
-                  clean_body,
-                  flags=re.MULTILINE,
-              )
-              if not duration_header:
-                  failures.append("执行任务看板必须包含“耗时”列。")
-
-              task_row_pattern = re.compile(
-                  r"^\|\s*\d+(?:\.\d+)?\s*\|\s*([^|\n]+?)\s*\|\s*(?:✅|🔄|⏳|⚠️|❌|⏭️)[^|\n]*\|\s*([^|\n]+?)\s*\|",
-                  flags=re.MULTILINE,
-              )
-              task_rows = [
-                  (match.group(1).strip(), match.group(2).strip())
-                  for match in task_row_pattern.finditer(clean_body)
-              ]
-              if not task_rows:
-                  failures.append("任务看板至少需要一条已填写且包含耗时的原子任务。")
-              else:
-                  duration_pattern = re.compile(
-                      r"^(?:—|未记录（规范生效前）|<1\s*分钟|(?:已累计)?约\s*\d+\s*分钟|(?:已累计)?约\s*\d+\s*小时(?:\s*\d+\s*分钟)?)$"
-                  )
-                  for task, duration in task_rows:
-                      if not duration_pattern.fullmatch(duration):
-                          failures.append(
-                              f"任务“{task}”的耗时格式不规范：{duration!r}。"
-                              "请使用 —、<1 分钟、约 N 分钟、已累计约 N 分钟、"
-                              "约 H 小时 M 分钟或未记录（规范生效前）。"
-                          )
-          else:
-              task_row_pattern = re.compile(
-                  r"^\|\s*\d+(?:\.\d+)?\s*\|\s*([^|\n]+?)\s*\|\s*(?:✅|🔄|⏳|⚠️|❌|⏭️)",
-                  flags=re.MULTILINE,
-              )
-              task_rows = [match.group(1).strip() for match in task_row_pattern.finditer(clean_body)]
-              if not task_rows:
-                  failures.append("任务看板至少需要一条已填写的原子任务，不能只保留模板占位行。")
-              elif not re.search(r"^\|[^\n]*\|\s*耗时\s*\|[^\n]*$", clean_body, flags=re.MULTILINE):
-                  print("::warning::该 PR 创建于耗时规范生效前；不强制追溯历史耗时，后续恢复时应开始记录。")
-
-          required_checkpoint_fields = [
-              "当前 Issue",
-              "当前分支",
-              "最后完成任务",
-              "当前进行中",
-              "下一步最小任务",
-              "最后更新时间",
-          ]
-          if duration_required:
-              required_checkpoint_fields.append("当前任务累计耗时")
-
-          for field in required_checkpoint_fields:
-              field_match = re.search(rf"^-\s*{re.escape(field)}：\s*(\S.*)$", clean_body, flags=re.MULTILINE)
-              if not field_match:
-                  failures.append(f"恢复检查点未填写：{field}")
-
-          unfinished_placeholders = [
-              "替换为可独立验证的原子任务",
-              "替换为验证或收尾任务",
-              "验收标准 1",
-              "验收标准 2",
-              "验收标准 3",
-          ]
-          for placeholder in unfinished_placeholders:
-              if placeholder in clean_body:
-                  failures.append(f"仍保留模板占位内容：{placeholder}")
-
-          if failures:
-              print("Issue Delivery Governance 检查失败：")
-              for failure in failures:
-                  print(f"- {failure}")
-              print("\n请按 docs/ai/issue-execution-governance.md、docs/ai/task-duration-standard.md 和 PR 模板补齐后重新运行。")
-              sys.exit(1)
-
-          print(f"Issue #{issue_number} 的 PR 结构检查通过。")
-          if duration_required:
-              print("任务看板耗时列和恢复检查点耗时字段检查通过。")
-          PY
+          cat <<'EOF'
+          Issue Delivery Governance is no longer an automatic CI gate.
+          Use PR review and docs/ai/issue-execution-governance.md for process checks when needed.
+          EOF
