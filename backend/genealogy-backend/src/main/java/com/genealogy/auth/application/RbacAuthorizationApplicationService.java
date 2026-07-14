@@ -11,6 +11,7 @@ import com.genealogy.member.repository.MemberRoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -67,7 +68,8 @@ public class RbacAuthorizationApplicationService {
         if (userId == null || clanId == null || permissionCode == null || permissionCode.isBlank()) {
             return false;
         }
-        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
+        List<ClanMembershipEntity> memberships = clanMembershipRepository
+                .findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
                 .stream()
                 .toList();
         if (memberships.isEmpty()) {
@@ -77,6 +79,51 @@ public class RbacAuthorizationApplicationService {
         return memberRoleRepository.findByMembershipIdInAndStatus(membershipIds, STATUS_ACTIVE).stream()
                 .filter(role -> permissionApplicationService.roleHasPermission(role.getRoleId(), permissionCode))
                 .anyMatch(role -> scopeCovers(clanId, role, targetScopeType, targetScopeId));
+    }
+
+    @Transactional(readOnly = true)
+    public PermissionDataScope permissionDataScope(Long userId, Long clanId, String permissionCode) {
+        if (userId == null || clanId == null || permissionCode == null || permissionCode.isBlank()) {
+            return PermissionDataScope.none();
+        }
+        List<ClanMembershipEntity> memberships = clanMembershipRepository
+                .findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
+                .stream()
+                .toList();
+        if (memberships.isEmpty()) {
+            return PermissionDataScope.none();
+        }
+        List<MemberRoleEntity> grants = memberRoleRepository.findByMembershipIdInAndStatus(
+                        memberships.stream().map(ClanMembershipEntity::getId).toList(),
+                        STATUS_ACTIVE
+                ).stream()
+                .filter(grant -> permissionApplicationService.roleHasPermission(grant.getRoleId(), permissionCode))
+                .toList();
+
+        boolean fullClanAccess = grants.stream().anyMatch(grant ->
+                grant.getScopeType() == MemberRoleScopeType.global
+                        || grant.getScopeType() == MemberRoleScopeType.clan && clanId.equals(grant.getScopeId())
+        );
+        if (fullClanAccess) {
+            return PermissionDataScope.full();
+        }
+
+        Set<Long> visibleBranchIds = new LinkedHashSet<>();
+        Set<Long> subtreeRoots = new LinkedHashSet<>();
+        grants.forEach(grant -> {
+            if (grant.getScopeId() == null) {
+                return;
+            }
+            if (grant.getScopeType() == MemberRoleScopeType.branch) {
+                visibleBranchIds.add(grant.getScopeId());
+            } else if (grant.getScopeType() == MemberRoleScopeType.branch_subtree) {
+                subtreeRoots.add(grant.getScopeId());
+            }
+        });
+        if (!subtreeRoots.isEmpty()) {
+            visibleBranchIds.addAll(branchRepository.findSubtreeIds(clanId, subtreeRoots));
+        }
+        return PermissionDataScope.branches(visibleBranchIds);
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +143,8 @@ public class RbacAuthorizationApplicationService {
         if (userId == null || clanId == null) {
             return Set.of();
         }
-        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
+        List<ClanMembershipEntity> memberships = clanMembershipRepository
+                .findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
                 .stream()
                 .toList();
         if (memberships.isEmpty()) {
@@ -135,5 +183,32 @@ public class RbacAuthorizationApplicationService {
 
     private boolean isBranchTarget(MemberRoleScopeType targetScopeType) {
         return targetScopeType == MemberRoleScopeType.branch || targetScopeType == MemberRoleScopeType.branch_subtree;
+    }
+
+    public record PermissionDataScope(boolean fullClanAccess, Set<Long> visibleBranchIds) {
+
+        public PermissionDataScope {
+            visibleBranchIds = visibleBranchIds == null ? Set.of() : Set.copyOf(visibleBranchIds);
+        }
+
+        public static PermissionDataScope full() {
+            return new PermissionDataScope(true, Set.of());
+        }
+
+        public static PermissionDataScope branches(Set<Long> branchIds) {
+            return new PermissionDataScope(false, branchIds);
+        }
+
+        public static PermissionDataScope none() {
+            return new PermissionDataScope(false, Set.of());
+        }
+
+        public boolean canAccessBranch(Long branchId) {
+            return fullClanAccess || branchId != null && visibleBranchIds.contains(branchId);
+        }
+
+        public List<Long> queryVisibleBranchIds() {
+            return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
+        }
     }
 }

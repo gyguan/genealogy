@@ -8,9 +8,14 @@ export type OperationLogResponse = {
   id: number;
   clanId: number;
   actorId?: number | null;
+  actorDisplayName?: string | null;
   actionType: string;
   targetType?: string | null;
   targetId?: number | null;
+  targetDisplayName?: string | null;
+  targetBranchName?: string | null;
+  targetSummary?: string | null;
+  resultStatus?: string | null;
   summary?: string | null;
   detail?: string | null;
   requestId?: string | null;
@@ -35,6 +40,25 @@ export type OperationLogStatsResponse = {
   totalCount: number;
   byActionType: OperationLogStatsItem[];
   byActorId: OperationLogStatsItem[];
+};
+
+export type TrackingObjectResponse = {
+  objectType: "person" | "relationship" | "source" | "branch" | "review_task";
+  objectId: number;
+  displayName: string;
+  secondaryLabel?: string | null;
+  branchName?: string | null;
+  summary?: string | null;
+  status?: string | null;
+  changedAt?: string | null;
+};
+
+export type TrackingObjectPage = {
+  records: TrackingObjectResponse[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type CheckTaskResponse = {

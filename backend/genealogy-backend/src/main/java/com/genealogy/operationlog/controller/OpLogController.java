@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationLogBusinessViewApplicationService;
 import com.genealogy.operationlog.application.OperationLogExportApplicationService;
 import com.genealogy.operationlog.dto.OperationLogResponse;
 import com.genealogy.operationlog.dto.OperationLogStatsResponse;
@@ -34,15 +35,18 @@ public class OpLogController {
     private static final String PERMISSION_EXPORT = "operation_log.export";
 
     private final OperationLogApplicationService operationLogApplicationService;
+    private final OperationLogBusinessViewApplicationService operationLogBusinessViewApplicationService;
     private final OperationLogExportApplicationService operationLogExportApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
     public OpLogController(
             OperationLogApplicationService operationLogApplicationService,
+            OperationLogBusinessViewApplicationService operationLogBusinessViewApplicationService,
             OperationLogExportApplicationService operationLogExportApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.operationLogApplicationService = operationLogApplicationService;
+        this.operationLogBusinessViewApplicationService = operationLogBusinessViewApplicationService;
         this.operationLogExportApplicationService = operationLogExportApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
@@ -68,7 +72,7 @@ public class OpLogController {
                 userId,
                 PERMISSION_EXPORT
         );
-        return ApiResponse.success(operationLogApplicationService.search(
+        PageResponse<OperationLogResponse> page = operationLogApplicationService.search(
                 clanId,
                 actorId,
                 actionType,
@@ -80,7 +84,8 @@ public class OpLogController {
                 pageNo,
                 pageSize,
                 includeTechnicalFields
-        ));
+        );
+        return ApiResponse.success(operationLogBusinessViewApplicationService.enrich(page, clanId, userId));
     }
 
     @GetMapping("/operations/export.csv")
