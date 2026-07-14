@@ -1,4 +1,4 @@
-name: Issue 121 Frontend Diagnostic
+name: Issue 121 Frontend Validation
 
 on:
   pull_request:
@@ -6,13 +6,14 @@ on:
       - main
     paths:
       - scripts/issue-121-frontend-patch.py
+      - scripts/issue-121-frontend-fix.py
       - .github/workflows/issue-121-frontend-integration.yml
 
 permissions:
   contents: read
 
 jobs:
-  diagnose:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,20 +24,25 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package-lock.json
-      - name: Apply frontend patch
-        run: python scripts/issue-121-frontend-patch.py
+      - name: Apply frontend patches
+        run: |
+          python scripts/issue-121-frontend-patch.py
+          python scripts/issue-121-frontend-fix.py
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm ci
-      - name: Typecheck frontend
-        continue-on-error: true
+      - name: Check generated contract
         working-directory: frontend/genealogy-web
-        run: npm run typecheck > /tmp/issue-121-typecheck.log 2>&1
-      - name: Upload diagnostics
+        run: npm run api:check
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Upload validated page
         uses: actions/upload-artifact@v4
         with:
-          name: issue-121-frontend-diagnostics
-          path: |
-            /tmp/issue-121-typecheck.log
-            frontend/genealogy-web/src/features/logs/LogPage.tsx
+          name: issue-121-validated-log-page
+          path: frontend/genealogy-web/src/features/logs/LogPage.tsx
           if-no-files-found: error
