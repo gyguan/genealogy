@@ -74,7 +74,7 @@ normal / sensitive / highly_sensitive
 
 ```text
 surname_origin
-tang_name
+hall_name
 commandery
 family_instruction
 ancestor_instruction
@@ -86,7 +86,7 @@ custom_tradition
 other
 ```
 
-其中 `hall_name` 使用值 `hall_name`，用于与现有 `clan.hall_name` 语义保持一致。
+`hall_name` 与现有 `clan.hall_name` 保持稳定语义，便于兼容读取和后续数据迁移。
 
 ### 3.2 核心字段
 
