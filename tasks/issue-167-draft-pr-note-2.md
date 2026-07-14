@@ -1,0 +1,1 @@
+Draft PR creation checkpoint for Issue #167. The authoritative execution board remains `tasks/issue-167-execution.md`.
