@@ -36,7 +36,7 @@ export function WizardShell<TKey extends string = string>({
 
   return (
     <div className="mvp1-wizard-page">
-      <Panel title="MVP1 建谱向导" description="对象先保存为草稿，可在创建页内提交审核；只有审核通过对象才能进入下一步关联。">
+      <Panel title="MVP1 建谱向导" help="对象先保存为草稿，审核通过后才能进入后续关联步骤。">
         <Steps
           className="wizard-ant-steps"
           direction="vertical"
@@ -45,13 +45,12 @@ export function WizardShell<TKey extends string = string>({
           onChange={handleStepChange}
           items={steps.map(step => ({
             title: step.title,
-            description: step.desc,
             status: step.key === activeStep ? 'process' : step.ready ? 'finish' : 'wait'
           }))}
         />
       </Panel>
       {result ? <ResultNotice result={result} /> : null}
-      {!loaded ? <div className="wizard-step-hint">点击步骤后加载本步骤数据。</div> : null}
+      {!loaded ? <div className="wizard-step-hint">请选择步骤。</div> : null}
       {children}
     </div>
   );
