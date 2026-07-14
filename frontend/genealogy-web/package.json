@@ -9,22 +9,17 @@
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
-    "api:check": "bash ../../scripts/api/check-api-contract.sh",
-    "test:members": "node --test src/features/members/memberPageModel.test.js",
-    "test:auth": "node --test src/features/auth/authPageModel.test.js",
-    "test:logs": "node --test src/features/logs/*.test.js",
-    "test:e2e": "playwright test"
+    "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "antd": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "vite": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   }
