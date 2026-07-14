@@ -90,6 +90,71 @@ class AuthApplicationServiceCommercialTest {
         );
     }
 
+
+    @Test
+    void disabledAccountRevokesExistingSessionOnNextRequest() {
+        AppUserRepository userRepository = mock(AppUserRepository.class);
+        AuthSessionRepository sessionRepository = mock(AuthSessionRepository.class);
+        AuthSecurityService securityService = mock(AuthSecurityService.class);
+        AuthApplicationService service = new AuthApplicationService(
+                userRepository, sessionRepository, securityService, new AuthProperties()
+        );
+        String rawToken = "disabled-session-token";
+        AuthSessionEntity session = new AuthSessionEntity();
+        session.setId(55L);
+        session.setUserId(7L);
+        session.setTokenHash(PasswordHashUtil.sha256(rawToken));
+        session.setExpiresAt(LocalDateTime.now().plusHours(1));
+        AppUserEntity user = activeUser("disabled", "Password@123");
+        user.setStatus("disabled");
+        when(sessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
+                org.mockito.ArgumentMatchers.eq(PasswordHashUtil.sha256(rawToken)), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(session));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.currentUserIdOrNull("Bearer " + rawToken));
+        assertEquals("AUTH_UNAUTHORIZED", exception.getCode());
+        assertNotNull(session.getRevokedAt());
+        verify(sessionRepository).save(session);
+        verify(securityService).recordEvent(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.eq("session_revoked_account_inactive"),
+                org.mockito.ArgumentMatchers.eq("AUTH_UNAUTHORIZED"),
+                org.mockito.ArgumentMatchers.eq("high"),
+                any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    void replayOfKnownRevokedSessionIsRejectedAndAudited() {
+        AppUserRepository userRepository = mock(AppUserRepository.class);
+        AuthSessionRepository sessionRepository = mock(AuthSessionRepository.class);
+        AuthSecurityService securityService = mock(AuthSecurityService.class);
+        AuthApplicationService service = new AuthApplicationService(
+                userRepository, sessionRepository, securityService, new AuthProperties()
+        );
+        String rawToken = "revoked-session-token";
+        String tokenHash = PasswordHashUtil.sha256(rawToken);
+        AuthSessionEntity revoked = new AuthSessionEntity();
+        revoked.setId(56L);
+        revoked.setUserId(7L);
+        revoked.setTokenHash(tokenHash);
+        revoked.setRevokedAt(LocalDateTime.now().minusMinutes(1));
+        when(sessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
+                org.mockito.ArgumentMatchers.eq(tokenHash), any(LocalDateTime.class))).thenReturn(Optional.empty());
+        when(sessionRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(revoked));
+
+        assertThrows(BusinessException.class, () -> service.currentUserIdOrNull("Bearer " + rawToken));
+        verify(securityService).recordEvent(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.eq("session_replay_rejected"),
+                org.mockito.ArgumentMatchers.eq("AUTH_SESSION_REPLAYED"),
+                org.mockito.ArgumentMatchers.eq("high"),
+                any(), any(), any(), any()
+        );
+    }
+
     private AppUserEntity activeUser(String username, String password) {
         AppUserEntity user = new AppUserEntity();
         user.setId(7L);

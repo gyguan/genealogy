@@ -127,23 +127,23 @@ public class AuthApplicationService {
         return new AuthLoginResult(response, material.sessionToken(), maxAgeSeconds(material.session()));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthUserResponse currentUser(String authorization) {
-        AuthSessionEntity session = getActiveSession(authorization);
-        AppUserEntity user = requireActiveUser(session.getUserId());
-        return toUserResponse(user);
+        SessionUser context = requireActiveSessionUser(authorization);
+        return toUserResponse(context.user());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Long currentUserIdOrNull(String authorization) {
         if (authorization == null || authorization.isBlank()) return null;
-        return getActiveSession(authorization).getUserId();
+        return requireActiveSessionUser(authorization).user().getId();
     }
 
     @Transactional
     public AuthLoginResult refreshSession(String authorization, String clientIp, String userAgent) {
-        AuthSessionEntity current = getActiveSession(authorization);
-        AppUserEntity user = requireActiveUser(current.getUserId());
+        SessionUser context = requireActiveSessionUser(authorization);
+        AuthSessionEntity current = context.session();
+        AppUserEntity user = context.user();
         current.setRevokedAt(LocalDateTime.now());
         authSessionRepository.save(current);
 
@@ -282,18 +282,33 @@ public class AuthApplicationService {
     }
 
     private AuthSessionEntity findActiveSession(String rawToken) {
+        String tokenHash = PasswordHashUtil.sha256(rawToken);
         return authSessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
-                        PasswordHashUtil.sha256(rawToken), LocalDateTime.now())
-                .orElseThrow(() -> new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期"));
+                        tokenHash, LocalDateTime.now())
+                .orElseGet(() -> {
+                    authSessionRepository.findByTokenHash(tokenHash).ifPresent(session -> authSecurityService.recordEvent(
+                            session.getUserId(), "session_replay_rejected", "AUTH_SESSION_REPLAYED", "high",
+                            session.getClientIp(), session.getUserAgent(), null,
+                            "sessionId=" + session.getId() + ",state="
+                                    + (session.getRevokedAt() == null ? "expired" : "revoked")
+                    ));
+                    throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");
+                });
     }
 
-    private AppUserEntity requireActiveUser(Long userId) {
-        AppUserEntity user = appUserRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException("AUTH_USER_NOT_FOUND", "用户不存在"));
-        if (!USER_STATUS_ACTIVE.equals(user.getStatus()) || user.getDeletedAt() != null) {
+    private SessionUser requireActiveSessionUser(String authorization) {
+        AuthSessionEntity session = getActiveSession(authorization);
+        AppUserEntity user = appUserRepository.findById(session.getUserId()).orElse(null);
+        if (user == null || !USER_STATUS_ACTIVE.equals(user.getStatus()) || user.getDeletedAt() != null) {
+            session.setRevokedAt(LocalDateTime.now());
+            authSessionRepository.save(session);
+            authSecurityService.recordEvent(
+                    session.getUserId(), "session_revoked_account_inactive", "AUTH_UNAUTHORIZED", "high",
+                    session.getClientIp(), session.getUserAgent(), null, "sessionId=" + session.getId()
+            );
             throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");
         }
-        return user;
+        return new SessionUser(session, user);
     }
 
     private String extractToken(String authorization) {
@@ -354,6 +369,9 @@ public class AuthApplicationService {
         String trimmed = trimToNull(value);
         if (trimmed == null || trimmed.length() <= maxLength) return trimmed;
         return trimmed.substring(0, maxLength);
+    }
+
+    private record SessionUser(AuthSessionEntity session, AppUserEntity user) {
     }
 
     public record AuthLoginResult(LoginResponse response, String sessionToken, int maxAgeSeconds) {

@@ -52,8 +52,11 @@ genealogy:
     remember-me-hours: ${GENEALOGY_AUTH_REMEMBER_ME_HOURS:720}
     activity-touch-minutes: ${GENEALOGY_AUTH_ACTIVITY_TOUCH_MINUTES:5}
     login-window-minutes: ${GENEALOGY_AUTH_LOGIN_WINDOW_MINUTES:15}
+    login-cooldown-minutes: ${GENEALOGY_AUTH_LOGIN_COOLDOWN_MINUTES:15}
     account-max-failures: ${GENEALOGY_AUTH_ACCOUNT_MAX_FAILURES:5}
     ip-max-failures: ${GENEALOGY_AUTH_IP_MAX_FAILURES:20}
+    session-cleanup-interval-ms: ${GENEALOGY_AUTH_SESSION_CLEANUP_INTERVAL_MS:3600000}
+    session-retention-days: ${GENEALOGY_AUTH_SESSION_RETENTION_DAYS:30}
     invite-hours: ${GENEALOGY_AUTH_INVITE_HOURS:72}
     reset-minutes: ${GENEALOGY_AUTH_RESET_MINUTES:30}
     reset-base-url: ${GENEALOGY_AUTH_RESET_BASE_URL:http://localhost:5179/?auth=reset&resetToken=}

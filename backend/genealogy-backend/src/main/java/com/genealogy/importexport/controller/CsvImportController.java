@@ -64,7 +64,6 @@ public class CsvImportController {
     }
 
     @PostMapping(value = {
-            "/clans/{clanId}/imports/relationships/preview",
             "/clans/{clanId}/imports/relations/preview",
             "/clans/{clanId}/imports/relations.csv/preview"
     }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -79,7 +78,6 @@ public class CsvImportController {
     }
 
     @PostMapping(value = {
-            "/clans/{clanId}/imports/relationships",
             "/clans/{clanId}/imports/relations",
             "/clans/{clanId}/imports/relations.csv"
     }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
