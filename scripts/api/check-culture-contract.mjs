@@ -66,4 +66,25 @@ for (const [route, methods] of Object.entries(requiredOperations)) {
   }
 }
 
-console.log('Culture target types, enums and required operations are valid.');
+for (const pageName of ['CultureItemPage', 'MigrationEventPage', 'CultureSitePage']) {
+  assertSameSet(Object.keys(schemas[pageName]?.properties || {}), ['items', 'page'], `${pageName} properties`);
+  assertSameSet(schemas[pageName]?.required || [], ['items', 'page'], `${pageName} required`);
+}
+
+for (const summaryName of ['CultureItemSummaryResponse', 'MigrationEventSummaryResponse', 'CultureSiteSummaryResponse']) {
+  const properties = schemas[summaryName]?.properties || {};
+  if (!properties.allowedActions) fail(`${summaryName} must expose allowedActions`);
+  if (!properties.version) fail(`${summaryName} must expose optimistic-lock version`);
+  for (const forbidden of ['storagePath', 'checksum', 'oldPayload', 'newPayload']) {
+    if (properties[forbidden]) fail(`${summaryName} must not expose ${forbidden}`);
+  }
+}
+
+const cultureItemList = openapi.paths?.['/api/v1/clans/{clanId}/culture-items']?.get;
+const pageSize = (cultureItemList?.parameters || []).find(parameter => parameter.name === 'pageSize');
+if (!pageSize?.schema?.maximum) fail('culture item pageSize must have an upper bound');
+if (schemas.CultureItemSummaryResponse?.properties?.content) {
+  fail('CultureItemSummaryResponse must not expose full content');
+}
+
+console.log('Culture target types, enums, required operations, pagination and privacy-safe response shapes are valid.');
