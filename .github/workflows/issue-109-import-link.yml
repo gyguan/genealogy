@@ -80,14 +80,28 @@ jobs:
           )
           patch(
               panel,
-              "              width: 110,\n              render: (_value, row) => (\n                <Space onClick={event => event.stopPropagation()}>\n                  <Button size=\"small\" type=\"primary\" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>\n                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}\n                  </Button>\n                </Space>\n              )",
-              "              width: 210,\n              render: (_value, row) => (\n                <Space onClick={event => event.stopPropagation()}>\n                  {(row.reviewRound || 0) > 0 || row.latestReviewTaskId ? <Button size=\"small\" onClick={() => openReviewHistory(row)}>审核记录</Button> : null}\n                  <Button size=\"small\" type=\"primary\" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>\n                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}\n                  </Button>\n                </Space>\n              )"
+              '''              width: 110,
+              render: (_value, row) => (
+                <Space onClick={event => event.stopPropagation()}>
+                  <Button size="small" type="primary" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>
+                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}
+                  </Button>
+                </Space>
+              )''',
+              '''              width: 210,
+              render: (_value, row) => (
+                <Space onClick={event => event.stopPropagation()}>
+                  {(row.reviewRound || 0) > 0 || row.latestReviewTaskId ? <Button size="small" onClick={() => openReviewHistory(row)}>审核记录</Button> : null}
+                  <Button size="small" type="primary" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>
+                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}
+                  </Button>
+                </Space>
+              )'''
           )
           patch(
               panel,
-              "        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={canSubmitReview(selectedJob) ? <Button type=\"primary\" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}>",
-              "        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={<Space>{(selectedJob.reviewRound || 0) > 0 || selectedJob.latestReviewTaskId ? <Button onClick={() => openReviewHistory(selectedJob)}>查看审核记录</Button> : null}{canSubmitReview(selectedJob) ? <Button type=\"primary\" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}</Space>}>
-"
+              '''        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={canSubmitReview(selectedJob) ? <Button type="primary" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}>''',
+              '''        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={<Space>{(selectedJob.reviewRound || 0) > 0 || selectedJob.latestReviewTaskId ? <Button onClick={() => openReviewHistory(selectedJob)}>查看审核记录</Button> : null}{canSubmitReview(selectedJob) ? <Button type="primary" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}</Space>}>'''
           )
           PY
 
