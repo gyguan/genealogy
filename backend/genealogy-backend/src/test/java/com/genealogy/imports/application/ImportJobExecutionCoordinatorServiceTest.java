@@ -76,7 +76,7 @@ class ImportJobExecutionCoordinatorServiceTest {
 
     @Test
     void cancellationAtSafePointShouldNotRequirePayloadToExist() {
-        ImportJobEntity job = job(10L, ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.STAGE_PUBLISHING);
+        ImportJobEntity job = job(10L, ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.STAGE_PARSING);
         job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
         when(jobRepository.findNextExecutableForUpdate(any(LocalDateTime.class))).thenReturn(Optional.of(job));
         when(payloadRepository.existsById(10L)).thenReturn(false);
@@ -85,6 +85,24 @@ class ImportJobExecutionCoordinatorServiceTest {
 
         assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_CANCELLED);
         assertThat(job.getExecutionStage()).isEqualTo(ImportJobEntity.STAGE_CANCELLED);
+        verify(payloadRepository, never()).deleteById(10L);
+        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void cancellationAtSafePointShouldBecomePauseAfterChunkSideEffects() {
+        ImportJobEntity job = job(10L, ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.STAGE_DRAFTING);
+        job.setProcessedCount(100);
+        job.setCursorRowNo(101);
+        job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
+        when(jobRepository.findNextExecutableForUpdate(any(LocalDateTime.class))).thenReturn(Optional.of(job));
+
+        assertThat(service.claimNext()).isEmpty();
+
+        assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_PAUSED);
+        assertThat(job.getExecutionStage()).isEqualTo(ImportJobEntity.STAGE_DRAFTING);
+        assertThat(job.getRequestedAction()).isNull();
+        assertThat(job.getErrorSummary()).contains("已自动转为暂停");
         verify(payloadRepository, never()).deleteById(10L);
         verify(jobRepository).save(job);
     }
