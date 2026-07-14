@@ -1,0 +1,107 @@
+name: Issue 109 Import Review Link
+
+on:
+  push:
+    branches:
+      - agent/issue-109-review-history
+    paths:
+      - '.github/workflows/issue-109-import-link.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-109-review-history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Add import-to-review navigation and verify frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def patch(path, old, new):
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'missing patch target in {path}: {old[:120]!r}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          patch(
+              'frontend/genealogy-web/src/app/App.tsx',
+              "      case 'imports': return <ImportPage notify={notify} />;",
+              "      case 'imports': return <ImportPage notify={notify} onNavigate={enterPage} />;"
+          )
+
+          import_page = 'frontend/genealogy-web/src/features/imports/ImportPage.tsx'
+          patch(
+              import_page,
+              "type Props = { notify: (data: unknown, error?: boolean) => void };",
+              "type Props = { notify: (data: unknown, error?: boolean) => void; onNavigate: (view: 'reviewCenter') => void };"
+          )
+          patch(
+              import_page,
+              "export function ImportPage({ notify }: Props) {",
+              "export function ImportPage({ notify, onNavigate }: Props) {"
+          )
+          patch(
+              import_page,
+              "      <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />",
+              "      <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} onNavigate={onNavigate} />"
+          )
+
+          panel = 'frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx'
+          patch(
+              panel,
+              "type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };",
+              "type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number; onNavigate: (view: 'reviewCenter') => void };"
+          )
+          patch(
+              panel,
+              "  reviewRound?: number;\n};",
+              "  reviewRound?: number;\n  latestReviewTaskId?: number;\n};"
+          )
+          patch(
+              panel,
+              "export function ImportJobManagementPanel({ notify, refreshKey }: Props) {",
+              "export function ImportJobManagementPanel({ notify, refreshKey, onNavigate }: Props) {"
+          )
+          patch(
+              panel,
+              "  useEffect(() => { void loadJobs(); }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);",
+              "  function openReviewHistory(job: ImportJobSummary) {\n    if (job.latestReviewTaskId) workspace.setReviewTaskId(String(job.latestReviewTaskId));\n    onNavigate('reviewCenter');\n  }\n\n  useEffect(() => { void loadJobs(); }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);"
+          )
+          patch(
+              panel,
+              "              width: 110,\n              render: (_value, row) => (\n                <Space onClick={event => event.stopPropagation()}>\n                  <Button size=\"small\" type=\"primary\" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>\n                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}\n                  </Button>\n                </Space>\n              )",
+              "              width: 210,\n              render: (_value, row) => (\n                <Space onClick={event => event.stopPropagation()}>\n                  {(row.reviewRound || 0) > 0 || row.latestReviewTaskId ? <Button size=\"small\" onClick={() => openReviewHistory(row)}>审核记录</Button> : null}\n                  <Button size=\"small\" type=\"primary\" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>\n                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}\n                  </Button>\n                </Space>\n              )"
+          )
+          patch(
+              panel,
+              "        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={canSubmitReview(selectedJob) ? <Button type=\"primary\" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}>",
+              "        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={<Space>{(selectedJob.reviewRound || 0) > 0 || selectedJob.latestReviewTaskId ? <Button onClick={() => openReviewHistory(selectedJob)}>查看审核记录</Button> : null}{canSubmitReview(selectedJob) ? <Button type=\"primary\" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}</Space>}>
+"
+          )
+          PY
+
+          cd frontend/genealogy-web
+          npm install --ignore-scripts
+          npm run typecheck
+          npm run build
+          cd ../..
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            frontend/genealogy-web/src/app/App.tsx \
+            frontend/genealogy-web/src/features/imports/ImportPage.tsx \
+            frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx
+          git commit -m "feat(issue-109): link import jobs to review history"
+          git push origin HEAD:agent/issue-109-review-history
