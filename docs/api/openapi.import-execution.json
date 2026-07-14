@@ -1,0 +1,111 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Import Execution API",
+    "version": "1.0.0",
+    "description": "超大导入批次异步执行、进度查询、暂停、继续、取消与失败恢复契约"
+  },
+  "paths": {
+    "/api/v1/clans/{clanId}/imports/{jobId}/execution": {
+      "get": {
+        "tags": ["Imports"],
+        "summary": "查询导入任务执行进度",
+        "operationId": "getImportJobExecution",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "任务执行进度",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportJobExecutionResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/execution/pause": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "在安全分片边界暂停任务",
+        "operationId": "pauseImportJobExecution",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": { "200": { "description": "暂停后的任务状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportJobExecutionResponse" } } } } }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/execution/resume": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "继续已暂停任务",
+        "operationId": "resumeImportJobExecution",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": { "200": { "description": "继续后的任务状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportJobExecutionResponse" } } } } }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/execution/cancel": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "取消导入任务",
+        "operationId": "cancelImportJobExecution",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": { "200": { "description": "取消后的任务状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportJobExecutionResponse" } } } } }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/execution/retry": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "从最近安全点重试失败任务",
+        "operationId": "retryImportJobExecution",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": { "200": { "description": "重试后的任务状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportJobExecutionResponse" } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImportExecutionMode": { "type": "string", "enum": ["sync", "async"] },
+      "ImportExecutionStatus": { "type": "string", "enum": ["queued", "running", "paused", "retry_wait", "completed", "failed", "cancelled", "dead_letter"] },
+      "ImportExecutionStage": { "type": "string", "enum": ["queued", "parsing", "drafting", "ready_for_review", "publishing", "completed", "failed", "cancelled"] },
+      "ImportExecutionAction": { "type": "string", "enum": ["pause", "resume", "cancel", "retry"] },
+      "ImportJobExecutionResponse": {
+        "type": "object",
+        "required": ["jobId", "executionMode", "executionStatus", "executionStage", "processedCount", "publishedCount", "remainingCount", "progressPercent", "retryCount", "maxRetries", "manualInterventionRequired", "allowedActions"],
+        "properties": {
+          "jobId": { "type": "integer", "format": "int64" },
+          "executionMode": { "$ref": "#/components/schemas/ImportExecutionMode" },
+          "executionStatus": { "$ref": "#/components/schemas/ImportExecutionStatus" },
+          "executionStage": { "$ref": "#/components/schemas/ImportExecutionStage" },
+          "totalCount": { "type": "integer", "minimum": 0, "nullable": true },
+          "processedCount": { "type": "integer", "minimum": 0 },
+          "publishedCount": { "type": "integer", "minimum": 0 },
+          "remainingCount": { "type": "integer", "minimum": 0 },
+          "progressPercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "cursorRowNo": { "type": "integer", "minimum": 0, "nullable": true },
+          "chunkSize": { "type": "integer", "minimum": 1, "nullable": true },
+          "retryCount": { "type": "integer", "minimum": 0 },
+          "maxRetries": { "type": "integer", "minimum": 1 },
+          "failureStage": { "$ref": "#/components/schemas/ImportExecutionStage", "nullable": true },
+          "lastErrorCode": { "type": "string", "nullable": true },
+          "errorSummary": { "type": "string", "nullable": true },
+          "manualInterventionRequired": { "type": "boolean" },
+          "nextRetryAt": { "type": "string", "format": "date-time", "nullable": true },
+          "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "heartbeatAt": { "type": "string", "format": "date-time", "nullable": true },
+          "allowedActions": { "type": "array", "items": { "$ref": "#/components/schemas/ImportExecutionAction" } }
+        }
+      }
+    }
+  }
+}
