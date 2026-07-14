@@ -7,6 +7,8 @@ The validator is incremental:
 - A dedicated governance PR may reduce an existing duplicate version to one
   canonical migration only when it adds enough higher-version forward
   migrations to preserve the removed SQL responsibilities.
+- SQL callbacks are permitted only through an explicit supported event name and
+  an action-oriented lowercase description.
 """
 
 from __future__ import annotations
@@ -35,6 +37,10 @@ ANY_VERSIONED_RE = re.compile(
 )
 REPEATABLE_RE = re.compile(
     r"^R__(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
+)
+CALLBACK_RE = re.compile(
+    r"^(?P<event>beforeEachMigrate)__"
+    r"(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
 )
 ALLOWED_ACTIONS = {
     "create",
@@ -127,6 +133,10 @@ def is_repeatable(path: str | None) -> bool:
     return bool(path and filename(path).startswith("R__"))
 
 
+def is_callback(path: str | None) -> bool:
+    return bool(path and CALLBACK_RE.fullmatch(filename(path)))
+
+
 def normalized_version(name: str) -> tuple[int, ...] | None:
     match = ANY_VERSIONED_RE.fullmatch(name)
     if not match:
@@ -201,6 +211,18 @@ def validate_repeatable(path: str, errors: list[str]) -> None:
         errors.append(
             f"{name}: repeatable migration must match "
             "R__action_object_detail.sql using lowercase snake_case"
+        )
+        return
+    validate_description(match.group("description"), name, errors)
+
+
+def validate_callback(path: str, errors: list[str]) -> None:
+    name = filename(path)
+    match = CALLBACK_RE.fullmatch(name)
+    if not match:
+        errors.append(
+            f"{name}: callback must match "
+            "beforeEachMigrate__action_object_detail.sql"
         )
         return
     validate_description(match.group("description"), name, errors)
@@ -298,13 +320,17 @@ def main() -> int:
                 validate_new_versioned(change.new_path, base_max_version, errors)
             elif name.startswith("R__"):
                 validate_repeatable(change.new_path, errors)
+            elif CALLBACK_RE.fullmatch(name):
+                validate_callback(change.new_path, errors)
             else:
                 errors.append(
-                    f"{name}: SQL files in the Flyway directory must use V...__... "
-                    "or R__... naming"
+                    f"{name}: SQL files in the Flyway directory must use V...__..., "
+                    "R__..., or a supported callback naming pattern"
                 )
         elif code == "M" and is_repeatable(change.new_path):
             validate_repeatable(change.new_path, errors)
+        elif code == "M" and is_callback(change.new_path):
+            validate_callback(change.new_path, errors)
 
     # Existing duplicates are legacy debt; fail only when this PR introduces or
     # increases a duplicate version. A reduction to exactly one canonical file
