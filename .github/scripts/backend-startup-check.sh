@@ -59,6 +59,9 @@ mkdir repo
 tar -xzf repo.tgz -C repo --strip-components=1
 cd repo/backend/genealogy-backend
 
+echo "Checking Flyway migration metadata..."
+./scripts/check-flyway-migrations.sh
+
 echo "Packaging backend..."
 set +e
 mvn -q -DskipTests package > /tmp/genealogy-maven-package.log 2>&1
