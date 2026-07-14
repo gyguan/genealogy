@@ -99,6 +99,12 @@ public class TreeVisibilityApplicationService {
             return PersonProjection.hidden(person);
         }
 
+        if (Boolean.TRUE.equals(person.getIsLiving())
+                && !ownsRecord(person, actorId)
+                && !hasBranchPermission(person, actorId, PERSON_UPDATE)) {
+            return PersonProjection.masked(person, privacyAware, "privacy_restricted", "在世人物");
+        }
+
         String privacyLevel = normalizePrivacyLevel(person);
         if ((PRIVACY_PRIVATE.equals(privacyLevel) || PRIVACY_RELATIVES_ONLY.equals(privacyLevel))
                 && !ownsRecord(person, actorId)
