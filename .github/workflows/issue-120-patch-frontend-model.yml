@@ -1,9 +1,8 @@
 name: Issue 120 Patch Frontend Model
 
 on:
-  push:
-    branches:
-      - "agent/issue-120-business-object-search"
+  pull_request:
+    branches: ["main"]
     paths:
       - ".github/workflows/issue-120-patch-frontend-model.yml"
 
@@ -12,11 +11,12 @@ permissions:
 
 jobs:
   patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/issue-120-business-object-search
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - name: Reuse tested business display model in page
         run: |
@@ -38,18 +38,16 @@ jobs:
   return businessLogTargetText(log, targetTypeText);
 }
 '''
-          if old not in text:
-              raise SystemExit('targetTextFromLog block not found')
-          text = text.replace(old, new, 1)
+          if old in text:
+              text = text.replace(old, new, 1)
           old = '''function trackingObjectSummary(row: TrackingObjectResponse) {
   const parts = [row.displayName, row.branchName, row.secondaryLabel].filter(Boolean);
   return `${targetTypeText(row.objectType)}：${parts.join(' · ')}`;
 }
 
 '''
-          if old not in text:
-              raise SystemExit('trackingObjectSummary block not found')
-          text = text.replace(old, '', 1)
+          if old in text:
+              text = text.replace(old, '', 1)
           old = '''  function applyTraceFromObject(row: TrackingObjectResponse) {
     const summary = trackingObjectSummary(row);
     resetTraceSelection({
@@ -66,14 +64,20 @@ jobs:
     resetTraceSelection(result.selection, `已选择追踪对象：${result.summary}`);
   }
 '''
-          if old not in text:
-              raise SystemExit('applyTraceFromObject block not found')
-          path.write_text(text.replace(old, new, 1))
+          if old in text:
+              text = text.replace(old, new, 1)
+          if model_import not in text or 'trackingObjectSummary' in text or 'const result = trackingObjectSelection' not in text:
+              raise SystemExit('Frontend model patch did not reach expected state')
+          path.write_text(text)
           PY
       - name: Commit patch
         run: |
+          if git diff --quiet -- frontend/genealogy-web/src/features/logs/LogPage.tsx; then
+            echo "Frontend model is already connected"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/genealogy-web/src/features/logs/LogPage.tsx
           git commit -m "refactor(tracking): reuse tested business display model"
-          git push origin HEAD:agent/issue-120-business-object-search
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
