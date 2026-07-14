@@ -29,6 +29,7 @@ export function CultureItemFormModal({ open, item, branches, saving, onCancel, o
 
   useEffect(() => {
     if (!open) return;
+    form.resetFields();
     form.setFieldsValue(item ? {
       branchId: item.scope.branchId ?? undefined,
       category: item.category,
@@ -54,11 +55,15 @@ export function CultureItemFormModal({ open, item, branches, saving, onCancel, o
   }, [form, item, open]);
 
   async function finish(values: CultureItemFormValues) {
-    if (item) {
-      await onSubmit({ ...values, version: item.version } as CultureItemUpdateRequest);
-    } else {
-      const { version: _version, ...createValues } = values;
-      await onSubmit(createValues as CultureItemCreateRequest);
+    try {
+      if (item) {
+        await onSubmit({ ...values, version: item.version } as CultureItemUpdateRequest);
+      } else {
+        const { version: _version, ...createValues } = values;
+        await onSubmit(createValues as CultureItemCreateRequest);
+      }
+    } catch {
+      // Parent keeps the modal open and has already shown the backend error.
     }
   }
 
