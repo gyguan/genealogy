@@ -1,11 +1,12 @@
 # Issue #166 执行看板：宗族文化领域模型与契约
 
-- Issue：https://github.com/gyguan/genealogy/issues/166
-- 基础 PR：https://github.com/gyguan/genealogy/pull/174
-- 恢复 PR：https://github.com/gyguan/genealogy/pull/176
-- 恢复分支：`agent/issue-166-culture-contract-repair`
+- Issue：https://github.com/gyguan/genealogy/issues/166（已关闭）
+- 基础 PR：https://github.com/gyguan/genealogy/pull/174（已合入）
+- 恢复 PR：https://github.com/gyguan/genealogy/pull/176（已合入）
+- 最终 `main` Commit：`fd56656fda4ad19ce393737bd28b473ccd16376d`
 - 目标：完成宗族文化领域模型、数据库、OpenAPI、生成类型和最终交付门禁，并补齐 PR #174 提前合入后的验证与 Review 收口。
-- 最后更新时间：2026-07-14 18:24:00，北京时间
+- 完成时间：2026-07-14 18:28:06，北京时间
+- 最后更新时间：2026-07-14 18:32:00，北京时间
 
 ## 已交付基础
 
@@ -16,7 +17,7 @@ PR #174 已将以下内容合入 `main`：
 - 宗族文化设计、兼容与回滚文档；
 - 文化 OpenAPI、前端生成类型和追踪目标类型预留。
 
-PR #176 已完成前向恢复：
+PR #176 已完成前向恢复并合入 `main`：
 
 - 定义共享 `BadRequest / Unauthorized / Forbidden` OpenAPI response；
 - 恢复 `generate → Tracking/Culture checks → 四文件 diff → TypeScript` 完整门禁；
@@ -32,7 +33,7 @@ PR #176 已完成前向恢复：
 | 2 | 恢复完整 API 生成与契约漂移门禁 | ✅ 已完成 | 约 5 分钟 | generator、Tracking/Culture 检查、四文件 diff 和 typecheck 已恢复 |
 | 3 | 定位并修复文化契约和生成文件差异 | ✅ 已完成 | 约 38 分钟 | 补充共享 response；CI 精确生成四个文件 |
 | 4 | 执行 API、前端、后端、PostgreSQL 与迁移治理验证 | ✅ 已完成 | 约 10 分钟 | API Contract、TypeScript、Frontend Build、Backend、PostgreSQL、Flyway 治理通过 |
-| 5 | 完成五轴 Review、合入恢复 PR 并关闭 #166 | 🔄 进行中 | 已累计约 5 分钟 | PR #174 Review 已解决；PR #176 无未解决线程，准备转 Ready 并合入 |
+| 5 | 完成五轴 Review、合入恢复 PR 并关闭 #166 | ✅ 已完成 | 约 8 分钟 | PR #174 两条 P1 已解决；PR #176 squash 合入；#166 自动关闭 |
 
 ## 验证结果
 
@@ -67,9 +68,10 @@ PR #176 已完成前向恢复：
 
 ## 非目标与后续
 
-- 不新增 #167 的文化资料 CRUD 或运行时接口。
-- 不修改已合入的 Flyway 历史文件。
+- 本 Issue 不包含 #167 的文化资料 CRUD 或运行时接口。
+- 未修改已经合入并可能执行的 Flyway 历史文件。
 - 来源绑定运行时、审核 apply、权限、追踪聚合、迁徙和场所页面由 #167～#172 完成。
+- 总控 #165 已将 #166 标记完成；下一顺序任务为 #167。
 
 ## 五轴 Review
 
@@ -81,23 +83,21 @@ PR #176 已完成前向恢复：
 
 ## 耗时汇总
 
-- 恢复阶段已完成任务活跃耗时：约 1 小时
-- 当前合入收尾累计耗时：约 5 分钟
+- PR #174 基础实现阶段活跃耗时：约 1 小时 3 分钟
+- PR #176 恢复与验证阶段活跃耗时：约 1 小时 8 分钟
 - 外部等待：GitHub Actions 排队与运行，不计入活跃耗时
 - 未记录历史任务：0 项
 
-## 当前恢复检查点
+## 最终恢复检查点
 
-- 当前 Issue：#166
-- 当前分支：`agent/issue-166-culture-contract-repair`
+- 当前 Issue：#166（已完成并关闭）
 - 基础 PR：#174（已合入）
-- 恢复 PR：#176（Draft，待转 Ready）
-- 最新 Commit：由本次看板更新提交确定
-- 最后完成任务：完整 CI 与 Review 收口
-- 当前进行中：转 Ready、合入 #176、确认 #166 自动关闭
-- 当前任务累计耗时：已累计约 5 分钟
+- 恢复 PR：#176（已合入）
+- 最终 `main` Commit：`fd56656fda4ad19ce393737bd28b473ccd16376d`
+- 最后完成任务：完整 CI、Review、合入与 Issue 关闭
+- 当前进行中：无
 - CI 状态：API Contract、TypeScript、Frontend Build、Backend、PostgreSQL 和 Flyway 治理通过
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：标记 PR #176 Ready，并以当前 head SHA 合入 `main`
-- 最后更新时间：2026-07-14 18:24:00，北京时间
+- 下一步最小任务：按总控顺序启动 #167
+- 最后更新时间：2026-07-14 18:32:00，北京时间
