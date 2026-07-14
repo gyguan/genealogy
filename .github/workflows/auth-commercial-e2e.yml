@@ -62,12 +62,20 @@ jobs:
       - name: Scan production auth artifacts
         working-directory: frontend/genealogy-web
         run: |
-          matches=$(grep -R -n -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth || true)
-          if [ -n "$matches" ]; then
+          grep -R -n -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth \
+            > /tmp/auth-artifact-matches.txt || true
+          if [ -s /tmp/auth-artifact-matches.txt ]; then
             echo "Blocked auth artifact matches:"
-            printf '%s\n' "$matches" | head -n 80
+            head -n 80 /tmp/auth-artifact-matches.txt
             exit 1
           fi
+      - name: Upload auth artifact scan evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-artifact-scan-matches
+          path: /tmp/auth-artifact-matches.txt
+          if-no-files-found: ignore
       - name: Start backend
         working-directory: backend/genealogy-backend
         env:
