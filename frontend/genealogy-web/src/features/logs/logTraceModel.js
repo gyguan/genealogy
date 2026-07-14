@@ -64,6 +64,12 @@ function stableTimeSort(left, right) {
   return timelineIdentity(left).localeCompare(timelineIdentity(right));
 }
 
+function sameTarget(left, right) {
+  return Boolean(left && right
+    && left.targetType === right.targetType
+    && left.targetId === right.targetId);
+}
+
 export function normalizeTraceTargetType(value) {
   const text = String(value ?? '').trim().toLowerCase();
   return TARGET_TYPE_ALIASES[text] || text;
@@ -92,16 +98,19 @@ export function traceResetFromLog(log, fallbackClanId = '', targetSummary = '') 
   };
 }
 
-export function resolveTraceContext(selection, detail = null) {
+export function resolveTraceContext(selection, detail = null, diff = null) {
   const issues = [];
   const clanId = textId(selection?.clanId);
   const selectedType = normalizeTraceTargetType(selection?.targetType);
   const selectedId = textId(selection?.targetId);
   const reviewTaskId = textId(selection?.reviewTaskId);
   const selectedTarget = selectedType && selectedId ? { targetType: selectedType, targetId: selectedId } : null;
-  let businessTarget = BUSINESS_TARGET_TYPES.has(selectedType) && selectedId
+  const selectedBusinessTarget = BUSINESS_TARGET_TYPES.has(selectedType) && selectedId
     ? { targetType: selectedType, targetId: selectedId }
     : null;
+  let businessTarget = selectedBusinessTarget;
+  let reviewTaskTrusted = false;
+  let diffTrusted = false;
 
   if (!selectedTarget) {
     issues.push('缺少可验证的业务对象类型或标识');
@@ -116,31 +125,76 @@ export function resolveTraceContext(selection, detail = null) {
       issues.push('审核任务详情缺失，无法确认关联业务对象');
       businessTarget = selectedType === 'review_task' ? null : businessTarget;
     } else {
+      let taskIdentityTrusted = true;
+      let associationTrusted = true;
       if (textId(task.id) !== reviewTaskId) {
         issues.push('审核任务详情与当前任务标识不一致');
+        taskIdentityTrusted = false;
+        associationTrusted = false;
       }
       if (clanId && textId(task.clanId) && textId(task.clanId) !== clanId) {
         issues.push('审核任务不属于当前宗族');
+        taskIdentityTrusted = false;
+        associationTrusted = false;
       }
       if (clanId && textId(auditRecord.clanId) && textId(auditRecord.clanId) !== clanId) {
         issues.push('审核记录不属于当前宗族');
+        associationTrusted = false;
       }
+      reviewTaskTrusted = taskIdentityTrusted;
 
       const auditType = normalizeTraceTargetType(auditRecord.targetType);
       const auditId = textId(auditRecord.targetId);
-      if (!BUSINESS_TARGET_TYPES.has(auditType) || !auditId) {
+      const auditTarget = BUSINESS_TARGET_TYPES.has(auditType) && auditId
+        ? { targetType: auditType, targetId: auditId }
+        : null;
+      if (!auditTarget) {
         issues.push('审核记录缺少受支持的业务对象关联');
-        businessTarget = null;
-      } else {
-        businessTarget = { targetType: auditType, targetId: auditId };
+        associationTrusted = false;
+      }
+
+      if (selectedBusinessTarget && auditTarget && !sameTarget(selectedBusinessTarget, auditTarget)) {
+        issues.push('当前业务对象与审核记录指向的对象不一致');
+        associationTrusted = false;
       }
 
       const taskType = normalizeTraceTargetType(task.targetType);
       const taskId = textId(task.targetId);
-      if (taskType && taskId && businessTarget
-        && (taskType !== businessTarget.targetType || taskId !== businessTarget.targetId)) {
+      const taskTarget = BUSINESS_TARGET_TYPES.has(taskType) && taskId
+        ? { targetType: taskType, targetId: taskId }
+        : null;
+      if (taskTarget && auditTarget && !sameTarget(taskTarget, auditTarget)) {
         issues.push('审核任务与审核记录指向的业务对象不一致');
+        associationTrusted = false;
       }
+
+      businessTarget = associationTrusted ? auditTarget : null;
+    }
+
+    if (diff) {
+      let diffIdentityTrusted = true;
+      if (textId(diff.reviewTaskId) !== reviewTaskId) {
+        issues.push('审核 Diff 与当前任务标识不一致');
+        diffIdentityTrusted = false;
+      }
+      if (clanId && textId(diff.clanId) && textId(diff.clanId) !== clanId) {
+        issues.push('审核 Diff 不属于当前宗族');
+        diffIdentityTrusted = false;
+      }
+      const diffType = normalizeTraceTargetType(diff.targetType);
+      const diffId = textId(diff.targetId);
+      const diffTarget = BUSINESS_TARGET_TYPES.has(diffType) && diffId
+        ? { targetType: diffType, targetId: diffId }
+        : null;
+      if (!diffTarget) {
+        issues.push('审核 Diff 缺少受支持的业务对象关联');
+        diffIdentityTrusted = false;
+      }
+      if (!businessTarget || !diffTarget || !sameTarget(businessTarget, diffTarget)) {
+        issues.push('审核 Diff 与关联业务对象不一致');
+        diffIdentityTrusted = false;
+      }
+      diffTrusted = diffIdentityTrusted;
     }
   }
 
@@ -149,6 +203,8 @@ export function resolveTraceContext(selection, detail = null) {
     reviewTaskId,
     selectedTarget,
     businessTarget,
+    reviewTaskTrusted,
+    diffTrusted,
     issues
   };
 }
@@ -205,22 +261,23 @@ export function timelineStatusFromReviewStatus(status) {
 export function buildTraceTimelineEntries(logs, task = null, diff = null) {
   const items = [];
   if (task) {
+    const normalizedStatus = String(task.status ?? '').trim().toLowerCase();
     items.push({
       kind: 'reviewTask',
       key: textId(task.id),
       time: task.createdAt || null,
       source: 'review',
-      status: timelineStatusFromReviewStatus(task.status),
+      status: timelineStatusFromReviewStatus(normalizedStatus),
       task
     });
-    if (task.status === 'approved' || task.status === 'rejected'
+    if (normalizedStatus === 'approved' || normalizedStatus === 'rejected'
       || task.reviewedAt || task.reviewerId || task.reviewComment) {
       items.push({
         kind: 'reviewResult',
         key: textId(task.id),
         time: task.reviewedAt || null,
         source: 'review',
-        status: timelineStatusFromReviewStatus(task.status),
+        status: timelineStatusFromReviewStatus(normalizedStatus),
         task
       });
     }
@@ -270,9 +327,11 @@ export function evaluateTraceCoverage({
   }
 
   if (reviewTaskId) {
-    if (detailState === 'loaded') covered.push('审核任务真实状态与审核意见');
+    if (detailState === 'loaded' && context?.reviewTaskTrusted) covered.push('审核任务真实状态与审核意见');
+    else if (detailState === 'loaded') missing.push('审核任务详情未通过一致性校验');
     else missing.push('审核任务详情未加载');
-    if (diffState === 'loaded') covered.push('字段变更明细');
+    if (diffState === 'loaded' && context?.diffTrusted) covered.push('字段变更明细');
+    else if (diffState === 'loaded') missing.push('字段变更明细未通过一致性校验');
     else missing.push('字段变更明细未加载');
   } else {
     missing.push('当前日志未提供可验证的审核任务关联');
