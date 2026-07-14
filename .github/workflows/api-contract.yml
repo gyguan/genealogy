@@ -50,7 +50,7 @@ jobs:
           node scripts/api/check-tracking-contract.mjs
 
       - name: Commit generated contract
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/issue-106-source-import'
+        if: github.ref == 'refs/heads/agent/issue-106-source-import' || github.event.pull_request.head.ref == 'agent/issue-106-source-import'
         run: |
           if ! git diff --quiet -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts; then
             git config user.name "github-actions[bot]"
@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Check generated API contract
-        if: github.event_name != 'push' || github.ref != 'refs/heads/agent/issue-106-source-import'
+        if: github.ref != 'refs/heads/agent/issue-106-source-import' && github.event.pull_request.head.ref != 'agent/issue-106-source-import'
         run: git diff --exit-code -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
 
       - name: Typecheck frontend
