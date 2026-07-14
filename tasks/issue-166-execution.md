@@ -1,73 +1,103 @@
 # Issue #166 执行看板：宗族文化领域模型与契约
 
-- Issue：https://github.com/gyguan/genealogy/issues/166
-- Draft PR：https://github.com/gyguan/genealogy/pull/174
-- 工作分支：`agent/issue-166-culture-contract`
-- 目标：建立 `culture_item`、`migration_event`、`culture_site` 的领域模型、Flyway、状态与兼容规则、OpenAPI 契约和前端生成类型。
-- 最后更新时间：2026-07-14 17:43:00，北京时间
+- Issue：https://github.com/gyguan/genealogy/issues/166（已关闭）
+- 基础 PR：https://github.com/gyguan/genealogy/pull/174（已合入）
+- 恢复 PR：https://github.com/gyguan/genealogy/pull/176（已合入）
+- 最终 `main` Commit：`fd56656fda4ad19ce393737bd28b473ccd16376d`
+- 目标：完成宗族文化领域模型、数据库、OpenAPI、生成类型和最终交付门禁，并补齐 PR #174 提前合入后的验证与 Review 收口。
+- 完成时间：2026-07-14 18:28:06，北京时间
+- 最后更新时间：2026-07-14 18:32:00，北京时间
 
-## 实现范围
+## 已交付基础
 
-- 更新领域模型、API 和数据库兼容设计文档。
-- 新增三类文化对象的数据库表、约束和查询索引。
-- 增加后端领域骨架：Entity、Repository、枚举，不实现完整业务接口。
-- 扩展 OpenAPI，定义文化总览、文化资料、迁徙事件和文化场所契约。
-- 生成并校验前端 API operation 和 DTO 类型。
-- 明确旧 `clan` / `branch` 文化字段的只读兼容和退出条件。
+PR #174 已将以下内容合入 `main`：
 
-## 非目标
+- `culture_item`、`migration_event`、`culture_site` 领域模型和 Flyway；
+- 领域枚举、JPA 实体、Repository 和契约测试；
+- 宗族文化设计、兼容与回滚文档；
+- 文化 OpenAPI、前端生成类型和追踪目标类型预留。
 
-- 不实现完整 Controller、Application Service 和前端页面。
-- 不实现来源绑定、审核 apply、权限运行时和追踪聚合；由后续 Issue 完成。
-- 不执行历史文化数据自动迁移或双写。
-- 不接入地图 SDK、OCR 或 AI 内容生成。
+PR #176 已完成前向恢复并合入 `main`：
+
+- 定义共享 `BadRequest / Unauthorized / Forbidden` OpenAPI response；
+- 恢复 `generate → Tracking/Culture checks → 四文件 diff → TypeScript` 完整门禁；
+- 由 CI 精确再生四个契约文件；
+- 处理并解决 PR #174 的两条 P1 Review；
+- 不修改已合入的 Flyway 历史文件，不扩大到 #167。
 
 ## 执行任务看板
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue 与现有实现，建立分支、任务文件和 Draft PR | ✅ 已完成 | 约 10 分钟 | `cde315a`；Draft PR #174 与 Issue 回写已建立 |
-| 2 | 更新领域模型、API 设计和兼容/回滚说明 | ✅ 已完成 | 约 12 分钟 | 新增正式基础设计并同步领域/API 文档 |
-| 3 | 新增三类领域对象 Flyway、实体、Repository 与枚举 | ✅ 已完成 | 约 18 分钟 | 三表迁移、回滚脚本、实体、Repository、稳定枚举与契约测试已提交 |
-| 4 | Contract First 更新 OpenAPI 并生成前端类型 | ✅ 已完成 | 约 18 分钟 | culture operations/DTO、追踪目标类型、生成器和契约检查已提交 |
-| 5 | 执行契约、迁移、后端与前端验证并完成五轴 Review | 🔄 进行中 | 已累计约 14 分钟 | 迁移治理、交付治理和 Backend CI 已通过；正在读取 API/TypeScript 精确诊断 |
+| 1 | 核对提前合入现场并建立恢复分支、看板和 Draft PR | ✅ 已完成 | 约 7 分钟 | 恢复分支、看板、PR #176 和 Issue 回写已建立 |
+| 2 | 恢复完整 API 生成与契约漂移门禁 | ✅ 已完成 | 约 5 分钟 | generator、Tracking/Culture 检查、四文件 diff 和 typecheck 已恢复 |
+| 3 | 定位并修复文化契约和生成文件差异 | ✅ 已完成 | 约 38 分钟 | 补充共享 response；CI 精确生成四个文件 |
+| 4 | 执行 API、前端、后端、PostgreSQL 与迁移治理验证 | ✅ 已完成 | 约 10 分钟 | API Contract、TypeScript、Frontend Build、Backend、PostgreSQL、Flyway 治理通过 |
+| 5 | 完成五轴 Review、合入恢复 PR 并关闭 #166 | ✅ 已完成 | 约 8 分钟 | PR #174 两条 P1 已解决；PR #176 squash 合入；#166 自动关闭 |
 
-## 影响模块
+## 验证结果
 
-- 文档：`docs/03-domain-model.md`、`docs/07-api-design.md`、`docs/17-culture-domain-foundation.md`
-- 后端：新增 `com.genealogy.culture` 领域骨架
-- 数据库：Flyway 新表、检查约束、外键、索引和人工回滚脚本
-- API：`docs/api/openapi.culture.json`、tracking overlays、生成器和契约检查
-- 前端：生成 `culture-api-contract.ts`、`culture-types.ts`，同步 `tracking-types.ts`
+### PR #176
 
-## 验证方案
+- API Contract Check：✅ 通过
+  - generator 可重复执行；
+  - 四个生成文件无 diff；
+  - Tracking/Culture 契约语义通过；
+  - Culture 路径公共 response 引用可解析；
+  - TypeScript typecheck 通过。
+- Frontend Build：✅ 通过。
+- 临时诊断工作流：✅ 已清理，最终 diff 不包含 workflow 变更。
+- Review：✅ PR #176 无未解决线程；PR #174 两条 P1 已修复并解决。
 
-- Flyway 命名和迁移治理脚本检查。
-- PostgreSQL/Flyway 启动与 Hibernate schema validate。
-- OpenAPI JSON 解析、本地 `$ref` 和文化契约语义检查。
-- `npm run api:generate`、`npm run api:check`、`npm run typecheck`、`npm run build`。
-- `mvn test`，包括文化枚举与实体默认值契约测试。
-- 检查 `main...branch` diff，确保无无关修改，并完成五轴 Review。
+### PR #174
 
-## 已知风险与缓解
+- Database Migration Governance：✅ 通过。
+- Backend Java Build/Test：✅ 通过。
+- PostgreSQL Startup Check：✅ 通过。
+- Commercial Frontend Build：✅ 通过。
+- Issue Delivery Governance：✅ 通过。
 
-- **双事实源风险**：旧 `clan.hall_name/commandery/origin_place` 与 `branch.migration_from/migration_to` 仅作为兼容读取，不在本 Issue 建立双写。
-- **审核类型扩展风险**：本 Issue 只定义稳定目标类型和契约；运行时接入由 #168、#170、#171 完成。
-- **迁移风险**：只新增表和索引，不改写历史数据；无业务数据时可执行明确的人工回滚，有数据后使用更高版本前向补偿。
-- **隐私风险**：正文、地址和坐标均定义隐私/敏感级别；后续接口必须由后端过滤。
-- **验证环境限制**：提交通过 GitHub Connector 完成，构建和数据库验证以仓库 CI 为事实依据。
+## Issue 验收核对
 
-## 当前恢复检查点
+- [x] 三类对象字段、状态、范围和关联关系无歧义。
+- [x] Flyway 在干净 PostgreSQL 和历史迁移链上通过验证。
+- [x] OpenAPI 覆盖文化总览、文化资料、迁徙和场所接口。
+- [x] 新目标类型不修改历史数据，并已进入来源、审核与追踪契约。
+- [x] `api:generate`、`api:check`、TypeScript 和生产构建通过。
+- [x] 文档明确正式数据不得直接覆盖及旧字段兼容退出条件。
 
-- 当前 Issue：#166
-- 当前分支：`agent/issue-166-culture-contract`
-- Draft PR：#174
-- 最新 Commit：由本次看板更新提交确定
-- 最后完成任务：修复 Flyway 版本、恢复前端既有验证脚本并通过 Backend CI
-- 当前进行中：通过临时失败产物读取 API 生成差异和 TypeScript 错误
-- 当前任务累计耗时：已累计约 14 分钟
-- CI 状态：Database Migration Governance、Issue Delivery Governance、Backend CI 已通过；API Contract 与 Auth E2E 的前端类型检查待修复
+## 非目标与后续
+
+- 本 Issue 不包含 #167 的文化资料 CRUD 或运行时接口。
+- 未修改已经合入并可能执行的 Flyway 历史文件。
+- 来源绑定运行时、审核 apply、权限、追踪聚合、迁徙和场所页面由 #167～#172 完成。
+- 总控 #165 已将 #166 标记完成；下一顺序任务为 #167。
+
+## 五轴 Review
+
+- Correctness：✅ 契约、生成、数据库和验收标准均有验证证据。
+- Readability：✅ 领域模块与契约检查职责清晰，诊断代码已清理。
+- Architecture：✅ 仅交付领域与契约基础，未提前侵入后续应用服务。
+- Security：✅ 默认草稿、隐私与敏感级别、最小披露和正式审核约束保留。
+- Performance：✅ 后端分页上限、查询索引和 overview 有界聚合设计明确。
+
+## 耗时汇总
+
+- PR #174 基础实现阶段活跃耗时：约 1 小时 3 分钟
+- PR #176 恢复与验证阶段活跃耗时：约 1 小时 8 分钟
+- 外部等待：GitHub Actions 排队与运行，不计入活跃耗时
+- 未记录历史任务：0 项
+
+## 最终恢复检查点
+
+- 当前 Issue：#166（已完成并关闭）
+- 基础 PR：#174（已合入）
+- 恢复 PR：#176（已合入）
+- 最终 `main` Commit：`fd56656fda4ad19ce393737bd28b473ccd16376d`
+- 最后完成任务：完整 CI、Review、合入与 Issue 关闭
+- 当前进行中：无
+- CI 状态：API Contract、TypeScript、Frontend Build、Backend、PostgreSQL 和 Flyway 治理通过
 - 未解决 Review：无
-- 已知阻塞：日志尾部被连接器截断，已临时启用失败诊断产物；定位后将清理工作流改动
-- 下一步最小任务：下载 API Contract 失败诊断产物并按精确差异修复
-- 最后更新时间：2026-07-14 17:43:00，北京时间
+- 已知阻塞：无
+- 下一步最小任务：按总控顺序启动 #167
+- 最后更新时间：2026-07-14 18:32:00，北京时间
