@@ -44,15 +44,68 @@ jobs:
       - name: Install Chromium
         working-directory: frontend/genealogy-web
         run: npx playwright install --with-deps chromium
-      - name: Verify frontend contract and production build
+      - name: Verify auth frontend tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:auth
+      - name: Verify member frontend tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:members
+      - name: Verify frontend types
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Verify API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Build production frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Scan production auth artifacts
         working-directory: frontend/genealogy-web
         run: |
-          npm run test:auth
-          npm run test:members
-          npm run typecheck
-          npm run api:check
-          npm run build
-          ! grep -R -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          patterns = {
+              "demo username": re.compile(r"demo_admin"),
+              "demo password": re.compile(r"Admin@123456"),
+              "persistent auth token write": re.compile(
+                  r"(?:window\.)?localStorage\.setItem\(\s*(['\"`])genealogy\.token\1"
+              ),
+          }
+          findings = []
+          for root_name in ("dist", "src/features/auth"):
+              root = Path(root_name)
+              if not root.exists():
+                  continue
+              for path in root.rglob("*"):
+                  if not path.is_file():
+                      continue
+                  text = path.read_text(encoding="utf-8", errors="ignore")
+                  for label, pattern in patterns.items():
+                      for match in pattern.finditer(text):
+                          start = max(0, match.start() - 80)
+                          end = min(len(text), match.end() + 120)
+                          context = text[start:end].replace("\n", "\\n")
+                          findings.append(
+                              f"{path}:{match.start()}: {label}: {context}"
+                          )
+
+          evidence = Path("/tmp/auth-artifact-matches.txt")
+          evidence.write_text("\n".join(findings), encoding="utf-8")
+          if findings:
+              print("Blocked auth artifact matches:")
+              print("\n".join(findings[:80]))
+              sys.exit(1)
+          PY
+      - name: Upload auth artifact scan evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-artifact-scan-matches
+          path: /tmp/auth-artifact-matches.txt
+          if-no-files-found: ignore
       - name: Start backend
         working-directory: backend/genealogy-backend
         env:

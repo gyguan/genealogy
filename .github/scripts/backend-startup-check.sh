@@ -15,11 +15,14 @@ cleanup() {
 trap cleanup EXIT
 
 print_startup_error() {
-  echo "Startup error summary:"
-  grep -Ei "ERROR|Application run failed|Exception|Caused by|Schema-validation|SchemaManagementException|Migration .* failed|Failed|missing|duplicate|constraint" /tmp/genealogy-backend-startup.log | grep -vi " WARN " | tail -n 80 || true
+  echo "Startup error summary (deepest database/migration causes):"
+  grep -Ei "Migration of schema|Flyway.*Exception|SQL State|Error Code|Message[[:space:]]*:|Location[[:space:]]*:|Line[[:space:]]*:|Statement[[:space:]]*:|PSQLException|Schema-validation|SchemaManagementException|duplicate key|relation .* does not exist|column .* does not exist|constraint .* does not exist" /tmp/genealogy-backend-startup.log \
+    | grep -vi " WARN " \
+    | tail -n 24 \
+    | cut -c1-1200 || true
   if grep -q "Ambiguous mapping" /tmp/genealogy-backend-startup.log; then
     echo "Ambiguous mapping details:"
-    sed -n '/Ambiguous mapping/,+12p' /tmp/genealogy-backend-startup.log || true
+    sed -n '/Ambiguous mapping/,+8p' /tmp/genealogy-backend-startup.log | cut -c1-1200 || true
   fi
 }
 
@@ -58,6 +61,9 @@ curl -fsSL "https://github.com/gyguan/genealogy/archive/${REF_NAME}.tar.gz" -o r
 mkdir repo
 tar -xzf repo.tgz -C repo --strip-components=1
 cd repo/backend/genealogy-backend
+
+echo "Checking Flyway migration metadata..."
+bash ./scripts/check-flyway-migrations.sh
 
 echo "Packaging backend..."
 set +e

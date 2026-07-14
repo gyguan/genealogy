@@ -1,4 +1,12 @@
--- Source library Slice 1: align source statuses and add source metadata fields.
+-- Re-versioned from V3__source_library_status_and_fields.sql.
+-- Purpose: normalize source statuses and add source metadata fields.
+-- Issue/PR: #150 / PR #151
+-- Risk: medium
+-- Lock impact: updates source and source_binding rows and adds constraints/indexes.
+-- Data volume: scans existing source and source_binding rows once.
+-- Compatibility: executes after the established migration chain; repeated schema objects are guarded.
+-- Rollback/Compensation: use a reviewed forward compensation migration; do not rewrite Flyway history.
+-- Verification: run the Flyway uniqueness check and PostgreSQL startup check.
 
 alter table source
     add column if not exists source_date varchar(100),
@@ -30,15 +38,25 @@ alter table source
     alter column sensitive_level set default 'normal',
     alter column updated_at set default now();
 
-alter table source
-    add constraint chk_source_verification_status
-        check (verification_status in ('draft', 'pending_review', 'official', 'rejected', 'archived')),
-    add constraint chk_source_confidence_level
-        check (confidence_level in ('high', 'medium', 'low', 'unknown')),
-    add constraint chk_source_privacy_level
-        check (privacy_level in ('public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed')),
-    add constraint chk_source_sensitive_level
-        check (sensitive_level in ('normal', 'sensitive', 'highly_sensitive'));
+do $$
+begin
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_verification_status') then
+        alter table source add constraint chk_source_verification_status
+            check (verification_status in ('draft', 'pending_review', 'official', 'rejected', 'archived'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_confidence_level') then
+        alter table source add constraint chk_source_confidence_level
+            check (confidence_level in ('high', 'medium', 'low', 'unknown'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_privacy_level') then
+        alter table source add constraint chk_source_privacy_level
+            check (privacy_level in ('public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_sensitive_level') then
+        alter table source add constraint chk_source_sensitive_level
+            check (sensitive_level in ('normal', 'sensitive', 'highly_sensitive'));
+    end if;
+end $$;
 
 alter table source_binding
     add column if not exists confidence_level varchar(32) not null default 'unknown',
@@ -60,11 +78,17 @@ alter table source_binding
     alter column binding_status set default 'official',
     alter column updated_at set default now();
 
-alter table source_binding
-    add constraint chk_source_binding_confidence_level
-        check (confidence_level in ('high', 'medium', 'low', 'unknown')),
-    add constraint chk_source_binding_status
-        check (binding_status in ('draft', 'pending_review', 'official', 'rejected', 'archived'));
+do $$
+begin
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_binding_confidence_level') then
+        alter table source_binding add constraint chk_source_binding_confidence_level
+            check (confidence_level in ('high', 'medium', 'low', 'unknown'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_binding_status') then
+        alter table source_binding add constraint chk_source_binding_status
+            check (binding_status in ('draft', 'pending_review', 'official', 'rejected', 'archived'));
+    end if;
+end $$;
 
 create unique index if not exists uk_source_binding_target
     on source_binding(source_id, target_type, target_id);
