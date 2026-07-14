@@ -20,6 +20,22 @@ function assertSameSet(actual, expected, label) {
   }
 }
 
+function resolveLocalReference(reference) {
+  if (!reference?.startsWith('#/')) return;
+  const value = reference.slice(2).split('/').reduce((current, segment) => current?.[segment], openapi);
+  if (!value) fail(`Unresolved culture path reference: ${reference}`);
+}
+
+function visitReferences(value) {
+  if (Array.isArray(value)) {
+    value.forEach(visitReferences);
+    return;
+  }
+  if (!value || typeof value !== 'object') return;
+  if (value.$ref) resolveLocalReference(value.$ref);
+  Object.values(value).forEach(visitReferences);
+}
+
 const targetTypes = ['culture_item', 'migration_event', 'culture_site'];
 const genealogyTargetTypes = schemas.GenealogyTargetType?.enum || [];
 for (const targetType of targetTypes) {
@@ -58,6 +74,7 @@ const requiredOperations = {
 for (const [route, methods] of Object.entries(requiredOperations)) {
   const pathItem = openapi.paths?.[route];
   if (!pathItem) fail(`Missing culture path ${route}`);
+  visitReferences(pathItem);
   for (const method of methods) {
     const operation = pathItem[method];
     if (!operation) fail(`Missing ${method.toUpperCase()} ${route}`);
@@ -83,17 +100,11 @@ for (const summaryName of ['CultureItemSummaryResponse', 'MigrationEventSummaryR
 const cultureItemList = openapi.paths?.['/api/v1/clans/{clanId}/culture-items']?.get;
 const pageSize = (cultureItemList?.parameters || []).find(parameter => parameter.name === 'pageSize');
 if (!pageSize?.schema?.maximum) fail('culture item pageSize must have an upper bound');
-if (schemas.CultureItemSummaryResponse?.properties?.content) {
-  fail('CultureItemSummaryResponse must not expose full content');
-}
+if (schemas.CultureItemSummaryResponse?.properties?.content) fail('CultureItemSummaryResponse must not expose full content');
 
 const sourceTarget = schemas.SourceBindingCreateRequest?.properties?.targetType?.$ref;
-if (sourceTarget !== '#/components/schemas/GenealogyTargetType') {
-  fail('SourceBindingCreateRequest.targetType must use GenealogyTargetType');
-}
+if (sourceTarget !== '#/components/schemas/GenealogyTargetType') fail('SourceBindingCreateRequest.targetType must use GenealogyTargetType');
 const reviewTarget = schemas.ReviewSubmitRequest?.properties?.targetType?.$ref;
-if (reviewTarget !== '#/components/schemas/GenealogyTargetType') {
-  fail('ReviewSubmitRequest.targetType must use GenealogyTargetType');
-}
+if (reviewTarget !== '#/components/schemas/GenealogyTargetType') fail('ReviewSubmitRequest.targetType must use GenealogyTargetType');
 
-console.log('Culture contract paths, schemas, target type integration, pagination and privacy-safe response shapes are valid.');
+console.log('Culture contract and all culture path references are valid.');
