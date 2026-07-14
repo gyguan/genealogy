@@ -187,7 +187,7 @@ public class ImportRowBulkApplicationService {
                         actorId
                 )));
             } else {
-                items.add(run(reference, () -> mutationExecutor.updateCorrection(
+                items.add(runCorrectionUpdate(reference, () -> mutationExecutor.updateCorrection(
                         clanId,
                         jobId,
                         correction.rowNo(),
@@ -267,6 +267,22 @@ public class ImportRowBulkApplicationService {
             if (ImportJobRowEntity.STATUS_RETRY_FAILED.equals(row.rowStatus())) success = false;
             return new ImportRowBulkItemResult(
                     stableKey(row.rowNo()), row.rowNo(), success, row.rowStatus(),
+                    row.errorCode(), row.errorMessage(), value(row.version())
+            );
+        } catch (BusinessException exception) {
+            return failed(reference, exception.getCode(), exception.getMessage());
+        } catch (OptimisticLockingFailureException exception) {
+            return failed(reference, "IMPORT_JOB_ROW_VERSION_CONFLICT", "该行已被其他用户修改，请刷新后重试");
+        } catch (RuntimeException exception) {
+            return failed(reference, "IMPORT_BULK_ROW_PROCESS_FAILED", safeError(exception));
+        }
+    }
+
+    private ImportRowBulkItemResult runCorrectionUpdate(ImportRowVersionReference reference, RowMutation mutation) {
+        try {
+            ImportJobRowResponse row = mutation.execute();
+            return new ImportRowBulkItemResult(
+                    stableKey(row.rowNo()), row.rowNo(), true, row.rowStatus(),
                     row.errorCode(), row.errorMessage(), value(row.version())
             );
         } catch (BusinessException exception) {
@@ -525,10 +541,7 @@ public class ImportRowBulkApplicationService {
     }
 
     private String safeError(RuntimeException exception) {
-        String message = exception.getMessage();
-        if (message == null || message.isBlank()) return "该行处理失败，请刷新后重试";
-        message = message.replace('\n', ' ').replace('\r', ' ').trim();
-        return message.length() > 500 ? message.substring(0, 500) : message;
+        return "该行处理失败，请刷新后重试";
     }
 
     private String safe(String value) {
