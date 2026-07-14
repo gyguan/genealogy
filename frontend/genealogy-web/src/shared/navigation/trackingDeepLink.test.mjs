@@ -8,8 +8,10 @@ import {
 
 assert.equal(normalizeTrackingTargetType('relationships'), 'relationship');
 assert.equal(normalizeTrackingTargetType('SOURCE'), 'source');
+assert.equal(normalizeTrackingTargetType('culture-items'), 'culture_item');
 assert.equal(normalizeTrackingTargetType('review_task'), '');
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 9 })?.targetId, '9');
+assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'culture_item', targetId: 19 })?.targetType, 'culture_item');
 assert.equal(normalizeTrackingTarget({ clanId: '', targetType: 'person', targetId: 9 }), null);
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 0 }), null);
 assert.equal(normalizeTrackingTarget({ clanId: 'abc', targetType: 'person', targetId: 9 }), null);
@@ -31,6 +33,17 @@ assert.equal(url.searchParams.get('targetId'), '88');
 assert.equal(url.searchParams.get('reviewTaskId'), '31');
 assert.equal(url.searchParams.get('keyword'), '张三');
 assert.equal(url.searchParams.get('traceType'), null);
+
+const cultureHref = buildTrackingDeepLink('https://example.test/app?view=culture&cultureItem=42', {
+  clanId: 7,
+  targetType: 'culture_item',
+  targetId: 42
+});
+const cultureUrl = new URL(cultureHref, 'https://example.test');
+assert.equal(cultureUrl.searchParams.get('view'), 'auditTrace');
+assert.equal(cultureUrl.searchParams.get('targetType'), 'culture_item');
+assert.equal(cultureUrl.searchParams.get('targetId'), '42');
+assert.equal(cultureUrl.searchParams.get('cultureItem'), '42');
 
 const events = [];
 const browser = {
