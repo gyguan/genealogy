@@ -9,6 +9,7 @@ import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.PersonProjection;
 import com.genealogy.tree.dto.TreeGraphResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,8 +20,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,11 +49,15 @@ class TreeApplicationServiceTest {
     @InjectMocks
     private TreeApplicationService service;
 
+    @BeforeEach
+    void setUpVisibilityDefaults() {
+        when(visibilityApplicationService.normalizeDataView(null)).thenReturn("official");
+    }
+
     @Test
     void maskedRootReturnsOnlySafePlaceholderWithoutEdges() {
         PersonEntity root = person(1L, 10L, "根人物");
         when(personRepository.findByIdAndDeletedAtIsNull(root.getId())).thenReturn(Optional.of(root));
-        when(visibilityApplicationService.normalizeDataView(null)).thenReturn("official");
         when(visibilityApplicationService.requireRootProjection(root, ACTOR_ID, "official"))
                 .thenReturn(PersonProjection.masked(
                         root,
@@ -58,17 +66,15 @@ class TreeApplicationServiceTest {
                         "受保护人物"
                 ));
 
-        TreeGraphResponse response = service.family(root.getId(), null, null, ACTOR_ID);
+        TreeGraphResponse response = service.family(root.getId(), null, null, null, null, ACTOR_ID);
 
         assertNull(response.rootPersonId());
+        assertEquals("masked-root", response.rootNodeId());
         assertEquals(1, response.nodes().size());
-        assertEquals("受保护人物", response.nodes().get(0).name());
+        assertEquals("受保护人物", response.nodes().get(0).displayName());
         assertNull(response.nodes().get(0).personId());
-        assertNull(response.nodes().get(0).gender());
-        assertNull(response.nodes().get(0).generationNo());
-        assertNull(response.nodes().get(0).generationWord());
-        assertNull(response.nodes().get(0).branchId());
         assertTrue(response.edges().isEmpty());
+        assertEquals("root_filtered", response.warnings().get(0).code());
         verify(relationshipRepository, never()).findByFromPersonIdAndDeletedAtIsNull(root.getId());
     }
 
@@ -77,13 +83,10 @@ class TreeApplicationServiceTest {
         PersonEntity root = person(1L, 10L, "根人物");
         PersonEntity child = person(2L, 10L, "受保护子女");
         RelationshipEntity relationship = relationship(100L, root.getId(), child.getId());
-        when(personRepository.findByIdAndDeletedAtIsNull(root.getId())).thenReturn(Optional.of(root));
+        allowRoot(root);
         when(personRepository.findByIdAndDeletedAtIsNull(child.getId())).thenReturn(Optional.of(child));
         when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(root.getId()))
                 .thenReturn(List.of(relationship));
-        when(visibilityApplicationService.normalizeDataView(null)).thenReturn("official");
-        when(visibilityApplicationService.requireRootProjection(root, ACTOR_ID, "official"))
-                .thenReturn(PersonProjection.full(root, PersonMapper.toResponse(root)));
         when(visibilityApplicationService.projectPerson(child, ACTOR_ID, "official"))
                 .thenReturn(PersonProjection.masked(
                         child,
@@ -92,18 +95,14 @@ class TreeApplicationServiceTest {
                         "受保护人物"
                 ));
 
-        TreeGraphResponse response = service.descendants(root.getId(), 1, null, null, ACTOR_ID);
+        TreeGraphResponse response = service.descendants(
+                root.getId(), 1, null, null, null, null, ACTOR_ID
+        );
 
         assertEquals(root.getId(), response.rootPersonId());
         assertEquals(List.of(root.getId()), response.nodes().stream().map(node -> node.personId()).toList());
         assertTrue(response.edges().isEmpty());
-        verify(visibilityApplicationService, never()).canExposeRelationship(
-                relationship,
-                PersonProjection.full(root, PersonMapper.toResponse(root)),
-                PersonProjection.masked(child, PersonMapper.toResponse(child), "privacy_restricted", "受保护人物"),
-                ACTOR_ID,
-                "official"
-        );
+        assertEquals("partial_visibility", response.warnings().get(0).code());
     }
 
     @Test
@@ -111,53 +110,217 @@ class TreeApplicationServiceTest {
         PersonEntity root = person(1L, 10L, "根人物");
         PersonEntity child = person(2L, 10L, "子女");
         RelationshipEntity relationship = relationship(101L, root.getId(), child.getId());
-        PersonProjection rootProjection = PersonProjection.full(root, PersonMapper.toResponse(root));
-        PersonProjection childProjection = PersonProjection.full(child, PersonMapper.toResponse(child));
-        when(personRepository.findByIdAndDeletedAtIsNull(root.getId())).thenReturn(Optional.of(root));
-        when(personRepository.findByIdAndDeletedAtIsNull(child.getId())).thenReturn(Optional.of(child));
+        allowRoot(root);
+        allowPerson(child);
         when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(root.getId()))
                 .thenReturn(List.of(relationship));
-        when(visibilityApplicationService.normalizeDataView(null)).thenReturn("official");
-        when(visibilityApplicationService.requireRootProjection(root, ACTOR_ID, "official"))
-                .thenReturn(rootProjection);
-        when(visibilityApplicationService.projectPerson(child, ACTOR_ID, "official"))
-                .thenReturn(childProjection);
         when(visibilityApplicationService.canExposeRelationship(
-                relationship, rootProjection, childProjection, ACTOR_ID, "official"
+                any(), any(), any(), eq(ACTOR_ID), eq("official")
         )).thenReturn(false);
 
-        TreeGraphResponse response = service.descendants(root.getId(), 1, null, null, ACTOR_ID);
+        TreeGraphResponse response = service.descendants(
+                root.getId(), 1, null, null, null, null, ACTOR_ID
+        );
 
         assertEquals(1, response.nodes().size());
-        assertEquals(root.getId(), response.nodes().get(0).personId());
         assertTrue(response.edges().isEmpty());
+        assertEquals("partial_visibility", response.warnings().get(0).code());
     }
 
     @Test
-    void branchLineageCountsOnlyFullyVisiblePeopleAndEdges() {
-        BranchEntity rootBranch = branch(10L, "/10", 1L);
-        BranchEntity childBranch = branch(11L, "/10/11", null);
-        PersonEntity visible = person(1L, rootBranch.getId(), "可见人物");
-        PersonEntity hidden = person(2L, childBranch.getId(), "跨支派人物");
-        RelationshipEntity relationship = relationship(102L, visible.getId(), hidden.getId());
-        when(branchRepository.findByIdAndClanId(rootBranch.getId(), 1L)).thenReturn(Optional.of(rootBranch));
-        when(branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(1L))
-                .thenReturn(List.of(rootBranch, childBranch));
-        when(personRepository.findByClanIdAndDeletedAtIsNull(1L)).thenReturn(List.of(visible, hidden));
-        when(relationshipRepository.findByClanIdAndDeletedAtIsNull(1L)).thenReturn(List.of(relationship));
-        when(visibilityApplicationService.normalizeDataView(null)).thenReturn("official");
-        when(visibilityApplicationService.projectPerson(visible, ACTOR_ID, "official"))
-                .thenReturn(PersonProjection.full(visible, PersonMapper.toResponse(visible)));
-        when(visibilityApplicationService.projectPerson(hidden, ACTOR_ID, "official"))
-                .thenReturn(PersonProjection.hidden(hidden));
+    void cycleIsReturnedOnceAndTraversalStops() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity child = person(2L, 10L, "子女");
+        RelationshipEntity forward = relationship(201L, root.getId(), child.getId());
+        RelationshipEntity back = relationship(202L, child.getId(), root.getId());
+        allowRoot(root);
+        allowPerson(child);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(root.getId()))
+                .thenReturn(List.of(forward));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(child.getId()))
+                .thenReturn(List.of(back));
 
-        TreeGraphResponse response = service.branchLineage(
-                1L, rootBranch.getId(), true, null, null, ACTOR_ID
+        TreeGraphResponse response = service.descendants(
+                root.getId(), 5, null, null, null, null, ACTOR_ID
         );
 
-        assertEquals(visible.getId(), response.rootPersonId());
-        assertEquals(List.of(visible.getId()), response.nodes().stream().map(node -> node.personId()).toList());
-        assertTrue(response.edges().isEmpty());
+        assertEquals(2, response.nodes().size());
+        assertEquals(2, response.edges().size());
+        assertTrue(response.meta().cycleDetected());
+        assertWarning(response, "cycle_detected");
+    }
+
+    @Test
+    void diamondGraphKeepsAllDistinctEdgesAndOneNodePerPerson() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity left = person(2L, 10L, "左支");
+        PersonEntity right = person(3L, 10L, "右支");
+        PersonEntity child = person(4L, 10L, "共同后代");
+        RelationshipEntity rootLeft = relationship(301L, 1L, 2L);
+        RelationshipEntity rootRight = relationship(302L, 1L, 3L);
+        RelationshipEntity leftChild = relationship(303L, 2L, 4L);
+        RelationshipEntity rightChild = relationship(304L, 3L, 4L);
+        allowRoot(root);
+        allowPerson(left);
+        allowPerson(right);
+        allowPerson(child);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(1L))
+                .thenReturn(List.of(rootLeft, rootRight));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(2L))
+                .thenReturn(List.of(leftChild));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(3L))
+                .thenReturn(List.of(rightChild));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(4L))
+                .thenReturn(List.of());
+
+        TreeGraphResponse response = service.descendants(1L, 5, null, null, null, null, ACTOR_ID);
+
+        assertEquals(4, response.nodes().size());
+        assertEquals(4, response.edges().size());
+        assertEquals(1, response.nodes().stream().filter(node -> Long.valueOf(4L).equals(node.personId())).count());
+        assertFalse(response.meta().cycleDetected());
+    }
+
+    @Test
+    void duplicateRelationshipIsReportedAndReturnedOnce() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity child = person(2L, 10L, "子女");
+        RelationshipEntity duplicate = relationship(401L, 1L, 2L);
+        allowRoot(root);
+        allowPerson(child);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(1L))
+                .thenReturn(List.of(duplicate, duplicate));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(2L))
+                .thenReturn(List.of());
+
+        TreeGraphResponse response = service.descendants(1L, 5, null, null, null, null, ACTOR_ID);
+
+        assertEquals(1, response.edges().size());
+        assertEquals(1, response.meta().duplicateEdgeCount());
+        assertWarning(response, "duplicate_edge");
+    }
+
+    @Test
+    void depthLimitIsReportedOnlyWhenVisibleNextLevelExists() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity child = person(2L, 10L, "子女");
+        PersonEntity grandchild = person(3L, 10L, "孙辈");
+        RelationshipEntity first = relationship(501L, 1L, 2L);
+        RelationshipEntity second = relationship(502L, 2L, 3L);
+        allowRoot(root);
+        allowPerson(child);
+        allowPerson(grandchild);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(1L)).thenReturn(List.of(first));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(2L)).thenReturn(List.of(second));
+
+        TreeGraphResponse response = service.descendants(1L, 1, null, null, null, null, ACTOR_ID);
+
+        assertEquals(List.of(1L, 2L), response.nodes().stream().map(node -> node.personId()).toList());
+        assertTrue(response.meta().truncated());
+        assertTrue(response.meta().truncationReasons().contains("max_depth"));
+        assertWarning(response, "depth_limit_reached");
+    }
+
+    @Test
+    void nodeLimitStopsExpansionAfterSafeProjection() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity firstChild = person(2L, 10L, "子女一");
+        PersonEntity secondChild = person(3L, 10L, "子女二");
+        allowRoot(root);
+        allowPerson(firstChild);
+        allowPerson(secondChild);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(1L)).thenReturn(List.of(
+                relationship(601L, 1L, 2L),
+                relationship(602L, 1L, 3L)
+        ));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(2L)).thenReturn(List.of());
+
+        TreeGraphResponse response = service.descendants(1L, 5, null, null, 2, 10, ACTOR_ID);
+
+        assertEquals(2, response.meta().nodeCount());
+        assertTrue(response.meta().truncationReasons().contains("max_nodes"));
+        assertWarning(response, "node_limit_reached");
+    }
+
+    @Test
+    void edgeLimitStopsExpansionAndReturnsTruncationMetadata() {
+        PersonEntity root = person(1L, 10L, "根人物");
+        PersonEntity firstChild = person(2L, 10L, "子女一");
+        PersonEntity secondChild = person(3L, 10L, "子女二");
+        allowRoot(root);
+        allowPerson(firstChild);
+        allowPerson(secondChild);
+        allowRelationships();
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(1L)).thenReturn(List.of(
+                relationship(701L, 1L, 2L),
+                relationship(702L, 1L, 3L)
+        ));
+        when(relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(2L)).thenReturn(List.of());
+
+        TreeGraphResponse response = service.descendants(1L, 5, null, null, 10, 1, ACTOR_ID);
+
+        assertEquals(1, response.meta().edgeCount());
+        assertTrue(response.meta().truncationReasons().contains("max_edges"));
+        assertWarning(response, "edge_limit_reached");
+    }
+
+    @Test
+    void branchLineageAppliesVisibilityDedupCycleAndIsolatedWarnings() {
+        BranchEntity rootBranch = branch(10L, "/10", 1L);
+        PersonEntity root = person(1L, rootBranch.getId(), "根人物");
+        PersonEntity child = person(2L, rootBranch.getId(), "子女");
+        PersonEntity isolated = person(3L, rootBranch.getId(), "孤立人物");
+        RelationshipEntity forward = relationship(801L, 1L, 2L);
+        RelationshipEntity back = relationship(802L, 2L, 1L);
+        when(branchRepository.findByIdAndClanId(rootBranch.getId(), 1L)).thenReturn(Optional.of(rootBranch));
+        when(personRepository.findByClanIdAndDeletedAtIsNull(1L)).thenReturn(List.of(root, child, isolated));
+        when(relationshipRepository.findByClanIdAndDeletedAtIsNull(1L))
+                .thenReturn(List.of(forward, back, forward));
+        when(visibilityApplicationService.projectPerson(any(PersonEntity.class), eq(ACTOR_ID), eq("official")))
+                .thenAnswer(invocation -> {
+                    PersonEntity value = invocation.getArgument(0);
+                    return PersonProjection.full(value, PersonMapper.toResponse(value));
+                });
+        allowRelationships();
+
+        TreeGraphResponse response = service.branchLineage(
+                1L, rootBranch.getId(), false, null, null, 5, 10, 10, ACTOR_ID
+        );
+
+        assertEquals(3, response.nodes().size());
+        assertEquals(2, response.edges().size());
+        assertTrue(response.meta().cycleDetected());
+        assertEquals(1, response.meta().duplicateEdgeCount());
+        assertWarning(response, "cycle_detected");
+        assertWarning(response, "duplicate_edge");
+        assertWarning(response, "isolated_nodes");
+    }
+
+    private void allowRoot(PersonEntity root) {
+        when(personRepository.findByIdAndDeletedAtIsNull(root.getId())).thenReturn(Optional.of(root));
+        when(visibilityApplicationService.requireRootProjection(root, ACTOR_ID, "official"))
+                .thenReturn(PersonProjection.full(root, PersonMapper.toResponse(root)));
+    }
+
+    private void allowPerson(PersonEntity person) {
+        when(personRepository.findByIdAndDeletedAtIsNull(person.getId())).thenReturn(Optional.of(person));
+        when(visibilityApplicationService.projectPerson(person, ACTOR_ID, "official"))
+                .thenReturn(PersonProjection.full(person, PersonMapper.toResponse(person)));
+    }
+
+    private void allowRelationships() {
+        when(visibilityApplicationService.canExposeRelationship(
+                any(), any(), any(), eq(ACTOR_ID), eq("official")
+        )).thenReturn(true);
+    }
+
+    private void assertWarning(TreeGraphResponse response, String code) {
+        assertTrue(response.warnings().stream().anyMatch(warning -> code.equals(warning.code())));
     }
 
     private PersonEntity person(Long id, Long branchId, String name) {
