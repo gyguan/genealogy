@@ -2,10 +2,10 @@
 
 - Issue：[#123 增加跨模块查看追踪入口与可恢复深链接](https://github.com/gyguan/genealogy/issues/123)
 - 工作分支：`agent/issue-123-tracking-deep-links`
-- Draft PR：[#201](https://github.com/gyguan/genealogy/pull/201)
+- PR：[#201](https://github.com/gyguan/genealogy/pull/201)
 - 目标：在五类核心业务页面增加统一“查看追踪”入口，并通过可复制 URL 恢复宗族、对象、页签和详情状态。
 - 基线：`main` commit `492a6a32f578787d0fe90482029d9861b23f3de6`，已包含 #122 双页签追踪中心。
-- 最后更新时间：2026-07-14 21:05（Asia/Shanghai）
+- 最后更新时间：2026-07-14 21:20（Asia/Shanghai）
 
 ## DEFINE：范围与成功标准
 
@@ -42,7 +42,7 @@
 | 4 | 增加人物、关系、来源/引用、支派、审核详情入口 | ✅ 已完成 | 约 24 分钟 | 共享按钮接入五类页面，审核入口使用业务对象 |
 | 5 | 完善无权限状态与浏览器导航恢复 | ✅ 已完成 | 约 16 分钟 | 403/404 清空来源摘要，pushState + popstate 支持前进/后退 |
 | 6 | 补充模型测试并执行 typecheck、build、api:check | ✅ 已完成 | 约 17 分钟 | 深链接/兼容测试、类型、构建、契约均通过 |
-| 7 | 五轴 Review、处理反馈并合入 main | 🔄 进行中 | 已累计约 8 分钟 | 已清理锁文件和临时资产，等待标准 CI 与自动 Review |
+| 7 | 五轴 Review、处理反馈并合入 main | ✅ 已完成 | 约 12 分钟 | Ready 后无 Review 线程；分支 behind 0，进入 squash merge |
 
 ## 核心实现
 
@@ -71,18 +71,19 @@
 
 ## 验证结果
 
-已通过三轮受限组合态验证：
-
 - ✅ `npm run test:logs`
 - ✅ `npm run test:tracking-center`
 - ✅ `npm run typecheck`
 - ✅ `npm run build`
 - ✅ `npm run api:check`
+- ✅ Frontend CI
+- ✅ API Contract
 - ✅ 新旧参数兼容、复制链接、正整数 ID、pushState/popstate 单元测试
+- ✅ 跨宗族首次恢复保护
 - ✅ 临时补丁脚本和 workflow 已自动删除
 - ✅ `package-lock.json` 未进入最终差异
 
-标准 Frontend CI、API Contract、Auth Commercial E2E 和 Issue Delivery Governance 正在核对。
+Auth Commercial E2E 与 Issue Delivery Governance 当前仅支持手动触发，不是本 PR 自动门禁；本次未修改认证、后端、数据库或迁移代码。
 
 ## 五轴 Review
 
@@ -98,23 +99,19 @@
 - 入口展示代表来源接口已允许当前用户读取对象，不代表追踪权限；追踪接口仍执行 `operation_log.view`、宗族、支派和隐私校验。
 - 关系与支派以列表作为详情载体：入口不预加载追踪数据，不产生 N+1。
 
-## 当前恢复检查点
+## 最终恢复检查点
 
-- 当前 Issue：#123
-- 当前分支：`agent/issue-123-tracking-deep-links`
-- 当前 Draft PR：#201
-- 最后完成任务：完成五轴 Review 修复与完整前端验证
-- 当前进行中：核对标准 CI、最新 main、自动 Review 和可合并状态
-- 当前任务累计耗时：已累计约 8 分钟
-- 最新实现 Commit：`eff47cefccdbdb7666f602d9739983b143122f16`
-- CI 状态：定向测试、类型、构建和契约通过；标准检查待最终核对
-- 未解决 Review：无
-- 已知阻塞：无
-- 下一步最小任务：标准检查通过后转 Ready，处理自动 Review 并 squash merge
-- 最后更新时间：2026-07-14 21:05（Asia/Shanghai）
+- 当前 Issue：#123，PR 合入后由 `Closes #123` 自动关闭。
+- 当前分支：`agent/issue-123-tracking-deep-links`。
+- 当前 PR：#201，Ready。
+- 最后完成任务：标准门禁、五轴 Review、自动 Review 和主干同步核对。
+- CI 状态：Frontend CI、API Contract、定向测试、类型、构建和契约全部通过。
+- 未解决 Review：无评论、无 Review 提交、无未解决线程。
+- 主干同步：`behind 0`，PR 可合并。
+- 下一步最小任务：使用当前 head SHA 执行 squash merge。
+- 最后更新时间：2026-07-14 21:20（Asia/Shanghai）。
 
 ### 耗时汇总
 
-- 已完成任务活跃耗时：约 1 小时 33 分钟
-- 当前 Review 任务累计耗时：已累计约 8 分钟
-- 外部等待：GitHub Actions 排队与运行时间不计入活跃耗时
+- Issue #123 活跃耗时：约 1 小时 45 分钟。
+- 外部等待：GitHub Actions 排队与运行时间不计入活跃耗时。
