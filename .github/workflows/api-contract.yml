@@ -21,6 +21,10 @@ on:
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   api-contract:
     runs-on: ubuntu-latest
