@@ -35,9 +35,33 @@ jobs:
           cache: maven
       - name: Apply backend closure
         run: python3 .github/scripts/issue-130-132-backend-apply.py
-      - name: Run full backend tests
+      - name: Run full backend tests with focused diagnostics
         working-directory: backend/genealogy-backend
-        run: mvn -B clean test
+        shell: bash
+        run: |
+          set +e
+          mvn -q clean test >/tmp/auth-closure-tests.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo '=== Maven failure summary ==='
+            grep -E '\[ERROR\]|COMPILATION ERROR|Failures:|Errors:' /tmp/auth-closure-tests.log | tail -n 100 || true
+            echo '=== Surefire failures ==='
+            python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for report in sorted(Path('target/surefire-reports').glob('TEST-*.xml')):
+              try:
+                  root = ET.parse(report).getroot()
+              except Exception:
+                  continue
+              for case in root.findall('testcase'):
+                  node = case.find('failure') or case.find('error')
+                  if node is not None:
+                      print(f"{root.get('name')}#{case.get('name')}: {(node.get('message') or '').strip()}")
+          PY
+            exit "$status"
+          fi
       - name: Package and start with PostgreSQL/Flyway
         working-directory: backend/genealogy-backend
         env:
