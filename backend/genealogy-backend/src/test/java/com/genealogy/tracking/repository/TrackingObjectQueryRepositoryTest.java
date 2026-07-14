@@ -108,7 +108,7 @@ class TrackingObjectQueryRepositoryTest {
                 .contains(") visible_object where object_id in (:targetids)")
                 .doesNotContain("limit :limit")
                 .doesNotContain("offset :offset");
-        assertThat((Collection<?>) parameters.getValue().getValue("targetIds")).containsExactly(100L, 101L);
+        assertThat((Collection<Long>) parameters.getValue().getValue("targetIds")).containsExactly(100L, 101L);
         assertThat(parameters.getValue().getValue("visibleBranchIds")).isEqualTo(List.of(10L));
     }
 
