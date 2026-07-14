@@ -1,0 +1,79 @@
+name: Issue 120 Patch Frontend Model
+
+on:
+  push:
+    branches:
+      - "agent/issue-120-business-object-search"
+    paths:
+      - ".github/workflows/issue-120-patch-frontend-model.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-120-business-object-search
+          fetch-depth: 0
+      - name: Reuse tested business display model in page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/features/logs/LogPage.tsx')
+          text = path.read_text()
+          import_anchor = "import type { TraceCoverage, TraceTarget, TraceTimelineEntry } from './logTraceModel.js';\n"
+          model_import = "import { businessLogTargetText, trackingObjectSelection } from './businessDisplayModel.js';\n"
+          if model_import not in text:
+              text = text.replace(import_anchor, import_anchor + model_import)
+          old = '''function targetTextFromLog(log: OperationLogResponse) {
+  const name = log.targetDisplayName || log.targetSummary || log.summary;
+  const branch = log.targetBranchName ? `（${log.targetBranchName}）` : '';
+  return `${targetTypeText(log.targetType)}：${display(name, '业务信息不可用')}${branch}`;
+}
+'''
+          new = '''function targetTextFromLog(log: OperationLogResponse) {
+  return businessLogTargetText(log, targetTypeText);
+}
+'''
+          if old not in text:
+              raise SystemExit('targetTextFromLog block not found')
+          text = text.replace(old, new, 1)
+          old = '''function trackingObjectSummary(row: TrackingObjectResponse) {
+  const parts = [row.displayName, row.branchName, row.secondaryLabel].filter(Boolean);
+  return `${targetTypeText(row.objectType)}：${parts.join(' · ')}`;
+}
+
+'''
+          if old not in text:
+              raise SystemExit('trackingObjectSummary block not found')
+          text = text.replace(old, '', 1)
+          old = '''  function applyTraceFromObject(row: TrackingObjectResponse) {
+    const summary = trackingObjectSummary(row);
+    resetTraceSelection({
+      clanId: workspace.clanId,
+      targetType: row.objectType,
+      targetId: String(row.objectId),
+      targetSummary: summary,
+      reviewTaskId: row.objectType === 'review_task' ? String(row.objectId) : ''
+    }, `已选择追踪对象：${summary}`);
+  }
+'''
+          new = '''  function applyTraceFromObject(row: TrackingObjectResponse) {
+    const result = trackingObjectSelection(row, workspace.clanId, targetTypeText);
+    resetTraceSelection(result.selection, `已选择追踪对象：${result.summary}`);
+  }
+'''
+          if old not in text:
+              raise SystemExit('applyTraceFromObject block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/logs/LogPage.tsx
+          git commit -m "refactor(tracking): reuse tested business display model"
+          git push origin HEAD:agent/issue-120-business-object-search
