@@ -1,0 +1,134 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Review History API",
+    "version": "1.0.0",
+    "description": "审核中心待审、我提交的、已处理分页查询与安全历史详情契约"
+  },
+  "paths": {
+    "/api/v1/clans/{clanId}/review-tasks/search": {
+      "get": {
+        "tags": ["Reviews"],
+        "summary": "分页查询审核中心任务",
+        "operationId": "searchReviewTasks",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "view", "in": "query", "schema": { "$ref": "#/components/schemas/ReviewTaskView" } },
+          { "name": "scope", "in": "query", "schema": { "$ref": "#/components/schemas/ReviewTaskScope" } },
+          { "name": "targetType", "in": "query", "schema": { "type": "string" } },
+          { "name": "targetId", "in": "query", "schema": { "type": "integer", "format": "int64" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "branchId", "in": "query", "schema": { "type": "integer", "format": "int64" } },
+          { "name": "submittedFrom", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "submittedTo", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "processedFrom", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "processedTo", "in": "query", "schema": { "type": "string", "format": "date-time" } },
+          { "name": "pageNo", "in": "query", "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核任务分页结果",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewTaskPage" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-tasks/{taskId}/view": {
+      "get": {
+        "tags": ["Reviews"],
+        "summary": "查看安全审核详情与历史轮次",
+        "operationId": "getReviewTaskViewDetail",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核详情",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewTaskViewDetailResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-targets/{targetType}/{targetId}/history": {
+      "get": {
+        "tags": ["Reviews"],
+        "summary": "查询业务对象审核历史",
+        "operationId": "getReviewTargetHistory",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "targetType", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "targetId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "审核历史",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewTaskListItemResponse" } } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ReviewTaskView": { "type": "string", "enum": ["pending", "submitted", "processed"] },
+      "ReviewTaskScope": { "type": "string", "enum": ["mine", "all"] },
+      "ReviewTargetSummaryResponse": {
+        "type": "object",
+        "required": ["displayTitle"],
+        "properties": {
+          "displayTitle": { "type": "string" },
+          "fileName": { "type": "string", "nullable": true },
+          "branchName": { "type": "string", "nullable": true },
+          "draftCount": { "type": "integer", "nullable": true },
+          "excludedCount": { "type": "integer", "nullable": true },
+          "reviewRound": { "type": "integer", "nullable": true }
+        }
+      },
+      "ReviewTaskListItemResponse": {
+        "type": "object",
+        "required": ["id", "clanId", "revisionId", "status", "targetType", "targetId", "title", "submitterId", "submitTime", "targetSummary"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "revisionId": { "type": "integer", "format": "int64" },
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "branchName": { "type": "string", "nullable": true },
+          "status": { "type": "string" },
+          "targetType": { "type": "string" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "title": { "type": "string" },
+          "diffSummary": { "type": "string", "nullable": true },
+          "submitterId": { "type": "integer", "format": "int64" },
+          "submitterName": { "type": "string", "nullable": true },
+          "reviewerId": { "type": "integer", "format": "int64", "nullable": true },
+          "reviewerName": { "type": "string", "nullable": true },
+          "reviewComment": { "type": "string", "nullable": true },
+          "submitTime": { "type": "string", "format": "date-time" },
+          "processedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "targetSummary": { "$ref": "#/components/schemas/ReviewTargetSummaryResponse" }
+        }
+      },
+      "ReviewTaskPage": {
+        "type": "object",
+        "required": ["records", "total", "pageNo", "pageSize", "totalPages"],
+        "properties": {
+          "records": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewTaskListItemResponse" } },
+          "total": { "type": "integer", "format": "int64" },
+          "pageNo": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "ReviewTaskViewDetailResponse": {
+        "type": "object",
+        "required": ["task", "history"],
+        "properties": {
+          "task": { "$ref": "#/components/schemas/ReviewTaskListItemResponse" },
+          "history": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewTaskListItemResponse" } }
+        }
+      }
+    }
+  }
+}
