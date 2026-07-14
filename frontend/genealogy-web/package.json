@@ -12,6 +12,7 @@
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
     "test:members": "node --test src/features/members/memberPageModel.test.js",
     "test:auth": "node --test src/features/auth/authPageModel.test.js",
+    "test:logs": "node --test src/features/logs/*.test.js",
     "test:e2e": "playwright test"
   },
   "dependencies": {
