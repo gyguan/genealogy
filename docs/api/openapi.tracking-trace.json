@@ -5,7 +5,7 @@
         "operationId": "getTrackingObjectTrace",
         "tags": ["Tracking"],
         "summary": "获取单个可见业务对象的统一追踪详情",
-        "description": "服务端统一聚合对象摘要、版本、审核事项、来源绑定和操作日志，并完成权限、支派范围、隐私、去重、排序及覆盖范围判断。历史分段均有返回上限，发生截断时通过 traceCoverage 明确说明。",
+        "description": "服务端统一聚合对象摘要、版本、审核事项、来源绑定和操作日志，并完成权限、支派范围、隐私、去重、排序及覆盖范围判断。历史分段均有返回上限，发生截断时通过 traceCoverage 明确说明。文化对象运行时聚合由后续文化 Issue 实现。",
         "parameters": [
           {
             "name": "targetType",
@@ -13,7 +13,16 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["person", "relationship", "source", "branch", "review_task"]
+              "enum": [
+                "person",
+                "relationship",
+                "source",
+                "branch",
+                "review_task",
+                "culture_item",
+                "migration_event",
+                "culture_site"
+              ]
             }
           },
           {
