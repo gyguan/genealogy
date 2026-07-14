@@ -1,0 +1,23 @@
+name: Issue 105 Generation Discovery
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-105-discovery.yml'
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List generation-related files
+        shell: bash
+        run: |
+          echo '=== backend generation-related paths ==='
+          find backend/genealogy-backend/src/main/java -type f | grep -Ei '(generation|generationword|word.*generation|zipei)' || true
+          echo '=== backend matching declarations ==='
+          grep -RIlE '(GenerationScheme|GenerationWord|generation_scheme|generation_word|字辈)' backend/genealogy-backend/src/main/java backend/genealogy-backend/src/main/resources/db/migration 2>/dev/null | sort || true
+          echo '=== frontend matching declarations ==='
+          grep -RIlE '(generation|字辈)' frontend/genealogy-web/src 2>/dev/null | sort || true
+          echo '=== api matching declarations ==='
+          grep -RIlE '(generation|字辈)' docs/api 2>/dev/null | sort || true
