@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface SourceBindingRepository extends JpaRepository<SourceBindingEntity, Long> {
@@ -12,6 +13,8 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
     List<SourceBindingEntity> findByTargetTypeAndTargetIdOrderByCreatedAtDesc(String targetType, Long targetId);
 
     List<SourceBindingEntity> findBySourceIdOrderByCreatedAtDesc(Long sourceId);
+
+    List<SourceBindingEntity> findBySourceIdIn(Collection<Long> sourceIds);
 
     List<SourceBindingEntity> findBySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus);
 
