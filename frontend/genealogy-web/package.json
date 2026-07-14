@@ -11,7 +11,8 @@
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
     "test:members": "node --test src/features/members/memberPageModel.test.js",
-    "test:auth": "node --test src/features/auth/authPageModel.test.js"
+    "test:auth": "node --test src/features/auth/authPageModel.test.js",
+    "test:logs": "node --test src/features/logs/logTraceModel.test.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
