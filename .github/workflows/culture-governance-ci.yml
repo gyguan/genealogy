@@ -55,12 +55,18 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Run culture and regression tests
+      - name: Run focused culture tests
         working-directory: backend/genealogy-backend
-        run: mvn -B test
+        run: >-
+          mvn -B -q
+          -Dtest=CultureDomainContractTest,CultureItemApplicationServiceTest,CultureItemDomainServiceTest,CultureItemPostgresIntegrationTest,CultureItemGovernanceApplicationServiceTest,CulturePermissionPolicyServiceTest
+          test
+      - name: Run full regression tests
+        working-directory: backend/genealogy-backend
+        run: mvn -B -q test
       - name: Package backend
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipTests package
+        run: mvn -B -q -DskipTests package
       - name: Verify PostgreSQL startup and Flyway
         working-directory: backend/genealogy-backend
         run: |
