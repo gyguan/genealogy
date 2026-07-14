@@ -5,7 +5,7 @@
         "operationId": "searchTrackingObjects",
         "tags": ["Tracking"],
         "summary": "按业务名称搜索当前宗族内可见的追踪对象",
-        "description": "每次请求必须指定一种对象类型，服务端在对应领域查询中完成权限范围、隐私过滤、分页和总数计算。技术 ID 仅用于后续追踪调用，前端不得作为主要展示文本。",
+        "description": "每次请求必须指定一种对象类型，服务端在对应领域查询中完成权限范围、隐私过滤、分页和总数计算。技术 ID 仅用于后续追踪调用，前端不得作为主要展示文本。文化对象的运行时搜索支持由后续文化 Issue 实现。",
         "parameters": [
           {
             "name": "clanId",
@@ -19,7 +19,16 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["person", "relationship", "source", "branch", "review_task"]
+              "enum": [
+                "person",
+                "relationship",
+                "source",
+                "branch",
+                "review_task",
+                "culture_item",
+                "migration_event",
+                "culture_site"
+              ]
             }
           },
           {
@@ -89,7 +98,16 @@
         "properties": {
           "objectType": {
             "type": "string",
-            "enum": ["person", "relationship", "source", "branch", "review_task"]
+            "enum": [
+              "person",
+              "relationship",
+              "source",
+              "branch",
+              "review_task",
+              "culture_item",
+              "migration_event",
+              "culture_site"
+            ]
           },
           "objectId": { "type": "integer", "format": "int64" },
           "displayName": { "type": "string" },

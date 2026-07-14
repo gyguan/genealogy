@@ -43,7 +43,7 @@ export type OperationLogStatsResponse = {
 };
 
 export type TrackingObjectResponse = {
-  objectType: "person" | "relationship" | "source" | "branch" | "review_task";
+  objectType: "person" | "relationship" | "source" | "branch" | "review_task" | "culture_item" | "migration_event" | "culture_site";
   objectId: number;
   displayName: string;
   secondaryLabel?: string | null;
