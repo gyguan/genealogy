@@ -17,16 +17,27 @@ import re
 import sys
 
 root = pathlib.Path(sys.argv[1])
-pattern = re.compile(r'^V([0-9]+(?:\.[0-9]+)?)__.+\.sql$')
+versioned_pattern = re.compile(r'^V([0-9]+(?:[._][0-9]+)*)__[a-z][a-z0-9_]*\.sql$')
+repeatable_pattern = re.compile(r'^R__[a-z][a-z0-9_]*\.sql$')
+callback_pattern = re.compile(r'^beforeEachMigrate__[a-z][a-z0-9_]*\.sql$')
 versions = collections.defaultdict(list)
+callbacks = []
+repeatables = []
 invalid = []
 
 for path in sorted(root.glob('*.sql')):
-    match = pattern.match(path.name)
-    if not match:
-        invalid.append(path.name)
+    versioned_match = versioned_pattern.match(path.name)
+    if versioned_match:
+        normalized_version = versioned_match.group(1).replace('_', '.')
+        versions[normalized_version].append(path.name)
         continue
-    versions[match.group(1)].append(path.name)
+    if repeatable_pattern.match(path.name):
+        repeatables.append(path.name)
+        continue
+    if callback_pattern.match(path.name):
+        callbacks.append(path.name)
+        continue
+    invalid.append(path.name)
 
 errors = []
 if invalid:
@@ -45,4 +56,12 @@ print('Flyway migration check passed.')
 print('Versions:')
 for version in sorted(versions, key=lambda item: [int(part) for part in item.split('.')]):
     print(f'  V{version}: {versions[version][0]}')
+if repeatables:
+    print('Repeatables:')
+    for name in repeatables:
+        print(f'  {name}')
+if callbacks:
+    print('Callbacks:')
+    for name in callbacks:
+        print(f'  {name}')
 PY

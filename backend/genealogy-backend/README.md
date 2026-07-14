@@ -62,13 +62,17 @@ docker compose up -d
 mvn spring-boot:run
 ```
 
-启动时 Flyway 会自动执行：
+启动时 Flyway 默认自动执行：
 
 ```text
 src/main/resources/db/migration
 ```
 
-该目录包含建表、索引、系统角色、系统权限、角色权限绑定等自动迁移脚本。
+该目录包含建表、索引、系统角色、系统权限、角色权限绑定等自动迁移脚本。Flyway 完成后，Hibernate 再通过 `ddl-auto=validate` 校验实体与数据库结构；因此正常本地启动不要关闭 Flyway。只有在数据库已由外部流程完成迁移、且明确知道 Schema 与当前代码一致时，才可临时设置：
+
+```text
+SPRING_FLYWAY_ENABLED=false
+```
 
 ### 5. 健康检查与 Swagger
 
@@ -107,13 +111,52 @@ username: genealogy
 password: 123456
 ```
 
-### 3. Flyway 版本冲突
+### 3. `entityManagerFactory` 或认证 Bean 创建失败
 
-如果报重复 migration version，执行脚本检查：
+出现以下 Bean 链时：
+
+```text
+authCookieBridgeFilter
+  -> authApplicationService
+  -> appUserRepository
+  -> jpaSharedEM_entityManagerFactory
+  -> entityManagerFactory
+```
+
+不要先修改认证 Filter、Application Service 或 Repository。它们通常只是被底层数据库初始化失败连带影响。请继续查看日志中最深层的 `Caused by`，重点关注：
+
+```text
+flywayInitializer
+FlywayException
+Schema-validation
+PSQLException
+```
+
+### 4. Flyway 版本冲突
+
+如果日志包含：
+
+```text
+Found more than one migration with version ...
+```
+
+先执行迁移元数据检查：
 
 ```bash
-./scripts/check-flyway-migrations.sh
+bash ./scripts/check-flyway-migrations.sh
 ```
+
+脚本会输出重复版本及具体文件名。不要使用 `flyway repair`、手工修改 `flyway_schema_history`、关闭 Flyway 或修改认证依赖链来绕过冲突。应在独立数据库治理 Issue 中，将重复脚本收敛为一个规范基线文件，并用更高版本的前向迁移完整保留被移除脚本的 SQL 职责。
+
+如果当前代码已经修复迁移版本，但本地数据库来自旧分支或旧 Docker volume，执行：
+
+```bash
+docker compose down -v
+docker compose up -d
+mvn spring-boot:run
+```
+
+该操作会删除本地容器数据卷，仅适用于可重建的本地开发数据库；有需要保留的数据时先完成备份。
 
 ## MVP1 API 验收
 

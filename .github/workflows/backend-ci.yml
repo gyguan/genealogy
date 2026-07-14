@@ -35,7 +35,21 @@ jobs:
 
       - name: Build and test
         working-directory: backend/genealogy-backend
-        run: mvn -B clean test
+        run: |
+          set +e
+          mvn -B clean test > /tmp/genealogy-maven-test.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "Maven test failed. Focused summary:"
+            grep -Ei "COMPILATION ERROR|Tests run:|Failures:|Errors:|BUILD FAILURE|AssertionFailedError|Caused by:|\[ERROR\]" /tmp/genealogy-maven-test.log \
+              | tail -n 80 \
+              | cut -c1-1200 || true
+            echo "Maven test output tail:"
+            tail -n 30 /tmp/genealogy-maven-test.log | cut -c1-1200
+            exit "$code"
+          fi
+          tail -n 40 /tmp/genealogy-maven-test.log
 
   commercial-frontend-build:
     name: Commercial Frontend Build

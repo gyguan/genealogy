@@ -3,7 +3,12 @@
 
 The validator is incremental:
 - Existing duplicate versions in the base branch are reported as legacy debt.
-- A PR fails only when it introduces/worsens duplicates or violates new rules.
+- A PR fails when it introduces/worsens duplicates or violates new rules.
+- A dedicated governance PR may reduce an existing duplicate version to one
+  canonical migration only when it adds enough higher-version forward
+  migrations to preserve the removed SQL responsibilities.
+- SQL callbacks are permitted only through an explicit supported event name and
+  an action-oriented lowercase description.
 """
 
 from __future__ import annotations
@@ -32,6 +37,10 @@ ANY_VERSIONED_RE = re.compile(
 )
 REPEATABLE_RE = re.compile(
     r"^R__(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
+)
+CALLBACK_RE = re.compile(
+    r"^(?P<event>beforeEachMigrate)__"
+    r"(?P<description>[a-z][a-z0-9]*(?:_[a-z0-9]+)*)\.sql$"
 )
 ALLOWED_ACTIONS = {
     "create",
@@ -124,6 +133,10 @@ def is_repeatable(path: str | None) -> bool:
     return bool(path and filename(path).startswith("R__"))
 
 
+def is_callback(path: str | None) -> bool:
+    return bool(path and CALLBACK_RE.fullmatch(filename(path)))
+
+
 def normalized_version(name: str) -> tuple[int, ...] | None:
     match = ANY_VERSIONED_RE.fullmatch(name)
     if not match:
@@ -203,6 +216,18 @@ def validate_repeatable(path: str, errors: list[str]) -> None:
     validate_description(match.group("description"), name, errors)
 
 
+def validate_callback(path: str, errors: list[str]) -> None:
+    name = filename(path)
+    match = CALLBACK_RE.fullmatch(name)
+    if not match:
+        errors.append(
+            f"{name}: callback must match "
+            "beforeEachMigrate__action_object_detail.sql"
+        )
+        return
+    validate_description(match.group("description"), name, errors)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -227,16 +252,58 @@ def main() -> int:
     head_versions = versions_by_key(head_paths)
     base_max_version = max(base_versions, default=None)
 
+    forward_migrations: set[str] = set()
+    for change in changes:
+        code = change.status[0]
+        if code not in {"A", "C", "R"} or not is_versioned(change.new_path):
+            continue
+        new_name = filename(change.new_path or "")
+        if not NEW_VERSIONED_RE.fullmatch(new_name):
+            continue
+        new_version = normalized_version(new_name)
+        if new_version is not None and (
+            base_max_version is None or new_version > base_max_version
+        ):
+            forward_migrations.add(change.new_path or "")
+
+    duplicate_reductions: dict[tuple[int, ...], int] = {}
+    for version, base_paths_for_version in base_versions.items():
+        base_count = len(base_paths_for_version)
+        head_count = len(head_versions.get(version, []))
+        if base_count > 1 and 1 <= head_count < base_count:
+            duplicate_reductions[version] = base_count - head_count
+
+    removed_duplicate_count = sum(duplicate_reductions.values())
+    has_forward_replacements = (
+        removed_duplicate_count > 0
+        and len(forward_migrations) >= removed_duplicate_count
+    )
+
     for change in changes:
         code = change.status[0]
 
         # Versioned migrations are immutable once present in the base branch.
+        # The only exception is a dedicated cleanup that reduces an already
+        # duplicated base version to one canonical migration and adds at least
+        # one new higher-version forward migration per removed duplicate file.
         if change.old_path and is_versioned(change.old_path):
             if code in {"D", "R"}:
-                errors.append(
-                    f"{filename(change.old_path)}: existing versioned migration "
-                    "must not be deleted or renamed; add a forward compensation"
-                )
+                old_version = normalized_version(filename(change.old_path))
+                if (
+                    old_version in duplicate_reductions
+                    and has_forward_replacements
+                ):
+                    warnings.append(
+                        f"resolving legacy duplicate version "
+                        f"{format_version(old_version or ())}: "
+                        f"{filename(change.old_path)} is replaced by a "
+                        "higher-version forward migration"
+                    )
+                else:
+                    errors.append(
+                        f"{filename(change.old_path)}: existing versioned migration "
+                        "must not be deleted or renamed; add a forward compensation"
+                    )
 
         if code == "M" and change.new_path and is_versioned(change.new_path):
             errors.append(
@@ -253,16 +320,21 @@ def main() -> int:
                 validate_new_versioned(change.new_path, base_max_version, errors)
             elif name.startswith("R__"):
                 validate_repeatable(change.new_path, errors)
+            elif CALLBACK_RE.fullmatch(name):
+                validate_callback(change.new_path, errors)
             else:
                 errors.append(
-                    f"{name}: SQL files in the Flyway directory must use V...__... "
-                    "or R__... naming"
+                    f"{name}: SQL files in the Flyway directory must use V...__..., "
+                    "R__..., or a supported callback naming pattern"
                 )
         elif code == "M" and is_repeatable(change.new_path):
             validate_repeatable(change.new_path, errors)
+        elif code == "M" and is_callback(change.new_path):
+            validate_callback(change.new_path, errors)
 
     # Existing duplicates are legacy debt; fail only when this PR introduces or
-    # increases a duplicate version.
+    # increases a duplicate version. A reduction to exactly one canonical file
+    # is allowed only by the guarded forward-replacement rule above.
     all_versions = sorted(set(base_versions) | set(head_versions))
     for version in all_versions:
         base_count = len(base_versions.get(version, []))
@@ -277,6 +349,16 @@ def main() -> int:
                 f"legacy duplicate version {format_version(version)} remains: "
                 + ", ".join(filename(path) for path in head_versions.get(version, []))
             )
+        elif base_count > 1 and head_count == 0:
+            errors.append(
+                f"Flyway version {format_version(version)} removed all canonical migrations"
+            )
+
+    if removed_duplicate_count > 0 and not has_forward_replacements:
+        errors.append(
+            "legacy duplicate cleanup must add at least one higher-version "
+            "forward migration for each removed duplicate file"
+        )
 
     if warnings:
         print("Warnings:")
@@ -290,6 +372,12 @@ def main() -> int:
         return 1
 
     print("Flyway migration governance passed.")
+    if duplicate_reductions:
+        reduced = ", ".join(
+            f"V{format_version(version)} (-{count})"
+            for version, count in sorted(duplicate_reductions.items())
+        )
+        print(f"Resolved legacy duplicate debt: {reduced}")
     if not changes:
         print("No migration files changed in this pull request.")
     return 0
