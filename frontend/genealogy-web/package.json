@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0 --port 5179",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4174",
-    "typecheck": "sh -c 'mkdir -p playwright-report; tsc -p tsconfig.json --noEmit > playwright-report/typecheck.log 2>&1 || { cat playwright-report/typecheck.log; exit 1; }'",
+    "typecheck": "sh -c 'mkdir -p playwright-report; echo Running frontend typecheck; tsc -p tsconfig.json --noEmit > playwright-report/typecheck.log 2>&1 || { cat playwright-report/typecheck.log; exit 1; }'",
     "test:tracking-center": "node src/features/logs/trackingCenterModel.test.mjs",
     "test:logs": "node --test src/features/logs/*.test.js src/features/logs/*.test.mjs",
     "test:auth": "node --test src/features/auth/authPageModel.test.js",
