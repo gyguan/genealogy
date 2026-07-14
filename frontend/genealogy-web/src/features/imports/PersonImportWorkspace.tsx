@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Space, Table, Tag, Upload } from 'antd';
+import { Alert, Button, Card, Checkbox, Collapse, Empty, Space, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { saveDownloadedBlob } from '../../shared/utils/download';
@@ -85,9 +85,7 @@ export function PersonImportWorkspace({
 
   function requestQuery(includeDuplicateConfirmation = false) {
     const params = new URLSearchParams({ branchId });
-    if (includeDuplicateConfirmation) {
-      params.set('confirmDuplicates', String(confirmDuplicates));
-    }
+    if (includeDuplicateConfirmation) params.set('confirmDuplicates', String(confirmDuplicates));
     return params.toString();
   }
 
@@ -212,22 +210,21 @@ export function PersonImportWorkspace({
         style={{ marginTop: 16 }}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message="请先下载标准模板，填写后原样上传"
-            description="表头必须依次为：姓名、性别、代次、字辈、出生日期、是否在世。请勿增加、删除、改名或调整顺序。性别填写男/女/未知，是否在世填写是/否，代次填写正整数，日期格式为 yyyy-MM-dd。"
+          <Collapse
+            ghost
+            size="small"
+            items={[{
+              key: 'template-guide',
+              label: '模板填写说明',
+              children: (
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  表头依次为姓名、性别、代次、字辈、出生日期、是否在世，请勿改名或调整顺序。性别填写男/女/未知，是否在世填写是/否，代次填写正整数，日期格式为 yyyy-MM-dd。导入后先生成草稿，错误行可在导入任务中修正。
+                </Typography.Paragraph>
+              )
+            }]}
           />
-          <Alert
-            type="info"
-            showIcon
-            message="导入人物默认进入草稿状态；模板结构错误会整文件拒绝，行数据错误可在导入任务中修正。"
-          />
-          {!branchSelected ? (
-            <Alert type="warning" showIcon message="请在本页上方选择本次导入的目标支派，再上传填写后的模板。" />
-          ) : (
-            <Alert type="success" showIcon message={`当前目标支派：${branchName || '未命名支派'}。文件中无需填写支派或支派 ID。`} />
-          )}
+          {!branchSelected ? <Alert type="warning" showIcon message="请先选择目标支派" /> : null}
+          {branchSelected ? <Typography.Text type="secondary">导入到：{branchName || '未命名支派'}</Typography.Text> : null}
           <Upload {...uploadProps}>
             <Button disabled={!branchSelected}>上传填写后的模板</Button>
           </Upload>
@@ -255,7 +252,7 @@ export function PersonImportWorkspace({
             <Alert
               type="warning"
               showIcon
-              message={`发现 ${preview.errorCount} 条数据错误。仍可创建导入批次，之后在任务详情中逐行修正。`}
+              message={`发现 ${preview.errorCount} 条数据错误，可创建批次后逐行修正。`}
               style={{ marginBottom: 12 }}
             />
           ) : null}

@@ -1,0 +1,42 @@
+/* Issue #178: keep primary tasks above low-frequency product narration. */
+
+.lineage-workbench-head,
+.lineage-section-desc,
+.audit-trace-page .tracking-center-intro,
+.tracking-filter-actions > .ant-typography,
+.person-archive-search .archive-search-summary {
+  display: none;
+}
+
+/* The source library already has a global module title in App Header. */
+.source-library-page > .ant-space > .ant-space-item:first-child {
+  display: none;
+}
+
+/* General permission rules move to contextual help; risk warnings in modals remain visible. */
+.member-role-page > .ant-alert:first-child {
+  display: none;
+}
+
+/* Culture concepts are available through labels; avoid repeating paragraphs in summary cards. */
+.home-culture-card-list .ant-typography-secondary,
+.home-culture-grid > .ant-card:nth-child(2) .ant-typography-secondary {
+  display: none;
+}
+
+/* Wizard flow rules are available from Panel help; lists keep only actionable states. */
+.step-draft-review-header p,
+.branch-step-list-header .ant-typography-paragraph,
+.review-progress-submit-list .step-draft-review-header p,
+.review-progress-task-list .step-draft-review-header p,
+.wizard-generation-inline-list > .ant-alert,
+.wizard-generation-word-grid + .wizard-inline-list-header + .ant-typography-paragraph,
+.relationship-step-panel > .ant-space > .ant-space-item:first-child {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tracking-filter-actions {
+    align-items: flex-start;
+  }
+}
