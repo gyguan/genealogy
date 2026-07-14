@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "frontend/genealogy-web/src/features/culture/**"
+      - "frontend/genealogy-web/src/shared/api/client.ts"
       - "frontend/genealogy-web/src/shared/navigation/trackingDeepLink*"
       - "frontend/genealogy-web/e2e/culture-library.spec.ts"
       - "frontend/genealogy-web/package.json"
@@ -13,6 +14,7 @@ on:
     branches: ["main"]
     paths:
       - "frontend/genealogy-web/src/features/culture/**"
+      - "frontend/genealogy-web/src/shared/api/client.ts"
       - "frontend/genealogy-web/src/shared/navigation/trackingDeepLink*"
       - "frontend/genealogy-web/e2e/culture-library.spec.ts"
       - "frontend/genealogy-web/package.json"
