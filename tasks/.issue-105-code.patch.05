@@ -1,0 +1,321 @@
+GenSchemeRepository genSchemeRepository;
++    private final GenWordRepository genWordRepository;
++    private final GenerationImportDraftRepository generationImportDraftRepository;
+     private final ImportJobRepository importJobRepository;
+     private final ImportJobRowRepository importJobRowRepository;
+     private final ObjectMapper objectMapper;
+@@ -56,6 +64,8 @@ public class RevisionApplyService {
+             SourceRepository sourceRepository,
+             BranchRepository branchRepository,
+             GenSchemeRepository genSchemeRepository,
++            GenWordRepository genWordRepository,
++            GenerationImportDraftRepository generationImportDraftRepository,
+             ImportJobRepository importJobRepository,
+             ImportJobRowRepository importJobRowRepository,
+             ObjectMapper objectMapper
+@@ -65,6 +75,8 @@ public class RevisionApplyService {
+         this.sourceRepository = sourceRepository;
+         this.branchRepository = branchRepository;
+         this.genSchemeRepository = genSchemeRepository;
++        this.genWordRepository = genWordRepository;
++        this.generationImportDraftRepository = generationImportDraftRepository;
+         this.importJobRepository = importJobRepository;
+         this.importJobRowRepository = importJobRowRepository;
+         this.objectMapper = objectMapper;
+@@ -262,6 +274,8 @@ public class RevisionApplyService {
+         if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {
+             List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);
+             updateRelationshipStatuses(relationships, STATUS_OFFICIAL, applyTime);
++        } else if (ImportJobEntity.TYPE_GENERATION.equals(normalize(job.getImportType()))) {
++            applyGenerationImport(job, applyTime);
+         } else {
+             List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
+             for (PersonEntity person : persons) {
+@@ -280,6 +294,9 @@ public class RevisionApplyService {
+         if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {
+             List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);
+             updateRelationshipStatuses(relationships, STATUS_DRAFT, rejectTime);
++        } else if (ImportJobEntity.TYPE_GENERATION.equals(normalize(job.getImportType()))) {
++            updateGenerationDraftStatuses(job, GenerationImportDraftEntity.STATUS_PENDING_REVIEW,
++                    GenerationImportDraftEntity.STATUS_REJECTED, rejectTime);
+         } else {
+             List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
+             for (PersonEntity person : persons) {
+@@ -293,6 +310,115 @@ public class RevisionApplyService {
+         importJobRepository.save(job);
+     }
+ 
++
++    private void applyGenerationImport(ImportJobEntity job, LocalDateTime applyTime) {
++        List<GenerationImportDraftEntity> drafts = requireGenerationDrafts(
++                job, GenerationImportDraftEntity.STATUS_PENDING_REVIEW
++        );
++        Map<String, List<GenerationImportDraftEntity>> createGroups = new LinkedHashMap<>();
++        List<GenerationImportDraftEntity> appendDrafts = new ArrayList<>();
++        for (GenerationImportDraftEntity draft : drafts) {
++            if (GenerationImportDraftEntity.ACTION_CREATE_SCHEME.equals(draft.getActionType())) {
++                String key = draft.getClanId() + ":" + (draft.getBranchId() == null ? "clan" : draft.getBranchId())
++                        + ":" + draft.getSchemeName().trim().toLowerCase();
++                createGroups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(draft);
++            } else if (GenerationImportDraftEntity.ACTION_APPEND_WORD.equals(draft.getActionType())) {
++                appendDrafts.add(draft);
++            } else {
++                throw new BusinessException("IMPORT_GENERATION_ACTION_INVALID", "字辈导入草稿操作类型无效");
++            }
++        }
++
++        for (List<GenerationImportDraftEntity> group : createGroups.values()) {
++            GenerationImportDraftEntity first = group.get(0);
++            if (!genSchemeRepository.findByScopeAndName(
++                    job.getClanId(), job.getBranchId(), first.getSchemeName()).isEmpty()) {
++                throw new BusinessException("IMPORT_GENERATION_SCHEME_CONCURRENT_CONFLICT", "审核期间出现同名字辈方案，请重新导入");
++            }
++            GenerationSchemeEntity scheme = new GenerationSchemeEntity();
++            scheme.setClanId(job.getClanId());
++            scheme.setBranchId(job.getBranchId());
++            scheme.setSchemeName(first.getSchemeName());
++            scheme.setPoemText(first.getPoemText());
++            scheme.setStartGeneration(first.getStartGeneration());
++            scheme.setIsDefault(Boolean.TRUE.equals(first.getIsDefault()));
++            scheme.setValidationEnabled(!Boolean.FALSE.equals(first.getValidationEnabled()));
++            scheme.setStrictMode(Boolean.TRUE.equals(first.getStrictMode()));
++            scheme.setStatus(STATUS_OFFICIAL);
++            scheme.setCreatedAt(applyTime);
++            GenerationSchemeEntity savedScheme = genSchemeRepository.save(scheme);
++            List<GenerationWordEntity> words = new ArrayList<>();
++            for (GenerationImportDraftEntity draft : group) {
++                GenerationWordEntity word = new GenerationWordEntity();
++                word.setSchemeId(savedScheme.getId());
++                word.setGenerationNo(draft.getGenerationNo());
++                word.setWord(draft.getWord());
++                word.setDescription(draft.getDescription());
++                word.setSortOrder(draft.getGenerationNo());
++                words.add(word);
++            }
++            genWordRepository.saveAll(words);
++        }
++
++        for (GenerationImportDraftEntity draft : appendDrafts) {
++            GenerationSchemeEntity scheme = genSchemeRepository.findByIdAndClanId(draft.getTargetSchemeId(), job.getClanId())
++                    .orElseThrow(() -> new BusinessException("IMPORT_GENERATION_SCHEME_NOT_FOUND", "待追加的字辈方案不存在"));
++            if (!STATUS_OFFICIAL.equals(normalize(scheme.getStatus()))
++                    || !Objects.equals(scheme.getBranchId(), job.getBranchId())) {
++                throw new BusinessException("IMPORT_GENERATION_SCHEME_STATUS_CONFLICT", "待追加的字辈方案范围或状态已变化");
++            }
++            if (genWordRepository.existsBySchemeIdAndGenerationNo(scheme.getId(), draft.getGenerationNo())) {
++                throw new BusinessException("IMPORT_GENERATION_WORD_CONCURRENT_CONFLICT", "审核期间目标代次已被其他操作占用");
++            }
++            GenerationWordEntity word = new GenerationWordEntity();
++            word.setSchemeId(scheme.getId());
++            word.setGenerationNo(draft.getGenerationNo());
++            word.setWord(draft.getWord());
++            word.setDescription(draft.getDescription());
++            word.setSortOrder(draft.getGenerationNo());
++            genWordRepository.save(word);
++        }
++
++        drafts.forEach(draft -> {
++            draft.setStatus(GenerationImportDraftEntity.STATUS_OFFICIAL);
++            draft.setUpdatedAt(applyTime);
++        });
++        generationImportDraftRepository.saveAll(drafts);
++    }
++
++    private void updateGenerationDraftStatuses(
++            ImportJobEntity job,
++            String expectedStatus,
++            String targetStatus,
++            LocalDateTime time
++    ) {
++        List<GenerationImportDraftEntity> drafts = requireGenerationDrafts(job, expectedStatus);
++        drafts.forEach(draft -> {
++            draft.setStatus(targetStatus);
++            draft.setUpdatedAt(time);
++        });
++        generationImportDraftRepository.saveAll(drafts);
++    }
++
++    private List<GenerationImportDraftEntity> requireGenerationDrafts(ImportJobEntity job, String expectedStatus) {
++        List<ImportJobRowEntity> rows = draftRows(job);
++        List<GenerationImportDraftEntity> drafts = new ArrayList<>();
++        for (ImportJobRowEntity row : rows) {
++            if (!GenerationImportDraftEntity.TARGET_TYPE.equals(row.getDraftTargetType())) {
++                throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_TYPE_MISMATCH", "字辈导入批次关联了错误的草稿类型");
++            }
++            GenerationImportDraftEntity draft = generationImportDraftRepository.findByIdAndJobId(draftTargetId(row), job.getId())
++                    .orElseThrow(() -> new BusinessException("IMPORT_GENERATION_DRAFT_NOT_FOUND", "字辈导入草稿不存在"));
++            if (!Objects.equals(draft.getClanId(), job.getClanId())
++                    || !Objects.equals(draft.getBranchId(), job.getBranchId())
++                    || !expectedStatus.equals(normalize(draft.getStatus()))) {
++                throw new BusinessException("IMPORT_GENERATION_DRAFT_STATUS_INVALID", "字辈导入草稿范围或状态与批次不一致");
++            }
++            drafts.add(draft);
++        }
++        return drafts;
++    }
++
+     private ImportJobEntity requireImportJob(AuditRecordEntity revision) {
+         ImportJobEntity job = importJobRepository.findByIdAndClanId(revision.getTargetId(), revision.getClanId())
+                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入批次不存在"));
+diff --git a/backend/genealogy-backend/src/main/resources/db/migration/V20260714093000__create_generation_import_draft.sql b/backend/genealogy-backend/src/main/resources/db/migration/V20260714093000__create_generation_import_draft.sql
+new file mode 100644
+index 0000000..b069a3f
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/resources/db/migration/V20260714093000__create_generation_import_draft.sql
+@@ -0,0 +1,42 @@
++-- Issue #105: stage generation scheme/word import data before unified review.
++-- Lock impact: creates a new table and indexes only; no rewrite of existing tables.
++-- Compatibility: existing person/relationship imports are unaffected.
++
++CREATE TABLE IF NOT EXISTS generation_import_draft (
++    id BIGSERIAL PRIMARY KEY,
++    job_id BIGINT NOT NULL REFERENCES import_job(id),
++    clan_id BIGINT NOT NULL REFERENCES clan(id),
++    branch_id BIGINT REFERENCES branch(id),
++    action_type VARCHAR(32) NOT NULL,
++    target_scheme_id BIGINT REFERENCES generation_scheme(id),
++    scheme_name VARCHAR(200) NOT NULL,
++    poem_text TEXT,
++    start_generation INTEGER NOT NULL,
++    is_default BOOLEAN NOT NULL DEFAULT FALSE,
++    validation_enabled BOOLEAN NOT NULL DEFAULT TRUE,
++    strict_mode BOOLEAN NOT NULL DEFAULT FALSE,
++    generation_no INTEGER NOT NULL,
++    word VARCHAR(20) NOT NULL,
++    description VARCHAR(255),
++    status VARCHAR(32) NOT NULL DEFAULT 'draft',
++    created_by BIGINT REFERENCES app_user(id),
++    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
++    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
++    CONSTRAINT chk_generation_import_draft_action
++        CHECK (action_type IN ('create_scheme', 'append_word')),
++    CONSTRAINT chk_generation_import_draft_status
++        CHECK (status IN ('draft', 'pending_review', 'official', 'rejected')),
++    CONSTRAINT chk_generation_import_draft_positive
++        CHECK (start_generation > 0 AND generation_no > 0)
++);
++
++CREATE INDEX IF NOT EXISTS idx_generation_import_draft_job_status
++    ON generation_import_draft(job_id, status);
++
++CREATE INDEX IF NOT EXISTS idx_generation_import_draft_target_scheme
++    ON generation_import_draft(target_scheme_id)
++    WHERE target_scheme_id IS NOT NULL;
++
++COMMENT ON TABLE generation_import_draft IS '字辈导入审核前草稿表，复用通用导入批次和审核中心';
++COMMENT ON COLUMN generation_import_draft.action_type IS 'create_scheme 新建方案或 append_word 向正式方案追加字辈';
++COMMENT ON COLUMN generation_import_draft.status IS '草稿状态：draft、pending_review、official、rejected';
+diff --git a/database/rollback/issue-105-generation-import.sql b/database/rollback/issue-105-generation-import.sql
+new file mode 100644
+index 0000000..938f991
+--- /dev/null
++++ b/database/rollback/issue-105-generation-import.sql
+@@ -0,0 +1,3 @@
++-- Issue #105 rollback reference.
++-- Only execute after confirming no pending/approved generation import jobs rely on this table.
++DROP TABLE IF EXISTS generation_import_draft;
+diff --git a/frontend/genealogy-web/src/features/imports/GenerationImportWorkspace.tsx b/frontend/genealogy-web/src/features/imports/GenerationImportWorkspace.tsx
+new file mode 100644
+index 0000000..6c3d5f5
+--- /dev/null
++++ b/frontend/genealogy-web/src/features/imports/GenerationImportWorkspace.tsx
+@@ -0,0 +1,194 @@
++import { useEffect, useState } from 'react';
++import { Alert, Button, Card, Empty, Space, Table, Tag, Upload } from 'antd';
++import type { UploadProps } from 'antd';
++import { apiClient } from '../../shared/api/client';
++import { saveDownloadedBlob } from '../../shared/utils/download';
++
++type Props = {
++  notify: (data: unknown, error?: boolean) => void;
++  clanId: string;
++  branchId: string;
++  branchName: string;
++  onBatchCreated: () => void;
++};
++
++type PreviewRow = {
++  rowNo?: number;
++  schemeName?: string;
++  startGeneration?: number;
++  generationNo?: number;
++  word?: string;
++  actionType?: string;
++  duplicated?: boolean;
++  errorMessage?: string;
++};
++
++type PreviewResult = {
++  totalCount?: number;
++  validCount?: number;
++  duplicateCount?: number;
++  errorCount?: number;
++  rows?: PreviewRow[];
++};
++
++type ImportJobResult = { id?: number; totalCount?: number; successCount?: number; failureCount?: number };
++
++export function GenerationImportWorkspace({ notify, clanId, branchId, branchName, onBatchCreated }: Props) {
++  const [file, setFile] = useState<File | null>(null);
++  const [preview, setPreview] = useState<PreviewResult | null>(null);
++  const [loading, setLoading] = useState(false);
++
++  useEffect(() => {
++    setFile(null);
++    setPreview(null);
++  }, [clanId, branchId]);
++
++  const scopeText = branchId ? `支派“${branchName || '未命名支派'}”` : '宗族通用范围';
++
++  const uploadProps: UploadProps = {
++    accept: '.csv,.xlsx',
++    maxCount: 1,
++    beforeUpload: selected => {
++      setFile(selected as File);
++      setPreview(null);
++      return false;
++    },
++    onRemove: () => {
++      setFile(null);
++      setPreview(null);
++    },
++    fileList: file ? [{ uid: 'generation-import-file', name: file.name, status: 'done' }] : []
++  };
++
++  async function downloadTemplate(format: 'csv' | 'xlsx') {
++    try {
++      const response = await fetch(`/api/v1/imports/templates/generations.${format}`, { credentials: 'include' });
++      if (!response.ok) throw new Error('模板下载失败');
++      saveDownloadedBlob(await response.blob(), `generation-import-template.${format}`);
++    } catch (error) {
++      notify({ message: (error as Error).message || '模板下载失败' }, true);
++    }
++  }
++
++  function query() {
++    const params = new URLSearchParams();
++    if (branchId) params.set('branchId', branchId);
++    return params.toString() ? `?${params.toString()}` : '';
++  }
++
++  async function previewFile() {
++    if (!clanId || !file) {
++      notify({ message: !clanId ? '请先选择所属宗族' : '请先选择填写后的模板文件' }, true);
++      return;
++    }
++    setLoading(true);
++    try {
++      const result = await apiClient.upload<PreviewResult>(
++        `/clans/${clanId}/imports/generations/preview${query()}`,
++        file
++      );
++      setPreview(result);
++      notify({ message: `预览完成：${result.validCount || 0} 条可导入，${result.errorCount || 0} 条需修正` });
++    } catch (error) {
++      notify({ message: (error as Error).message || '字辈导入预览失败' }, true);
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  async func
