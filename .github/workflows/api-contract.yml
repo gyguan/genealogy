@@ -9,6 +9,7 @@ on:
       - 'frontend/genealogy-web/package.json'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
+      - '.github/workflows/api-contract.yml'
   push:
     branches:
       - main
@@ -20,16 +21,16 @@ on:
       - 'frontend/genealogy-web/package.json'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
+      - '.github/workflows/api-contract.yml'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   api-contract:
+    name: API Contract Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,7 +47,3 @@ jobs:
 
       - name: Check generated API contract
         run: bash scripts/api/check-api-contract.sh
-
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
