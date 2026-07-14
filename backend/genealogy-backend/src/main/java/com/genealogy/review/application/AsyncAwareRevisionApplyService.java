@@ -11,13 +11,11 @@ import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.source.repository.SourceRepository;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-@Primary
 @Service
 public class AsyncAwareRevisionApplyService extends RevisionApplyService {
 
