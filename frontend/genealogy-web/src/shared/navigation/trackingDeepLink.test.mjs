@@ -11,6 +11,10 @@ assert.equal(normalizeTrackingTargetType('SOURCE'), 'source');
 assert.equal(normalizeTrackingTargetType('review_task'), '');
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 9 })?.targetId, '9');
 assert.equal(normalizeTrackingTarget({ clanId: '', targetType: 'person', targetId: 9 }), null);
+assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 0 }), null);
+assert.equal(normalizeTrackingTarget({ clanId: 'abc', targetType: 'person', targetId: 9 }), null);
+assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: '../9' }), null);
+assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 9, reviewTaskId: 'invalid' })?.reviewTaskId, '');
 
 const href = buildTrackingDeepLink(
   'https://example.test/app?view=personArchive&keyword=%E5%BC%A0%E4%B8%89#detail',
