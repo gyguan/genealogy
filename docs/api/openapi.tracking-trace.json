@@ -1,0 +1,201 @@
+{
+  "paths": {
+    "/api/v1/tracking/objects/{targetType}/{targetId}/trace": {
+      "get": {
+        "operationId": "getTrackingObjectTrace",
+        "tags": ["Tracking"],
+        "summary": "获取单个可见业务对象的统一追踪详情",
+        "description": "服务端统一聚合对象摘要、版本、审核事项、来源绑定和操作日志，并完成权限、支派范围、隐私、去重、排序及覆盖范围判断。历史分段均有返回上限，发生截断时通过 traceCoverage 明确说明。",
+        "parameters": [
+          {
+            "name": "targetType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["person", "relationship", "source", "branch", "review_task"]
+            }
+          },
+          {
+            "name": "targetId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "clanId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前用户可见的统一追踪详情",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseTrackingTraceDetailResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": {
+            "description": "对象不存在、已删除或当前用户不可见"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TrackingTraceTimelineEventResponse": {
+        "type": "object",
+        "required": ["eventKey", "eventType", "sourceType", "title"],
+        "properties": {
+          "eventKey": { "type": "string", "description": "用于跨来源去重的稳定事件键" },
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "REVISION_SUBMITTED",
+              "REVIEW_REQUESTED",
+              "REVIEW_APPROVED",
+              "REVIEW_REJECTED",
+              "SOURCE_BOUND",
+              "SOURCE_BINDING_UPDATED",
+              "OBJECT_CREATED",
+              "OBJECT_UPDATED",
+              "OBJECT_DELETED",
+              "IMPORT_COMPLETED",
+              "OPERATION_RECORDED"
+            ]
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": ["revision", "review_task", "source_binding", "operation_log"]
+          },
+          "sourceId": { "type": "integer", "format": "int64", "nullable": true },
+          "title": { "type": "string" },
+          "summary": { "type": "string", "nullable": true },
+          "occurredAt": { "type": "string", "format": "date-time", "nullable": true },
+          "actorDisplayName": { "type": "string", "nullable": true },
+          "resultStatus": { "type": "string", "nullable": true }
+        }
+      },
+      "TrackingTraceRevisionResponse": {
+        "type": "object",
+        "required": ["id", "changeType", "status"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "changeType": { "type": "string" },
+          "status": { "type": "string" },
+          "diffSummary": { "type": "string", "nullable": true },
+          "submitterDisplayName": { "type": "string", "nullable": true },
+          "submitTime": { "type": "string", "format": "date-time", "nullable": true },
+          "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "rejectedReason": { "type": "string", "nullable": true }
+        }
+      },
+      "TrackingTraceReviewTaskResponse": {
+        "type": "object",
+        "required": ["id", "revisionId", "status"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "revisionId": { "type": "integer", "format": "int64" },
+          "reviewLevel": { "type": "integer", "nullable": true },
+          "status": { "type": "string" },
+          "reviewerDisplayName": { "type": "string", "nullable": true },
+          "reviewerRole": { "type": "string", "nullable": true },
+          "branchName": { "type": "string", "nullable": true },
+          "reviewComment": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+          "reviewedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "TrackingTraceSourceBindingResponse": {
+        "type": "object",
+        "required": ["id", "sourceId", "sourceDisplayName", "bindingStatus"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "sourceId": { "type": "integer", "format": "int64" },
+          "sourceDisplayName": { "type": "string" },
+          "targetType": { "type": "string", "nullable": true },
+          "targetDisplayName": { "type": "string", "nullable": true },
+          "bindingReason": { "type": "string", "nullable": true },
+          "confidenceLevel": { "type": "string", "nullable": true },
+          "bindingStatus": { "type": "string" },
+          "createdByDisplayName": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "TrackingTraceCoverageResponse": {
+        "type": "object",
+        "required": ["level", "complete", "truncatedSegments", "missingSegments", "notes"],
+        "properties": {
+          "level": { "type": "string", "enum": ["complete", "partial", "minimal"] },
+          "complete": { "type": "boolean" },
+          "historyFrom": { "type": "string", "format": "date-time", "nullable": true },
+          "truncatedSegments": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["revisions", "reviewTasks", "sourceBindings", "operationLogs"] }
+          },
+          "missingSegments": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["revisions", "reviewTasks", "sourceBindings", "operationLogs"] }
+          },
+          "notes": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "TrackingTraceDetailResponse": {
+        "type": "object",
+        "required": [
+          "objectSummary",
+          "currentStatus",
+          "timeline",
+          "revisions",
+          "reviewTasks",
+          "sourceBindings",
+          "operationLogs",
+          "allowedActions",
+          "traceCoverage"
+        ],
+        "properties": {
+          "objectSummary": { "$ref": "#/components/schemas/TrackingObjectResponse" },
+          "currentStatus": { "type": "string", "nullable": true },
+          "timeline": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TrackingTraceTimelineEventResponse" }
+          },
+          "revisions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TrackingTraceRevisionResponse" }
+          },
+          "reviewTasks": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TrackingTraceReviewTaskResponse" }
+          },
+          "sourceBindings": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TrackingTraceSourceBindingResponse" }
+          },
+          "operationLogs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OperationLogResponse" }
+          },
+          "allowedActions": { "type": "array", "items": { "type": "string" } },
+          "traceCoverage": { "$ref": "#/components/schemas/TrackingTraceCoverageResponse" }
+        }
+      },
+      "ApiResponseTrackingTraceDetailResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/TrackingTraceDetailResponse" }
+        }
+      }
+    }
+  }
+}
