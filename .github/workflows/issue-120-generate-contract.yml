@@ -1,0 +1,48 @@
+name: Issue 120 Generate Contract
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "docs/api/openapi.tracking-search.json"
+      - "scripts/api/generate-frontend-client.mjs"
+      - ".github/workflows/issue-120-generate-contract.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Generate API contract artifacts
+        working-directory: frontend/genealogy-web
+        run: npm run api:generate
+
+      - name: Commit generated files
+        run: |
+          if git diff --quiet -- frontend/genealogy-web/src/shared/api/generated; then
+            echo "Generated files are already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/shared/api/generated
+          git commit -m "chore(api): generate issue 120 contract artifacts"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
