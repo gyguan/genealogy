@@ -1,0 +1,50 @@
+name: Issue 123 Person Entry
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-123-person-entry.yml'
+      - '.github/scripts/issue-123-person-entry.py'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply person entry guard
+        run: python3 .github/scripts/issue-123-person-entry.py
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Run tracking tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:logs
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Check API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Commit verified guard and self-clean
+        run: |
+          rm -f frontend/genealogy-web/package-lock.json
+          rm .github/scripts/issue-123-person-entry.py .github/workflows/issue-123-person-entry.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: keep person tracking entry read-only"
+          git push origin HEAD:${{ github.head_ref }}
