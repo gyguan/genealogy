@@ -18,6 +18,8 @@ type ImportJobResult = {
   successCount?: number;
   failureCount?: number;
   status?: string;
+  executionMode?: string;
+  executionStatus?: string;
 };
 
 type PreviewRow = {
@@ -50,13 +52,7 @@ function genderText(value?: string) {
   return dict[value || ''] || value || '-';
 }
 
-export function PersonImportWorkspace({
-  notify,
-  clanId,
-  branchId,
-  branchName,
-  onBatchCreated
-}: Props) {
+export function PersonImportWorkspace({ notify, clanId, branchId, branchName, onBatchCreated }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
@@ -85,9 +81,7 @@ export function PersonImportWorkspace({
 
   function requestQuery(includeDuplicateConfirmation = false) {
     const params = new URLSearchParams({ branchId });
-    if (includeDuplicateConfirmation) {
-      params.set('confirmDuplicates', String(confirmDuplicates));
-    }
+    if (includeDuplicateConfirmation) params.set('confirmDuplicates', String(confirmDuplicates));
     return params.toString();
   }
 
@@ -158,11 +152,15 @@ export function PersonImportWorkspace({
         `/clans/${clanId}/imports/persons.csv?${requestQuery(true)}`,
         formData
       );
+      const asyncQueued = result.executionMode === 'async'
+        || ['queued', 'running', 'retry_wait'].includes(String(result.executionStatus || '').toLowerCase());
       const failureCount = result.failureCount || 0;
       notify({
-        message: failureCount > 0
-          ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行`
-          : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
+        message: asyncQueued
+          ? '导入批次已创建，文件将在后台按分片处理；可在“后台执行任务”查看进度、暂停或取消。'
+          : failureCount > 0
+            ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行`
+            : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
       });
       setPreview(null);
       setFile(null);
@@ -221,30 +219,20 @@ export function PersonImportWorkspace({
           <Alert
             type="info"
             showIcon
-            message="导入人物默认进入草稿状态；模板结构错误会整文件拒绝，行数据错误可在导入任务中修正。"
+            message="小文件同步生成草稿；大文件自动进入后台分片处理。模板结构错误会整文件拒绝，行数据错误可在导入任务中修正。"
           />
           {!branchSelected ? (
             <Alert type="warning" showIcon message="请在本页上方选择本次导入的目标支派，再上传填写后的模板。" />
           ) : (
             <Alert type="success" showIcon message={`当前目标支派：${branchName || '未命名支派'}。文件中无需填写支派或支派 ID。`} />
           )}
-          <Upload {...uploadProps}>
-            <Button disabled={!branchSelected}>上传填写后的模板</Button>
-          </Upload>
-          <Checkbox
-            disabled={!branchSelected}
-            checked={confirmDuplicates}
-            onChange={event => setConfirmDuplicates(event.target.checked)}
-          >
+          <Upload {...uploadProps}><Button disabled={!branchSelected}>上传填写后的模板</Button></Upload>
+          <Checkbox disabled={!branchSelected} checked={confirmDuplicates} onChange={event => setConfirmDuplicates(event.target.checked)}>
             我已确认疑似重复人物，仍继续导入
           </Checkbox>
           <Space wrap>
-            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>
-              {loading ? '处理中...' : '预览并查重'}
-            </Button>
-            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>
-              创建导入批次
-            </Button>
+            <Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并查重'}</Button>
+            <Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>创建导入批次</Button>
           </Space>
         </Space>
       </Card>
@@ -252,12 +240,7 @@ export function PersonImportWorkspace({
       {preview ? (
         <Card title="导入预览与查重" style={{ marginTop: 16 }}>
           {(preview.errorCount || 0) > 0 ? (
-            <Alert
-              type="warning"
-              showIcon
-              message={`发现 ${preview.errorCount} 条数据错误。仍可创建导入批次，之后在任务详情中逐行修正。`}
-              style={{ marginBottom: 12 }}
-            />
+            <Alert type="warning" showIcon message={`发现 ${preview.errorCount} 条数据错误。仍可创建导入批次，之后在任务详情中逐行修正。`} style={{ marginBottom: 12 }} />
           ) : null}
           <Table<PreviewRow>
             size="small"
