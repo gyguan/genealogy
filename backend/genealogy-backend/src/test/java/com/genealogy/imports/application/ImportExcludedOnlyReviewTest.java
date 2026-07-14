@@ -118,7 +118,7 @@ class ImportExcludedOnlyReviewTest {
         );
 
         assertThat(result.id()).isEqualTo(200L);
-        assertThat(result.summary()).contains("草稿：0 条").contains("排除：2 条");
+        assertThat(result.diffSummary()).contains("草稿：0 条").contains("排除：2 条");
         assertThat(job.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_PENDING);
         assertThat(job.getReviewRound()).isEqualTo(1);
         verify(personRepository).saveAll(List.of());
