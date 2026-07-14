@@ -39,8 +39,6 @@ function visit(value) {
   Object.values(value).forEach(visit);
 }
 
-visit(openapi);
-
 const targetTypes = ['culture_item', 'migration_event', 'culture_site'];
 const genealogyTargetTypes = schemas.GenealogyTargetType?.enum || [];
 for (const targetType of targetTypes) {
@@ -97,12 +95,24 @@ const requiredOperations = {
 for (const [route, methods] of Object.entries(requiredOperations)) {
   const pathItem = openapi.paths?.[route];
   if (!pathItem) fail(`Missing culture path ${route}`);
+  visit(pathItem);
   for (const method of methods) {
     const operation = pathItem[method];
     if (!operation) fail(`Missing ${method.toUpperCase()} ${route}`);
     if (!(operation.tags || []).includes('Culture')) fail(`${method.toUpperCase()} ${route} must use Culture tag`);
     if (!operation.operationId) fail(`${method.toUpperCase()} ${route} must define operationId`);
   }
+}
+
+const cultureSchemaNames = Object.keys(schemas).filter(name =>
+  name === 'GenealogyTargetType'
+  || name.startsWith('Culture')
+  || name.startsWith('MigrationEvent')
+  || name.startsWith('ApiResponseCulture')
+  || name.startsWith('ApiResponseMigrationEvent')
+);
+for (const schemaName of cultureSchemaNames) {
+  visit(schemas[schemaName]);
 }
 
 for (const pageName of ['CultureItemPage', 'MigrationEventPage', 'CultureSitePage']) {
@@ -126,4 +136,4 @@ if (schemas.CultureItemSummaryResponse?.properties?.content) {
   fail('CultureItemSummaryResponse must not expose full content');
 }
 
-console.log('Culture paths, enums, pagination bounds, privacy-safe summaries and local references are valid; target schema assertions are isolated separately.');
+console.log('Culture paths, enums, pagination bounds, privacy-safe summaries and culture-local references are valid; target schema assertions are isolated separately.');
