@@ -2,7 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Source Import API",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "description": "来源资料元数据导入契约"
   },
   "paths": {
     "/api/v1/imports/templates/sources.csv": {
