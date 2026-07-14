@@ -1,0 +1,53 @@
+name: Issue 120 Review Diagnostic
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/issue-120-review-diagnostic.yml"
+      - "backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java"
+      - "backend/genealogy-backend/src/test/java/com/genealogy/tracking/repository/TrackingObjectQueryRepositoryReviewPostgresTest.java"
+
+jobs:
+  review-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/genealogy
+      TEST_POSTGRES_USERNAME: genealogy
+      TEST_POSTGRES_PASSWORD: genealogy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Run review regression tests
+        working-directory: backend/genealogy-backend
+        run: mvn -DtrimStackTrace=false -Dtest=TrackingObjectQueryRepositoryTest,TrackingObjectQueryRepositoryReviewPostgresTest test
+      - name: Print concise failures
+        if: failure()
+        working-directory: backend/genealogy-backend
+        run: |
+          grep -R -n -E "(Failures:|Errors:|Caused by:|AssertionError|PSQLException)" target/surefire-reports || true
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-120-review-diagnostic-reports
+          path: backend/genealogy-backend/target/surefire-reports
+          if-no-files-found: ignore
