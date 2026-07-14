@@ -19,7 +19,18 @@ public record ImportJobSummaryResponse(
         String processingStatus,
         String reviewStatus,
         Integer reviewRound,
-        Long latestReviewTaskId
+        Long latestReviewTaskId,
+        String executionMode,
+        String executionStatus,
+        String executionStage,
+        Integer processedCount,
+        Integer publishedCount,
+        Integer chunkSize,
+        Integer executionRetryCount,
+        Integer executionMaxRetries,
+        Boolean manualInterventionRequired,
+        LocalDateTime nextRetryAt,
+        LocalDateTime heartbeatAt
 ) {
 
     /**
@@ -58,11 +69,12 @@ public record ImportJobSummaryResponse(
             Integer reviewRound,
             Long latestReviewTaskId
     ) {
+        ImportJobDescriptor descriptor = descriptor(importType, originalFilename);
         this(
                 id,
-                descriptor(importType, originalFilename).importType(),
-                descriptor(importType, originalFilename).fileFormat(),
-                descriptor(importType, originalFilename).legacyImportType(),
+                descriptor.importType(),
+                descriptor.fileFormat(),
+                descriptor.legacyImportType(),
                 originalFilename,
                 totalCount,
                 successCount,
@@ -73,7 +85,18 @@ public record ImportJobSummaryResponse(
                 processingStatus,
                 reviewStatus,
                 reviewRound,
-                latestReviewTaskId
+                latestReviewTaskId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 
