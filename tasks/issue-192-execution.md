@@ -2,9 +2,9 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/192
 - 工作分支：`agent/issue-192-tree-api-contract`
-- Draft PR：待创建
+- Draft PR：https://github.com/gyguan/genealogy/pull/202
 - 目标：以 Contract First 方式建立统一、可扩展且安全的世系图谱查询契约，覆盖人物中心世系、祖先、后代和支派全局世系，并同步设计文档与前端生成类型。
-- 最后更新时间：2026-07-14 19:51:26，北京时间
+- 最后更新时间：2026-07-14 19:53:12，北京时间
 
 ## 实现范围
 
@@ -34,8 +34,8 @@
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue 和现有契约，建立分支、看板与 Draft PR | 🔄 进行中 | 已累计约 4 分钟 | 分支和首次执行检查点已建立，待创建 Draft PR 并回写 Issue |
-| 2 | 定义 Tree OpenAPI 路径、参数、响应和安全语义 | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue 和现有契约，建立分支、看板与 Draft PR | ✅ 已完成 | 约 6 分钟 | 检查点 Commit `b4640ed`；Draft PR #202 和 Issue 启动评论已建立 |
+| 2 | 定义 Tree OpenAPI 路径、参数、响应和安全语义 | 🔄 进行中 | 已累计 <1 分钟 | 正在设计 Tree 领域分片和兼容说明 |
 | 3 | 更新 API、领域模型、权限文档与前端 Tree 类型生成 | ⏳ 待处理 | — |  |
 | 4 | 执行契约生成、漂移检查和五轴 Review，满足门禁后合入 main | ⏳ 待处理 | — |  |
 
@@ -64,13 +64,13 @@
 
 - 当前 Issue：#192
 - 当前分支：`agent/issue-192-tree-api-contract`
-- Draft PR：待创建
-- 最新 Commit：首次任务看板检查点提交
-- 最后完成任务：刷新规则、需求、现有契约和设计文档
-- 当前进行中：创建 Draft PR 并回写 Issue
-- 当前任务累计耗时：已累计约 4 分钟
+- Draft PR：#202
+- 最新 Commit：本次启动检查点更新提交
+- 最后完成任务：七道启动门禁、分支、任务文件、Draft PR 和 Issue 回写
+- 当前进行中：定义 Tree OpenAPI 路径、参数、响应和安全语义
+- 当前任务累计耗时：已累计 <1 分钟
 - CI 状态：未运行
 - 未解决 Review：无
-- 已知阻塞：本地环境不可用，验证以 GitHub Actions 和远程契约生成结果为准
-- 下一步最小任务：创建 Draft PR，随后在 Issue 评论中写入分支、PR 和看板位置
-- 最后更新时间：2026-07-14 19:51:26，北京时间
+- 已知阻塞：本地环境不可用，验证以 GitHub Actions 和远程生成文件一致性为准
+- 下一步最小任务：新增 `docs/api/openapi.tree.json`
+- 最后更新时间：2026-07-14 19:53:12，北京时间
