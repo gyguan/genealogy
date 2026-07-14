@@ -23,6 +23,8 @@ export type TraceContext = {
   reviewTaskId: string;
   selectedTarget: TraceTarget | null;
   businessTarget: TraceTarget | null;
+  reviewTaskTrusted: boolean;
+  diffTrusted: boolean;
   issues: string[];
 };
 
@@ -58,7 +60,11 @@ export type TraceTimelineEntry =
 export function normalizeTraceTargetType(value: unknown): string;
 export function traceSelectionFromLog(log: Partial<OperationLogResponse>, fallbackClanId?: string | number, targetSummary?: string): TraceSelection;
 export function traceResetFromLog(log: Partial<OperationLogResponse>, fallbackClanId?: string | number, targetSummary?: string): TraceResetSnapshot;
-export function resolveTraceContext(selection: TraceSelection, detail?: ReviewTaskDetailResponse | null): TraceContext;
+export function resolveTraceContext(
+  selection: TraceSelection,
+  detail?: ReviewTaskDetailResponse | null,
+  diff?: ReviewDiffResponse | null
+): TraceContext;
 export function buildOperationLogScopes(context: TraceContext): OperationLogScope[];
 export function mergeTraceLogs(...groups: Array<Array<OperationLogResponse | null | undefined>>): OperationLogResponse[];
 export function timelineStatusFromReviewStatus(status: unknown): TraceTimelineStatus;
