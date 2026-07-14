@@ -45,9 +45,10 @@ class CultureItemPostgresIntegrationTest {
         clan.setCreatedAt(LocalDateTime.now());
         clan.setUpdatedAt(LocalDateTime.now());
         clan = clanRepository.saveAndFlush(clan);
+        Long clanId = clan.getId();
 
         CultureItemEntity item = new CultureItemEntity();
-        item.setClanId(clan.getId());
+        item.setClanId(clanId);
         item.setCategory("hall_name");
         item.setTitle("敦本堂");
         item.setSummary("堂号摘要");
@@ -58,9 +59,10 @@ class CultureItemPostgresIntegrationTest {
         item.setDataStatus("draft");
         item.setSortOrder(0);
         item = cultureItemRepository.saveAndFlush(item);
+        Long itemId = item.getId();
 
         SourceEntity source = new SourceEntity();
-        source.setClanId(clan.getId());
+        source.setClanId(clanId);
         source.setSourceName("张氏族谱卷一");
         source.setSourceType("genealogy_book");
         source.setVerificationStatus("official");
@@ -72,10 +74,10 @@ class CultureItemPostgresIntegrationTest {
         source = sourceRepository.saveAndFlush(source);
 
         SourceBindingEntity binding = new SourceBindingEntity();
-        binding.setClanId(clan.getId());
+        binding.setClanId(clanId);
         binding.setSourceId(source.getId());
         binding.setTargetType("culture_item");
-        binding.setTargetId(item.getId());
+        binding.setTargetId(itemId);
         binding.setConfidenceLevel("high");
         binding.setBindingStatus("official");
         binding.setCreatedAt(LocalDateTime.now());
@@ -83,7 +85,7 @@ class CultureItemPostgresIntegrationTest {
         sourceBindingRepository.saveAndFlush(binding);
 
         SourceAttachmentEntity attachment = new SourceAttachmentEntity();
-        attachment.setClanId(clan.getId());
+        attachment.setClanId(clanId);
         attachment.setSourceId(source.getId());
         attachment.setOriginalFilename("page-12.jpg");
         attachment.setStoredFilename("stored-page-12.jpg");
@@ -98,23 +100,23 @@ class CultureItemPostgresIntegrationTest {
         sourceAttachmentRepository.saveAndFlush(attachment);
 
         RevisionEntity revision = new RevisionEntity();
-        revision.setClanId(clan.getId());
+        revision.setClanId(clanId);
         revision.setTargetType("culture_item");
-        revision.setTargetId(item.getId());
+        revision.setTargetId(itemId);
         revision.setChangeType("create");
         revision.setSubmitTime(LocalDateTime.now());
         revision.setStatus("pending");
         revisionRepository.saveAndFlush(revision);
 
         assertCount(sourceBindingRepository.countActiveByTargets(
-                clan.getId(), "culture_item", List.of(item.getId()), "archived"), item.getId(), 1L);
+                clanId, "culture_item", List.of(itemId), "archived"), itemId, 1L);
         assertCount(sourceAttachmentRepository.countActiveByTargets(
-                clan.getId(), "culture_item", List.of(item.getId()), "archived"), item.getId(), 1L);
+                clanId, "culture_item", List.of(itemId), "archived"), itemId, 1L);
         assertCount(revisionRepository.countByTargets(
-                clan.getId(), "culture_item", List.of(item.getId())), item.getId(), 1L);
+                clanId, "culture_item", List.of(itemId)), itemId, 1L);
 
         assertEquals(1, cultureItemRepository.findAll((root, query, cb) -> cb.and(
-                cb.equal(root.get("clanId"), clan.getId()),
+                cb.equal(root.get("clanId"), clanId),
                 cb.isNull(root.get("deletedAt")),
                 cb.like(cb.lower(root.get("title")), "%敦本%")
         )).size());
