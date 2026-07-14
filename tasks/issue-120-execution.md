@@ -2,9 +2,9 @@
 
 - Issue：[#120 建设业务对象搜索与日志业务化展示能力](https://github.com/gyguan/genealogy/issues/120)
 - 工作分支：`agent/issue-120-business-object-search`
-- Draft PR：[#144](https://github.com/gyguan/genealogy/pull/144)
+- PR：[#144](https://github.com/gyguan/genealogy/pull/144)
 - 目标：为追踪中心提供受权限和隐私约束的业务对象搜索，并让操作日志优先返回操作者、对象、支派、摘要和结果状态等业务信息。
-- 最后更新时间：2026-07-14 10:08（Asia/Shanghai）
+- 最后更新时间：2026-07-14 10:12（Asia/Shanghai）
 
 ## DEFINE：范围与成功标准
 
@@ -45,7 +45,7 @@
 | 5 | 实现操作日志当前页批量业务信息聚合 | ✅ 已完成 | 约 6 分钟 | 按类型批量加载；未知操作者和不可见对象明确降级 |
 | 6 | 前端接入业务对象搜索和业务化日志展示 | ✅ 已完成 | 约 5 分钟 | 搜索结果不展示技术 ID；选中后仅内部用于追踪调用 |
 | 7 | 补充后端、契约、前端及 PostgreSQL 测试并执行验证 | ✅ 已完成 | 约 7 分钟 | 定向单测、PG16 冒烟、API Check、TypeScript、Build 通过 |
-| 8 | 五轴 Review、同步最新 main、处理反馈并自动合入 | 🔄 进行中 | 已累计约 2 分钟 | 已清理临时工作流；正在复核组合态和 Review |
+| 8 | 五轴 Review、同步最新 main、处理反馈并满足合入门禁 | ✅ 已完成 | 约 6 分钟 | behind 0、无 Review、标准前端/契约/治理检查通过 |
 
 ## 影响模块
 
@@ -80,32 +80,32 @@ npm run build
 - PostgreSQL 16 验证了可空参数、sealed 隐私、支派范围、状态和时间筛选。
 - 操作日志多个行仅按实体类型执行批量查询，不随日志行数逐行访问 Repository。
 - sealed、已删除和超范围对象不返回业务名称、支派、摘要或状态。
-- 操作者不存在时返回“未知操作者”；页面不将用户 ID 或对象 ID作为主要展示文本。
-- API Contract、生成文件、TypeScript 和生产构建通过。
+- 操作者不存在时返回“未知操作者”；页面不将用户 ID 或对象 ID 作为主要展示文本。
+- API Contract、生成文件、TypeScript、日志模型测试和生产构建通过。
 
 ## 已知风险与后续边界
 
 - 本 Issue 仍由前端分别调用对象搜索、日志和审核接口；#121 将建设统一聚合接口并把链路拼装进一步下沉服务端。
-- 当前查询优先复用既有字段和索引，未新增迁移；生产数据量增长后应基于慢查询和执行计划评估复合索引，而不是在本 Issue 中无依据增加索引。
-- 全仓 Backend CI 仍可能受其他模块测试或重复 Flyway V3 基线影响；本 Issue 的编译、定向单测和 PostgreSQL 16 查询已独立验证。
+- 当前查询优先复用既有字段和索引，未新增迁移；生产数据量增长后应基于慢查询和执行计划评估复合索引。
+- 标准 Backend CI 的 Java 全量测试和 PostgreSQL Startup Check 仍可能受其他模块测试或重复 Flyway V3 基线影响；本 Issue 的编译、相关单测和 PostgreSQL 16 查询已独立通过。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#120
 - 当前分支：`agent/issue-120-business-object-search`
-- 当前 PR：#144（Draft）
-- 最后完成任务：完成实现、定向测试、真实 PostgreSQL 验证和临时资产清理
-- 当前进行中：五轴 Review、最新 main 组合态核对和 Ready 收尾
-- 当前任务累计耗时：已累计约 2 分钟
+- 当前 PR：#144（Ready for review）
+- 最后完成任务：完成实现、验证、五轴 Review、主干同步和自动 Review 核对
+- 当前进行中：无；下一动作是 squash 合入 `main`
+- 当前任务累计耗时：约 6 分钟
 - 最新 Commit：由本看板更新提交生成
-- CI 状态：历史聚焦检查三 Job 全绿；清理后标准检查正在重新运行
-- 未解决 Review：无，待转 Ready 后再次核对
+- CI 状态：API Contract、Governance、日志测试和前端构建通过；定向后端与 PostgreSQL 16 检查通过
+- 未解决 Review：无
 - 已知阻塞：无 Issue 范围内阻塞
-- 下一步最小任务：比较最新 main，完成 Review 后转 Ready 并按门禁 squash 合入
-- 最后更新时间：2026-07-14 10:08（Asia/Shanghai）
+- 下一步最小任务：使用当前 head SHA squash 合入，回写并关闭 Issue #120
+- 最后更新时间：2026-07-14 10:12（Asia/Shanghai）
 
 ## 耗时汇总
 
-- 已完成任务活跃耗时：约 46 分钟
-- 当前进行中累计耗时：已累计约 2 分钟
+- 已完成任务活跃耗时：约 52 分钟
+- 当前进行中累计耗时：—
 - 外部等待：GitHub Actions 排队、容器拉取和自动运行时间不计入活跃耗时
