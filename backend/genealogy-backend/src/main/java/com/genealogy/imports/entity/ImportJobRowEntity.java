@@ -59,6 +59,12 @@ public class ImportJobRowEntity {
     @Column(name = "draft_person_id")
     private Long draftPersonId;
 
+    @Column(name = "draft_target_type")
+    private String draftTargetType;
+
+    @Column(name = "draft_target_id")
+    private Long draftTargetId;
+
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount;
 

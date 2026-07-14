@@ -1,0 +1,174 @@
+{
+  "paths": {
+    "/api/v1/imports/templates/relationships.csv": {
+      "get": {
+        "operationId": "downloadRelationshipImportCsvTemplate",
+        "tags": ["Import"],
+        "responses": {
+          "200": {
+            "description": "Strict relationship import CSV template",
+            "content": {
+              "text/csv": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/imports/templates/relationships.xlsx": {
+      "get": {
+        "operationId": "downloadRelationshipImportXlsxTemplate",
+        "tags": ["Import"],
+        "responses": {
+          "200": {
+            "description": "Strict relationship import XLSX template",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/relationships/preview": {
+      "post": {
+        "operationId": "previewRelationshipImport",
+        "tags": ["Import"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "branchId", "in": "query", "required": true, "description": "Batch management branch; relationship parties remain subject to their own branch permissions.", "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseRelationshipImportPreviewResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/relationships": {
+      "post": {
+        "operationId": "importRelationshipsAsJob",
+        "tags": ["Import"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "branchId", "in": "query", "required": true, "description": "Batch management branch; relationship parties remain subject to their own branch permissions.", "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/MultipartFileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseImportJobResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/relationship-retry": {
+      "post": {
+        "operationId": "retryRelationshipImportRow",
+        "tags": ["Import"],
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "rowId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RelationshipImportRowRetryRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Retry result; validation failures are returned as retry_failed row state.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseImportJobRowResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RelationshipImportPreviewRowResponse": {
+        "type": "object",
+        "properties": {
+          "rowNo": { "type": "integer" },
+          "fromPersonCode": { "type": "string" },
+          "fromPersonName": { "type": "string" },
+          "toPersonCode": { "type": "string" },
+          "toPersonName": { "type": "string" },
+          "relationshipType": { "type": "string", "enum": ["父子", "母子", "配偶"] },
+          "description": { "type": "string" },
+          "duplicated": { "type": "boolean" },
+          "errorMessage": { "type": "string" },
+          "rawData": { "type": "string" }
+        }
+      },
+      "RelationshipImportPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "totalCount": { "type": "integer" },
+          "validCount": { "type": "integer" },
+          "duplicateCount": { "type": "integer" },
+          "errorCount": { "type": "integer" },
+          "rows": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RelationshipImportPreviewRowResponse" }
+          }
+        }
+      },
+      "RelationshipImportRowRetryRequest": {
+        "type": "object",
+        "required": ["fromPersonCode", "toPersonCode", "relationshipType", "expectedVersion"],
+        "properties": {
+          "fromPersonCode": { "type": "string", "maxLength": 100 },
+          "toPersonCode": { "type": "string", "maxLength": 100 },
+          "relationshipType": { "type": "string", "enum": ["父子", "母子", "配偶"] },
+          "description": { "type": "string", "maxLength": 500 },
+          "expectedVersion": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseRelationshipImportPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/RelationshipImportPreviewResponse" },
+          "traceId": { "type": "string" }
+        }
+      }
+    }
+  }
+}

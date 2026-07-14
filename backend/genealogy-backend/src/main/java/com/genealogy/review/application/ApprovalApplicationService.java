@@ -424,7 +424,7 @@ public class ApprovalApplicationService {
             case "source_binding" -> "来源绑定审核";
             case "branch" -> "支派变更审核";
             case "generation_scheme" -> "字辈方案审核";
-            case "import_job" -> "人物导入批次审核";
+            case "import_job" -> "导入批次审核";
             default -> "业务变更审核";
         };
     }

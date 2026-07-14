@@ -42,23 +42,12 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ImportJobRowApplicationServiceTest {
 
-    @Mock
-    private ImportJobRepository importJobRepository;
-
-    @Mock
-    private ImportJobRowRepository importJobRowRepository;
-
-    @Mock
-    private ImportJobErrorRepository importJobErrorRepository;
-
-    @Mock
-    private PersonRepository personRepository;
-
-    @Mock
-    private AuthorizationApplicationService authorizationApplicationService;
-
-    @Mock
-    private OperationLogApplicationService operationLogApplicationService;
+    @Mock private ImportJobRepository importJobRepository;
+    @Mock private ImportJobRowRepository importJobRowRepository;
+    @Mock private ImportJobErrorRepository importJobErrorRepository;
+    @Mock private PersonRepository personRepository;
+    @Mock private AuthorizationApplicationService authorizationApplicationService;
+    @Mock private OperationLogApplicationService operationLogApplicationService;
 
     private ImportJobRowApplicationService service;
 
@@ -113,11 +102,7 @@ class ImportJobRowApplicationServiceTest {
         when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ImportJobRowResponse result = service.retryPersonRow(
-                1L,
-                101L,
-                201L,
-                request("李四", "male", "1982-01-01", 0L),
-                9L
+                1L, 101L, 201L, request("李四", "male", "1982-01-01", 0L), 9L
         );
 
         assertThat(result.rowStatus()).isEqualTo(ImportJobRowEntity.STATUS_DRAFT_CREATED);
@@ -128,6 +113,8 @@ class ImportJobRowApplicationServiceTest {
         assertThat(personCaptor.getValue().getBranchId()).isEqualTo(5L);
         assertThat(personCaptor.getValue().getDataStatus()).isEqualTo("draft");
         assertThat(row.getDraftPersonId()).isEqualTo(1001L);
+        assertThat(row.getDraftTargetType()).isEqualTo(ImportJobEntity.TYPE_PERSON);
+        assertThat(row.getDraftTargetId()).isEqualTo(1001L);
         assertThat(row.getCorrectedData()).containsEntry("name", "李四");
         verify(importJobErrorRepository).deleteByJobIdAndRowNo(101L, 3);
         assertThat(job.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_READY_FOR_REVIEW);
@@ -149,11 +136,7 @@ class ImportJobRowApplicationServiceTest {
         when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ImportJobRowResponse result = service.retryPersonRow(
-                1L,
-                101L,
-                201L,
-                request("李四", "unexpected", "1982-01-01", 0L),
-                9L
+                1L, 101L, 201L, request("李四", "unexpected", "1982-01-01", 0L), 9L
         );
 
         assertThat(result.rowStatus()).isEqualTo(ImportJobRowEntity.STATUS_RETRY_FAILED);
@@ -176,11 +159,7 @@ class ImportJobRowApplicationServiceTest {
         when(importJobRowRepository.findByIdAndJobId(201L, 101L)).thenReturn(Optional.of(row));
 
         assertThatThrownBy(() -> service.retryPersonRow(
-                1L,
-                101L,
-                201L,
-                request("李四", "male", "1982-01-01", 1L),
-                9L
+                1L, 101L, 201L, request("李四", "male", "1982-01-01", 1L), 9L
         )).isInstanceOf(BusinessException.class)
                 .hasMessage("该行已被其他用户修改，请刷新后重试");
 
@@ -195,11 +174,7 @@ class ImportJobRowApplicationServiceTest {
         when(importJobRepository.findByIdAndClanId(101L, 1L)).thenReturn(Optional.of(job));
 
         assertThatThrownBy(() -> service.retryPersonRow(
-                1L,
-                101L,
-                201L,
-                request("李四", "male", "1982-01-01", 0L),
-                9L
+                1L, 101L, 201L, request("李四", "male", "1982-01-01", 0L), 9L
         )).isInstanceOf(BusinessException.class)
                 .hasMessage("导入批次已进入审核流程，不能继续修正");
 
@@ -211,6 +186,8 @@ class ImportJobRowApplicationServiceTest {
         job.setId(101L);
         job.setClanId(1L);
         job.setBranchId(5L);
+        job.setImportType(ImportJobEntity.TYPE_PERSON);
+        job.setFileFormat(ImportJobEntity.FORMAT_CSV);
         job.setStatus("partial_completed");
         job.setProcessingStatus(ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
         job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
@@ -241,15 +218,6 @@ class ImportJobRowApplicationServiceTest {
     }
 
     private PersonImportRowRetryRequest request(String name, String gender, String birthDate, Long expectedVersion) {
-        return new PersonImportRowRetryRequest(
-                name,
-                gender,
-                6,
-                "明",
-                birthDate,
-                true,
-                false,
-                expectedVersion
-        );
+        return new PersonImportRowRetryRequest(name, gender, 6, "明", birthDate, true, false, expectedVersion);
     }
 }

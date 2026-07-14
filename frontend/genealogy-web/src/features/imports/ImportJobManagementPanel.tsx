@@ -62,6 +62,10 @@ type RetryFormValues = {
   birthDate?: string;
   isLiving?: boolean;
   confirmDuplicates?: boolean;
+  fromPersonCode?: string;
+  toPersonCode?: string;
+  relationshipType?: string;
+  description?: string;
 };
 
 type ReviewTaskCreated = {
@@ -161,7 +165,7 @@ function normalizedImportType(row?: ImportJobSummary | null) {
 }
 
 function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
-  return normalizedImportType(job) === 'person'
+  return ['person', 'relationship'].includes(normalizedImportType(job))
     && ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase())
     && !row.draftCreated;
 }
@@ -294,17 +298,26 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
 
   function openCorrection(row: ImportJobRow) {
     const values = row.correctedData || row.normalizedData || {};
-    form.setFieldsValue({
-      name: String(payloadValue(values, 'name') || ''),
-      gender: String(payloadValue(values, 'gender') || 'unknown'),
-      generationNo: typeof payloadValue(values, 'generationNo') === 'number'
-        ? Number(payloadValue(values, 'generationNo'))
-        : undefined,
-      generationWord: String(payloadValue(values, 'generationWord') || ''),
-      birthDate: String(payloadValue(values, 'birthDate') || ''),
-      isLiving: payloadValue(values, 'isLiving') === undefined ? true : Boolean(payloadValue(values, 'isLiving')),
-      confirmDuplicates: false
-    });
+    if (normalizedImportType(selectedJob) === 'relationship') {
+      form.setFieldsValue({
+        fromPersonCode: String(payloadValue(values, 'fromPersonCode') || ''),
+        toPersonCode: String(payloadValue(values, 'toPersonCode') || ''),
+        relationshipType: String(payloadValue(values, 'relationshipType') || ''),
+        description: String(payloadValue(values, 'description') || '')
+      });
+    } else {
+      form.setFieldsValue({
+        name: String(payloadValue(values, 'name') || ''),
+        gender: String(payloadValue(values, 'gender') || 'unknown'),
+        generationNo: typeof payloadValue(values, 'generationNo') === 'number'
+          ? Number(payloadValue(values, 'generationNo'))
+          : undefined,
+        generationWord: String(payloadValue(values, 'generationWord') || ''),
+        birthDate: String(payloadValue(values, 'birthDate') || ''),
+        isLiving: payloadValue(values, 'isLiving') === undefined ? true : Boolean(payloadValue(values, 'isLiving')),
+        confirmDuplicates: false
+      });
+    }
     setEditingRow(row);
   }
 
@@ -313,8 +326,12 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     const values = await form.validateFields();
     setRetryLoading(true);
     try {
+      const relationship = normalizedImportType(selectedJob) === 'relationship';
+      const endpoint = relationship
+        ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/relationship-retry`
+        : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
       const result = await apiClient.post<ImportJobRow>(
-        `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`,
+        endpoint,
         { ...values, expectedVersion: editingRow.version ?? 0 }
       );
       if (result.rowStatus === 'draft_created') {
@@ -552,27 +569,50 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             </Typography.Paragraph>
             {editingRow.errorMessage ? <Alert type="error" showIcon message={editingRow.errorMessage} /> : null}
             <Form form={form} layout="vertical">
-              <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-                <Input maxLength={100} />
-              </Form.Item>
-              <Form.Item name="gender" label="性别" rules={[{ required: true, message: '请选择性别' }]}>
-                <Select options={genderOptions} />
-              </Form.Item>
-              <Form.Item name="generationNo" label="代次">
-                <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item name="generationWord" label="字辈">
-                <Input maxLength={50} />
-              </Form.Item>
-              <Form.Item name="birthDate" label="出生日期">
-                <Input type="date" />
-              </Form.Item>
-              <Form.Item name="isLiving" valuePropName="checked">
-                <Checkbox>在世</Checkbox>
-              </Form.Item>
-              <Form.Item name="confirmDuplicates" valuePropName="checked">
-                <Checkbox>如修正后命中疑似重复人物，我已确认仍需生成草稿</Checkbox>
-              </Form.Item>
+              {normalizedImportType(selectedJob) === 'relationship' ? (
+                <>
+                  <Form.Item name="fromPersonCode" label="关系主体编码" rules={[{ required: true, message: '请输入关系主体编码' }]}>
+                    <Input maxLength={100} />
+                  </Form.Item>
+                  <Form.Item name="toPersonCode" label="关系对象编码" rules={[{ required: true, message: '请输入关系对象编码' }]}>
+                    <Input maxLength={100} />
+                  </Form.Item>
+                  <Form.Item name="relationshipType" label="关系类型" rules={[{ required: true, message: '请选择关系类型' }]}>
+                    <Select options={[
+                      { value: '父子', label: '父子' },
+                      { value: '母子', label: '母子' },
+                      { value: '配偶', label: '配偶' }
+                    ]} />
+                  </Form.Item>
+                  <Form.Item name="description" label="说明">
+                    <Input.TextArea maxLength={500} rows={3} showCount />
+                  </Form.Item>
+                </>
+              ) : (
+                <>
+                  <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
+                    <Input maxLength={100} />
+                  </Form.Item>
+                  <Form.Item name="gender" label="性别" rules={[{ required: true, message: '请选择性别' }]}>
+                    <Select options={genderOptions} />
+                  </Form.Item>
+                  <Form.Item name="generationNo" label="代次">
+                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item name="generationWord" label="字辈">
+                    <Input maxLength={50} />
+                  </Form.Item>
+                  <Form.Item name="birthDate" label="出生日期">
+                    <Input type="date" />
+                  </Form.Item>
+                  <Form.Item name="isLiving" valuePropName="checked">
+                    <Checkbox>在世</Checkbox>
+                  </Form.Item>
+                  <Form.Item name="confirmDuplicates" valuePropName="checked">
+                    <Checkbox>如修正后命中疑似重复人物，我已确认仍需生成草稿</Checkbox>
+                  </Form.Item>
+                </>
+              )}
             </Form>
           </Space>
         ) : null}

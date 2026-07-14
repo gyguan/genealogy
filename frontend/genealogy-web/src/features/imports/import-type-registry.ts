@@ -32,8 +32,8 @@ export const importTypeRegistry: ImportTypeDefinition[] = [
   {
     key: 'relationship',
     title: '人物关系导入',
-    description: '批量建立父母、配偶、子女、继嗣等人物关系。',
-    availability: 'planned',
+    description: '批量建立父子、母子和配偶关系，支持严格模板、失败行修正和审核生效。',
+    availability: 'available',
     supportedFormats: ['csv', 'xlsx'],
     templateDefinition: 'RelationshipImportTemplateDefinition',
     parser: 'relationship-import-parser',
