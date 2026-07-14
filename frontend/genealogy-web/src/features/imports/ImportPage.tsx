@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Card, Empty, Select, Space, Tabs, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
 import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
@@ -67,10 +68,14 @@ export function ImportPage({ notify }: Props) {
 
   const activeDefinition = importTypeRegistry.find(type => type.key === activeType) || importTypeRegistry[0];
 
+  function refreshJobs() {
+    setJobRefreshKey(current => current + 1);
+  }
+
   function changeBranch(value: string) {
     setSelectedBranchId(value);
     workspace.setBranchId(value);
-    setJobRefreshKey(current => current + 1);
+    refreshJobs();
   }
 
   function targetMessage() {
@@ -148,7 +153,7 @@ export function ImportPage({ notify }: Props) {
           clanId={workspace.clanId}
           branchId={selectedBranchId}
           branchName={selectedBranch?.branchName || ''}
-          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
+          onBatchCreated={refreshJobs}
         />
       ) : null}
 
@@ -158,7 +163,7 @@ export function ImportPage({ notify }: Props) {
           clanId={workspace.clanId}
           branchId={selectedBranchId}
           branchName={selectedBranch?.branchName || ''}
-          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
+          onBatchCreated={refreshJobs}
         />
       ) : null}
 
@@ -168,10 +173,17 @@ export function ImportPage({ notify }: Props) {
           clanId={workspace.clanId}
           branchId={selectedBranchId}
           branchName={selectedBranch?.branchName || ''}
-          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
+          onBatchCreated={refreshJobs}
         />
       ) : null}
 
+      <AsyncImportExecutionPanel
+        notify={notify}
+        clanId={workspace.clanId}
+        branchId={selectedBranchId}
+        refreshKey={jobRefreshKey}
+        onChanged={refreshJobs}
+      />
       <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
     </div>
   );
