@@ -1,6 +1,7 @@
 package com.genealogy.imports.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.imports.dto.ImportJobExecutionResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,7 +55,7 @@ class ImportJobExecutionApplicationServiceTest {
 
         assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_RUNNING);
         assertThat(job.getRequestedAction()).isEqualTo(ImportJobEntity.ACTION_PAUSE);
-        assertThat(response.allowedActions()).containsExactly("pause", "cancel");
+        assertThat(response.allowedActions()).containsExactly("pause");
         verify(authorizationApplicationService).requireBranchWriteScope(1L, 9L, 2L);
         verify(jobRepository).save(job);
     }
@@ -70,7 +72,7 @@ class ImportJobExecutionApplicationServiceTest {
         assertThat(response.executionStatus()).isEqualTo(ImportJobEntity.EXECUTION_QUEUED);
         assertThat(job.getLeaseOwner()).isNull();
         assertThat(job.getLeaseExpiresAt()).isNull();
-        assertThat(response.allowedActions()).containsExactly("pause", "cancel");
+        assertThat(response.allowedActions()).containsExactly("pause");
     }
 
     @Test
@@ -91,16 +93,33 @@ class ImportJobExecutionApplicationServiceTest {
     }
 
     @Test
-    void cancelPausedPublishingJobShouldSucceedWithoutPayload() {
+    void cancelShouldBeRejectedAfterDraftOrPublishSideEffects() {
         ImportJobEntity job = job(ImportJobEntity.EXECUTION_PAUSED, ImportJobEntity.STAGE_PUBLISHING);
         when(jobRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(job));
-        when(payloadRepository.existsById(10L)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.cancel(1L, 10L, 9L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能取消");
+
+        verify(payloadRepository, never()).deleteById(10L);
+        verify(jobRepository, never()).save(job);
+    }
+
+    @Test
+    void cancelShouldRemainAvailableBeforeFirstChunkCommits() {
+        ImportJobEntity job = job(ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.STAGE_PARSING);
+        job.setProcessedCount(0);
+        job.setPublishedCount(0);
+        job.setCursorRowNo(0);
+        when(jobRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(job));
+        when(payloadRepository.existsById(10L)).thenReturn(true);
 
         ImportJobExecutionResponse response = service.cancel(1L, 10L, 9L);
 
         assertThat(response.executionStatus()).isEqualTo(ImportJobEntity.EXECUTION_CANCELLED);
         assertThat(response.executionStage()).isEqualTo(ImportJobEntity.STAGE_CANCELLED);
-        verify(payloadRepository, never()).deleteById(10L);
+        verify(payloadRepository).deleteById(10L);
+        verify(jobRepository).save(job);
     }
 
     private ImportJobEntity job(String status, String stage) {
