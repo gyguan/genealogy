@@ -1,0 +1,75 @@
+name: Issue 130-132 Startup Diagnose
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply candidate changes
+        run: |
+          python3 .github/scripts/issue-130-132-backend-apply.py
+          python3 .github/scripts/issue-130-132-import-route-fix.py
+          python3 .github/scripts/issue-130-132-migration-order-fix.py
+      - name: Persist startup tail
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+        shell: bash
+        run: |
+          mvn -q -DskipTests package
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/startup.log 2>&1 &
+          pid=$!
+          success=false
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null 2>&1; then success=true; break; fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          kill "$pid" >/dev/null 2>&1 || true
+          {
+            echo '# PostgreSQL startup diagnostic 2'
+            echo
+            echo "Health passed: $success"
+            echo
+            echo '```text'
+            tail -n 240 /tmp/startup.log
+            echo '```'
+          } > ../../tasks/issue-130-132-startup-diagnostic-2.md
+          cd ../..
+          rm .github/workflows/issue-130-132-startup-diagnose.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tasks/issue-130-132-startup-diagnostic-2.md .github/workflows/issue-130-132-startup-diagnose.yml
+          git commit -m 'chore(auth): record next PostgreSQL blocker'
+          git push
