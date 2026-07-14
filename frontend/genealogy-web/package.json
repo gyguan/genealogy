@@ -12,7 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "api:generate": "node ../../scripts/api/generate-all-api-contracts.mjs && node ../../scripts/api/generate-import-execution-types.mjs && node ../../scripts/api/generate-import-failure-types.mjs",
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
-    "test:tree": "rm -rf .tree-test && npx tsc src/features/tree/lineageGraphModel.ts --ignoreConfig --target ES2020 --module ESNext --moduleResolution Bundler --outDir .tree-test --skipLibCheck && node --test src/features/tree/lineageGraphModel.test.mjs; status=$?; rm -rf .tree-test; exit $status",
+    "test:tree": "rm -rf .tree-test && npx tsc src/features/tree/lineageGraphModel.ts src/features/tree/lineageRequestState.ts --ignoreConfig --target ES2020 --module ESNext --moduleResolution Bundler --outDir .tree-test --skipLibCheck && node --test src/features/tree/lineageGraphModel.test.mjs src/features/tree/lineageRequestState.test.mjs; status=$?; rm -rf .tree-test; exit $status",
     "test:members": "node --test src/features/members/memberPageModel.test.js",
     "test:auth": "node --test src/features/auth/authPageModel.test.js",
     "test:logs": "node --test src/features/logs/*.test.js src/features/logs/*.test.mjs src/shared/navigation/*.test.mjs",
