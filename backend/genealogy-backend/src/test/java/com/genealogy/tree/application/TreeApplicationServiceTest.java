@@ -48,19 +48,14 @@ class TreeApplicationServiceTest {
 
     @Mock
     private PersonRepository personRepository;
-
     @Mock
     private RelationshipRepository relationshipRepository;
-
     @Mock
     private BranchRepository branchRepository;
-
     @Mock
     private TreeVisibilityApplicationService visibilityApplicationService;
-
     @Mock
     private VisibilitySession visibilitySession;
-
     @InjectMocks
     private TreeApplicationService service;
 
@@ -93,43 +88,34 @@ class TreeApplicationServiceTest {
     }
 
     @Test
-    void wideLayerUsesOneRelationshipQueryAndOnePersonBatchQuery() {
+    void wideLayerUsesOneRelationshipAndOnePersonQueryPerLayer() {
         PersonEntity root = person(1L, 10L, "根人物");
         PersonEntity childA = person(2L, 10L, "子女一");
         PersonEntity childB = person(3L, 10L, "子女二");
         allowRoot(root);
         allowPeople(childA, childB);
-        when(relationshipRepository.findTreeOutgoing(
-                1L, Set.of(1L), OFFICIAL, DEFAULT_SCOPES, true
-        )).thenReturn(List.of(
-                relationship(101L, 1L, 2L),
-                relationship(102L, 1L, 3L)
-        ));
+        when(relationshipRepository.findTreeOutgoing(1L, Set.of(1L), OFFICIAL, DEFAULT_SCOPES, true))
+                .thenReturn(List.of(relationship(101L, 1L, 2L), relationship(102L, 1L, 3L)));
         when(personRepository.findTreePeopleByIds(1L, Set.of(2L, 3L), OFFICIAL))
                 .thenReturn(List.of(childA, childB));
-        when(relationshipRepository.findTreeOutgoing(
-                1L, Set.of(2L, 3L), OFFICIAL, DEFAULT_SCOPES, true
-        )).thenReturn(List.of());
+        when(relationshipRepository.findTreeOutgoing(1L, Set.of(2L, 3L), OFFICIAL, DEFAULT_SCOPES, true))
+                .thenReturn(List.of());
 
-        TreeGraphResponse response = service.descendants(
-                root.getId(), 2, null, null, 50, 50, ACTOR_ID
-        );
+        TreeGraphResponse response = service.descendants(root.getId(), 2, null, null, 50, 50, ACTOR_ID);
 
         assertEquals(3, response.nodes().size());
         assertEquals(2, response.edges().size());
         verify(relationshipRepository, times(2)).findTreeOutgoing(
                 eq(1L), anyCollection(), eq(OFFICIAL), eq(DEFAULT_SCOPES), eq(true)
         );
-        verify(personRepository, times(1)).findTreePeopleByIds(
-                eq(1L), anyCollection(), eq(OFFICIAL)
-        );
+        verify(personRepository, times(1)).findTreePeopleByIds(eq(1L), anyCollection(), eq(OFFICIAL));
         verify(personRepository, never()).findByIdAndDeletedAtIsNull(2L);
         verify(personRepository, never()).findByIdAndDeletedAtIsNull(3L);
         verify(relationshipRepository, never()).findByFromPersonIdAndDeletedAtIsNull(anyLong());
     }
 
     @Test
-    void deepChainQueryCountGrowsByDepthNotByVisitedNodeCount() {
+    void deepChainUsesOneBatchPerLayerPlusOneSafeDepthProbe() {
         PersonEntity root = person(1L, 10L, "一世");
         PersonEntity second = person(2L, 10L, "二世");
         PersonEntity third = person(3L, 10L, "三世");
@@ -142,6 +128,8 @@ class TreeApplicationServiceTest {
                 .thenReturn(List.of(relationship(202L, 2L, 3L)));
         when(relationshipRepository.findTreeOutgoing(1L, Set.of(3L), OFFICIAL, DEFAULT_SCOPES, true))
                 .thenReturn(List.of(relationship(203L, 3L, 4L)));
+        when(relationshipRepository.findTreeOutgoing(1L, Set.of(4L), OFFICIAL, DEFAULT_SCOPES, true))
+                .thenReturn(List.of());
         when(personRepository.findTreePeopleByIds(1L, Set.of(2L), OFFICIAL)).thenReturn(List.of(second));
         when(personRepository.findTreePeopleByIds(1L, Set.of(3L), OFFICIAL)).thenReturn(List.of(third));
         when(personRepository.findTreePeopleByIds(1L, Set.of(4L), OFFICIAL)).thenReturn(List.of(fourth));
@@ -150,12 +138,10 @@ class TreeApplicationServiceTest {
 
         assertEquals(4, response.nodes().size());
         assertEquals(3, response.edges().size());
-        verify(relationshipRepository, times(3)).findTreeOutgoing(
+        verify(relationshipRepository, times(4)).findTreeOutgoing(
                 eq(1L), anyCollection(), eq(OFFICIAL), eq(DEFAULT_SCOPES), eq(true)
         );
-        verify(personRepository, times(3)).findTreePeopleByIds(
-                eq(1L), anyCollection(), eq(OFFICIAL)
-        );
+        verify(personRepository, times(3)).findTreePeopleByIds(eq(1L), anyCollection(), eq(OFFICIAL));
     }
 
     @Test
