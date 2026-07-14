@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Empty, Select, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, Card, Empty, Select, Space, Steps, Tabs, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
@@ -66,8 +66,6 @@ export function ImportPage({ notify }: Props) {
     [branches, selectedBranchId]
   );
 
-  const activeDefinition = importTypeRegistry.find(type => type.key === activeType) || importTypeRegistry[0];
-
   function refreshJobs() {
     setJobRefreshKey(current => current + 1);
   }
@@ -78,47 +76,38 @@ export function ImportPage({ notify }: Props) {
     refreshJobs();
   }
 
-  function targetMessage() {
+  function targetSummary() {
     if (!selectedBranch) return '';
     const branchName = selectedBranch.branchName || '未命名支派';
-    if (activeType === 'relationship') {
-      return `“${branchName}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`;
-    }
-    if (activeType === 'source') {
-      return `“${branchName}”将作为本次来源资料导入的批次管理支派，模板中无需也不允许填写宗族、支派或资料技术 ID。`;
-    }
-    return `本批次中的全部人物将归入“${branchName}”，文件中无需填写支派信息。`;
+    if (activeType === 'relationship') return `批次管理支派：${branchName}；关系双方仍按各自支派权限校验。`;
+    if (activeType === 'source') return `批次管理支派：${branchName}。`;
+    return `导入人物归属：${branchName}。`;
   }
 
   return (
     <div className="import-center-page">
-      <Card>
-        <Typography.Title level={3} style={{ marginTop: 0 }}>数据导入</Typography.Title>
-        <Typography.Paragraph type="secondary">
-          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物、人物关系和来源资料导入，其他数据类型将复用同一批次与审核流程逐步接入。
-        </Typography.Paragraph>
-        <Tabs
-          activeKey={activeType}
-          onChange={key => setActiveType(key as ImportTypeKey)}
-          items={importTypeRegistry.map(type => ({
-            key: type.key,
-            disabled: type.availability === 'planned',
-            label: (
-              <Space size={6}>
-                <span>{type.title}</span>
-                <Tag color={type.availability === 'available' ? 'success' : 'default'}>
-                  {type.availability === 'available' ? '已支持' : '规划中'}
-                </Tag>
-              </Space>
-            )
-          }))}
-        />
-        <Typography.Text type="secondary">{activeDefinition.description}</Typography.Text>
-      </Card>
-
-      <Card title="导入目标" style={{ marginTop: 16 }}>
+      <Card title="选择导入类型与目标">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先在应用顶部选择所属宗族，再选择本次导入的目标支派。" /> : null}
+          <Steps
+            size="small"
+            current={selectedBranch ? 1 : 0}
+            items={[{ title: '选择目标' }, { title: '上传并预览' }, { title: '创建批次' }]}
+          />
+          <Tabs
+            activeKey={activeType}
+            onChange={key => setActiveType(key as ImportTypeKey)}
+            items={importTypeRegistry.map(type => ({
+              key: type.key,
+              disabled: type.availability === 'planned',
+              label: (
+                <Space size={6}>
+                  <span>{type.title}</span>
+                  {type.availability === 'planned' ? <Tag>规划中</Tag> : null}
+                </Space>
+              )
+            }))}
+          />
+          {!workspace.clanId ? <Alert type="warning" showIcon message="请先在应用顶部选择所属宗族。" /> : null}
           {branchError ? <Alert type="error" showIcon message={branchError} /> : null}
           <Select
             showSearch
@@ -137,13 +126,9 @@ export function ImportPage({ notify }: Props) {
             onChange={value => changeBranch(value || '')}
           />
           {workspace.clanId && !branchLoading && !branchError && branches.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前宗族暂无可选支派，请先建立支派。" />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可选支派，请先建立支派" />
           ) : null}
-          {selectedBranch ? (
-            <Alert type="success" showIcon message={targetMessage()} />
-          ) : (
-            workspace.clanId && branches.length > 0 ? <Alert type="info" showIcon message="请选择目标支派后再上传文件。" /> : null
-          )}
+          {selectedBranch ? <Typography.Text type="secondary">{targetSummary()}</Typography.Text> : null}
         </Space>
       </Card>
 
