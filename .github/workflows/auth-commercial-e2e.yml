@@ -44,15 +44,24 @@ jobs:
       - name: Install Chromium
         working-directory: frontend/genealogy-web
         run: npx playwright install --with-deps chromium
-      - name: Verify frontend contract and production build
+      - name: Verify auth frontend tests
         working-directory: frontend/genealogy-web
-        run: |
-          npm run test:auth
-          npm run test:members
-          npm run typecheck
-          npm run api:check
-          npm run build
-          ! grep -R -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth
+        run: npm run test:auth
+      - name: Verify member frontend tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:members
+      - name: Verify frontend types
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Verify API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Build production frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Scan production auth artifacts
+        working-directory: frontend/genealogy-web
+        run: '! grep -R -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth'
       - name: Start backend
         working-directory: backend/genealogy-backend
         env:
