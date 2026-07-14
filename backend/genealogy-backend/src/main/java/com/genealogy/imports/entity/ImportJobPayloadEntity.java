@@ -3,7 +3,6 @@ package com.genealogy.imports.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -26,7 +25,6 @@ public class ImportJobPayloadEntity {
     @Column(name = "content_type")
     private String contentType;
 
-    @Lob
     @Column(name = "file_content", nullable = false, columnDefinition = "bytea")
     private byte[] fileContent;
 
