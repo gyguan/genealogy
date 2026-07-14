@@ -47,6 +47,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
 - 需求执行路径：分析需求 → 拆分 Issue → 实现 Issue → 继续 Issue / PR → 修复 CI / 处理 Review → 收尾 PR
+- ChatGPT 页面直连 GitHub 远程协作模式：默认不依赖本地开发环境、本地数据库或本地服务
 - Issue 创建、分组、统一前缀与执行顺序：`docs/ai/issue-creation-standard.md`
 - 聊天式开发、短指令和任务看板：`docs/ai/chat-driven-github-workflow.md`
 - Issue 启动门禁、Draft PR 持久化与中断恢复：`docs/ai/issue-execution-governance.md`
@@ -57,7 +58,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - Issue 实现 PR 自动结构与耗时检查：`.github/workflows/issue-delivery-governance.yml`
 - Flyway 迁移自动检查：`.github/workflows/database-migration-governance.yml`
 
-规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。需求执行应先判断当前路径：分析需求只输出结论和建议，不改仓库；拆分 Issue 只建单和维护执行顺序，不实现代码；实现 Issue 必须建立任务文件、远程分支、Draft PR 和 Issue 关联；继续 Issue 或 PR 必须从 GitHub 现场恢复，先输出恢复检查点，再推进下一步最小任务。所有面向用户的时间统一使用北京时间；执行任务看板记录已经发生的实际活跃耗时，不使用预计时间或无依据的补算值。
+规则冲突时，依次以 P0 全仓红线、已批准的 Issue/Spec、P1 门禁、目录级规则和推荐实践为准。需求执行应先判断当前路径：分析需求只输出结论和建议，不改仓库；拆分 Issue 只建单和维护执行顺序，不实现代码；实现 Issue 必须建立任务文件、远程分支、Draft PR 和 Issue 关联；继续 Issue 或 PR 必须从 GitHub 现场恢复，先输出恢复检查点，再推进下一步最小任务。后续所有操作默认通过 ChatGPT 页面直连 GitHub 完成，不要求或尝试连接本地环境；如存在只能本地执行的验证，只能标记为建议命令，不能视为已验证结果。所有面向用户的时间统一使用北京时间；执行任务看板记录已经发生的实际活跃耗时，不使用预计时间或无依据的补算值。
 
 ## 可点击原型
 
