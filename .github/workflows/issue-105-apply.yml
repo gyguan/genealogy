@@ -1,0 +1,36 @@
+name: Issue 105 Apply Generation Import
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-105-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply staged patch and regenerate API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cat tasks/.issue-105-code.patch.* > /tmp/issue-105.patch
+          git apply --check /tmp/issue-105.patch
+          git apply /tmp/issue-105.patch
+          node scripts/api/generate-frontend-client.mjs
+          rm -f tasks/.issue-105-code.patch.*
+          rm -f tasks/.issue-105-patch.part*
+          rm -f .github/workflows/issue-105-discovery.yml
+          rm -f .github/workflows/issue-105-apply.yml
+          git add -A
+          git commit -m 'feat(imports): implement generation import vertical slice'
+          git push origin HEAD:${{ github.head_ref }}
