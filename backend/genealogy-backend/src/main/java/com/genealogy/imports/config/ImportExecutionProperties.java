@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class ImportExecutionProperties {
 
     private long asyncFileBytesThreshold = 5L * 1024L * 1024L;
+    private int asyncRowCountThreshold = 10_000;
     private int chunkSize = 200;
     private int maxRetries = 3;
     private int leaseSeconds = 60;
@@ -19,6 +20,14 @@ public class ImportExecutionProperties {
 
     public void setAsyncFileBytesThreshold(long asyncFileBytesThreshold) {
         this.asyncFileBytesThreshold = Math.max(1L, asyncFileBytesThreshold);
+    }
+
+    public int getAsyncRowCountThreshold() {
+        return asyncRowCountThreshold;
+    }
+
+    public void setAsyncRowCountThreshold(int asyncRowCountThreshold) {
+        this.asyncRowCountThreshold = Math.max(1, asyncRowCountThreshold);
     }
 
     public int getChunkSize() {
