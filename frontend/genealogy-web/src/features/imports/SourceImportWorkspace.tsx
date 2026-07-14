@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Table, Tag, Upload } from 'antd';
+import { Alert, Button, Card, Collapse, Empty, Space, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { saveDownloadedBlob } from '../../shared/utils/download';
@@ -163,22 +163,21 @@ export function SourceImportWorkspace({ notify, clanId, branchId, branchName, on
         style={{ marginTop: 16 }}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message="本期仅导入来源资料元数据，不导入附件，也不自动创建人物或关系引用。"
-            description="表头必须依次为：资料名称、资料类型、作者/编纂者、书名/题名、卷号、页码、形成时间、馆藏位置、来源说明、摘录内容、可信度、可见范围、敏感级别。"
+          <Collapse
+            ghost
+            size="small"
+            items={[{
+              key: 'template-guide',
+              label: '模板填写说明',
+              children: (
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  表头依次为资料名称、资料类型、作者/编纂者、书名/题名、卷号、页码、形成时间、馆藏位置、来源说明、摘录内容、可信度、可见范围、敏感级别。导入先生成草稿，重复、值域错误或必填缺失可在任务详情中修正；附件和引用关系请在来源资料库中维护。
+                </Typography.Paragraph>
+              )
+            }]}
           />
-          <Alert
-            type="info"
-            showIcon
-            message="来源资料先生成草稿，重复、值域错误或必填缺失会进入失败行修正；审核通过后才进入正式来源资料库。"
-          />
-          {!branchSelected ? (
-            <Alert type="warning" showIcon message="请在本页上方选择导入批次管理支派，再上传模板。" />
-          ) : (
-            <Alert type="success" showIcon message={`当前批次管理支派：${branchName || '未命名支派'}。模板中不允许填写宗族、支派或资料技术 ID。`} />
-          )}
+          {!branchSelected ? <Alert type="warning" showIcon message="请先选择批次管理支派" /> : null}
+          {branchSelected ? <Typography.Text type="secondary">批次管理支派：{branchName || '未命名支派'}</Typography.Text> : null}
           <Upload {...uploadProps}>
             <Button disabled={!branchSelected}>上传填写后的模板</Button>
           </Upload>
@@ -199,7 +198,7 @@ export function SourceImportWorkspace({ notify, clanId, branchId, branchName, on
             <Alert
               type="warning"
               showIcon
-              message={`发现 ${preview.errorCount} 条错误或重复资料。仍可创建批次，之后在任务详情中逐行修正。`}
+              message={`发现 ${preview.errorCount} 条错误或重复资料，可创建批次后逐行修正。`}
               style={{ marginBottom: 12 }}
             />
           ) : null}

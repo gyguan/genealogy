@@ -1,15 +1,31 @@
 import type { ReactNode } from 'react';
-import { Card, Space, Typography } from 'antd';
+import { Card, Space, Tooltip, Typography } from 'antd';
 
-export function Panel(props: { title: string; description?: string; actions?: ReactNode; children: ReactNode }) {
+export function Panel(props: {
+  title: string;
+  description?: string;
+  help?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const help = props.help || props.description;
+
   return (
     <Card
       className="panel antd-panel"
-      title={<Typography.Text strong>{props.title}</Typography.Text>}
+      title={(
+        <Space size={6}>
+          <Typography.Text strong>{props.title}</Typography.Text>
+          {help ? (
+            <Tooltip title={help}>
+              <Typography.Text type="secondary" aria-label={`${props.title}说明`} style={{ cursor: 'help' }}>ⓘ</Typography.Text>
+            </Tooltip>
+          ) : null}
+        </Space>
+      )}
       extra={props.actions ? <Space size={8}>{props.actions}</Space> : null}
       size="small"
     >
-      {props.description ? <Typography.Paragraph className="panel-description" type="secondary">{props.description}</Typography.Paragraph> : null}
       {props.children}
     </Card>
   );

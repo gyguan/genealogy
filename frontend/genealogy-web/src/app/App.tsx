@@ -7,6 +7,7 @@ import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
 import { BookletActions } from '../features/booklets/BookletActions';
+import { CultureProductPage } from '../features/culture/CultureProductPage';
 import { PersonDataExportActions } from '../features/exports/PersonDataExportActions';
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
@@ -15,7 +16,6 @@ import { MemberInvitationAction } from '../features/members/MemberInvitationActi
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
-import { CultureProductPage } from '../features/experience/GenealogyExperiencePages';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryPage } from '../features/sources/SourceLibraryPage';

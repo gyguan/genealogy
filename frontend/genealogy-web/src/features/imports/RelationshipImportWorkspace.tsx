@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Empty, Space, Table, Tag, Upload } from 'antd';
+import { Alert, Button, Card, Collapse, Empty, Space, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { saveDownloadedBlob } from '../../shared/utils/download';
@@ -180,22 +180,21 @@ export function RelationshipImportWorkspace({
         style={{ marginTop: 16 }}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message="请使用人物业务编码建立关系，不要填写内部人物 ID"
-            description="表头必须依次为：关系主体编码、关系对象编码、关系类型、说明。关系类型仅支持父子、母子、配偶；父子/母子的主体为父亲/母亲，对象为子女。"
+          <Collapse
+            ghost
+            size="small"
+            items={[{
+              key: 'template-guide',
+              label: '模板填写说明',
+              children: (
+                <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                  使用人物业务编码建立关系。表头依次为关系主体编码、关系对象编码、关系类型、说明；关系类型支持父子、母子、配偶。导入先生成草稿，重复、自关联、人物未匹配或循环关系可在任务详情中修正。
+                </Typography.Paragraph>
+              )
+            }]}
           />
-          <Alert
-            type="info"
-            showIcon
-            message="关系导入先生成草稿，重复、自关联、人物未匹配或循环关系会进入失败行修正。审核通过后才正式生效。"
-          />
-          {!branchSelected ? (
-            <Alert type="warning" showIcon message="请在本页上方选择导入批次管理支派，再上传模板。" />
-          ) : (
-            <Alert type="success" showIcon message={`当前批次管理支派：${branchName || '未命名支派'}。关系双方仍按各自支派权限校验。`} />
-          )}
+          {!branchSelected ? <Alert type="warning" showIcon message="请先选择批次管理支派" /> : null}
+          {branchSelected ? <Typography.Text type="secondary">批次管理支派：{branchName || '未命名支派'}</Typography.Text> : null}
           <Upload {...uploadProps}>
             <Button disabled={!branchSelected}>上传填写后的模板</Button>
           </Upload>
@@ -216,7 +215,7 @@ export function RelationshipImportWorkspace({
             <Alert
               type="warning"
               showIcon
-              message={`发现 ${preview.errorCount} 条错误或重复关系。仍可创建批次，之后在任务详情中逐行修正。`}
+              message={`发现 ${preview.errorCount} 条错误或重复关系，可创建批次后逐行修正。`}
               style={{ marginBottom: 12 }}
             />
           ) : null}
