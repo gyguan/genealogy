@@ -15,7 +15,7 @@ import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.repository.RelationshipRepository;
-import com.genealogy.review.application.RevisionApplyService;
+import com.genealogy.review.application.AsyncAwareRevisionApplyService;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.source.repository.SourceRepository;
 import org.springframework.context.annotation.Primary;
@@ -28,7 +28,7 @@ import java.util.Objects;
 
 @Primary
 @Service
-public class CultureAwareRevisionApplyService extends RevisionApplyService {
+public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplyService {
 
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Shanghai");
 
@@ -83,7 +83,7 @@ public class CultureAwareRevisionApplyService extends RevisionApplyService {
             case CultureItemGovernanceApplicationService.CHANGE_ARCHIVE -> applyArchive(item);
             default -> throw new BusinessException("CULTURE_REVISION_CHANGE_INVALID", "文化资料变更类型不合法");
         }
-        payloadRepository.deleteById(revision.getId());
+        deletePayloadIfPresent(revision.getId());
     }
 
     @Override
@@ -101,7 +101,7 @@ public class CultureAwareRevisionApplyService extends RevisionApplyService {
             item.setDataStatus("rejected");
             cultureItemRepository.save(item);
         }
-        payloadRepository.deleteById(revision.getId());
+        deletePayloadIfPresent(revision.getId());
     }
 
     private void applyPublish(CultureItemEntity item) {
@@ -154,6 +154,10 @@ public class CultureAwareRevisionApplyService extends RevisionApplyService {
         } catch (JsonProcessingException exception) {
             throw new BusinessException("CULTURE_REVISION_PAYLOAD_INVALID", "文化资料审核载荷无法解析");
         }
+    }
+
+    private void deletePayloadIfPresent(Long revisionId) {
+        payloadRepository.findById(revisionId).ifPresent(payloadRepository::delete);
     }
 
     private String normalize(String value) {
