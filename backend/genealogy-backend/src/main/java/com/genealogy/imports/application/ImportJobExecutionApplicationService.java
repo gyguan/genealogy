@@ -88,6 +88,12 @@ public class ImportJobExecutionApplicationService {
         if (List.of(ImportJobEntity.EXECUTION_COMPLETED, ImportJobEntity.EXECUTION_CANCELLED).contains(status)) {
             throw new BusinessException("IMPORT_JOB_CANCEL_NOT_ALLOWED", "已完成或已取消任务不能再次取消");
         }
+        if (hasSideEffects(job)) {
+            throw new BusinessException(
+                    "IMPORT_JOB_CANCEL_HAS_SIDE_EFFECTS",
+                    "任务已生成草稿或开始发布，不能取消；请暂停后继续处理，避免留下不可恢复的半成品"
+            );
+        }
         LocalDateTime now = LocalDateTime.now();
         if (ImportJobEntity.EXECUTION_RUNNING.equals(status)) {
             job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
@@ -179,15 +185,19 @@ public class ImportJobExecutionApplicationService {
         if (List.of(ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.EXECUTION_RUNNING,
                 ImportJobEntity.EXECUTION_RETRY_WAIT).contains(status)) {
             actions.add("pause");
-            actions.add("cancel");
+            if (!hasSideEffects(job)) actions.add("cancel");
         } else if (ImportJobEntity.EXECUTION_PAUSED.equals(status)) {
             actions.add("resume");
-            actions.add("cancel");
+            if (!hasSideEffects(job)) actions.add("cancel");
         } else if (List.of(ImportJobEntity.EXECUTION_FAILED, ImportJobEntity.EXECUTION_DEAD_LETTER).contains(status)) {
             actions.add("retry");
-            actions.add("cancel");
+            if (!hasSideEffects(job)) actions.add("cancel");
         }
         return List.copyOf(actions);
+    }
+
+    private boolean hasSideEffects(ImportJobEntity job) {
+        return value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
     }
 
     private String normalizeStage(String failureStage) {
