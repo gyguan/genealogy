@@ -1,8 +1,9 @@
 name: Issue 120 Generate Contract
 
 on:
-  pull_request:
-    branches: ["main"]
+  push:
+    branches:
+      - "agent/issue-120-business-object-search"
     paths:
       - "docs/api/openapi.tracking-search.json"
       - "scripts/api/generate-frontend-client.mjs"
@@ -13,13 +14,12 @@ permissions:
 
 jobs:
   generate:
-    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch
+      - name: Checkout issue branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: agent/issue-120-business-object-search
           fetch-depth: 0
 
       - name: Set up Node.js
@@ -45,4 +45,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/genealogy-web/src/shared/api/generated
           git commit -m "chore(api): generate issue 120 contract artifacts"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          git push origin HEAD:agent/issue-120-business-object-search
