@@ -17,20 +17,18 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Apply staged patch and regenerate API contract
+      - name: Diagnose staged patch
         shell: bash
         run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          set +e
           cat tasks/.issue-105-code.patch.* > /tmp/issue-105.patch
-          git apply --check /tmp/issue-105.patch
-          git apply /tmp/issue-105.patch
-          node scripts/api/generate-frontend-client.mjs
-          rm -f tasks/.issue-105-code.patch.*
-          rm -f tasks/.issue-105-patch.part*
-          rm -f .github/workflows/issue-105-discovery.yml
-          rm -f .github/workflows/issue-105-apply.yml
-          git add -A
-          git commit -m 'feat(imports): implement generation import vertical slice'
-          git push origin HEAD:${{ github.head_ref }}
+          sha256sum /tmp/issue-105.patch | tee /tmp/issue-105-diagnostic.txt
+          wc -c /tmp/issue-105.patch | tee -a /tmp/issue-105-diagnostic.txt
+          git apply --check /tmp/issue-105.patch >> /tmp/issue-105-diagnostic.txt 2>&1
+          echo "apply_status=$?" >> /tmp/issue-105-diagnostic.txt
+          cat /tmp/issue-105-diagnostic.txt
+      - name: Upload diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-105-patch-diagnostic
+          path: /tmp/issue-105-diagnostic.txt
