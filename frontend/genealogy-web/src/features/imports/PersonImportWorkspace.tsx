@@ -18,6 +18,8 @@ type ImportJobResult = {
   successCount?: number;
   failureCount?: number;
   status?: string;
+  executionMode?: string;
+  executionStatus?: string;
 };
 
 type PreviewRow = {
@@ -156,11 +158,15 @@ export function PersonImportWorkspace({
         `/clans/${clanId}/imports/persons.csv?${requestQuery(true)}`,
         formData
       );
+      const asyncQueued = result.executionMode === 'async'
+        || ['queued', 'running', 'retry_wait'].includes(String(result.executionStatus || '').toLowerCase());
       const failureCount = result.failureCount || 0;
       notify({
-        message: failureCount > 0
-          ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行`
-          : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
+        message: asyncQueued
+          ? '导入批次已创建，文件将在后台分片处理；可在后台执行任务中查看进度、暂停或恢复。'
+          : failureCount > 0
+            ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行`
+            : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
       });
       setPreview(null);
       setFile(null);
@@ -218,7 +224,7 @@ export function PersonImportWorkspace({
               label: '模板填写说明',
               children: (
                 <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                  表头依次为姓名、性别、代次、字辈、出生日期、是否在世，请勿改名或调整顺序。性别填写男/女/未知，是否在世填写是/否，代次填写正整数，日期格式为 yyyy-MM-dd。导入后先生成草稿，错误行可在导入任务中修正。
+                  表头依次为姓名、性别、代次、字辈、出生日期、是否在世，请勿改名或调整顺序。性别填写男/女/未知，是否在世填写是/否，代次填写正整数，日期格式为 yyyy-MM-dd。小批次同步生成草稿，大批次自动进入后台分片处理；错误行可在导入任务中修正。
                 </Typography.Paragraph>
               )
             }]}

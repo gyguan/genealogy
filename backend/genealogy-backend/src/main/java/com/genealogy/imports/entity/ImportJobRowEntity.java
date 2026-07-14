@@ -74,6 +74,9 @@ public class ImportJobRowEntity {
     @Column(name = "corrected_at")
     private LocalDateTime correctedAt;
 
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

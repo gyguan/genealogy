@@ -19,7 +19,18 @@ public record ImportJobSummaryResponse(
         String processingStatus,
         String reviewStatus,
         Integer reviewRound,
-        Long latestReviewTaskId
+        Long latestReviewTaskId,
+        String executionMode,
+        String executionStatus,
+        String executionStage,
+        Integer processedCount,
+        Integer publishedCount,
+        Integer chunkSize,
+        Integer executionRetryCount,
+        Integer executionMaxRetries,
+        Boolean manualInterventionRequired,
+        LocalDateTime nextRetryAt,
+        LocalDateTime heartbeatAt
 ) {
 
     /**
@@ -73,7 +84,18 @@ public record ImportJobSummaryResponse(
                 processingStatus,
                 reviewStatus,
                 reviewRound,
-                latestReviewTaskId
+                latestReviewTaskId,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 
