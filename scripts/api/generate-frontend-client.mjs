@@ -25,7 +25,13 @@ const trackingSchemaNames = [
   'AuditRecordResponse',
   'ReviewTaskDetailResponse',
   'FieldDiff',
-  'ReviewDiffResponse'
+  'ReviewDiffResponse',
+  'ReviewTaskView',
+  'ReviewTaskScope',
+  'ReviewTargetSummaryResponse',
+  'ReviewTaskListItemResponse',
+  'ReviewTaskPage',
+  'ReviewTaskViewDetailResponse'
 ];
 const cultureSchemaNames = [
   'GenealogyTargetType',

@@ -179,7 +179,7 @@ public class ReviewTaskQueryApplicationService {
         ReviewTaskListItemResponse task = history.stream()
                 .filter(item -> Objects.equals(item.id(), taskId))
                 .findFirst()
-                .orElseGet(() -> enrich(List.of(selected)).getFirst());
+                .orElseGet(() -> enrich(List.of(selected)).get(0));
         return new ReviewTaskViewDetailResponse(task, history);
     }
 
@@ -200,7 +200,7 @@ public class ReviewTaskQueryApplicationService {
         if (pairs.isEmpty()) {
             return List.of();
         }
-        authorizeTask(pairs.getFirst(), actorId);
+        authorizeTask(pairs.get(0), actorId);
         return enrich(pairs);
     }
 

@@ -330,6 +330,19 @@ export const API_OPERATIONS = {
     "requestBody": "ImportJobReviewSubmitRequest",
     "response": "ApiResponseCheckTaskResponse"
   },
+  "GET /api/v1/clans/{clanId}/review-targets/{targetType}/{targetId}/history": {
+    "operationId": "getReviewTargetHistory",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/review-targets/{targetType}/{targetId}/history",
+    "pathParams": [
+      "clanId",
+      "targetId",
+      "targetType"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ReviewTaskListItemResponse[]"
+  },
   "POST /api/v1/clans/{clanId}/review-tasks": {
     "operationId": "submitReviewTask",
     "method": "POST",
@@ -351,6 +364,42 @@ export const API_OPERATIONS = {
     "queryParams": [],
     "requestBody": null,
     "response": "ApiResponseCheckTaskList"
+  },
+  "GET /api/v1/clans/{clanId}/review-tasks/search": {
+    "operationId": "searchReviewTasks",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/review-tasks/search",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId",
+      "pageNo",
+      "pageSize",
+      "processedFrom",
+      "processedTo",
+      "scope",
+      "status",
+      "submittedFrom",
+      "submittedTo",
+      "targetId",
+      "targetType",
+      "view"
+    ],
+    "requestBody": null,
+    "response": "ReviewTaskPage"
+  },
+  "GET /api/v1/clans/{clanId}/review-tasks/{taskId}/view": {
+    "operationId": "getReviewTaskViewDetail",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/review-tasks/{taskId}/view",
+    "pathParams": [
+      "clanId",
+      "taskId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ReviewTaskViewDetailResponse"
   },
   "POST /api/v1/clans/{clanId}/source-bindings": {
     "operationId": "createSourceBinding",
