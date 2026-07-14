@@ -5,5 +5,8 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 node scripts/api/generate-frontend-client.mjs
+node scripts/api/check-tracking-contract.mjs
 
-git diff --exit-code -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+git diff --exit-code -- \
+  frontend/genealogy-web/src/shared/api/generated/api-contract.ts \
+  frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
