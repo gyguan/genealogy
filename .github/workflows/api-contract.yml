@@ -13,9 +13,7 @@ on:
     branches:
       - main
       - master
-      - agent/issue-106-source-import
     paths:
-      - '.github/workflows/api-contract.yml'
       - 'docs/api/openapi*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
@@ -23,17 +21,12 @@ on:
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
 
-permissions:
-  contents: write
-
 jobs:
   api-contract:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -44,25 +37,8 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm install
 
-      - name: Generate API contract
-        run: |
-          node scripts/api/generate-frontend-client.mjs
-          node scripts/api/check-tracking-contract.mjs
-
-      - name: Commit generated contract
-        if: github.ref == 'refs/heads/agent/issue-106-source-import' || github.event.pull_request.head.ref == 'agent/issue-106-source-import'
-        run: |
-          if ! git diff --quiet -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
-            git commit -m "chore(imports): update generated api contract for source import"
-            git push
-          fi
-
       - name: Check generated API contract
-        if: github.ref != 'refs/heads/agent/issue-106-source-import' && github.event.pull_request.head.ref != 'agent/issue-106-source-import'
-        run: git diff --exit-code -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
+        run: bash scripts/api/check-api-contract.sh
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
