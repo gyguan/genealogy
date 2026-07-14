@@ -37,19 +37,10 @@ jobs:
         run: |
           python3 .github/scripts/issue-130-132-backend-apply.py
           python3 .github/scripts/issue-130-132-import-route-fix.py
-      - name: Run full backend tests with focused diagnostics
+          python3 .github/scripts/issue-130-132-migration-order-fix.py
+      - name: Run full backend tests
         working-directory: backend/genealogy-backend
-        shell: bash
-        run: |
-          set +e
-          mvn -q clean test >/tmp/auth-closure-tests.log 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo '=== Maven failure summary ==='
-            grep -E '\[ERROR\]|COMPILATION ERROR|Failures:|Errors:' /tmp/auth-closure-tests.log | tail -n 100 || true
-            exit "$status"
-          fi
+        run: mvn -q clean test
       - name: Package and start with PostgreSQL/Flyway
         working-directory: backend/genealogy-backend
         env:
@@ -69,12 +60,12 @@ jobs:
               exit 0
             fi
             if ! kill -0 "$pid" 2>/dev/null; then
-              tail -n 160 /tmp/auth-closure-startup.log
+              tail -n 180 /tmp/auth-closure-startup.log
               exit 1
             fi
             sleep 2
           done
-          tail -n 160 /tmp/auth-closure-startup.log
+          tail -n 180 /tmp/auth-closure-startup.log
           exit 1
       - name: Commit verified backend closure and remove temporary assets
         shell: bash
@@ -82,9 +73,10 @@ jobs:
           rm .github/workflows/issue-130-132-backend-apply.yml
           rm .github/scripts/issue-130-132-backend-apply.py
           rm .github/scripts/issue-130-132-import-route-fix.py
-          rm -f tasks/issue-130-132-backend-diagnostic.md
+          rm .github/scripts/issue-130-132-migration-order-fix.py
+          rm -f tasks/issue-130-132-backend-diagnostic.md tasks/issue-130-132-startup-diagnostic.md tasks/issue-132-baseline-inspection.md
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git add backend/genealogy-backend tasks/issue-130-132-backend-diagnostic.md .github/workflows/issue-130-132-backend-apply.yml .github/scripts/issue-130-132-backend-apply.py .github/scripts/issue-130-132-import-route-fix.py
+          git add -A backend/genealogy-backend tasks .github/workflows/issue-130-132-backend-apply.yml .github/scripts/issue-130-132-backend-apply.py .github/scripts/issue-130-132-import-route-fix.py .github/scripts/issue-130-132-migration-order-fix.py
           git commit -m 'security(auth): enforce cooldown and session lifecycle'
           git push
