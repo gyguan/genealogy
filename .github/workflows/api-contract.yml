@@ -28,13 +28,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   api-contract:
     name: API Contract Check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout head branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,16 +50,24 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm install
 
+      - name: Generate and commit contract outputs
+        run: |
+          node scripts/api/generate-frontend-client.mjs
+          if ! git diff --quiet -- \
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts \
+            frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts \
+            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts \
+            frontend/genealogy-web/src/shared/api/generated/culture-types.ts; then
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add \
+              frontend/genealogy-web/src/shared/api/generated/api-contract.ts \
+              frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts \
+              frontend/genealogy-web/src/shared/api/generated/tracking-types.ts \
+              frontend/genealogy-web/src/shared/api/generated/culture-types.ts
+            git commit -m "chore(api): regenerate issue 166 contract outputs"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+
       - name: Check generated API contract
         run: bash scripts/api/check-api-contract.sh
-
-      - name: Upload generated contract diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-166-generated-contracts
-          path: |
-            frontend/genealogy-web/src/shared/api/generated/api-contract.ts
-            frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts
-            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
-            frontend/genealogy-web/src/shared/api/generated/culture-types.ts
