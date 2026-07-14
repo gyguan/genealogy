@@ -1,0 +1,52 @@
+name: Issue 106 Typecheck Diagnostics
+
+on:
+  push:
+    branches:
+      - agent/issue-106-source-import
+    paths:
+      - '.github/workflows/issue-106-typecheck-diagnostics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-106-source-import
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Capture typecheck errors
+        shell: bash
+        run: |
+          cd frontend/genealogy-web
+          npm install >/tmp/issue-106-npm-install.log 2>&1
+          set +e
+          npm run typecheck > /tmp/issue-106-typecheck.log 2>&1
+          status=$?
+          set -e
+          mkdir -p ../../tasks
+          {
+            echo "# Issue 106 Typecheck Diagnostics"
+            echo
+            echo "exit_status=$status"
+            echo
+            echo '```text'
+            grep -E "error TS|src/features/imports|SourceImport|ImportJobManagementPanel|ImportPage" /tmp/issue-106-typecheck.log | head -200 || true
+            echo '```'
+            echo
+            echo "## Tail"
+            echo '```text'
+            tail -120 /tmp/issue-106-typecheck.log
+            echo '```'
+          } > ../../tasks/issue-106-typecheck.log
+          cd ../..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tasks/issue-106-typecheck.log
+          git commit -m "chore(issue-106): capture typecheck diagnostics" || true
+          git push
