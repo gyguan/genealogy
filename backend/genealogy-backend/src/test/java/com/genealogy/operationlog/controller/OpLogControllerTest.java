@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationLogBusinessViewApplicationService;
 import com.genealogy.operationlog.application.OperationLogExportApplicationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -26,10 +27,12 @@ import static org.mockito.Mockito.when;
 class OpLogControllerTest {
 
     private final OperationLogApplicationService operationLogApplicationService = mock(OperationLogApplicationService.class);
+    private final OperationLogBusinessViewApplicationService businessViewApplicationService = mock(OperationLogBusinessViewApplicationService.class);
     private final OperationLogExportApplicationService exportApplicationService = mock(OperationLogExportApplicationService.class);
     private final AuthorizationApplicationService authorizationApplicationService = mock(AuthorizationApplicationService.class);
     private final OpLogController controller = new OpLogController(
             operationLogApplicationService,
+            businessViewApplicationService,
             exportApplicationService,
             authorizationApplicationService
     );
@@ -39,10 +42,12 @@ class OpLogControllerTest {
         when(authorizationApplicationService.requireLogin("Bearer token")).thenReturn(99L);
         when(authorizationApplicationService.hasDirectClanPermission(1L, 99L, "operation_log.export"))
                 .thenReturn(false);
+        PageResponse<com.genealogy.operationlog.dto.OperationLogResponse> rawPage = PageResponse.of(java.util.List.of(), 0, 1, 20);
         when(operationLogApplicationService.search(
                 eq(1L), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(1), eq(20), eq(false)
-        )).thenReturn(PageResponse.of(java.util.List.of(), 0, 1, 20));
+        )).thenReturn(rawPage);
+        when(businessViewApplicationService.enrich(rawPage, 1L, 99L)).thenReturn(rawPage);
 
         controller.listOperations(
                 "Bearer token", 1L, null, null, null, null,
@@ -55,6 +60,7 @@ class OpLogControllerTest {
                 eq(1L), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(1), eq(20), eq(false)
         );
+        verify(businessViewApplicationService).enrich(rawPage, 1L, 99L);
     }
 
     @Test
@@ -68,7 +74,7 @@ class OpLogControllerTest {
                 null, null, null, 1, 20
         )).isInstanceOf(BusinessException.class);
 
-        verifyNoInteractions(operationLogApplicationService);
+        verifyNoInteractions(operationLogApplicationService, businessViewApplicationService);
     }
 
     @Test
