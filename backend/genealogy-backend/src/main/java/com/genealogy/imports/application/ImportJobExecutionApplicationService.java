@@ -98,7 +98,7 @@ public class ImportJobExecutionApplicationService {
             job.setCompletedAt(now);
             job.setLeaseOwner(null);
             job.setLeaseExpiresAt(null);
-            payloadRepository.deleteById(jobId);
+            deletePayloadIfPresent(jobId);
         }
         job.setUpdatedAt(now);
         jobRepository.save(job);
@@ -194,6 +194,12 @@ public class ImportJobExecutionApplicationService {
         if (ImportJobEntity.STAGE_PUBLISHING.equals(failureStage)) return ImportJobEntity.STAGE_PUBLISHING;
         if (ImportJobEntity.STAGE_DRAFTING.equals(failureStage)) return ImportJobEntity.STAGE_DRAFTING;
         return ImportJobEntity.STAGE_PARSING;
+    }
+
+    private void deletePayloadIfPresent(Long jobId) {
+        if (payloadRepository.existsById(jobId)) {
+            payloadRepository.deleteById(jobId);
+        }
     }
 
     private void record(ImportJobEntity job, Long actorId, String action, String summary) {
