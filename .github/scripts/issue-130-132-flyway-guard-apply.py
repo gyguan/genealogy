@@ -1,3 +1,4 @@
+# One-shot, verified patch for the known duplicate-migration history boundary.
 from pathlib import Path
 
 application = Path('backend/genealogy-backend/src/main/resources/application.yml')
