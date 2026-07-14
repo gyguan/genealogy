@@ -48,6 +48,7 @@ jobs:
           )
           git checkout "$source_ref" -- "${files[@]}"
           rm .github/workflows/issue-130-132-clean-transplant.yml
+          rm -f tasks/.issue-130-132-trigger
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add -A
