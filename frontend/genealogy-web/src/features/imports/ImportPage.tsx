@@ -4,6 +4,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
+import { ImportReviewHistoryPanel } from './ImportReviewHistoryPanel';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
 import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
 import { SourceImportWorkspace } from './SourceImportWorkspace';
@@ -170,6 +171,7 @@ export function ImportPage({ notify }: Props) {
         onChanged={refreshJobs}
       />
       <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
+      <ImportReviewHistoryPanel notify={notify} refreshKey={jobRefreshKey} />
     </div>
   );
 }
