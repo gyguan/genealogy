@@ -1,0 +1,48 @@
+name: Issue 121 Frontend Integration
+
+on:
+  push:
+    branches:
+      - agent/issue-121-trace-aggregation
+    paths:
+      - scripts/issue-121-frontend-patch.py
+      - .github/workflows/issue-121-frontend-integration.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-121-trace-aggregation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Apply frontend patch
+        run: python scripts/issue-121-frontend-patch.py
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+      - name: Check generated contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Commit integrated frontend
+        run: |
+          rm scripts/issue-121-frontend-patch.py .github/workflows/issue-121-frontend-integration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: consume unified issue 121 trace response"
+          git push origin HEAD:agent/issue-121-trace-aggregation
