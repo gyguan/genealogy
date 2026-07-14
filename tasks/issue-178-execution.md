@@ -1,6 +1,7 @@
 # Issue #178 执行看板
 
 - Issue：https://github.com/gyguan/genealogy/issues/178
+- Draft PR：https://github.com/gyguan/genealogy/pull/179
 - 目标：全量精简页面提示信息，统一 Tooltip / Popover / Alert / Empty 的使用边界，删除面向用户的研发实现话术。
 - 工作分支：`agent/issue-178-streamline-ui-guidance`
 - 执行方式：前端纯展示与交互优化，不修改后端契约、审核状态机、权限边界和数据语义。
@@ -11,8 +12,8 @@
 2. 精简建谱向导 Steps、步骤页重复标题和审核规则说明。
 3. 精简数据导入页及人物/关系/来源导入说明，将模板规则收进可展开帮助。
 4. 精简世系图谱、修谱工作台、族谱首页、宗族文化的介绍与研发话术。
-5. 精简审核中心、来源资料库、成员权限、人物档案等页面提示。
-6. 执行前端类型检查、构建和 API 契约检查；无法本地执行时以 CI 结果为准并明确记录。
+5. 精简审核中心、来源资料库、成员权限、人物档案和审计追踪页面提示。
+6. 执行前端模型测试、类型检查、生产构建和 API 契约检查。
 
 ## 非目标
 
@@ -26,59 +27,54 @@
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
 | 1 | 读取规则、Issue 与现有实现现场 | ✅ 已完成 | 约 6 分钟 | 已确认无既有分支、PR 和任务文件 |
-| 2 | 建立执行看板、分支和 Draft PR | 🔄 进行中 | 已累计约 2 分钟 | 当前提交为启动检查点 |
-| 3 | 改造公共提示组件与建谱向导 | ⏳ 待处理 | — |  |
-| 4 | 精简数据导入全流程提示 | ⏳ 待处理 | — |  |
-| 5 | 精简首页、文化、图谱和修谱工作台 | ⏳ 待处理 | — |  |
-| 6 | 精简审核、来源、成员和人物档案页面 | ⏳ 待处理 | — |  |
-| 7 | 检查禁止话术、diff 与响应式影响 | ⏳ 待处理 | — |  |
-| 8 | 执行验证并修复问题 | ⏳ 待处理 | — |  |
-| 9 | 更新 PR、Issue 和最终恢复检查点 | ⏳ 待处理 | — |  |
+| 2 | 建立执行看板、分支和 Draft PR | ✅ 已完成 | 约 2 分钟 | `627e4a9`，Draft PR #179 |
+| 3 | 改造公共提示组件与建谱向导 | ✅ 已完成 | 约 3 分钟 | `3929c0c`、`54ac25d`、`c5f4d66` |
+| 4 | 精简数据导入全流程提示 | ✅ 已完成 | 约 5 分钟 | `ee9fae8`、`aaf1017`、`a3581db`、`6d0e822` |
+| 5 | 精简首页、文化、图谱和修谱工作台 | ✅ 已完成 | 约 4 分钟 | `52e4659`、`e14100d`、`1c4771c`、`c5f4d66` |
+| 6 | 精简审核、来源、成员、人物档案和审计页面 | ✅ 已完成 | 约 3 分钟 | `6c9f204`、`c5f4d66` |
+| 7 | 检查禁止话术、diff 与响应式影响 | ✅ 已完成 | 约 2 分钟 | PR 仅涉及 12 个前端文件和本看板，无后端/API 修改 |
+| 8 | 执行验证并修复问题 | ✅ 已完成 | 约 2 分钟 | Frontend CI 与 Frontend Diagnostic 全部通过 |
+| 9 | 更新 PR、Issue 和最终恢复检查点 | 🔄 进行中 | 已累计约 1 分钟 | 正在同步完成摘要并准备合入 |
 
-## 影响模块
+## 主要交付
 
-- `frontend/genealogy-web/src/shared/ui`
-- `frontend/genealogy-web/src/features/mvp1`
-- `frontend/genealogy-web/src/features/imports`
-- `frontend/genealogy-web/src/features/home`
-- `frontend/genealogy-web/src/features/lineage`
-- `frontend/genealogy-web/src/features/workbench`
-- `frontend/genealogy-web/src/features/review`
-- `frontend/genealogy-web/src/features/sources`
-- `frontend/genealogy-web/src/features/members`
-- `frontend/genealogy-web/src/features/person`
+- 公共 `Panel.description` 不再默认占据正文空间，转为标题旁帮助提示。
+- 建谱向导 Steps 仅保留步骤名称和状态，审核规则通过帮助入口或阻塞状态按需展示。
+- 数据导入改为“选择目标 → 上传并预览 → 创建批次”的紧凑流程，模板长规则收进折叠说明。
+- 修谱工作台删除顶部产品介绍、“工作台定位”和“交付体验”等产品自述。
+- 宗族文化改为独立紧凑页面，仅展示真实宗族与支派数据，不再模拟迁徙路线。
+- 审核中心删除“后端暂未返回”“审核结论由后端返回”等研发措辞。
+- 来源资料库、成员权限、人物档案、世系图谱和审计追踪的低频说明从首屏收敛。
+- 成功状态改用消息、Text 或 Tag；错误、权限、风险和阻塞提示继续保留。
 
-## 验证方案
+## 验证结果
 
-```bash
-cd frontend/genealogy-web
-npm run typecheck
-npm run build
-npm run api:check
-```
+GitHub Actions：
 
-补充检查：
+- `Frontend CI / Frontend Build`：✅ 通过
+- `Issue 122 Frontend Diagnostic / Run log model tests`：✅ 通过
+- `Typecheck with focused output`：✅ 通过
+- `Build production frontend`：✅ 通过
+- `Check API contract`：✅ 通过
 
-- 搜索 Issue 禁止话术是否仍出现在面向用户页面。
-- 检查同一页面是否存在重复标题、连续静态 Alert 和重复空态说明。
-- 检查高风险、权限、错误和阻塞提示未被弱化。
+未修改 OpenAPI、后端接口、数据库、权限或审核状态机。
 
 ## 已知风险
 
-- Issue 涉及页面较多，需要控制公共组件改造的兼容性。
-- 当前执行环境没有本地 `gh`，通过 GitHub Connector 写入分支和 PR；本地 npm 验证能力可能受限。
-- 部分页面仍处于原生控件向 Ant Design 迁移期，本 Issue 不扩大到完整 UI 框架迁移。
+- 部分旧页面仍处于原生控件向 Ant Design 迁移期，本 Issue 未扩大为完整组件迁移。
+- 少量低频说明通过独立 `guidance-cleanup.css` 收敛；后续页面重构时应逐步将这些规则内聚到对应组件。
+- 本次以自动化构建和类型检查为验证依据，未增加截图回归测试。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#178
 - 当前分支：`agent/issue-178-streamline-ui-guidance`
-- 当前 Draft PR：待创建
-- 最后完成任务：读取规则、Issue 与现有现场
-- 当前进行中任务：建立执行看板、分支和 Draft PR
-- 最新 Commit：本文件启动检查点
-- CI 状态：尚未运行
+- 当前 PR：#179
+- 最后完成任务：执行验证并完成 diff 检查
+- 当前进行中任务：更新完成摘要并合入 `main`
+- 代码检查点：`c5f4d6676b3d07cb06d1519bfc488fab110f4b41`
+- CI 状态：全部通过
 - 未解决 Review：无
-- 已知阻塞：本地无 `gh`，改用 GitHub Connector
-- 下一步最小任务：创建 Draft PR 并回写 Issue
-- 最后更新时间：2026-07-14 17:29（北京时间）
+- 已知阻塞：无
+- 下一步最小任务：更新 PR 描述、转为 Ready 并合入
+- 最后更新时间：2026-07-14 17:44（北京时间）
