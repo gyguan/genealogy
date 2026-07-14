@@ -1,11 +1,10 @@
 name: Auth Commercial E2E
 
 on:
-  workflow_dispatch:
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -38,10 +37,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: frontend/genealogy-web/package.json
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
-        run: npm install
+        run: npm ci
       - name: Install Chromium
         working-directory: frontend/genealogy-web
         run: npx playwright install --with-deps chromium
