@@ -23,6 +23,12 @@ public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity
 
     List<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long jobId, String rowStatus);
 
+    List<ImportJobRowEntity> findByJobIdAndRowStatusAndPublishedAtIsNullOrderByRowNoAsc(
+            Long jobId,
+            String rowStatus,
+            Pageable pageable
+    );
+
     Optional<ImportJobRowEntity> findByIdAndJobId(Long id, Long jobId);
 
     Optional<ImportJobRowEntity> findByJobIdAndRowNo(Long jobId, Integer rowNo);
@@ -32,4 +38,6 @@ public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity
     long countByJobIdAndRowStatus(Long jobId, String rowStatus);
 
     long countByJobIdAndRowStatusIn(Long jobId, Collection<String> rowStatuses);
+
+    long countByJobIdAndRowStatusAndPublishedAtIsNull(Long jobId, String rowStatus);
 }
