@@ -118,15 +118,15 @@ public class TrackingObjectQueryRepository {
                 + "p.data_status as result_status, coalesce(p.updated_at, p.created_at) as changed_at ";
         String fromWhere = "from person p left join branch b on b.id = p.branch_id and b.clan_id = p.clan_id "
                 + "where p.clan_id = :clanId and p.deleted_at is null and " + PERSON_PRIVACY + " "
-                + "and (:branchId is null or p.branch_id = :branchId) "
+                + "and (:hasBranchId = false or p.branch_id = :branchId) "
                 + "and (:status = '' or lower(coalesce(p.data_status, '')) = :status) "
                 + "and (:keyword = '' or lower(p.name) like :keywordPattern "
                 + "or lower(coalesce(p.genealogy_name, '')) like :keywordPattern "
                 + "or lower(coalesce(p.courtesy_name, '')) like :keywordPattern "
                 + "or lower(coalesce(p.alias_name, '')) like :keywordPattern "
                 + "or lower(coalesce(p.person_code, '')) like :keywordPattern) "
-                + "and (:changedFrom is null or coalesce(p.updated_at, p.created_at) >= :changedFrom) "
-                + "and (:changedTo is null or coalesce(p.updated_at, p.created_at) <= :changedTo) ";
+                + "and (:hasChangedFrom = false or coalesce(p.updated_at, p.created_at) >= :changedFrom) "
+                + "and (:hasChangedTo = false or coalesce(p.updated_at, p.created_at) <= :changedTo) ";
         return new SearchSql(select, fromWhere, "order by changed_at desc nulls last, p.id desc");
     }
 
@@ -149,7 +149,7 @@ public class TrackingObjectQueryRepository {
                 + "where r.clan_id = :clanId and r.deleted_at is null "
                 + "and " + personPrivacy.formatted("fp", "fp", "fp") + " "
                 + "and " + personPrivacy.formatted("tp", "tp", "tp") + " "
-                + "and (:branchId is null or fp.branch_id = :branchId or tp.branch_id = :branchId) "
+                + "and (:hasBranchId = false or fp.branch_id = :branchId or tp.branch_id = :branchId) "
                 + "and (:status = '' or lower(coalesce(r.data_status, '')) = :status) "
                 + "and (:keyword = '' or lower(fp.name) like :keywordPattern "
                 + "or lower(coalesce(fp.genealogy_name, '')) like :keywordPattern "
@@ -157,8 +157,8 @@ public class TrackingObjectQueryRepository {
                 + "or lower(coalesce(tp.genealogy_name, '')) like :keywordPattern "
                 + "or lower(coalesce(r.relation_label, '')) like :keywordPattern "
                 + "or lower(r.relation_type) like :keywordPattern) "
-                + "and (:changedFrom is null or coalesce(r.updated_at, r.created_at) >= :changedFrom) "
-                + "and (:changedTo is null or coalesce(r.updated_at, r.created_at) <= :changedTo) ";
+                + "and (:hasChangedFrom = false or coalesce(r.updated_at, r.created_at) >= :changedFrom) "
+                + "and (:hasChangedTo = false or coalesce(r.updated_at, r.created_at) <= :changedTo) ";
         return new SearchSql(select, fromWhere, "order by changed_at desc nulls last, r.id desc");
     }
 
@@ -171,7 +171,7 @@ public class TrackingObjectQueryRepository {
         String fromWhere = "from source s where s.clan_id = :clanId "
                 + "and coalesce(s.privacy_level, 'clan_only') <> 'sealed' "
                 + "and (:fullClanAccess = true or (coalesce(s.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only') and " + SOURCE_VISIBLE_BINDING + ")) "
-                + "and (:branchId is null or exists (select 1 from source_binding fsb where fsb.source_id = s.id and fsb.clan_id = s.clan_id and ("
+                + "and (:hasBranchId = false or exists (select 1 from source_binding fsb where fsb.source_id = s.id and fsb.clan_id = s.clan_id and ("
                 + "(fsb.target_type = 'branch' and fsb.target_id = :branchId) or "
                 + "(fsb.target_type = 'person' and exists (select 1 from person fsp where fsp.id = fsb.target_id and fsp.deleted_at is null and fsp.branch_id = :branchId)) or "
                 + "(fsb.target_type = 'relationship' and exists (select 1 from relationship fsr join person fsrp on fsrp.id = fsr.from_person_id "
@@ -181,8 +181,8 @@ public class TrackingObjectQueryRepository {
                 + "and (:keyword = '' or lower(s.source_name) like :keywordPattern "
                 + "or lower(coalesce(s.provider_name, '')) like :keywordPattern "
                 + "or lower(coalesce(s.book_title, '')) like :keywordPattern) "
-                + "and (:changedFrom is null or coalesce(s.updated_at, s.created_at) >= :changedFrom) "
-                + "and (:changedTo is null or coalesce(s.updated_at, s.created_at) <= :changedTo) ";
+                + "and (:hasChangedFrom = false or coalesce(s.updated_at, s.created_at) >= :changedFrom) "
+                + "and (:hasChangedTo = false or coalesce(s.updated_at, s.created_at) <= :changedTo) ";
         return new SearchSql(select, fromWhere, "order by changed_at desc nulls last, s.id desc");
     }
 
@@ -193,11 +193,11 @@ public class TrackingObjectQueryRepository {
                 + "b.status as result_status, coalesce(b.updated_at, b.created_at) as changed_at ";
         String fromWhere = "from branch b where b.clan_id = :clanId "
                 + "and (:fullClanAccess = true or b.id in (:visibleBranchIds)) "
-                + "and (:branchId is null or b.id = :branchId) "
+                + "and (:hasBranchId = false or b.id = :branchId) "
                 + "and (:status = '' or lower(coalesce(b.status, '')) = :status) "
                 + "and (:keyword = '' or lower(b.branch_name) like :keywordPattern or lower(coalesce(b.branch_path, '')) like :keywordPattern) "
-                + "and (:changedFrom is null or coalesce(b.updated_at, b.created_at) >= :changedFrom) "
-                + "and (:changedTo is null or coalesce(b.updated_at, b.created_at) <= :changedTo) ";
+                + "and (:hasChangedFrom = false or coalesce(b.updated_at, b.created_at) >= :changedFrom) "
+                + "and (:hasChangedTo = false or coalesce(b.updated_at, b.created_at) <= :changedTo) ";
         return new SearchSql(select, fromWhere, "order by changed_at desc nulls last, b.id desc");
     }
 
@@ -219,7 +219,7 @@ public class TrackingObjectQueryRepository {
                 + "left join branch b on b.id = rt.branch_id and b.clan_id = rt.clan_id "
                 + "where rt.clan_id = :clanId "
                 + "and (:fullClanAccess = true or rt.branch_id in (:visibleBranchIds)) "
-                + "and (:branchId is null or rt.branch_id = :branchId) "
+                + "and (:hasBranchId = false or rt.branch_id = :branchId) "
                 + "and (:status = '' or lower(coalesce(rt.status, '')) = :status) "
                 + "and (:keyword = '' or lower(coalesce(rev.diff_summary, '')) like :keywordPattern "
                 + "or lower(coalesce(rt.review_comment, '')) like :keywordPattern "
@@ -229,8 +229,8 @@ public class TrackingObjectQueryRepository {
                 + "and (lower(kp.name) like :keywordPattern or lower(coalesce(kp.genealogy_name, '')) like :keywordPattern)) "
                 + "or exists (select 1 from source ks where rev.target_type = 'source' and ks.id = rev.target_id and ks.clan_id = rt.clan_id and lower(ks.source_name) like :keywordPattern) "
                 + "or exists (select 1 from branch kb where rev.target_type = 'branch' and kb.id = rev.target_id and kb.clan_id = rt.clan_id and lower(kb.branch_name) like :keywordPattern)) "
-                + "and (:changedFrom is null or coalesce(rt.reviewed_at, rt.created_at) >= :changedFrom) "
-                + "and (:changedTo is null or coalesce(rt.reviewed_at, rt.created_at) <= :changedTo) ";
+                + "and (:hasChangedFrom = false or coalesce(rt.reviewed_at, rt.created_at) >= :changedFrom) "
+                + "and (:hasChangedTo = false or coalesce(rt.reviewed_at, rt.created_at) <= :changedTo) ";
         return new SearchSql(select, fromWhere, "order by changed_at desc nulls last, rt.id desc");
     }
 
