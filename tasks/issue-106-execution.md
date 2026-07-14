@@ -21,18 +21,18 @@
 | 4 | 实现草稿创建、失败行修正和重试 | ✅ | 已复用 `draft_target_type/draft_target_id` 指向 `source` 草稿 |
 | 5 | 接入统一审核和正式生效 | ✅ | 提交审核锁定来源草稿；审核通过置为 `official`，驳回恢复 `draft` |
 | 6 | 启用前端来源资料导入入口 | ✅ | 已启用来源资料导入 Workspace 和来源失败行修正表单 |
-| 7 | 补充测试并执行最终验证 | 🔄 | 标准 CI 已触发但失败，待继续根据日志修复 |
+| 7 | 修复 Backend CI 与 API Contract | 🔄 | 已补旧测试构造器兼容、同步生成 `api-contract.ts`、简化任务面板类型；等待新一轮检查运行 |
 | 8 | Review 并准备合入 | ⏳ | 验证通过后再转 Ready |
 
 ## 当前进行中
 
-修复标准 CI 失败：Backend CI、API Contract、Auth Commercial E2E 和 Issue Delivery Governance 当前均为失败状态。
+等待最新提交触发/复跑标准检查，确认 Backend CI 与 API Contract 是否恢复。
 
 ## 恢复检查点
 
 - 当前 Issue：#106
 - 当前分支：`agent/issue-106-source-import`
 - 当前 PR：#163（Draft）
-- 最后完成任务：来源资料导入主体实现与前端入口。
-- 当前进行中：读取并修复 CI 日志。
-- 下一步最小任务：优先修复 Java 编译与 API Contract 生成差异。
+- 最后完成任务：修复 Backend CI 编译兼容点、同步来源导入生成契约、修复前端表格列类型风险。
+- 当前进行中：等待并核对最新 CI。
+- 下一步最小任务：若 CI 仍失败，继续读取最新失败日志；若 CI 通过，清理诊断文件和转入 Review。
