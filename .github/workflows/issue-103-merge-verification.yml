@@ -72,7 +72,7 @@ jobs:
           );
           insert into import_job_row(draft_person_id) values (1001), (null);
           SQL
-          psql -h localhost -U postgres -d genealogy_test -f backend/genealogy-backend/src/main/resources/db/migration/V20260713200000__add_import_row_generic_draft_target.sql
+          psql -h localhost -U postgres -d genealogy_test -f backend/genealogy-backend/src/main/resources/db/migration/V20260714010000__add_import_row_generic_draft_target.sql
           psql -h localhost -U postgres -d genealogy_test -Atc "select draft_target_type || ':' || draft_target_id from import_job_row where draft_person_id = 1001" | grep -qx 'person:1001'
 
       - name: Set up Node.js
