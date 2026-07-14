@@ -1,0 +1,178 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Import Failure Bulk Remediation API",
+    "version": "1.0.0",
+    "description": "导入失败行批量重试、批量排除、错误文件导出与修正文件回传契约"
+  },
+  "paths": {
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-retry": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "批量重试导入失败行",
+        "operationId": "bulkRetryImportRows",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRowBulkRetryRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "批量重试结果",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRowBulkOperationResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-exclude": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "批量排除无效导入行",
+        "operationId": "bulkExcludeImportRows",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRowBulkExcludeRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "批量排除结果",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRowBulkOperationResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/failures.xlsx": {
+      "get": {
+        "tags": ["Imports"],
+        "summary": "导出当前批次失败行 XLSX 文件",
+        "operationId": "exportImportFailureRows",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "失败行文件",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/corrections.xlsx": {
+      "post": {
+        "tags": ["Imports"],
+        "summary": "回传失败行修正文件",
+        "operationId": "uploadImportRowCorrections",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "retryAfterApply", "in": "query", "required": false, "schema": { "type": "boolean", "default": true } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "$ref": "#/components/schemas/ImportCorrectionFileRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "修正文件处理结果",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRowBulkOperationResponse" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ImportRowSelectionMode": {
+        "type": "string",
+        "enum": ["selected", "filtered"]
+      },
+      "ImportRowVersionReference": {
+        "type": "object",
+        "required": ["rowNo", "expectedVersion"],
+        "properties": {
+          "rowNo": { "type": "integer", "minimum": 1 },
+          "expectedVersion": { "type": "integer", "format": "int64", "minimum": 0 }
+        }
+      },
+      "ImportRowBulkSelectionRequest": {
+        "type": "object",
+        "required": ["mode"],
+        "properties": {
+          "mode": { "$ref": "#/components/schemas/ImportRowSelectionMode" },
+          "rows": {
+            "type": "array",
+            "maxItems": 500,
+            "items": { "$ref": "#/components/schemas/ImportRowVersionReference" }
+          }
+        }
+      },
+      "ImportRowBulkRetryRequest": {
+        "type": "object",
+        "required": ["selection"],
+        "properties": {
+          "selection": { "$ref": "#/components/schemas/ImportRowBulkSelectionRequest" }
+        }
+      },
+      "ImportRowBulkExcludeRequest": {
+        "type": "object",
+        "required": ["selection", "reason"],
+        "properties": {
+          "selection": { "$ref": "#/components/schemas/ImportRowBulkSelectionRequest" },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+        }
+      },
+      "ImportCorrectionFileRequest": {
+        "type": "object",
+        "required": ["file"],
+        "properties": {
+          "file": { "type": "string", "format": "binary" }
+        }
+      },
+      "ImportRowBulkItemResult": {
+        "type": "object",
+        "required": ["stableRowKey", "rowNo", "success", "rowStatus", "version"],
+        "properties": {
+          "stableRowKey": { "type": "string" },
+          "rowNo": { "type": "integer", "minimum": 1 },
+          "success": { "type": "boolean" },
+          "rowStatus": { "type": "string" },
+          "errorCode": { "type": "string", "nullable": true },
+          "errorMessage": { "type": "string", "nullable": true },
+          "version": { "type": "integer", "format": "int64", "minimum": 0 }
+        }
+      },
+      "ImportRowBulkOperationResponse": {
+        "type": "object",
+        "required": ["operation", "selectionMode", "matchedCount", "processedCount", "successCount", "failureCount", "remainingFailureCount", "excludedCount", "processingStatus", "items"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["retry", "exclude", "correction_upload"] },
+          "selectionMode": { "$ref": "#/components/schemas/ImportRowSelectionMode" },
+          "matchedCount": { "type": "integer", "minimum": 0 },
+          "processedCount": { "type": "integer", "minimum": 0 },
+          "successCount": { "type": "integer", "minimum": 0 },
+          "failureCount": { "type": "integer", "minimum": 0 },
+          "remainingFailureCount": { "type": "integer", "minimum": 0 },
+          "excludedCount": { "type": "integer", "minimum": 0 },
+          "processingStatus": { "type": "string" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/ImportRowBulkItemResult" } }
+        }
+      }
+    }
+  }
+}

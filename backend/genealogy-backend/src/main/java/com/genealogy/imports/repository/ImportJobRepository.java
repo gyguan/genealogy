@@ -1,8 +1,10 @@
 package com.genealogy.imports.repository;
 
 import com.genealogy.imports.entity.ImportJobEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +17,13 @@ public interface ImportJobRepository extends JpaRepository<ImportJobEntity, Long
     List<ImportJobEntity> findByClanIdOrderByCreatedAtDesc(Long clanId);
 
     Optional<ImportJobEntity> findByIdAndClanId(Long id, Long clanId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select job from ImportJobEntity job where job.id = :jobId and job.clanId = :clanId")
+    Optional<ImportJobEntity> findByIdAndClanIdForUpdate(
+            @Param("jobId") Long jobId,
+            @Param("clanId") Long clanId
+    );
 
     @Query(value = """
             select *

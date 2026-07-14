@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import type { Key } from 'react';
 import { Alert, Button, Card, Checkbox, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
+import { ImportFailureBulkActions } from './ImportFailureBulkActions';
 
 type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
 
@@ -174,6 +176,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [rowPageSize, setRowPageSize] = useState(20);
   const [rowTotal, setRowTotal] = useState(0);
   const [rowLoading, setRowLoading] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [editingRow, setEditingRow] = useState<ImportJobRow | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
   const [reviewJob, setReviewJob] = useState<ImportJobSummary | null>(null);
@@ -185,6 +188,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     setRows([]);
     setRowTotal(0);
     setEditingRow(null);
+    setSelectedRowKeys([]);
   }
 
   async function loadJobs() {
@@ -224,6 +228,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
       const page = await apiClient.get<PageResponse<ImportJobRow>>(`/clans/${workspace.clanId}/imports/${jobId}/rows?${params.toString()}`);
       setRows(page.records || []);
       setRowTotal(page.total || 0);
+      setSelectedRowKeys([]);
     } catch (error) {
       setRows([]);
       setRowTotal(0);
@@ -465,12 +470,32 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             style={{ marginBottom: 12 }}
           />
           {(selectedJob.failureCount || 0) > 0 ? (
-            <Table<ImportJobRow>
+            <>
+              <ImportFailureBulkActions
+                notify={notify}
+                clanId={workspace.clanId}
+                jobId={selectedJob.id}
+                selectedRows={rows.filter(row => selectedRowKeys.includes(row.id))}
+                totalFailures={rowTotal}
+                editable={String(selectedJob.processingStatus || '').toLowerCase() === 'correction_required' && ['not_submitted', 'rejected'].includes(String(selectedJob.reviewStatus || 'not_submitted').toLowerCase())}
+                onChanged={async () => {
+                  setSelectedRowKeys([]);
+                  await refreshDetail(selectedJob.id);
+                  await loadRows(selectedJob.id, rowPageNo, rowPageSize);
+                  await loadJobs();
+                }}
+              />
+              <Table<ImportJobRow>
               size="small"
               bordered
               loading={rowLoading}
               rowKey="id"
               dataSource={rows}
+              rowSelection={{
+                selectedRowKeys,
+                onChange: keys => setSelectedRowKeys(keys),
+                getCheckboxProps: row => ({ disabled: !retryable(row, selectedJob) })
+              }}
               pagination={{ current: rowPageNo, pageSize: rowPageSize, total: rowTotal, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条待修正数据`, onChange: (nextPage, nextPageSize) => { setRowPageNo(nextPageSize === rowPageSize ? nextPage : 1); setRowPageSize(nextPageSize); } }}
               locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有待修正数据" /> }}
               columns={[
@@ -482,7 +507,8 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
                 { key: 'action', title: '操作', width: 100, render: (_value, row) => <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>修正</Button> }
               ]}
               scroll={{ x: 'max-content' }}
-            />
+              />
+            </>
           ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />}
         </Card>
       ) : null}

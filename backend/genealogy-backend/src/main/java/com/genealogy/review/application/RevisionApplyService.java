@@ -328,7 +328,12 @@ public class RevisionApplyService {
 
     private List<ImportJobRowEntity> draftRows(ImportJobEntity job) {
         List<ImportJobRowEntity> rows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
-        if (rows.isEmpty()) throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");
+        if (rows.isEmpty()) {
+            long total = importJobRowRepository.countByJobId(job.getId());
+            long excluded = importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_EXCLUDED);
+            if (total > 0 && excluded == total) return rows;
+            throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");
+        }
         if (rows.stream().anyMatch(row -> draftTargetId(row) == null)) {
             throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_MISSING", "导入批次存在未关联业务草稿的数据行");
         }

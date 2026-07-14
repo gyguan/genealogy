@@ -74,6 +74,15 @@ public class ImportJobRowEntity {
     @Column(name = "corrected_at")
     private LocalDateTime correctedAt;
 
+    @Column(name = "excluded_reason", columnDefinition = "text")
+    private String excludedReason;
+
+    @Column(name = "excluded_by")
+    private Long excludedBy;
+
+    @Column(name = "excluded_at")
+    private LocalDateTime excludedAt;
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 

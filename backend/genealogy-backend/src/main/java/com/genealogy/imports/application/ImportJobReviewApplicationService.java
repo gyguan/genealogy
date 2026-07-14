@@ -202,7 +202,7 @@ public class ImportJobReviewApplicationService {
             throw new BusinessException("IMPORT_JOB_ROW_NOT_READY", "导入批次仍有未完成处理的数据行");
         }
         List<ImportJobRowEntity> draftRows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
-        if (draftRows.isEmpty() || draftRows.stream().anyMatch(row -> targetId(row) == null)) {
+        if (draftRows.stream().anyMatch(row -> targetId(row) == null)) {
             throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_MISSING", "导入批次存在未关联业务草稿的数据行");
         }
         return draftRows;
@@ -311,7 +311,8 @@ public class ImportJobReviewApplicationService {
                 .append(typeTitle(importType(job))).append("导入批次：")
                 .append(safe(job.getOriginalFilename()))
                 .append("，管理支派：").append(branchName)
-                .append("，草稿：").append(value(job.getSuccessCount())).append(" 条，第 ")
+                .append("，草稿：").append(value(job.getSuccessCount())).append(" 条")
+                .append("，排除：").append(importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_EXCLUDED)).append(" 条，第 ")
                 .append(reviewRound).append(" 轮审核");
         if (comment != null && !comment.isBlank()) summary.append("，说明：").append(comment.trim());
         return summary.toString();
