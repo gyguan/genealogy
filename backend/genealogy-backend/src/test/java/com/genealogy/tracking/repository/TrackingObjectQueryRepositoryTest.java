@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -81,6 +82,34 @@ class TrackingObjectQueryRepositoryTest {
         assertThat(selectParameters.getValue().getValue("visibleBranchIds"))
                 .isEqualTo(List.of(10L, 11L));
         assertThat(selectParameters.getValue().getValue("offset")).isEqualTo(20);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void exactTraceLookupFiltersIdsAfterApplyingTheSameVisibilityBoundary() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.<TrackingObjectResponse>of());
+        TrackingObjectQueryRepository repository = new TrackingObjectQueryRepository(jdbcTemplate);
+
+        repository.findVisibleByIds(1L, "person", List.of(100L, 101L), false, List.of(10L));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<MapSqlParameterSource> parameters = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(jdbcTemplate).query(sql.capture(), parameters.capture(), any(RowMapper.class));
+
+        String normalized = sql.getValue().toLowerCase();
+        assertThat(normalized)
+                .startsWith("select * from (")
+                .contains("p.clan_id = :clanid")
+                .contains("p.deleted_at is null")
+                .contains("p.branch_id in (:visiblebranchids)")
+                .contains("privacy_level")
+                .contains(") visible_object where object_id in (:targetids)")
+                .doesNotContain("limit :limit")
+                .doesNotContain("offset :offset");
+        assertThat((Collection<Long>) parameters.getValue().getValue("targetIds")).containsExactly(100L, 101L);
+        assertThat(parameters.getValue().getValue("visibleBranchIds")).isEqualTo(List.of(10L));
     }
 
     @Test

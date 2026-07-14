@@ -4,7 +4,9 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.tracking.application.TrackingObjectSearchApplicationService;
+import com.genealogy.tracking.application.TrackingTraceApplicationService;
 import com.genealogy.tracking.dto.TrackingObjectResponse;
+import com.genealogy.tracking.dto.TrackingTraceDetailResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,8 +21,9 @@ import static org.mockito.Mockito.when;
 class TrackingControllerTest {
 
     private final TrackingObjectSearchApplicationService searchService = mock(TrackingObjectSearchApplicationService.class);
+    private final TrackingTraceApplicationService traceService = mock(TrackingTraceApplicationService.class);
     private final AuthorizationApplicationService authorization = mock(AuthorizationApplicationService.class);
-    private final TrackingController controller = new TrackingController(searchService, authorization);
+    private final TrackingController controller = new TrackingController(searchService, traceService, authorization);
 
     @Test
     void searchRequiresDirectClanViewPermissionBeforeDatabaseQuery() {
@@ -39,6 +42,21 @@ class TrackingControllerTest {
     }
 
     @Test
+    void traceUsesSinglePermissionBoundaryAndOnlyIncludesTechnicalFieldsForExporters() {
+        when(authorization.requireLogin("Bearer token")).thenReturn(9L);
+        when(authorization.hasDirectClanPermission(1L, 9L, "operation_log.export")).thenReturn(false);
+        TrackingTraceDetailResponse detail = mock(TrackingTraceDetailResponse.class);
+        when(traceService.trace(1L, 9L, "person", 100L, false)).thenReturn(detail);
+
+        assertThat(controller.traceObject("Bearer token", 1L, "person", 100L).getData())
+                .isSameAs(detail);
+
+        verify(authorization).requireDirectClanPermission(1L, 9L, "operation_log.view");
+        verify(authorization).hasDirectClanPermission(1L, 9L, "operation_log.export");
+        verify(traceService).trace(1L, 9L, "person", 100L, false);
+    }
+
+    @Test
     void deniedClanAccessStopsBeforeSearch() {
         when(authorization.requireLogin("Bearer token")).thenReturn(9L);
         when(authorization.requireDirectClanPermission(2L, 9L, "operation_log.view"))
@@ -49,6 +67,6 @@ class TrackingControllerTest {
                 null, null, 1, 20
         )).isInstanceOf(BusinessException.class);
 
-        verifyNoInteractions(searchService);
+        verifyNoInteractions(searchService, traceService);
     }
 }

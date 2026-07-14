@@ -1,6 +1,8 @@
 package com.genealogy.review.repository;
 
 import com.genealogy.review.entity.RevisionEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -15,5 +17,12 @@ public interface RevisionRepository extends JpaRepository<RevisionEntity, Long> 
 
     List<RevisionEntity> findByTargetTypeAndTargetIdInAndStatusAndChangeTypeIn(
             String targetType, Collection<Long> targetIds, String status, Collection<String> changeTypes
+    );
+
+    Page<RevisionEntity> findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
+            Long clanId,
+            String targetType,
+            Long targetId,
+            Pageable pageable
     );
 }

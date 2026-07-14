@@ -26,6 +26,10 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
 
     Page<SourceBindingEntity> findBySourceIdAndTargetTypeAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String targetType, String bindingStatus, Pageable pageable);
 
+    Page<SourceBindingEntity> findByClanIdAndTargetTypeAndTargetIdOrderByCreatedAtDesc(Long clanId, String targetType, Long targetId, Pageable pageable);
+
+    Page<SourceBindingEntity> findByClanIdAndSourceIdOrderByCreatedAtDesc(Long clanId, Long sourceId, Pageable pageable);
+
     List<SourceBindingEntity> findTop5BySourceIdOrderByCreatedAtDesc(Long sourceId);
 
     List<SourceBindingEntity> findTop5BySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus);

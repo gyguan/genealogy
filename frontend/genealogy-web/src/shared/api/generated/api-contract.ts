@@ -377,6 +377,20 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseTrackingObjectPage"
   },
+  "GET /api/v1/tracking/objects/{targetType}/{targetId}/trace": {
+    "operationId": "getTrackingObjectTrace",
+    "method": "GET",
+    "path": "/api/v1/tracking/objects/{targetType}/{targetId}/trace",
+    "pathParams": [
+      "targetId",
+      "targetType"
+    ],
+    "queryParams": [
+      "clanId"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseTrackingTraceDetailResponse"
+  },
   "GET /api/v1/workbench/summary": {
     "operationId": "getWorkbenchSummary",
     "method": "GET",

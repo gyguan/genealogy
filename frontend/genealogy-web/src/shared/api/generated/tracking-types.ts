@@ -61,6 +61,77 @@ export type TrackingObjectPage = {
   totalPages: number;
 };
 
+export type TrackingTraceTimelineEventResponse = {
+  eventKey: string;
+  eventType: "REVISION_SUBMITTED" | "REVIEW_REQUESTED" | "REVIEW_APPROVED" | "REVIEW_REJECTED" | "SOURCE_BOUND" | "SOURCE_BINDING_UPDATED" | "OBJECT_CREATED" | "OBJECT_UPDATED" | "OBJECT_DELETED" | "IMPORT_COMPLETED" | "OPERATION_RECORDED";
+  sourceType: "revision" | "review_task" | "source_binding" | "operation_log";
+  sourceId?: number | null;
+  title: string;
+  summary?: string | null;
+  occurredAt?: string | null;
+  actorDisplayName?: string | null;
+  resultStatus?: string | null;
+};
+
+export type TrackingTraceRevisionResponse = {
+  id: number;
+  changeType: string;
+  status: string;
+  diffSummary?: string | null;
+  submitterDisplayName?: string | null;
+  submitTime?: string | null;
+  approvedAt?: string | null;
+  rejectedReason?: string | null;
+};
+
+export type TrackingTraceReviewTaskResponse = {
+  id: number;
+  revisionId: number;
+  reviewLevel?: number | null;
+  status: string;
+  reviewerDisplayName?: string | null;
+  reviewerRole?: string | null;
+  branchName?: string | null;
+  reviewComment?: string | null;
+  createdAt?: string | null;
+  reviewedAt?: string | null;
+};
+
+export type TrackingTraceSourceBindingResponse = {
+  id: number;
+  sourceId: number;
+  sourceDisplayName: string;
+  targetType?: string | null;
+  targetDisplayName?: string | null;
+  bindingReason?: string | null;
+  confidenceLevel?: string | null;
+  bindingStatus: string;
+  createdByDisplayName?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+export type TrackingTraceCoverageResponse = {
+  level: "complete" | "partial" | "minimal";
+  complete: boolean;
+  historyFrom?: string | null;
+  truncatedSegments: ("revisions" | "reviewTasks" | "sourceBindings" | "operationLogs")[];
+  missingSegments: ("revisions" | "reviewTasks" | "sourceBindings" | "operationLogs")[];
+  notes: string[];
+};
+
+export type TrackingTraceDetailResponse = {
+  objectSummary: TrackingObjectResponse;
+  currentStatus: string | null;
+  timeline: TrackingTraceTimelineEventResponse[];
+  revisions: TrackingTraceRevisionResponse[];
+  reviewTasks: TrackingTraceReviewTaskResponse[];
+  sourceBindings: TrackingTraceSourceBindingResponse[];
+  operationLogs: OperationLogResponse[];
+  allowedActions: string[];
+  traceCoverage: TrackingTraceCoverageResponse;
+};
+
 export type CheckTaskResponse = {
   id: number;
   clanId: number;
