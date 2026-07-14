@@ -115,19 +115,19 @@ test('culture library restores URL state and uses real detail, governance and re
   await expect(drawer.getByText('文化资料发布为正式内容')).toBeVisible();
   await expect(drawer.getByRole('button', { name: '完整追踪' })).toBeVisible();
 
-  await drawer.getByRole('button', { name: '编辑', exact: true }).click();
+  await drawer.getByRole('button', { name: /编\s*辑/ }).click();
   const editDialog = page.getByRole('dialog', { name: '申请变更正式文化资料' });
   await expect(editDialog).toBeVisible();
   await expect(editDialog.getByText('正式资料不会被直接覆盖')).toBeVisible();
-  await editDialog.getByRole('button', { name: '取消' }).click();
+  await editDialog.getByRole('button', { name: /取\s*消/ }).click();
 
   await drawer.getByRole('button', { name: 'Close' }).click();
   await page.getByLabel('关键词').fill('家训');
-  await page.getByRole('button', { name: '查询' }).click();
+  await page.getByRole('button', { name: /查\s*询/ }).click();
   await expect(page).toHaveURL(/cultureKeyword=%E5%AE%B6%E8%AE%AD/);
   await expect(page.getByText('黄氏家训')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText('文化资料检索')).toBeVisible();
-  await expect(page.getByRole('button', { name: '新增资料' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /新\s*增\s*资\s*料/ })).toBeVisible();
 });
