@@ -35,7 +35,17 @@ jobs:
 
       - name: Build and test
         working-directory: backend/genealogy-backend
-        run: mvn -B clean test
+        run: |
+          set +e
+          mvn -B clean test > /tmp/genealogy-maven-test.log 2>&1
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "Maven test failed. Output tail:"
+            tail -n 200 /tmp/genealogy-maven-test.log
+            exit "$code"
+          fi
+          tail -n 40 /tmp/genealogy-maven-test.log
 
   commercial-frontend-build:
     name: Commercial Frontend Build
