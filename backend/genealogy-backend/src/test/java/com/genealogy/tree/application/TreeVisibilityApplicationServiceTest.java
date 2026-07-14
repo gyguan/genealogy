@@ -9,20 +9,27 @@ import com.genealogy.relationship.application.RelationshipApplicationService;
 import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.PersonProjection;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.Visibility;
+import com.genealogy.tree.application.TreeVisibilityApplicationService.VisibilitySession;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +49,25 @@ class TreeVisibilityApplicationServiceTest {
 
     @InjectMocks
     private TreeVisibilityApplicationService service;
+
+    private final Set<PermissionKey> deniedPermissions = new HashSet<>();
+
+    @BeforeEach
+    void configurePermissionDecisions() {
+        deniedPermissions.clear();
+        doAnswer(invocation -> {
+            PermissionKey key = new PermissionKey(
+                    invocation.getArgument(0),
+                    invocation.getArgument(2),
+                    invocation.getArgument(3)
+            );
+            if (deniedPermissions.contains(key)) {
+                throw new BusinessException("AUTH_FORBIDDEN", "forbidden");
+            }
+            return null;
+        }).when(authorizationApplicationService)
+                .requireBranchPermission(anyLong(), anyLong(), anyLong(), anyString());
+    }
 
     @Test
     void officialViewHidesDraftPersonBeforeReadingPrivateFields() {
@@ -207,6 +233,37 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void preloadedSessionAvoidsSecondPersonAndRelationshipReads() {
+        PersonEntity from = person(15L, 10L, "official", "public", false);
+        PersonEntity to = person(16L, 10L, "official", "public", false);
+        RelationshipEntity relationship = relationship(102L, from, to, "official");
+        VisibilitySession session = service.openSession(ACTOR_ID, "official");
+
+        PersonProjection fromProjection = session.projectPerson(from);
+        PersonProjection toProjection = session.projectPerson(to);
+        boolean visible = session.canExposeRelationship(relationship, fromProjection, toProjection);
+
+        assertEquals(Visibility.FULL, fromProjection.visibility());
+        assertEquals(Visibility.FULL, toProjection.visibility());
+        assertTrue(visible);
+        verify(personApplicationService, never()).get(anyLong(), anyLong());
+        verify(relationshipApplicationService, never()).get(anyLong(), anyLong());
+    }
+
+    @Test
+    void preloadedSessionCachesBranchPermissionDecisions() {
+        PersonEntity first = person(17L, 10L, "official", "public", false);
+        PersonEntity second = person(18L, 10L, "official", "public", false);
+        VisibilitySession session = service.openSession(ACTOR_ID, "official");
+
+        session.projectPerson(first);
+        session.projectPerson(second);
+
+        verify(authorizationApplicationService, times(1))
+                .requireBranchPermission(1L, ACTOR_ID, 10L, "person:view");
+    }
+
+    @Test
     void invalidDataViewIsRejected() {
         BusinessException exception = assertThrows(
                 BusinessException.class,
@@ -218,14 +275,7 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     private void deny(PersonEntity person, String permissionCode) {
-        doThrow(new BusinessException("AUTH_FORBIDDEN", "forbidden"))
-                .when(authorizationApplicationService)
-                .requireBranchPermission(
-                        eq(person.getClanId()),
-                        eq(ACTOR_ID),
-                        eq(person.getBranchId()),
-                        eq(permissionCode)
-                );
+        deniedPermissions.add(new PermissionKey(person.getClanId(), person.getBranchId(), permissionCode));
     }
 
     private PersonEntity person(Long id, Long branchId, String dataStatus, String privacyLevel, boolean living) {
@@ -253,5 +303,8 @@ class TreeVisibilityApplicationServiceTest {
         relationship.setRelationCategory("blood");
         relationship.setDataStatus(dataStatus);
         return relationship;
+    }
+
+    private record PermissionKey(Long clanId, Long branchId, String permissionCode) {
     }
 }
