@@ -2,9 +2,10 @@
 
 - Issue：[#123 增加跨模块查看追踪入口与可恢复深链接](https://github.com/gyguan/genealogy/issues/123)
 - 工作分支：`agent/issue-123-tracking-deep-links`
+- Draft PR：[#201](https://github.com/gyguan/genealogy/pull/201)
 - 目标：在五类核心业务页面增加统一“查看追踪”入口，并通过可复制 URL 恢复宗族、对象、页签和详情状态。
 - 基线：`main` commit `492a6a32f578787d0fe90482029d9861b23f3de6`，已包含 #122 双页签追踪中心。
-- 最后更新时间：2026-07-14 20:05（Asia/Shanghai）
+- 最后更新时间：2026-07-14 21:05（Asia/Shanghai）
 
 ## DEFINE：范围与成功标准
 
@@ -35,60 +36,85 @@
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue、已有现场和五类页面影响范围 | ✅ 已完成 | 约 14 分钟 | 已确认首次启动、无已有分支/PR，不需要 API 变更 |
-| 2 | 建立分支、执行看板、Draft PR 和 Issue 启动记录 | 🔄 进行中 | 已累计约 3 分钟 | 分支与初始看板已建立 |
-| 3 | 实现统一深链接协议与追踪中心兼容恢复 | ⏳ 待处理 | — | 包含宗族、页签、业务对象和可选审核上下文 |
-| 4 | 增加人物、关系、来源/引用、支派、审核详情入口 | ⏳ 待处理 | — | 入口仅基于后端已返回对象展示 |
-| 5 | 完善无权限状态与浏览器导航恢复 | ⏳ 待处理 | — | 不泄露对象摘要，支持复制、刷新和前进/后退 |
-| 6 | 补充模型测试并执行 typecheck、build、api:check | ⏳ 待处理 | — | 前端定向与组合态验证 |
-| 7 | 五轴 Review、处理反馈并合入 main | ⏳ 待处理 | — | Correctness / Readability / Architecture / Security / Performance |
+| 1 | 刷新规则、Issue、已有现场和五类页面影响范围 | ✅ 已完成 | 约 14 分钟 | 首次启动、无已有分支/PR，不需要 API 变更 |
+| 2 | 建立分支、执行看板、Draft PR 和 Issue 启动记录 | ✅ 已完成 | 约 4 分钟 | 分支、看板、PR #201 和 Issue 启动检查点已建立 |
+| 3 | 实现统一深链接协议与追踪中心兼容恢复 | ✅ 已完成 | 约 18 分钟 | 规范参数、旧参数兼容、宗族恢复和正整数 ID 校验 |
+| 4 | 增加人物、关系、来源/引用、支派、审核详情入口 | ✅ 已完成 | 约 24 分钟 | 共享按钮接入五类页面，审核入口使用业务对象 |
+| 5 | 完善无权限状态与浏览器导航恢复 | ✅ 已完成 | 约 16 分钟 | 403/404 清空来源摘要，pushState + popstate 支持前进/后退 |
+| 6 | 补充模型测试并执行 typecheck、build、api:check | ✅ 已完成 | 约 17 分钟 | 深链接/兼容测试、类型、构建、契约均通过 |
+| 7 | 五轴 Review、处理反馈并合入 main | 🔄 进行中 | 已累计约 8 分钟 | 已清理锁文件和临时资产，等待标准 CI 与自动 Review |
 
-## 影响模块
+## 核心实现
 
-- `frontend/genealogy-web/src/shared/navigation/`：统一追踪深链接工具与按钮。
-- `frontend/genealogy-web/src/features/logs/`：参数兼容、宗族恢复和无权限详情。
-- `frontend/genealogy-web/src/features/persons/`：人物详情入口。
-- `frontend/genealogy-web/src/features/mvp1/steps/relationship/`：关系记录入口。
-- `frontend/genealogy-web/src/features/mvp1/steps/branch/`：支派记录入口。
-- `frontend/genealogy-web/src/features/sources/`：来源详情和引用对象入口。
-- `frontend/genealogy-web/src/features/reviews/`：审核对象入口。
+### 统一深链接
 
-## 验证计划
+- 共享工具：`src/shared/navigation/trackingDeepLink.js`。
+- 共享入口：`TrackingLinkButton.tsx`。
+- 新链接仅接受人物、关系、来源和支派，宗族 ID 与对象 ID 必须为正整数。
+- 链接使用 `history.pushState` 并派发 `popstate`，复用应用壳现有页面切换逻辑。
+- 保留无关查询参数及 hash，不保留旧追踪参数，避免新旧状态冲突。
 
-```bash
-cd frontend/genealogy-web
-npm run test:tracking-center
-npm run test:logs
-npm run typecheck
-npm run build
-npm run api:check
-```
+### 追踪中心恢复
 
-同时核对 Frontend CI、API Contract、Auth Commercial E2E 和 Issue Delivery Governance。
+- 优先读取 `tab/clanId/targetType/targetId/reviewTaskId`。
+- 继续兼容 `trackingTab/traceType/traceId`。
+- 跨宗族深链接先恢复工作区宗族，再同步 URL 和加载对象，避免旧宗族覆盖链接参数。
+- 403/404 时清空来源页传入的对象摘要，仅展示统一“无权或对象不可用”状态。
 
-## 已知风险
+### 页面入口
 
-- 深链接必须携带 `clanId`，否则新浏览器上下文无法确定追踪权限范围。
-- 审核中心存在 `import_job/source_binding/generation_scheme/clan` 等当前追踪接口不支持的对象类型；这些任务不展示错误入口。
-- 关系与支派页面目前以列表为详情载体，入口应避免触发整表预加载追踪数据或 N+1 请求。
+- 人物档案：只读详情态展示，编辑态隐藏，避免未保存内容丢失。
+- 关系记录：列表已返回对象旁直接进入关系追踪。
+- 来源资料：来源详情和可追踪引用对象均提供入口。
+- 支派记录：列表已返回支派旁提供入口。
+- 审核详情：使用审核任务的业务 `targetType + targetId`，`reviewTaskId` 仅作为上下文；不支持的审核对象类型自动隐藏入口。
+
+## 验证结果
+
+已通过三轮受限组合态验证：
+
+- ✅ `npm run test:logs`
+- ✅ `npm run test:tracking-center`
+- ✅ `npm run typecheck`
+- ✅ `npm run build`
+- ✅ `npm run api:check`
+- ✅ 新旧参数兼容、复制链接、正整数 ID、pushState/popstate 单元测试
+- ✅ 临时补丁脚本和 workflow 已自动删除
+- ✅ `package-lock.json` 未进入最终差异
+
+标准 Frontend CI、API Contract、Auth Commercial E2E 和 Issue Delivery Governance 正在核对。
+
+## 五轴 Review
+
+- **Correctness**：修复跨宗族首次加载时 URL 被旧工作区覆盖的问题；审核入口追踪业务对象。
+- **Readability**：入口行为集中在共享工具与共享按钮，页面只传业务上下文。
+- **Architecture**：不增加全局状态库，不重复实现追踪详情，不增加 N+1 权限预检。
+- **Security**：仅允许白名单对象类型和正整数 ID；403/404 不展示来源页摘要，最终权限由后端追踪接口执行。
+- **Performance**：页面入口不发请求，点击后仅调用一次统一聚合接口。
+
+## 已知风险与处理
+
+- 审核中心存在 `import_job/source_binding/generation_scheme/clan` 等当前追踪接口不支持的对象类型：共享按钮自动隐藏，不生成错误链接。
+- 入口展示代表来源接口已允许当前用户读取对象，不代表追踪权限；追踪接口仍执行 `operation_log.view`、宗族、支派和隐私校验。
+- 关系与支派以列表作为详情载体：入口不预加载追踪数据，不产生 N+1。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#123
 - 当前分支：`agent/issue-123-tracking-deep-links`
-- 当前 Draft PR：待创建
-- 最后完成任务：完成规则、需求、页面和权限边界分析
-- 当前进行中：创建 Draft PR 并回写 Issue 启动记录
-- 当前任务累计耗时：已累计约 3 分钟
-- 最新 Commit：本次初始化看板提交
-- CI 状态：未运行
+- 当前 Draft PR：#201
+- 最后完成任务：完成五轴 Review 修复与完整前端验证
+- 当前进行中：核对标准 CI、最新 main、自动 Review 和可合并状态
+- 当前任务累计耗时：已累计约 8 分钟
+- 最新实现 Commit：`eff47cefccdbdb7666f602d9739983b143122f16`
+- CI 状态：定向测试、类型、构建和契约通过；标准检查待最终核对
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：创建 Draft PR，并实现统一深链接纯函数及测试
-- 最后更新时间：2026-07-14 20:05（Asia/Shanghai）
+- 下一步最小任务：标准检查通过后转 Ready，处理自动 Review 并 squash merge
+- 最后更新时间：2026-07-14 21:05（Asia/Shanghai）
 
 ### 耗时汇总
 
-- 已完成任务活跃耗时：约 14 分钟
-- 当前进行中累计耗时：已累计约 3 分钟
-- 外部等待：无
+- 已完成任务活跃耗时：约 1 小时 33 分钟
+- 当前 Review 任务累计耗时：已累计约 8 分钟
+- 外部等待：GitHub Actions 排队与运行时间不计入活跃耗时
