@@ -22,6 +22,7 @@ import com.genealogy.review.repository.AuditRecordRepository;
 import com.genealogy.review.repository.CheckTaskRepository;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +56,34 @@ public class ImportJobReviewApplicationService {
     private final OperationLogApplicationService operationLogApplicationService;
     private final ObjectMapper objectMapper;
 
+    public ImportJobReviewApplicationService(
+            ImportJobRepository importJobRepository,
+            ImportJobRowRepository importJobRowRepository,
+            PersonRepository personRepository,
+            RelationshipRepository relationshipRepository,
+            BranchRepository branchRepository,
+            AuditRecordRepository auditRecordRepository,
+            CheckTaskRepository checkTaskRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            OperationLogApplicationService operationLogApplicationService,
+            ObjectMapper objectMapper
+    ) {
+        this(
+                importJobRepository,
+                importJobRowRepository,
+                personRepository,
+                relationshipRepository,
+                null,
+                branchRepository,
+                auditRecordRepository,
+                checkTaskRepository,
+                authorizationApplicationService,
+                operationLogApplicationService,
+                objectMapper
+        );
+    }
+
+    @Autowired
     public ImportJobReviewApplicationService(
             ImportJobRepository importJobRepository,
             ImportJobRowRepository importJobRowRepository,
@@ -234,6 +263,9 @@ public class ImportJobReviewApplicationService {
     }
 
     private void lockDraftSources(ImportJobEntity job, List<ImportJobRowEntity> draftRows, LocalDateTime now) {
+        if (sourceRepository == null) {
+            throw new BusinessException("IMPORT_JOB_SOURCE_REPOSITORY_MISSING", "来源资料导入审核未配置");
+        }
         List<SourceEntity> sources = new ArrayList<>();
         for (ImportJobRowEntity row : draftRows) {
             SourceEntity source = sourceRepository.findById(targetId(row))
