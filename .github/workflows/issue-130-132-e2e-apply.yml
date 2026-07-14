@@ -39,7 +39,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package-lock.json
       - name: Create E2E assets
-        run: python3 .github/scripts/issue-130-132-e2e-apply.py
+        run: |
+          python3 .github/scripts/issue-130-132-e2e-apply.py
+          python3 .github/scripts/issue-130-132-e2e-selector-fix.py
       - name: Install Playwright dependency and Chromium
         working-directory: frontend/genealogy-web
         run: |
@@ -89,6 +91,8 @@ jobs:
         run: |
           rm .github/workflows/issue-130-132-e2e-apply.yml
           rm .github/scripts/issue-130-132-e2e-apply.py
+          rm .github/scripts/issue-130-132-e2e-selector-fix.py
+          rm -f tasks/issue-130-132-e2e-diagnostic.md
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add -A
