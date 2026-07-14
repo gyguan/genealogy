@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:tracking-center": "node src/features/logs/trackingCenterModel.test.mjs",
+    "test:logs": "node src/features/logs/trackingCenterModel.test.mjs",
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
     "api:check:culture": "node ../../scripts/api/check-culture-contract.mjs"
