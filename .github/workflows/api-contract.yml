@@ -47,3 +47,14 @@ jobs:
 
       - name: Check generated API contract
         run: bash scripts/api/check-api-contract.sh
+
+      - name: Upload generated contract diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-166-generated-contracts
+          path: |
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+            frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts
+            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
+            frontend/genealogy-web/src/shared/api/generated/culture-types.ts
