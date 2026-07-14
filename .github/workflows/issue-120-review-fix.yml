@@ -3,94 +3,35 @@ name: Issue 120 Review Fix
 on:
   push:
     branches:
-      - "agent/issue-120-business-object-search"
+      - agent/issue-120-business-object-search
     paths:
-      - ".github/workflows/issue-120-review-fix.yml"
+      - .github/scripts/fix-issue-120-review.py
+      - .github/workflows/issue-120-review-fix.yml
 
 permissions:
   contents: write
 
 jobs:
-  patch:
+  apply-review-fixes:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/issue-120-business-object-search
           fetch-depth: 0
-      - name: Patch review target visibility and source branch scope
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply review fixes
+        run: python .github/scripts/fix-issue-120-review.py
+      - name: Run focused repository tests
+        working-directory: backend/genealogy-backend
+        run: mvn -B -Dtest=TrackingObjectQueryRepositoryTest test
+      - name: Commit review fixes and remove temporary automation
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java')
-          text = path.read_text()
-
-          old_source = '''    private static final String SOURCE_BRANCH_NAME = "(select min(sb_branch.branch_name) from branch sb_branch where sb_branch.clan_id = s.clan_id and ("
-'''
-          new_source = '''    private static final String SOURCE_BRANCH_NAME = "(select min(sb_branch.branch_name) from branch sb_branch where sb_branch.clan_id = s.clan_id "
-            + "and (:fullClanAccess = true or sb_branch.id in (:visibleBranchIds)) "
-            + "and (:hasBranchId = false or sb_branch.id = :branchId) and ("
-'''
-          if old_source not in text:
-              raise SystemExit('SOURCE_BRANCH_NAME anchor not found')
-          text = text.replace(old_source, new_source, 1)
-
-          target_anchor = '''                + "else null end";
-        String select = "select 'review_task' as object_type, rt.id as object_id, "
-'''
-          visibility = '''                + "else null end";
-        String reviewPersonVisible = "exists (select 1 from person rvp where rev.target_type = 'person' "
-                + "and rvp.id = rev.target_id and rvp.clan_id = rt.clan_id and rvp.deleted_at is null "
-                + "and coalesce(rvp.privacy_level, 'clan_only') <> 'sealed' "
-                + "and (:fullClanAccess = true or (rvp.branch_id in (:visibleBranchIds) "
-                + "and coalesce(rvp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only'))))";
-        String reviewRelationshipVisible = "exists (select 1 from relationship rvr "
-                + "join person rvfp on rvfp.id = rvr.from_person_id and rvfp.clan_id = rvr.clan_id and rvfp.deleted_at is null "
-                + "join person rvtp on rvtp.id = rvr.to_person_id and rvtp.clan_id = rvr.clan_id and rvtp.deleted_at is null "
-                + "where rev.target_type = 'relationship' and rvr.id = rev.target_id and rvr.clan_id = rt.clan_id and rvr.deleted_at is null "
-                + "and coalesce(rvfp.privacy_level, 'clan_only') <> 'sealed' and coalesce(rvtp.privacy_level, 'clan_only') <> 'sealed' "
-                + "and (:fullClanAccess = true or (rvfp.branch_id in (:visibleBranchIds) and rvtp.branch_id in (:visibleBranchIds) "
-                + "and coalesce(rvfp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only') "
-                + "and coalesce(rvtp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only'))))";
-        String reviewSourceVisible = "exists (select 1 from source rvs where rev.target_type = 'source' "
-                + "and rvs.id = rev.target_id and rvs.clan_id = rt.clan_id "
-                + "and coalesce(rvs.privacy_level, 'clan_only') <> 'sealed' "
-                + "and (:fullClanAccess = true or (coalesce(rvs.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only') "
-                + "and exists (select 1 from source_binding rvsb where rvsb.source_id = rvs.id and rvsb.clan_id = rvs.clan_id and ("
-                + "(rvsb.target_type = 'branch' and rvsb.target_id in (:visibleBranchIds)) or "
-                + "(rvsb.target_type = 'person' and exists (select 1 from person rvsp where rvsp.id = rvsb.target_id "
-                + "and rvsp.clan_id = rvs.clan_id and rvsp.deleted_at is null and rvsp.branch_id in (:visibleBranchIds))) or "
-                + "(rvsb.target_type = 'relationship' and exists (select 1 from relationship rvsr "
-                + "join person rvsrp on rvsrp.id = rvsr.from_person_id where rvsr.id = rvsb.target_id "
-                + "and rvsr.clan_id = rvs.clan_id and rvsr.deleted_at is null and rvsrp.deleted_at is null "
-                + "and rvsrp.branch_id in (:visibleBranchIds)))))))";
-        String reviewBranchVisible = "exists (select 1 from branch rvb where rev.target_type = 'branch' "
-                + "and rvb.id = rev.target_id and rvb.clan_id = rt.clan_id "
-                + "and (:fullClanAccess = true or rvb.id in (:visibleBranchIds)))";
-        String reviewTargetVisible = "(" + reviewPersonVisible + " or " + reviewRelationshipVisible
-                + " or " + reviewSourceVisible + " or " + reviewBranchVisible + ")";
-        String select = "select 'review_task' as object_type, rt.id as object_id, "
-'''
-          if target_anchor not in text:
-              raise SystemExit('reviewTaskSql target anchor not found')
-          text = text.replace(target_anchor, visibility, 1)
-
-          scope_anchor = '''                + "and (:fullClanAccess = true or rt.branch_id in (:visibleBranchIds)) "
-                + "and (:hasBranchId = false or rt.branch_id = :branchId) "
-'''
-          scope_replacement = '''                + "and (:fullClanAccess = true or rt.branch_id in (:visibleBranchIds)) "
-                + "and " + reviewTargetVisible + " "
-                + "and (:hasBranchId = false or rt.branch_id = :branchId) "
-'''
-          if scope_anchor not in text:
-              raise SystemExit('reviewTaskSql scope anchor not found')
-          text = text.replace(scope_anchor, scope_replacement, 1)
-          path.write_text(text)
-          PY
-      - name: Commit review fixes
-        run: |
+          rm .github/scripts/fix-issue-120-review.py .github/workflows/issue-120-review-fix.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java
-          git commit -m "fix(tracking): enforce review target visibility"
+          git add -A
+          git commit -m "fix: enforce tracking search visibility for issue 120"
           git push origin HEAD:agent/issue-120-business-object-search
