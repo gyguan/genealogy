@@ -116,6 +116,7 @@ public class ReviewTaskQueryRepository {
 
         if (VIEW_PENDING.equals(criteria.view())) {
             predicates.add(builder.equal(task.get("status"), VIEW_PENDING));
+            predicates.add(builder.notEqual(record.get("submitterId"), criteria.actorId()));
         } else if (VIEW_SUBMITTED.equals(criteria.view()) && SCOPE_MINE.equals(criteria.scope())) {
             predicates.add(builder.equal(record.get("submitterId"), criteria.actorId()));
         } else if (VIEW_PROCESSED.equals(criteria.view())) {
