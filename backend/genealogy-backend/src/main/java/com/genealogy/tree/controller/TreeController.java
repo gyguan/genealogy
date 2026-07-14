@@ -45,7 +45,8 @@ public class TreeController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(treeApplicationService.personLineage(
-                personId, direction, relationScopes, dataView, maxDepth, actorId
+                personId, direction, relationScopes, dataView,
+                maxDepth, maxNodes, maxEdges, actorId
         ));
     }
 
@@ -59,7 +60,9 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.family(personId, relationScopes, dataView, actorId));
+        return ApiResponse.success(treeApplicationService.family(
+                personId, relationScopes, dataView, maxNodes, maxEdges, actorId
+        ));
     }
 
     @GetMapping("/descendants")
@@ -74,7 +77,8 @@ public class TreeController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(treeApplicationService.descendants(
-                rootPersonId, maxDepth, relationScopes, dataView, actorId
+                rootPersonId, maxDepth, relationScopes, dataView,
+                maxNodes, maxEdges, actorId
         ));
     }
 
@@ -90,7 +94,8 @@ public class TreeController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(treeApplicationService.ancestors(
-                personId, maxDepth, relationScopes, dataView, actorId
+                personId, maxDepth, relationScopes, dataView,
+                maxNodes, maxEdges, actorId
         ));
     }
 
@@ -108,7 +113,8 @@ public class TreeController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(treeApplicationService.branchLineage(
-                clanId, branchId, includeSubBranches, relationScopes, dataView, actorId
+                clanId, branchId, includeSubBranches, relationScopes, dataView,
+                maxDepth, maxNodes, maxEdges, actorId
         ));
     }
 }
