@@ -34,12 +34,24 @@ const navItems = [
   ['imports', '导入管理', '族谱数据导入任务、结果和异常处理'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
   ['memberManage', '成员权限', '宗族成员、角色和权限配置'],
-  ['auditTrace', '追踪中心', '操作日志、审核流和字段Diff完整追踪'],
+  ['auditTrace', '追踪中心', '对象变更追踪与管理员操作审计'],
   ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
+
+function readViewFromUrl(): ViewKey {
+  const requested = new URLSearchParams(window.location.search).get('view');
+  return navItems.some(([key]) => key === requested) ? requested as ViewKey : 'home';
+}
+
+function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  if (key === 'home') url.searchParams.delete('view');
+  else url.searchParams.set('view', key);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
 
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
@@ -91,7 +103,7 @@ export function App() {
 }
 
 function AppShell() {
-  const [active, setActive] = useState<ViewKey>('home');
+  const [active, setActive] = useState<ViewKey>(readViewFromUrl);
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
@@ -153,9 +165,19 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
+  useEffect(() => {
+    const onPopState = () => {
+      setActive(readViewFromUrl());
+      setPageEntryVersion(prev => prev + 1);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   function enterPage(key: ViewKey) {
     setActive(key);
     setPageEntryVersion(prev => prev + 1);
+    writeViewToUrl(key);
   }
 
   function renderPage() {
