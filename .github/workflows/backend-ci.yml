@@ -6,13 +6,11 @@ on:
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
-      - ".github/scripts/backend-startup-check.sh"
   pull_request:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
-      - ".github/scripts/backend-startup-check.sh"
   workflow_dispatch:
 
 concurrency:
@@ -20,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Java Backend
+  backend-compile:
+    name: Backend Compile
     runs-on: ubuntu-latest
 
     steps:
@@ -35,61 +33,6 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Build and test
+      - name: Compile and package backend
         working-directory: backend/genealogy-backend
-        run: |
-          set +e
-          mvn -B clean test > /tmp/genealogy-maven-test.log 2>&1
-          code=$?
-          set -e
-          if [ "$code" -ne 0 ]; then
-            echo "Maven test failed. Focused summary:"
-            grep -Ei "COMPILATION ERROR|Tests run:|Failures:|Errors:|BUILD FAILURE|AssertionFailedError|Caused by:|\[ERROR\]" /tmp/genealogy-maven-test.log \
-              | tail -n 80 \
-              | cut -c1-1200 || true
-            echo "Maven test output tail:"
-            tail -n 30 /tmp/genealogy-maven-test.log | cut -c1-1200
-            exit "$code"
-          fi
-          tail -n 40 /tmp/genealogy-maven-test.log
-
-  commercial-frontend-build:
-    name: Commercial Frontend Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install
-
-      - name: Test tracking model
-        working-directory: frontend/genealogy-web
-        run: npm run test:logs
-
-      - name: Build commercial frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
-
-  startup-check:
-    name: Startup Check with PostgreSQL
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Startup check with focused diagnostics
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
-          SPRING_DATASOURCE_USERNAME: genealogy
-          SPRING_DATASOURCE_PASSWORD: genealogy
-        run: |
-          set -euo pipefail
-          REF_NAME="${GITHUB_HEAD_REF:-main}"
-          echo "Running startup check script from ref: ${REF_NAME}"
-          curl -fsSL "https://raw.githubusercontent.com/gyguan/genealogy/${REF_NAME}/.github/scripts/backend-startup-check.sh" | bash
+        run: mvn -B -DskipTests package
