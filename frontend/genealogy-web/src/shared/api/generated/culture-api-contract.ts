@@ -259,7 +259,7 @@ export const API_OPERATIONS = {
 
 export type ApiOperation = keyof typeof API_OPERATIONS;
 export type ApiMethod<K extends ApiOperation = ApiOperation> = typeof API_OPERATIONS[K]['method'];
-export type ApiPath<K extends ApiOperation> = typeof API_OPERATIONS[K]['path'];
+export type ApiPath<K extends ApiOperation = ApiOperation> = typeof API_OPERATIONS[K]['path'];
 export type ApiPathParamName<K extends ApiOperation> = typeof API_OPERATIONS[K]['pathParams'][number];
 export type ApiQueryParamName<K extends ApiOperation> = typeof API_OPERATIONS[K]['queryParams'][number];
 export type ApiPathParams<K extends ApiOperation> = [ApiPathParamName<K>] extends [never] ? never : Record<ApiPathParamName<K>, string | number>;

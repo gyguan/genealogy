@@ -1,0 +1,15 @@
+{
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "请求参数、字段值或业务前置条件不合法"
+      },
+      "Unauthorized": {
+        "description": "未登录、会话无效或认证凭据已失效"
+      },
+      "Forbidden": {
+        "description": "已认证，但无功能权限、宗族范围、支派范围或隐私访问权限"
+      }
+    }
+  }
+}

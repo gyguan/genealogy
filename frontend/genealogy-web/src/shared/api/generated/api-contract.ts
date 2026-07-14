@@ -23,6 +23,32 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobPage"
   },
+  "POST /api/v1/clans/{clanId}/imports/generations": {
+    "operationId": "importGenerationsAsJob",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/generations",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": "MultipartFileRequest",
+    "response": "ApiResponseImportJobResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/generations/preview": {
+    "operationId": "previewGenerationImport",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/generations/preview",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": "MultipartFileRequest",
+    "response": "ApiResponseGenerationImportPreviewResponse"
+  },
   "POST /api/v1/clans/{clanId}/imports/persons.csv": {
     "operationId": "importPersonsAsJob",
     "method": "POST",
@@ -130,6 +156,19 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobRowPage"
   },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry": {
+    "operationId": "retryGenerationImportRow",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry",
+    "pathParams": [
+      "clanId",
+      "jobId",
+      "rowId"
+    ],
+    "queryParams": [],
+    "requestBody": "GenerationImportRowRetryRequest",
+    "response": "ApiResponseImportJobRowResponse"
+  },
   "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/relationship-retry": {
     "operationId": "retryRelationshipImportRow",
     "method": "POST",
@@ -213,6 +252,24 @@ export const API_OPERATIONS = {
     "queryParams": [],
     "requestBody": "SourceBindingCreateRequest",
     "response": "ApiResponseSourceBindingResponse"
+  },
+  "GET /api/v1/imports/templates/generations.csv": {
+    "operationId": "downloadGenerationImportCsvTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/generations.csv",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/generations.xlsx": {
+    "operationId": "downloadGenerationImportXlsxTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/generations.xlsx",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
   },
   "GET /api/v1/imports/templates/persons.csv": {
     "operationId": "downloadPersonImportCsvTemplate",
