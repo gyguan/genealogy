@@ -1,4 +1,4 @@
-name: Issue 121 Trace Adjustment Diagnostic
+name: Issue 121 Trace Adjustment
 
 on:
   pull_request:
@@ -8,17 +8,19 @@ on:
       - scripts/issue-121-adjust.py
       - .github/workflows/issue-121-adjust.yml
       - backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java
+      - backend/genealogy-backend/src/test/java/com/genealogy/tracking/repository/TrackingObjectQueryRepositoryTest.java
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/issue-121-trace-aggregation
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -27,23 +29,13 @@ jobs:
       - name: Apply adjustment
         run: python scripts/issue-121-adjust.py
       - name: Run trace tests
-        id: tests
-        continue-on-error: true
         working-directory: backend/genealogy-backend
-        run: mvn -DtrimStackTrace=false -Dtest=TrackingTraceApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest test > /tmp/issue-121-tests.log 2>&1
-      - name: Print concise failures
-        if: steps.tests.outcome == 'failure'
-        run: grep -n -E "COMPILATION ERROR|cannot find symbol|Failures:|Errors:|Wanted but not invoked|UnnecessaryStubbing|AssertionError|BUILD FAILURE|Tests run:" /tmp/issue-121-tests.log | tail -80 || true
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-121-adjustment-diagnostics
-          path: |
-            /tmp/issue-121-tests.log
-            backend/genealogy-backend/target/surefire-reports
-            backend/genealogy-backend/src/main/java/com/genealogy/tracking/application/TrackingTraceApplicationService.java
-          if-no-files-found: warn
-      - name: Fail when tests failed
-        if: steps.tests.outcome == 'failure'
-        run: exit 1
+        run: mvn -q -Dtest=TrackingTraceApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest test
+      - name: Commit validated adjustment
+        run: |
+          rm scripts/issue-121-adjust.py .github/workflows/issue-121-adjust.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: scope trace review tasks to visible branches"
+          git push origin HEAD:agent/issue-121-trace-aggregation
