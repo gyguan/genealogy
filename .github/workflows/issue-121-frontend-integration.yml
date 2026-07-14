@@ -1,9 +1,9 @@
 name: Issue 121 Frontend Integration
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/issue-121-trace-aggregation
+      - main
     paths:
       - scripts/issue-121-frontend-patch.py
       - .github/workflows/issue-121-frontend-integration.yml
