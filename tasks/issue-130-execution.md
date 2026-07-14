@@ -2,29 +2,36 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/130
 - 工作分支：`agent/issue-130-132-auth-security-closure`
-- 目标：核对并补齐账号/IP 双维度登录防护、冷却策略、结构化安全审计和安全测试。
+- Pull Request：https://github.com/gyguan/genealogy/pull/143
+- 状态：✅ 实现与验证完成，等待合入。
 
-## 方案与边界
+## 已完成
 
-- 保留现有时间窗口计数模型，不引入外部风控平台。
-- 补充独立冷却配置，避免文档与运行时只复用窗口时长。
-- 审计只保存账号/IP 哈希或脱敏值，不记录密码、原始 Token、邀请及重置凭据。
-- 不在本任务中实现 MFA、商业验证码或地理位置风控。
+- 保留账号哈希与 IP 哈希双维度失败统计。
+- 新增独立 `loginCooldownMinutes`，不再复用统计窗口作为冷却时长。
+- 增加账号/IP 阈值、冷却自动解除和成功登录衰减测试。
+- 未知账号与密码错误继续使用统一外部响应。
+- 登录失败、限流命中及成功事件使用结构化安全审计。
+- 审计不保存账号明文、密码或任何原始 Token。
+
+## 配置
+
+```text
+GENEALOGY_AUTH_LOGIN_WINDOW_MINUTES=15
+GENEALOGY_AUTH_LOGIN_COOLDOWN_MINUTES=15
+GENEALOGY_AUTH_ACCOUNT_MAX_FAILURES=5
+GENEALOGY_AUTH_IP_MAX_FAILURES=20
+```
+
+## 验证
+
+- `AuthSecurityServiceTest` 覆盖账号限制、IP 限制、冷却自动解除、哈希落库和成功登录计数清理。
+- 完整 Maven 测试套件通过。
+- 真实 PostgreSQL 16 + Flyway 启动通过。
+- Playwright 浏览器认证 E2E 通过。
 
 ## 回滚
 
-- 新配置均提供安全默认值，可通过配置回退到当前阈值。
-- 不删除已有安全事件与登录尝试记录。
-
-## 任务
-
-| 序号 | 任务 | 状态 |
-|---|---|---|
-| 1 | 核对现有实现与验收差距 | ✅ 已完成 |
-| 2 | 补齐冷却/审计边界与测试 | 🔄 进行中 |
-| 3 | 全量验证、Review 与合入 | ⏳ 未开始 |
-
-## 当前检查点
-
-- 已确认现有双维度限流、统一失败提示、账号/IP 哈希和安全事件已落地。
-- 下一步：补齐独立冷却配置并纳入验证证据。
+- 阈值、统计窗口和冷却时长可通过配置调整。
+- 历史安全事件不删除。
+- 敏感凭据不落盘属于安全底线，不提供关闭开关。
