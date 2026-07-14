@@ -52,8 +52,20 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void authorizedOfficialPersonIsFullyVisible() {
+        PersonEntity official = person(2L, 10L, "official", "public", false);
+        when(personApplicationService.get(official.getId(), ACTOR_ID))
+                .thenReturn(PersonMapper.toResponse(official));
+
+        PersonProjection projection = service.projectPerson(official, ACTOR_ID, "official");
+
+        assertEquals(Visibility.FULL, projection.visibility());
+        assertEquals(official.getName(), projection.displayName());
+    }
+
+    @Test
     void privatePersonIsMaskedWithoutBranchUpdatePermission() {
-        PersonEntity privatePerson = person(2L, 10L, "official", "private", false);
+        PersonEntity privatePerson = person(3L, 10L, "official", "private", false);
         when(personApplicationService.get(privatePerson.getId(), ACTOR_ID))
                 .thenReturn(PersonMapper.toResponse(privatePerson));
         deny(privatePerson, "person:update");
@@ -66,8 +78,21 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void relativesOnlyPersonUsesSameProtectedProjection() {
+        PersonEntity relativesOnly = person(4L, 10L, "official", "relatives_only", false);
+        when(personApplicationService.get(relativesOnly.getId(), ACTOR_ID))
+                .thenReturn(PersonMapper.toResponse(relativesOnly));
+        deny(relativesOnly, "person:update");
+
+        PersonProjection projection = service.projectPerson(relativesOnly, ACTOR_ID, "official");
+
+        assertEquals(Visibility.MASKED, projection.visibility());
+        assertEquals("受保护人物", projection.displayName());
+    }
+
+    @Test
     void sealedPersonIsMaskedWithoutBranchDeletePermission() {
-        PersonEntity sealed = person(3L, 10L, "official", "sealed", false);
+        PersonEntity sealed = person(5L, 10L, "official", "sealed", false);
         when(personApplicationService.get(sealed.getId(), ACTOR_ID))
                 .thenReturn(PersonMapper.toResponse(sealed));
         deny(sealed, "person:delete");
@@ -79,8 +104,21 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void livingPersonIsMaskedForReadOnlyBranchViewer() {
+        PersonEntity living = person(6L, 10L, "official", "branch_only", true);
+        when(personApplicationService.get(living.getId(), ACTOR_ID))
+                .thenReturn(PersonMapper.toResponse(living));
+        deny(living, "person:update");
+
+        PersonProjection projection = service.projectPerson(living, ACTOR_ID, "official");
+
+        assertEquals(Visibility.MASKED, projection.visibility());
+        assertEquals("在世人物", projection.displayName());
+    }
+
+    @Test
     void livingBranchOnlyPersonIsHiddenOutsideAuthorizedBranch() {
-        PersonEntity living = person(4L, 20L, "official", null, true);
+        PersonEntity living = person(7L, 20L, "official", null, true);
         deny(living, "person:view");
 
         PersonProjection projection = service.projectPerson(living, ACTOR_ID, "official");
@@ -90,8 +128,20 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void authorizedEditorCanReadDraftRoot() {
+        PersonEntity root = person(8L, 10L, "draft", "clan_only", false);
+        when(personApplicationService.get(root.getId(), ACTOR_ID))
+                .thenReturn(PersonMapper.toResponse(root));
+
+        PersonProjection projection = service.requireRootProjection(root, ACTOR_ID, "editing");
+
+        assertEquals(Visibility.FULL, projection.visibility());
+        assertEquals(root.getId(), projection.response().id());
+    }
+
+    @Test
     void editingRootRequiresBothPersonAndRelationshipEditPermission() {
-        PersonEntity root = person(5L, 10L, "draft", "clan_only", false);
+        PersonEntity root = person(9L, 10L, "draft", "clan_only", false);
         deny(root, "relationship:update");
         deny(root, "review_task:approve");
 
@@ -105,7 +155,7 @@ class TreeVisibilityApplicationServiceTest {
 
     @Test
     void inaccessibleRootUsesNotFoundSemantics() {
-        PersonEntity root = person(6L, 30L, "official", "clan_only", false);
+        PersonEntity root = person(10L, 30L, "official", "clan_only", false);
         deny(root, "person:view");
 
         BusinessException exception = assertThrows(
