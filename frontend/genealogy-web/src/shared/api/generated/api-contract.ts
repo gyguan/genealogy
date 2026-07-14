@@ -140,6 +140,66 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobResponse"
   },
+  "GET /api/v1/clans/{clanId}/imports/{jobId}/execution": {
+    "operationId": "getImportJobExecution",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/execution",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ImportJobExecutionResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/execution/cancel": {
+    "operationId": "cancelImportJobExecution",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/execution/cancel",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ImportJobExecutionResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/execution/pause": {
+    "operationId": "pauseImportJobExecution",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/execution/pause",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ImportJobExecutionResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/execution/resume": {
+    "operationId": "resumeImportJobExecution",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/execution/resume",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ImportJobExecutionResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/execution/retry": {
+    "operationId": "retryImportJobExecution",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/execution/retry",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ImportJobExecutionResponse"
+  },
   "GET /api/v1/clans/{clanId}/imports/{jobId}/rows": {
     "operationId": "listImportJobRows",
     "method": "GET",
