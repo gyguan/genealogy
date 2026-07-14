@@ -9,30 +9,43 @@ import {
   writeTrackingCenterState
 } from './trackingCenterModel.js';
 
-const restored = readTrackingCenterState('?view=auditTrace&trackingTab=audit&objectType=source&objectKeyword=%E6%97%8F%E8%B0%B1&objectPage=3&traceType=source&traceId=88&auditActor=9&auditAction=source_update&auditPageSize=50&auditLog=31');
-assert.equal(restored.activeTab, TRACKING_TABS.AUDIT);
-assert.deepEqual(restored.objectFilters, {
+const legacy = readTrackingCenterState('?view=auditTrace&trackingTab=audit&objectType=source&objectKeyword=%E6%97%8F%E8%B0%B1&objectPage=3&traceType=source&traceId=88&auditActor=9&auditAction=source_update&auditPageSize=50&auditLog=31');
+assert.equal(legacy.activeTab, TRACKING_TABS.AUDIT);
+assert.equal(legacy.clanId, '');
+assert.deepEqual(legacy.objectFilters, {
   ...DEFAULT_OBJECT_FILTERS,
   objectType: 'source',
   keyword: '族谱',
   pageNo: 3
 });
-assert.deepEqual(restored.auditFilters, {
+assert.deepEqual(legacy.auditFilters, {
   ...DEFAULT_AUDIT_FILTERS,
   actorId: '9',
   actionType: 'source_update',
   pageSize: 50
 });
-assert.deepEqual(restored.selectedTrace, { targetType: 'source', targetId: '88' });
-assert.equal(restored.selectedAuditLogId, '31');
+assert.deepEqual(legacy.selectedTrace, { targetType: 'source', targetId: '88', reviewTaskId: '' });
+assert.equal(legacy.selectedAuditLogId, '31');
 
-const serialized = writeTrackingCenterState(restored, '?unrelated=keep&view=home');
-assert.match(serialized, /unrelated=keep/);
-assert.match(serialized, /view=auditTrace/);
-assert.match(serialized, /trackingTab=audit/);
-assert.match(serialized, /traceType=source/);
+const canonical = readTrackingCenterState('?view=auditTrace&tab=object&clanId=7&targetType=relationship&targetId=91&reviewTaskId=33&objectKeyword=%E5%BC%A0%E4%B8%89');
+assert.equal(canonical.activeTab, TRACKING_TABS.OBJECT);
+assert.equal(canonical.clanId, '7');
+assert.deepEqual(canonical.selectedTrace, { targetType: 'relationship', targetId: '91', reviewTaskId: '33' });
+assert.equal(canonical.objectFilters.keyword, '张三');
+
+const serialized = writeTrackingCenterState(canonical, '?unrelated=keep&view=home&traceType=person&traceId=1');
+const serializedParams = new URLSearchParams(serialized.slice(1));
+assert.equal(serializedParams.get('unrelated'), 'keep');
+assert.equal(serializedParams.get('view'), 'auditTrace');
+assert.equal(serializedParams.get('tab'), 'object');
+assert.equal(serializedParams.get('clanId'), '7');
+assert.equal(serializedParams.get('targetType'), 'relationship');
+assert.equal(serializedParams.get('targetId'), '91');
+assert.equal(serializedParams.get('reviewTaskId'), '33');
+assert.equal(serializedParams.get('trackingTab'), null);
+assert.equal(serializedParams.get('traceType'), null);
 assert.doesNotMatch(serialized, /objectPageSize=10/);
-assert.deepEqual(readTrackingCenterState(serialized), restored);
+assert.deepEqual(readTrackingCenterState(serialized), canonical);
 
 const objectQuery = new URLSearchParams(buildObjectQuery({
   ...DEFAULT_OBJECT_FILTERS,

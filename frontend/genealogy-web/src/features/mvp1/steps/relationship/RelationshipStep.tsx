@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
+import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../../../shared/ui/Panel';
 import {
   RELATIONSHIP_MODE_LABEL,
@@ -348,7 +349,15 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             columns={[
               { key: 'name', title: '姓名', render: (_value, row) => relativeName(row, centerPersonId || workspace.personId) },
               { key: 'relationType', title: '关系类型', width: 120, render: (_value, row) => relationTypeText(row, centerPersonId || workspace.personId) },
-              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
+              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+              {
+                key: 'tracking',
+                title: '操作',
+                width: 100,
+                render: (_value, row) => (
+                  <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="relationship" targetId={row.id} />
+                )
+              }
             ]}
           />
         </Space>

@@ -111,9 +111,21 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   const auditRequestVersion = useRef(0);
   const traceRequestVersion = useRef(0);
   const initializedClan = useRef('');
+  const pendingClanRestore = useRef(initial.clanId);
 
   useEffect(() => {
+    if (!pendingClanRestore.current || pendingClanRestore.current === workspace.clanId) {
+      pendingClanRestore.current = '';
+      return;
+    }
+    initializedClan.current = '';
+    workspace.patch({ clanId: pendingClanRestore.current, branchId: '' });
+  }, []);
+
+  useEffect(() => {
+    if (pendingClanRestore.current && pendingClanRestore.current !== workspace.clanId) return;
     const search = writeTrackingCenterState({
+      clanId: workspace.clanId,
       activeTab,
       objectFilters,
       auditFilters,
@@ -133,11 +145,22 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setSelectedTrace(restored.selectedTrace);
       setSelectedAuditLogId(restored.selectedAuditLogId);
       setSelectedAuditLog(null);
+      if (restored.clanId && restored.clanId !== workspace.clanId) {
+        pendingClanRestore.current = restored.clanId;
+        initializedClan.current = '';
+        workspace.patch({ clanId: restored.clanId, branchId: '' });
+        return;
+      }
       if (!workspace.clanId) return;
       void loadObjects(restored.objectFilters);
       if (restored.activeTab === TRACKING_TABS.AUDIT) void loadAudit(restored.auditFilters, restored.selectedAuditLogId);
       if (restored.selectedTrace.targetType && restored.selectedTrace.targetId) {
-        void loadTrace(restored.selectedTrace.targetType, restored.selectedTrace.targetId, null);
+        void loadTrace(
+          restored.selectedTrace.targetType,
+          restored.selectedTrace.targetId,
+          null,
+          restored.selectedTrace.reviewTaskId
+        );
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -145,12 +168,14 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   }, [workspace.clanId]);
 
   useEffect(() => {
+    if (pendingClanRestore.current && pendingClanRestore.current !== workspace.clanId) return;
     if (!workspace.clanId || initializedClan.current === workspace.clanId) return;
+    pendingClanRestore.current = '';
     initializedClan.current = workspace.clanId;
     void loadObjects(objectFilters);
     if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
     if (selectedTrace.targetType && selectedTrace.targetId) {
-      void loadTrace(selectedTrace.targetType, selectedTrace.targetId, null);
+      void loadTrace(selectedTrace.targetType, selectedTrace.targetId, null, selectedTrace.reviewTaskId);
     }
   }, [workspace.clanId]);
 
@@ -201,10 +226,15 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     }
   }
 
-  async function loadTrace(targetType: string, targetId: string, row: TrackingObjectResponse | null) {
+  async function loadTrace(
+    targetType: string,
+    targetId: string,
+    row: TrackingObjectResponse | null,
+    reviewTaskId = ''
+  ) {
     if (!workspace.clanId || !targetType || !targetId) return;
     const requestVersion = ++traceRequestVersion.current;
-    setSelectedTrace({ targetType, targetId });
+    setSelectedTrace({ targetType, targetId, reviewTaskId });
     setSelectedObject(row);
     setTraceDetail(null);
     setTraceError('');
@@ -219,7 +249,13 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setSelectedObject(detail.objectSummary);
     } catch (error) {
       if (requestVersion !== traceRequestVersion.current) return;
-      setTraceError((error as Error)?.message || '追踪详情加载失败');
+      const requestError = error as ApiRequestError;
+      if (requestError.status === 403 || requestError.status === 404) {
+        setSelectedObject(null);
+        setTraceError('当前账号无权查看该对象，或对象已不可用。');
+      } else {
+        setTraceError((error as Error)?.message || '追踪详情加载失败');
+      }
     } finally {
       if (requestVersion === traceRequestVersion.current) setTraceLoading(false);
     }
@@ -553,7 +589,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         onClose={() => {
           traceRequestVersion.current += 1;
           setTraceLoading(false);
-          setSelectedTrace({ targetType: '', targetId: '' });
+          setSelectedTrace({ targetType: '', targetId: '', reviewTaskId: '' });
           setSelectedObject(null);
           setTraceDetail(null);
           setTraceError('');
