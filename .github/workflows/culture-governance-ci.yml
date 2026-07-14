@@ -83,6 +83,13 @@ jobs:
             tail -n 240 /tmp/culture-postgres-test.log
             exit 1
           fi
+      - name: Upload PostgreSQL test evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: culture-postgres-test-log
+          path: /tmp/culture-postgres-test.log
+          if-no-files-found: error
       - name: Package backend
         working-directory: backend/genealogy-backend
         run: mvn -B -q -DskipTests package
@@ -96,3 +103,10 @@ jobs:
           done
           tail -n 240 /tmp/culture-backend.log || true
           exit 1
+      - name: Upload backend startup evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: culture-backend-startup-log
+          path: /tmp/culture-backend.log
+          if-no-files-found: ignore
