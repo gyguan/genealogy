@@ -1,0 +1,51 @@
+name: Issue 108 Review Fix
+
+on:
+  push:
+    branches:
+      - agent/issue-108-bulk-failure-handling
+    paths:
+      - '.github/workflows/issue-108-review-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-108-bulk-failure-handling
+      - name: Allow excluded-only batches through review lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          def patch(path, old, new):
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'missing patch target in {path}: {old!r}')
+              file.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          patch(
+              'backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java',
+              '        if (draftRows.isEmpty() || draftRows.stream().anyMatch(row -> targetId(row) == null)) {\n',
+              '        if (draftRows.stream().anyMatch(row -> targetId(row) == null)) {\n'
+          )
+          patch(
+              'backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java',
+              '        if (rows.isEmpty()) throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");\n',
+              '        if (rows.isEmpty()) {\n            long total = importJobRowRepository.countByJobId(job.getId());\n            long excluded = importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_EXCLUDED);\n            if (total > 0 && excluded == total) return rows;\n            throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");\n        }\n'
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java \
+            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+          git commit -m "fix(issue-108): support review of excluded-only batches"
+          git push origin HEAD:agent/issue-108-bulk-failure-handling
