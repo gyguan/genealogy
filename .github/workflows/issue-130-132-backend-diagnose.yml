@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   diagnose:
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -21,7 +21,7 @@ jobs:
           cache: maven
       - name: Apply closure patch
         run: python3 .github/scripts/issue-130-132-backend-apply.py
-      - name: Run tests and print only failures
+      - name: Persist failure summary and remove diagnostic workflow
         working-directory: backend/genealogy-backend
         shell: bash
         run: |
@@ -29,8 +29,16 @@ jobs:
           mvn -q clean test >/tmp/test.log 2>&1
           status=$?
           set -e
-          grep -E '\[ERROR\]|COMPILATION ERROR|Failures:|Errors:' /tmp/test.log | tail -n 120 || true
-          python3 - <<'PY'
+          {
+            echo '# Backend closure diagnostic'
+            echo
+            echo "Exit status: $status"
+            echo
+            echo '## Maven errors'
+            grep -E '\[ERROR\]|COMPILATION ERROR|Failures:|Errors:' /tmp/test.log | tail -n 160 || true
+            echo
+            echo '## Surefire failures'
+            python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
           failures = []
@@ -47,6 +55,13 @@ jobs:
                       failures.append((root.get('name'), case.get('name'), node.get('message') or ''))
           print(f'FAILURE_COUNT={len(failures)}')
           for suite, case, message in failures:
-              print(f'FAILURE={suite}#{case}::{message[:1500]}')
+              print(f'FAILURE={suite}#{case}::{message[:2000]}')
           PY
-          exit "$status"
+          } > ../../../tasks/issue-130-132-backend-diagnostic.md
+          cd ../../..
+          rm .github/workflows/issue-130-132-backend-diagnose.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tasks/issue-130-132-backend-diagnostic.md .github/workflows/issue-130-132-backend-diagnose.yml
+          git commit -m 'chore(auth): record backend diagnostic'
+          git push
