@@ -5,9 +5,9 @@
 - 前置实现：Issue #193 / PR #204 / Main Commit `060200eb48db510dfa4da239823e6b9780eef9f7`
 - 契约：Issue #192 / `docs/api/openapi.tree.json` / `docs/12-lineage-tree-contract.md`
 - 工作分支：`agent/issue-194-tree-guardrails`
-- Draft PR：待创建
+- Draft PR：https://github.com/gyguan/genealogy/pull/207
 - 目标：为人物中心、家庭、祖先、后代和支派世系建立统一的遍历状态、去重、环检测、深度与容量截断，并按既有契约返回 `meta/warnings`。
-- 最后更新时间：2026-07-14 20:46（北京时间）
+- 最后更新时间：2026-07-14 20:49（北京时间）
 
 ## 实现范围
 
@@ -42,8 +42,8 @@
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue、前置实现和契约，建立分支、看板与 Draft PR | 🔄 进行中 | 已累计约 3 分钟 | 已确认首次启动并创建分支、检查点文件 |
-| 2 | 实现 Tree 响应 DTO、统一参数归一化和兼容字段 | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue、前置实现和契约，建立分支、看板与 Draft PR | ✅ 已完成 | 约 5 分钟 | 检查点 `4959919`；Draft PR #207 和 Issue 启动评论已建立 |
+| 2 | 实现 Tree 响应 DTO、统一参数归一化和兼容字段 | 🔄 进行中 | 已累计 <1 分钟 | 正在实现 #192 响应结构和容量参数传递 |
 | 3 | 实现人物遍历去重、路径环检测和安全容量截断 | ⏳ 待处理 | — |  |
 | 4 | 将家庭和支派图接入统一边界策略并补齐告警 | ⏳ 待处理 | — |  |
 | 5 | 补充聚焦测试，执行 Backend CI、API Contract 和五轴 Review，满足门禁后合入 main | ⏳ 待处理 | — |  |
@@ -75,13 +75,13 @@
 
 - 当前 Issue：#194
 - 当前分支：`agent/issue-194-tree-guardrails`
-- Draft PR：待创建
-- 最新 Commit：首次执行看板检查点提交
-- 最后完成任务：刷新最新规则、Issue、前置 #193、#192 契约和现有 Tree 实现
-- 当前进行中：创建 Draft PR 并回写 Issue
-- 当前任务累计耗时：已累计约 3 分钟
+- Draft PR：#207
+- 最新 Commit：启动门禁状态更新提交
+- 最后完成任务：七道启动门禁、分支、任务文件、Draft PR 和 Issue 回写
+- 当前进行中：实现响应 DTO 和统一参数传递
+- 当前任务累计耗时：已累计 <1 分钟
 - CI 状态：未运行
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：创建 Draft PR，并将真实分支、PR 和看板位置回写 Issue #194
-- 最后更新时间：2026-07-14 20:46（北京时间）
+- 下一步最小任务：新增 Tree meta/warning DTO，并将 maxNodes/maxEdges 传入 Application Service
+- 最后更新时间：2026-07-14 20:49（北京时间）
