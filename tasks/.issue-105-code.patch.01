@@ -1,0 +1,297 @@
+EX));
++        boolean isDefault = GenerationImportTemplateDefinition.parseBoolean(
++                cell(cells, GenerationImportTemplateDefinition.IS_DEFAULT_INDEX), false, "是否默认"
++        );
++        boolean validationEnabled = GenerationImportTemplateDefinition.parseBoolean(
++                cell(cells, GenerationImportTemplateDefinition.VALIDATION_ENABLED_INDEX), true, "启用校验"
++        );
++        boolean strictMode = GenerationImportTemplateDefinition.parseBoolean(
++                cell(cells, GenerationImportTemplateDefinition.STRICT_MODE_INDEX), false, "严格模式"
++        );
++        String description = trimToNull(cell(cells, GenerationImportTemplateDefinition.DESCRIPTION_INDEX));
++        SchemeConfig config = new SchemeConfig(
++                schemeName.trim(), poemText, startGeneration, isDefault, validationEnabled, strictMode
++        );
++        String schemeKey = scopeKey(clanId, branchId, schemeName);
++        SchemeConfig prior = context.schemeConfigs().putIfAbsent(schemeKey, config);
++        if (prior != null && !prior.equals(config)) {
++            throw new BusinessException("IMPORT_GENERATION_SCHEME_METADATA_CONFLICT", "同一方案在文件中的起始代次或方案属性不一致");
++        }
++        String generationKey = schemeKey + ":" + generationNo;
++        if (!context.generationKeys().add(generationKey)) {
++            throw new BusinessException("IMPORT_GENERATION_NO_DUPLICATED", "同一方案在文件中存在重复代次：" + generationNo);
++        }
++
++        List<GenerationSchemeEntity> matches = schemeRepository.findByScopeAndName(clanId, branchId, schemeName.trim());
++        if (matches.size() > 1) {
++            throw new BusinessException("IMPORT_GENERATION_SCHEME_NOT_UNIQUE", "目标范围存在多个同名字辈方案，请先治理重复方案");
++        }
++        if (matches.isEmpty()) {
++            return new ResolvedGeneration(
++                    GenerationImportDraftEntity.ACTION_CREATE_SCHEME, null, config, generationNo, word.trim(), description
++            );
++        }
++
++        GenerationSchemeEntity scheme = matches.get(0);
++        if (!STATUS_OFFICIAL.equals(normalize(scheme.getStatus()))) {
++            throw new BusinessException("IMPORT_GENERATION_SCHEME_STATUS_CONFLICT", "同名字辈方案尚未正式生效，不能通过导入追加明细");
++        }
++        requireMatchingMetadata(scheme, config);
++        wordRepository.findBySchemeIdAndGenerationNo(scheme.getId(), generationNo).ifPresent(existing -> {
++            if (Objects.equals(existing.getWord(), word.trim())) {
++                throw new DuplicateGenerationException("该方案代次已经存在相同字辈文字：" + generationNo);
++            }
++            throw new BusinessException("IMPORT_GENERATION_WORD_CONFLICT", "该方案代次已存在不同字辈文字：" + generationNo);
++        });
++        return new ResolvedGeneration(
++                GenerationImportDraftEntity.ACTION_APPEND_WORD, scheme.getId(), config, generationNo, word.trim(), description
++        );
++    }
++
++    GenerationImportDraftEntity createGenerationDraft(ImportJobEntity job, ResolvedGeneration resolved, Long actorId) {
++        LocalDateTime now = LocalDateTime.now();
++        GenerationImportDraftEntity draft = new GenerationImportDraftEntity();
++        draft.setJobId(job.getId());
++        draft.setClanId(job.getClanId());
++        draft.setBranchId(job.getBranchId());
++        draft.setActionType(resolved.actionType());
++        draft.setTargetSchemeId(resolved.targetSchemeId());
++        draft.setSchemeName(resolved.config().schemeName());
++        draft.setPoemText(resolved.config().poemText());
++        draft.setStartGeneration(resolved.config().startGeneration());
++        draft.setIsDefault(resolved.config().isDefault());
++        draft.setValidationEnabled(resolved.config().validationEnabled());
++        draft.setStrictMode(resolved.config().strictMode());
++        draft.setGenerationNo(resolved.generationNo());
++        draft.setWord(resolved.word());
++        draft.setDescription(resolved.description());
++        draft.setStatus(GenerationImportDraftEntity.STATUS_DRAFT);
++        draft.setCreatedBy(actorId);
++        draft.setCreatedAt(now);
++        draft.setUpdatedAt(now);
++        return draftRepository.save(draft);
++    }
++
++    private GenerationImportPreviewRowResponse previewRow(
++            Long clanId, Long branchId, ImportRow row, ValidationContext context
++    ) {
++        try {
++            ResolvedGeneration resolved = resolveDraft(clanId, branchId, row.cells(), context);
++            return previewResponse(row, resolved, false, null);
++        } catch (DuplicateGenerationException exception) {
++            return rawPreviewError(row, true, exception.getMessage());
++        } catch (RuntimeException exception) {
++            return rawPreviewError(row, false, errorMessage(exception));
++        }
++    }
++
++    private GenerationImportPreviewRowResponse previewResponse(
++            ImportRow row, ResolvedGeneration resolved, boolean duplicated, String errorMessage
++    ) {
++        SchemeConfig config = resolved.config();
++        return new GenerationImportPreviewRowResponse(
++                row.rowNo(), config.schemeName(), config.startGeneration(), resolved.generationNo(), resolved.word(),
++                config.poemText(), config.isDefault(), config.validationEnabled(), config.strictMode(),
++                resolved.description(), resolved.actionType(), duplicated, errorMessage, row.rawData()
++        );
++    }
++
++    private GenerationImportPreviewRowResponse rawPreviewError(ImportRow row, boolean duplicated, String message) {
++        return new GenerationImportPreviewRowResponse(
++                row.rowNo(), cell(row.cells(), 0), integerOrNull(cell(row.cells(), 1)), integerOrNull(cell(row.cells(), 2)),
++                cell(row.cells(), 3), cell(row.cells(), 4), booleanOrNull(cell(row.cells(), 5)),
++                booleanOrNull(cell(row.cells(), 6)), booleanOrNull(cell(row.cells(), 7)), cell(row.cells(), 8),
++                null, duplicated, message, row.rawData()
++        );
++    }
++
++    private void requireMatchingMetadata(GenerationSchemeEntity scheme, SchemeConfig config) {
++        if (!Objects.equals(scheme.getStartGeneration(), config.startGeneration())
++                || !Objects.equals(trimToNull(scheme.getPoemText()), config.poemText())
++                || !Objects.equals(Boolean.TRUE.equals(scheme.getIsDefault()), config.isDefault())
++                || !Objects.equals(!Boolean.FALSE.equals(scheme.getValidationEnabled()), config.validationEnabled())
++                || !Objects.equals(Boolean.TRUE.equals(scheme.getStrictMode()), config.strictMode())) {
++            throw new BusinessException("IMPORT_GENERATION_SCHEME_METADATA_CONFLICT", "同名字辈方案的起始代次或方案属性与模板不一致");
++        }
++    }
++
++    private ImportReadResult readImport(MultipartFile file) {
++        String filename = file.getOriginalFilename() == null ? "generations.csv" : file.getOriginalFilename();
++        try {
++            ImportReadResult result = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
++                    ? readXlsxRows(file) : readCsvRows(file);
++            if (result.rows().isEmpty()) throw new BusinessException("IMPORT_GENERATION_DATA_EMPTY", "字辈导入文件至少需要一行数据");
++            return result;
++        } catch (IOException exception) {
++            throw new BusinessException("IMPORT_FILE_READ_FAILED", "字辈导入文件读取失败");
++        }
++    }
++
++    private ImportReadResult readCsvRows(MultipartFile file) throws IOException {
++        List<ImportRow> rows = new ArrayList<>();
++        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
++            reader.readLine();
++            String line;
++            int rowNo = 1;
++            while ((line = reader.readLine()) != null) {
++                rowNo++;
++                if (!line.isBlank()) rows.add(new ImportRow(rowNo, parseCsv(line), line));
++            }
++        }
++        return new ImportReadResult(rows);
++    }
++
++    private ImportReadResult readXlsxRows(MultipartFile file) throws IOException {
++        List<ImportRow> rows = new ArrayList<>();
++        DataFormatter formatter = new DataFormatter();
++        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
++            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
++            if (sheet == null) throw new BusinessException("IMPORT_XLSX_EMPTY", "Excel 工作表不能为空");
++            int header = sheet.getFirstRowNum();
++            for (Row row : sheet) {
++                if (row.getRowNum() == header) continue;
++                List<String> cells = rowToCells(row, formatter);
++                if (!cells.stream().allMatch(String::isBlank)) rows.add(new ImportRow(row.getRowNum() + 1, cells, String.join(",", cells)));
++            }
++        } catch (BusinessException exception) {
++            throw exception;
++        } catch (Exception exception) {
++            throw new BusinessException("IMPORT_XLSX_PARSE_FAILED", "Excel 解析失败，请确认文件格式为 .xlsx");
++        }
++        return new ImportReadResult(rows);
++    }
++
++    private List<String> rowToCells(Row row, DataFormatter formatter) {
++        int last = Math.max(GenerationImportTemplateDefinition.HEADERS.size(), row.getLastCellNum());
++        List<String> cells = new ArrayList<>(last);
++        for (int index = 0; index < last; index++) {
++            Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
++            cells.add(cell == null ? "" : formatter.formatCellValue(cell));
++        }
++        return cells;
++    }
++
++    private List<String> parseCsv(String line) {
++        List<String> cells = new ArrayList<>();
++        StringBuilder current = new StringBuilder();
++        boolean quoted = false;
++        for (int index = 0; index < line.length(); index++) {
++            char character = line.charAt(index);
++            if (character == '"') {
++                if (quoted && index + 1 < line.length() && line.charAt(index + 1) == '"') { current.append('"'); index++; }
++                else quoted = !quoted;
++            } else if (character == ',' && !quoted) { cells.add(current.toString().trim()); current.setLength(0); }
++            else current.append(character);
++        }
++        if (quoted) throw new BusinessException("IMPORT_CSV_PARSE_FAILED", "CSV 行格式不正确");
++        cells.add(current.toString().trim());
++        return cells;
++    }
++
++    private void ensureNoExtraColumns(List<String> cells) {
++        for (int index = GenerationImportTemplateDefinition.HEADERS.size(); index < cells.size(); index++) {
++            if (!cell(cells, index).isBlank()) throw new BusinessException("IMPORT_GENERATION_EXTRA_COLUMN", "数据行不能包含模板之外的字段");
++        }
++    }
++
++    private int positiveInteger(List<String> cells, int index, String fieldName) {
++        String value = requiredCell(cells, index, fieldName + "不能为空");
++        try {
++            int parsed = Integer.parseInt(value);
++            if (parsed <= 0) throw new NumberFormatException();
++            return parsed;
++        } catch (NumberFormatException exception) {
++            throw new BusinessException("IMPORT_GENERATION_NUMBER_INVALID", fieldName + "必须为正整数");
++        }
++    }
++
++    private String requiredCell(List<String> cells, int index, String message) {
++        String value = cell(cells, index);
++        if (value.isBlank()) throw new BusinessException("IMPORT_GENERATION_FIELD_REQUIRED", message);
++        return value;
++    }
++
++    private String cell(List<String> cells, int index) {
++        return index >= 0 && index < cells.size() && cells.get(index) != null ? cells.get(index).trim() : "";
++    }
++
++    private ImportJobEntity createJob(Long clanId, Long branchId, String filename, String format, Long actorId) {
++        LocalDateTime now = LocalDateTime.now();
++        ImportJobEntity job = new ImportJobEntity();
++        job.setClanId(clanId);
++        job.setBranchId(branchId);
++        job.setOriginalFilename(filename);
++        job.setImportType(ImportJobEntity.TYPE_GENERATION);
++        job.setFileFormat(format);
++        job.setStatus(STATUS_RUNNING);
++        job.setProcessingStatus(ImportJobEntity.PROCESSING_PROCESSING);
++        job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
++        job.setReviewRound(0);
++        job.setTotalCount(0);
++        job.setSuccessCount(0);
++        job.setFailureCount(0);
++        job.setCreatedBy(actorId);
++        job.setCreatedAt(now);
++        job.setUpdatedAt(now);
++        return importJobRepository.save(job);
++    }
++
++    private ImportJobRowEntity newJobRow(Long jobId, ImportRow source) {
++        LocalDateTime now = LocalDateTime.now();
++        ImportJobRowEntity row = new ImportJobRowEntity();
++        row.setJobId(jobId);
++        row.setRowNo(source.rowNo());
++        row.setRawData(source.rawData());
++        row.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
++        row.setRetryCount(0);
++        row.setCreatedAt(now);
++        row.setUpdatedAt(now);
++        return row;
++    }
++
++    private Map<String, Object> normalizedData(ResolvedGeneration resolved) {
++        Map<String, Object> data = new LinkedHashMap<>();
++        data.put("schemeName", resolved.config().schemeName());
++        data.put("startGeneration", resolved.config().startGeneration());
++        data.put("generationNo", resolved.generationNo());
++        data.put("word", resolved.word());
++        data.put("poemText", resolved.config().poemText());
++        data.put("isDefault", resolved.config().isDefault());
++        data.put("validationEnabled", resolved.config().validationEnabled());
++        data.put("strictMode", resolved.config().strictMode());
++        data.put("description", resolved.description());
++        data.put("actionType", resolved.actionType());
++        return data;
++    }
++
++    private ImportJobErrorEntity error(Long jobId, int rowNo, String message, String rawData) {
++        ImportJobErrorEntity error = new ImportJobErrorEntity();
++        error.setJobId(jobId);
++        error.setRowNo(rowNo);
++        error.setErrorMessage(message);
++        error.setRawData(rawData);
++        error.setCreatedAt(LocalDateTime.now());
++        return error;
++    }
++
++    private void finishJob(ImportJobEntity job, int success, int failure) {
++        job.setTotalCount(success + failure);
++        job.setSuccessCount(success);
++        job.setFailureCount(failure);
++        job.setStatus(failure == 0 ? STATUS_COMPLETED : success == 0 ? STATUS_FAILED : STATUS_PARTIAL);
++        job.setProcessingStatus(failure == 0 ? ImportJobEntity.PROCESSING_READY_FOR_REVIEW : ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
++        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行字辈导入失败，请修正后再提交审核");
++        job.setUpdatedAt(LocalDateTime.now());
++    }
++
++    private ImportJobResponse toResponse(ImportJobEntity job, List<ImportJobErrorEntity> errors) {
++        return new ImportJobResponse(
++                job.getId(), job.getClanId(), job.getBranchId(), job.getImportType(), job.getFileFormat(),
++                job.getImportType() + "_" + job.getFileFormat(), job.getOriginalFilename(), job.getTotalCount(),
++                job.getSuccessCount(), job.getFailureCount(), job.getStatus(), job.getErrorSummary(), job.getCreatedAt(),
++                errors.stream().map(item -> new ImportRowErrorResponse(item.getRowNo(), item.getErrorMessage(), item.getRawData())).toList(),
++                job.getProcessingStatus(), job.getReviewStatus(), job.getReviewRound(), job.getLatestReviewTaskId()
++        );
++    }
++
++
