@@ -23,10 +23,11 @@ export type AuditFilters = {
 };
 
 export type TrackingCenterState = {
+  clanId: string;
   activeTab: TrackingTab;
   objectFilters: ObjectFilters;
   auditFilters: AuditFilters;
-  selectedTrace: { targetType: string; targetId: string };
+  selectedTrace: { targetType: string; targetId: string; reviewTaskId: string };
   selectedAuditLogId: string;
 };
 
