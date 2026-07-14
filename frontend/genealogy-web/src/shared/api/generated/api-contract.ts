@@ -76,6 +76,32 @@ export const API_OPERATIONS = {
     "requestBody": "MultipartFileRequest",
     "response": "ApiResponseRelationshipImportPreviewResponse"
   },
+  "POST /api/v1/clans/{clanId}/imports/sources": {
+    "operationId": "createSourceImportJob",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/sources",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": null,
+    "response": null
+  },
+  "POST /api/v1/clans/{clanId}/imports/sources/preview": {
+    "operationId": "previewSourceImport",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/sources/preview",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": null,
+    "response": null
+  },
   "GET /api/v1/clans/{clanId}/imports/{jobId}": {
     "operationId": "getImportJob",
     "method": "GET",
@@ -129,6 +155,19 @@ export const API_OPERATIONS = {
     "queryParams": [],
     "requestBody": "PersonImportRowRetryRequest",
     "response": "ApiResponseImportJobRowResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/source-retry": {
+    "operationId": "retrySourceImportRow",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/source-retry",
+    "pathParams": [
+      "clanId",
+      "jobId",
+      "rowId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
   },
   "POST /api/v1/clans/{clanId}/imports/{jobId}/submit-review": {
     "operationId": "submitImportJobReview",
@@ -206,6 +245,24 @@ export const API_OPERATIONS = {
     "operationId": "downloadRelationshipImportXlsxTemplate",
     "method": "GET",
     "path": "/api/v1/imports/templates/relationships.xlsx",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/sources.csv": {
+    "operationId": "downloadSourceCsvImportTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/sources.csv",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/sources.xlsx": {
+    "operationId": "downloadSourceXlsxImportTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/sources.xlsx",
     "pathParams": [],
     "queryParams": [],
     "requestBody": null,

@@ -20,6 +20,9 @@ import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.review.entity.CheckTaskEntity;
 import com.genealogy.review.repository.AuditRecordRepository;
 import com.genealogy.review.repository.CheckTaskRepository;
+import com.genealogy.source.entity.SourceEntity;
+import com.genealogy.source.repository.SourceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,12 +41,14 @@ public class ImportJobReviewApplicationService {
     private static final String STATUS_PENDING = "pending";
     private static final String PERSON_SUBMIT_REVIEW = "person:submit_review";
     private static final String RELATIONSHIP_SUBMIT_REVIEW = "relationship:submit_review";
+    private static final String SOURCE_SUBMIT_REVIEW = "source:submit_review";
     private static final String RELATIONSHIP_TYPE_SPOUSE = "spouse";
 
     private final ImportJobRepository importJobRepository;
     private final ImportJobRowRepository importJobRowRepository;
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
+    private final SourceRepository sourceRepository;
     private final BranchRepository branchRepository;
     private final AuditRecordRepository auditRecordRepository;
     private final CheckTaskRepository checkTaskRepository;
@@ -63,10 +68,40 @@ public class ImportJobReviewApplicationService {
             OperationLogApplicationService operationLogApplicationService,
             ObjectMapper objectMapper
     ) {
+        this(
+                importJobRepository,
+                importJobRowRepository,
+                personRepository,
+                relationshipRepository,
+                null,
+                branchRepository,
+                auditRecordRepository,
+                checkTaskRepository,
+                authorizationApplicationService,
+                operationLogApplicationService,
+                objectMapper
+        );
+    }
+
+    @Autowired
+    public ImportJobReviewApplicationService(
+            ImportJobRepository importJobRepository,
+            ImportJobRowRepository importJobRowRepository,
+            PersonRepository personRepository,
+            RelationshipRepository relationshipRepository,
+            SourceRepository sourceRepository,
+            BranchRepository branchRepository,
+            AuditRecordRepository auditRecordRepository,
+            CheckTaskRepository checkTaskRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            OperationLogApplicationService operationLogApplicationService,
+            ObjectMapper objectMapper
+    ) {
         this.importJobRepository = importJobRepository;
         this.importJobRowRepository = importJobRowRepository;
         this.personRepository = personRepository;
         this.relationshipRepository = relationshipRepository;
+        this.sourceRepository = sourceRepository;
         this.branchRepository = branchRepository;
         this.auditRecordRepository = auditRecordRepository;
         this.checkTaskRepository = checkTaskRepository;
@@ -76,19 +111,11 @@ public class ImportJobReviewApplicationService {
     }
 
     @Transactional
-    public CheckTaskResponse submit(
-            Long clanId,
-            Long jobId,
-            ImportJobReviewSubmitRequest request,
-            Long actorId
-    ) {
+    public CheckTaskResponse submit(Long clanId, Long jobId, ImportJobReviewSubmitRequest request, Long actorId) {
         ImportJobEntity job = importJobRepository.findByIdAndClanId(jobId, clanId)
                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入任务不存在"));
         String type = importType(job);
-        String permission = ImportJobEntity.TYPE_RELATIONSHIP.equals(type)
-                ? RELATIONSHIP_SUBMIT_REVIEW
-                : PERSON_SUBMIT_REVIEW;
-        authorizationApplicationService.requireBranchPermission(clanId, actorId, job.getBranchId(), permission);
+        requireSubmitPermission(clanId, actorId, job, type);
         validateSubmittable(job);
         List<ImportJobRowEntity> draftRows = validateRows(job);
         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(TARGET_IMPORT_JOB, jobId, STATUS_PENDING)) {
@@ -133,15 +160,7 @@ public class ImportJobReviewApplicationService {
         importJobRepository.save(job);
 
         String title = typeTitle(type) + "导入批次审核";
-        operationLogApplicationService.record(
-                clanId,
-                actorId,
-                "import_job_review_submit",
-                TARGET_IMPORT_JOB,
-                jobId,
-                "提交" + title,
-                summary
-        );
+        operationLogApplicationService.record(clanId, actorId, "import_job_review_submit", TARGET_IMPORT_JOB, jobId, "提交" + title, summary);
         return new CheckTaskResponse(
                 savedTask.getId(), savedTask.getClanId(), savedTask.getRevisionId(), savedTask.getReviewLevel(),
                 savedTask.getReviewerId(), savedTask.getReviewerRole(), savedTask.getBranchId(), savedTask.getStatus(),
@@ -150,17 +169,24 @@ public class ImportJobReviewApplicationService {
         );
     }
 
+    private void requireSubmitPermission(Long clanId, Long actorId, ImportJobEntity job, String type) {
+        if (ImportJobEntity.TYPE_SOURCE.equals(type)) {
+            authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_SUBMIT_REVIEW);
+            return;
+        }
+        String permission = ImportJobEntity.TYPE_RELATIONSHIP.equals(type) ? RELATIONSHIP_SUBMIT_REVIEW : PERSON_SUBMIT_REVIEW;
+        authorizationApplicationService.requireBranchPermission(clanId, actorId, job.getBranchId(), permission);
+    }
+
     private void validateSubmittable(ImportJobEntity job) {
-        if (!ImportJobEntity.PROCESSING_READY_FOR_REVIEW.equals(job.getProcessingStatus())
-                || value(job.getFailureCount()) > 0) {
+        if (!ImportJobEntity.PROCESSING_READY_FOR_REVIEW.equals(job.getProcessingStatus()) || value(job.getFailureCount()) > 0) {
             throw new BusinessException("IMPORT_JOB_NOT_READY_FOR_REVIEW", "导入批次仍有待修正数据，不能提交审核");
         }
-        if (!ImportJobEntity.REVIEW_NOT_SUBMITTED.equals(job.getReviewStatus())
-                && !ImportJobEntity.REVIEW_REJECTED.equals(job.getReviewStatus())) {
+        if (!ImportJobEntity.REVIEW_NOT_SUBMITTED.equals(job.getReviewStatus()) && !ImportJobEntity.REVIEW_REJECTED.equals(job.getReviewStatus())) {
             throw new BusinessException("IMPORT_JOB_REVIEW_STATUS_INVALID", "导入批次当前状态不能提交审核");
         }
-        if (!ImportJobEntity.TYPE_PERSON.equals(importType(job))
-                && !ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {
+        String type = importType(job);
+        if (!ImportJobEntity.TYPE_PERSON.equals(type) && !ImportJobEntity.TYPE_RELATIONSHIP.equals(type) && !ImportJobEntity.TYPE_SOURCE.equals(type)) {
             throw new BusinessException("IMPORT_JOB_TYPE_UNSUPPORTED", "当前导入类型暂不支持审核");
         }
     }
@@ -175,23 +201,19 @@ public class ImportJobReviewApplicationService {
         if (draftCount + excludedCount != total) {
             throw new BusinessException("IMPORT_JOB_ROW_NOT_READY", "导入批次仍有未完成处理的数据行");
         }
-        List<ImportJobRowEntity> draftRows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(
-                job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED
-        );
+        List<ImportJobRowEntity> draftRows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
         if (draftRows.isEmpty() || draftRows.stream().anyMatch(row -> targetId(row) == null)) {
             throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_MISSING", "导入批次存在未关联业务草稿的数据行");
         }
         return draftRows;
     }
 
-    private void lockDraftTargets(
-            ImportJobEntity job,
-            List<ImportJobRowEntity> draftRows,
-            Long actorId,
-            LocalDateTime now
-    ) {
-        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {
+    private void lockDraftTargets(ImportJobEntity job, List<ImportJobRowEntity> draftRows, Long actorId, LocalDateTime now) {
+        String type = importType(job);
+        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) {
             lockDraftRelationships(job, draftRows, actorId, now);
+        } else if (ImportJobEntity.TYPE_SOURCE.equals(type)) {
+            lockDraftSources(job, draftRows, now);
         } else {
             lockDraftPersons(job, draftRows, now);
         }
@@ -202,8 +224,7 @@ public class ImportJobReviewApplicationService {
         for (ImportJobRowEntity row : draftRows) {
             PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(targetId(row))
                     .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_PERSON_NOT_FOUND", "导入批次关联的人物草稿不存在"));
-            if (!Objects.equals(person.getClanId(), job.getClanId())
-                    || !Objects.equals(person.getBranchId(), job.getBranchId())) {
+            if (!Objects.equals(person.getClanId(), job.getClanId()) || !Objects.equals(person.getBranchId(), job.getBranchId())) {
                 throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_SCOPE_MISMATCH", "导入批次关联的人物草稿不属于当前宗族或支派");
             }
             requireDraftOrRejected(person.getDataStatus(), "导入批次关联的人物当前不能提交审核");
@@ -214,12 +235,7 @@ public class ImportJobReviewApplicationService {
         personRepository.saveAll(persons);
     }
 
-    private void lockDraftRelationships(
-            ImportJobEntity job,
-            List<ImportJobRowEntity> draftRows,
-            Long actorId,
-            LocalDateTime now
-    ) {
+    private void lockDraftRelationships(ImportJobEntity job, List<ImportJobRowEntity> draftRows, Long actorId, LocalDateTime now) {
         List<RelationshipEntity> relationships = new ArrayList<>();
         for (ImportJobRowEntity row : draftRows) {
             RelationshipEntity relationship = relationshipRepository.findByIdAndClanIdAndDeletedAtIsNull(targetId(row), job.getClanId())
@@ -235,16 +251,34 @@ public class ImportJobReviewApplicationService {
             relationship.setUpdatedAt(now);
             relationships.add(relationship);
             if (RELATIONSHIP_TYPE_SPOUSE.equals(relationship.getRelationType())) {
-                relationshipRepository.findActiveSameRelation(
-                        job.getClanId(), relationship.getToPersonId(), relationship.getFromPersonId(), RELATIONSHIP_TYPE_SPOUSE
-                ).forEach(reverse -> {
-                    reverse.setDataStatus("pending_review");
-                    reverse.setUpdatedAt(now);
-                    relationships.add(reverse);
-                });
+                relationshipRepository.findActiveSameRelation(job.getClanId(), relationship.getToPersonId(), relationship.getFromPersonId(), RELATIONSHIP_TYPE_SPOUSE)
+                        .forEach(reverse -> {
+                            reverse.setDataStatus("pending_review");
+                            reverse.setUpdatedAt(now);
+                            relationships.add(reverse);
+                        });
             }
         }
         relationshipRepository.saveAll(relationships);
+    }
+
+    private void lockDraftSources(ImportJobEntity job, List<ImportJobRowEntity> draftRows, LocalDateTime now) {
+        if (sourceRepository == null) {
+            throw new BusinessException("IMPORT_JOB_SOURCE_REPOSITORY_MISSING", "来源资料导入审核未配置");
+        }
+        List<SourceEntity> sources = new ArrayList<>();
+        for (ImportJobRowEntity row : draftRows) {
+            SourceEntity source = sourceRepository.findById(targetId(row))
+                    .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_SOURCE_NOT_FOUND", "导入批次关联的来源资料草稿不存在"));
+            if (!Objects.equals(source.getClanId(), job.getClanId())) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_SOURCE_SCOPE_MISMATCH", "导入来源资料不属于当前宗族");
+            }
+            requireDraftOrRejected(source.getVerificationStatus(), "导入批次关联的来源资料当前不能提交审核");
+            source.setVerificationStatus("pending_review");
+            source.setUpdatedAt(now);
+            sources.add(source);
+        }
+        sourceRepository.saveAll(sources);
     }
 
     private void requireDraftOrRejected(String status, String message) {
@@ -258,12 +292,7 @@ public class ImportJobReviewApplicationService {
         return row.getDraftTargetId() != null ? row.getDraftTargetId() : row.getDraftPersonId();
     }
 
-    private Map<String, Object> batchSnapshot(
-            ImportJobEntity job,
-            String branchName,
-            String reviewStatus,
-            int reviewRound
-    ) {
+    private Map<String, Object> batchSnapshot(ImportJobEntity job, String branchName, String reviewStatus, int reviewRound) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("importType", importType(job));
         snapshot.put("fileName", job.getOriginalFilename());
@@ -278,30 +307,25 @@ public class ImportJobReviewApplicationService {
     }
 
     private String reviewSummary(ImportJobEntity job, String branchName, int reviewRound, String comment) {
-        String type = importType(job);
         StringBuilder summary = new StringBuilder()
-                .append(typeTitle(type)).append("导入批次：")
+                .append(typeTitle(importType(job))).append("导入批次：")
                 .append(safe(job.getOriginalFilename()))
                 .append("，管理支派：").append(branchName)
                 .append("，草稿：").append(value(job.getSuccessCount())).append(" 条，第 ")
                 .append(reviewRound).append(" 轮审核");
-        if (comment != null && !comment.isBlank()) {
-            summary.append("，说明：").append(comment.trim());
-        }
+        if (comment != null && !comment.isBlank()) summary.append("，说明：").append(comment.trim());
         return summary.toString();
     }
 
     private String typeTitle(String type) {
-        return ImportJobEntity.TYPE_RELATIONSHIP.equals(type) ? "人物关系" : "人物";
+        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) return "人物关系";
+        if (ImportJobEntity.TYPE_SOURCE.equals(type)) return "来源资料";
+        return "人物";
     }
 
     private String branchName(Long branchId) {
-        if (branchId == null) {
-            return "未指定支派";
-        }
-        return branchRepository.findById(branchId)
-                .map(branch -> safe(branch.getBranchName()))
-                .orElse("未知支派");
+        if (branchId == null) return "未指定支派";
+        return branchRepository.findById(branchId).map(branch -> safe(branch.getBranchName())).orElse("未知支派");
     }
 
     private String toJson(Map<String, Object> snapshot) {
@@ -312,20 +336,11 @@ public class ImportJobReviewApplicationService {
         }
     }
 
-    private int value(Integer value) {
-        return value == null ? 0 : value;
-    }
-
-    private String safe(String value) {
-        return value == null || value.isBlank() ? "未命名" : value.trim();
-    }
-
+    private int value(Integer value) { return value == null ? 0 : value; }
+    private String safe(String value) { return value == null || value.isBlank() ? "未命名" : value.trim(); }
     private String importType(ImportJobEntity job) {
         String type = normalize(job.getImportType());
         return type.isBlank() ? ImportJobEntity.TYPE_PERSON : type;
     }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
+    private String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(); }
 }

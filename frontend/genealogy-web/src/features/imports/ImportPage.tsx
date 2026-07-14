@@ -5,6 +5,7 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
 import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
+import { SourceImportWorkspace } from './SourceImportWorkspace';
 import { importTypeRegistry } from './import-type-registry';
 import type { ImportTypeKey } from './import-type-registry';
 
@@ -44,9 +45,7 @@ export function ImportPage({ notify }: Props) {
         if (!active) return;
         const records = Array.isArray(data) ? data : [];
         setBranches(records);
-        const preferred = records.some(branch => String(branch.id) === preferredBranchId)
-          ? preferredBranchId
-          : '';
+        const preferred = records.some(branch => String(branch.id) === preferredBranchId) ? preferredBranchId : '';
         setSelectedBranchId(preferred);
         workspace.setBranchId(preferred);
       })
@@ -74,12 +73,24 @@ export function ImportPage({ notify }: Props) {
     setJobRefreshKey(current => current + 1);
   }
 
+  function targetMessage() {
+    if (!selectedBranch) return '';
+    const branchName = selectedBranch.branchName || '未命名支派';
+    if (activeType === 'relationship') {
+      return `“${branchName}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`;
+    }
+    if (activeType === 'source') {
+      return `“${branchName}”将作为本次来源资料导入的批次管理支派，模板中无需也不允许填写宗族、支派或资料技术 ID。`;
+    }
+    return `本批次中的全部人物将归入“${branchName}”，文件中无需填写支派信息。`;
+  }
+
   return (
     <div className="import-center-page">
       <Card>
         <Typography.Title level={3} style={{ marginTop: 0 }}>数据导入</Typography.Title>
         <Typography.Paragraph type="secondary">
-          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物与人物关系导入，其他数据类型将复用同一批次与审核流程逐步接入。
+          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物、人物关系和来源资料导入，其他数据类型将复用同一批次与审核流程逐步接入。
         </Typography.Paragraph>
         <Tabs
           activeKey={activeType}
@@ -102,9 +113,7 @@ export function ImportPage({ notify }: Props) {
 
       <Card title="导入目标" style={{ marginTop: 16 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          {!workspace.clanId ? (
-            <Alert type="warning" showIcon message="请先在应用顶部选择所属宗族，再选择本次导入的目标支派。" />
-          ) : null}
+          {!workspace.clanId ? <Alert type="warning" showIcon message="请先在应用顶部选择所属宗族，再选择本次导入的目标支派。" /> : null}
           {branchError ? <Alert type="error" showIcon message={branchError} /> : null}
           <Select
             showSearch
@@ -126,17 +135,9 @@ export function ImportPage({ notify }: Props) {
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前宗族暂无可选支派，请先建立支派。" />
           ) : null}
           {selectedBranch ? (
-            <Alert
-              type="success"
-              showIcon
-              message={activeType === 'relationship'
-                ? `“${selectedBranch.branchName || '未命名支派'}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`
-                : `本批次中的全部人物将归入“${selectedBranch.branchName || '未命名支派'}”，文件中无需填写支派信息。`}
-            />
+            <Alert type="success" showIcon message={targetMessage()} />
           ) : (
-            workspace.clanId && branches.length > 0
-              ? <Alert type="info" showIcon message="请选择目标支派后再上传文件。" />
-              : null
+            workspace.clanId && branches.length > 0 ? <Alert type="info" showIcon message="请选择目标支派后再上传文件。" /> : null
           )}
         </Space>
       </Card>
@@ -153,6 +154,16 @@ export function ImportPage({ notify }: Props) {
 
       {activeType === 'relationship' ? (
         <RelationshipImportWorkspace
+          notify={notify}
+          clanId={workspace.clanId}
+          branchId={selectedBranchId}
+          branchName={selectedBranch?.branchName || ''}
+          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
+        />
+      ) : null}
+
+      {activeType === 'source' ? (
+        <SourceImportWorkspace
           notify={notify}
           clanId={workspace.clanId}
           branchId={selectedBranchId}

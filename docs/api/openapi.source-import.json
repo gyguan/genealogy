@@ -1,0 +1,131 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Source Import API",
+    "version": "1.0.0",
+    "description": "来源资料元数据导入契约"
+  },
+  "paths": {
+    "/api/v1/imports/templates/sources.csv": {
+      "get": {
+        "summary": "下载来源资料 CSV 导入模板",
+        "operationId": "downloadSourceCsvImportTemplate",
+        "responses": {
+          "200": {
+            "description": "CSV template",
+            "content": {
+              "text/csv": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/imports/templates/sources.xlsx": {
+      "get": {
+        "summary": "下载来源资料 XLSX 导入模板",
+        "operationId": "downloadSourceXlsxImportTemplate",
+        "responses": {
+          "200": {
+            "description": "XLSX template",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/sources/preview": {
+      "post": {
+        "summary": "预览来源资料导入",
+        "operationId": "previewSourceImport",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "branchId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "预览结果" } }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/sources": {
+      "post": {
+        "summary": "创建来源资料导入批次",
+        "operationId": "createSourceImportJob",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "branchId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "导入批次" } }
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/source-retry": {
+      "post": {
+        "summary": "修正并重试来源资料导入失败行",
+        "operationId": "retrySourceImportRow",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "rowId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sourceName", "sourceType", "privacyLevel", "expectedVersion"],
+                "properties": {
+                  "sourceName": { "type": "string" },
+                  "sourceType": { "type": "string" },
+                  "providerName": { "type": "string" },
+                  "bookTitle": { "type": "string" },
+                  "volumeNo": { "type": "string" },
+                  "pageNo": { "type": "string" },
+                  "sourceDate": { "type": "string" },
+                  "collectionLocation": { "type": "string" },
+                  "sourceDescription": { "type": "string" },
+                  "excerpt": { "type": "string" },
+                  "confidenceLevel": { "type": "string" },
+                  "privacyLevel": { "type": "string" },
+                  "sensitiveLevel": { "type": "string" },
+                  "expectedVersion": { "type": "integer", "format": "int64" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "重试结果" } }
+      }
+    }
+  }
+}

@@ -58,8 +58,8 @@ export const importTypeRegistry: ImportTypeDefinition[] = [
   {
     key: 'source',
     title: '来源资料导入',
-    description: '批量登记谱书、地方志、照片和口述记录等来源资料。',
-    availability: 'planned',
+    description: '批量登记谱书、地方志、照片和口述记录等来源资料元数据，附件和引用绑定后续单独处理。',
+    availability: 'available',
     supportedFormats: ['csv', 'xlsx'],
     templateDefinition: 'SourceImportTemplateDefinition',
     parser: 'source-import-parser',
