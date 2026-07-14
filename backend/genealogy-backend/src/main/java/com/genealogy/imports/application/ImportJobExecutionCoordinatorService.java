@@ -64,8 +64,9 @@ public class ImportJobExecutionCoordinatorService {
             }
             job.setLeaseOwner(null);
             job.setLeaseExpiresAt(null);
-            job.setHeartbeatAt(LocalDateTime.now());
-            job.setUpdatedAt(LocalDateTime.now());
+            LocalDateTime now = LocalDateTime.now();
+            job.setHeartbeatAt(now);
+            job.setUpdatedAt(now);
             jobRepository.save(job);
         });
     }
@@ -120,7 +121,13 @@ public class ImportJobExecutionCoordinatorService {
         job.setHeartbeatAt(now);
         job.setUpdatedAt(now);
         jobRepository.save(job);
-        payloadRepository.deleteById(job.getId());
+        deletePayloadIfPresent(job.getId());
+    }
+
+    private void deletePayloadIfPresent(Long jobId) {
+        if (payloadRepository.existsById(jobId)) {
+            payloadRepository.deleteById(jobId);
+        }
     }
 
     private String errorCode(RuntimeException exception) {
