@@ -107,6 +107,7 @@
           "reviewComment": { "type": "string", "nullable": true },
           "submitTime": { "type": "string", "format": "date-time" },
           "processedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "processingDurationSeconds": { "type": "integer", "format": "int64", "minimum": 0, "nullable": true },
           "targetSummary": { "$ref": "#/components/schemas/ReviewTargetSummaryResponse" }
         }
       },
