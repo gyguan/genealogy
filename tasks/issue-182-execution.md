@@ -25,58 +25,60 @@
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue 与现有实现现场 | ✅ 已完成 | 约 6 分钟 | 确认首次启动；无既有分支、PR 或执行文件 |
-| 2 | 建立分支、执行看板和 Draft PR | ✅ 已完成 | 约 2 分钟 | `e3387e3`，Draft PR #185 已回写 Issue |
-| 3 | 调整 Steps 结构与用户文案 | 🔄 进行中 | 已累计约 2 分钟 | `cacc770`、`e6093bf`；等待样式联调与验证 |
-| 4 | 清理旧双栏样式并增加响应式布局 | ⏳ 待处理 | — |  |
-| 5 | 检查 diff、MVP1 用户文案和布局风险 | ⏳ 待处理 | — |  |
-| 6 | 执行前端验证并修复问题 | ⏳ 待处理 | — |  |
-| 7 | 更新 PR、Issue 和最终恢复检查点 | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue 与现有实现现场 | ✅ 已完成 | 约 4 分钟 | 确认首次启动；无既有分支、PR 或执行文件 |
+| 2 | 建立分支、执行看板和 Draft PR | ✅ 已完成 | 约 1 分钟 | `e3387e3`，Draft PR #185 已回写 Issue |
+| 3 | 调整 Steps 结构与用户文案 | ✅ 已完成 | 约 1 分钟 | `cacc770`、`e6093bf`；短标题、横向 Steps、Tooltip 帮助 |
+| 4 | 清理旧双栏样式并增加响应式布局 | ✅ 已完成 | 约 1 分钟 | `37da9e8`；移除 280px 左栏和 sticky，小屏切换纵向 |
+| 5 | 检查 diff、MVP1 用户文案和布局风险 | ✅ 已完成 | 约 1 分钟 | 变更仅涉及 3 个前端文件和本执行看板；无业务逻辑改动 |
+| 6 | 执行前端验证并修复问题 | ✅ 已完成 | 约 1 分钟 | Frontend CI 与 Diagnostic 全部通过 |
+| 7 | 更新 PR、Issue 和最终恢复检查点 | 🔄 进行中 | <1 分钟 | 正在准备转为 Ready 并合入 |
 
 ## 影响模块
 
 - `frontend/genealogy-web/src/features/mvp1/Mvp1WizardPage.tsx`
 - `frontend/genealogy-web/src/features/mvp1/WizardShell.tsx`
 - `frontend/genealogy-web/src/mvp1-wizard-simplified.css`
-- 必要时检查其他 `.mvp1-wizard-page`、`.wizard-ant-steps` 相关样式
 
-## 验证方案
+## 验证结果
 
-```bash
-cd frontend/genealogy-web
-npm run typecheck
-npm run build
-npm run api:check
-```
+- `Frontend CI / Frontend Build`：通过。
+- `Run log model tests`：通过。
+- `Typecheck with focused output`：通过。
+- `Build production frontend`：通过。
+- `Check API contract`：通过。
+- PR 评论：无。
+- 未解决 Review 线程：无。
 
-补充检查：
+## 验收检查
 
-- 搜索面向用户渲染的 `MVP1` 文案。
-- 检查七个步骤状态和点击切换逻辑未改变。
-- 检查 1440px、1366px、1280px 和小屏响应式规则。
-- 检查页面没有遗留 280px 左栏、sticky 或错误的 grid-column。
+- 桌面端 Steps 位于页面顶部并使用横向模式。
+- 七个步骤使用“宗族、支派、字辈、人物、关系、来源、审核”短标题。
+- 页面内部不再展示“MVP1 建谱向导”。
+- 步骤状态和点击切换逻辑未改变。
+- 页面不再使用 280px 左侧步骤栏、sticky 或双栏 grid-column。
+- `md` 以下通过 Ant Design breakpoint 切换为纵向 Steps。
+- 未修改后端接口、审核状态机、权限和数据语义。
 
 ## 设计规范偏离说明
 
-`docs/10-frontend-design-guidelines.md` 默认建议超过 5 步优先使用纵向 Steps；Issue #182 的已批准验收标准明确要求桌面端横向展示，因此本次按 Issue 优先级实施，并通过短标题、全宽容器和小屏响应式切换补偿拥挤风险。
+`docs/10-frontend-design-guidelines.md` 默认建议超过 5 步优先使用纵向 Steps；Issue #182 的已批准验收标准明确要求桌面端横向展示，因此本次按 Issue 优先级实施，并通过短标题、全宽容器和小屏纵向切换补偿拥挤风险。
 
 ## 已知风险
 
-- 七个步骤在较窄桌面宽度下可能拥挤，需要控制标题长度和间距。
-- 现有 CSS 中存在双栏与 grid-column 规则，清理不完整可能导致内容错位。
-- Ant Design Steps 的响应式行为需要与页面容器样式配合，避免整体横向溢出。
+- 本次未新增截图回归或 Playwright 视觉用例；响应式验证依据为组件 breakpoint、CSS 规则、TypeScript、生产构建和现有 CI。
+- `mvp1-wizard.css` 中仍存在旧版 `.wizard-layout` / `.wizard-steps` 兼容样式，但当前 `Mvp1WizardPage` 不使用这些类；本 Issue 未扩大到删除未知历史入口。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#182
 - 当前分支：`agent/issue-182-horizontal-wizard`
 - 当前 Draft PR：#185
-- 最后完成任务：建立分支、执行看板、Draft PR 并回写 Issue
-- 当前进行中任务：调整 Steps 结构与用户文案
-- 当前任务累计耗时：约 2 分钟
-- 最新 Commit：`e6093bfb49fe2297dbc7a2b33fbbaa4849faf9c4`
-- CI 状态：代码提交已触发，待汇总
+- 最后完成任务：前端验证与最终 Review 检查
+- 当前进行中任务：更新 PR、Issue 和最终恢复检查点
+- 当前任务累计耗时：<1 分钟
+- 最新代码 Commit：`37da9e84ed40d7a0e0225593cea9b1f718195889`
+- CI 状态：两条前端工作流全部通过
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：清理旧双栏样式并增加响应式布局
-- 最后更新时间：2026-07-14 18:00（北京时间）
+- 下一步最小任务：同步 PR 描述，转为 Ready 并合入 `main`
+- 最后更新时间：2026-07-14 18:03（北京时间）
