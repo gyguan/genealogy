@@ -1,0 +1,42 @@
+# Issue 132 baseline inspection
+
+## Version 3 migrations
+V3__app_permission_schema.sql
+V3__source_library_status_and_fields.sql
+
+## All migrations
+V10__retire_legacy_clan_member.sql
+V11__add_legacy_permission_aliases.sql
+V1__init_schema.sql
+V2026071301__member_permission_scope_and_indexes.sql
+V20260713184500__add_operation_log_permissions.sql
+V20260713203000__add_auth_commercialization.sql
+V20260714010000__add_import_row_generic_draft_target.sql
+V21__extend_relationship_ritual_model.sql
+V22__permission_model_seed_update.sql
+V23__review_revision_snapshot_text.sql
+V24__normalize_review_object_status.sql
+V25__enforce_review_object_status_constraints.sql
+V2__init_data.sql
+V3__app_permission_schema.sql
+V3__source_library_status_and_fields.sql
+V4__app_permission_compat_columns.sql
+V4__source_attachment_access_fields.sql
+V5__import_batch_row_state_foundation.sql
+V5__schema_validation_compat_tables.sql
+V5__source_binding_review_indexes.sql
+V6__split_import_type_and_file_format.sql
+V7__reset_demo_user_passwords.sql
+V8__add_cross_clan_admin_role.sql
+V9__rbac_membership_refactor.sql
+
+## Existing browser E2E files
+
+## Existing workflows
+README.md
+api-contract.yml
+backend-ci.yml
+database-migration-governance.yml
+deploy-sae.yml
+issue-130-132-inspect.yml
+issue-delivery-governance.yml
