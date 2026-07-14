@@ -13,6 +13,24 @@ on:
 jobs:
   backend-focused:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TEST_POSTGRES_URL: jdbc:postgresql://localhost:5432/genealogy
+      TEST_POSTGRES_USERNAME: genealogy
+      TEST_POSTGRES_PASSWORD: genealogy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -25,7 +43,7 @@ jobs:
         run: mvn -q -DskipTests compile
       - name: Run issue 120 focused tests
         working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=TrackingObjectSearchApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest,OpLogControllerTest,OperationLogApplicationServiceTest,OperationLogBusinessViewApplicationServiceTest test
+        run: mvn -q -Dtest=TrackingObjectSearchApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingObjectQueryRepositoryPostgresTest,TrackingControllerTest,OpLogControllerTest,OperationLogApplicationServiceTest,OperationLogBusinessViewApplicationServiceTest test
 
   frontend-focused:
     runs-on: ubuntu-latest
