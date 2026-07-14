@@ -11,6 +11,7 @@ import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -146,6 +147,7 @@ public class ImportJobReviewApplicationService {
         CheckTaskEntity task = new CheckTaskEntity();
         task.setClanId(clanId);
         task.setRevisionId(savedRecord.getId());
+        task.setTraceId(savedRecord.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("clan_admin");
         task.setBranchId(job.getBranchId());
@@ -160,12 +162,15 @@ public class ImportJobReviewApplicationService {
         importJobRepository.save(job);
 
         String title = typeTitle(type) + "导入批次审核";
-        operationLogApplicationService.record(clanId, actorId, "import_job_review_submit", TARGET_IMPORT_JOB, jobId, "提交" + title, summary);
+        operationLogApplicationService.record(
+                clanId, actorId, "import_job_review_submit", TARGET_IMPORT_JOB, jobId, "提交" + title, summary,
+                OperationTraceContext.of(savedRecord.getTraceId(), savedRecord.getId(), savedTask.getId(), TARGET_IMPORT_JOB, jobId, "submitted")
+        );
         return new CheckTaskResponse(
                 savedTask.getId(), savedTask.getClanId(), savedTask.getRevisionId(), savedTask.getReviewLevel(),
                 savedTask.getReviewerId(), savedTask.getReviewerRole(), savedTask.getBranchId(), savedTask.getStatus(),
                 savedTask.getReviewComment(), savedTask.getReviewedAt(), savedTask.getCreatedAt(), TARGET_IMPORT_JOB,
-                jobId, title, summary, actorId, now
+                jobId, title, summary, actorId, now, savedRecord.getTraceId()
         );
     }
 

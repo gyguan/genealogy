@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -26,6 +27,9 @@ public class ReviewTaskEntity {
 
     @Column(name = "revision_id")
     private Long revisionId;
+
+    @Column(name = "trace_id")
+    private UUID traceId;
 
     @Column(name = "review_level")
     private Integer reviewLevel;

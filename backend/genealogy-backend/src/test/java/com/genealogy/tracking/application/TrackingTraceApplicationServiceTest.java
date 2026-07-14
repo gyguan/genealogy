@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -232,6 +233,64 @@ class TrackingTraceApplicationServiceTest {
     }
 
     @Test
+    void separatesMultipleChangesForTheSameObjectByStableTraceId() {
+        TrackingObjectResponse summary = summary("person", 100L);
+        when(trackingObjectQueryRepository.findVisibleById(1L, "person", 100L, true, List.of(-1L)))
+                .thenReturn(Optional.of(summary));
+        RevisionEntity first = revision(11L, "person", 100L);
+        RevisionEntity second = revision(12L, "person", 100L);
+        ReviewTaskEntity firstTask = reviewTask(21L, 11L, "approved");
+        ReviewTaskEntity secondTask = reviewTask(22L, 12L, "rejected");
+        when(revisionRepository.findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(second, first)));
+        when(reviewTaskRepository.findByClanIdAndRevisionIdInOrderByCreatedAtDesc(
+                eq(1L), eq(List.of(12L, 11L)), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(secondTask, firstTask)));
+        when(sourceBindingRepository.findByClanIdAndTargetTypeAndTargetIdOrderByCreatedAtDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+
+        TrackingTraceDetailResponse result = service.trace(1L, 9L, "person", 100L, false);
+
+        assertThat(result.changeChains()).hasSize(2);
+        assertThat(result.changeChains()).extracting(TrackingTraceDetailResponse.ChangeChain::traceId)
+                .containsExactlyInAnyOrder(first.getTraceId(), second.getTraceId());
+        assertThat(result.changeChains()).allMatch(chain -> "complete".equals(chain.compatibilityStatus()));
+        assertThat(result.changeChains()).extracting(TrackingTraceDetailResponse.ChangeChain::revisionId)
+                .containsExactlyInAnyOrder(11L, 12L);
+    }
+
+    @Test
+    void keepsHistoricalRevisionsSeparateWithoutFabricatingTraceIds() {
+        TrackingObjectResponse summary = summary("person", 100L);
+        when(trackingObjectQueryRepository.findVisibleById(1L, "person", 100L, true, List.of(-1L)))
+                .thenReturn(Optional.of(summary));
+        RevisionEntity first = revision(11L, "person", 100L);
+        RevisionEntity second = revision(12L, "person", 100L);
+        first.setTraceId(null);
+        second.setTraceId(null);
+        when(revisionRepository.findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(second, first)));
+        when(reviewTaskRepository.findByClanIdAndRevisionIdInOrderByCreatedAtDesc(
+                eq(1L), eq(List.of(12L, 11L)), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+        when(sourceBindingRepository.findByClanIdAndTargetTypeAndTargetIdOrderByCreatedAtDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+
+        TrackingTraceDetailResponse result = service.trace(1L, 9L, "person", 100L, false);
+
+        assertThat(result.changeChains()).extracting(TrackingTraceDetailResponse.ChangeChain::chainKey)
+                .containsExactlyInAnyOrder("legacy-revision:11", "legacy-revision:12");
+        assertThat(result.changeChains()).allMatch(chain -> chain.traceId() == null);
+        assertThat(result.changeChains()).allMatch(chain -> "legacy_partial".equals(chain.compatibilityStatus()));
+        assertThat(result.traceCoverage().missingSegments()).contains("traceIds");
+        assertThat(result.traceCoverage().complete()).isFalse();
+    }
+
+    @Test
     void scopedTraceQueriesReviewTasksOnlyWithinVisibleBranches() {
         when(rbacAuthorizationApplicationService.permissionDataScope(9L, 1L, "operation_log.view"))
                 .thenReturn(PermissionDataScope.branches(Set.of(10L)));
@@ -280,7 +339,12 @@ class TrackingTraceApplicationServiceTest {
         revision.setDiffSummary("字段发生变化");
         revision.setSubmitterId(8L);
         revision.setSubmitTime(LocalDateTime.of(2026, 7, 1, 10, 0).plusMinutes(id));
+        revision.setTraceId(traceId(revision.getId()));
         return revision;
+    }
+
+    private UUID traceId(Long revisionId) {
+        return UUID.nameUUIDFromBytes(("revision-" + revisionId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private ReviewTaskEntity reviewTask(Long id, Long revisionId, String status) {
@@ -288,6 +352,7 @@ class TrackingTraceApplicationServiceTest {
         task.setId(id);
         task.setClanId(1L);
         task.setRevisionId(revisionId);
+        task.setTraceId(traceId(revisionId));
         task.setReviewLevel(1);
         task.setReviewerId(9L);
         task.setBranchId(10L);

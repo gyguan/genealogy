@@ -21,6 +21,12 @@ export type OperationLogResponse = {
   requestId?: string | null;
   clientIp?: string | null;
   createdAt: string;
+  traceId?: string | null;
+  revisionId?: number | null;
+  reviewTaskId?: number | null;
+  businessTargetType?: string | null;
+  businessTargetId?: number | null;
+  eventResult?: string | null;
 };
 
 export type OperationLogPage = {
@@ -63,7 +69,7 @@ export type TrackingObjectPage = {
 
 export type TrackingTraceTimelineEventResponse = {
   eventKey: string;
-  eventType: "REVISION_SUBMITTED" | "REVIEW_REQUESTED" | "REVIEW_APPROVED" | "REVIEW_REJECTED" | "SOURCE_BOUND" | "SOURCE_BINDING_UPDATED" | "OBJECT_CREATED" | "OBJECT_UPDATED" | "OBJECT_DELETED" | "IMPORT_COMPLETED" | "OPERATION_RECORDED";
+  eventType: "REVISION_SUBMITTED" | "REVIEW_REQUESTED" | "REVIEW_APPROVED" | "REVIEW_REJECTED" | "REVISION_APPLIED" | "SOURCE_BOUND" | "SOURCE_BINDING_UPDATED" | "OBJECT_CREATED" | "OBJECT_UPDATED" | "OBJECT_DELETED" | "IMPORT_COMPLETED" | "OPERATION_RECORDED";
   sourceType: "revision" | "review_task" | "source_binding" | "operation_log";
   sourceId?: number | null;
   title: string;
@@ -71,6 +77,24 @@ export type TrackingTraceTimelineEventResponse = {
   occurredAt?: string | null;
   actorDisplayName?: string | null;
   resultStatus?: string | null;
+  traceId?: string | null;
+  revisionId?: number | null;
+  reviewTaskId?: number | null;
+  eventResult?: string | null;
+};
+
+export type TrackingTraceChangeChainResponse = {
+  chainKey: string;
+  traceId?: string | null;
+  compatibilityStatus: "complete" | "legacy_partial" | "inconsistent" | "orphan_partial";
+  revisionId?: number | null;
+  reviewTaskIds: number[];
+  businessTargetType?: string | null;
+  businessTargetId?: number | null;
+  resultStatus?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  eventKeys: string[];
 };
 
 export type TrackingTraceRevisionResponse = {
@@ -82,6 +106,7 @@ export type TrackingTraceRevisionResponse = {
   submitTime?: string | null;
   approvedAt?: string | null;
   rejectedReason?: string | null;
+  traceId?: string | null;
 };
 
 export type TrackingTraceReviewTaskResponse = {
@@ -95,6 +120,7 @@ export type TrackingTraceReviewTaskResponse = {
   reviewComment?: string | null;
   createdAt?: string | null;
   reviewedAt?: string | null;
+  traceId?: string | null;
 };
 
 export type TrackingTraceSourceBindingResponse = {
@@ -116,7 +142,7 @@ export type TrackingTraceCoverageResponse = {
   complete: boolean;
   historyFrom?: string | null;
   truncatedSegments: ("revisions" | "reviewTasks" | "sourceBindings" | "operationLogs")[];
-  missingSegments: ("revisions" | "reviewTasks" | "sourceBindings" | "operationLogs")[];
+  missingSegments: ("revisions" | "reviewTasks" | "sourceBindings" | "operationLogs" | "traceIds")[];
   notes: string[];
 };
 
@@ -124,6 +150,7 @@ export type TrackingTraceDetailResponse = {
   objectSummary: TrackingObjectResponse;
   currentStatus: string | null;
   timeline: TrackingTraceTimelineEventResponse[];
+  changeChains: TrackingTraceChangeChainResponse[];
   revisions: TrackingTraceRevisionResponse[];
   reviewTasks: TrackingTraceReviewTaskResponse[];
   sourceBindings: TrackingTraceSourceBindingResponse[];
@@ -150,6 +177,7 @@ export type CheckTaskResponse = {
   diffSummary?: string | null;
   submitterId?: number | null;
   submitTime?: string | null;
+  traceId?: string | null;
 };
 
 export type AuditRecordResponse = {
@@ -166,6 +194,7 @@ export type AuditRecordResponse = {
   status: string;
   approvedAt?: string | null;
   rejectedReason?: string | null;
+  traceId?: string | null;
 };
 
 export type ReviewTaskDetailResponse = {

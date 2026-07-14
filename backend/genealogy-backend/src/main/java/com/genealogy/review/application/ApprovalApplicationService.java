@@ -12,6 +12,7 @@ import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
 import com.genealogy.generation.repository.GenWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -221,13 +222,17 @@ public class ApprovalApplicationService {
         CheckTaskEntity task = new CheckTaskEntity();
         task.setClanId(clanId);
         task.setRevisionId(savedRecord.getId());
+        task.setTraceId(savedRecord.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("clan_admin");
         task.setBranchId(branchId);
         task.setStatus(STATUS_PENDING);
         task.setCreatedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
-        operationLogApplicationService.record(clanId, submitterId, "review_submit", targetType, targetId, logSummary, diffSummary);
+        operationLogApplicationService.record(
+                clanId, submitterId, "review_submit", targetType, targetId, logSummary, diffSummary,
+                trace(savedRecord, savedTask, "submitted")
+        );
         return toTaskResponse(savedTask, savedRecord);
     }
 
@@ -319,7 +324,14 @@ public class ApprovalApplicationService {
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         revisionApplyService.apply(record, now);
-        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(), "approve review", request.comment());
+        operationLogApplicationService.record(
+                record.getClanId(), request.reviewerId(), "revision_apply", record.getTargetType(), record.getTargetId(),
+                "apply approved revision", record.getDiffSummary(), trace(record, savedTask, "applied")
+        );
+        operationLogApplicationService.record(
+                record.getClanId(), request.reviewerId(), "review_approve", record.getTargetType(), record.getTargetId(),
+                "approve review", request.comment(), trace(record, savedTask, "approved")
+        );
         return toTaskResponse(savedTask, record);
     }
 
@@ -341,7 +353,10 @@ public class ApprovalApplicationService {
         task.setReviewedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
         revisionApplyService.reject(record, now);
-        operationLogApplicationService.record(record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(), "reject review", comment);
+        operationLogApplicationService.record(
+                record.getClanId(), request.reviewerId(), "review_reject", record.getTargetType(), record.getTargetId(),
+                "reject review", comment, trace(record, savedTask, "rejected")
+        );
         return toTaskResponse(savedTask, record);
     }
 
@@ -409,7 +424,8 @@ public class ApprovalApplicationService {
                 reviewTitle(record),
                 record == null ? null : record.getDiffSummary(),
                 record == null ? null : record.getSubmitterId(),
-                record == null ? null : record.getSubmitTime()
+                record == null ? null : record.getSubmitTime(),
+                record == null ? task.getTraceId() : record.getTraceId()
         );
     }
 
@@ -430,7 +446,18 @@ public class ApprovalApplicationService {
     }
 
     private AuditRecordResponse toRecordResponse(AuditRecordEntity record) {
-        return new AuditRecordResponse(record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(), record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(), record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason());
+        return new AuditRecordResponse(
+                record.getId(), record.getClanId(), record.getTargetType(), record.getTargetId(), record.getChangeType(),
+                record.getOldPayload(), record.getNewPayload(), record.getDiffSummary(), record.getSubmitterId(),
+                record.getSubmitTime(), record.getStatus(), record.getApprovedAt(), record.getRejectedReason(), record.getTraceId()
+        );
+    }
+
+    private OperationTraceContext trace(AuditRecordEntity revision, CheckTaskEntity task, String result) {
+        return OperationTraceContext.of(
+                revision.getTraceId(), revision.getId(), task == null ? null : task.getId(),
+                revision.getTargetType(), revision.getTargetId(), result
+        );
     }
 
     private String generationSchemeReviewPayload(GenerationSchemeEntity scheme, List<?> words) {

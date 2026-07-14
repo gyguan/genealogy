@@ -26,6 +26,7 @@ import com.genealogy.source.repository.SourceRepository;
 import com.genealogy.tracking.application.TrackingTraceApplicationService;
 import com.genealogy.tracking.dto.TrackingObjectResponse;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse;
+import com.genealogy.tracking.dto.TrackingTraceDetailResponse.ChangeChain;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.ReviewTaskItem;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.RevisionItem;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.SourceBindingItem;
@@ -46,6 +47,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -176,12 +179,12 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         List<RevisionItem> revisionItems = revisions.stream().map(revision -> new RevisionItem(
                 revision.getId(), revision.getChangeType(), revision.getStatus(), revision.getDiffSummary(),
                 actorNames.get(revision.getSubmitterId()), revision.getSubmitTime(), revision.getApprovedAt(),
-                revision.getRejectedReason()
+                revision.getRejectedReason(), revision.getTraceId()
         )).toList();
         List<ReviewTaskItem> reviewTaskItems = tasks.stream().map(task -> new ReviewTaskItem(
                 task.getId(), task.getRevisionId(), task.getReviewLevel(), task.getStatus(),
                 actorNames.get(task.getReviewerId()), task.getReviewerRole(), branchName,
-                task.getReviewComment(), task.getCreatedAt(), task.getReviewedAt()
+                task.getReviewComment(), task.getCreatedAt(), task.getReviewedAt(), task.getTraceId()
         )).toList();
         List<SourceBindingItem> bindingItems = bindings.stream()
                 .filter(binding -> sources.containsKey(binding.getSourceId()))
@@ -193,6 +196,7 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                 )).toList();
 
         List<TimelineEvent> timeline = timeline(revisions, tasks, bindings, logs, actorNames);
+        List<ChangeChain> changeChains = changeChains(revisions, tasks, timeline);
         List<String> truncated = new ArrayList<>();
         addIf(truncated, "revisions", revisionPage.getTotalElements() > LIMIT);
         addIf(truncated, "reviewTasks", taskPage.getTotalElements() > LIMIT);
@@ -203,19 +207,23 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         if (timeline.isEmpty()) notes.add("当前文化资料未发现可见历史事件");
         LocalDateTime historyFrom = timeline.stream().map(TimelineEvent::occurredAt)
                 .filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null);
+        boolean legacyTrace = revisions.stream().anyMatch(revision -> revision.getTraceId() == null);
+        List<String> missing = legacyTrace ? List.of("traceIds") : List.of();
+        if (legacyTrace) notes.add("部分历史文化资料版本缺少稳定 trace_id，按独立 legacy 链路展示");
+        boolean complete = truncated.isEmpty() && missing.isEmpty();
         TraceCoverage coverage = new TraceCoverage(
-                truncated.isEmpty() ? "complete" : "partial",
-                truncated.isEmpty(),
+                complete ? "complete" : "partial",
+                complete,
                 historyFrom,
                 List.copyOf(truncated),
-                List.of(),
+                missing,
                 List.copyOf(notes)
         );
         List<String> allowedActions = includeTechnicalFields
                 ? List.of(ACTION_VIEW_TRACE, ACTION_EXPORT_LOGS)
                 : List.of(ACTION_VIEW_TRACE);
         return new TrackingTraceDetailResponse(
-                summary, item.getDataStatus(), timeline, revisionItems, reviewTaskItems,
+                summary, item.getDataStatus(), timeline, changeChains, revisionItems, reviewTaskItems,
                 bindingItems, logs, allowedActions, coverage
         );
     }
@@ -231,22 +239,25 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         revisions.forEach(revision -> events.add(new TimelineEvent(
                 "revision:" + revision.getId(), "revision_submitted", "revision", revision.getId(),
                 "文化资料变更已提交", revision.getDiffSummary(), revision.getSubmitTime(),
-                actors.get(revision.getSubmitterId()), revision.getStatus()
+                actors.get(revision.getSubmitterId()), revision.getStatus(), revision.getTraceId(),
+                revision.getId(), null, "submitted"
         )));
         tasks.forEach(task -> events.add(new TimelineEvent(
                 "review_task:" + task.getId(), task.getReviewedAt() == null ? "review_pending" : "review_decided",
                 "review_task", task.getId(), task.getReviewedAt() == null ? "等待审核" : "文化资料审核已处理",
                 task.getReviewComment(), task.getReviewedAt() == null ? task.getCreatedAt() : task.getReviewedAt(),
-                actors.get(task.getReviewerId()), task.getStatus()
+                actors.get(task.getReviewerId()), task.getStatus(), task.getTraceId(), task.getRevisionId(),
+                task.getId(), task.getReviewedAt() == null ? "submitted" : task.getStatus()
         )));
         bindings.forEach(binding -> events.add(new TimelineEvent(
                 "source_binding:" + binding.getId(), "source_bound", "source_binding", binding.getId(),
                 "来源证据已关联", binding.getBindingReason(), binding.getUpdatedAt() == null ? binding.getCreatedAt() : binding.getUpdatedAt(),
-                actors.get(binding.getCreatedBy()), binding.getBindingStatus()
+                actors.get(binding.getCreatedBy()), binding.getBindingStatus(), null, null, null, null
         )));
         logs.forEach(log -> events.add(new TimelineEvent(
                 "operation_log:" + log.id(), "operation_logged", "operation_log", log.id(),
-                log.summary(), log.detail(), log.createdAt(), log.actorDisplayName(), log.resultStatus()
+                log.summary(), log.detail(), log.createdAt(), log.actorDisplayName(), log.resultStatus(),
+                log.traceId(), log.revisionId(), log.reviewTaskId(), log.eventResult()
         )));
         LinkedHashMap<String, TimelineEvent> unique = new LinkedHashMap<>();
         events.stream()
@@ -254,6 +265,36 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                         Comparator.nullsLast(Comparator.reverseOrder())).thenComparing(TimelineEvent::eventKey))
                 .forEach(event -> unique.putIfAbsent(event.eventKey(), event));
         return unique.values().stream().limit(LIMIT).toList();
+    }
+
+    private List<ChangeChain> changeChains(
+            List<RevisionEntity> revisions,
+            List<ReviewTaskEntity> tasks,
+            List<TimelineEvent> timeline
+    ) {
+        Map<Long, List<ReviewTaskEntity>> tasksByRevision = tasks.stream()
+                .filter(task -> task.getRevisionId() != null)
+                .collect(Collectors.groupingBy(ReviewTaskEntity::getRevisionId));
+        return revisions.stream().map(revision -> {
+            List<ReviewTaskEntity> related = tasksByRevision.getOrDefault(revision.getId(), List.of());
+            List<Long> taskIds = related.stream().map(ReviewTaskEntity::getId).filter(Objects::nonNull).toList();
+            UUID traceId = revision.getTraceId();
+            boolean inconsistent = traceId != null && related.stream().anyMatch(task -> !traceId.equals(task.getTraceId()));
+            List<TimelineEvent> events = timeline.stream().filter(event ->
+                    traceId != null && traceId.equals(event.traceId())
+                            || Objects.equals(revision.getId(), event.revisionId())
+                            || event.reviewTaskId() != null && taskIds.contains(event.reviewTaskId())
+            ).toList();
+            LocalDateTime completedAt = events.stream().map(TimelineEvent::occurredAt)
+                    .filter(Objects::nonNull).max(LocalDateTime::compareTo).orElse(revision.getApprovedAt());
+            return new ChangeChain(
+                    traceId == null ? "legacy-revision:" + revision.getId() : "trace:" + traceId,
+                    traceId, traceId == null ? "legacy_partial" : inconsistent ? "inconsistent" : "complete",
+                    revision.getId(), taskIds, revision.getTargetType(), revision.getTargetId(), revision.getStatus(),
+                    revision.getSubmitTime(), completedAt, events.stream().map(TimelineEvent::eventKey).toList()
+            );
+        }).sorted(Comparator.comparing(ChangeChain::startedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
     }
 
     private Map<Long, String> actorNames(

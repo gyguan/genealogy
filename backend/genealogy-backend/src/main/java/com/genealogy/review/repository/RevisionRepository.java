@@ -11,10 +11,13 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface RevisionRepository extends JpaRepository<RevisionEntity, Long> {
 
     Optional<RevisionEntity> findByIdAndTargetType(Long id, String targetType);
+
+    Optional<RevisionEntity> findByTraceId(UUID traceId);
 
     Optional<RevisionEntity> findFirstByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
             Long clanId,

@@ -3,7 +3,9 @@
     "/api/v1/tracking/objects": {
       "get": {
         "operationId": "searchTrackingObjects",
-        "tags": ["Tracking"],
+        "tags": [
+          "Tracking"
+        ],
         "summary": "按业务名称搜索当前宗族内可见的追踪对象",
         "description": "每次请求必须指定一种对象类型，服务端在对应领域查询中完成权限范围、隐私过滤、分页和总数计算。技术 ID 仅用于后续追踪调用，前端不得作为主要展示文本。文化对象的运行时搜索支持由后续文化 Issue 实现。",
         "parameters": [
@@ -11,7 +13,10 @@
             "name": "clanId",
             "in": "query",
             "required": true,
-            "schema": { "type": "integer", "format": "int64" }
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           },
           {
             "name": "objectType",
@@ -35,43 +40,67 @@
             "name": "keyword",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "maxLength": 100 }
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
           },
           {
             "name": "branchId",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "format": "int64" }
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           },
           {
             "name": "status",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "maxLength": 50 }
+            "schema": {
+              "type": "string",
+              "maxLength": 50
+            }
           },
           {
             "name": "changedFrom",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "format": "date-time" }
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           },
           {
             "name": "changedTo",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "format": "date-time" }
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           },
           {
             "name": "pageNo",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
           },
           {
             "name": "pageSize",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
           }
         ],
         "responses": {
@@ -79,13 +108,21 @@
             "description": "仅返回当前用户可见的业务对象分页结果",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseTrackingObjectPage" }
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTrackingObjectPage"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     }
@@ -94,7 +131,11 @@
     "schemas": {
       "TrackingObjectResponse": {
         "type": "object",
-        "required": ["objectType", "objectId", "displayName"],
+        "required": [
+          "objectType",
+          "objectId",
+          "displayName"
+        ],
         "properties": {
           "objectType": {
             "type": "string",
@@ -109,62 +150,130 @@
               "culture_site"
             ]
           },
-          "objectId": { "type": "integer", "format": "int64" },
-          "displayName": { "type": "string" },
+          "objectId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          },
           "secondaryLabel": {
             "type": "string",
             "nullable": true,
             "description": "同名人物等场景的辅助识别信息，例如支派、世次、谱名或人物编码"
           },
-          "branchName": { "type": "string", "nullable": true },
+          "branchName": {
+            "type": "string",
+            "nullable": true
+          },
           "summary": {
             "type": "string",
             "nullable": true,
             "description": "最小披露的业务摘要，不包含住址、联系方式、原始来源摘录等敏感内容"
           },
-          "status": { "type": "string", "nullable": true },
-          "changedAt": { "type": "string", "format": "date-time", "nullable": true }
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         }
       },
       "TrackingObjectPage": {
         "type": "object",
-        "required": ["records", "total", "pageNo", "pageSize", "totalPages"],
+        "required": [
+          "records",
+          "total",
+          "pageNo",
+          "pageSize",
+          "totalPages"
+        ],
         "properties": {
           "records": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/TrackingObjectResponse" }
+            "items": {
+              "$ref": "#/components/schemas/TrackingObjectResponse"
+            }
           },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       },
       "ApiResponseTrackingObjectPage": {
         "type": "object",
         "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/TrackingObjectPage" }
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TrackingObjectPage"
+          }
         }
       },
       "OperationLogResponse": {
         "type": "object",
-        "required": ["id", "clanId", "actionType", "createdAt"],
+        "required": [
+          "id",
+          "clanId",
+          "actionType",
+          "createdAt"
+        ],
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "actorId": { "type": "integer", "format": "int64", "nullable": true },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actorId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
           "actorDisplayName": {
             "type": "string",
             "nullable": true,
             "description": "操作者业务名称；账号不存在或不可识别时返回“未知操作者”"
           },
-          "actionType": { "type": "string" },
-          "targetType": { "type": "string", "nullable": true },
-          "targetId": { "type": "integer", "format": "int64", "nullable": true },
-          "targetDisplayName": { "type": "string", "nullable": true },
-          "targetBranchName": { "type": "string", "nullable": true },
+          "actionType": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "targetDisplayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetBranchName": {
+            "type": "string",
+            "nullable": true
+          },
           "targetSummary": {
             "type": "string",
             "nullable": true,
@@ -175,7 +284,10 @@
             "nullable": true,
             "description": "来自目标对象或审核任务的真实状态；无法可靠确定时省略"
           },
-          "summary": { "type": "string", "nullable": true },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
           "detail": {
             "type": "string",
             "nullable": true,
@@ -191,7 +303,44 @@
             "nullable": true,
             "description": "仅具备 operation_log.export 权限时返回；普通查看者为 null"
           },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "稳定的单次 revision 生命周期标识；历史数据可能为空"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "关联的版本记录 ID"
+          },
+          "reviewTaskId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "关联的审核任务 ID"
+          },
+          "businessTargetType": {
+            "type": "string",
+            "nullable": true,
+            "description": "revision 实际业务对象类型"
+          },
+          "businessTargetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "revision 实际业务对象 ID"
+          },
+          "eventResult": {
+            "type": "string",
+            "nullable": true,
+            "description": "生命周期事件结果，例如 submitted、approved、rejected、applied、failed"
+          }
         }
       }
     }
