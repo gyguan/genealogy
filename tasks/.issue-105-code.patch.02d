@@ -1,0 +1,139 @@
+ new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
++            Sheet sheet = workbook.createSheet("字辈导入");
++            writeRow(sheet.createRow(0), GenerationImportTemplateDefinition.HEADERS);
++            writeRow(sheet.createRow(1), GenerationImportTemplateDefinition.SAMPLE_ROW);
++            for (int index = 0; index < GenerationImportTemplateDefinition.HEADERS.size(); index++) sheet.autoSizeColumn(index);
++            workbook.write(output);
++            return output.toByteArray();
++        } catch (IOException exception) {
++            throw new BusinessException("IMPORT_TEMPLATE_BUILD_FAILED", "字辈导入模板生成失败");
++        }
++    }
++
++    private void writeRow(Row row, List<String> values) {
++        for (int index = 0; index < values.size(); index++) row.createCell(index).setCellValue(values.get(index));
++    }
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateDefinition.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateDefinition.java
+new file mode 100644
+index 0000000..21822e2
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateDefinition.java
+@@ -0,0 +1,47 @@
++package com.genealogy.imports.application;
++
++import com.genealogy.common.exception.BusinessException;
++
++import java.util.List;
++
++public final class GenerationImportTemplateDefinition {
++
++    public static final int SCHEME_NAME_INDEX = 0;
++    public static final int START_GENERATION_INDEX = 1;
++    public static final int GENERATION_NO_INDEX = 2;
++    public static final int WORD_INDEX = 3;
++    public static final int POEM_TEXT_INDEX = 4;
++    public static final int IS_DEFAULT_INDEX = 5;
++    public static final int VALIDATION_ENABLED_INDEX = 6;
++    public static final int STRICT_MODE_INDEX = 7;
++    public static final int DESCRIPTION_INDEX = 8;
++
++    public static final List<String> HEADERS = List.of(
++            "方案名称", "起始代次", "代次", "字辈文字", "字辈诗", "是否默认", "启用校验", "严格模式", "说明"
++    );
++
++    public static final List<String> SAMPLE_ROW = List.of(
++            "德字辈方案", "1", "1", "德", "德厚传家久", "否", "是", "否", "示例字辈"
++    );
++
++    private GenerationImportTemplateDefinition() {
++    }
++
++    public static String normalizeHeader(String value) {
++        return value == null ? "" : value.replace("\ufeff", "").trim();
++    }
++
++    public static List<String> normalizeHeaders(List<String> headers) {
++        return headers.stream().map(GenerationImportTemplateDefinition::normalizeHeader).toList();
++    }
++
++    public static String expectedHeaderText() { return String.join("、", HEADERS); }
++
++    public static boolean parseBoolean(String value, boolean defaultValue, String fieldName) {
++        String normalized = value == null ? "" : value.trim();
++        if (normalized.isEmpty()) return defaultValue;
++        if ("是".equals(normalized)) return true;
++        if ("否".equals(normalized)) return false;
++        throw new BusinessException("IMPORT_GENERATION_BOOLEAN_INVALID", fieldName + "只能填写是或否");
++    }
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java
+index 16c8ff0..a290bd9 100644
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java
+@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.genealogy.auth.application.AuthorizationApplicationService;
+ import com.genealogy.branch.repository.BranchRepository;
+ import com.genealogy.common.exception.BusinessException;
++import com.genealogy.generation.entity.GenerationImportDraftEntity;
++import com.genealogy.generation.repository.GenerationImportDraftRepository;
+ import com.genealogy.imports.dto.ImportJobReviewSubmitRequest;
+ import com.genealogy.imports.entity.ImportJobEntity;
+ import com.genealogy.imports.entity.ImportJobRowEntity;
+@@ -38,12 +40,14 @@ public class ImportJobReviewApplicationService {
+     private static final String STATUS_PENDING = "pending";
+     private static final String PERSON_SUBMIT_REVIEW = "person:submit_review";
+     private static final String RELATIONSHIP_SUBMIT_REVIEW = "relationship:submit_review";
++    private static final String GENERATION_SUBMIT_REVIEW = "branch:update";
+     private static final String RELATIONSHIP_TYPE_SPOUSE = "spouse";
+ 
+     private final ImportJobRepository importJobRepository;
+     private final ImportJobRowRepository importJobRowRepository;
+     private final PersonRepository personRepository;
+     private final RelationshipRepository relationshipRepository;
++    private final GenerationImportDraftRepository generationImportDraftRepository;
+     private final BranchRepository branchRepository;
+     private final AuditRecordRepository auditRecordRepository;
+     private final CheckTaskRepository checkTaskRepository;
+@@ -56,6 +60,7 @@ public class ImportJobReviewApplicationService {
+             ImportJobRowRepository importJobRowRepository,
+             PersonRepository personRepository,
+             RelationshipRepository relationshipRepository,
++            GenerationImportDraftRepository generationImportDraftRepository,
+             BranchRepository branchRepository,
+             AuditRecordRepository auditRecordRepository,
+             CheckTaskRepository checkTaskRepository,
+@@ -67,6 +72,7 @@ public class ImportJobReviewApplicationService {
+         this.importJobRowRepository = importJobRowRepository;
+         this.personRepository = personRepository;
+         this.relationshipRepository = relationshipRepository;
++        this.generationImportDraftRepository = generationImportDraftRepository;
+         this.branchRepository = branchRepository;
+         this.auditRecordRepository = auditRecordRepository;
+         this.checkTaskRepository = checkTaskRepository;
+@@ -87,8 +93,12 @@ public class ImportJobReviewApplicationService {
+         String type = importType(job);
+         String permission = ImportJobEntity.TYPE_RELATIONSHIP.equals(type)
+                 ? RELATIONSHIP_SUBMIT_REVIEW
+-                : PERSON_SUBMIT_REVIEW;
+-        authorizationApplicationService.requireBranchPermission(clanId, actorId, job.getBranchId(), permission);
++                : ImportJobEntity.TYPE_GENERATION.equals(type) ? GENERATION_SUBMIT_REVIEW : PERSON_SUBMIT_REVIEW;
++        if (ImportJobEntity.TYPE_GENERATION.equals(type)) {
++            authorizationApplicationService.requireBranchWriteScope(clanId, actorId, job.getBranchId());
++        } else {
++            authorizationApplicationService.requireBranchPermission(clanId, actorId, job.getBranchId(), permission);
++        }
+         validateSubmittable(job);
+         List<ImportJobRowEntity> draftRows = validateRows(job);
+         if (auditRecordRepository.existsByTargetTypeAndTargetIdAndStatus(TARGET_IMPORT_JOB, jobId, STATUS_PENDING)) {
+@@ -160,7 +170,8 @@ public class ImportJobReviewApplicationService {
+             throw new BusinessException("IMPORT_JOB_REVIEW_STATUS_INVALID", "导入批次当前状态不能提交审核");
+         }
+         if (!ImportJobEntity.TYPE_PERSON.equals(importType(job))
+-                && !ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {
++                && !ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))
++                && !ImportJobEntity.TYPE_GENERATION.equals(importType(job))) {
+             throw new BusinessException("IMPORT_JOB_TYPE_UNSUPPORTED", "当前导入类型暂不支持审核");
+         }
+     }
+@@ -192,6 +203,8 @@ pub
