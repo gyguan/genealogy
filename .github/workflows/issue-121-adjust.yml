@@ -27,12 +27,23 @@ jobs:
       - name: Apply adjustment
         run: python scripts/issue-121-adjust.py
       - name: Run trace tests
+        id: tests
+        continue-on-error: true
         working-directory: backend/genealogy-backend
-        run: mvn -DtrimStackTrace=false -Dtest=TrackingTraceApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest test
-      - name: Upload adjusted service
+        run: mvn -DtrimStackTrace=false -Dtest=TrackingTraceApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest test > /tmp/issue-121-tests.log 2>&1
+      - name: Print concise failures
+        if: steps.tests.outcome == 'failure'
+        run: grep -n -E "COMPILATION ERROR|cannot find symbol|Failures:|Errors:|Wanted but not invoked|UnnecessaryStubbing|AssertionError|BUILD FAILURE|Tests run:" /tmp/issue-121-tests.log | tail -80 || true
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: issue-121-adjusted-service
-          path: backend/genealogy-backend/src/main/java/com/genealogy/tracking/application/TrackingTraceApplicationService.java
-          if-no-files-found: error
+          name: issue-121-adjustment-diagnostics
+          path: |
+            /tmp/issue-121-tests.log
+            backend/genealogy-backend/target/surefire-reports
+            backend/genealogy-backend/src/main/java/com/genealogy/tracking/application/TrackingTraceApplicationService.java
+          if-no-files-found: warn
+      - name: Fail when tests failed
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
