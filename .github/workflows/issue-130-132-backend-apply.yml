@@ -1,0 +1,388 @@
+name: Issue 130-132 Backend Apply
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply backend closure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'expected fragment not found: {path}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/config/AuthProperties.java',
+              '    private int loginWindowMinutes = 15;\n    private int accountMaxFailures = 5;\n    private int ipMaxFailures = 20;\n',
+              '    private int loginWindowMinutes = 15;\n    private int loginCooldownMinutes = 15;\n    private int accountMaxFailures = 5;\n    private int ipMaxFailures = 20;\n    private long sessionCleanupIntervalMs = 3600000L;\n    private int sessionRetentionDays = 30;\n'
+          )
+
+          replace(
+              'backend/genealogy-backend/src/main/resources/application.yml',
+              '    login-window-minutes: ${GENEALOGY_AUTH_LOGIN_WINDOW_MINUTES:15}\n    account-max-failures: ${GENEALOGY_AUTH_ACCOUNT_MAX_FAILURES:5}\n    ip-max-failures: ${GENEALOGY_AUTH_IP_MAX_FAILURES:20}\n',
+              '    login-window-minutes: ${GENEALOGY_AUTH_LOGIN_WINDOW_MINUTES:15}\n    login-cooldown-minutes: ${GENEALOGY_AUTH_LOGIN_COOLDOWN_MINUTES:15}\n    account-max-failures: ${GENEALOGY_AUTH_ACCOUNT_MAX_FAILURES:5}\n    ip-max-failures: ${GENEALOGY_AUTH_IP_MAX_FAILURES:20}\n    session-cleanup-interval-ms: ${GENEALOGY_AUTH_SESSION_CLEANUP_INTERVAL_MS:3600000}\n    session-retention-days: ${GENEALOGY_AUTH_SESSION_RETENTION_DAYS:30}\n'
+          )
+
+          p = Path('backend/genealogy-backend/src/main/java/com/genealogy/auth/repository/AuthLoginAttemptRepository.java')
+          p.write_text('''package com.genealogy.auth.repository;\n\nimport com.genealogy.auth.entity.AuthLoginAttemptEntity;\nimport org.springframework.data.jpa.repository.JpaRepository;\n\nimport java.time.LocalDateTime;\nimport java.util.Optional;\n\npublic interface AuthLoginAttemptRepository extends JpaRepository<AuthLoginAttemptEntity, Long> {\n    long countByAccountHashAndSuccessFalseAndCreatedAtAfter(String accountHash, LocalDateTime createdAt);\n    long countByIpHashAndSuccessFalseAndCreatedAtAfter(String ipHash, LocalDateTime createdAt);\n    Optional<AuthLoginAttemptEntity> findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(String accountHash);\n    Optional<AuthLoginAttemptEntity> findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(String ipHash);\n    long deleteByAccountHashAndSuccessFalse(String accountHash);\n}\n''')
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthSecurityService.java',
+              '''    public void requireLoginAllowed(String account, String clientIp) {\n        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(properties.getLoginWindowMinutes());\n        long accountFailures = loginAttemptRepository.countByAccountHashAndSuccessFalseAndCreatedAtAfter(\n                accountHash(account), windowStart\n        );\n        long ipFailures = loginAttemptRepository.countByIpHashAndSuccessFalseAndCreatedAtAfter(\n                ipHash(clientIp), windowStart\n        );\n        if (accountFailures >= properties.getAccountMaxFailures() || ipFailures >= properties.getIpMaxFailures()) {\n            recordEvent(null, "login_throttled", "AUTH_LOGIN_THROTTLED", "high", clientIp, null, null,\n                    "accountLimit=" + properties.getAccountMaxFailures() + ",ipLimit=" + properties.getIpMaxFailures());\n            throw new BusinessException("AUTH_LOGIN_THROTTLED", "登录尝试过于频繁，请稍后再试");\n        }\n    }\n''',
+              '''    public void requireLoginAllowed(String account, String clientIp) {\n        LocalDateTime now = LocalDateTime.now();\n        String accountHash = accountHash(account);\n        String ipHash = ipHash(clientIp);\n        var latestAccountFailure = loginAttemptRepository\n                .findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(accountHash);\n        var latestIpFailure = loginAttemptRepository\n                .findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(ipHash);\n        long accountFailures = latestAccountFailure\n                .map(latest -> loginAttemptRepository.countByAccountHashAndSuccessFalseAndCreatedAtAfter(\n                        accountHash, latest.getCreatedAt().minusMinutes(properties.getLoginWindowMinutes())))\n                .orElse(0L);\n        long ipFailures = latestIpFailure\n                .map(latest -> loginAttemptRepository.countByIpHashAndSuccessFalseAndCreatedAtAfter(\n                        ipHash, latest.getCreatedAt().minusMinutes(properties.getLoginWindowMinutes())))\n                .orElse(0L);\n        boolean accountCoolingDown = accountFailures >= properties.getAccountMaxFailures()\n                && latestAccountFailure.orElseThrow().getCreatedAt()\n                        .plusMinutes(properties.getLoginCooldownMinutes()).isAfter(now);\n        boolean ipCoolingDown = ipFailures >= properties.getIpMaxFailures()\n                && latestIpFailure.orElseThrow().getCreatedAt()\n                        .plusMinutes(properties.getLoginCooldownMinutes()).isAfter(now);\n        if (accountCoolingDown || ipCoolingDown) {\n            recordEvent(null, "login_throttled", "AUTH_LOGIN_THROTTLED", "high", clientIp, null, null,\n                    "accountLimited=" + accountCoolingDown + ",ipLimited=" + ipCoolingDown\n                            + ",cooldownMinutes=" + properties.getLoginCooldownMinutes());\n            throw new BusinessException("AUTH_LOGIN_THROTTLED", "登录尝试过于频繁，请稍后再试");\n        }\n    }\n'''
+          )
+
+          p = Path('backend/genealogy-backend/src/main/java/com/genealogy/auth/repository/AuthSessionRepository.java')
+          p.write_text('''package com.genealogy.auth.repository;\n\nimport com.genealogy.auth.entity.AuthSessionEntity;\nimport org.springframework.data.jpa.repository.JpaRepository;\nimport org.springframework.data.jpa.repository.Modifying;\nimport org.springframework.data.jpa.repository.Query;\nimport org.springframework.data.repository.query.Param;\n\nimport java.time.LocalDateTime;\nimport java.util.List;\nimport java.util.Optional;\n\npublic interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, Long> {\n\n    Optional<AuthSessionEntity> findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(String tokenHash, LocalDateTime now);\n\n    Optional<AuthSessionEntity> findByTokenHash(String tokenHash);\n\n    List<AuthSessionEntity> findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastAccessAtDesc(\n            Long userId,\n            LocalDateTime now\n    );\n\n    @Modifying\n    @Query("delete from AuthSessionEntity s where s.expiresAt < :cutoff or (s.revokedAt is not null and s.revokedAt < :cutoff)")\n    int deleteRetiredBefore(@Param("cutoff") LocalDateTime cutoff);\n}\n''')
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthApplicationService.java',
+              '''    @Transactional(readOnly = true)\n    public AuthUserResponse currentUser(String authorization) {\n        AuthSessionEntity session = getActiveSession(authorization);\n        AppUserEntity user = requireActiveUser(session.getUserId());\n        return toUserResponse(user);\n    }\n\n    @Transactional(readOnly = true)\n    public Long currentUserIdOrNull(String authorization) {\n        if (authorization == null || authorization.isBlank()) return null;\n        return getActiveSession(authorization).getUserId();\n    }\n''',
+              '''    @Transactional\n    public AuthUserResponse currentUser(String authorization) {\n        SessionUser context = requireActiveSessionUser(authorization);\n        return toUserResponse(context.user());\n    }\n\n    @Transactional\n    public Long currentUserIdOrNull(String authorization) {\n        if (authorization == null || authorization.isBlank()) return null;\n        return requireActiveSessionUser(authorization).user().getId();\n    }\n'''
+          )
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthApplicationService.java',
+              '''        AuthSessionEntity current = getActiveSession(authorization);\n        AppUserEntity user = requireActiveUser(current.getUserId());\n''',
+              '''        SessionUser context = requireActiveSessionUser(authorization);\n        AuthSessionEntity current = context.session();\n        AppUserEntity user = context.user();\n'''
+          )
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthApplicationService.java',
+              '''    private AuthSessionEntity findActiveSession(String rawToken) {\n        return authSessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(\n                        PasswordHashUtil.sha256(rawToken), LocalDateTime.now())\n                .orElseThrow(() -> new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期"));\n    }\n\n    private AppUserEntity requireActiveUser(Long userId) {\n        AppUserEntity user = appUserRepository.findById(userId)\n                .orElseThrow(() -> new BusinessException("AUTH_USER_NOT_FOUND", "用户不存在"));\n        if (!USER_STATUS_ACTIVE.equals(user.getStatus()) || user.getDeletedAt() != null) {\n            throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");\n        }\n        return user;\n    }\n''',
+              '''    private AuthSessionEntity findActiveSession(String rawToken) {\n        String tokenHash = PasswordHashUtil.sha256(rawToken);\n        return authSessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(\n                        tokenHash, LocalDateTime.now())\n                .orElseGet(() -> {\n                    authSessionRepository.findByTokenHash(tokenHash).ifPresent(session -> authSecurityService.recordEvent(\n                            session.getUserId(), "session_replay_rejected", "AUTH_SESSION_REPLAYED", "high",\n                            session.getClientIp(), session.getUserAgent(), null,\n                            "sessionId=" + session.getId() + ",state="\n                                    + (session.getRevokedAt() == null ? "expired" : "revoked")\n                    ));\n                    throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");\n                });\n    }\n\n    private SessionUser requireActiveSessionUser(String authorization) {\n        AuthSessionEntity session = getActiveSession(authorization);\n        AppUserEntity user = appUserRepository.findById(session.getUserId()).orElse(null);\n        if (user == null || !USER_STATUS_ACTIVE.equals(user.getStatus()) || user.getDeletedAt() != null) {\n            session.setRevokedAt(LocalDateTime.now());\n            authSessionRepository.save(session);\n            authSecurityService.recordEvent(\n                    session.getUserId(), "session_revoked_account_inactive", "AUTH_UNAUTHORIZED", "high",\n                    session.getClientIp(), session.getUserAgent(), null, "sessionId=" + session.getId()\n            );\n            throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");\n        }\n        return new SessionUser(session, user);\n    }\n'''
+          )
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthApplicationService.java',
+              '''    public record AuthLoginResult(LoginResponse response, String sessionToken, int maxAgeSeconds) {\n    }\n''',
+              '''    private record SessionUser(AuthSessionEntity session, AppUserEntity user) {\n    }\n\n    public record AuthLoginResult(LoginResponse response, String sessionToken, int maxAgeSeconds) {\n    }\n'''
+          )
+
+          Path('backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthSessionMaintenanceService.java').write_text('''package com.genealogy.auth.application;\n\nimport com.genealogy.auth.config.AuthProperties;\nimport com.genealogy.auth.repository.AuthSessionRepository;\nimport org.springframework.scheduling.annotation.Scheduled;\nimport org.springframework.stereotype.Service;\nimport org.springframework.transaction.annotation.Transactional;\n\nimport java.time.LocalDateTime;\n\n@Service\npublic class AuthSessionMaintenanceService {\n\n    private final AuthSessionRepository authSessionRepository;\n    private final AuthProperties properties;\n\n    public AuthSessionMaintenanceService(AuthSessionRepository authSessionRepository, AuthProperties properties) {\n        this.authSessionRepository = authSessionRepository;\n        this.properties = properties;\n    }\n\n    @Scheduled(fixedDelayString = "${genealogy.auth.session-cleanup-interval-ms:3600000}")\n    @Transactional\n    public int cleanupRetiredSessions() {\n        LocalDateTime cutoff = LocalDateTime.now().minusDays(Math.max(1, properties.getSessionRetentionDays()));\n        return authSessionRepository.deleteRetiredBefore(cutoff);\n    }\n}\n''')
+
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/GenealogyApplication.java',
+              'import org.springframework.boot.context.properties.EnableConfigurationProperties;\n',
+              'import org.springframework.boot.context.properties.EnableConfigurationProperties;\nimport org.springframework.scheduling.annotation.EnableScheduling;\n'
+          )
+          replace(
+              'backend/genealogy-backend/src/main/java/com/genealogy/GenealogyApplication.java',
+              '@SpringBootApplication\n@EnableConfigurationProperties',
+              '@SpringBootApplication\n@EnableScheduling\n@EnableConfigurationProperties'
+          )
+
+          replace(
+              'backend/genealogy-backend/pom.xml',
+              '''    <build>\n        <plugins>\n''',
+              '''    <build>\n        <resources>\n            <resource>\n                <directory>src/main/resources</directory>\n                <excludes>\n                    <!-- Legacy duplicate versions remain immutable in Git. Runtime packages one canonical V3/V4/V5 and the forward compensation below. -->\n                    <exclude>db/migration/V3__source_library_status_and_fields.sql</exclude>\n                    <exclude>db/migration/V4__source_attachment_access_fields.sql</exclude>\n                    <exclude>db/migration/V5__schema_validation_compat_tables.sql</exclude>\n                    <exclude>db/migration/V5__source_binding_review_indexes.sql</exclude>\n                </excludes>\n            </resource>\n        </resources>\n        <plugins>\n'''
+          )
+
+          Path('backend/genealogy-backend/src/main/resources/db/migration/V20260714070000__rebuild_legacy_duplicate_migrations.sql').write_text(r'''-- Forward compensation for immutable legacy duplicate V3/V4/V5 files.
+-- Runtime packaging keeps the permission V3/V4 and import-foundation V5 as canonical.
+-- This migration rebuilds the capabilities from the excluded duplicate-version files.
+
+alter table source
+    add column if not exists source_date varchar(100),
+    add column if not exists confidence_level varchar(32) not null default 'unknown',
+    add column if not exists privacy_level varchar(32) not null default 'clan_only',
+    add column if not exists sensitive_level varchar(32) not null default 'normal',
+    add column if not exists updated_at timestamp not null default now();
+
+update source
+set verification_status = case
+        when verification_status is null or trim(verification_status) = '' then 'draft'
+        when lower(verification_status) = 'unverified' then 'draft'
+        when lower(verification_status) in ('verified', 'reviewed', 'approved') then 'official'
+        else lower(verification_status)
+    end,
+    confidence_level = coalesce(nullif(trim(confidence_level), ''), 'unknown'),
+    privacy_level = coalesce(nullif(trim(privacy_level), ''), 'clan_only'),
+    sensitive_level = coalesce(nullif(trim(sensitive_level), ''), 'normal'),
+    updated_at = coalesce(updated_at, created_at, now());
+
+update source set source_type = 'oral_history' where source_type = 'oral_record';
+
+alter table source
+    alter column verification_status set default 'draft',
+    alter column confidence_level set default 'unknown',
+    alter column privacy_level set default 'clan_only',
+    alter column sensitive_level set default 'normal',
+    alter column updated_at set default now();
+
+alter table source_binding
+    add column if not exists confidence_level varchar(32) not null default 'unknown',
+    add column if not exists binding_status varchar(32) not null default 'official',
+    add column if not exists updated_at timestamp not null default now();
+
+update source_binding
+set confidence_level = coalesce(nullif(trim(confidence_level), ''), 'unknown'),
+    binding_status = case
+        when binding_status is null or trim(binding_status) = '' then 'official'
+        when lower(binding_status) = 'unverified' then 'draft'
+        when lower(binding_status) in ('verified', 'reviewed', 'approved') then 'official'
+        else lower(binding_status)
+    end,
+    updated_at = coalesce(updated_at, created_at, now());
+
+alter table source_binding
+    alter column confidence_level set default 'unknown',
+    alter column binding_status set default 'official',
+    alter column updated_at set default now();
+
+alter table source_attachment
+    add column if not exists privacy_level varchar(32) not null default 'clan_only',
+    add column if not exists sensitive_level varchar(32) not null default 'normal';
+
+update source_attachment
+set privacy_level = coalesce(nullif(privacy_level, ''), 'clan_only'),
+    sensitive_level = coalesce(nullif(sensitive_level, ''), 'normal');
+
+alter table source_attachment
+    alter column privacy_level set default 'clan_only',
+    alter column sensitive_level set default 'normal';
+
+create table if not exists attachment (
+    id bigserial primary key,
+    clan_id bigint,
+    source_id bigint,
+    file_name varchar(255),
+    file_type varchar(120),
+    file_size bigint,
+    storage_path varchar(1000),
+    thumbnail_path varchar(1000),
+    checksum varchar(128),
+    uploaded_by bigint,
+    uploaded_at timestamp,
+    access_level varchar(32)
+);
+
+create table if not exists user_account (
+    id bigserial primary key,
+    username varchar(100),
+    phone varchar(50),
+    email varchar(100),
+    display_name varchar(100),
+    password_hash varchar(255),
+    status varchar(32) default 'active',
+    created_at timestamp default now(),
+    last_login_at timestamp
+);
+
+create table if not exists role (
+    id bigserial primary key,
+    role_code varchar(64),
+    role_name varchar(100),
+    description varchar(255)
+);
+
+create table if not exists member_role (
+    id bigserial primary key,
+    member_id bigint,
+    role_id bigint,
+    scope_type varchar(32) default 'clan',
+    scope_id bigint,
+    created_at timestamp default now()
+);
+
+do $$
+begin
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_verification_status') then
+        alter table source add constraint chk_source_verification_status
+            check (verification_status in ('draft', 'pending_review', 'official', 'rejected', 'archived'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_confidence_level') then
+        alter table source add constraint chk_source_confidence_level
+            check (confidence_level in ('high', 'medium', 'low', 'unknown'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_privacy_level') then
+        alter table source add constraint chk_source_privacy_level
+            check (privacy_level in ('public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_sensitive_level') then
+        alter table source add constraint chk_source_sensitive_level
+            check (sensitive_level in ('normal', 'sensitive', 'highly_sensitive'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_binding_confidence_level') then
+        alter table source_binding add constraint chk_source_binding_confidence_level
+            check (confidence_level in ('high', 'medium', 'low', 'unknown'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_binding_status') then
+        alter table source_binding add constraint chk_source_binding_status
+            check (binding_status in ('draft', 'pending_review', 'official', 'rejected', 'archived'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_attachment_privacy_level') then
+        alter table source_attachment add constraint chk_source_attachment_privacy_level
+            check (privacy_level in ('public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed'));
+    end if;
+    if not exists (select 1 from pg_constraint where conname = 'chk_source_attachment_sensitive_level') then
+        alter table source_attachment add constraint chk_source_attachment_sensitive_level
+            check (sensitive_level in ('normal', 'sensitive', 'highly_sensitive'));
+    end if;
+end $$;
+
+create unique index if not exists uk_source_binding_target on source_binding(source_id, target_type, target_id);
+create index if not exists idx_source_clan_status on source(clan_id, verification_status);
+create index if not exists idx_source_clan_privacy on source(clan_id, privacy_level);
+create index if not exists idx_source_attachment_source_created on source_attachment(source_id, created_at desc) where deleted_at is null;
+create index if not exists idx_attachment_clan on attachment(clan_id);
+create index if not exists idx_attachment_source on attachment(source_id);
+create index if not exists idx_user_account_username on user_account(username);
+create index if not exists idx_role_code on role(role_code);
+create index if not exists idx_member_role_member on member_role(member_id);
+create index if not exists idx_member_role_role on member_role(role_id);
+create index if not exists idx_revision_source_binding_pending on revision(target_type, target_id, status) where target_type = 'source_binding';
+create index if not exists idx_review_task_revision_status on review_task(revision_id, status);
+create index if not exists idx_source_binding_active_target on source_binding(source_id, target_type, target_id, binding_status);
+''')
+
+          Path('backend/genealogy-backend/src/test/java/com/genealogy/auth/application/AuthSecurityServiceTest.java').write_text('''package com.genealogy.auth.application;\n\nimport com.genealogy.auth.config.AuthProperties;\nimport com.genealogy.auth.entity.AuthLoginAttemptEntity;\nimport com.genealogy.auth.entity.AuthSecurityEventEntity;\nimport com.genealogy.auth.repository.AuthLoginAttemptRepository;\nimport com.genealogy.auth.repository.AuthSecurityEventRepository;\nimport com.genealogy.common.exception.BusinessException;\nimport org.junit.jupiter.api.Test;\nimport org.springframework.transaction.PlatformTransactionManager;\nimport org.springframework.transaction.support.SimpleTransactionStatus;\n\nimport java.time.LocalDateTime;\nimport java.util.Optional;\n\nimport static org.junit.jupiter.api.Assertions.assertDoesNotThrow;\nimport static org.junit.jupiter.api.Assertions.assertEquals;\nimport static org.junit.jupiter.api.Assertions.assertThrows;\nimport static org.mockito.ArgumentMatchers.any;\nimport static org.mockito.ArgumentMatchers.anyString;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.verify;\nimport static org.mockito.Mockito.when;\n\nclass AuthSecurityServiceTest {\n\n    @Test\n    void blocksAccountDuringConfiguredCooldownAndPersistsAudit() {\n        Fixture fixture = new Fixture();\n        fixture.properties.setAccountMaxFailures(3);\n        AuthLoginAttemptEntity latest = failure(LocalDateTime.now().minusMinutes(1));\n        when(fixture.attempts.findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.of(latest));\n        when(fixture.attempts.findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.empty());\n        when(fixture.attempts.countByAccountHashAndSuccessFalseAndCreatedAtAfter(anyString(), any())).thenReturn(3L);\n\n        BusinessException exception = assertThrows(BusinessException.class,\n                () -> fixture.service.requireLoginAllowed("member", "10.0.0.1"));\n\n        assertEquals("AUTH_LOGIN_THROTTLED", exception.getCode());\n        verify(fixture.events).save(any(AuthSecurityEventEntity.class));\n    }\n\n    @Test\n    void blocksIpDuringConfiguredCooldown() {\n        Fixture fixture = new Fixture();\n        fixture.properties.setIpMaxFailures(2);\n        AuthLoginAttemptEntity latest = failure(LocalDateTime.now().minusMinutes(1));\n        when(fixture.attempts.findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.empty());\n        when(fixture.attempts.findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.of(latest));\n        when(fixture.attempts.countByIpHashAndSuccessFalseAndCreatedAtAfter(anyString(), any())).thenReturn(2L);\n\n        assertThrows(BusinessException.class, () -> fixture.service.requireLoginAllowed("member", "10.0.0.1"));\n    }\n\n    @Test\n    void cooldownAutomaticallyExpiresWithoutPermanentLock() {\n        Fixture fixture = new Fixture();\n        fixture.properties.setAccountMaxFailures(3);\n        fixture.properties.setLoginCooldownMinutes(15);\n        AuthLoginAttemptEntity latest = failure(LocalDateTime.now().minusMinutes(16));\n        when(fixture.attempts.findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.of(latest));\n        when(fixture.attempts.findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(anyString())).thenReturn(Optional.empty());\n        when(fixture.attempts.countByAccountHashAndSuccessFalseAndCreatedAtAfter(anyString(), any())).thenReturn(3L);\n\n        assertDoesNotThrow(() -> fixture.service.requireLoginAllowed("member", "10.0.0.1"));\n    }\n\n    @Test\n    void failedAttemptStoresOnlyAccountAndIpHashes() {\n        Fixture fixture = new Fixture();\n        fixture.service.recordLoginAttempt("SensitiveUser", "192.168.10.20", null, false, "AUTH_LOGIN_FAILED", "agent");\n        var captor = org.mockito.ArgumentCaptor.forClass(AuthLoginAttemptEntity.class);\n        verify(fixture.attempts).save(captor.capture());\n        assertEquals(fixture.service.accountHash("sensitiveuser"), captor.getValue().getAccountHash());\n        assertEquals(fixture.service.ipHash("192.168.10.20"), captor.getValue().getIpHash());\n    }\n\n    @Test\n    void successfulLoginClearsOnlyAccountFailureCounterRows() {\n        Fixture fixture = new Fixture();\n        fixture.service.recordLoginAttempt("member", "192.168.10.20", 7L, true, "SUCCESS", "agent");\n        verify(fixture.attempts).deleteByAccountHashAndSuccessFalse(fixture.service.accountHash("member"));\n        verify(fixture.attempts).save(any(AuthLoginAttemptEntity.class));\n    }\n\n    private static AuthLoginAttemptEntity failure(LocalDateTime createdAt) {\n        AuthLoginAttemptEntity entity = new AuthLoginAttemptEntity();\n        entity.setCreatedAt(createdAt);\n        entity.setSuccess(false);\n        return entity;\n    }\n\n    private static final class Fixture {\n        final AuthLoginAttemptRepository attempts = mock(AuthLoginAttemptRepository.class);\n        final AuthSecurityEventRepository events = mock(AuthSecurityEventRepository.class);\n        final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);\n        final AuthProperties properties = new AuthProperties();\n        final AuthSecurityService service;\n\n        Fixture() {\n            when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());\n            service = new AuthSecurityService(attempts, events, properties, transactionManager);\n        }\n    }\n}\n''')
+
+          Path('backend/genealogy-backend/src/test/java/com/genealogy/auth/application/AuthSessionMaintenanceServiceTest.java').write_text('''package com.genealogy.auth.application;\n\nimport com.genealogy.auth.config.AuthProperties;\nimport com.genealogy.auth.repository.AuthSessionRepository;\nimport org.junit.jupiter.api.Test;\n\nimport java.time.LocalDateTime;\n\nimport static org.junit.jupiter.api.Assertions.assertEquals;\nimport static org.mockito.ArgumentMatchers.any;\nimport static org.mockito.Mockito.mock;\nimport static org.mockito.Mockito.verify;\nimport static org.mockito.Mockito.when;\n\nclass AuthSessionMaintenanceServiceTest {\n\n    @Test\n    void removesOnlySessionsOlderThanConfiguredRetention() {\n        AuthSessionRepository repository = mock(AuthSessionRepository.class);\n        AuthProperties properties = new AuthProperties();\n        properties.setSessionRetentionDays(30);\n        when(repository.deleteRetiredBefore(any(LocalDateTime.class))).thenReturn(4);\n        AuthSessionMaintenanceService service = new AuthSessionMaintenanceService(repository, properties);\n\n        assertEquals(4, service.cleanupRetiredSessions());\n        verify(repository).deleteRetiredBefore(any(LocalDateTime.class));\n    }\n}\n''')
+
+          test_path = Path('backend/genealogy-backend/src/test/java/com/genealogy/auth/application/AuthApplicationServiceCommercialTest.java')
+          text = test_path.read_text()
+          marker = '\n    private AppUserEntity activeUser(String username, String password) {'
+          addition = r'''
+    @Test
+    void disabledAccountRevokesExistingSessionOnNextRequest() {
+        AppUserRepository userRepository = mock(AppUserRepository.class);
+        AuthSessionRepository sessionRepository = mock(AuthSessionRepository.class);
+        AuthSecurityService securityService = mock(AuthSecurityService.class);
+        AuthApplicationService service = new AuthApplicationService(
+                userRepository, sessionRepository, securityService, new AuthProperties()
+        );
+        String rawToken = "disabled-session-token";
+        AuthSessionEntity session = new AuthSessionEntity();
+        session.setId(55L);
+        session.setUserId(7L);
+        session.setTokenHash(PasswordHashUtil.sha256(rawToken));
+        session.setExpiresAt(LocalDateTime.now().plusHours(1));
+        AppUserEntity user = activeUser("disabled", "Password@123");
+        user.setStatus("disabled");
+        when(sessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
+                org.mockito.ArgumentMatchers.eq(PasswordHashUtil.sha256(rawToken)), any(LocalDateTime.class)))
+                .thenReturn(Optional.of(session));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.currentUserIdOrNull("Bearer " + rawToken));
+
+        assertEquals("AUTH_UNAUTHORIZED", exception.getCode());
+        assertNotNull(session.getRevokedAt());
+        verify(sessionRepository).save(session);
+        verify(securityService).recordEvent(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.eq("session_revoked_account_inactive"),
+                org.mockito.ArgumentMatchers.eq("AUTH_UNAUTHORIZED"),
+                org.mockito.ArgumentMatchers.eq("high"),
+                any(), any(), any(), any()
+        );
+    }
+
+    @Test
+    void replayOfKnownRevokedSessionIsRejectedAndAudited() {
+        AppUserRepository userRepository = mock(AppUserRepository.class);
+        AuthSessionRepository sessionRepository = mock(AuthSessionRepository.class);
+        AuthSecurityService securityService = mock(AuthSecurityService.class);
+        AuthApplicationService service = new AuthApplicationService(
+                userRepository, sessionRepository, securityService, new AuthProperties()
+        );
+        String rawToken = "revoked-session-token";
+        String tokenHash = PasswordHashUtil.sha256(rawToken);
+        AuthSessionEntity revoked = new AuthSessionEntity();
+        revoked.setId(56L);
+        revoked.setUserId(7L);
+        revoked.setTokenHash(tokenHash);
+        revoked.setRevokedAt(LocalDateTime.now().minusMinutes(1));
+        when(sessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
+                org.mockito.ArgumentMatchers.eq(tokenHash), any(LocalDateTime.class))).thenReturn(Optional.empty());
+        when(sessionRepository.findByTokenHash(tokenHash)).thenReturn(Optional.of(revoked));
+
+        assertThrows(BusinessException.class, () -> service.currentUserIdOrNull("Bearer " + rawToken));
+        verify(securityService).recordEvent(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.eq("session_replay_rejected"),
+                org.mockito.ArgumentMatchers.eq("AUTH_SESSION_REPLAYED"),
+                org.mockito.ArgumentMatchers.eq("high"),
+                any(), any(), any(), any()
+        );
+    }
+'''
+          if marker not in text:
+              raise SystemExit('commercial auth test marker missing')
+          test_path.write_text(text.replace(marker, '\n' + addition + marker, 1))
+          PY
+      - name: Run full backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -B clean test
+      - name: Package and start with PostgreSQL/Flyway
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+        shell: bash
+        run: |
+          mvn -q -DskipTests package
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/auth-closure-startup.log 2>&1 &
+          pid=$!
+          trap 'kill $pid >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 50); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null; then
+              echo 'PostgreSQL startup check passed.'
+              exit 0
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              tail -n 160 /tmp/auth-closure-startup.log
+              exit 1
+            fi
+            sleep 2
+          done
+          tail -n 160 /tmp/auth-closure-startup.log
+          exit 1
+      - name: Commit verified backend closure and remove workflow
+        shell: bash
+        run: |
+          rm .github/workflows/issue-130-132-backend-apply.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add backend/genealogy-backend .github/workflows/issue-130-132-backend-apply.yml
+          git commit -m 'security(auth): enforce cooldown and session lifecycle'
+          git push
