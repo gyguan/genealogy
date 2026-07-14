@@ -2,31 +2,43 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/132
 - 工作分支：`agent/issue-130-132-auth-security-closure`
-- 目标：将现有专项测试升级为真实 PostgreSQL 与浏览器 E2E 准出，并修复阻断启动验收的迁移基线。
+- Pull Request：https://github.com/gyguan/genealogy/pull/143
+- 状态：✅ 实现与验证完成，等待合入。
 
-## 方案与影响
+## 已完成
 
-- 引入 Playwright 作为浏览器 E2E 工具，仅用于认证主路径。
-- E2E 使用真实 PostgreSQL、真实后端和真实前端，不以模型测试替代浏览器行为。
-- 历史重复 `V3` 迁移不改名、不删除；通过更高版本前向治理或 Flyway 配置隔离解决启动阻断，方案必须符合数据库规范。
-- 增加 CI Job，覆盖登录、退出、会话恢复、过期/撤销、密码重置与生产构建敏感信息扫描。
+- 引入 Playwright Chromium 浏览器 E2E，不以 Node 模型测试替代真实页面行为。
+- E2E 使用真实 PostgreSQL 16、真实 Spring Boot 后端和真实 Vite 前端。
+- 测试运行时创建随机账号，不依赖演示账号、固定密码或生产数据。
+- 覆盖错误登录、Cookie 会话恢复、设备列表、退出、邀请开通、密码重置、旧会话失效和重置凭据重放拒绝。
+- 新增长期 CI：`.github/workflows/auth-commercial-e2e.yml`。
+- 保留历史重复 Flyway 文件不变，运行包选择基准迁移并通过唯一高版本迁移前向补齐最终状态。
+- 修复 PostgreSQL Startup Check，干净数据库可从 V1 完整迁移并启动。
+- 修复新旧导入 Controller 的 `/imports/relationships*` 路由所有权重叠。
+- 新增收口文档：`docs/16-auth-security-readiness-closure.md`。
 
-## 回滚
+## 验证证据
 
-- 新增测试依赖和 CI 可独立回退，不影响运行时业务。
-- 数据库只允许更高版本前向补偿，不执行 `flyway repair`，不修改已存在历史迁移。
+- 完整 Maven 测试套件通过。
+- PostgreSQL 16 + Flyway 干净库启动通过。
+- Database Migration Governance 通过。
+- 前端认证/成员模型测试通过。
+- TypeScript Typecheck、OpenAPI Contract、生产构建和敏感凭据扫描通过。
+- Playwright 三条认证主链路全部通过。
 
-## 任务
+## 数据库治理
 
-| 序号 | 任务 | 状态 |
-|---|---|---|
-| 1 | 核对现有测试、文档和 CI 缺口 | ✅ 已完成 |
-| 2 | 建设真实 PostgreSQL + 浏览器 E2E | 🔄 进行中 |
-| 3 | 修复启动验收阻断并补齐 CI | ⏳ 未开始 |
-| 4 | 全量验证、Review、合入与 Issue 收口 | ⏳ 未开始 |
+- 不修改、删除或重命名历史迁移。
+- 不使用 `flyway repair`。
+- 唯一前向迁移：`V20260714070000__rebuild_legacy_duplicate_migrations.sql`。
+- 回滚继续采用更高版本前向补偿，不恢复冲突迁移到运行包。
 
-## 当前检查点
+## 发布准出
 
-- 已确认现有前端仅有 Node 模型测试，尚无 Playwright/Cypress 浏览器 E2E。
-- 已确认 PostgreSQL Startup Check 被历史重复 `V3` 迁移阻断。
-- 下一步：建立 E2E 基础设施并确定不修改历史迁移的启动治理方案。
+PR 合入前必须满足：
+
+- Backend CI 中完整测试、商用前端构建和 PostgreSQL 启动通过；
+- API Contract、Database Migration Governance、Issue Delivery Governance 通过；
+- Auth Commercial E2E 通过；
+- 无临时脚本、诊断工作流或诊断文件残留；
+- Review 无未解决线程。
