@@ -27,15 +27,15 @@ const { Sider, Content, Header } = Layout;
 const navItems = [
   ['home', '族谱首页', '统计概览'],
   ['mvp1Wizard', '建谱向导', '创建宗族、支派、字辈、人物、关系、来源和审核'],
-  ['treeProduct', '世系图谱', '按上溯祖先、中心人物、下延后代查看世系'],
   ['personArchive', '人物档案', '按姓名、字辈、性别、支派检索人物并查看档案'],
+  ['treeProduct', '世系图谱', '按上溯祖先、中心人物、下延后代查看世系'],
   ['sourceLibrary', '来源资料库', '族谱原文、地方志、照片和口述记录'],
+  ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂'],
+  ['imports', '数据导入', '族谱数据批量导入、结果和异常处理'],
   ['editingWorkspace', '修谱工作台', '修谱问题任务池、风险检查和审核前处理'],
-  ['imports', '导入管理', '族谱数据导入任务、结果和异常处理'],
   ['reviewCenter', '审核中心', '入谱变更、资料复核和批量审核'],
-  ['memberManage', '成员权限', '宗族成员、角色和权限配置'],
-  ['auditTrace', '追踪中心', '对象变更追踪与管理员操作审计'],
-  ['culture', '宗族文化', '姓氏源流、堂号、家训、迁徙和祠堂']
+  ['memberManage', '成员与权限', '宗族成员、角色和权限配置'],
+  ['auditTrace', '审计追踪', '对象变更追踪与管理员操作审计']
 ] as const;
 
 type ViewKey = typeof navItems[number][0];
@@ -50,7 +50,11 @@ function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
   const url = new URL(window.location.href);
   if (key === 'home') url.searchParams.delete('view');
   else url.searchParams.set('view', key);
-  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](
+    window.history.state,
+    '',
+    `${url.pathname}${url.search}${url.hash}`
+  );
 }
 
 function getMessage(data: unknown, fallback: string) {
