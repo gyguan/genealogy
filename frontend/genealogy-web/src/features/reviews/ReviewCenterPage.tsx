@@ -5,6 +5,7 @@ import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import type { ReviewTaskListItemResponse, ReviewTaskViewDetailResponse } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../shared/ui/Panel';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
@@ -391,10 +392,20 @@ export function ReviewCenterPage({ notify }: Props) {
       <Drawer
         title="审核详情与流转记录" width={680} open={Boolean(detail) || detailLoading} loading={detailLoading}
         onClose={() => { setDetail(null); workspace.setReviewTaskId(''); }}
-        extra={currentDetail && isPending(currentDetail) && activeTab === 'pending' ? (
+        extra={currentDetail ? (
           <Space>
-            <Button danger onClick={() => openDecision(currentDetail, 'reject')}>驳回</Button>
-            <Button type="primary" onClick={() => openDecision(currentDetail, 'approve')}>通过</Button>
+            <TrackingLinkButton
+              clanId={workspace.clanId}
+              targetType={currentDetail.targetType}
+              targetId={currentDetail.targetId}
+              reviewTaskId={currentDetail.id}
+            />
+            {isPending(currentDetail) && activeTab === 'pending' ? (
+              <>
+                <Button danger onClick={() => openDecision(currentDetail, 'reject')}>驳回</Button>
+                <Button type="primary" onClick={() => openDecision(currentDetail, 'approve')}>通过</Button>
+              </>
+            ) : null}
           </Space>
         ) : null}
       >

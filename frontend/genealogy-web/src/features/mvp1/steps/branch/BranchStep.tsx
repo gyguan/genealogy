@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import { Alert, Button, Empty, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
+import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
@@ -261,11 +262,12 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
             {
               key: 'actions',
               title: '操作',
-              width: 210,
+              width: 290,
               render: (_value, row) => {
                 const selected = String(workspace.branchId || '') === String(row.id || '');
                 return (
                   <Space size="small" wrap onClick={event => event.stopPropagation()}>
+                    <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="branch" targetId={row.id} />
                     <Button size="small" type={selected ? 'primary' : 'default'} disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>{selected ? '已选中' : '选中支派'}</Button>
                     {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
                     {statusOf(row) === 'draft' ? (

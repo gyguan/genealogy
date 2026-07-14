@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Drawer, Empty, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import {
   deleteSourceAttachment,
   downloadAttachment,
@@ -595,7 +596,13 @@ export function SourceLibraryPage({ notify }: Props) {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={sourceTitle(selectedSource)}
-        extra={<Space><Button onClick={() => void reloadDetail()}>刷新</Button>{canBind ? <Button type="primary" onClick={openCreateBinding}>新建绑定关系</Button> : null}</Space>}
+        extra={(
+          <Space>
+            <TrackingLinkButton clanId={clanId} targetType="source" targetId={selectedSource?.id} />
+            <Button onClick={() => void reloadDetail()}>刷新</Button>
+            {canBind ? <Button type="primary" onClick={openCreateBinding}>新建绑定关系</Button> : null}
+          </Space>
+        )}
       >
         {!selectedSource ? <Empty description="请选择来源资料" /> : (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -615,7 +622,7 @@ export function SourceLibraryPage({ notify }: Props) {
 
             <Tabs
               items={[
-                { key: 'bindings', label: `引用情况（${bindingTotal || bindings.length}）`, children: <BindingTable rows={bindings} canBind={canBind} onReplace={openReplaceBinding} onDelete={submitDeleteRevision} /> },
+                { key: 'bindings', label: `引用情况（${bindingTotal || bindings.length}）`, children: <BindingTable clanId={clanId} rows={bindings} canBind={canBind} onReplace={openReplaceBinding} onDelete={submitDeleteRevision} /> },
                 {
                   key: 'attachments',
                   label: `附件（${attachmentTotal}）`,
@@ -703,7 +710,7 @@ export function SourceLibraryPage({ notify }: Props) {
   );
 }
 
-function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBindingSummary[]; canBind: boolean; onReplace: (row: SourceBindingSummary) => void; onDelete: (row: SourceBindingSummary) => void }) {
+function BindingTable({ clanId, rows, canBind, onReplace, onDelete }: { clanId: string; rows: SourceBindingSummary[]; canBind: boolean; onReplace: (row: SourceBindingSummary) => void; onDelete: (row: SourceBindingSummary) => void }) {
   return (
     <Table<SourceBindingSummary>
       size="small"
@@ -727,6 +734,19 @@ function BindingTable({ rows, canBind, onReplace, onDelete }: { rows: SourceBind
           )
         },
         { title: '创建时间', width: 170, render: (_value, row) => row.createdAt || '待维护' },
+        {
+          title: '追踪',
+          width: 96,
+          render: (_value, row) => (
+            <TrackingLinkButton
+              size="small"
+              type="link"
+              clanId={clanId}
+              targetType={row.targetType}
+              targetId={row.targetId}
+            />
+          )
+        },
         {
           title: '操作',
           width: 180,

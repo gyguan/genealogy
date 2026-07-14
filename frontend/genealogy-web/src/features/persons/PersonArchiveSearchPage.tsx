@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, DatePicker, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { apiClient } from '../../shared/api/client';
+import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
 
@@ -722,6 +723,11 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         onClose={closeDetail}
         extra={selected ? (
           <Space>
+            <TrackingLinkButton
+              clanId={workspace.clanId}
+              targetType="person"
+              targetId={selected.id || selected.personId}
+            />
             {drawerMode === 'view' ? <Button onClick={startEdit}>编辑档案</Button> : <Button onClick={cancelEdit}>取消编辑</Button>}
             <Button onClick={closeDetail}>关闭</Button>
           </Space>
