@@ -4,7 +4,7 @@
 - 工作分支：`agent/issue-120-business-object-search`
 - PR：[#144](https://github.com/gyguan/genealogy/pull/144)
 - 目标：为追踪中心提供受权限和隐私约束的业务对象搜索，并让操作日志优先返回操作者、对象、支派、摘要和结果状态等业务信息。
-- 最后更新时间：2026-07-14 10:20（Asia/Shanghai）
+- 最后更新时间：2026-07-14 10:24（Asia/Shanghai）
 
 ## DEFINE：范围与成功标准
 
@@ -47,7 +47,7 @@
 | 7 | 补充后端、契约、前端及 PostgreSQL 测试并执行验证 | ✅ 已完成 | 约 7 分钟 | 定向单测、PG16 冒烟、API Check、TypeScript、Build 通过 |
 | 8 | 五轴 Review、同步最新 main、处理反馈并满足合入门禁 | ✅ 已完成 | 约 6 分钟 | behind 0，组合态门禁通过 |
 | 9 | 修复审核目标隐私和来源支派标签越权 Review | ✅ 已完成 | 约 8 分钟 | 目标对象可见性前置；标签仅取可见且命中筛选的绑定；定向仓储测试通过 |
-| 10 | 重跑标准 CI、回复 Review 并执行最终合入 | 🔄 进行中 | 已累计约 2 分钟 | 已形成用户提交，等待标准检查 |
+| 10 | 重跑标准 CI、回复 Review、清理临时工作流并满足合入门禁 | ✅ 已完成 | 约 6 分钟 | 契约、治理、前端通过；两条 Review 已解决；分支 behind 0 |
 
 ## 影响模块
 
@@ -98,25 +98,25 @@ mvn -B -Dtest=TrackingObjectQueryRepositoryTest test
 
 - 本 Issue 仍由前端分别调用对象搜索、日志和审核接口；#121 将建设统一聚合接口并把链路拼装进一步下沉服务端。
 - 当前查询优先复用既有字段和索引，未新增迁移；生产数据量增长后应基于慢查询和执行计划评估复合索引。
-- 标准 Backend CI 的 Java 全量测试和 PostgreSQL Startup Check 仍可能受其他模块测试或重复 Flyway V3 基线影响；本 Issue 的编译、相关单测和 PostgreSQL 16 查询已独立通过。
+- 标准 Backend CI 的 Java 全量测试仍受其他模块测试基线影响；PostgreSQL Startup Check 明确失败于重复 Flyway `V3`。本 Issue 的编译、相关单测、Review 定向测试和 PostgreSQL 16 查询已独立通过。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#120
 - 当前分支：`agent/issue-120-business-object-search`
 - 当前 PR：#144（Ready for review）
-- 最后完成任务：修复 P1 审核目标隐私越权和 P2 来源支派标签越权，并补充定向 SQL 测试
-- 当前进行中：重跑标准 CI、回复 Review、核对主干并合入
-- 当前任务累计耗时：已累计约 2 分钟
-- 最新实现 Commit：`29752f23d8a4f54c80cc4862605d3c719e903569`
-- CI 状态：Review 修复定向测试通过；标准 CI 由本次用户提交重新触发
-- 未解决 Review：2 条，代码已修复，待验证后回复并解决
+- 最后完成任务：全部实现、验证、两条 Review 整改、临时工作流清理和主干同步核对
+- 当前进行中：无；下一动作是使用最新 head SHA squash 合入 `main`
+- 当前任务累计耗时：—
+- 最新 Commit：由本次最终看板提交生成
+- CI 状态：API Contract、Issue Delivery Governance、日志模型测试和前端构建通过；定向后端与 PostgreSQL 16 检查通过
+- 未解决 Review：无
 - 已知阻塞：无 Issue 范围内阻塞
-- 下一步最小任务：确认标准检查通过，回复并解决两条 Review，squash 合入
-- 最后更新时间：2026-07-14 10:20（Asia/Shanghai）
+- 下一步最小任务：squash 合入并回写 Issue #120
+- 最后更新时间：2026-07-14 10:24（Asia/Shanghai）
 
 ## 耗时汇总
 
-- 已完成任务活跃耗时：约 1 小时
-- 当前进行中累计耗时：已累计约 2 分钟
+- 已完成任务活跃耗时：约 1 小时 12 分钟
+- 当前进行中累计耗时：—
 - 外部等待：GitHub Actions 排队、容器拉取和自动运行时间不计入活跃耗时
