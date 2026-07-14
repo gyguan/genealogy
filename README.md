@@ -31,6 +31,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
 - [Issue 创建、分组与执行顺序规范](docs/ai/issue-creation-standard.md)
 - [聊天式 GitHub 开发与任务看板指南](docs/ai/chat-driven-github-workflow.md)
+- [Issue 交付耗时经验](docs/ai/issue-delivery-cost-experience.md)
 - [Issue 实现、状态持久化与中断恢复规范](docs/ai/issue-execution-governance.md)
 - [执行任务看板耗时记录规范](docs/ai/task-duration-standard.md)
 - [时间展示规范（北京时间）](docs/ai/time-display-standard.md)
@@ -48,6 +49,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
 - 需求执行路径：分析需求 → 拆分 Issue → 实现 Issue → 继续 Issue / PR → 修复 CI / 处理 Review → 收尾 PR
 - ChatGPT 页面直连 GitHub 远程协作模式：默认不依赖本地开发环境、本地数据库或本地服务
+- Issue 交付耗时经验：`docs/ai/issue-delivery-cost-experience.md`
 - Issue 创建、分组、统一前缀与执行顺序：`docs/ai/issue-creation-standard.md`
 - 聊天式开发、短指令和任务看板：`docs/ai/chat-driven-github-workflow.md`
 - Issue 启动门禁、Draft PR 持久化与中断恢复：`docs/ai/issue-execution-governance.md`
