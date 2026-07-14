@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+echo "Generating and validating effective OpenAPI contract..."
 node scripts/api/generate-frontend-client.mjs
 node scripts/api/check-tracking-contract.mjs
 node scripts/api/check-culture-contract.mjs
