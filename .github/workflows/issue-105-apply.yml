@@ -17,18 +17,15 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-      - name: Diagnose staged patch
+      - name: Combine staged patch
         shell: bash
         run: |
-          set +e
-          cat tasks/.issue-105-code.patch.* > /tmp/issue-105.patch
-          sha256sum /tmp/issue-105.patch | tee /tmp/issue-105-diagnostic.txt
-          wc -c /tmp/issue-105.patch | tee -a /tmp/issue-105-diagnostic.txt
-          git apply --check /tmp/issue-105.patch >> /tmp/issue-105-diagnostic.txt 2>&1
-          echo "apply_status=$?" >> /tmp/issue-105-diagnostic.txt
-          cat /tmp/issue-105-diagnostic.txt
-      - name: Upload diagnostic
+          set -euo pipefail
+          cat tasks/.issue-105-code.patch.* > /tmp/issue-105-branch.patch
+          sha256sum /tmp/issue-105-branch.patch
+          wc -c /tmp/issue-105-branch.patch
+      - name: Upload combined patch
         uses: actions/upload-artifact@v4
         with:
-          name: issue-105-patch-diagnostic
-          path: /tmp/issue-105-diagnostic.txt
+          name: issue-105-branch-patch
+          path: /tmp/issue-105-branch.patch
