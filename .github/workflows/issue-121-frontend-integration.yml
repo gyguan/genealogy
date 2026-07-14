@@ -1,48 +1,45 @@
-name: Issue 121 Frontend Validation
+name: Issue 121 Frontend Commit
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - agent/issue-121-trace-aggregation
     paths:
-      - scripts/issue-121-frontend-patch.py
-      - scripts/issue-121-frontend-fix.py
       - .github/workflows/issue-121-frontend-integration.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  validate:
+  commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/issue-121-trace-aggregation
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package-lock.json
-      - name: Apply frontend patches
+      - name: Apply validated frontend patches
         run: |
           python scripts/issue-121-frontend-patch.py
           python scripts/issue-121-frontend-fix.py
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm ci
-      - name: Check generated contract
+      - name: Validate frontend
         working-directory: frontend/genealogy-web
-        run: npm run api:check
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
-      - name: Upload validated page
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-121-validated-log-page
-          path: frontend/genealogy-web/src/features/logs/LogPage.tsx
-          if-no-files-found: error
+        run: |
+          npm run api:check
+          npm run typecheck
+          npm run build
+      - name: Commit trace page
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/logs/LogPage.tsx
+          git commit -m "feat: consume unified issue 121 trace response"
+          git push origin HEAD:agent/issue-121-trace-aggregation
