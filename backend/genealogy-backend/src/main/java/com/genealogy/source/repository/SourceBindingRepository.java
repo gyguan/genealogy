@@ -1,9 +1,12 @@
 package com.genealogy.source.repository;
 
+import com.genealogy.common.persistence.TargetCountProjection;
 import com.genealogy.source.entity.SourceBindingEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +36,27 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
     List<SourceBindingEntity> findTop5BySourceIdOrderByCreatedAtDesc(Long sourceId);
 
     List<SourceBindingEntity> findTop5BySourceIdAndBindingStatusNotOrderByCreatedAtDesc(Long sourceId, String bindingStatus);
+
+    List<SourceBindingEntity> findTop10ByClanIdAndTargetTypeAndTargetIdAndBindingStatusNotOrderByCreatedAtDesc(
+            Long clanId,
+            String targetType,
+            Long targetId,
+            String bindingStatus);
+
+    @Query("""
+            select binding.targetId as targetId, count(binding.id) as count
+            from SourceBindingEntity binding
+            where binding.clanId = :clanId
+              and binding.targetType = :targetType
+              and binding.targetId in :targetIds
+              and binding.bindingStatus <> :excludedStatus
+            group by binding.targetId
+            """)
+    List<TargetCountProjection> countActiveByTargets(
+            @Param("clanId") Long clanId,
+            @Param("targetType") String targetType,
+            @Param("targetIds") Collection<Long> targetIds,
+            @Param("excludedStatus") String excludedStatus);
 
     boolean existsBySourceIdAndTargetTypeAndTargetId(Long sourceId, String targetType, Long targetId);
 
