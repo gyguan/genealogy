@@ -5,7 +5,7 @@
 - PR：[#201](https://github.com/gyguan/genealogy/pull/201)
 - 目标：在五类核心业务页面增加统一“查看追踪”入口，并通过可复制 URL 恢复宗族、对象、页签和详情状态。
 - 基线：`main` commit `492a6a32f578787d0fe90482029d9861b23f3de6`，已包含 #122 双页签追踪中心。
-- 最后更新时间：2026-07-14 21:20（Asia/Shanghai）
+- 最后更新时间：2026-07-14 21:35（Asia/Shanghai）
 
 ## DEFINE：范围与成功标准
 
@@ -42,7 +42,7 @@
 | 4 | 增加人物、关系、来源/引用、支派、审核详情入口 | ✅ 已完成 | 约 24 分钟 | 共享按钮接入五类页面，审核入口使用业务对象 |
 | 5 | 完善无权限状态与浏览器导航恢复 | ✅ 已完成 | 约 16 分钟 | 403/404 清空来源摘要，pushState + popstate 支持前进/后退 |
 | 6 | 补充模型测试并执行 typecheck、build、api:check | ✅ 已完成 | 约 17 分钟 | 深链接/兼容测试、类型、构建、契约均通过 |
-| 7 | 五轴 Review、处理反馈并合入 main | ✅ 已完成 | 约 12 分钟 | Ready 后无 Review 线程；分支 behind 0，进入 squash merge |
+| 7 | 五轴 Review、处理反馈并合入 main | ✅ 已完成 | 约 17 分钟 | 1 条 P2 已修复并解决；最新 main 组合态通过，进入 squash merge |
 
 ## 核心实现
 
@@ -59,6 +59,7 @@
 - 优先读取 `tab/clanId/targetType/targetId/reviewTaskId`。
 - 继续兼容 `trackingTab/traceType/traceId`。
 - 跨宗族深链接先恢复工作区宗族，再同步 URL 和加载对象，避免旧宗族覆盖链接参数。
+- 待恢复宗族与当前工作区不一致时，不发起对象、审计或追踪请求；工作区切换完成后才加载。
 - 403/404 时清空来源页传入的对象摘要，仅展示统一“无权或对象不可用”状态。
 
 ### 页面入口
@@ -79,7 +80,8 @@
 - ✅ Frontend CI
 - ✅ API Contract
 - ✅ 新旧参数兼容、复制链接、正整数 ID、pushState/popstate 单元测试
-- ✅ 跨宗族首次恢复保护
+- ✅ 跨宗族首次恢复和延迟加载保护
+- ✅ 与最新 Tree 契约主干提交组合验证通过
 - ✅ 临时补丁脚本和 workflow 已自动删除
 - ✅ `package-lock.json` 未进入最终差异
 
@@ -87,11 +89,11 @@ Auth Commercial E2E 与 Issue Delivery Governance 当前仅支持手动触发，
 
 ## 五轴 Review
 
-- **Correctness**：修复跨宗族首次加载时 URL 被旧工作区覆盖的问题；审核入口追踪业务对象。
+- **Correctness**：修复跨宗族首次加载时 URL 被旧工作区覆盖及旧宗族提前请求的问题；审核入口追踪业务对象。
 - **Readability**：入口行为集中在共享工具与共享按钮，页面只传业务上下文。
 - **Architecture**：不增加全局状态库，不重复实现追踪详情，不增加 N+1 权限预检。
 - **Security**：仅允许白名单对象类型和正整数 ID；403/404 不展示来源页摘要，最终权限由后端追踪接口执行。
-- **Performance**：页面入口不发请求，点击后仅调用一次统一聚合接口。
+- **Performance**：页面入口不发请求，点击后仅调用一次统一聚合接口；宗族恢复期间不发送无效旧宗族请求。
 
 ## 已知风险与处理
 
@@ -104,14 +106,14 @@ Auth Commercial E2E 与 Issue Delivery Governance 当前仅支持手动触发，
 - 当前 Issue：#123，PR 合入后由 `Closes #123` 自动关闭。
 - 当前分支：`agent/issue-123-tracking-deep-links`。
 - 当前 PR：#201，Ready。
-- 最后完成任务：标准门禁、五轴 Review、自动 Review 和主干同步核对。
+- 最后完成任务：自动 Review P2 修复、最新主干组合验证和线程关闭。
 - CI 状态：Frontend CI、API Contract、定向测试、类型、构建和契约全部通过。
-- 未解决 Review：无评论、无 Review 提交、无未解决线程。
+- Review 状态：1 条 P2 已回复并解决，无未解决线程。
 - 主干同步：`behind 0`，PR 可合并。
 - 下一步最小任务：使用当前 head SHA 执行 squash merge。
-- 最后更新时间：2026-07-14 21:20（Asia/Shanghai）。
+- 最后更新时间：2026-07-14 21:35（Asia/Shanghai）。
 
 ### 耗时汇总
 
-- Issue #123 活跃耗时：约 1 小时 45 分钟。
+- Issue #123 活跃耗时：约 1 小时 50 分钟。
 - 外部等待：GitHub Actions 排队与运行时间不计入活跃耗时。
