@@ -20,6 +20,7 @@ public record ReviewTaskListItemResponse(
         String reviewComment,
         LocalDateTime submitTime,
         LocalDateTime processedAt,
+        Long processingDurationSeconds,
         ReviewTargetSummaryResponse targetSummary
 ) {
 }
