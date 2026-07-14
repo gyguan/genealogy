@@ -2,7 +2,8 @@ export const TRACKABLE_TARGET_TYPES = Object.freeze([
   'person',
   'relationship',
   'source',
-  'branch'
+  'branch',
+  'culture_item'
 ]);
 
 const TARGET_TYPE_ALIASES = Object.freeze({
@@ -13,7 +14,9 @@ const TARGET_TYPE_ALIASES = Object.freeze({
   source: 'source',
   sources: 'source',
   branch: 'branch',
-  branches: 'branch'
+  branches: 'branch',
+  culture_item: 'culture_item',
+  culture_items: 'culture_item'
 });
 
 const TRACKING_QUERY_KEYS = Object.freeze([
