@@ -1,0 +1,22 @@
+name: Issue 120 Review Fix
+
+on:
+  push:
+    branches:
+      - "agent/issue-120-business-object-search"
+    paths:
+      - ".github/workflows/issue-120-review-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-120-business-object-search
+          fetch-depth: 0
+      - name: Patch review visibility SQL
+        run: echo "prepared"
