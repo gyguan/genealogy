@@ -134,16 +134,27 @@ for (const [route, expectation] of Object.entries(operationExpectations)) {
   }
 }
 
+const trackingObjectTypes = [
+  'person',
+  'relationship',
+  'source',
+  'branch',
+  'review_task',
+  'culture_item',
+  'migration_event',
+  'culture_site'
+];
 const trackingSearchOperation = openapi.paths?.['/api/v1/tracking/objects']?.get;
 const objectTypeParameter = (trackingSearchOperation?.parameters || [])
   .map(resolveParameter)
   .find(parameter => parameter.name === 'objectType');
 if (!objectTypeParameter?.required) fail('/api/v1/tracking/objects objectType must be required for database-level paging');
-assertSameSet(
-  objectTypeParameter?.schema?.enum || [],
-  ['person', 'relationship', 'source', 'branch', 'review_task'],
-  'tracking object types'
-);
+assertSameSet(objectTypeParameter?.schema?.enum || [], trackingObjectTypes, 'tracking object types');
+assertSameSet(schemas.TrackingObjectResponse?.properties?.objectType?.enum || [], trackingObjectTypes, 'tracking response object types');
+const traceTargetType = (openapi.paths?.['/api/v1/tracking/objects/{targetType}/{targetId}/trace']?.get?.parameters || [])
+  .map(resolveParameter)
+  .find(parameter => parameter.name === 'targetType');
+assertSameSet(traceTargetType?.schema?.enum || [], trackingObjectTypes, 'tracking trace target types');
 if (objectTypeParameter?.schema?.enum?.includes('all')) {
   fail('tracking object search must not expose fake cross-domain all-type paging');
 }
@@ -181,4 +192,4 @@ if (!schemas.FieldDiff?.properties?.fieldName || schemas.FieldDiff?.properties?.
   fail('FieldDiff must use fieldName');
 }
 
-console.log('Tracking contract matches backend DTOs, database-paged object search, operation parameters, optional business fields, and privacy semantics.');
+console.log('Tracking contract matches backend DTOs, database-paged object search, culture target reservations, operation parameters, optional business fields, and privacy semantics.');
