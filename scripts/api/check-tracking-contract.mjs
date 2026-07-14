@@ -10,6 +10,7 @@ const dtoMappings = {
   OperationLogResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/operationlog/dto/OperationLogResponse.java', 'OperationLogResponse'],
   OperationLogStatsResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/operationlog/dto/OperationLogStatsResponse.java', 'OperationLogStatsResponse'],
   OperationLogStatsItem: ['backend/genealogy-backend/src/main/java/com/genealogy/operationlog/dto/OperationLogStatsResponse.java', 'Item'],
+  TrackingObjectResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/tracking/dto/TrackingObjectResponse.java', 'TrackingObjectResponse'],
   CheckTaskResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/review/dto/CheckTaskResponse.java', 'CheckTaskResponse'],
   AuditRecordResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/review/dto/AuditRecordResponse.java', 'AuditRecordResponse'],
   ReviewTaskDetailResponse: ['backend/genealogy-backend/src/main/java/com/genealogy/review/dto/ReviewTaskDetailResponse.java', 'ReviewTaskDetailResponse'],
@@ -59,16 +60,25 @@ for (const [schemaName, [javaPath, recordName]] of Object.entries(dtoMappings)) 
   assertSameSet(schema.required || [], expectedRequired, `${schemaName} required fields`);
 }
 
-assertSameSet(
-  Object.keys(schemas.OperationLogPage?.properties || {}),
-  ['records', 'total', 'pageNo', 'pageSize', 'totalPages'],
-  'OperationLogPage properties'
-);
-assertSameSet(
-  schemas.OperationLogPage?.required || [],
-  ['records', 'total', 'pageNo', 'pageSize', 'totalPages'],
-  'OperationLogPage required fields'
-);
+function assertPageSchema(schemaName, recordSchemaName) {
+  assertSameSet(
+    Object.keys(schemas[schemaName]?.properties || {}),
+    ['records', 'total', 'pageNo', 'pageSize', 'totalPages'],
+    `${schemaName} properties`
+  );
+  assertSameSet(
+    schemas[schemaName]?.required || [],
+    ['records', 'total', 'pageNo', 'pageSize', 'totalPages'],
+    `${schemaName} required fields`
+  );
+  const recordReference = schemas[schemaName]?.properties?.records?.items?.['$ref'];
+  if (recordReference !== `#/components/schemas/${recordSchemaName}`) {
+    fail(`${schemaName}.records must reference ${recordSchemaName}`);
+  }
+}
+
+assertPageSchema('OperationLogPage', 'OperationLogResponse');
+assertPageSchema('TrackingObjectPage', 'TrackingObjectResponse');
 
 const operationExpectations = {
   '/api/v1/logs/operations': {
@@ -82,6 +92,10 @@ const operationExpectations = {
   '/api/v1/logs/operations/export.csv': {
     query: ['clanId', 'actorId', 'actionType', 'targetType', 'targetId', 'startTime', 'endTime', 'keyword'],
     response: null
+  },
+  '/api/v1/tracking/objects': {
+    query: ['clanId', 'objectType', 'keyword', 'branchId', 'status', 'changedFrom', 'changedTo', 'pageNo', 'pageSize'],
+    response: 'ApiResponseTrackingObjectPage'
   }
 };
 
@@ -120,11 +134,38 @@ for (const [route, expectation] of Object.entries(operationExpectations)) {
   }
 }
 
+const trackingSearchOperation = openapi.paths?.['/api/v1/tracking/objects']?.get;
+const objectTypeParameter = (trackingSearchOperation?.parameters || [])
+  .map(resolveParameter)
+  .find(parameter => parameter.name === 'objectType');
+if (!objectTypeParameter?.required) fail('/api/v1/tracking/objects objectType must be required for database-level paging');
+assertSameSet(
+  objectTypeParameter?.schema?.enum || [],
+  ['person', 'relationship', 'source', 'branch', 'review_task'],
+  'tracking object types'
+);
+if (objectTypeParameter?.schema?.enum?.includes('all')) {
+  fail('tracking object search must not expose fake cross-domain all-type paging');
+}
+
 const operationLogRequired = new Set(schemas.OperationLogResponse?.required || []);
 for (const field of ['detail', 'requestId', 'clientIp']) {
   const property = schemas.OperationLogResponse?.properties?.[field];
   if (!property?.nullable) fail(`OperationLogResponse.${field} must remain nullable for minimum disclosure`);
   if (operationLogRequired.has(field)) fail(`OperationLogResponse.${field} must remain optional because null values are omitted`);
+}
+for (const field of ['actorDisplayName', 'targetDisplayName', 'targetBranchName', 'targetSummary', 'resultStatus']) {
+  const property = schemas.OperationLogResponse?.properties?.[field];
+  if (!property?.nullable) fail(`OperationLogResponse.${field} must be nullable when the object is missing or not visible`);
+  if (operationLogRequired.has(field)) fail(`OperationLogResponse.${field} must remain optional`);
+}
+
+const trackingRequired = new Set(schemas.TrackingObjectResponse?.required || []);
+assertSameSet(trackingRequired, ['objectType', 'objectId', 'displayName'], 'TrackingObjectResponse required fields');
+for (const forbidden of ['phone', 'email', 'residencePlace', 'birthPlace', 'biography', 'excerpt', 'description']) {
+  if (schemas.TrackingObjectResponse?.properties?.[forbidden]) {
+    fail(`TrackingObjectResponse must not expose sensitive field ${forbidden}`);
+  }
 }
 
 if (!schemas.ReviewTaskDetailResponse?.properties?.auditRecord) {
@@ -140,4 +181,4 @@ if (!schemas.FieldDiff?.properties?.fieldName || schemas.FieldDiff?.properties?.
   fail('FieldDiff must use fieldName');
 }
 
-console.log('Tracking contract matches backend DTO records, operation parameters, errors, optional nullable fields, and privacy semantics.');
+console.log('Tracking contract matches backend DTOs, database-paged object search, operation parameters, optional business fields, and privacy semantics.');
