@@ -1,0 +1,148 @@
+tJobRowApplicationService.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportJobRowApplicationService.java
+new file mode 100644
+index 0000000..4cf10ac
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportJobRowApplicationService.java
+@@ -0,0 +1,246 @@
++package com.genealogy.imports.application;
++
++import com.genealogy.auth.application.AuthorizationApplicationService;
++import com.genealogy.common.exception.BusinessException;
++import com.genealogy.generation.entity.GenerationImportDraftEntity;
++import com.genealogy.generation.repository.GenerationImportDraftRepository;
++import com.genealogy.imports.dto.GenerationImportRowRetryRequest;
++import com.genealogy.imports.dto.ImportJobRowResponse;
++import com.genealogy.imports.entity.ImportJobEntity;
++import com.genealogy.imports.entity.ImportJobErrorEntity;
++import com.genealogy.imports.entity.ImportJobRowEntity;
++import com.genealogy.imports.repository.ImportJobErrorRepository;
++import com.genealogy.imports.repository.ImportJobRepository;
++import com.genealogy.imports.repository.ImportJobRowRepository;
++import com.genealogy.operationlog.application.OperationLogApplicationService;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++import java.time.LocalDateTime;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Objects;
++import java.util.Set;
++
++@Service
++public class GenerationImportJobRowApplicationService {
++
++    private static final Set<String> FAILED_STATUSES = Set.of(
++            ImportJobRowEntity.STATUS_INVALID, ImportJobRowEntity.STATUS_RETRY_FAILED
++    );
++
++    private final ImportJobRepository importJobRepository;
++    private final ImportJobRowRepository importJobRowRepository;
++    private final ImportJobErrorRepository importJobErrorRepository;
++    private final GenerationImportDraftRepository draftRepository;
++    private final GenerationImportApplicationService generationImportApplicationService;
++    private final AuthorizationApplicationService authorizationApplicationService;
++    private final OperationLogApplicationService operationLogApplicationService;
++
++    public GenerationImportJobRowApplicationService(
++            ImportJobRepository importJobRepository,
++            ImportJobRowRepository importJobRowRepository,
++            ImportJobErrorRepository importJobErrorRepository,
++            GenerationImportDraftRepository draftRepository,
++            GenerationImportApplicationService generationImportApplicationService,
++            AuthorizationApplicationService authorizationApplicationService,
++            OperationLogApplicationService operationLogApplicationService
++    ) {
++        this.importJobRepository = importJobRepository;
++        this.importJobRowRepository = importJobRowRepository;
++        this.importJobErrorRepository = importJobErrorRepository;
++        this.draftRepository = draftRepository;
++        this.generationImportApplicationService = generationImportApplicationService;
++        this.authorizationApplicationService = authorizationApplicationService;
++        this.operationLogApplicationService = operationLogApplicationService;
++    }
++
++    @Transactional
++    public ImportJobRowResponse retry(
++            Long clanId,
++            Long jobId,
++            Long rowId,
++            GenerationImportRowRetryRequest request,
++            Long actorId
++    ) {
++        ImportJobEntity job = requireJob(clanId, jobId, actorId);
++        ensureEditable(job);
++        ImportJobRowEntity row = importJobRowRepository.findByIdAndJobId(rowId, jobId)
++                .orElseThrow(() -> new BusinessException("IMPORT_JOB_ROW_NOT_FOUND", "导入失败行不存在"));
++        ensureRetryable(row, request.expectedVersion());
++
++        LocalDateTime now = LocalDateTime.now();
++        row.setCorrectedData(correctionData(request));
++        row.setCorrectedBy(actorId);
++        row.setCorrectedAt(now);
++        row.setRetryCount(value(row.getRetryCount()) + 1);
++        row.setUpdatedAt(now);
++
++        try {
++            GenerationImportApplicationService.ValidationContext context = contextForJob(jobId);
++            List<String> cells = List.of(
++                    request.schemeName(),
++                    String.valueOf(request.startGeneration()),
++                    String.valueOf(request.generationNo()),
++                    request.word(),
++                    value(request.poemText()),
++                    booleanText(request.isDefault(), false),
++                    booleanText(request.validationEnabled(), true),
++                    booleanText(request.strictMode(), false),
++                    value(request.description())
++            );
++            GenerationImportApplicationService.ResolvedGeneration resolved =
++                    generationImportApplicationService.resolveDraft(clanId, job.getBranchId(), cells, context);
++            GenerationImportDraftEntity draft = generationImportApplicationService.createGenerationDraft(job, resolved, actorId);
++            row.setNormalizedData(normalizedData(resolved));
++            row.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
++            row.setErrorCode(null);
++            row.setErrorMessage(null);
++            row.setDraftTargetType(GenerationImportDraftEntity.TARGET_TYPE);
++            row.setDraftTargetId(draft.getId());
++            ImportJobRowEntity saved = importJobRowRepository.saveAndFlush(row);
++            importJobErrorRepository.deleteByJobIdAndRowNo(jobId, row.getRowNo());
++            recalculateJob(job);
++            operationLogApplicationService.record(
++                    clanId, actorId, "generation_import_row_retry_success", "import_job", jobId,
++                    "字辈导入失败行修正成功", "rowNo=" + row.getRowNo() + ", retryCount=" + row.getRetryCount()
++            );
++            return toResponse(saved);
++        } catch (BusinessException exception) {
++            row.setRowStatus(ImportJobRowEntity.STATUS_RETRY_FAILED);
++            row.setErrorCode(exception.getCode());
++            row.setErrorMessage(exception.getMessage());
++            ImportJobRowEntity saved = importJobRowRepository.saveAndFlush(row);
++            synchronizeError(jobId, row, now);
++            recalculateJob(job);
++            operationLogApplicationService.record(
++                    clanId, actorId, "generation_import_row_retry_failed", "import_job", jobId,
++                    "字辈导入失败行修正后仍未通过", "rowNo=" + row.getRowNo() + ", errorCode=" + exception.getCode()
++            );
++            return toResponse(saved);
++        }
++    }
++
++    private GenerationImportApplicationService.ValidationContext contextForJob(Long jobId) {
++        GenerationImportApplicationService.ValidationContext context = new GenerationImportApplicationService.ValidationContext();
++        for (GenerationImportDraftEntity draft : draftRepository.findByJobIdOrderByIdAsc(jobId)) {
++            GenerationImportApplicationService.SchemeConfig config = new GenerationImportApplicationService.SchemeConfig(
++                    draft.getSchemeName(), draft.getPoemText(), draft.getStartGeneration(), draft.getIsDefault(),
++                    draft.getValidationEnabled(), draft.getStrictMode()
++            );
++            String scope = draft.getClanId() + ":" + (draft.getBranchId() == null ? "clan" : draft.getBranchId())
++                    + ":" + draft.getSchemeName().trim().toLowerCase();
++            context.schemeConfigs().put(scope, config);
++            context.generationKeys().add(scope + ":" + draft.getGenerationNo());
++        }
++        return context;
++    }
++
++    private ImportJobEntity requireJob(Long clanId, Long jobId, Long actorId) {
++        authorizationApplicationService.requireClanMember(clanId, actorId);
++        ImportJobEntity job = importJobRe

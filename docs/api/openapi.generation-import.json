@@ -1,0 +1,100 @@
+{
+  "paths": {
+    "/api/v1/imports/templates/generations.csv": {
+      "get": {
+        "operationId": "downloadGenerationImportCsvTemplate",
+        "tags": ["Import"],
+        "responses": {"200": {"description": "Strict generation import CSV template", "content": {"text/csv": {"schema": {"type": "string", "format": "binary"}}}}}
+      }
+    },
+    "/api/v1/imports/templates/generations.xlsx": {
+      "get": {
+        "operationId": "downloadGenerationImportXlsxTemplate",
+        "tags": ["Import"],
+        "responses": {"200": {"description": "Strict generation import XLSX template", "content": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {"schema": {"type": "string", "format": "binary"}}}}}
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/generations/preview": {
+      "post": {
+        "operationId": "previewGenerationImport",
+        "tags": ["Import"],
+        "parameters": [
+          {"name": "clanId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "branchId", "in": "query", "required": false, "description": "Target branch; omitted means clan-wide generation scheme.", "schema": {"type": "integer", "format": "int64"}}
+        ],
+        "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"$ref": "#/components/schemas/MultipartFileRequest"}}}},
+        "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponseGenerationImportPreviewResponse"}}}}}
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/generations": {
+      "post": {
+        "operationId": "importGenerationsAsJob",
+        "tags": ["Import"],
+        "parameters": [
+          {"name": "clanId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "branchId", "in": "query", "required": false, "description": "Target branch; omitted means clan-wide generation scheme.", "schema": {"type": "integer", "format": "int64"}}
+        ],
+        "requestBody": {"required": true, "content": {"multipart/form-data": {"schema": {"$ref": "#/components/schemas/MultipartFileRequest"}}}},
+        "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponseImportJobResponse"}}}}}
+      }
+    },
+    "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry": {
+      "post": {
+        "operationId": "retryGenerationImportRow",
+        "tags": ["Import"],
+        "parameters": [
+          {"name": "clanId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "jobId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}},
+          {"name": "rowId", "in": "path", "required": true, "schema": {"type": "integer", "format": "int64"}}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/GenerationImportRowRetryRequest"}}}},
+        "responses": {"200": {"description": "Retry result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiResponseImportJobRowResponse"}}}}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GenerationImportPreviewRowResponse": {
+        "type": "object",
+        "properties": {
+          "rowNo": {"type": "integer"}, "schemeName": {"type": "string"},
+          "startGeneration": {"type": "integer"}, "generationNo": {"type": "integer"},
+          "word": {"type": "string"}, "poemText": {"type": "string"},
+          "isDefault": {"type": "boolean"}, "validationEnabled": {"type": "boolean"},
+          "strictMode": {"type": "boolean"}, "description": {"type": "string"},
+          "actionType": {"type": "string", "enum": ["create_scheme", "append_word"]},
+          "duplicated": {"type": "boolean"}, "errorMessage": {"type": "string"}, "rawData": {"type": "string"}
+        }
+      },
+      "GenerationImportPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "totalCount": {"type": "integer"}, "validCount": {"type": "integer"},
+          "duplicateCount": {"type": "integer"}, "errorCount": {"type": "integer"},
+          "rows": {"type": "array", "items": {"$ref": "#/components/schemas/GenerationImportPreviewRowResponse"}}
+        }
+      },
+      "GenerationImportRowRetryRequest": {
+        "type": "object",
+        "required": ["schemeName", "startGeneration", "generationNo", "word", "expectedVersion"],
+        "properties": {
+          "schemeName": {"type": "string", "maxLength": 200},
+          "startGeneration": {"type": "integer", "minimum": 1},
+          "generationNo": {"type": "integer", "minimum": 1},
+          "word": {"type": "string", "maxLength": 20},
+          "poemText": {"type": "string"}, "isDefault": {"type": "boolean"},
+          "validationEnabled": {"type": "boolean"}, "strictMode": {"type": "boolean"},
+          "description": {"type": "string", "maxLength": 255},
+          "expectedVersion": {"type": "integer", "format": "int64"}
+        }
+      },
+      "ApiResponseGenerationImportPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "success": {"type": "boolean"}, "code": {"type": "string"}, "message": {"type": "string"},
+          "data": {"$ref": "#/components/schemas/GenerationImportPreviewResponse"}, "traceId": {"type": "string"}
+        }
+      }
+    }
+  }
+}

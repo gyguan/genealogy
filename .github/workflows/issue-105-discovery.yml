@@ -1,0 +1,47 @@
+name: Issue 105 Generation Context
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-105-discovery.yml'
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect targeted context
+        shell: bash
+        run: |
+          mkdir -p issue-105-context
+          copy_path() {
+            src="$1"
+            if [[ -e "$src" ]]; then
+              mkdir -p "issue-105-context/$(dirname "$src")"
+              cp -R "$src" "issue-105-context/$src"
+            fi
+          }
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/generation
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/imports
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/review/application/ApprovalApplicationService.java
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/auth/application/AuthorizationApplicationService.java
+          copy_path backend/genealogy-backend/src/main/java/com/genealogy/operationlog/application/OperationLogApplicationService.java
+          copy_path backend/genealogy-backend/src/test/java/com/genealogy/generation
+          copy_path backend/genealogy-backend/src/test/java/com/genealogy/imports
+          copy_path backend/genealogy-backend/src/test/java/com/genealogy/review/application
+          copy_path backend/genealogy-backend/src/main/resources/db/migration/V1__init_schema.sql
+          copy_path backend/genealogy-backend/src/main/resources/db/migration/V20260714010000__add_import_row_generic_draft_target.sql
+          copy_path frontend/genealogy-web/src/features/imports
+          copy_path frontend/genealogy-web/src/features/generations/GenerationPage.tsx
+          copy_path frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          copy_path docs/api/openapi.json
+          copy_path docs/api/openapi.imports.json
+          copy_path docs/api/openapi.relationship-import.json
+          copy_path docs/api/openapi.zz-import-descriptor.json
+          copy_path scripts/api/generate-frontend-client.mjs
+          tar -czf issue-105-context.tar.gz -C issue-105-context .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-105-context
+          path: issue-105-context.tar.gz

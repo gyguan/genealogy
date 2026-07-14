@@ -1,0 +1,147 @@
+pository.findByIdAndClanId(jobId, clanId)
++                .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入任务不存在"));
++        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, job.getBranchId());
++        if (!ImportJobEntity.TYPE_GENERATION.equals(job.getImportType())) {
++            throw new BusinessException("IMPORT_JOB_TYPE_MISMATCH", "当前批次不是字辈导入批次");
++        }
++        return job;
++    }
++
++    private void ensureEditable(ImportJobEntity job) {
++        if (!ImportJobEntity.REVIEW_NOT_SUBMITTED.equals(job.getReviewStatus())
++                && !ImportJobEntity.REVIEW_REJECTED.equals(job.getReviewStatus())) {
++            throw new BusinessException("IMPORT_JOB_REVIEW_LOCKED", "导入批次已进入审核流程，不能继续修正");
++        }
++        if (!ImportJobEntity.PROCESSING_CORRECTION_REQUIRED.equals(job.getProcessingStatus())) {
++            throw new BusinessException("IMPORT_JOB_NOT_CORRECTABLE", "导入批次当前不需要修正");
++        }
++    }
++
++    private void ensureRetryable(ImportJobRowEntity row, Long expectedVersion) {
++        if (!FAILED_STATUSES.contains(row.getRowStatus()) || row.getDraftTargetId() != null || row.getDraftPersonId() != null) {
++            throw new BusinessException("IMPORT_JOB_ROW_NOT_RETRYABLE", "该行已经处理成功或不能再次重试");
++        }
++        if (!Objects.equals(row.getVersion(), expectedVersion)) {
++            throw new BusinessException("IMPORT_JOB_ROW_VERSION_CONFLICT", "该行已被其他用户修改，请刷新后重试");
++        }
++    }
++
++    private Map<String, Object> correctionData(GenerationImportRowRetryRequest request) {
++        Map<String, Object> data = new LinkedHashMap<>();
++        data.put("schemeName", request.schemeName().trim());
++        data.put("startGeneration", request.startGeneration());
++        data.put("generationNo", request.generationNo());
++        data.put("word", request.word().trim());
++        data.put("poemText", value(request.poemText()));
++        data.put("isDefault", Boolean.TRUE.equals(request.isDefault()));
++        data.put("validationEnabled", request.validationEnabled() == null || request.validationEnabled());
++        data.put("strictMode", Boolean.TRUE.equals(request.strictMode()));
++        data.put("description", value(request.description()));
++        return data;
++    }
++
++    private Map<String, Object> normalizedData(GenerationImportApplicationService.ResolvedGeneration resolved) {
++        Map<String, Object> data = new LinkedHashMap<>();
++        data.put("schemeName", resolved.config().schemeName());
++        data.put("startGeneration", resolved.config().startGeneration());
++        data.put("generationNo", resolved.generationNo());
++        data.put("word", resolved.word());
++        data.put("poemText", resolved.config().poemText());
++        data.put("isDefault", resolved.config().isDefault());
++        data.put("validationEnabled", resolved.config().validationEnabled());
++        data.put("strictMode", resolved.config().strictMode());
++        data.put("description", resolved.description());
++        data.put("actionType", resolved.actionType());
++        return data;
++    }
++
++    private void synchronizeError(Long jobId, ImportJobRowEntity row, LocalDateTime now) {
++        ImportJobErrorEntity error = importJobErrorRepository.findFirstByJobIdAndRowNo(jobId, row.getRowNo())
++                .orElseGet(ImportJobErrorEntity::new);
++        error.setJobId(jobId);
++        error.setRowNo(row.getRowNo());
++        error.setErrorMessage(row.getErrorMessage());
++        error.setRawData(row.getRawData());
++        if (error.getCreatedAt() == null) error.setCreatedAt(now);
++        importJobErrorRepository.save(error);
++    }
++
++    private void recalculateJob(ImportJobEntity job) {
++        long total = importJobRowRepository.countByJobId(job.getId());
++        long success = importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
++        long failure = importJobRowRepository.countByJobIdAndRowStatusIn(job.getId(), FAILED_STATUSES);
++        job.setTotalCount(toInteger(total));
++        job.setSuccessCount(toInteger(success));
++        job.setFailureCount(toInteger(failure));
++        job.setStatus(failure == 0 ? "completed" : success == 0 ? "failed" : "partial_completed");
++        job.setProcessingStatus(failure == 0 ? ImportJobEntity.PROCESSING_READY_FOR_REVIEW : ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
++        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行字辈导入失败，请修正后再提交审核");
++        if (ImportJobEntity.REVIEW_REJECTED.equals(job.getReviewStatus())) {
++            job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
++            job.setLatestReviewTaskId(null);
++        }
++        job.setUpdatedAt(LocalDateTime.now());
++        importJobRepository.save(job);
++    }
++
++    private ImportJobRowResponse toResponse(ImportJobRowEntity row) {
++        return new ImportJobRowResponse(
++                row.getId(), row.getRowNo(), row.getRawData(), row.getNormalizedData(), row.getCorrectedData(),
++                row.getRowStatus(), row.getErrorCode(), row.getErrorMessage(), row.getRetryCount(),
++                row.getDraftTargetId() != null || row.getDraftPersonId() != null, row.getVersion(), row.getUpdatedAt()
++        );
++    }
++
++    private String booleanText(Boolean value, boolean defaultValue) {
++        return (value == null ? defaultValue : value) ? "是" : "否";
++    }
++
++    private String value(String value) { return value == null ? "" : value.trim(); }
++    private int value(Integer value) { return value == null ? 0 : value; }
++    private int toInteger(long value) {
++        if (value > Integer.MAX_VALUE) throw new BusinessException("IMPORT_COUNT_OVERFLOW", "导入行数量超出系统支持范围");
++        return (int) value;
++    }
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateApplicationService.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateApplicationService.java
+new file mode 100644
+index 0000000..3cd2f90
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportTemplateApplicationService.java
+@@ -0,0 +1,51 @@
++package com.genealogy.imports.application;
++
++import com.genealogy.common.exception.BusinessException;
++import com.genealogy.imports.domain.GenerationImportTypeDefinition;
++import com.genealogy.imports.domain.ImportJobDescriptor;
++import com.genealogy.imports.domain.ImportTypeRegistry;
++import org.apache.poi.ss.usermodel.Row;
++import org.apache.poi.ss.usermodel.Sheet;
++import org.apache.poi.ss.usermodel.Workbook;
++import org.apache.poi.xssf.usermodel.XSSFWorkbook;
++import org.springframework.stereotype.Service;
++
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.util.List;
++
++@Service
++public class GenerationImportTemplateApplicationService {
++
++    private final ImportTypeRegistry importTypeRegistry;
++
++    public GenerationImportTemplateApplicationService(ImportTypeRegistry importTypeRegistry) {
++        this.importTypeRegistry = importTypeRegistry;
++    }
++
++    public byte[] buildCsvTemplate() {
++        importTypeRegistry.require(GenerationImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_CSV);
++        String content = "\ufeff" + String.join(",", GenerationImportTemplateDefinition.HEADERS)
++                + "\n" + String.join(",", GenerationImportTemplateDefinition.SAMPLE_ROW) + "\n";
++        return content.getBytes(StandardCharsets.UTF_8);
++    }
++
++    public byte[] buildXlsxTemplate() {
++        importTypeRegistry.require(GenerationImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_XLSX);
++        try (Workbook workbook =

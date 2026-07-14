@@ -1,0 +1,31 @@
+name: Issue 105 Apply Generation Import
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/issue-105-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Combine staged patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat tasks/.issue-105-code.patch.* > /tmp/issue-105-branch.patch
+          sha256sum /tmp/issue-105-branch.patch
+          wc -c /tmp/issue-105-branch.patch
+      - name: Upload combined patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-105-branch-patch
+          path: /tmp/issue-105-branch.patch

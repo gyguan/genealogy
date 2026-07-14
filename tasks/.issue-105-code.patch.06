@@ -1,0 +1,271 @@
+tion upload() {
++    if (!clanId || !file) {
++      notify({ message: !clanId ? '请先选择所属宗族' : '请先选择填写后的模板文件' }, true);
++      return;
++    }
++    setLoading(true);
++    try {
++      const result = await apiClient.upload<ImportJobResult>(
++        `/clans/${clanId}/imports/generations${query()}`,
++        file
++      );
++      notify({ message: `字辈导入批次已创建：成功 ${result.successCount || 0} 条，失败 ${result.failureCount || 0} 条` });
++      setFile(null);
++      setPreview(null);
++      onBatchCreated();
++    } catch (error) {
++      notify({ message: (error as Error).message || '字辈导入批次创建失败' }, true);
++    } finally {
++      setLoading(false);
++    }
++  }
++
++  return (
++    <div>
++      <Card
++        title="字辈导入"
++        extra={(
++          <Space>
++            <Button disabled={loading} onClick={() => void downloadTemplate('csv')}>下载 CSV 模板</Button>
++            <Button disabled={loading} onClick={() => void downloadTemplate('xlsx')}>下载 XLSX 模板</Button>
++          </Space>
++        )}
++        style={{ marginTop: 16 }}
++      >
++        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
++          <Alert
++            type="info"
++            showIcon
++            message="模板表头必须保持不变"
++            description="依次填写：方案名称、起始代次、代次、字辈文字、字辈诗、是否默认、启用校验、严格模式、说明。布尔字段只允许填写“是”或“否”。"
++          />
++          <Alert
++            type="info"
++            showIcon
++            message={`当前导入范围：${scopeText}`}
++            description="不选择支派时创建宗族通用方案；选择支派时创建或追加该支派的方案。审核通过前不会影响正式字辈数据。"
++          />
++          <Upload {...uploadProps}><Button disabled={!clanId}>上传填写后的模板</Button></Upload>
++          <Space wrap>
++            <Button disabled={loading || !clanId || !file} onClick={() => void previewFile()}>
++              {loading ? '处理中...' : '预览并校验'}
++            </Button>
++            <Button type="primary" disabled={loading || !clanId || !file} loading={loading} onClick={() => void upload()}>
++              创建导入批次
++            </Button>
++          </Space>
++        </Space>
++      </Card>
++
++      {preview ? (
++        <Card title="字辈导入预览" style={{ marginTop: 16 }}>
++          {(preview.errorCount || 0) > 0 ? (
++            <Alert type="warning" showIcon message={`发现 ${preview.errorCount} 条错误或冲突，可创建批次后逐行修正。`} style={{ marginBottom: 12 }} />
++          ) : null}
++          <Table<PreviewRow>
++            size="small"
++            bordered
++            rowKey={(row, index) => String(row.rowNo || index)}
++            dataSource={preview.rows || []}
++            pagination={false}
++            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无预览数据" /> }}
++            columns={[
++              { key: 'rowNo', title: '行号', dataIndex: 'rowNo', width: 70 },
++              { key: 'schemeName', title: '方案名称', dataIndex: 'schemeName' },
++              { key: 'startGeneration', title: '起始代次', dataIndex: 'startGeneration', width: 100 },
++              { key: 'generationNo', title: '代次', dataIndex: 'generationNo', width: 80 },
++              { key: 'word', title: '字辈文字', dataIndex: 'word', width: 100 },
++              {
++                key: 'actionType', title: '处理策略', dataIndex: 'actionType', width: 110,
++                render: value => value === 'append_word' ? '追加明细' : value === 'create_scheme' ? '新建方案' : '-'
++              },
++              {
++                key: 'result', title: '校验结果', width: 100,
++                render: (_value, row) => row.errorMessage
++                  ? <Tag color={row.duplicated ? 'warning' : 'error'}>{row.duplicated ? '重复' : '错误'}</Tag>
++                  : <Tag color="success">通过</Tag>
++              },
++              { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' }
++            ]}
++            scroll={{ x: 'max-content' }}
++          />
++        </Card>
++      ) : null}
++    </div>
++  );
++}
+diff --git a/frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx b/frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx
+index c8c6a2d..f504d45 100644
+--- a/frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx
++++ b/frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx
+@@ -66,6 +66,13 @@ type RetryFormValues = {
+   toPersonCode?: string;
+   relationshipType?: string;
+   description?: string;
++  schemeName?: string;
++  startGeneration?: number;
++  word?: string;
++  poemText?: string;
++  isDefault?: boolean;
++  validationEnabled?: boolean;
++  strictMode?: boolean;
+ };
+ 
+ type ReviewTaskCreated = {
+@@ -165,7 +172,7 @@ function normalizedImportType(row?: ImportJobSummary | null) {
+ }
+ 
+ function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
+-  return ['person', 'relationship'].includes(normalizedImportType(job))
++  return ['person', 'relationship', 'generation'].includes(normalizedImportType(job))
+     && ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase())
+     && !row.draftCreated;
+ }
+@@ -305,6 +312,21 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
+         relationshipType: String(payloadValue(values, 'relationshipType') || ''),
+         description: String(payloadValue(values, 'description') || '')
+       });
++    } else if (normalizedImportType(selectedJob) === 'generation') {
++      form.setFieldsValue({
++        schemeName: String(payloadValue(values, 'schemeName') || ''),
++        startGeneration: typeof payloadValue(values, 'startGeneration') === 'number'
++          ? Number(payloadValue(values, 'startGeneration')) : undefined,
++        generationNo: typeof payloadValue(values, 'generationNo') === 'number'
++          ? Number(payloadValue(values, 'generationNo')) : undefined,
++        word: String(payloadValue(values, 'word') || ''),
++        poemText: String(payloadValue(values, 'poemText') || ''),
++        isDefault: Boolean(payloadValue(values, 'isDefault')),
++        validationEnabled: payloadValue(values, 'validationEnabled') === undefined
++          ? true : Boolean(payloadValue(values, 'validationEnabled')),
++        strictMode: Boolean(payloadValue(values, 'strictMode')),
++        description: String(payloadValue(values, 'description') || '')
++      });
+     } else {
+       form.setFieldsValue({
+         name: String(payloadValue(values, 'name') || ''),
+@@ -326,10 +348,12 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
+     const values = await form.validateFields();
+     setRetryLoading(true);
+     try {
+-      const relationship = normalizedImportType(selectedJob) === 'relationship';
+-      const endpoint = relationship
++      const type = normalizedImportType(selectedJob);
++      const endpoint = type === 'relationship'
+         ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/relationship-retry`
+-        : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
++        : type === 'generation'
++          ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/generation-retry`
++          : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
+       const result = await apiClient.post<ImportJobRow>(
+         endpoint,
+         { ...values, expectedVersion: editingRow.version ?? 0 }
+@@ -588,6 +612,32 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
+                     <Input.TextArea maxLength={500} rows={3} showCount />
+                   </Form.Item>
+                 </>
++              ) : normalizedImportType(selectedJob) === 'generation' ? (
++                <>
++                  <Form.Item name="schemeName" label="方案名称" rules={[{ required: true, message: '请输入方案名称' }]}>
++                    <Input maxLength={200} />
++                  </Form.Item>
++                  <Form.Item name="startGeneration" label="起始代次" rules={[{ required: true, message: '请输入起始代次' }]}>
++                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />
++                  </Form.Item>
++                  <Form.Item name="generationNo" label="代次" rules={[{ required: true, message: '请输入代次' }]}>
++                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />
++                  </Form.Item>
++                  <Form.Item name="word" label="字辈文字" rules={[{ required: true, message: '请输入字辈文字' }]}>
++                    <Input maxLength={20} />
++                  </Form.Item>
++                  <Form.Item name="poemText" label="字辈诗">
++                    <Input.TextArea rows={2} />
++                  </Form.Item>
++                  <Space wrap>
++                    <Form.Item name="isDefault" valuePropName="checked"><Checkbox>默认方案</Checkbox></Form.Item>
++                    <Form.Item name="validationEnabled" valuePropName="checked"><Checkbox>启用校验</Checkbox></Form.Item>
++                    <Form.Item name="strictMode" valuePropName="checked"><Checkbox>严格模式</Checkbox></Form.Item>
++                  </Space>
++                  <Form.Item name="description" label="说明">
++                    <Input.TextArea maxLength={255} rows={3} showCount />
++                  </Form.Item>
++                </>
+               ) : (
+                 <>
+                   <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
+diff --git a/frontend/genealogy-web/src/features/imports/ImportPage.tsx b/frontend/genealogy-web/src/features/imports/ImportPage.tsx
+index 38ffdc4..b8f3b0b 100644
+--- a/frontend/genealogy-web/src/features/imports/ImportPage.tsx
++++ b/frontend/genealogy-web/src/features/imports/ImportPage.tsx
+@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
+ import { Alert, Card, Empty, Select, Space, Tabs, Tag, Typography } from 'antd';
+ import { apiClient } from '../../shared/api/client';
+ import { useWorkspace } from '../../shared/context/WorkspaceContext';
++import { GenerationImportWorkspace } from './GenerationImportWorkspace';
+ import { ImportJobManagementPanel } from './ImportJobManagementPanel';
+ import { PersonImportWorkspace } from './PersonImportWorkspace';
+ import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
+@@ -79,7 +80,7 @@ export function ImportPage({ notify }: Props) {
+       <Card>
+         <Typography.Title level={3} style={{ marginTop: 0 }}>导入管理</Typography.Title>
+         <Typography.Paragraph type="secondary">
+-          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物与人物关系导入，其他数据类型将复用同一批次与审核流程逐步接入。
++          统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物、人物关系与字辈导入，所有类型复用同一批次、失败行和审核流程。
+         </Typography.Paragraph>
+         <Tabs
+           activeKey={activeType}
+@@ -111,7 +112,7 @@ export function ImportPage({ notify }: Props) {
+             allowClear
+             loading={branchLoading}
+             disabled={!workspace.clanId || branchLoading || branches.length === 0}
+-            placeholder="请选择本次导入的目标支派"
++            placeholder={activeType === 'generation' ? "不选择表示宗族通用范围" : "请选择本次导入的目标支派"}
+             value={selectedBranchId || undefined}
+             optionFilterProp="label"
+             options={branches.map(branch => ({
+@@ -131,8 +132,12 @@ export function ImportPage({ notify }: Props) {
+               showIcon
+               message={activeType === 'relationship'
+                 ? `“${selectedBranch.branchName || '未命名支派'}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`
+-                : `本批次中的全部人物将归入“${selectedBranch.branchName || '未命名支派'}”，文件中无需填写支派信息。`}
++                : activeType === 'generation'
++                  ? `本批次将维护“${selectedBranch.branchName || '未命名支派'}”范围内的字辈方案。`
++                  : `本批次中的全部人物将归入“${selectedBranch.branchName || '未命名支派'}”，文件中无需填写支派信息。`}
+             />
++          ) : workspace.clanId && activeType === 'generation' ? (
++            <Alert type="success" showIcon message="本批次将维护宗族通用字辈方案；需要支派专用方案时再选择目标支派。" />
+           ) : (
+             workspace.clanId && branches.length > 0
+               ? <Alert type="info" showIcon message="请选择目标支派后再上传文件。" />
+@@ -161,6 +166,17 @@ export function ImportPage({ notify }: Props) {
+         />
+       ) : null}
+ 
++
++      {activeType === 'generation' ? (
++        <GenerationImportWorkspace
++          notify={notify}
++          clanId={workspace.clanId}
++          branchId={selectedBranchId}
++          branchName={selectedBranch?.branchName || ''}
++          onBatchCreated={() => setJobRefreshKey(current => current + 1)}
++        />
++      ) : null}
++
+       <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
+     </div>
+   );
+diff --git a/frontend/genealogy-web/src/features/imports/import-type-registry.ts b/frontend/genealogy-web/src/features/imports/import-type-registry.ts
+index d7dde87..7c29675 100644
+--- a/frontend/genealogy-web/src/features/imports/import-type-registry.ts
++++ b/frontend/genealogy-web/src/features/imports/import-type-registry.ts
+@@ -45,8 +45,8 @@ export const importTypeRegistry: ImportTypeDefinition[] = [
+   {
+     key: 'generation',
+     title: '字辈导入',
+-    description: '批量维护世次与字辈映射。',
+-    availability: 'planned',
++    description: '批量新建字辈方案或向正式方案追加不冲突的字辈明细，支持失败行修正与审核生效。',
++    availability: 'available',
+     supportedFormats: ['csv', 'xlsx'],
+     templateDefinition: 'GenerationImportTemplateDefinition',
+     parser: 'generation-import-parser',

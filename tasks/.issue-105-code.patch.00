@@ -1,0 +1,329 @@
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/generation/entity/GenerationImportDraftEntity.java b/backend/genealogy-backend/src/main/java/com/genealogy/generation/entity/GenerationImportDraftEntity.java
+new file mode 100644
+index 0000000..35051d8
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/generation/entity/GenerationImportDraftEntity.java
+@@ -0,0 +1,85 @@
++package com.genealogy.generation.entity;
++
++import jakarta.persistence.Column;
++import jakarta.persistence.Entity;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.GenerationType;
++import jakarta.persistence.Id;
++import jakarta.persistence.Table;
++import lombok.Getter;
++import lombok.Setter;
++
++import java.time.LocalDateTime;
++
++@Getter
++@Setter
++@Entity
++@Table(name = "generation_import_draft")
++public class GenerationImportDraftEntity {
++
++    public static final String TARGET_TYPE = "generation_import_draft";
++    public static final String ACTION_CREATE_SCHEME = "create_scheme";
++    public static final String ACTION_APPEND_WORD = "append_word";
++    public static final String STATUS_DRAFT = "draft";
++    public static final String STATUS_PENDING_REVIEW = "pending_review";
++    public static final String STATUS_OFFICIAL = "official";
++    public static final String STATUS_REJECTED = "rejected";
++
++    @Id
++    @GeneratedValue(strategy = GenerationType.IDENTITY)
++    private Long id;
++
++    @Column(name = "job_id", nullable = false)
++    private Long jobId;
++
++    @Column(name = "clan_id", nullable = false)
++    private Long clanId;
++
++    @Column(name = "branch_id")
++    private Long branchId;
++
++    @Column(name = "action_type", nullable = false)
++    private String actionType;
++
++    @Column(name = "target_scheme_id")
++    private Long targetSchemeId;
++
++    @Column(name = "scheme_name", nullable = false)
++    private String schemeName;
++
++    @Column(name = "poem_text", columnDefinition = "text")
++    private String poemText;
++
++    @Column(name = "start_generation", nullable = false)
++    private Integer startGeneration;
++
++    @Column(name = "is_default", nullable = false)
++    private Boolean isDefault;
++
++    @Column(name = "validation_enabled", nullable = false)
++    private Boolean validationEnabled;
++
++    @Column(name = "strict_mode", nullable = false)
++    private Boolean strictMode;
++
++    @Column(name = "generation_no", nullable = false)
++    private Integer generationNo;
++
++    @Column(name = "word", nullable = false)
++    private String word;
++
++    @Column(name = "description")
++    private String description;
++
++    @Column(name = "status", nullable = false)
++    private String status;
++
++    @Column(name = "created_by")
++    private Long createdBy;
++
++    @Column(name = "created_at", nullable = false)
++    private LocalDateTime createdAt;
++
++    @Column(name = "updated_at", nullable = false)
++    private LocalDateTime updatedAt;
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenSchemeRepository.java b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenSchemeRepository.java
+index ad004be..7d1c844 100644
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenSchemeRepository.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenSchemeRepository.java
+@@ -2,10 +2,27 @@ package com.genealogy.generation.repository;
+ 
+ import com.genealogy.generation.entity.GenerationSchemeEntity;
+ import org.springframework.data.jpa.repository.JpaRepository;
++import org.springframework.data.jpa.repository.Query;
++import org.springframework.data.repository.query.Param;
+ 
+ import java.util.List;
++import java.util.Optional;
+ 
+ public interface GenSchemeRepository extends JpaRepository<GenerationSchemeEntity, Long> {
+ 
+     List<GenerationSchemeEntity> findByClanIdOrderByIsDefaultDescIdAsc(Long clanId);
++
++    @Query("""
++            select scheme from GenerationSchemeEntity scheme
++            where scheme.clanId = :clanId
++              and ((:branchId is null and scheme.branchId is null) or scheme.branchId = :branchId)
++              and lower(scheme.schemeName) = lower(:schemeName)
++            """)
++    List<GenerationSchemeEntity> findByScopeAndName(
++            @Param("clanId") Long clanId,
++            @Param("branchId") Long branchId,
++            @Param("schemeName") String schemeName
++    );
++
++    Optional<GenerationSchemeEntity> findByIdAndClanId(Long id, Long clanId);
+ }
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenWordRepository.java b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenWordRepository.java
+index 7a199b0..27f4297 100644
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenWordRepository.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenWordRepository.java
+@@ -3,6 +3,7 @@ package com.genealogy.generation.repository;
+ import com.genealogy.generation.entity.GenerationWordEntity;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ 
++import java.util.Collection;
+ import java.util.List;
+ import java.util.Optional;
+ 
+@@ -10,6 +11,8 @@ public interface GenWordRepository extends JpaRepository<GenerationWordEntity, L
+ 
+     List<GenerationWordEntity> findBySchemeIdOrderByGenerationNoAsc(Long schemeId);
+ 
++    List<GenerationWordEntity> findBySchemeIdAndGenerationNoIn(Long schemeId, Collection<Integer> generationNos);
++
+     Optional<GenerationWordEntity> findBySchemeIdAndGenerationNo(Long schemeId, Integer generationNo);
+ 
+     boolean existsBySchemeIdAndGenerationNo(Long schemeId, Integer generationNo);
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenerationImportDraftRepository.java b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenerationImportDraftRepository.java
+new file mode 100644
+index 0000000..0d8421e
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/generation/repository/GenerationImportDraftRepository.java
+@@ -0,0 +1,16 @@
++package com.genealogy.generation.repository;
++
++import com.genealogy.generation.entity.GenerationImportDraftEntity;
++import org.springframework.data.jpa.repository.JpaRepository;
++
++import java.util.List;
++import java.util.Optional;
++
++public interface GenerationImportDraftRepository extends JpaRepository<GenerationImportDraftEntity, Long> {
++
++    Optional<GenerationImportDraftEntity> findByIdAndJobId(Long id, Long jobId);
++
++    List<GenerationImportDraftEntity> findByJobIdOrderByIdAsc(Long jobId);
++
++    List<GenerationImportDraftEntity> findByJobIdAndStatusOrderByIdAsc(Long jobId, String status);
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportApplicationService.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportApplicationService.java
+new file mode 100644
+index 0000000..f2b1d52
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/GenerationImportApplicationService.java
+@@ -0,0 +1,511 @@
++package com.genealogy.imports.application;
++
++import com.genealogy.auth.application.AuthorizationApplicationService;
++import com.genealogy.common.exception.BusinessException;
++import com.genealogy.generation.entity.GenerationImportDraftEntity;
++import com.genealogy.generation.entity.GenerationSchemeEntity;
++import com.genealogy.generation.entity.GenerationWordEntity;
++import com.genealogy.generation.repository.GenSchemeRepository;
++import com.genealogy.generation.repository.GenWordRepository;
++import com.genealogy.generation.repository.GenerationImportDraftRepository;
++import com.genealogy.imports.dto.GenerationImportPreviewResponse;
++import com.genealogy.imports.dto.GenerationImportPreviewRowResponse;
++import com.genealogy.imports.dto.ImportJobResponse;
++import com.genealogy.imports.dto.ImportRowErrorResponse;
++import com.genealogy.imports.entity.ImportJobEntity;
++import com.genealogy.imports.entity.ImportJobErrorEntity;
++import com.genealogy.imports.entity.ImportJobRowEntity;
++import com.genealogy.imports.repository.ImportJobErrorRepository;
++import com.genealogy.imports.repository.ImportJobRepository;
++import com.genealogy.imports.repository.ImportJobRowRepository;
++import com.genealogy.operationlog.application.OperationLogApplicationService;
++import org.apache.poi.ss.usermodel.Cell;
++import org.apache.poi.ss.usermodel.DataFormatter;
++import org.apache.poi.ss.usermodel.Row;
++import org.apache.poi.ss.usermodel.Sheet;
++import org.apache.poi.ss.usermodel.Workbook;
++import org.apache.poi.ss.usermodel.WorkbookFactory;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++import org.springframework.web.multipart.MultipartFile;
++
++import java.io.BufferedReader;
++import java.io.IOException;
++import java.io.InputStreamReader;
++import java.nio.charset.StandardCharsets;
++import java.time.LocalDateTime;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Objects;
++import java.util.Set;
++
++@Service
++public class GenerationImportApplicationService {
++
++    private static final String STATUS_RUNNING = "running";
++    private static final String STATUS_COMPLETED = "completed";
++    private static final String STATUS_PARTIAL = "partial_completed";
++    private static final String STATUS_FAILED = "failed";
++    private static final String STATUS_OFFICIAL = "official";
++
++    private final ImportJobRepository importJobRepository;
++    private final ImportJobErrorRepository importJobErrorRepository;
++    private final ImportJobRowRepository importJobRowRepository;
++    private final GenerationImportDraftRepository draftRepository;
++    private final GenSchemeRepository schemeRepository;
++    private final GenWordRepository wordRepository;
++    private final AuthorizationApplicationService authorizationApplicationService;
++    private final GenerationImportFilePolicyService filePolicyService;
++    private final OperationLogApplicationService operationLogApplicationService;
++
++    public GenerationImportApplicationService(
++            ImportJobRepository importJobRepository,
++            ImportJobErrorRepository importJobErrorRepository,
++            ImportJobRowRepository importJobRowRepository,
++            GenerationImportDraftRepository draftRepository,
++            GenSchemeRepository schemeRepository,
++            GenWordRepository wordRepository,
++            AuthorizationApplicationService authorizationApplicationService,
++            GenerationImportFilePolicyService filePolicyService,
++            OperationLogApplicationService operationLogApplicationService
++    ) {
++        this.importJobRepository = importJobRepository;
++        this.importJobErrorRepository = importJobErrorRepository;
++        this.importJobRowRepository = importJobRowRepository;
++        this.draftRepository = draftRepository;
++        this.schemeRepository = schemeRepository;
++        this.wordRepository = wordRepository;
++        this.authorizationApplicationService = authorizationApplicationService;
++        this.filePolicyService = filePolicyService;
++        this.operationLogApplicationService = operationLogApplicationService;
++    }
++
++    @Transactional(readOnly = true)
++    public GenerationImportPreviewResponse preview(Long clanId, Long branchId, MultipartFile file, Long actorId) {
++        filePolicyService.validate(file);
++        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
++        ImportReadResult data = readImport(file);
++        ValidationContext context = new ValidationContext();
++        List<GenerationImportPreviewRowResponse> rows = new ArrayList<>();
++        for (ImportRow row : data.rows()) rows.add(previewRow(clanId, branchId, row, context));
++        int valid = (int) rows.stream().filter(row -> isBlank(row.errorMessage())).count();
++        int duplicates = (int) rows.stream().filter(GenerationImportPreviewRowResponse::duplicated).count();
++        return new GenerationImportPreviewResponse(rows.size(), valid, duplicates, rows.size() - valid, rows);
++    }
++
++    @Transactional
++    public ImportJobResponse importGenerations(Long clanId, Long branchId, MultipartFile file, Long actorId) {
++        filePolicyService.validate(file);
++        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
++        ImportReadResult data = readImport(file);
++        String filename = file.getOriginalFilename() == null ? "generations.csv" : file.getOriginalFilename();
++        String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
++                ? ImportJobEntity.FORMAT_XLSX : ImportJobEntity.FORMAT_CSV;
++        ImportJobEntity job = createJob(clanId, branchId, filename, format, actorId);
++        ValidationContext context = new ValidationContext();
++        List<ImportJobRowEntity> rows = new ArrayList<>();
++        List<ImportJobErrorEntity> errors = new ArrayList<>();
++        int success = 0;
++        int failure = 0;
++
++        for (ImportRow source : data.rows()) {
++            ImportJobRowEntity row = newJobRow(job.getId(), source);
++            try {
++                ResolvedGeneration resolved = resolveDraft(clanId, branchId, source.cells(), context);
++                GenerationImportDraftEntity draft = createGenerationDraft(job, resolved, actorId);
++                row.setNormalizedData(normalizedData(resolved));
++                row.setDraftTargetType(GenerationImportDraftEntity.TARGET_TYPE);
++                row.setDraftTargetId(draft.getId());
++                row.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
++                success++;
++            } catch (RuntimeException exception) {
++                failure++;
++                String message = errorMessage(exception);
++                row.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
++                row.setErrorCode(errorCode(exception));
++                row.setErrorMessage(message);
++                errors.add(error(job.getId(), source.rowNo(), message, source.rawData()));
++            }
++            row.setUpdatedAt(LocalDateTime.now());
++            rows.add(row);
++        }
++
++        if (!rows.isEmpty()) importJobRowRepository.saveAll(rows);
++        if (!errors.isEmpty()) importJobErrorRepository.saveAll(errors);
++        finishJob(job, success, failure);
++        ImportJobEntity saved = importJobRepository.save(job);
++        operationLogApplicationService.record(
++                clanId, actorId, "generation_import", "import_job", saved.getId(),
++                "字辈导入批次创建完成",
++                "branchId=" + branchId + ", total=" + rows.size() + ", success=" + success + ", failure=" + failure
++        );
++        return toResponse(saved, errors);
++    }
++
++    ResolvedGeneration resolveDraft(Long clanId, Long branchId, List<String> cells, ValidationContext context) {
++        ensureNoExtraColumns(cells);
++        String schemeName = requiredCell(cells, GenerationImportTemplateDefinition.SCHEME_NAME_INDEX, "方案名称不能为空");
++        int startGeneration = positiveInteger(cells, GenerationImportTemplateDefinition.START_GENERATION_INDEX, "起始代次");
++        int generationNo = positiveInteger(cells, GenerationImportTemplateDefinition.GENERATION_NO_INDEX, "代次");
++        String word = requiredCell(cells, GenerationImportTemplateDefinition.WORD_INDEX, "字辈文字不能为空");
++        if (word.length() > 20) throw new BusinessException("IMPORT_GENERATION_WORD_TOO_LONG", "字辈文字不能超过20个字符");
++        String poemText = trimToNull(cell(cells, GenerationImportTemplateDefinition.POEM_TEXT_IND
