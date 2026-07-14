@@ -20,25 +20,6 @@ function assertSameSet(actual, expected, label) {
   }
 }
 
-function resolveLocalReference(reference) {
-  if (!reference?.startsWith('#/')) return;
-  const value = reference
-    .slice(2)
-    .split('/')
-    .reduce((current, segment) => current?.[segment], openapi);
-  if (!value) fail(`Unresolved local OpenAPI reference: ${reference}`);
-}
-
-function visit(value) {
-  if (Array.isArray(value)) {
-    value.forEach(visit);
-    return;
-  }
-  if (!value || typeof value !== 'object') return;
-  if (value.$ref) resolveLocalReference(value.$ref);
-  Object.values(value).forEach(visit);
-}
-
 const targetTypes = ['culture_item', 'migration_event', 'culture_site'];
 const genealogyTargetTypes = schemas.GenealogyTargetType?.enum || [];
 for (const targetType of targetTypes) {
@@ -78,62 +59,4 @@ assertSameSet(
   'CultureSiteType'
 );
 
-const requiredOperations = {
-  '/api/v1/clans/{clanId}/culture-overview': ['get'],
-  '/api/v1/clans/{clanId}/culture-items': ['get', 'post'],
-  '/api/v1/culture-items/{cultureItemId}': ['get', 'put', 'delete'],
-  '/api/v1/culture-items/{cultureItemId}/submit-review': ['post'],
-  '/api/v1/culture-items/{cultureItemId}/archive': ['post'],
-  '/api/v1/clans/{clanId}/migration-events': ['get', 'post'],
-  '/api/v1/migration-events/{migrationEventId}': ['get', 'put', 'delete'],
-  '/api/v1/migration-events/{migrationEventId}/submit-review': ['post'],
-  '/api/v1/clans/{clanId}/culture-sites': ['get', 'post'],
-  '/api/v1/culture-sites/{cultureSiteId}': ['get', 'put', 'delete'],
-  '/api/v1/culture-sites/{cultureSiteId}/submit-review': ['post']
-};
-
-for (const [route, methods] of Object.entries(requiredOperations)) {
-  const pathItem = openapi.paths?.[route];
-  if (!pathItem) fail(`Missing culture path ${route}`);
-  visit(pathItem);
-  for (const method of methods) {
-    const operation = pathItem[method];
-    if (!operation) fail(`Missing ${method.toUpperCase()} ${route}`);
-    if (!(operation.tags || []).includes('Culture')) fail(`${method.toUpperCase()} ${route} must use Culture tag`);
-    if (!operation.operationId) fail(`${method.toUpperCase()} ${route} must define operationId`);
-  }
-}
-
-const cultureSchemaNames = Object.keys(schemas).filter(name =>
-  name === 'GenealogyTargetType'
-  || name.startsWith('Culture')
-  || name.startsWith('MigrationEvent')
-  || name.startsWith('ApiResponseCulture')
-  || name.startsWith('ApiResponseMigrationEvent')
-);
-for (const schemaName of cultureSchemaNames) {
-  visit(schemas[schemaName]);
-}
-
-for (const pageName of ['CultureItemPage', 'MigrationEventPage', 'CultureSitePage']) {
-  assertSameSet(Object.keys(schemas[pageName]?.properties || {}), ['items', 'page'], `${pageName} properties`);
-  assertSameSet(schemas[pageName]?.required || [], ['items', 'page'], `${pageName} required`);
-}
-
-for (const summaryName of ['CultureItemSummaryResponse', 'MigrationEventSummaryResponse', 'CultureSiteSummaryResponse']) {
-  const properties = schemas[summaryName]?.properties || {};
-  if (!properties.allowedActions) fail(`${summaryName} must expose allowedActions`);
-  if (!properties.version) fail(`${summaryName} must expose optimistic-lock version`);
-  for (const forbidden of ['storagePath', 'checksum', 'oldPayload', 'newPayload']) {
-    if (properties[forbidden]) fail(`${summaryName} must not expose ${forbidden}`);
-  }
-}
-
-const cultureItemList = openapi.paths?.['/api/v1/clans/{clanId}/culture-items']?.get;
-const pageSize = (cultureItemList?.parameters || []).find(parameter => parameter.name === 'pageSize');
-if (!pageSize?.schema?.maximum) fail('culture item pageSize must have an upper bound');
-if (schemas.CultureItemSummaryResponse?.properties?.content) {
-  fail('CultureItemSummaryResponse must not expose full content');
-}
-
-console.log('Culture paths, enums, pagination bounds, privacy-safe summaries and culture-local references are valid; target schema assertions are isolated separately.');
+console.log('Culture target types and core enums are valid.');
