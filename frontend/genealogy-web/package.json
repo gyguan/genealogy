@@ -16,16 +16,16 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "antd": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "@vitejs/plugin-react": "6.0.3",
+    "antd": "6.5.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "7.0.2",
+    "vite": "8.1.4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@playwright/test": "1.61.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3"
   }
 }
