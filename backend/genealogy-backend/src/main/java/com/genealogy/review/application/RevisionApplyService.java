@@ -73,59 +73,24 @@ public class RevisionApplyService {
     @Transactional
     public void apply(AuditRecordEntity revision, LocalDateTime applyTime) {
         String targetType = normalize(revision.getTargetType());
-        if (TARGET_PERSON.equals(targetType)) {
-            applyPerson(revision, applyTime);
-            return;
-        }
-        if (TARGET_RELATIONSHIP.equals(targetType)) {
-            applyRelationship(revision, applyTime);
-            return;
-        }
-        if (TARGET_SOURCE.equals(targetType)) {
-            applySource(revision);
-            return;
-        }
-        if (TARGET_BRANCH.equals(targetType)) {
-            applyBranch(revision, applyTime);
-            return;
-        }
-        if (TARGET_GENERATION_SCHEME.equals(targetType)) {
-            applyGenerationScheme(revision);
-            return;
-        }
-        if (TARGET_IMPORT_JOB.equals(targetType)) {
-            applyImportJob(revision, applyTime);
-            return;
-        }
+        if (TARGET_PERSON.equals(targetType)) { applyPerson(revision, applyTime); return; }
+        if (TARGET_RELATIONSHIP.equals(targetType)) { applyRelationship(revision, applyTime); return; }
+        if (TARGET_SOURCE.equals(targetType)) { applySource(revision); return; }
+        if (TARGET_BRANCH.equals(targetType)) { applyBranch(revision, applyTime); return; }
+        if (TARGET_GENERATION_SCHEME.equals(targetType)) { applyGenerationScheme(revision); return; }
+        if (TARGET_IMPORT_JOB.equals(targetType)) { applyImportJob(revision, applyTime); return; }
         throw new BusinessException("REVISION_TARGET_UNSUPPORTED", "暂不支持该对象类型的审核生效");
     }
 
     @Transactional
     public void reject(AuditRecordEntity revision, LocalDateTime rejectTime) {
         String targetType = normalize(revision.getTargetType());
-        if (TARGET_PERSON.equals(targetType)) {
-            rejectPerson(revision, rejectTime);
-            return;
-        }
-        if (TARGET_RELATIONSHIP.equals(targetType)) {
-            rejectRelationship(revision, rejectTime);
-            return;
-        }
-        if (TARGET_SOURCE.equals(targetType)) {
-            rejectSource(revision);
-            return;
-        }
-        if (TARGET_BRANCH.equals(targetType)) {
-            rejectBranch(revision, rejectTime);
-            return;
-        }
-        if (TARGET_GENERATION_SCHEME.equals(targetType)) {
-            rejectGenerationScheme(revision);
-            return;
-        }
-        if (TARGET_IMPORT_JOB.equals(targetType)) {
-            rejectImportJob(revision, rejectTime);
-        }
+        if (TARGET_PERSON.equals(targetType)) { rejectPerson(revision, rejectTime); return; }
+        if (TARGET_RELATIONSHIP.equals(targetType)) { rejectRelationship(revision, rejectTime); return; }
+        if (TARGET_SOURCE.equals(targetType)) { rejectSource(revision); return; }
+        if (TARGET_BRANCH.equals(targetType)) { rejectBranch(revision, rejectTime); return; }
+        if (TARGET_GENERATION_SCHEME.equals(targetType)) { rejectGenerationScheme(revision); return; }
+        if (TARGET_IMPORT_JOB.equals(targetType)) rejectImportJob(revision, rejectTime);
     }
 
     private void applyPerson(AuditRecordEntity revision, LocalDateTime applyTime) {
@@ -259,9 +224,11 @@ public class RevisionApplyService {
 
     private void applyImportJob(AuditRecordEntity revision, LocalDateTime applyTime) {
         ImportJobEntity job = requireImportJob(revision);
-        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {
-            List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);
-            updateRelationshipStatuses(relationships, STATUS_OFFICIAL, applyTime);
+        String type = normalize(job.getImportType());
+        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) {
+            updateRelationshipStatuses(requireImportRelationships(job, STATUS_PENDING_REVIEW), STATUS_OFFICIAL, applyTime);
+        } else if (ImportJobEntity.TYPE_SOURCE.equals(type)) {
+            updateSourceStatuses(requireImportSources(job, STATUS_PENDING_REVIEW), STATUS_OFFICIAL, applyTime);
         } else {
             List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
             for (PersonEntity person : persons) {
@@ -277,9 +244,11 @@ public class RevisionApplyService {
 
     private void rejectImportJob(AuditRecordEntity revision, LocalDateTime rejectTime) {
         ImportJobEntity job = requireImportJob(revision);
-        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {
-            List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);
-            updateRelationshipStatuses(relationships, STATUS_DRAFT, rejectTime);
+        String type = normalize(job.getImportType());
+        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) {
+            updateRelationshipStatuses(requireImportRelationships(job, STATUS_PENDING_REVIEW), STATUS_DRAFT, rejectTime);
+        } else if (ImportJobEntity.TYPE_SOURCE.equals(type)) {
+            updateSourceStatuses(requireImportSources(job, STATUS_PENDING_REVIEW), STATUS_DRAFT, rejectTime);
         } else {
             List<PersonEntity> persons = requireImportPersons(job, STATUS_PENDING_REVIEW);
             for (PersonEntity person : persons) {
@@ -303,14 +272,11 @@ public class RevisionApplyService {
     }
 
     private List<PersonEntity> requireImportPersons(ImportJobEntity job, String expectedStatus) {
-        List<ImportJobRowEntity> rows = draftRows(job);
         List<PersonEntity> persons = new ArrayList<>();
-        for (ImportJobRowEntity row : rows) {
-            Long targetId = draftTargetId(row);
-            PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(targetId)
+        for (ImportJobRowEntity row : draftRows(job)) {
+            PersonEntity person = personRepository.findByIdAndDeletedAtIsNull(draftTargetId(row))
                     .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_PERSON_NOT_FOUND", "导入批次关联的人物草稿不存在"));
-            if (!Objects.equals(person.getClanId(), job.getClanId())
-                    || !Objects.equals(person.getBranchId(), job.getBranchId())) {
+            if (!Objects.equals(person.getClanId(), job.getClanId()) || !Objects.equals(person.getBranchId(), job.getBranchId())) {
                 throw new BusinessException("IMPORT_JOB_DRAFT_PERSON_SCOPE_MISMATCH", "导入人物不属于批次宗族或支派");
             }
             if (!expectedStatus.equals(normalize(person.getDataStatus()))) {
@@ -322,23 +288,17 @@ public class RevisionApplyService {
     }
 
     private List<RelationshipEntity> requireImportRelationships(ImportJobEntity job, String expectedStatus) {
-        List<ImportJobRowEntity> rows = draftRows(job);
         List<RelationshipEntity> relationships = new ArrayList<>();
-        for (ImportJobRowEntity row : rows) {
-            Long targetId = draftTargetId(row);
-            RelationshipEntity relationship = relationshipRepository.findByIdAndClanIdAndDeletedAtIsNull(targetId, job.getClanId())
+        for (ImportJobRowEntity row : draftRows(job)) {
+            RelationshipEntity relationship = relationshipRepository.findByIdAndClanIdAndDeletedAtIsNull(draftTargetId(row), job.getClanId())
                     .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_RELATIONSHIP_NOT_FOUND", "导入批次关联的关系草稿不存在"));
             if (!expectedStatus.equals(normalize(relationship.getDataStatus()))) {
                 throw new BusinessException("IMPORT_JOB_DRAFT_RELATIONSHIP_STATUS_INVALID", "导入关系状态与批次审核状态不一致");
             }
             relationships.add(relationship);
             if ("spouse".equals(relationship.getRelationType())) {
-                List<RelationshipEntity> reverse = relationshipRepository.findActiveSameRelation(
-                        job.getClanId(), relationship.getToPersonId(), relationship.getFromPersonId(), "spouse"
-                );
-                if (reverse.isEmpty()) {
-                    throw new BusinessException("IMPORT_JOB_SPOUSE_REVERSE_MISSING", "配偶关系缺少反向关系，无法统一生效");
-                }
+                List<RelationshipEntity> reverse = relationshipRepository.findActiveSameRelation(job.getClanId(), relationship.getToPersonId(), relationship.getFromPersonId(), "spouse");
+                if (reverse.isEmpty()) throw new BusinessException("IMPORT_JOB_SPOUSE_REVERSE_MISSING", "配偶关系缺少反向关系，无法统一生效");
                 for (RelationshipEntity item : reverse) {
                     if (!expectedStatus.equals(normalize(item.getDataStatus()))) {
                         throw new BusinessException("IMPORT_JOB_DRAFT_RELATIONSHIP_STATUS_INVALID", "配偶反向关系状态与批次审核状态不一致");
@@ -350,22 +310,32 @@ public class RevisionApplyService {
         return relationships;
     }
 
-    private List<ImportJobRowEntity> draftRows(ImportJobEntity job) {
-        List<ImportJobRowEntity> rows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(
-                job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED
-        );
-        if (rows.isEmpty()) {
-            throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");
+    private List<SourceEntity> requireImportSources(ImportJobEntity job, String expectedStatus) {
+        List<SourceEntity> sources = new ArrayList<>();
+        for (ImportJobRowEntity row : draftRows(job)) {
+            SourceEntity source = sourceRepository.findById(draftTargetId(row))
+                    .orElseThrow(() -> new BusinessException("IMPORT_JOB_DRAFT_SOURCE_NOT_FOUND", "导入批次关联的来源资料草稿不存在"));
+            if (!Objects.equals(source.getClanId(), job.getClanId())) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_SOURCE_SCOPE_MISMATCH", "导入来源资料不属于批次宗族");
+            }
+            if (!expectedStatus.equals(normalize(source.getVerificationStatus()))) {
+                throw new BusinessException("IMPORT_JOB_DRAFT_SOURCE_STATUS_INVALID", "导入来源资料状态与批次审核状态不一致");
+            }
+            sources.add(source);
         }
+        return sources;
+    }
+
+    private List<ImportJobRowEntity> draftRows(ImportJobEntity job) {
+        List<ImportJobRowEntity> rows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
+        if (rows.isEmpty()) throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_EMPTY", "导入批次没有可生效的业务草稿");
         if (rows.stream().anyMatch(row -> draftTargetId(row) == null)) {
             throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_MISSING", "导入批次存在未关联业务草稿的数据行");
         }
         return rows;
     }
 
-    private Long draftTargetId(ImportJobRowEntity row) {
-        return row.getDraftTargetId() != null ? row.getDraftTargetId() : row.getDraftPersonId();
-    }
+    private Long draftTargetId(ImportJobRowEntity row) { return row.getDraftTargetId() != null ? row.getDraftTargetId() : row.getDraftPersonId(); }
 
     private void updateRelationshipStatuses(List<RelationshipEntity> relationships, String status, LocalDateTime time) {
         for (RelationshipEntity relationship : relationships) {
@@ -375,10 +345,16 @@ public class RevisionApplyService {
         relationshipRepository.saveAll(relationships);
     }
 
-    private <T> T readPayload(String payload, Class<T> type) {
-        if (payload == null || payload.isBlank()) {
-            return null;
+    private void updateSourceStatuses(List<SourceEntity> sources, String status, LocalDateTime time) {
+        for (SourceEntity source : sources) {
+            source.setVerificationStatus(status);
+            source.setUpdatedAt(time);
         }
+        sourceRepository.saveAll(sources);
+    }
+
+    private <T> T readPayload(String payload, Class<T> type) {
+        if (payload == null || payload.isBlank()) return null;
         try {
             return objectMapper.readValue(payload, type);
         } catch (JsonProcessingException ex) {
@@ -386,7 +362,5 @@ public class RevisionApplyService {
         }
     }
 
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
+    private String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(); }
 }
