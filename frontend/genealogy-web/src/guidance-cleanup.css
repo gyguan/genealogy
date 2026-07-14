@@ -18,8 +18,20 @@
   display: none;
 }
 
-/* Culture concepts are available through labels; avoid repeating a paragraph in every summary card. */
-.home-culture-card-list .ant-typography-secondary {
+/* Culture concepts are available through labels; avoid repeating paragraphs in summary cards. */
+.home-culture-card-list .ant-typography-secondary,
+.home-culture-grid > .ant-card:nth-child(2) .ant-typography-secondary {
+  display: none;
+}
+
+/* Wizard flow rules are available from Panel help; lists keep only actionable states. */
+.step-draft-review-header p,
+.branch-step-list-header .ant-typography-paragraph,
+.review-progress-submit-list .step-draft-review-header p,
+.review-progress-task-list .step-draft-review-header p,
+.wizard-generation-inline-list > .ant-alert,
+.wizard-generation-word-grid + .wizard-inline-list-header + .ant-typography-paragraph,
+.relationship-step-panel > .ant-space > .ant-space-item:first-child {
   display: none;
 }
 
