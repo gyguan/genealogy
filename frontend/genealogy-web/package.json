@@ -16,6 +16,7 @@
     "test:auth": "node --test src/features/auth/authPageModel.test.js",
     "test:logs": "node --test src/features/logs/*.test.js src/features/logs/*.test.mjs src/shared/navigation/*.test.mjs",
     "test:tracking-center": "node --test src/features/logs/trackingCenterModel.test.mjs",
+    "test:culture": "playwright test e2e/culture-library.spec.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
