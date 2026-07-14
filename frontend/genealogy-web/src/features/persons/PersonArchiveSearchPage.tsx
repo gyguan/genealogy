@@ -723,11 +723,13 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         onClose={closeDetail}
         extra={selected ? (
           <Space>
-            <TrackingLinkButton
-              clanId={workspace.clanId}
-              targetType="person"
-              targetId={selected.id || selected.personId}
-            />
+            {drawerMode === 'view' ? (
+              <TrackingLinkButton
+                clanId={workspace.clanId}
+                targetType="person"
+                targetId={selected.id || selected.personId}
+              />
+            ) : null}
             {drawerMode === 'view' ? <Button onClick={startEdit}>编辑档案</Button> : <Button onClick={cancelEdit}>取消编辑</Button>}
             <Button onClick={closeDetail}>关闭</Button>
           </Space>
