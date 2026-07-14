@@ -1,0 +1,64 @@
+name: Issue 120 Patch SQL Parameters
+
+on:
+  push:
+    branches:
+      - "agent/issue-120-business-object-search"
+    paths:
+      - ".github/workflows/issue-120-patch-sql-params.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-120-business-object-search
+          fetch-depth: 0
+      - name: Register nullable SQL parameter types
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java')
+          text = path.read_text()
+          text = text.replace('import java.sql.Timestamp;\n', 'import java.sql.Timestamp;\nimport java.sql.Types;\n')
+          old = '''        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                  .addValue("clanId", clanId)
+                  .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase())
+                  .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%")
+                  .addValue("branchId", branchId)
+                  .addValue("status", status == null ? "" : status.trim().toLowerCase())
+                  .addValue("changedFrom", changedFrom)
+                  .addValue("changedTo", changedTo)
+                  .addValue("fullClanAccess", fullClanAccess)
+                  .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
+                  .addValue("limit", pageSize)
+                  .addValue("offset", (pageNo - 1) * pageSize);
+'''
+          new = '''        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                  .addValue("clanId", clanId, Types.BIGINT)
+                  .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase(), Types.VARCHAR)
+                  .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%", Types.VARCHAR)
+                  .addValue("branchId", branchId, Types.BIGINT)
+                  .addValue("status", status == null ? "" : status.trim().toLowerCase(), Types.VARCHAR)
+                  .addValue("changedFrom", changedFrom, Types.TIMESTAMP)
+                  .addValue("changedTo", changedTo, Types.TIMESTAMP)
+                  .addValue("fullClanAccess", fullClanAccess, Types.BOOLEAN)
+                  .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
+                  .addValue("limit", pageSize, Types.INTEGER)
+                  .addValue("offset", (pageNo - 1) * pageSize, Types.INTEGER);
+'''
+          if old not in text:
+              raise SystemExit('Expected parameter block not found')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java
+          git commit -m "fix(tracking): type nullable PostgreSQL query parameters"
+          git push origin HEAD:agent/issue-120-business-object-search
