@@ -54,6 +54,10 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm install
 
+      - name: Test tracking model
+        working-directory: frontend/genealogy-web
+        run: npm run test:logs
+
       - name: Build commercial frontend
         working-directory: frontend/genealogy-web
         run: npm run build

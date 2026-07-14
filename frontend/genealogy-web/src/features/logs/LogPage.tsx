@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Alert, Button, Card, Descriptions, Empty, Form, Input, Select, Space, Table, Tag, Timeline } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import type {
@@ -7,19 +7,19 @@ import type {
   OperationLogPage,
   OperationLogResponse,
   OperationLogStatsResponse,
-  ReviewDiffResponse
+  ReviewDiffResponse,
+  ReviewTaskDetailResponse
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-
-type TimelineItem = {
-  key: string;
-  time?: string | null;
-  title: string;
-  desc: string;
-  actor?: string | number | null;
-  status: 'done' | 'pending' | 'warn' | 'info';
-  source: 'log' | 'review' | 'diff' | 'system';
-};
+import {
+  buildOperationLogScopes,
+  buildTraceTimelineEntries,
+  evaluateTraceCoverage,
+  mergeTraceLogs,
+  resolveTraceContext,
+  traceResetFromLog
+} from './logTraceModel.js';
+import type { TraceCoverage, TraceTarget, TraceTimelineEntry } from './logTraceModel.js';
 
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
@@ -103,72 +103,52 @@ function changeText(value?: string | null) {
   return dict[value || ''] || value || '-';
 }
 
-function severityOf(log: OperationLogResponse): TimelineItem['status'] {
-  const text = `${log.actionType || ''} ${log.summary || ''} ${log.detail || ''}`.toLowerCase();
-  if (text.includes('reject') || text.includes('驳回') || text.includes('失败') || text.includes('error')) return 'warn';
-  if (text.includes('pending') || text.includes('待审核') || text.includes('提交审核')) return 'pending';
-  return 'done';
-}
-
-function buildTimeline(
-  logs: OperationLogResponse[],
-  reviewTask: CheckTaskResponse | null,
-  diff: ReviewDiffResponse | null
-): TimelineItem[] {
-  const items: TimelineItem[] = [];
-  if (reviewTask) {
-    items.push({
-      key: `review-${reviewTask.id}`,
-      time: reviewTask.createdAt,
-      title: `审核任务：${statusText(reviewTask.status)}`,
-      desc: `${reviewTaskTitle(reviewTask)}，提交人：${actorText(reviewTask.submitterId)}`,
-      actor: reviewTask.submitterId,
-      status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done',
-      source: 'review'
-    });
-    if (reviewTask.reviewedAt || reviewTask.reviewerId || reviewTask.reviewComment) {
-      items.push({
-        key: `review-result-${reviewTask.id}`,
-        time: reviewTask.reviewedAt,
-        title: reviewTask.status === 'rejected' ? '审核驳回' : reviewTask.status === 'approved' ? '审核通过' : '审核处理中',
-        desc: display(reviewTask.reviewComment, '暂无审核意见'),
-        actor: reviewTask.reviewerId,
-        status: reviewTask.status === 'rejected' ? 'warn' : reviewTask.status === 'pending' ? 'pending' : 'done',
-        source: 'review'
-      });
-    }
-  }
-  if (diff) {
-    items.push({
-      key: `diff-${diff.reviewTaskId}`,
-      title: `字段级变更：${changeText(diff.changeType)}`,
-      desc: `${display(diff.diffSummary, '暂无变更摘要')}，字段差异 ${diff.fields.length} 项`,
-      status: 'info',
-      source: 'diff'
-    });
-  }
-  logs.forEach(log => items.push({
-    key: `log-${log.id}`,
-    time: log.createdAt,
-    title: actionText(log.actionType),
-    desc: `${display(log.summary, '暂无摘要')}｜${targetTextFromLog(log)}`,
-    actor: log.actorId,
-    status: severityOf(log),
-    source: 'log'
-  }));
-  return items.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.key.localeCompare(b.key));
-}
-
-function sourceText(source: TimelineItem['source']) {
-  const dict: Record<TimelineItem['source'], string> = { log: '操作日志', review: '审核任务', diff: '字段变更', system: '系统' };
+function sourceText(source: TraceTimelineEntry['source']) {
+  const dict: Record<TraceTimelineEntry['source'], string> = { log: '操作日志', review: '审核任务', diff: '字段变更' };
   return dict[source];
 }
 
-function timelineColor(status: TimelineItem['status']) {
+function timelineColor(status: TraceTimelineEntry['status']) {
   if (status === 'done') return 'green';
   if (status === 'warn') return 'red';
   if (status === 'pending') return 'blue';
   return 'gray';
+}
+
+function reviewResultTitle(status?: string | null) {
+  if (status === 'approved') return '审核通过';
+  if (status === 'rejected') return '审核驳回';
+  if (status === 'pending') return '审核处理中';
+  return '审核状态更新';
+}
+
+function timelinePresentation(entry: TraceTimelineEntry) {
+  if (entry.kind === 'reviewTask') {
+    return {
+      title: `审核任务：${statusText(entry.task.status)}`,
+      desc: `${reviewTaskTitle(entry.task)}，提交人：${actorText(entry.task.submitterId)}`,
+      actor: entry.task.submitterId
+    };
+  }
+  if (entry.kind === 'reviewResult') {
+    return {
+      title: reviewResultTitle(entry.task.status),
+      desc: display(entry.task.reviewComment, '暂无审核意见'),
+      actor: entry.task.reviewerId
+    };
+  }
+  if (entry.kind === 'diff') {
+    return {
+      title: `字段级变更：${changeText(entry.diff.changeType)}`,
+      desc: `${display(entry.diff.diffSummary, '暂无变更摘要')}，字段差异 ${entry.diff.fields.length} 项`,
+      actor: null
+    };
+  }
+  return {
+    title: actionText(entry.log.actionType),
+    desc: `${display(entry.log.summary, '暂无摘要')}｜${targetTextFromLog(entry.log)}`,
+    actor: entry.log.actorId
+  };
 }
 
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
@@ -193,8 +173,11 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   const [traceLogs, setTraceLogs] = useState<OperationLogResponse[]>([]);
   const [reviewTask, setReviewTask] = useState<CheckTaskResponse | null>(null);
   const [reviewDiff, setReviewDiff] = useState<ReviewDiffResponse | null>(null);
+  const [resolvedTarget, setResolvedTarget] = useState<TraceTarget | null>(null);
+  const [traceCoverage, setTraceCoverage] = useState<TraceCoverage | null>(null);
   const [result, setResult] = useState<{ message: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const traceRequestVersion = useRef(0);
 
   function set(key: keyof typeof filters, value: string) {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -206,6 +189,14 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       if (value) params.set(key, value);
     });
     return params.toString();
+  }
+
+  function clearTraceResults() {
+    setTraceLogs([]);
+    setReviewTask(null);
+    setReviewDiff(null);
+    setResolvedTarget(null);
+    setTraceCoverage(null);
   }
 
   async function list() {
@@ -236,63 +227,120 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   async function loadTrace() {
     const clanId = traceForm.clanId || workspace.clanId;
+    const hasBusinessTarget = Boolean(traceForm.targetType && traceForm.targetId);
     if (!clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    if (!traceForm.targetType && !traceForm.targetId && !traceForm.reviewTaskId) {
-      notify({ message: '请先从日志列表选择一条业务记录' }, true);
+    if (!hasBusinessTarget && !traceForm.reviewTaskId) {
+      notify({ message: '请先从日志列表选择一条可追踪记录' }, true);
       return;
     }
     if (loading) return;
+
+    const requestVersion = ++traceRequestVersion.current;
     setLoading(true);
+    clearTraceResults();
+    setResult(null);
+
     try {
+      let detail: ReviewTaskDetailResponse | null = null;
       let nextDiff: ReviewDiffResponse | null = null;
-      let nextReviewTask: CheckTaskResponse | null = null;
+      let detailState: 'not_requested' | 'loaded' | 'failed' = 'not_requested';
+      let diffState: 'not_requested' | 'loaded' | 'failed' = 'not_requested';
+
       if (traceForm.reviewTaskId) {
-        nextDiff = await apiClient.get<ReviewDiffResponse>(`/review-tasks/${traceForm.reviewTaskId}/diff`).catch(() => null);
-        const pendingTasks = await apiClient.get<CheckTaskResponse[]>(`/clans/${clanId}/review-tasks/pending`).catch(() => []);
-        nextReviewTask = pendingTasks.find(task => String(task.id) === String(traceForm.reviewTaskId)) || null;
+        const [detailOutcome, diffOutcome] = await Promise.allSettled([
+          apiClient.get<ReviewTaskDetailResponse>(`/review-tasks/${traceForm.reviewTaskId}`),
+          apiClient.get<ReviewDiffResponse>(`/review-tasks/${traceForm.reviewTaskId}/diff`)
+        ]);
+        if (detailOutcome.status === 'fulfilled') {
+          detail = detailOutcome.value;
+          detailState = 'loaded';
+        } else {
+          detailState = 'failed';
+        }
+        if (diffOutcome.status === 'fulfilled') {
+          nextDiff = diffOutcome.value;
+          diffState = 'loaded';
+        } else {
+          diffState = 'failed';
+        }
       }
-      const targetType = traceForm.targetType || nextDiff?.targetType || nextReviewTask?.targetType || '';
-      const targetId = traceForm.targetId || String(nextDiff?.targetId || nextReviewTask?.targetId || '');
-      const queryParts = new URLSearchParams({ clanId, pageSize: '100' });
-      if (targetType) queryParts.set('targetType', targetType);
-      if (targetId) queryParts.set('targetId', targetId);
-      const objectPage = await apiClient.get<OperationLogPage>(`/logs/operations?${queryParts}`).catch(() => null);
-      const taskPage = traceForm.reviewTaskId
-        ? await apiClient.get<OperationLogPage>(`/logs/operations?clanId=${clanId}&targetType=review_task&targetId=${traceForm.reviewTaskId}&pageSize=100`).catch(() => null)
-        : null;
-      const merged = [...(objectPage?.records || []), ...(taskPage?.records || [])]
-        .filter((log, index, rows) => rows.findIndex(item => item.id === log.id) === index);
+
+      const context = resolveTraceContext({ ...traceForm, clanId }, detail, nextDiff);
+      const scopes = buildOperationLogScopes(context);
+      const scopeResults = await Promise.all(scopes.map(async scope => {
+        const params = new URLSearchParams({
+          clanId,
+          targetType: scope.targetType,
+          targetId: scope.targetId,
+          pageSize: '100'
+        });
+        try {
+          const page = await apiClient.get<OperationLogPage>(`/logs/operations?${params}`);
+          return { scope, loaded: true, logs: page.records || [] };
+        } catch {
+          return { scope, loaded: false, logs: [] as OperationLogResponse[] };
+        }
+      }));
+
+      const merged = mergeTraceLogs(...scopeResults.map(item => item.logs));
+      const coverage = evaluateTraceCoverage({
+        context,
+        detailState,
+        diffState,
+        scopeStates: scopeResults.map(item => ({ key: item.scope.key, loaded: item.loaded }))
+      });
+      const trustedTask = context.reviewTaskTrusted ? detail?.task || null : null;
+      const trustedDiff = context.diffTrusted ? nextDiff : null;
+
+      if (traceRequestVersion.current !== requestVersion) return;
       setTraceLogs(merged);
-      setReviewTask(nextReviewTask);
-      setReviewDiff(nextDiff);
-      setResult({ message: `追踪完成：日志 ${merged.length} 条，字段差异 ${nextDiff?.fields.length || 0} 项` });
-      notify({ message: '追踪链路已生成' });
+      setReviewTask(trustedTask);
+      setReviewDiff(trustedDiff);
+      setResolvedTarget(context.businessTarget);
+      setTraceCoverage(coverage);
+      setResult({
+        message: coverage.level === 'complete'
+          ? `追踪完成：日志 ${merged.length} 条，字段差异 ${trustedDiff?.fields.length || 0} 项`
+          : `${coverage.title}：${coverage.message}`
+      });
+      notify({ message: coverage.title }, coverage.level === 'partial');
     } catch (error) {
+      if (traceRequestVersion.current !== requestVersion) return;
+      clearTraceResults();
+      setResult({ message: '追踪信息不完整：追踪请求执行失败' });
       notify({ message: (error as Error).message || '追踪链路查询失败' }, true);
     } finally {
-      setLoading(false);
+      if (traceRequestVersion.current === requestVersion) setLoading(false);
     }
   }
 
   function applyTraceFromLog(row: OperationLogResponse) {
-    setTraceForm(prev => ({
-      ...prev,
-      clanId: String(row.clanId || prev.clanId || workspace.clanId),
-      targetType: row.targetType || '',
-      targetId: row.targetId == null ? '' : String(row.targetId),
-      targetSummary: targetTextFromLog(row),
-      reviewTaskId: row.targetType === 'review_task' && row.targetId != null ? String(row.targetId) : prev.reviewTaskId
-    }));
+    traceRequestVersion.current += 1;
+    setLoading(false);
+    const reset = traceResetFromLog(row, workspace.clanId, targetTextFromLog(row));
+    setTraceForm(reset.selection);
+    setTraceLogs(reset.logs);
+    setReviewTask(reset.reviewTask);
+    setReviewDiff(reset.reviewDiff);
+    setResolvedTarget(reset.resolvedTarget);
+    setTraceCoverage(reset.coverage);
     setResult({ message: `已选择追踪对象：${targetTextFromLog(row)}` });
   }
 
-  const timeline = useMemo(() => buildTimeline(traceLogs, reviewTask, reviewDiff), [traceLogs, reviewTask, reviewDiff]);
+  const timeline = useMemo(
+    () => buildTraceTimelineEntries(traceLogs, reviewTask, reviewDiff),
+    [traceLogs, reviewTask, reviewDiff]
+  );
   const logRows = data?.records || [];
   const actionTypes = useMemo(() => {
     const map = new Map<string, number>();
     traceLogs.forEach(log => map.set(display(log.actionType, 'unknown'), (map.get(display(log.actionType, 'unknown')) || 0) + 1));
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [traceLogs]);
+  const canTrace = Boolean(traceForm.reviewTaskId || (traceForm.targetType && traceForm.targetId));
+  const resolvedTargetSummary = resolvedTarget
+    ? targetText(resolvedTarget.targetType, reviewDiff?.diffSummary || reviewTask?.diffSummary || traceForm.targetSummary)
+    : traceForm.targetSummary || '-';
 
   return (
     <div className="audit-trace-page">
@@ -300,8 +348,8 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         <Descriptions size="small" bordered column={4}>
           <Descriptions.Item label="当前日志">{logRows.length || '-'}</Descriptions.Item>
           <Descriptions.Item label="追踪日志">{traceLogs.length || '-'}</Descriptions.Item>
-          <Descriptions.Item label="字段差异">{reviewDiff?.fields.length || '-'}</Descriptions.Item>
           <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+          <Descriptions.Item label="链路覆盖"><Tag color={traceCoverage?.level === 'complete' ? 'success' : traceCoverage ? 'warning' : 'default'}>{traceCoverage?.title || '未追踪'}</Tag></Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -323,37 +371,53 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             <Button onClick={() => void stats()}>统计</Button>
             <Button onClick={() => void exportCsv()}>导出 CSV</Button>
           </Space>
-          {result ? <Alert type="success" showIcon message={result.message} style={{ marginTop: 12 }} /> : null}
+          {result ? <Alert type={traceCoverage?.level === 'partial' ? 'warning' : 'success'} showIcon message={result.message} style={{ marginTop: 12 }} /> : null}
         </Card>
 
         <Card title="审核流追踪">
           <Descriptions size="small" bordered column={1}>
             <Descriptions.Item label="追踪对象">{traceForm.targetSummary || '请先在日志列表中选择一条记录'}</Descriptions.Item>
             <Descriptions.Item label="对象类型">{targetTypeText(traceForm.targetType)}</Descriptions.Item>
+            <Descriptions.Item label="审核任务关联">{traceForm.reviewTaskId ? '日志已明确关联审核任务' : '当前日志未提供审核任务关联'}</Descriptions.Item>
           </Descriptions>
           <Space style={{ marginTop: 12 }}>
-            <Button type="primary" disabled={loading || !traceForm.targetId} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button>
+            <Button type="primary" disabled={loading || !canTrace} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button>
           </Space>
-          <Alert type="info" showIcon message="点击下方日志的“追踪”按钮带入对象；界面只展示业务摘要，不展示技术标识。" style={{ marginTop: 12 }} />
+          <Alert type="info" showIcon message="人物、关系、来源、支派和宗族按对象日志追踪；只有日志明确指向审核任务时，才加载真实审核详情和任务日志。" style={{ marginTop: 12 }} />
+          {traceCoverage ? (
+            <Alert
+              type={traceCoverage.level === 'complete' ? 'success' : 'warning'}
+              showIcon
+              message={traceCoverage.title}
+              description={traceCoverage.message}
+              style={{ marginTop: 12 }}
+            />
+          ) : null}
         </Card>
       </div>
 
       <div className="page-grid two audit-query-grid">
         <Card title="操作与审核时间线">
           {timeline.length ? (
-            <Timeline items={timeline.map(item => ({
-              color: timelineColor(item.status),
-              children: <div><Space><Tag>{sourceText(item.source)}</Tag><strong>{item.title}</strong></Space><p>{item.desc}</p><span>{display(item.time, '时间未记录')} · 操作者 {actorText(item.actor)}</span></div>
-            }))} />
+            <Timeline items={timeline.map(item => {
+              const presentation = timelinePresentation(item);
+              return {
+                color: timelineColor(item.status),
+                children: <div><Space><Tag>{sourceText(item.source)}</Tag><strong>{presentation.title}</strong></Space><p>{presentation.desc}</p><span>{display(item.time, '时间未记录')} · 操作者 {actorText(presentation.actor)}</span></div>
+              };
+            })} />
           ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无追踪数据，请先从日志列表选择业务记录后生成追踪链路。" />}
         </Card>
 
         <Card title="追踪摘要">
           <Descriptions size="small" bordered column={1}>
-            <Descriptions.Item label="对象">{traceForm.targetSummary || targetText(reviewDiff?.targetType, reviewDiff?.diffSummary)}</Descriptions.Item>
-            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '-'}</Descriptions.Item>
+            <Descriptions.Item label="关联对象">{resolvedTargetSummary}</Descriptions.Item>
+            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '未加载可信审核任务'}</Descriptions.Item>
             <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
+            <Descriptions.Item label="审核意见">{display(reviewTask?.reviewComment, reviewTask ? '暂无审核意见' : '-')}</Descriptions.Item>
             <Descriptions.Item label="变更记录">{display(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</Descriptions.Item>
+            <Descriptions.Item label="已覆盖">{traceCoverage?.covered.join('、') || '-'}</Descriptions.Item>
+            <Descriptions.Item label="缺失信息">{traceCoverage?.missing.join('；') || '-'}</Descriptions.Item>
           </Descriptions>
           <Space wrap style={{ marginTop: 12 }}>
             {actionTypes.length ? actionTypes.map(([name, count]) => <Tag key={name}>{actionText(name)} × {count}</Tag>) : <Tag>暂无动作分布</Tag>}
