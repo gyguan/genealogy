@@ -71,8 +71,8 @@ export type CultureItemCreateRequest = {
   confidenceLevel: CultureConfidenceLevel;
   privacyLevel: CulturePrivacyLevel;
   sensitiveLevel: CultureSensitiveLevel;
-  featuredOnHome?: boolean;
-  sortOrder?: number;
+  featuredOnHome: boolean;
+  sortOrder: number;
 };
 
 export type CultureItemUpdateRequest = CultureItemCreateRequest & { version: number; };
@@ -93,6 +93,7 @@ export type CultureItemSummaryResponse = {
   sortOrder: number;
   sourceCount: number;
   attachmentCount: number;
+  reviewCount: number;
   allowedActions: string[];
   version: number;
   createdByName?: string | null;
