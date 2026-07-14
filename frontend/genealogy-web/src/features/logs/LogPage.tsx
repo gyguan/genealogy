@@ -168,6 +168,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   }, [workspace.clanId]);
 
   useEffect(() => {
+    if (pendingClanRestore.current && pendingClanRestore.current !== workspace.clanId) return;
     if (!workspace.clanId || initializedClan.current === workspace.clanId) return;
     pendingClanRestore.current = '';
     initializedClan.current = workspace.clanId;
