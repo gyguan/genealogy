@@ -167,7 +167,18 @@ public class ImportJobApplicationService {
                 job.getProcessingStatus(),
                 job.getReviewStatus(),
                 job.getReviewRound(),
-                job.getLatestReviewTaskId()
+                job.getLatestReviewTaskId(),
+                job.getExecutionMode(),
+                job.getExecutionStatus(),
+                job.getExecutionStage(),
+                job.getProcessedCount(),
+                job.getPublishedCount(),
+                job.getChunkSize(),
+                job.getExecutionRetryCount(),
+                job.getExecutionMaxRetries(),
+                job.getManualInterventionRequired(),
+                job.getNextRetryAt(),
+                job.getHeartbeatAt()
         );
     }
 
