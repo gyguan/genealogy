@@ -10,12 +10,17 @@ import com.genealogy.imports.application.ImportJobReviewApplicationService;
 import com.genealogy.imports.application.ImportJobRowApplicationService;
 import com.genealogy.imports.application.PersonImportCommandApplicationService;
 import com.genealogy.imports.application.PersonImportTemplateApplicationService;
+import com.genealogy.imports.application.RelationshipImportApplicationService;
+import com.genealogy.imports.application.RelationshipImportJobRowApplicationService;
+import com.genealogy.imports.application.RelationshipImportTemplateApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
 import com.genealogy.imports.dto.ImportJobReviewSubmitRequest;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.dto.ImportPreviewResponse;
 import com.genealogy.imports.dto.PersonImportRowRetryRequest;
+import com.genealogy.imports.dto.RelationshipImportPreviewResponse;
+import com.genealogy.imports.dto.RelationshipImportRowRetryRequest;
 import com.genealogy.review.dto.CheckTaskResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -51,6 +56,9 @@ public class ImportController {
     private final ImportJobRowApplicationService importJobRowApplicationService;
     private final ImportJobReviewApplicationService importJobReviewApplicationService;
     private final PersonImportTemplateApplicationService personImportTemplateApplicationService;
+    private final RelationshipImportApplicationService relationshipImportApplicationService;
+    private final RelationshipImportJobRowApplicationService relationshipImportJobRowApplicationService;
+    private final RelationshipImportTemplateApplicationService relationshipImportTemplateApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
     public ImportController(
@@ -60,6 +68,9 @@ public class ImportController {
             ImportJobRowApplicationService importJobRowApplicationService,
             ImportJobReviewApplicationService importJobReviewApplicationService,
             PersonImportTemplateApplicationService personImportTemplateApplicationService,
+            RelationshipImportApplicationService relationshipImportApplicationService,
+            RelationshipImportJobRowApplicationService relationshipImportJobRowApplicationService,
+            RelationshipImportTemplateApplicationService relationshipImportTemplateApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.importApplicationService = importApplicationService;
@@ -68,29 +79,34 @@ public class ImportController {
         this.importJobRowApplicationService = importJobRowApplicationService;
         this.importJobReviewApplicationService = importJobReviewApplicationService;
         this.personImportTemplateApplicationService = personImportTemplateApplicationService;
+        this.relationshipImportApplicationService = relationshipImportApplicationService;
+        this.relationshipImportJobRowApplicationService = relationshipImportJobRowApplicationService;
+        this.relationshipImportTemplateApplicationService = relationshipImportTemplateApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @GetMapping("/imports/templates/persons.csv")
     public ResponseEntity<byte[]> downloadPersonCsvTemplate() {
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename("person-import-template.csv", StandardCharsets.UTF_8)
-                .build();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-                .body(personImportTemplateApplicationService.buildCsvTemplate());
+        return templateResponse("person-import-template.csv", new MediaType("text", "csv", StandardCharsets.UTF_8),
+                personImportTemplateApplicationService.buildCsvTemplate());
     }
 
     @GetMapping("/imports/templates/persons.xlsx")
     public ResponseEntity<byte[]> downloadPersonXlsxTemplate() {
-        ContentDisposition disposition = ContentDisposition.attachment()
-                .filename("person-import-template.xlsx", StandardCharsets.UTF_8)
-                .build();
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
-                .contentType(XLSX_MEDIA_TYPE)
-                .body(personImportTemplateApplicationService.buildXlsxTemplate());
+        return templateResponse("person-import-template.xlsx", XLSX_MEDIA_TYPE,
+                personImportTemplateApplicationService.buildXlsxTemplate());
+    }
+
+    @GetMapping("/imports/templates/relationships.csv")
+    public ResponseEntity<byte[]> downloadRelationshipCsvTemplate() {
+        return templateResponse("relationship-import-template.csv", new MediaType("text", "csv", StandardCharsets.UTF_8),
+                relationshipImportTemplateApplicationService.buildCsvTemplate());
+    }
+
+    @GetMapping("/imports/templates/relationships.xlsx")
+    public ResponseEntity<byte[]> downloadRelationshipXlsxTemplate() {
+        return templateResponse("relationship-import-template.xlsx", XLSX_MEDIA_TYPE,
+                relationshipImportTemplateApplicationService.buildXlsxTemplate());
     }
 
     @PostMapping("/clans/{clanId}/imports/persons/preview")
@@ -101,12 +117,7 @@ public class ImportController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(importApplicationService.previewPersons(
-                clanId,
-                branchId,
-                file,
-                actorId
-        ));
+        return ApiResponse.success(importApplicationService.previewPersons(clanId, branchId, file, actorId));
     }
 
     @PostMapping("/clans/{clanId}/imports/persons.csv")
@@ -119,11 +130,31 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(personImportCommandApplicationService.importPersonsCsv(
-                clanId,
-                branchId,
-                file,
-                confirmDuplicates,
-                actorId
+                clanId, branchId, file, confirmDuplicates, actorId
+        ));
+    }
+
+    @PostMapping("/clans/{clanId}/imports/relationships/preview")
+    public ApiResponse<RelationshipImportPreviewResponse> previewRelationships(
+            @Positive @PathVariable Long clanId,
+            @Positive @RequestParam("branchId") Long branchId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipImportApplicationService.preview(clanId, branchId, file, actorId));
+    }
+
+    @PostMapping("/clans/{clanId}/imports/relationships")
+    public ApiResponse<ImportJobResponse> importRelationships(
+            @Positive @PathVariable Long clanId,
+            @Positive @RequestParam("branchId") Long branchId,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipImportApplicationService.importRelationships(
+                clanId, branchId, file, actorId
         ));
     }
 
@@ -139,14 +170,8 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(importJobApplicationService.listJobs(
-                clanId,
-                branchId,
-                status,
-                importType,
-                fileFormat,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                actorId
+                clanId, branchId, status, importType, fileFormat,
+                pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), actorId
         ));
     }
 
@@ -170,17 +195,12 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(importJobRowApplicationService.listRows(
-                clanId,
-                jobId,
-                status,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                actorId
+                clanId, jobId, status, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), actorId
         ));
     }
 
     @PostMapping("/clans/{clanId}/imports/{jobId}/rows/{rowId}/retry")
-    public ApiResponse<ImportJobRowResponse> retryRow(
+    public ApiResponse<ImportJobRowResponse> retryPersonRow(
             @Positive @PathVariable Long clanId,
             @Positive @PathVariable Long jobId,
             @Positive @PathVariable Long rowId,
@@ -188,12 +208,20 @@ public class ImportController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(importJobRowApplicationService.retryPersonRow(
-                clanId,
-                jobId,
-                rowId,
-                request,
-                actorId
+        return ApiResponse.success(importJobRowApplicationService.retryPersonRow(clanId, jobId, rowId, request, actorId));
+    }
+
+    @PostMapping("/clans/{clanId}/imports/{jobId}/rows/{rowId}/relationship-retry")
+    public ApiResponse<ImportJobRowResponse> retryRelationshipRow(
+            @Positive @PathVariable Long clanId,
+            @Positive @PathVariable Long jobId,
+            @Positive @PathVariable Long rowId,
+            @Valid @RequestBody RelationshipImportRowRetryRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(relationshipImportJobRowApplicationService.retry(
+                clanId, jobId, rowId, request, actorId
         ));
     }
 
@@ -206,5 +234,15 @@ public class ImportController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(importJobReviewApplicationService.submit(clanId, jobId, request, actorId));
+    }
+
+    private ResponseEntity<byte[]> templateResponse(String filename, MediaType mediaType, byte[] body) {
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename(filename, StandardCharsets.UTF_8)
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(mediaType)
+                .body(body);
     }
 }

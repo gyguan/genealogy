@@ -21,6 +21,8 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long>, Jpa
 
     Optional<PersonEntity> findByIdAndDeletedAtIsNull(Long id);
 
+    List<PersonEntity> findByClanIdAndPersonCodeAndDeletedAtIsNull(Long clanId, String personCode);
+
     boolean existsByClanIdAndPersonCodeAndDeletedAtIsNull(Long clanId, String personCode);
 
     boolean existsByClanIdAndPersonCodeAndIdNotAndDeletedAtIsNull(Long clanId, String personCode, Long id);

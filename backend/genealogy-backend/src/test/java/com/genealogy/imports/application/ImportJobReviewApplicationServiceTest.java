@@ -13,6 +13,7 @@ import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.review.entity.CheckTaskEntity;
@@ -42,6 +43,7 @@ class ImportJobReviewApplicationServiceTest {
     @Mock private ImportJobRepository importJobRepository;
     @Mock private ImportJobRowRepository importJobRowRepository;
     @Mock private PersonRepository personRepository;
+    @Mock private RelationshipRepository relationshipRepository;
     @Mock private BranchRepository branchRepository;
     @Mock private AuditRecordRepository auditRecordRepository;
     @Mock private CheckTaskRepository checkTaskRepository;
@@ -56,6 +58,7 @@ class ImportJobReviewApplicationServiceTest {
                 importJobRepository,
                 importJobRowRepository,
                 personRepository,
+                relationshipRepository,
                 branchRepository,
                 auditRecordRepository,
                 checkTaskRepository,

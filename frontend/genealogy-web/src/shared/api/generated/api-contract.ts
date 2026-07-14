@@ -50,6 +50,32 @@ export const API_OPERATIONS = {
     "requestBody": "MultipartFileRequest",
     "response": "ApiResponseImportPreviewResponse"
   },
+  "POST /api/v1/clans/{clanId}/imports/relationships": {
+    "operationId": "importRelationshipsAsJob",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/relationships",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": "MultipartFileRequest",
+    "response": "ApiResponseImportJobResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/relationships/preview": {
+    "operationId": "previewRelationshipImport",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/relationships/preview",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [
+      "branchId"
+    ],
+    "requestBody": "MultipartFileRequest",
+    "response": "ApiResponseRelationshipImportPreviewResponse"
+  },
   "GET /api/v1/clans/{clanId}/imports/{jobId}": {
     "operationId": "getImportJob",
     "method": "GET",
@@ -77,6 +103,19 @@ export const API_OPERATIONS = {
     ],
     "requestBody": null,
     "response": "ApiResponseImportJobRowPage"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/relationship-retry": {
+    "operationId": "retryRelationshipImportRow",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/relationship-retry",
+    "pathParams": [
+      "clanId",
+      "jobId",
+      "rowId"
+    ],
+    "queryParams": [],
+    "requestBody": "RelationshipImportRowRetryRequest",
+    "response": "ApiResponseImportJobRowResponse"
   },
   "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/retry": {
     "operationId": "retryPersonImportRow",
@@ -149,6 +188,24 @@ export const API_OPERATIONS = {
     "operationId": "downloadPersonImportXlsxTemplate",
     "method": "GET",
     "path": "/api/v1/imports/templates/persons.xlsx",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/relationships.csv": {
+    "operationId": "downloadRelationshipImportCsvTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/relationships.csv",
+    "pathParams": [],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
+  "GET /api/v1/imports/templates/relationships.xlsx": {
+    "operationId": "downloadRelationshipImportXlsxTemplate",
+    "method": "GET",
+    "path": "/api/v1/imports/templates/relationships.xlsx",
     "pathParams": [],
     "queryParams": [],
     "requestBody": null,

@@ -114,6 +114,9 @@ public class ImportJobRowApplicationService {
             Long actorId
     ) {
         ImportJobEntity job = requireJob(clanId, jobId, actorId);
+        if (!ImportJobEntity.TYPE_PERSON.equals(job.getImportType())) {
+            throw new BusinessException("IMPORT_JOB_TYPE_MISMATCH", "当前批次不是人物导入批次");
+        }
         ensureJobEditable(job);
         ImportJobRowEntity row = importJobRowRepository.findByIdAndJobId(rowId, jobId)
                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_ROW_NOT_FOUND", "导入失败行不存在"));
@@ -131,6 +134,8 @@ public class ImportJobRowApplicationService {
             ensureDuplicateConfirmed(job, person, Boolean.TRUE.equals(request.confirmDuplicates()));
             PersonEntity savedPerson = personRepository.save(person);
             row.setDraftPersonId(savedPerson.getId());
+            row.setDraftTargetType(ImportJobEntity.TYPE_PERSON);
+            row.setDraftTargetId(savedPerson.getId());
             row.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
             row.setErrorCode(null);
             row.setErrorMessage(null);
@@ -187,7 +192,9 @@ public class ImportJobRowApplicationService {
     }
 
     private void ensureRowRetryable(ImportJobRowEntity row, Long expectedVersion) {
-        if (!FAILED_STATUSES.contains(row.getRowStatus()) || row.getDraftPersonId() != null) {
+        if (!FAILED_STATUSES.contains(row.getRowStatus())
+                || row.getDraftTargetId() != null
+                || row.getDraftPersonId() != null) {
             throw new BusinessException("IMPORT_JOB_ROW_NOT_RETRYABLE", "该行已经处理成功或不能再次重试");
         }
         if (!Objects.equals(row.getVersion(), expectedVersion)) {
@@ -306,7 +313,7 @@ public class ImportJobRowApplicationService {
                 entity.getErrorCode(),
                 entity.getErrorMessage(),
                 entity.getRetryCount(),
-                entity.getDraftPersonId() != null,
+                entity.getDraftTargetId() != null || entity.getDraftPersonId() != null,
                 entity.getVersion(),
                 entity.getUpdatedAt()
         );

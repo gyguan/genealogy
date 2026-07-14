@@ -127,6 +127,7 @@ public class RelationshipApplicationService {
         validateCreate(clanId, normalizedRequest);
         RelationshipEntity entity = RelationshipMapper.toEntity(clanId, normalizedRequest);
         applyDefaults(entity);
+        entity.setCreatedBy(actorId);
         LocalDateTime now = LocalDateTime.now();
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
@@ -675,6 +676,7 @@ public class RelationshipApplicationService {
         reverse.setDescription("auto reverse spouse relationship");
         reverse.setConfidenceLevel(saved.getConfidenceLevel());
         reverse.setDataStatus(saved.getDataStatus());
+        reverse.setCreatedBy(saved.getCreatedBy());
         reverse.setCreatedAt(now);
         reverse.setUpdatedAt(now);
         relationshipRepository.save(reverse);
