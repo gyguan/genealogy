@@ -77,7 +77,7 @@ export function ImportPage({ notify }: Props) {
   return (
     <div className="import-center-page">
       <Card>
-        <Typography.Title level={3} style={{ marginTop: 0 }}>导入管理</Typography.Title>
+        <Typography.Title level={3} style={{ marginTop: 0 }}>数据导入</Typography.Title>
         <Typography.Paragraph type="secondary">
           统一创建、修正、审核和追踪族谱数据导入批次。当前支持人物与人物关系导入，其他数据类型将复用同一批次与审核流程逐步接入。
         </Typography.Paragraph>
