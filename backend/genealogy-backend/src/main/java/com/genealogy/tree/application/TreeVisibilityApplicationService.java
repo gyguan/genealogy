@@ -167,7 +167,9 @@ public class TreeVisibilityApplicationService {
         if (DATA_VIEW_OFFICIAL.equals(dataView)) {
             return STATUS_OFFICIAL.equals(status);
         }
-        return !STATUS_ARCHIVED.equals(status) && canEditPerson(person, actorId);
+        return !STATUS_ARCHIVED.equals(status)
+                && canEditPerson(person, actorId)
+                && canEditRelationship(person, actorId);
     }
 
     private boolean isRelationshipStatusVisible(
