@@ -222,6 +222,7 @@ export type ReviewTaskListItemResponse = {
   reviewComment?: string | null;
   submitTime: string;
   processedAt?: string | null;
+  processingDurationSeconds?: number | null;
   targetSummary: ReviewTargetSummaryResponse;
 };
 
