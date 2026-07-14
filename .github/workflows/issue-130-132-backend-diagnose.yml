@@ -1,0 +1,52 @@
+name: Issue 130-132 Backend Diagnose
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply closure patch
+        run: python3 .github/scripts/issue-130-132-backend-apply.py
+      - name: Run tests and print only failures
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set +e
+          mvn -q clean test >/tmp/test.log 2>&1
+          status=$?
+          set -e
+          grep -E '\[ERROR\]|COMPILATION ERROR|Failures:|Errors:' /tmp/test.log | tail -n 120 || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          failures = []
+          for report in sorted(Path('target/surefire-reports').glob('TEST-*.xml')):
+              try:
+                  root = ET.parse(report).getroot()
+              except Exception:
+                  continue
+              for case in root.findall('testcase'):
+                  node = case.find('failure')
+                  if node is None:
+                      node = case.find('error')
+                  if node is not None:
+                      failures.append((root.get('name'), case.get('name'), node.get('message') or ''))
+          print(f'FAILURE_COUNT={len(failures)}')
+          for suite, case, message in failures:
+              print(f'FAILURE={suite}#{case}::{message[:1500]}')
+          PY
+          exit "$status"
