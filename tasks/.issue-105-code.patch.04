@@ -1,0 +1,320 @@
+lic class ImportJobReviewApplicationService {
+     ) {
+         if (ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {
+             lockDraftRelationships(job, draftRows, actorId, now);
++        } else if (ImportJobEntity.TYPE_GENERATION.equals(importType(job))) {
++            lockGenerationDrafts(job, draftRows, now);
+         } else {
+             lockDraftPersons(job, draftRows, now);
+         }
+@@ -247,6 +260,31 @@ public class ImportJobReviewApplicationService {
+         relationshipRepository.saveAll(relationships);
+     }
+ 
++
++    private void lockGenerationDrafts(
++            ImportJobEntity job,
++            List<ImportJobRowEntity> draftRows,
++            LocalDateTime now
++    ) {
++        List<GenerationImportDraftEntity> drafts = new ArrayList<>();
++        for (ImportJobRowEntity row : draftRows) {
++            if (!GenerationImportDraftEntity.TARGET_TYPE.equals(row.getDraftTargetType())) {
++                throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_TYPE_MISMATCH", "字辈导入批次关联了错误的草稿类型");
++            }
++            GenerationImportDraftEntity draft = generationImportDraftRepository.findByIdAndJobId(targetId(row), job.getId())
++                    .orElseThrow(() -> new BusinessException("IMPORT_GENERATION_DRAFT_NOT_FOUND", "导入批次关联的字辈草稿不存在"));
++            if (!Objects.equals(draft.getClanId(), job.getClanId())
++                    || !Objects.equals(draft.getBranchId(), job.getBranchId())) {
++                throw new BusinessException("IMPORT_GENERATION_DRAFT_SCOPE_MISMATCH", "字辈草稿不属于当前宗族或支派范围");
++            }
++            requireDraftOrRejected(draft.getStatus(), "导入批次关联的字辈草稿当前不能提交审核");
++            draft.setStatus(GenerationImportDraftEntity.STATUS_PENDING_REVIEW);
++            draft.setUpdatedAt(now);
++            drafts.add(draft);
++        }
++        generationImportDraftRepository.saveAll(drafts);
++    }
++
+     private void requireDraftOrRejected(String status, String message) {
+         String normalized = normalize(status);
+         if (!"draft".equals(normalized) && !"rejected".equals(normalized)) {
+@@ -292,7 +330,9 @@ public class ImportJobReviewApplicationService {
+     }
+ 
+     private String typeTitle(String type) {
+-        return ImportJobEntity.TYPE_RELATIONSHIP.equals(type) ? "人物关系" : "人物";
++        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) return "人物关系";
++        if (ImportJobEntity.TYPE_GENERATION.equals(type)) return "字辈";
++        return "人物";
+     }
+ 
+     private String branchName(Long branchId) {
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java
+index 94d6553..b45411e 100644
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java
+@@ -4,6 +4,9 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
+ import com.genealogy.common.api.ApiResponse;
+ import com.genealogy.common.api.PageQuery;
+ import com.genealogy.common.api.PageResponse;
++import com.genealogy.imports.application.GenerationImportApplicationService;
++import com.genealogy.imports.application.GenerationImportJobRowApplicationService;
++import com.genealogy.imports.application.GenerationImportTemplateApplicationService;
+ import com.genealogy.imports.application.ImportApplicationService;
+ import com.genealogy.imports.application.ImportJobApplicationService;
+ import com.genealogy.imports.application.ImportJobReviewApplicationService;
+@@ -13,6 +16,8 @@ import com.genealogy.imports.application.PersonImportTemplateApplicationService;
+ import com.genealogy.imports.application.RelationshipImportApplicationService;
+ import com.genealogy.imports.application.RelationshipImportJobRowApplicationService;
+ import com.genealogy.imports.application.RelationshipImportTemplateApplicationService;
++import com.genealogy.imports.dto.GenerationImportPreviewResponse;
++import com.genealogy.imports.dto.GenerationImportRowRetryRequest;
+ import com.genealogy.imports.dto.ImportJobResponse;
+ import com.genealogy.imports.dto.ImportJobReviewSubmitRequest;
+ import com.genealogy.imports.dto.ImportJobRowResponse;
+@@ -50,6 +55,9 @@ public class ImportController {
+             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     );
+ 
++    private final GenerationImportApplicationService generationImportApplicationService;
++    private final GenerationImportJobRowApplicationService generationImportJobRowApplicationService;
++    private final GenerationImportTemplateApplicationService generationImportTemplateApplicationService;
+     private final ImportApplicationService importApplicationService;
+     private final PersonImportCommandApplicationService personImportCommandApplicationService;
+     private final ImportJobApplicationService importJobApplicationService;
+@@ -62,6 +70,9 @@ public class ImportController {
+     private final AuthorizationApplicationService authorizationApplicationService;
+ 
+     public ImportController(
++            GenerationImportApplicationService generationImportApplicationService,
++            GenerationImportJobRowApplicationService generationImportJobRowApplicationService,
++            GenerationImportTemplateApplicationService generationImportTemplateApplicationService,
+             ImportApplicationService importApplicationService,
+             PersonImportCommandApplicationService personImportCommandApplicationService,
+             ImportJobApplicationService importJobApplicationService,
+@@ -73,6 +84,9 @@ public class ImportController {
+             RelationshipImportTemplateApplicationService relationshipImportTemplateApplicationService,
+             AuthorizationApplicationService authorizationApplicationService
+     ) {
++        this.generationImportApplicationService = generationImportApplicationService;
++        this.generationImportJobRowApplicationService = generationImportJobRowApplicationService;
++        this.generationImportTemplateApplicationService = generationImportTemplateApplicationService;
+         this.importApplicationService = importApplicationService;
+         this.personImportCommandApplicationService = personImportCommandApplicationService;
+         this.importJobApplicationService = importJobApplicationService;
+@@ -109,6 +123,19 @@ public class ImportController {
+                 relationshipImportTemplateApplicationService.buildXlsxTemplate());
+     }
+ 
++
++    @GetMapping("/imports/templates/generations.csv")
++    public ResponseEntity<byte[]> downloadGenerationCsvTemplate() {
++        return templateResponse("generation-import-template.csv", new MediaType("text", "csv", StandardCharsets.UTF_8),
++                generationImportTemplateApplicationService.buildCsvTemplate());
++    }
++
++    @GetMapping("/imports/templates/generations.xlsx")
++    public ResponseEntity<byte[]> downloadGenerationXlsxTemplate() {
++        return templateResponse("generation-import-template.xlsx", XLSX_MEDIA_TYPE,
++                generationImportTemplateApplicationService.buildXlsxTemplate());
++    }
++
+     @PostMapping("/clans/{clanId}/imports/persons/preview")
+     public ApiResponse<ImportPreviewResponse> previewPersons(
+             @Positive @PathVariable Long clanId,
+@@ -158,6 +185,29 @@ public class ImportController {
+         ));
+     }
+ 
++
++    @PostMapping("/clans/{clanId}/imports/generations/preview")
++    public ApiResponse<GenerationImportPreviewResponse> previewGenerations(
++            @Positive @PathVariable Long clanId,
++            @Positive @RequestParam(value = "branchId", required = false) Long branchId,
++            @RequestParam("file") MultipartFile file,
++            @RequestHeader(value = "Authorization", required = false) String authorization
++    ) {
++        Long actorId = authorizationApplicationService.requireLogin(authorization);
++        return ApiResponse.success(generationImportApplicationService.preview(clanId, branchId, file, actorId));
++    }
++
++    @PostMapping("/clans/{clanId}/imports/generations")
++    public ApiResponse<ImportJobResponse> importGenerations(
++            @Positive @PathVariable Long clanId,
++            @Positive @RequestParam(value = "branchId", required = false) Long branchId,
++            @RequestParam("file") MultipartFile file,
++            @RequestHeader(value = "Authorization", required = false) String authorization
++    ) {
++        Long actorId = authorizationApplicationService.requireLogin(authorization);
++        return ApiResponse.success(generationImportApplicationService.importGenerations(clanId, branchId, file, actorId));
++    }
++
+     @GetMapping("/clans/{clanId}/imports")
+     public ApiResponse<PageResponse<ImportJobSummaryResponse>> listJobs(
+             @Positive @PathVariable Long clanId,
+@@ -225,6 +275,21 @@ public class ImportController {
+         ));
+     }
+ 
++
++    @PostMapping("/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry")
++    public ApiResponse<ImportJobRowResponse> retryGenerationRow(
++            @Positive @PathVariable Long clanId,
++            @Positive @PathVariable Long jobId,
++            @Positive @PathVariable Long rowId,
++            @Valid @RequestBody GenerationImportRowRetryRequest request,
++            @RequestHeader(value = "Authorization", required = false) String authorization
++    ) {
++        Long actorId = authorizationApplicationService.requireLogin(authorization);
++        return ApiResponse.success(generationImportJobRowApplicationService.retry(
++                clanId, jobId, rowId, request, actorId
++        ));
++    }
++
+     @PostMapping("/clans/{clanId}/imports/{jobId}/submit-review")
+     public ApiResponse<CheckTaskResponse> submitReview(
+             @Positive @PathVariable Long clanId,
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/domain/GenerationImportTypeDefinition.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/domain/GenerationImportTypeDefinition.java
+new file mode 100644
+index 0000000..e2daf52
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/domain/GenerationImportTypeDefinition.java
+@@ -0,0 +1,37 @@
++package com.genealogy.imports.domain;
++
++import org.springframework.stereotype.Component;
++
++import java.util.Set;
++
++@Component
++public class GenerationImportTypeDefinition implements ImportTypeDefinition {
++
++    public static final String TYPE = "generation";
++
++    @Override
++    public String importType() { return TYPE; }
++
++    @Override
++    public Set<String> supportedFormats() {
++        return Set.of(ImportJobDescriptor.FORMAT_CSV, ImportJobDescriptor.FORMAT_XLSX);
++    }
++
++    @Override
++    public String templateDefinition() { return "GenerationImportTemplateDefinition"; }
++
++    @Override
++    public String parser() { return "GenerationImportApplicationService#readImport"; }
++
++    @Override
++    public String rowValidator() { return "GenerationImportApplicationService#resolveDraft"; }
++
++    @Override
++    public String correctionSchema() { return "GenerationImportRowRetryRequest"; }
++
++    @Override
++    public String draftCreator() { return "GenerationImportApplicationService#createGenerationDraft"; }
++
++    @Override
++    public String reviewApplyHandler() { return "RevisionApplyService#import_job:generation"; }
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewResponse.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewResponse.java
+new file mode 100644
+index 0000000..fa88a46
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewResponse.java
+@@ -0,0 +1,12 @@
++package com.genealogy.imports.dto;
++
++import java.util.List;
++
++public record GenerationImportPreviewResponse(
++        Integer totalCount,
++        Integer validCount,
++        Integer duplicateCount,
++        Integer errorCount,
++        List<GenerationImportPreviewRowResponse> rows
++) {
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewRowResponse.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewRowResponse.java
+new file mode 100644
+index 0000000..edbf132
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportPreviewRowResponse.java
+@@ -0,0 +1,19 @@
++package com.genealogy.imports.dto;
++
++public record GenerationImportPreviewRowResponse(
++        Integer rowNo,
++        String schemeName,
++        Integer startGeneration,
++        Integer generationNo,
++        String word,
++        String poemText,
++        Boolean isDefault,
++        Boolean validationEnabled,
++        Boolean strictMode,
++        String description,
++        String actionType,
++        boolean duplicated,
++        String errorMessage,
++        String rawData
++) {
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportRowRetryRequest.java b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportRowRetryRequest.java
+new file mode 100644
+index 0000000..db27f03
+--- /dev/null
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/dto/GenerationImportRowRetryRequest.java
+@@ -0,0 +1,20 @@
++package com.genealogy.imports.dto;
++
++import jakarta.validation.constraints.NotBlank;
++import jakarta.validation.constraints.NotNull;
++import jakarta.validation.constraints.Positive;
++import jakarta.validation.constraints.Size;
++
++public record GenerationImportRowRetryRequest(
++        @NotBlank @Size(max = 200) String schemeName,
++        @NotNull @Positive Integer startGeneration,
++        @NotNull @Positive Integer generationNo,
++        @NotBlank @Size(max = 20) String word,
++        String poemText,
++        Boolean isDefault,
++        Boolean validationEnabled,
++        Boolean strictMode,
++        @Size(max = 255) String description,
++        @NotNull Long expectedVersion
++) {
++}
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java b/backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+index caee11d..f926707 100644
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+@@ -5,8 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
+ import com.genealogy.branch.entity.BranchEntity;
+ import com.genealogy.branch.repository.BranchRepository;
+ import com.genealogy.common.exception.BusinessException;
++import com.genealogy.generation.entity.GenerationImportDraftEntity;
+ import com.genealogy.generation.entity.GenerationSchemeEntity;
++import com.genealogy.generation.entity.GenerationWordEntity;
+ import com.genealogy.generation.repository.GenSchemeRepository;
++import com.genealogy.generation.repository.GenWordRepository;
++import com.genealogy.generation.repository.GenerationImportDraftRepository;
+ import com.genealogy.imports.entity.ImportJobEntity;
+ import com.genealogy.imports.entity.ImportJobRowEntity;
+ import com.genealogy.imports.repository.ImportJobRepository;
+@@ -23,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
+ 
+ import java.time.LocalDateTime;
+ import java.util.ArrayList;
++import java.util.LinkedHashMap;
+ import java.util.List;
++import java.util.Map;
+ import java.util.Objects;
+ 
+ @Service
+@@ -46,6 +52,8 @@ public class RevisionApplyService {
+     private final SourceRepository sourceRepository;
+     private final BranchRepository branchRepository;
+     private final 
