@@ -17,4 +17,11 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTaskEntity, Lo
             Collection<Long> revisionIds,
             Pageable pageable
     );
+
+    Page<ReviewTaskEntity> findByClanIdAndRevisionIdInAndBranchIdInOrderByCreatedAtDesc(
+            Long clanId,
+            Collection<Long> revisionIds,
+            Collection<Long> branchIds,
+            Pageable pageable
+    );
 }
