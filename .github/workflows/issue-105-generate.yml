@@ -1,0 +1,1069 @@
+name: Issue 105 Generate Generation Import
+
+on:
+  push:
+    branches:
+      - agent/issue-105-generation-import-v2
+    paths:
+      - '.github/workflows/issue-105-generate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-105-generation-import-v2
+      - name: Generate implementation
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          def write(path, content):
+              p = Path(path)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(content.strip() + "\n", encoding="utf-8")
+
+          def patch(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"missing patch target in {path}: {old[:80]}")
+              p.write_text(text.replace(old, new), encoding="utf-8")
+
+          base = "backend/genealogy-backend/src/main/java/com/genealogy/imports"
+          write(f"{base}/application/GenerationImportTemplateDefinition.java", r'''
+package com.genealogy.imports.application;
+
+import java.util.List;
+import java.util.Map;
+
+public final class GenerationImportTemplateDefinition {
+
+    private GenerationImportTemplateDefinition() {}
+
+    public static final int SCHEME_NAME_INDEX = 0;
+    public static final int SCOPE_INDEX = 1;
+    public static final int START_GENERATION_INDEX = 2;
+    public static final int GENERATION_NO_INDEX = 3;
+    public static final int GENERATION_WORD_INDEX = 4;
+    public static final int STRATEGY_INDEX = 5;
+    public static final int DESCRIPTION_INDEX = 6;
+
+    public static final List<String> HEADERS = List.of(
+            "方案名称", "适用范围", "起始代次", "代次", "字辈文字", "策略", "说明"
+    );
+
+    public static final List<String> SAMPLE_ROW = List.of(
+            "黄氏通用字辈", "支派", "1", "1", "德", "新增", "示例：同一方案按代次逐行填写"
+    );
+
+    public static final Map<String, String> SCOPES = Map.of(
+            "宗族", "clan",
+            "支派", "branch"
+    );
+
+    public static final Map<String, String> STRATEGIES = Map.of(
+            "新增", "create",
+            "追加", "append"
+    );
+
+    public static List<String> normalizeHeaders(List<String> headers) {
+        return headers.stream()
+                .map(value -> value == null ? "" : value.replace("\ufeff", "").trim())
+                .toList();
+    }
+
+    public static String expectedHeaderText() {
+        return String.join("、", HEADERS);
+    }
+}
+''')
+          write(f"{base}/application/GenerationImportTemplateApplicationService.java", r'''
+package com.genealogy.imports.application;
+
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.imports.domain.GenerationImportTypeDefinition;
+import com.genealogy.imports.domain.ImportJobDescriptor;
+import com.genealogy.imports.domain.ImportTypeRegistry;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+@Service
+public class GenerationImportTemplateApplicationService {
+
+    private final ImportTypeRegistry importTypeRegistry;
+
+    public GenerationImportTemplateApplicationService(ImportTypeRegistry importTypeRegistry) {
+        this.importTypeRegistry = importTypeRegistry;
+    }
+
+    public byte[] buildCsvTemplate() {
+        importTypeRegistry.require(GenerationImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_CSV);
+        String content = "\ufeff"
+                + String.join(",", GenerationImportTemplateDefinition.HEADERS)
+                + "\n"
+                + String.join(",", GenerationImportTemplateDefinition.SAMPLE_ROW)
+                + "\n";
+        return content.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public byte[] buildXlsxTemplate() {
+        importTypeRegistry.require(GenerationImportTypeDefinition.TYPE, ImportJobDescriptor.FORMAT_XLSX);
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("字辈导入");
+            writeRow(sheet.createRow(0), GenerationImportTemplateDefinition.HEADERS);
+            writeRow(sheet.createRow(1), GenerationImportTemplateDefinition.SAMPLE_ROW);
+            for (int index = 0; index < GenerationImportTemplateDefinition.HEADERS.size(); index++) {
+                sheet.autoSizeColumn(index);
+            }
+            workbook.write(output);
+            return output.toByteArray();
+        } catch (IOException exception) {
+            throw new BusinessException("IMPORT_TEMPLATE_BUILD_FAILED", "字辈导入模板生成失败");
+        }
+    }
+
+    private void writeRow(Row row, java.util.List<String> values) {
+        for (int index = 0; index < values.size(); index++) {
+            row.createCell(index).setCellValue(values.get(index));
+        }
+    }
+}
+''')
+          write(f"{base}/application/GenerationImportFilePolicyService.java", r'''
+package com.genealogy.imports.application;
+
+import com.genealogy.common.exception.BusinessException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+@Service
+public class GenerationImportFilePolicyService {
+
+    public void validate(Long branchId, MultipartFile file) {
+        if (branchId == null) {
+            throw new BusinessException("IMPORT_BRANCH_REQUIRED", "请先选择导入批次管理支派");
+        }
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("IMPORT_FILE_EMPTY", "导入文件不能为空");
+        }
+        FileFormat format = resolveFormat(file.getOriginalFilename());
+        validateHeaders(readHeaders(file, format));
+    }
+
+    FileFormat resolveFormat(String originalFilename) {
+        String filename = originalFilename == null ? "" : originalFilename.trim().toLowerCase(Locale.ROOT);
+        if (filename.endsWith(".csv")) return FileFormat.CSV;
+        if (filename.endsWith(".xlsx")) return FileFormat.XLSX;
+        throw new BusinessException("IMPORT_FILE_TYPE_UNSUPPORTED", "字辈导入只支持系统提供的 CSV 或 XLSX 模板");
+    }
+
+    private List<String> readHeaders(MultipartFile file, FileFormat format) {
+        try {
+            return format == FileFormat.XLSX ? readXlsxHeaders(file) : readCsvHeaders(file);
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new BusinessException("IMPORT_HEADER_READ_FAILED", "无法读取字辈导入文件表头");
+        }
+    }
+
+    private List<String> readCsvHeaders(MultipartFile file) throws IOException {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String line = reader.readLine();
+            return line == null ? List.of() : parseCsvLine(line);
+        }
+    }
+
+    private List<String> readXlsxHeaders(MultipartFile file) throws Exception {
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) return List.of();
+            Row row = sheet.getRow(sheet.getFirstRowNum());
+            if (row == null) return List.of();
+            DataFormatter formatter = new DataFormatter();
+            int lastCell = Math.max(0, row.getLastCellNum());
+            List<String> headers = new ArrayList<>(lastCell);
+            for (int index = 0; index < lastCell; index++) {
+                Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                headers.add(cell == null ? "" : formatter.formatCellValue(cell));
+            }
+            return headers;
+        }
+    }
+
+    private void validateHeaders(List<String> headers) {
+        List<String> actual = GenerationImportTemplateDefinition.normalizeHeaders(headers);
+        if (actual.isEmpty() || actual.stream().allMatch(String::isBlank)) {
+            throw new BusinessException("IMPORT_GENERATION_TEMPLATE_HEADER_REQUIRED", "上传文件缺少字辈导入模板表头，请重新下载模板填写后上传");
+        }
+        if (!GenerationImportTemplateDefinition.HEADERS.equals(actual)) {
+            throw new BusinessException(
+                    "IMPORT_GENERATION_TEMPLATE_HEADER_MISMATCH",
+                    "上传文件与字辈导入模板不一致。标准表头："
+                            + GenerationImportTemplateDefinition.expectedHeaderText()
+                            + "；当前表头：" + String.join("、", actual)
+            );
+        }
+    }
+
+    List<String> parseCsvLine(String line) {
+        List<String> cells = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean quoted = false;
+        for (int index = 0; index < line.length(); index++) {
+            char character = line.charAt(index);
+            if (character == '"') {
+                if (quoted && index + 1 < line.length() && line.charAt(index + 1) == '"') {
+                    current.append('"');
+                    index++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (character == ',' && !quoted) {
+                cells.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(character);
+            }
+        }
+        if (quoted) throw new BusinessException("IMPORT_HEADER_READ_FAILED", "CSV 模板表头格式不正确");
+        cells.add(current.toString());
+        return cells;
+    }
+
+    enum FileFormat { CSV, XLSX }
+}
+''')
+          write(f"{base}/dto/GenerationImportPreviewRowResponse.java", r'''
+package com.genealogy.imports.dto;
+
+public record GenerationImportPreviewRowResponse(
+        Integer rowNo,
+        String schemeName,
+        String scope,
+        Integer startGeneration,
+        Integer generationNo,
+        String generationWord,
+        String strategy,
+        String description,
+        Boolean duplicated,
+        String errorMessage,
+        String rawData
+) {
+}
+''')
+          write(f"{base}/dto/GenerationImportPreviewResponse.java", r'''
+package com.genealogy.imports.dto;
+
+import java.util.List;
+
+public record GenerationImportPreviewResponse(
+        Integer totalCount,
+        Integer validCount,
+        Integer duplicateCount,
+        Integer errorCount,
+        List<GenerationImportPreviewRowResponse> rows
+) {
+}
+''')
+          write(f"{base}/dto/GenerationImportRowRetryRequest.java", r'''
+package com.genealogy.imports.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+public record GenerationImportRowRetryRequest(
+        @NotBlank String schemeName,
+        @NotBlank String scope,
+        @NotNull @Positive Integer startGeneration,
+        @NotNull @Positive Integer generationNo,
+        @NotBlank String generationWord,
+        @NotBlank String strategy,
+        String description,
+        @NotNull Long expectedVersion
+) {
+}
+''')
+          write(f"{base}/domain/GenerationImportTypeDefinition.java", r'''
+package com.genealogy.imports.domain;
+
+import org.springframework.stereotype.Component;
+
+import java.util.Set;
+
+@Component
+public class GenerationImportTypeDefinition implements ImportTypeDefinition {
+
+    public static final String TYPE = "generation";
+
+    @Override
+    public String importType() { return TYPE; }
+
+    @Override
+    public Set<String> supportedFormats() { return Set.of(ImportJobDescriptor.FORMAT_CSV, ImportJobDescriptor.FORMAT_XLSX); }
+
+    @Override
+    public String templateDefinition() { return "GenerationImportTemplateDefinition"; }
+
+    @Override
+    public String parser() { return "GenerationImportApplicationService#readImport"; }
+
+    @Override
+    public String rowValidator() { return "GenerationImportApplicationService#validateRow"; }
+
+    @Override
+    public String correctionSchema() { return "GenerationImportRowRetryRequest"; }
+
+    @Override
+    public String draftCreator() { return "GenerationImportApplicationService#createDraftGenerationScheme"; }
+
+    @Override
+    public String reviewApplyHandler() { return "RevisionApplyService#import_job:generation"; }
+}
+''')
+          write(f"{base}/application/GenerationImportApplicationService.java", r'''
+package com.genealogy.imports.application;
+
+import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.generation.entity.GenerationSchemeEntity;
+import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.imports.dto.GenerationImportPreviewResponse;
+import com.genealogy.imports.dto.GenerationImportPreviewRowResponse;
+import com.genealogy.imports.dto.ImportJobResponse;
+import com.genealogy.imports.dto.ImportRowErrorResponse;
+import com.genealogy.imports.entity.ImportJobEntity;
+import com.genealogy.imports.entity.ImportJobErrorEntity;
+import com.genealogy.imports.entity.ImportJobRowEntity;
+import com.genealogy.imports.repository.ImportJobErrorRepository;
+import com.genealogy.imports.repository.ImportJobRepository;
+import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
+
+@Service
+public class GenerationImportApplicationService {
+
+    private static final String STATUS_COMPLETED = "completed";
+    private static final String STATUS_PARTIAL = "partial_completed";
+    private static final String STATUS_FAILED = "failed";
+    private static final String PERMISSION_CREATE = "generation_scheme:create";
+
+    private final ImportJobRepository importJobRepository;
+    private final ImportJobErrorRepository importJobErrorRepository;
+    private final ImportJobRowRepository importJobRowRepository;
+    private final GenSchemeRepository genSchemeRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
+    private final GenerationImportFilePolicyService filePolicyService;
+    private final OperationLogApplicationService operationLogApplicationService;
+
+    public GenerationImportApplicationService(
+            ImportJobRepository importJobRepository,
+            ImportJobErrorRepository importJobErrorRepository,
+            ImportJobRowRepository importJobRowRepository,
+            GenSchemeRepository genSchemeRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            GenerationImportFilePolicyService filePolicyService,
+            OperationLogApplicationService operationLogApplicationService
+    ) {
+        this.importJobRepository = importJobRepository;
+        this.importJobErrorRepository = importJobErrorRepository;
+        this.importJobRowRepository = importJobRowRepository;
+        this.genSchemeRepository = genSchemeRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
+        this.filePolicyService = filePolicyService;
+        this.operationLogApplicationService = operationLogApplicationService;
+    }
+
+    @Transactional(readOnly = true)
+    public GenerationImportPreviewResponse preview(Long clanId, Long branchId, MultipartFile file, Long actorId) {
+        filePolicyService.validate(branchId, file);
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
+        ImportReadResult data = readImport(file);
+        Map<String, Integer> keys = new HashMap<>();
+        List<GenerationImportPreviewRowResponse> rows = new ArrayList<>();
+        for (ImportRow row : data.rows()) {
+            rows.add(previewRow(clanId, branchId, row, keys));
+        }
+        int valid = (int) rows.stream().filter(item -> isBlank(item.errorMessage())).count();
+        int duplicates = (int) rows.stream().filter(GenerationImportPreviewRowResponse::duplicated).count();
+        int errors = rows.size() - valid;
+        return new GenerationImportPreviewResponse(rows.size(), valid, duplicates, errors, rows);
+    }
+
+    @Transactional
+    public ImportJobResponse importGenerations(Long clanId, Long branchId, MultipartFile file, Long actorId) {
+        filePolicyService.validate(branchId, file);
+        authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
+        ImportReadResult data = readImport(file);
+        String filename = file.getOriginalFilename() == null ? "generations.csv" : file.getOriginalFilename();
+        String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
+                ? ImportJobEntity.FORMAT_XLSX
+                : ImportJobEntity.FORMAT_CSV;
+        ImportJobEntity job = createJob(clanId, branchId, filename, format, actorId);
+        List<RowPlan> plans = new ArrayList<>();
+        Map<String, Integer> keys = new HashMap<>();
+        int failure = 0;
+        for (ImportRow row : data.rows()) {
+            try {
+                ParsedGeneration parsed = parseRow(row.cells(), branchId);
+                String key = parsed.key() + ":" + parsed.generationNo();
+                if (keys.putIfAbsent(key, row.rowNo()) != null) {
+                    throw new BusinessException("IMPORT_GENERATION_DUPLICATED", "同一方案内代次不能重复");
+                }
+                plans.add(new RowPlan(row, parsed, null));
+            } catch (RuntimeException exception) {
+                failure++;
+                plans.add(new RowPlan(row, null, exception));
+            }
+        }
+        Map<String, GenerationSchemeEntity> drafts = createDrafts(clanId, branchId, plans);
+        int success = 0;
+        List<ImportJobRowEntity> jobRows = new ArrayList<>();
+        List<ImportJobErrorEntity> errors = new ArrayList<>();
+        for (RowPlan plan : plans) {
+            ImportJobRowEntity jobRow = newJobRow(job.getId(), plan.row());
+            if (plan.error() == null && plan.parsed() != null) {
+                GenerationSchemeEntity draft = drafts.get(plan.parsed().key());
+                jobRow.setNormalizedData(normalizedData(plan.parsed()));
+                jobRow.setDraftTargetType(ImportJobEntity.TYPE_GENERATION);
+                jobRow.setDraftTargetId(draft.getId());
+                jobRow.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
+                success++;
+            } else {
+                String message = errorMessage(plan.error());
+                jobRow.setRowStatus(ImportJobRowEntity.STATUS_INVALID);
+                jobRow.setErrorCode(errorCode(plan.error()));
+                jobRow.setErrorMessage(message);
+                errors.add(error(job.getId(), plan.row().rowNo(), message, plan.row().rawData()));
+            }
+            jobRow.setUpdatedAt(LocalDateTime.now());
+            jobRows.add(jobRow);
+        }
+        if (!jobRows.isEmpty()) importJobRowRepository.saveAll(jobRows);
+        if (!errors.isEmpty()) importJobErrorRepository.saveAll(errors);
+        int total = jobRows.size();
+        job.setTotalCount(total);
+        job.setSuccessCount(success);
+        job.setFailureCount(failure);
+        job.setStatus(legacyStatus(success, failure));
+        job.setProcessingStatus(failure == 0 ? ImportJobEntity.PROCESSING_READY_FOR_REVIEW : ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
+        job.setErrorSummary(failure == 0 ? null : "存在 " + failure + " 行字辈导入失败，请修正后再提交审核");
+        job.setUpdatedAt(LocalDateTime.now());
+        ImportJobEntity saved = importJobRepository.save(job);
+        operationLogApplicationService.record(clanId, actorId, "generation_import", "import_job", saved.getId(), "字辈导入批次创建完成", "branchId=" + branchId + ", total=" + total + ", success=" + success + ", failure=" + failure);
+        return toResponse(saved, errors);
+    }
+
+    ParsedGeneration parseRow(List<String> cells, Long branchId) {
+        ensureNoExtraColumns(cells);
+        String schemeName = requiredCell(cells, GenerationImportTemplateDefinition.SCHEME_NAME_INDEX, "方案名称不能为空");
+        String scopeText = requiredCell(cells, GenerationImportTemplateDefinition.SCOPE_INDEX, "适用范围不能为空");
+        String scope = GenerationImportTemplateDefinition.SCOPES.get(scopeText);
+        if (scope == null) throw new BusinessException("IMPORT_GENERATION_SCOPE_INVALID", "适用范围必须填写宗族或支派");
+        Integer startGeneration = positiveInt(requiredCell(cells, GenerationImportTemplateDefinition.START_GENERATION_INDEX, "起始代次不能为空"), "起始代次");
+        Integer generationNo = positiveInt(requiredCell(cells, GenerationImportTemplateDefinition.GENERATION_NO_INDEX, "代次不能为空"), "代次");
+        String generationWord = requiredCell(cells, GenerationImportTemplateDefinition.GENERATION_WORD_INDEX, "字辈文字不能为空");
+        if (generationWord.length() > 20) throw new BusinessException("IMPORT_GENERATION_WORD_TOO_LONG", "字辈文字不能超过 20 个字符");
+        String strategyText = requiredCell(cells, GenerationImportTemplateDefinition.STRATEGY_INDEX, "策略不能为空");
+        String strategy = GenerationImportTemplateDefinition.STRATEGIES.get(strategyText);
+        if (strategy == null) throw new BusinessException("IMPORT_GENERATION_STRATEGY_INVALID", "策略必须填写新增或追加");
+        Long targetBranchId = "branch".equals(scope) ? branchId : null;
+        String description = cell(cells, GenerationImportTemplateDefinition.DESCRIPTION_INDEX);
+        return new ParsedGeneration(schemeName, scopeText, scope, targetBranchId, startGeneration, generationNo, generationWord, strategyText, strategy, description);
+    }
+
+    private Map<String, GenerationSchemeEntity> createDrafts(Long clanId, Long branchId, List<RowPlan> plans) {
+        Map<String, TreeMap<Integer, ParsedGeneration>> grouped = new LinkedHashMap<>();
+        for (RowPlan plan : plans) {
+            if (plan.error() == null && plan.parsed() != null) {
+                grouped.computeIfAbsent(plan.parsed().key(), ignored -> new TreeMap<>())
+                        .put(plan.parsed().generationNo(), plan.parsed());
+            }
+        }
+        Map<String, GenerationSchemeEntity> drafts = new HashMap<>();
+        for (Map.Entry<String, TreeMap<Integer, ParsedGeneration>> entry : grouped.entrySet()) {
+            ParsedGeneration first = entry.getValue().firstEntry().getValue();
+            GenerationSchemeEntity draft = new GenerationSchemeEntity();
+            GenerationSchemeEntity existing = findExisting(clanId, first.targetBranchId(), first.schemeName());
+            if ("create".equals(first.strategy()) && existing != null) {
+                throw new BusinessException("IMPORT_GENERATION_SCHEME_EXISTS", "目标字辈方案已存在，新增策略不能覆盖：" + first.schemeName());
+            }
+            Map<Integer, String> words = new TreeMap<>();
+            int start = first.startGeneration();
+            if ("append".equals(first.strategy())) {
+                if (existing == null) throw new BusinessException("IMPORT_GENERATION_SCHEME_NOT_FOUND", "追加策略要求目标方案已存在：" + first.schemeName());
+                start = existing.getStartGeneration() == null ? start : existing.getStartGeneration();
+                String poem = existing.getPoemText() == null ? "" : existing.getPoemText();
+                for (int i = 0; i < poem.length(); i++) words.put(start + i, String.valueOf(poem.charAt(i)));
+            }
+            for (ParsedGeneration item : entry.getValue().values()) {
+                if (!Objects.equals(first.startGeneration(), item.startGeneration())) throw new BusinessException("IMPORT_GENERATION_START_MISMATCH", "同一方案起始代次必须一致");
+                String old = words.putIfAbsent(item.generationNo(), item.generationWord());
+                if (old != null && !old.equals(item.generationWord())) throw new BusinessException("IMPORT_GENERATION_CONFLICT", "代次 " + item.generationNo() + " 已存在不同字辈");
+            }
+            draft.setClanId(clanId);
+            draft.setBranchId(first.targetBranchId());
+            draft.setSchemeName(first.schemeName());
+            draft.setStartGeneration(start);
+            draft.setPoemText(buildPoem(start, words));
+            draft.setIsDefault(false);
+            draft.setValidationEnabled(true);
+            draft.setStrictMode(false);
+            draft.setStatus("draft");
+            draft.setCreatedAt(LocalDateTime.now());
+            drafts.put(first.key(), genSchemeRepository.save(draft));
+        }
+        return drafts;
+    }
+
+    private String buildPoem(int start, Map<Integer, String> words) {
+        if (words.isEmpty()) return "";
+        int max = words.keySet().stream().mapToInt(Integer::intValue).max().orElse(start);
+        StringBuilder builder = new StringBuilder();
+        for (int gen = start; gen <= max; gen++) builder.append(words.getOrDefault(gen, ""));
+        return builder.toString();
+    }
+
+    private GenerationSchemeEntity findExisting(Long clanId, Long branchId, String schemeName) {
+        return genSchemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId).stream()
+                .filter(item -> Objects.equals(item.getBranchId(), branchId))
+                .filter(item -> schemeName.equals(item.getSchemeName()))
+                .filter(item -> "official".equalsIgnoreCase(String.valueOf(item.getStatus())))
+                .findFirst().orElse(null);
+    }
+
+    private GenerationImportPreviewRowResponse previewRow(Long clanId, Long branchId, ImportRow row, Map<String, Integer> keys) {
+        try {
+            ParsedGeneration parsed = parseRow(row.cells(), branchId);
+            boolean duplicated = keys.putIfAbsent(parsed.key() + ":" + parsed.generationNo(), row.rowNo()) != null;
+            String error = duplicated ? "同一方案内代次不能重复" : null;
+            return preview(row, parsed, duplicated, error);
+        } catch (RuntimeException exception) {
+            return new GenerationImportPreviewRowResponse(row.rowNo(), cell(row.cells(), 0), cell(row.cells(), 1), null, null, cell(row.cells(), 4), cell(row.cells(), 5), cell(row.cells(), 6), false, errorMessage(exception), row.rawData());
+        }
+    }
+
+    private GenerationImportPreviewRowResponse preview(ImportRow row, ParsedGeneration p, boolean duplicated, String error) {
+        return new GenerationImportPreviewRowResponse(row.rowNo(), p.schemeName(), p.scopeText(), p.startGeneration(), p.generationNo(), p.generationWord(), p.strategyText(), p.description(), duplicated, error, row.rawData());
+    }
+
+    ImportReadResult readImport(MultipartFile file) {
+        String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
+        try {
+            List<ImportRow> rows = filename.endsWith(".xlsx") ? readXlsx(file) : readCsv(file);
+            if (rows.isEmpty()) throw new BusinessException("IMPORT_GENERATION_ROWS_EMPTY", "字辈导入文件没有数据行");
+            return new ImportReadResult(rows);
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new BusinessException("IMPORT_GENERATION_READ_FAILED", "无法读取字辈导入文件内容");
+        }
+    }
+
+    private List<ImportRow> readCsv(MultipartFile file) throws IOException {
+        List<ImportRow> rows = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            int rowNo = 0;
+            while ((line = reader.readLine()) != null) {
+                rowNo++;
+                if (rowNo == 1) continue;
+                if (line.isBlank()) continue;
+                rows.add(new ImportRow(rowNo, filePolicyService.parseCsvLine(line), line));
+            }
+        }
+        return rows;
+    }
+
+    private List<ImportRow> readXlsx(MultipartFile file) throws Exception {
+        List<ImportRow> rows = new ArrayList<>();
+        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) return rows;
+            DataFormatter formatter = new DataFormatter();
+            for (int i = sheet.getFirstRowNum() + 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                List<String> cells = new ArrayList<>();
+                for (int index = 0; index < GenerationImportTemplateDefinition.HEADERS.size(); index++) {
+                    Cell cell = row.getCell(index, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    cells.add(cell == null ? "" : formatter.formatCellValue(cell));
+                }
+                if (cells.stream().allMatch(String::isBlank)) continue;
+                rows.add(new ImportRow(i + 1, cells, String.join(",", cells)));
+            }
+        }
+        return rows;
+    }
+
+    private void ensureNoExtraColumns(List<String> cells) {
+        for (int index = GenerationImportTemplateDefinition.HEADERS.size(); index < cells.size(); index++) {
+            if (!isBlank(cells.get(index))) throw new BusinessException("IMPORT_GENERATION_EXTRA_COLUMN", "文件中存在模板外字段");
+        }
+    }
+
+    private Integer positiveInt(String value, String label) {
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            if (parsed <= 0) throw new NumberFormatException();
+            return parsed;
+        } catch (Exception ex) {
+            throw new BusinessException("IMPORT_GENERATION_NUMBER_INVALID", label + "必须为正整数");
+        }
+    }
+
+    private String requiredCell(List<String> cells, int index, String message) {
+        String value = cell(cells, index);
+        if (isBlank(value)) throw new BusinessException("IMPORT_GENERATION_REQUIRED", message);
+        return value.trim();
+    }
+
+    private String cell(List<String> cells, int index) {
+        return index < cells.size() && cells.get(index) != null ? cells.get(index).trim() : "";
+    }
+
+    private Map<String, Object> normalizedData(ParsedGeneration p) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("schemeName", p.schemeName());
+        data.put("scope", p.scopeText());
+        data.put("startGeneration", p.startGeneration());
+        data.put("generationNo", p.generationNo());
+        data.put("generationWord", p.generationWord());
+        data.put("strategy", p.strategyText());
+        data.put("description", p.description());
+        return data;
+    }
+
+    private ImportJobEntity createJob(Long clanId, Long branchId, String filename, String format, Long actorId) {
+        ImportJobEntity job = new ImportJobEntity();
+        job.setClanId(clanId);
+        job.setBranchId(branchId);
+        job.setImportType(ImportJobEntity.TYPE_GENERATION);
+        job.setFileFormat(format);
+        job.setOriginalFilename(filename);
+        job.setTotalCount(0);
+        job.setSuccessCount(0);
+        job.setFailureCount(0);
+        job.setStatus("running");
+        job.setProcessingStatus(ImportJobEntity.PROCESSING_PROCESSING);
+        job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
+        job.setReviewRound(0);
+        job.setCreatedBy(actorId);
+        job.setCreatedAt(LocalDateTime.now());
+        job.setUpdatedAt(LocalDateTime.now());
+        return importJobRepository.save(job);
+    }
+
+    private ImportJobRowEntity newJobRow(Long jobId, ImportRow row) {
+        ImportJobRowEntity entity = new ImportJobRowEntity();
+        entity.setJobId(jobId);
+        entity.setRowNo(row.rowNo());
+        entity.setRawData(row.rawData());
+        entity.setRetryCount(0);
+        entity.setCreatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
+        return entity;
+    }
+
+    private ImportJobErrorEntity error(Long jobId, Integer rowNo, String message, String rawData) {
+        ImportJobErrorEntity error = new ImportJobErrorEntity();
+        error.setJobId(jobId);
+        error.setRowNo(rowNo);
+        error.setErrorMessage(message);
+        error.setRawData(rawData);
+        return error;
+    }
+
+    private String legacyStatus(int success, int failure) {
+        if (success > 0 && failure == 0) return STATUS_COMPLETED;
+        if (success > 0) return STATUS_PARTIAL;
+        return STATUS_FAILED;
+    }
+
+    private ImportJobResponse toResponse(ImportJobEntity job, List<ImportJobErrorEntity> errors) {
+        return new ImportJobResponse(job.getId(), job.getClanId(), job.getBranchId(), job.getImportType(), job.getFileFormat(), null, job.getOriginalFilename(), job.getTotalCount(), job.getSuccessCount(), job.getFailureCount(), job.getStatus(), job.getErrorSummary(), job.getCreatedAt(), errors.stream().map(item -> new ImportRowErrorResponse(item.getRowNo(), item.getErrorMessage(), item.getRawData())).toList(), job.getProcessingStatus(), job.getReviewStatus(), job.getReviewRound(), job.getLatestReviewTaskId());
+    }
+
+    private String errorMessage(Throwable exception) {
+        return exception == null || exception.getMessage() == null ? "字辈导入行校验失败" : exception.getMessage();
+    }
+
+    private String errorCode(Throwable exception) {
+        return exception instanceof BusinessException business ? business.getCode() : "IMPORT_GENERATION_ROW_INVALID";
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    record ImportReadResult(List<ImportRow> rows) {}
+    record ImportRow(Integer rowNo, List<String> cells, String rawData) {}
+    record RowPlan(ImportRow row, ParsedGeneration parsed, RuntimeException error) {}
+    record ParsedGeneration(String schemeName, String scopeText, String scope, Long targetBranchId, Integer startGeneration, Integer generationNo, String generationWord, String strategyText, String strategy, String description) {
+        String key() { return schemeName + ":" + scope + ":" + targetBranchId + ":" + strategy; }
+    }
+}
+''')
+          write(f"{base}/application/GenerationImportJobRowApplicationService.java", r'''
+package com.genealogy.imports.application;
+
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.generation.entity.GenerationSchemeEntity;
+import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.imports.dto.GenerationImportRowRetryRequest;
+import com.genealogy.imports.dto.ImportJobRowResponse;
+import com.genealogy.imports.entity.ImportJobEntity;
+import com.genealogy.imports.entity.ImportJobRowEntity;
+import com.genealogy.imports.repository.ImportJobRepository;
+import com.genealogy.imports.repository.ImportJobRowRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+
+@Service
+public class GenerationImportJobRowApplicationService {
+
+    private final ImportJobRepository importJobRepository;
+    private final ImportJobRowRepository importJobRowRepository;
+    private final GenSchemeRepository genSchemeRepository;
+    private final GenerationImportApplicationService generationImportApplicationService;
+
+    public GenerationImportJobRowApplicationService(
+            ImportJobRepository importJobRepository,
+            ImportJobRowRepository importJobRowRepository,
+            GenSchemeRepository genSchemeRepository,
+            GenerationImportApplicationService generationImportApplicationService
+    ) {
+        this.importJobRepository = importJobRepository;
+        this.importJobRowRepository = importJobRowRepository;
+        this.genSchemeRepository = genSchemeRepository;
+        this.generationImportApplicationService = generationImportApplicationService;
+    }
+
+    @Transactional
+    public ImportJobRowResponse retry(Long clanId, Long jobId, Long rowId, GenerationImportRowRetryRequest request, Long actorId) {
+        ImportJobEntity job = importJobRepository.findByIdAndClanId(jobId, clanId)
+                .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入任务不存在"));
+        if (!ImportJobEntity.TYPE_GENERATION.equals(job.getImportType())) {
+            throw new BusinessException("IMPORT_JOB_TYPE_MISMATCH", "当前批次不是字辈导入");
+        }
+        ImportJobRowEntity row = importJobRowRepository.findById(rowId)
+                .filter(item -> Objects.equals(item.getJobId(), jobId))
+                .orElseThrow(() -> new BusinessException("IMPORT_JOB_ROW_NOT_FOUND", "导入失败行不存在"));
+        if (!Objects.equals(row.getVersion(), request.expectedVersion())) {
+            throw new OptimisticLockingFailureException("导入失败行已被其他人修改，请刷新后重试");
+        }
+        Map<String, Object> data = normalized(request);
+        try {
+            GenerationImportApplicationService.ParsedGeneration parsed = generationImportApplicationService.parseRow(
+                    java.util.List.of(
+                            request.schemeName(), request.scope(), String.valueOf(request.startGeneration()),
+                            String.valueOf(request.generationNo()), request.generationWord(), request.strategy(),
+                            request.description() == null ? "" : request.description()
+                    ),
+                    job.getBranchId()
+            );
+            GenerationSchemeEntity draft = createDraft(job, parsed);
+            row.setNormalizedData(data);
+            row.setCorrectedData(data);
+            row.setDraftTargetType(ImportJobEntity.TYPE_GENERATION);
+            row.setDraftTargetId(draft.getId());
+            row.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
+            row.setErrorCode(null);
+            row.setErrorMessage(null);
+        } catch (RuntimeException exception) {
+            row.setCorrectedData(data);
+            row.setRowStatus(ImportJobRowEntity.STATUS_RETRY_FAILED);
+            row.setErrorCode(exception instanceof BusinessException business ? business.getCode() : "IMPORT_GENERATION_ROW_INVALID");
+            row.setErrorMessage(exception.getMessage());
+        }
+        row.setRetryCount((row.getRetryCount() == null ? 0 : row.getRetryCount()) + 1);
+        row.setCorrectedBy(actorId);
+        row.setCorrectedAt(LocalDateTime.now());
+        row.setUpdatedAt(LocalDateTime.now());
+        ImportJobRowEntity saved = importJobRowRepository.save(row);
+        recalculateJob(job);
+        return response(saved);
+    }
+
+    private GenerationSchemeEntity createDraft(ImportJobEntity job, GenerationImportApplicationService.ParsedGeneration parsed) {
+        GenerationSchemeEntity draft = new GenerationSchemeEntity();
+        draft.setClanId(job.getClanId());
+        draft.setBranchId(parsed.targetBranchId());
+        draft.setSchemeName(parsed.schemeName());
+        draft.setStartGeneration(parsed.startGeneration());
+        draft.setPoemText(parsed.generationWord());
+        draft.setIsDefault(false);
+        draft.setValidationEnabled(true);
+        draft.setStrictMode(false);
+        draft.setStatus("draft");
+        draft.setCreatedAt(LocalDateTime.now());
+        return genSchemeRepository.save(draft);
+    }
+
+    private Map<String, Object> normalized(GenerationImportRowRetryRequest request) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("schemeName", request.schemeName());
+        data.put("scope", request.scope());
+        data.put("startGeneration", request.startGeneration());
+        data.put("generationNo", request.generationNo());
+        data.put("generationWord", request.generationWord());
+        data.put("strategy", request.strategy());
+        data.put("description", request.description());
+        return data;
+    }
+
+    private void recalculateJob(ImportJobEntity job) {
+        long failed = importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_INVALID)
+                + importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_RETRY_FAILED);
+        long draft = importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
+        job.setSuccessCount((int) draft);
+        job.setFailureCount((int) failed);
+        if (failed == 0) {
+            job.setStatus("completed");
+            job.setProcessingStatus(ImportJobEntity.PROCESSING_READY_FOR_REVIEW);
+            job.setErrorSummary(null);
+        } else if (draft > 0) {
+            job.setStatus("partial_completed");
+            job.setProcessingStatus(ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
+            job.setErrorSummary("存在 " + failed + " 行字辈导入失败，请修正后再提交审核");
+        } else {
+            job.setStatus("failed");
+            job.setProcessingStatus(ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
+            job.setErrorSummary("全部字辈导入行处理失败，请修正后再提交审核");
+        }
+        job.setUpdatedAt(LocalDateTime.now());
+        importJobRepository.save(job);
+    }
+
+    private ImportJobRowResponse response(ImportJobRowEntity row) {
+        boolean draftCreated = ImportJobRowEntity.STATUS_DRAFT_CREATED.equals(row.getRowStatus());
+        return new ImportJobRowResponse(row.getId(), row.getRowNo(), row.getRawData(), row.getNormalizedData(), row.getCorrectedData(), row.getRowStatus(), row.getErrorCode(), row.getErrorMessage(), row.getRetryCount(), draftCreated, row.getVersion(), row.getUpdatedAt());
+    }
+}
+''')
+          # Contract fragment
+          write("docs/api/openapi.generation-import.json", json.dumps({
+            "openapi":"3.0.3",
+            "paths":{
+              "/api/v1/imports/templates/generations.csv":{"get":{"operationId":"downloadGenerationCsvTemplate","tags":["imports"],"responses":{"200":{"description":"CSV template","content":{"text/csv":{"schema":{"type":"string","format":"binary"}}}}}}},
+              "/api/v1/imports/templates/generations.xlsx":{"get":{"operationId":"downloadGenerationXlsxTemplate","tags":["imports"],"responses":{"200":{"description":"XLSX template","content":{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":{"schema":{"type":"string","format":"binary"}}}}}}},
+              "/api/v1/clans/{clanId}/imports/generations/preview":{"post":{"operationId":"previewGenerations","tags":["imports"],"parameters":[{"name":"clanId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}},{"name":"branchId","in":"query","required":True,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"required":True,"content":{"multipart/form-data":{"schema":{"type":"object","required":["file"],"properties":{"file":{"type":"string","format":"binary"}}}}}},"responses":{"200":{"description":"preview"}}}},
+              "/api/v1/clans/{clanId}/imports/generations":{"post":{"operationId":"importGenerations","tags":["imports"],"parameters":[{"name":"clanId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}},{"name":"branchId","in":"query","required":True,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"required":True,"content":{"multipart/form-data":{"schema":{"type":"object","required":["file"],"properties":{"file":{"type":"string","format":"binary"}}}}}},"responses":{"200":{"description":"job"}}}},
+              "/api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry":{"post":{"operationId":"retryGenerationRow","tags":["imports"],"parameters":[{"name":"clanId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}},{"name":"jobId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}},{"name":"rowId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}}],"requestBody":{"required":True,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/GenerationImportRowRetryRequest"}}}},"responses":{"200":{"description":"row"}}}}
+            },
+            "components":{"schemas":{"GenerationImportRowRetryRequest":{"type":"object","required":["schemeName","scope","startGeneration","generationNo","generationWord","strategy","expectedVersion"],"properties":{"schemeName":{"type":"string"},"scope":{"type":"string","enum":["宗族","支派"]},"startGeneration":{"type":"integer","minimum":1},"generationNo":{"type":"integer","minimum":1},"generationWord":{"type":"string"},"strategy":{"type":"string","enum":["新增","追加"]},"description":{"type":"string"},"expectedVersion":{"type":"integer","format":"int64"}}}}}
+          }, ensure_ascii=False, indent=2))
+          # Patch controller
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "import com.genealogy.imports.application.ImportApplicationService;", "import com.genealogy.imports.application.GenerationImportApplicationService;\nimport com.genealogy.imports.application.GenerationImportJobRowApplicationService;\nimport com.genealogy.imports.application.GenerationImportTemplateApplicationService;\nimport com.genealogy.imports.application.ImportApplicationService;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "import com.genealogy.imports.dto.ImportJobResponse;", "import com.genealogy.imports.dto.GenerationImportPreviewResponse;\nimport com.genealogy.imports.dto.GenerationImportRowRetryRequest;\nimport com.genealogy.imports.dto.ImportJobResponse;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "    private final ImportApplicationService importApplicationService;", "    private final GenerationImportApplicationService generationImportApplicationService;\n    private final GenerationImportJobRowApplicationService generationImportJobRowApplicationService;\n    private final GenerationImportTemplateApplicationService generationImportTemplateApplicationService;\n    private final ImportApplicationService importApplicationService;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "            ImportApplicationService importApplicationService,", "            GenerationImportApplicationService generationImportApplicationService,\n            GenerationImportJobRowApplicationService generationImportJobRowApplicationService,\n            GenerationImportTemplateApplicationService generationImportTemplateApplicationService,\n            ImportApplicationService importApplicationService,")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "        this.importApplicationService = importApplicationService;", "        this.generationImportApplicationService = generationImportApplicationService;\n        this.generationImportJobRowApplicationService = generationImportJobRowApplicationService;\n        this.generationImportTemplateApplicationService = generationImportTemplateApplicationService;\n        this.importApplicationService = importApplicationService;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "    @PostMapping(\"/clans/{clanId}/imports/persons/preview\")", "    @GetMapping(\"/imports/templates/generations.csv\")\n    public ResponseEntity<byte[]> downloadGenerationCsvTemplate() {\n        return templateResponse(\"generation-import-template.csv\", new MediaType(\"text\", \"csv\", StandardCharsets.UTF_8),\n                generationImportTemplateApplicationService.buildCsvTemplate());\n    }\n\n    @GetMapping(\"/imports/templates/generations.xlsx\")\n    public ResponseEntity<byte[]> downloadGenerationXlsxTemplate() {\n        return templateResponse(\"generation-import-template.xlsx\", XLSX_MEDIA_TYPE,\n                generationImportTemplateApplicationService.buildXlsxTemplate());\n    }\n\n    @PostMapping(\"/clans/{clanId}/imports/persons/preview\")")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "    @GetMapping(\"/clans/{clanId}/imports\")", "    @PostMapping(\"/clans/{clanId}/imports/generations/preview\")\n    public ApiResponse<GenerationImportPreviewResponse> previewGenerations(\n            @Positive @PathVariable Long clanId,\n            @Positive @RequestParam(\"branchId\") Long branchId,\n            @RequestParam(\"file\") MultipartFile file,\n            @RequestHeader(value = \"Authorization\", required = false) String authorization\n    ) {\n        Long actorId = authorizationApplicationService.requireLogin(authorization);\n        return ApiResponse.success(generationImportApplicationService.preview(clanId, branchId, file, actorId));\n    }\n\n    @PostMapping(\"/clans/{clanId}/imports/generations\")\n    public ApiResponse<ImportJobResponse> importGenerations(\n            @Positive @PathVariable Long clanId,\n            @Positive @RequestParam(\"branchId\") Long branchId,\n            @RequestParam(\"file\") MultipartFile file,\n            @RequestHeader(value = \"Authorization\", required = false) String authorization\n    ) {\n        Long actorId = authorizationApplicationService.requireLogin(authorization);\n        return ApiResponse.success(generationImportApplicationService.importGenerations(clanId, branchId, file, actorId));\n    }\n\n    @GetMapping(\"/clans/{clanId}/imports\")")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/controller/ImportController.java", "    @PostMapping(\"/clans/{clanId}/imports/{jobId}/submit-review\")", "    @PostMapping(\"/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry\")\n    public ApiResponse<ImportJobRowResponse> retryGenerationRow(\n            @Positive @PathVariable Long clanId,\n            @Positive @PathVariable Long jobId,\n            @Positive @PathVariable Long rowId,\n            @Valid @RequestBody GenerationImportRowRetryRequest request,\n            @RequestHeader(value = \"Authorization\", required = false) String authorization\n    ) {\n        Long actorId = authorizationApplicationService.requireLogin(authorization);\n        return ApiResponse.success(generationImportJobRowApplicationService.retry(clanId, jobId, rowId, request, actorId));\n    }\n\n    @PostMapping(\"/clans/{clanId}/imports/{jobId}/submit-review\")")
+          # Patch review submit support
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "import com.genealogy.imports.entity.ImportJobEntity;", "import com.genealogy.generation.entity.GenerationSchemeEntity;\nimport com.genealogy.generation.repository.GenSchemeRepository;\nimport com.genealogy.imports.entity.ImportJobEntity;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "    private static final String RELATIONSHIP_SUBMIT_REVIEW = \"relationship:submit_review\";", "    private static final String RELATIONSHIP_SUBMIT_REVIEW = \"relationship:submit_review\";\n    private static final String GENERATION_SUBMIT_REVIEW = \"generation_scheme:submit_review\";")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "    private final RelationshipRepository relationshipRepository;", "    private final RelationshipRepository relationshipRepository;\n    private final GenSchemeRepository genSchemeRepository;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "            RelationshipRepository relationshipRepository,", "            RelationshipRepository relationshipRepository,\n            GenSchemeRepository genSchemeRepository,")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "        this.relationshipRepository = relationshipRepository;", "        this.relationshipRepository = relationshipRepository;\n        this.genSchemeRepository = genSchemeRepository;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "        String permission = ImportJobEntity.TYPE_RELATIONSHIP.equals(type)\n                ? RELATIONSHIP_SUBMIT_REVIEW\n                : PERSON_SUBMIT_REVIEW;", "        String permission = ImportJobEntity.TYPE_RELATIONSHIP.equals(type)\n                ? RELATIONSHIP_SUBMIT_REVIEW\n                : ImportJobEntity.TYPE_GENERATION.equals(type)\n                ? GENERATION_SUBMIT_REVIEW\n                : PERSON_SUBMIT_REVIEW;")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "        if (!ImportJobEntity.TYPE_PERSON.equals(importType(job))\n                && !ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {", "        if (!ImportJobEntity.TYPE_PERSON.equals(importType(job))\n                && !ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))\n                && !ImportJobEntity.TYPE_GENERATION.equals(importType(job))) {")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {\n            lockDraftRelationships(job, draftRows, actorId, now);\n        } else {", "        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(importType(job))) {\n            lockDraftRelationships(job, draftRows, actorId, now);\n        } else if (ImportJobEntity.TYPE_GENERATION.equals(importType(job))) {\n            lockDraftGenerationSchemes(job, draftRows, now);\n        } else {")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "    private void requireDraftOrRejected", "    private void lockDraftGenerationSchemes(ImportJobEntity job, List<ImportJobRowEntity> draftRows, LocalDateTime now) {\n        List<GenerationSchemeEntity> schemes = new ArrayList<>();\n        for (ImportJobRowEntity row : draftRows) {\n            GenerationSchemeEntity scheme = genSchemeRepository.findById(targetId(row))\n                    .orElseThrow(() -> new BusinessException(\"IMPORT_JOB_DRAFT_GENERATION_NOT_FOUND\", \"导入批次关联的字辈方案草稿不存在\"));\n            if (!Objects.equals(scheme.getClanId(), job.getClanId())) {\n                throw new BusinessException(\"IMPORT_JOB_DRAFT_GENERATION_SCOPE_MISMATCH\", \"导入字辈方案不属于当前宗族\");\n            }\n            requireDraftOrRejected(scheme.getStatus(), \"导入批次关联的字辈方案当前不能提交审核\");\n            scheme.setStatus(\"pending_review\");\n            schemes.add(scheme);\n        }\n        genSchemeRepository.saveAll(schemes);\n    }\n\n    private void requireDraftOrRejected")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobReviewApplicationService.java", "        return ImportJobEntity.TYPE_RELATIONSHIP.equals(type) ? \"人物关系\" : \"人物\";", "        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(type)) return \"人物关系\";\n        if (ImportJobEntity.TYPE_GENERATION.equals(type)) return \"字辈\";\n        return \"人物\";")
+          # Patch RevisionApplyService generation import
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java", "        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {", "        if (ImportJobEntity.TYPE_GENERATION.equals(normalize(job.getImportType()))) {\n            List<GenerationSchemeEntity> schemes = requireImportGenerationSchemes(job, STATUS_PENDING_REVIEW);\n            archiveExistingGenerationSchemes(job, schemes);\n            updateGenerationSchemeStatuses(schemes, STATUS_OFFICIAL);\n        } else if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java", "        if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {\n            List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);", "        if (ImportJobEntity.TYPE_GENERATION.equals(normalize(job.getImportType()))) {\n            List<GenerationSchemeEntity> schemes = requireImportGenerationSchemes(job, STATUS_PENDING_REVIEW);\n            updateGenerationSchemeStatuses(schemes, STATUS_DRAFT);\n        } else if (ImportJobEntity.TYPE_RELATIONSHIP.equals(normalize(job.getImportType()))) {\n            List<RelationshipEntity> relationships = requireImportRelationships(job, STATUS_PENDING_REVIEW);")
+          patch("backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java", "    private List<RelationshipEntity> requireImportRelationships", "    private List<GenerationSchemeEntity> requireImportGenerationSchemes(ImportJobEntity job, String expectedStatus) {\n        List<ImportJobRowEntity> rows = draftRows(job);\n        List<GenerationSchemeEntity> schemes = new ArrayList<>();\n        for (ImportJobRowEntity row : rows) {\n            GenerationSchemeEntity scheme = genSchemeRepository.findById(draftTargetId(row))\n                    .orElseThrow(() -> new BusinessException(\"IMPORT_JOB_DRAFT_GENERATION_NOT_FOUND\", \"导入批次关联的字辈方案草稿不存在\"));\n            if (!Objects.equals(scheme.getClanId(), job.getClanId())) {\n                throw new BusinessException(\"IMPORT_JOB_DRAFT_GENERATION_SCOPE_MISMATCH\", \"导入字辈方案不属于批次宗族\");\n            }\n            if (!expectedStatus.equals(normalize(scheme.getStatus()))) {\n                throw new BusinessException(\"IMPORT_JOB_DRAFT_GENERATION_STATUS_INVALID\", \"导入字辈方案状态与批次审核状态不一致\");\n            }\n            if (schemes.stream().noneMatch(item -> Objects.equals(item.getId(), scheme.getId()))) schemes.add(scheme);\n        }\n        return schemes;\n    }\n\n    private void archiveExistingGenerationSchemes(ImportJobEntity job, List<GenerationSchemeEntity> drafts) {\n        List<GenerationSchemeEntity> existing = genSchemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(job.getClanId());\n        for (GenerationSchemeEntity draft : drafts) {\n            for (GenerationSchemeEntity item : existing) {\n                if (!Objects.equals(item.getId(), draft.getId())\n                        && Objects.equals(item.getBranchId(), draft.getBranchId())\n                        && Objects.equals(item.getSchemeName(), draft.getSchemeName())\n                        && STATUS_OFFICIAL.equals(normalize(item.getStatus()))) {\n                    item.setStatus(\"archived\");\n                    genSchemeRepository.save(item);\n                }\n            }\n        }\n    }\n\n    private void updateGenerationSchemeStatuses(List<GenerationSchemeEntity> schemes, String status) {\n        for (GenerationSchemeEntity scheme : schemes) scheme.setStatus(status);\n        genSchemeRepository.saveAll(schemes);\n    }\n\n    private List<RelationshipEntity> requireImportRelationships")
+          # Frontend files
+          write("frontend/genealogy-web/src/features/imports/GenerationImportWorkspace.tsx", r'''
+import { useEffect, useState } from 'react';
+import { Alert, Button, Card, Empty, Space, Table, Tag, Upload } from 'antd';
+import type { UploadProps } from 'antd';
+import { apiClient } from '../../shared/api/client';
+import { saveDownloadedBlob } from '../../shared/utils/download';
+
+type Props = { notify: (data: unknown, error?: boolean) => void; clanId: string; branchId: string; branchName: string; onBatchCreated: () => void };
+type PreviewRow = { rowNo?: number; schemeName?: string; scope?: string; startGeneration?: number; generationNo?: number; generationWord?: string; strategy?: string; duplicated?: boolean; errorMessage?: string; rawData?: string };
+type ImportPreview = { totalCount?: number; validCount?: number; duplicateCount?: number; errorCount?: number; rows?: PreviewRow[] };
+type ImportJobResult = { successCount?: number; failureCount?: number };
+type TemplateFormat = 'csv' | 'xlsx';
+
+export function GenerationImportWorkspace({ notify, clanId, branchId, branchName, onBatchCreated }: Props) {
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const branchSelected = Boolean(branchId);
+
+  useEffect(() => { setFile(null); setPreview(null); }, [branchId]);
+
+  async function downloadTemplate(format: TemplateFormat) {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const blob = await apiClient.download(`/imports/templates/generations.${format}`);
+      saveDownloadedBlob(blob, `generation-import-template.${format}`);
+      notify({ message: `字辈导入 ${format.toUpperCase()} 模板已下载` });
+    } catch (error) {
+      notify({ message: (error as Error).message || '字辈导入模板下载失败' }, true);
+    } finally { setLoading(false); }
+  }
+
+  function query() { return new URLSearchParams({ branchId }).toString(); }
+
+  async function previewFile() {
+    if (loading) return null;
+    if (!clanId || !branchId || !file) { notify({ message: '请选择宗族、管理支派并上传标准模板' }, true); return null; }
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await apiClient.upload<ImportPreview>(`/clans/${clanId}/imports/generations/preview?${query()}`, formData);
+      setPreview(result);
+      notify({ message: `预览完成：有效 ${result.validCount || 0} 行，重复 ${result.duplicateCount || 0} 行，错误 ${result.errorCount || 0} 行` }, Boolean(result.errorCount));
+      return result;
+    } catch (error) {
+      notify({ message: (error as Error).message || '字辈导入预览失败' }, true);
+      return null;
+    } finally { setLoading(false); }
+  }
+
+  async function upload() {
+    if (loading) return;
+    if (!clanId || !branchId || !file) { notify({ message: '请选择宗族、管理支派并上传标准模板' }, true); return; }
+    const effectivePreview = preview || await previewFile();
+    if (!effectivePreview) return;
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await apiClient.upload<ImportJobResult>(`/clans/${clanId}/imports/generations?${query()}`, formData);
+      const failureCount = result.failureCount || 0;
+      notify({ message: failureCount > 0 ? `字辈导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${failureCount} 行` : `字辈导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核` });
+      setFile(null); setPreview(null); onBatchCreated();
+    } catch (error) {
+      notify({ message: (error as Error).message || '字辈导入失败' }, true);
+    } finally { setLoading(false); }
+  }
+
+  const uploadProps: UploadProps = {
+    maxCount: 1,
+    accept: '.csv,.xlsx',
+    disabled: !branchSelected,
+    beforeUpload: nextFile => {
+      const filename = nextFile.name.toLowerCase();
+      if (!filename.endsWith('.csv') && !filename.endsWith('.xlsx')) { notify({ message: '只支持上传系统提供的 CSV 或 XLSX 模板' }, true); return Upload.LIST_IGNORE; }
+      setFile(nextFile); setPreview(null); return false;
+    },
+    onRemove: () => { setFile(null); setPreview(null); return true; },
+    fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
+  };
+
+  return (
+    <div className="generation-import-workspace">
+      <Card title="字辈导入" extra={<Space wrap><Button disabled={loading} onClick={() => void downloadTemplate('csv')}>下载 CSV 模板</Button><Button disabled={loading} onClick={() => void downloadTemplate('xlsx')}>下载 XLSX 模板</Button></Space>} style={{ marginTop: 16 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Alert type="info" showIcon message="请按标准模板维护字辈方案" description="表头必须依次为：方案名称、适用范围、起始代次、代次、字辈文字、策略、说明。适用范围仅支持宗族/支派，策略仅支持新增/追加。" />
+          <Alert type="info" showIcon message="字辈导入先生成方案草稿，审核通过后才正式生效；追加策略会基于已有正式方案合并生成新草稿。" />
+          {!branchSelected ? <Alert type="warning" showIcon message="请在本页上方选择导入批次管理支派，再上传模板。" /> : <Alert type="success" showIcon message={`当前批次管理支派：${branchName || '未命名支派'}。适用范围为支派时将使用该支派。`} />}
+          <Upload {...uploadProps}><Button disabled={!branchSelected}>上传填写后的模板</Button></Upload>
+          <Space wrap><Button disabled={loading || !branchSelected} onClick={() => void previewFile()}>{loading ? '处理中...' : '预览并校验'}</Button><Button type="primary" disabled={loading || !branchSelected} loading={loading} onClick={() => void upload()}>创建导入批次</Button></Space>
+        </Space>
+      </Card>
+      {preview ? <Card title="字辈导入预览" style={{ marginTop: 16 }}>
+        {(preview.errorCount || 0) > 0 ? <Alert type="warning" showIcon message={`发现 ${preview.errorCount} 条错误或重复数据。仍可创建批次，之后在任务详情中逐行修正。`} style={{ marginBottom: 12 }} /> : null}
+        <Table<PreviewRow> size="small" bordered rowKey={(row, index) => String(row.rowNo || index)} dataSource={preview.rows || []} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无预览数据" /> }} columns={[{ key: 'rowNo', title: '行号', dataIndex: 'rowNo', width: 70 }, { key: 'schemeName', title: '方案名称', dataIndex: 'schemeName' }, { key: 'scope', title: '适用范围', dataIndex: 'scope' }, { key: 'startGeneration', title: '起始代次', dataIndex: 'startGeneration' }, { key: 'generationNo', title: '代次', dataIndex: 'generationNo' }, { key: 'generationWord', title: '字辈文字', dataIndex: 'generationWord' }, { key: 'strategy', title: '策略', dataIndex: 'strategy' }, { key: 'result', title: '校验结果', render: (_value, row) => row.errorMessage ? <Tag color={row.duplicated ? 'warning' : 'error'}>{row.duplicated ? '重复' : '错误'}</Tag> : <Tag color="success">通过</Tag> }, { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage' }]} scroll={{ x: 'max-content' }} />
+      </Card> : null}
+    </div>
+  );
+}
+''')
+          # Patch frontend registry
+          patch("frontend/genealogy-web/src/features/imports/import-type-registry.ts", "    availability: 'planned',\n    supportedFormats: ['csv', 'xlsx'],", "    availability: 'available',\n    supportedFormats: ['csv', 'xlsx'],")
+          # Patch ImportPage
+          patch("frontend/genealogy-web/src/features/imports/ImportPage.tsx", "import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';", "import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';\nimport { GenerationImportWorkspace } from './GenerationImportWorkspace';")
+          patch("frontend/genealogy-web/src/features/imports/ImportPage.tsx", "当前支持人物与人物关系导入，其他数据类型将复用同一批次与审核流程逐步接入。", "当前支持人物、人物关系与字辈导入，其他数据类型将复用同一批次与审核流程逐步接入。")
+          patch("frontend/genealogy-web/src/features/imports/ImportPage.tsx", "        />\n      ) : null}\n\n      <ImportJobManagementPanel", "        />\n      ) : null}\n\n      {activeType === 'generation' ? (\n        <GenerationImportWorkspace\n          notify={notify}\n          clanId={workspace.clanId}\n          branchId={selectedBranchId}\n          branchName={selectedBranch?.branchName || ''}\n          onBatchCreated={() => setJobRefreshKey(current => current + 1)}\n        />\n      ) : null}\n\n      <ImportJobManagementPanel")
+          patch("frontend/genealogy-web/src/features/imports/ImportPage.tsx", "                ? `“${selectedBranch.branchName || '未命名支派'}”将作为本次关系导入的批次管理支派，关系双方仍按各自支派权限校验。`\n                : `本批次中的全部人物将归入“, "                ? `“${selectedBranch.branchName || '未命名支派'}”将作为本次导入的批次管理支派。`\n                : `本批次中的全部人物将归入“")
+          # Patch management panel minimal
+          patch("frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx", "   description?: string;\n};", "   description?: string;\n  schemeName?: string;\n  scope?: string;\n  startGeneration?: number;\n  generationNoForScheme?: number;\n  generationWordForScheme?: string;\n  strategy?: string;\n};")
+          patch("frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx", "  return ['person', 'relationship'].includes(normalizedImportType(job))", "  return ['person', 'relationship', 'generation'].includes(normalizedImportType(job))")
+          patch("frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx", "    if (normalizedImportType(selectedJob) === 'relationship') {", "    if (normalizedImportType(selectedJob) === 'generation') {\n      form.setFieldsValue({\n        schemeName: String(payloadValue(values, 'schemeName') || ''),\n        scope: String(payloadValue(values, 'scope') || '支派'),\n        startGeneration: typeof payloadValue(values, 'startGeneration') === 'number' ? Number(payloadValue(values, 'startGeneration')) : undefined,\n        generationNoForScheme: typeof payloadValue(values, 'generationNo') === 'number' ? Number(payloadValue(values, 'generationNo')) : undefined,\n        generationWordForScheme: String(payloadValue(values, 'generationWord') || ''),\n        strategy: String(payloadValue(values, 'strategy') || '新增'),\n        description: String(payloadValue(values, 'description') || '')\n      });\n    } else if (normalizedImportType(selectedJob) === 'relationship') {")
+          patch("frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx", "      const relationship = normalizedImportType(selectedJob) === 'relationship';\n      const endpoint = relationship\n        ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/relationship-retry`\n        : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;\n      const result = await apiClient.post<ImportJobRow>(\n        endpoint,\n        { ...values, expectedVersion: editingRow.version ?? 0 }\n      );", "      const type = normalizedImportType(selectedJob);\n      const endpoint = type === 'relationship'\n        ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/relationship-retry`\n        : type === 'generation'\n          ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/generation-retry`\n          : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;\n      const payload = type === 'generation' ? {\n        schemeName: values.schemeName,\n        scope: values.scope,\n        startGeneration: values.startGeneration,\n        generationNo: values.generationNoForScheme,\n        generationWord: values.generationWordForScheme,\n        strategy: values.strategy,\n        description: values.description,\n        expectedVersion: editingRow.version ?? 0\n      } : { ...values, expectedVersion: editingRow.version ?? 0 };\n      const result = await apiClient.post<ImportJobRow>(endpoint, payload);")
+          patch("frontend/genealogy-web/src/features/imports/ImportJobManagementPanel.tsx", "              {normalizedImportType(selectedJob) === 'relationship' ? (", "              {normalizedImportType(selectedJob) === 'generation' ? (\n                <>\n                  <Form.Item name=\"schemeName\" label=\"方案名称\" rules={[{ required: true, message: '请输入方案名称' }]}>\n                    <Input maxLength={100} />\n                  </Form.Item>\n                  <Form.Item name=\"scope\" label=\"适用范围\" rules={[{ required: true, message: '请选择适用范围' }]}>\n                    <Select options={[{ value: '宗族', label: '宗族' }, { value: '支派', label: '支派' }]} />\n                  </Form.Item>\n                  <Form.Item name=\"startGeneration\" label=\"起始代次\" rules={[{ required: true, message: '请输入起始代次' }]}>\n                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />\n                  </Form.Item>\n                  <Form.Item name=\"generationNoForScheme\" label=\"代次\" rules={[{ required: true, message: '请输入代次' }]}>\n                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />\n                  </Form.Item>\n                  <Form.Item name=\"generationWordForScheme\" label=\"字辈文字\" rules={[{ required: true, message: '请输入字辈文字' }]}>\n                    <Input maxLength={20} />\n                  </Form.Item>\n                  <Form.Item name=\"strategy\" label=\"策略\" rules={[{ required: true, message: '请选择策略' }]}>\n                    <Select options={[{ value: '新增', label: '新增' }, { value: '追加', label: '追加' }]} />\n                  </Form.Item>\n                  <Form.Item name=\"description\" label=\"说明\">\n                    <Input.TextArea maxLength={500} rows={3} showCount />\n                  </Form.Item>\n                </>\n              ) : normalizedImportType(selectedJob) === 'relationship' ? (")
+          # Run generator if possible and self-delete workflow
+          PY
+      - name: Generate frontend API contract
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install
+          npm run api:generate
+      - name: Remove generator and commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm -f .github/workflows/issue-105-generate.yml
+          git add -A
+          git commit -m 'feat(imports): implement generation import'
+          git push origin HEAD:agent/issue-105-generation-import-v2
