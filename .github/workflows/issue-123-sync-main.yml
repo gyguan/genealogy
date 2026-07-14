@@ -1,0 +1,50 @@
+name: Issue 123 Sync Main
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/issue-123-sync-main.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  merge-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Merge latest main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Run tracking tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:logs
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Check API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+      - name: Self-clean and push verified merge
+        run: |
+          rm -f frontend/genealogy-web/package-lock.json
+          rm .github/workflows/issue-123-sync-main.yml
+          git add -A
+          git commit -m "chore: remove issue 123 sync workflow"
+          git push origin HEAD:${{ github.head_ref }}
