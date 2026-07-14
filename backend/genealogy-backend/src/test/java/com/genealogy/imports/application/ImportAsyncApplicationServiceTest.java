@@ -59,7 +59,7 @@ class ImportAsyncApplicationServiceTest {
     }
 
     @Test
-    void enqueueShouldPersistRecoverableJobAndPayloadWithoutProcessingRows() {
+    void enqueueShouldPersistRecoverableJobAndPayloadWithoutProcessingRows() throws Exception {
         when(jobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> {
             ImportJobEntity job = invocation.getArgument(0);
             job.setId(77L);
