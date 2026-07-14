@@ -1,515 +1,572 @@
-import { useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Form, Input, Select, Space, Table, Tag, Timeline } from 'antd';
-import { apiClient } from '../../shared/api/client';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import dayjs from 'dayjs';
+import {
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  Result,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Typography
+} from 'antd';
+import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogPage,
   OperationLogResponse,
-  OperationLogStatsResponse,
   TrackingObjectPage,
   TrackingObjectResponse,
-  TrackingTraceDetailResponse,
-  TrackingTraceRevisionResponse,
-  TrackingTraceSourceBindingResponse,
-  TrackingTraceTimelineEventResponse
+  TrackingTraceDetailResponse
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { traceResetFromLog } from './logTraceModel.js';
+import {
+  DEFAULT_AUDIT_FILTERS,
+  DEFAULT_OBJECT_FILTERS,
+  TRACKING_TABS,
+  buildAuditQuery,
+  buildObjectQuery,
+  readTrackingCenterState,
+  writeTrackingCenterState
+} from './trackingCenterModel.js';
+import type { AuditFilters, ObjectFilters, TrackingTab } from './trackingCenterModel.js';
+import {
+  ACTION_OPTIONS,
+  AUDIT_RESULT_OPTIONS,
+  AUDIT_TARGET_OPTIONS,
+  OBJECT_STATUS_OPTIONS,
+  OBJECT_TYPE_OPTIONS,
+  actionText,
+  display,
+  formatDateTime,
+  statusColor,
+  statusText,
+  targetTypeText
+} from './trackingCenterLabels';
+import { OperationLogDrawer, TrackingTraceDrawer } from './TrackingDetailDrawers';
 
-function display(value: unknown, fallback = '-') {
-  const text = String(value ?? '').trim();
-  return text || fallback;
+const { Paragraph, Text, Title } = Typography;
+const { RangePicker } = DatePicker;
+
+function rangeValue(from: string, to: string) {
+  if (!from || !to) return null;
+  const start = dayjs(from);
+  const end = dayjs(to);
+  return start.isValid() && end.isValid() ? [start, end] as any : null;
 }
 
-function statusText(value?: string | null) {
-  const dict: Record<string, string> = {
-    pending: '待审核',
-    approved: '已通过',
-    rejected: '已驳回',
-    draft: '草稿',
-    official: '正式',
-    archived: '已归档',
-    active: '有效',
-    disabled: '停用',
-    verified: '已核验',
-    unverified: '待核验'
+function rangeStrings(values: any) {
+  if (!values?.[0] || !values?.[1]) return ['', ''] as const;
+  return [values[0].format('YYYY-MM-DDTHH:mm:ss'), values[1].format('YYYY-MM-DDTHH:mm:ss')] as const;
+}
+
+function errorState(error: unknown, fallback: string) {
+  const requestError = error as ApiRequestError;
+  return {
+    message: (error as Error)?.message || fallback,
+    forbidden: requestError?.status === 403
   };
-  return dict[value || ''] || value || '-';
 }
 
-function statusColor(value?: string | null) {
-  const status = String(value || '').toLowerCase();
-  if (['approved', 'official', 'active', 'verified'].includes(status)) return 'success';
-  if (['rejected', 'disabled', 'failed'].includes(status)) return 'error';
-  if (['pending', 'draft', 'unverified'].includes(status)) return 'processing';
-  return 'default';
-}
-
-function actionText(value?: string | null) {
-  const dict: Record<string, string> = {
-    person_create: '创建人物',
-    person_update: '更新人物',
-    person_delete: '删除人物',
-    relationship_create: '创建关系',
-    relationship_update: '更新关系',
-    relationship_delete: '删除关系',
-    source_create: '创建来源',
-    source_update: '更新来源',
-    source_binding_create: '绑定来源',
-    review_submit: '提交审核',
-    review_approve: '审核通过',
-    review_reject: '审核驳回',
-    person_csv_import: '人物导入',
-    relationship_csv_import: '关系导入'
-  };
-  return dict[value || ''] || value || '-';
-}
-
-function targetTypeText(type?: string | null) {
-  const dict: Record<string, string> = {
-    person: '人物',
-    persons: '人物',
-    relationship: '亲属关系',
-    relationships: '亲属关系',
-    source: '来源资料',
-    sources: '来源资料',
-    branch: '支派',
-    branches: '支派',
-    clan: '宗族',
-    review_task: '审核事项'
-  };
-  return dict[type || ''] || type || '对象';
-}
-
-function targetTextFromLog(log: OperationLogResponse) {
-  const name = log.targetDisplayName || log.targetSummary || log.summary;
-  const branch = log.targetBranchName ? `（${log.targetBranchName}）` : '';
-  return `${targetTypeText(log.targetType)}：${display(name, '业务信息不可用')}${branch}`;
-}
-
-function traceSourceText(source: TrackingTraceTimelineEventResponse['sourceType']) {
-  const dict: Record<TrackingTraceTimelineEventResponse['sourceType'], string> = {
-    revision: '版本记录',
-    review_task: '审核事项',
-    source_binding: '来源绑定',
-    operation_log: '操作日志'
-  };
-  return dict[source];
-}
-
-function traceEventColor(event: TrackingTraceTimelineEventResponse) {
-  if (event.eventType === 'REVIEW_REJECTED' || event.eventType === 'OBJECT_DELETED') return 'red';
-  if (event.eventType === 'REVIEW_APPROVED' || event.eventType === 'OBJECT_CREATED') return 'green';
-  if (event.eventType === 'REVIEW_REQUESTED' || event.eventType === 'REVISION_SUBMITTED') return 'blue';
-  return 'gray';
-}
-
-function trackingObjectSummary(row: TrackingObjectResponse) {
-  const parts = [row.displayName, row.branchName, row.secondaryLabel].filter(Boolean);
-  return `${targetTypeText(row.objectType)}：${parts.join(' · ')}`;
+function technicalFieldsReturned(row: OperationLogResponse) {
+  return Object.prototype.hasOwnProperty.call(row, 'detail')
+    || Object.prototype.hasOwnProperty.call(row, 'requestId')
+    || Object.prototype.hasOwnProperty.call(row, 'clientIp');
 }
 
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
-  const [filters, setFilters] = useState({
-    clanId: workspace.clanId,
-    actionType: '',
-    targetType: '',
-    keyword: '',
-    startTime: '',
-    endTime: '',
-    pageSize: '20'
-  });
-  const [objectFilters, setObjectFilters] = useState({
-    objectType: 'person',
-    keyword: '',
-    status: '',
-    changedFrom: '',
-    changedTo: ''
-  });
-  const [traceForm, setTraceForm] = useState({
-    clanId: workspace.clanId,
-    targetType: '',
-    targetId: '',
-    targetSummary: '',
-    reviewTaskId: ''
-  });
-  const [data, setData] = useState<OperationLogPage | null>(null);
+  const initial = useRef(readTrackingCenterState(window.location.search)).current;
+
+  const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
+  const [objectFilters, setObjectFilters] = useState<ObjectFilters>(initial.objectFilters);
+  const [auditFilters, setAuditFilters] = useState<AuditFilters>(initial.auditFilters);
+
   const [objectPage, setObjectPage] = useState<TrackingObjectPage | null>(null);
   const [objectLoading, setObjectLoading] = useState(false);
   const [objectError, setObjectError] = useState('');
+  const [objectForbidden, setObjectForbidden] = useState(false);
+
+  const [auditPage, setAuditPage] = useState<OperationLogPage | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const [auditForbidden, setAuditForbidden] = useState(false);
+  const [auditExporting, setAuditExporting] = useState(false);
+
+  const [selectedTrace, setSelectedTrace] = useState(initial.selectedTrace);
+  const [selectedObject, setSelectedObject] = useState<TrackingObjectResponse | null>(null);
   const [traceDetail, setTraceDetail] = useState<TrackingTraceDetailResponse | null>(null);
-  const [result, setResult] = useState<{ message: string } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [traceError, setTraceError] = useState('');
+
+  const [selectedAuditLogId, setSelectedAuditLogId] = useState(initial.selectedAuditLogId);
+  const [selectedAuditLog, setSelectedAuditLog] = useState<OperationLogResponse | null>(null);
+
+  const objectRequestVersion = useRef(0);
+  const auditRequestVersion = useRef(0);
   const traceRequestVersion = useRef(0);
+  const initializedClan = useRef('');
 
-  function set(key: keyof typeof filters, value: string) {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  }
+  useEffect(() => {
+    const search = writeTrackingCenterState({
+      activeTab,
+      objectFilters,
+      auditFilters,
+      selectedTrace,
+      selectedAuditLogId
+    }, window.location.search);
+    const nextUrl = `${window.location.pathname}${search}${window.location.hash}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [activeTab, objectFilters, auditFilters, selectedTrace, selectedAuditLogId]);
 
-  function setObjectFilter(key: keyof typeof objectFilters, value: string) {
-    setObjectFilters(prev => ({ ...prev, [key]: value }));
-  }
+  useEffect(() => {
+    const onPopState = () => {
+      const restored = readTrackingCenterState(window.location.search);
+      setActiveTab(restored.activeTab);
+      setObjectFilters(restored.objectFilters);
+      setAuditFilters(restored.auditFilters);
+      setSelectedTrace(restored.selectedTrace);
+      setSelectedAuditLogId(restored.selectedAuditLogId);
+      setSelectedAuditLog(null);
+      if (!workspace.clanId) return;
+      void loadObjects(restored.objectFilters);
+      if (restored.activeTab === TRACKING_TABS.AUDIT) void loadAudit(restored.auditFilters, restored.selectedAuditLogId);
+      if (restored.selectedTrace.targetType && restored.selectedTrace.targetId) {
+        void loadTrace(restored.selectedTrace.targetType, restored.selectedTrace.targetId, null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [workspace.clanId]);
 
-  function query(source = filters) {
-    const params = new URLSearchParams();
-    Object.entries(source).forEach(([key, value]) => {
-      if (value) params.set(key, value);
-    });
-    return params.toString();
-  }
-
-  function clearTraceResults() {
-    setTraceDetail(null);
-  }
-
-  async function list() {
-    const q = query({ ...filters, clanId: filters.clanId || workspace.clanId });
-    const res = await apiClient.get<OperationLogPage>(`/logs/operations${q ? `?${q}` : ''}`);
-    setData(res);
-    notify({ message: `日志查询完成，共 ${res.total} 条` });
-  }
-
-  async function stats() {
-    const q = query({ ...filters, clanId: filters.clanId || workspace.clanId });
-    const res = await apiClient.get<OperationLogStatsResponse>(`/logs/operations/stats${q ? `?${q}` : ''}`);
-    setResult({ message: `日志总数：${res.totalCount}` });
-    notify({ message: '日志统计完成' });
-  }
-
-  async function exportCsv() {
-    const q = query({ ...filters, clanId: filters.clanId || workspace.clanId });
-    const blob = await apiClient.download(`/logs/operations/export.csv${q ? `?${q}` : ''}`);
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'operation-logs.csv';
-    link.click();
-    URL.revokeObjectURL(link.href);
-    setResult({ message: '日志导出完成' });
-    notify({ message: '日志导出完成' });
-  }
-
-  async function searchObjects(pageNo = 1, pageSize = objectPage?.pageSize || 10) {
-    const clanId = workspace.clanId;
-    if (!clanId) {
-      notify({ message: '请先选择宗族' }, true);
-      return;
+  useEffect(() => {
+    if (!workspace.clanId || initializedClan.current === workspace.clanId) return;
+    initializedClan.current = workspace.clanId;
+    void loadObjects(objectFilters);
+    if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
+    if (selectedTrace.targetType && selectedTrace.targetId) {
+      void loadTrace(selectedTrace.targetType, selectedTrace.targetId, null);
     }
-    if (objectLoading) return;
+  }, [workspace.clanId]);
+
+  async function loadObjects(filters: ObjectFilters) {
+    if (!workspace.clanId) return;
+    const requestVersion = ++objectRequestVersion.current;
     setObjectLoading(true);
     setObjectError('');
+    setObjectForbidden(false);
     try {
-      const params = new URLSearchParams({
-        clanId,
-        objectType: objectFilters.objectType,
-        pageNo: String(pageNo),
-        pageSize: String(pageSize)
-      });
-      if (objectFilters.keyword.trim()) params.set('keyword', objectFilters.keyword.trim());
-      if (workspace.branchId) params.set('branchId', workspace.branchId);
-      if (objectFilters.status.trim()) params.set('status', objectFilters.status.trim());
-      if (objectFilters.changedFrom.trim()) params.set('changedFrom', objectFilters.changedFrom.trim());
-      if (objectFilters.changedTo.trim()) params.set('changedTo', objectFilters.changedTo.trim());
-      const page = await apiClient.get<TrackingObjectPage>(`/tracking/objects?${params}`);
+      const query = buildObjectQuery(filters, workspace.clanId, workspace.branchId);
+      const page = await apiClient.get<TrackingObjectPage>(`/tracking/objects?${query}`);
+      if (requestVersion !== objectRequestVersion.current) return;
       setObjectPage(page);
-      notify({ message: `找到 ${page.total} 个可见业务对象` });
     } catch (error) {
-      const message = (error as Error).message || '业务对象搜索失败';
-      setObjectError(message);
+      if (requestVersion !== objectRequestVersion.current) return;
+      const state = errorState(error, '业务对象查询失败');
+      setObjectError(state.message);
+      setObjectForbidden(state.forbidden);
       setObjectPage(null);
-      notify({ message }, true);
     } finally {
-      setObjectLoading(false);
+      if (requestVersion === objectRequestVersion.current) setObjectLoading(false);
     }
   }
 
-  async function loadTrace() {
-    const clanId = traceForm.clanId || workspace.clanId;
-    const targetType = traceForm.targetType || (traceForm.reviewTaskId ? 'review_task' : '');
-    const targetId = traceForm.targetId || traceForm.reviewTaskId;
-    if (!clanId) { notify({ message: '请先选择宗族' }, true); return; }
-    if (!targetType || !targetId) {
-      notify({ message: '请先选择一条可追踪的业务记录' }, true);
-      return;
-    }
-    if (loading) return;
-
-    const requestVersion = ++traceRequestVersion.current;
-    setLoading(true);
-    clearTraceResults();
-    setResult(null);
-
+  async function loadAudit(filters: AuditFilters, auditLogId = selectedAuditLogId) {
+    if (!workspace.clanId) return;
+    const requestVersion = ++auditRequestVersion.current;
+    setAuditLoading(true);
+    setAuditError('');
+    setAuditForbidden(false);
     try {
-      const params = new URLSearchParams({ clanId });
+      const query = buildAuditQuery(filters, workspace.clanId);
+      const page = await apiClient.get<OperationLogPage>(`/logs/operations?${query}`);
+      if (requestVersion !== auditRequestVersion.current) return;
+      setAuditPage(page);
+      if (auditLogId) {
+        setSelectedAuditLog(page.records.find(row => String(row.id) === auditLogId) || null);
+      }
+    } catch (error) {
+      if (requestVersion !== auditRequestVersion.current) return;
+      const state = errorState(error, '操作审计查询失败');
+      setAuditError(state.message);
+      setAuditForbidden(state.forbidden);
+      setAuditPage(null);
+    } finally {
+      if (requestVersion === auditRequestVersion.current) setAuditLoading(false);
+    }
+  }
+
+  async function loadTrace(targetType: string, targetId: string, row: TrackingObjectResponse | null) {
+    if (!workspace.clanId || !targetType || !targetId) return;
+    const requestVersion = ++traceRequestVersion.current;
+    setSelectedTrace({ targetType, targetId });
+    setSelectedObject(row);
+    setTraceDetail(null);
+    setTraceError('');
+    setTraceLoading(true);
+    try {
+      const params = new URLSearchParams({ clanId: workspace.clanId });
       const detail = await apiClient.get<TrackingTraceDetailResponse>(
         `/tracking/objects/${encodeURIComponent(targetType)}/${encodeURIComponent(targetId)}/trace?${params}`
       );
-      if (traceRequestVersion.current !== requestVersion) return;
+      if (requestVersion !== traceRequestVersion.current) return;
       setTraceDetail(detail);
-      const coverage = detail.traceCoverage;
-      const message = coverage.level === 'complete'
-        ? `追踪完成：时间线 ${detail.timeline.length} 条，版本 ${detail.revisions.length} 条，审核 ${detail.reviewTasks.length} 条`
-        : `${coverage.level === 'minimal' ? '追踪信息有限' : '追踪信息不完整'}：${coverage.notes.join('；') || '部分历史记录不可用'}`;
-      setResult({ message });
-      notify({ message: coverage.level === 'complete' ? '追踪链路已生成' : '追踪链路已生成，存在覆盖说明' }, coverage.level !== 'complete');
+      setSelectedObject(detail.objectSummary);
     } catch (error) {
-      if (traceRequestVersion.current !== requestVersion) return;
-      clearTraceResults();
-      setResult({ message: '追踪信息不完整：追踪请求执行失败' });
-      notify({ message: (error as Error).message || '追踪链路查询失败' }, true);
+      if (requestVersion !== traceRequestVersion.current) return;
+      setTraceError((error as Error)?.message || '追踪详情加载失败');
     } finally {
-      if (traceRequestVersion.current === requestVersion) setLoading(false);
+      if (requestVersion === traceRequestVersion.current) setTraceLoading(false);
     }
   }
 
-  function resetTraceSelection(selection: typeof traceForm, message: string) {
-    traceRequestVersion.current += 1;
-    setLoading(false);
-    setTraceForm(selection);
-    clearTraceResults();
-    setResult({ message });
+  function updateObjectFilter<K extends keyof ObjectFilters>(key: K, value: ObjectFilters[K]) {
+    setObjectFilters(prev => ({ ...prev, [key]: value }));
   }
 
-  function applyTraceFromLog(row: OperationLogResponse) {
-    const reset = traceResetFromLog(row, workspace.clanId, targetTextFromLog(row));
-    resetTraceSelection(reset.selection, `已选择追踪对象：${targetTextFromLog(row)}`);
+  function updateAuditFilter<K extends keyof AuditFilters>(key: K, value: AuditFilters[K]) {
+    setAuditFilters(prev => ({ ...prev, [key]: value }));
   }
 
-  function applyTraceFromObject(row: TrackingObjectResponse) {
-    const summary = trackingObjectSummary(row);
-    resetTraceSelection({
-      clanId: workspace.clanId,
-      targetType: row.objectType,
-      targetId: String(row.objectId),
-      targetSummary: summary,
-      reviewTaskId: row.objectType === 'review_task' ? String(row.objectId) : ''
-    }, `已选择追踪对象：${summary}`);
+  function searchObjects() {
+    const next = { ...objectFilters, pageNo: 1 };
+    setObjectFilters(next);
+    void loadObjects(next);
   }
 
-  const traceLogs = traceDetail?.operationLogs || [];
-  const timeline = traceDetail?.timeline || [];
-  const traceCoverage = traceDetail?.traceCoverage || null;
-  const latestReviewTask = traceDetail?.reviewTasks[0] || null;
-  const logRows = data?.records || [];
+  function resetObjects() {
+    const next = { ...DEFAULT_OBJECT_FILTERS };
+    setObjectFilters(next);
+    setObjectPage(null);
+    setObjectError('');
+    setObjectForbidden(false);
+    void loadObjects(next);
+  }
+
+  function searchAudit() {
+    const next = { ...auditFilters, pageNo: 1 };
+    setAuditFilters(next);
+    void loadAudit(next, '');
+  }
+
+  function resetAudit() {
+    const next = { ...DEFAULT_AUDIT_FILTERS };
+    setAuditFilters(next);
+    setSelectedAuditLogId('');
+    setSelectedAuditLog(null);
+    setAuditPage(null);
+    setAuditError('');
+    setAuditForbidden(false);
+    void loadAudit(next, '');
+  }
+
+  function changeTab(key: string) {
+    const next = key === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT;
+    setActiveTab(next);
+    if (next === TRACKING_TABS.OBJECT && !objectPage && !objectLoading) void loadObjects(objectFilters);
+    if (next === TRACKING_TABS.AUDIT && !auditPage && !auditLoading) void loadAudit(auditFilters);
+  }
+
+  function openAuditLog(row: OperationLogResponse) {
+    setSelectedAuditLog(row);
+    setSelectedAuditLogId(String(row.id));
+  }
+
+  async function exportAuditCsv() {
+    if (!workspace.clanId || auditExporting) return;
+    setAuditExporting(true);
+    try {
+      const params = new URLSearchParams(buildAuditQuery(auditFilters, workspace.clanId));
+      params.delete('pageNo');
+      params.delete('pageSize');
+      const blob = await apiClient.download(`/logs/operations/export.csv?${params}`);
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `operation-audit-${dayjs().format('YYYYMMDD-HHmm')}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      notify({ message: '操作审计已导出' });
+    } catch (error) {
+      notify({ message: (error as Error)?.message || '操作审计导出失败' }, true);
+    } finally {
+      setAuditExporting(false);
+    }
+  }
+
+  const actorOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    (auditPage?.records || []).forEach(row => {
+      if (row.actorId != null) names.set(String(row.actorId), display(row.actorDisplayName, '系统或未知操作者'));
+    });
+    if (auditFilters.actorId && !names.has(auditFilters.actorId)) names.set(auditFilters.actorId, '已选操作者');
+    return Array.from(names.entries()).map(([value, label]) => ({ value, label }));
+  }, [auditPage, auditFilters.actorId]);
+
+  const canExportAudit = Boolean(auditPage?.records.some(technicalFieldsReturned));
   const objectRows = objectPage?.records || [];
-  const actionTypes = useMemo(() => {
-    const map = new Map<string, number>();
-    traceLogs.forEach(log => map.set(display(log.actionType, 'unknown'), (map.get(display(log.actionType, 'unknown')) || 0) + 1));
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [traceLogs]);
-  const canTrace = Boolean(traceForm.targetType && traceForm.targetId);
-  const resolvedTargetSummary = traceDetail
-    ? trackingObjectSummary(traceDetail.objectSummary)
-    : traceForm.targetSummary || '-';
+  const auditRows = auditPage?.records || [];
 
-  return (
-    <div className="audit-trace-page">
-      <Card title="操作日志与审核流完整追踪">
-        <Descriptions size="small" bordered column={4}>
-          <Descriptions.Item label="当前日志">{logRows.length || '-'}</Descriptions.Item>
-          <Descriptions.Item label="追踪日志">{traceLogs.length || '-'}</Descriptions.Item>
-          <Descriptions.Item label="当前状态"><Tag color={statusColor(traceDetail?.currentStatus)}>{statusText(traceDetail?.currentStatus)}</Tag></Descriptions.Item>
-          <Descriptions.Item label="链路覆盖"><Tag color={traceCoverage?.level === 'complete' ? 'success' : traceCoverage ? 'warning' : 'default'}>{traceCoverage?.level === 'complete' ? '完整覆盖' : traceCoverage?.level === 'minimal' ? '最小覆盖' : traceCoverage ? '部分覆盖' : '未追踪'}</Tag></Descriptions.Item>
-        </Descriptions>
-      </Card>
-
-      <Card title="业务对象搜索" style={{ marginTop: 16 }}>
+  const objectTab = (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Card className="tracking-filter-card">
         <Form layout="vertical">
-          <div className="page-grid two audit-query-grid">
+          <div className="tracking-filter-grid tracking-filter-grid--object">
             <Form.Item label="对象类型">
               <Select
                 value={objectFilters.objectType}
-                onChange={value => setObjectFilter('objectType', value)}
-                options={[
-                  { value: 'person', label: '人物' },
-                  { value: 'relationship', label: '亲属关系' },
-                  { value: 'source', label: '来源资料' },
-                  { value: 'branch', label: '支派' },
-                  { value: 'review_task', label: '审核事项' }
-                ]}
+                options={OBJECT_TYPE_OPTIONS}
+                onChange={value => updateObjectFilter('objectType', value)}
               />
             </Form.Item>
             <Form.Item label="业务关键词">
               <Input
                 value={objectFilters.keyword}
-                onChange={event => setObjectFilter('keyword', event.target.value)}
-                onPressEnter={() => void searchObjects(1)}
                 placeholder="姓名、谱名、来源名称、支派名称或审核摘要"
+                allowClear
                 maxLength={100}
+                onChange={event => updateObjectFilter('keyword', event.target.value)}
+                onPressEnter={searchObjects}
               />
             </Form.Item>
-            <Form.Item label="当前支派范围">
-              <Input value={workspace.branchId ? '当前工作区支派' : '按本人可见范围'} disabled readOnly />
+            <Form.Item label="所属支派">
+              <Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled />
             </Form.Item>
-            <Form.Item label="状态">
-              <Input value={objectFilters.status} onChange={event => setObjectFilter('status', event.target.value)} placeholder="可选：official / pending / verified" maxLength={50} />
+            <Form.Item label="业务状态">
+              <Select
+                value={objectFilters.status}
+                options={OBJECT_STATUS_OPTIONS}
+                onChange={value => updateObjectFilter('status', value)}
+              />
             </Form.Item>
-            <Form.Item label="最近变更开始时间">
-              <Input value={objectFilters.changedFrom} onChange={event => setObjectFilter('changedFrom', event.target.value)} placeholder="2026-07-01T00:00:00" />
-            </Form.Item>
-            <Form.Item label="最近变更结束时间">
-              <Input value={objectFilters.changedTo} onChange={event => setObjectFilter('changedTo', event.target.value)} placeholder="2026-07-31T23:59:59" />
+            <Form.Item label="最近变更时间">
+              <RangePicker
+                value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)}
+                showTime
+                format="YYYY-MM-DD HH:mm"
+                allowClear
+                onChange={values => {
+                  const [changedFrom, changedTo] = rangeStrings(values);
+                  setObjectFilters(prev => ({ ...prev, changedFrom, changedTo }));
+                }}
+              />
             </Form.Item>
           </div>
         </Form>
-        <Space wrap>
-          <Button type="primary" loading={objectLoading} onClick={() => void searchObjects(1)}>搜索业务对象</Button>
-          <span>只返回当前宗族、授权支派和隐私规则允许查看的结果。</span>
-        </Space>
-        {objectError ? <Alert type="error" showIcon message={objectError} style={{ marginTop: 12 }} /> : null}
-        <Table<TrackingObjectResponse>
-          size="small"
-          bordered
-          style={{ marginTop: 12 }}
-          rowKey={row => `${row.objectType}-${row.objectId}`}
-          loading={objectLoading}
-          dataSource={objectRows}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="输入业务关键词搜索可追踪对象" /> }}
-          pagination={{
-            current: objectPage?.pageNo || 1,
-            pageSize: objectPage?.pageSize || 10,
-            total: objectPage?.total || 0,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50'],
-            onChange: (pageNo, pageSize) => void searchObjects(pageNo, pageSize)
-          }}
-          columns={[
-            { key: 'type', title: '类型', render: (_value, row) => targetTypeText(row.objectType) },
-            {
-              key: 'name',
-              title: '业务名称',
-              render: (_value, row) => <div><strong>{row.displayName}</strong>{row.secondaryLabel ? <div>{row.secondaryLabel}</div> : null}</div>
-            },
-            { key: 'branchName', title: '支派', render: (_value, row) => display(row.branchName) },
-            { key: 'summary', title: '摘要', render: (_value, row) => display(row.summary) },
-            { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
-            { key: 'changedAt', title: '最近变化', render: (_value, row) => display(row.changedAt, '时间未记录') },
-            { key: 'trace', title: '操作', width: 90, render: (_value, row) => <Button size="small" type="link" onClick={() => applyTraceFromObject(row)}>选择追踪</Button> }
-          ]}
-        />
-      </Card>
-
-      <div className="page-grid two audit-query-grid">
-        <Card title="日志审计查询">
-          <Form layout="vertical">
-            <Form.Item label="当前宗族"><Input value={workspace.clanId ? '已选择当前宗族' : '未选择宗族'} disabled readOnly /></Form.Item>
-            <Form.Item label="动作类型"><Input value={filters.actionType} onChange={event => set('actionType', event.target.value)} placeholder="例如：创建人物 / 更新人物" /></Form.Item>
-            <Form.Item label="对象类型">
-              <Select value={filters.targetType} onChange={value => set('targetType', value)} options={[{ value: '', label: '全部' }, { value: 'person', label: '人物' }, { value: 'relationship', label: '亲属关系' }, { value: 'source', label: '来源资料' }, { value: 'branch', label: '支派' }, { value: 'clan', label: '宗族' }, { value: 'review_task', label: '审核事项' }]} />
-            </Form.Item>
-            <Form.Item label="关键词"><Input value={filters.keyword} onChange={event => set('keyword', event.target.value)} placeholder="业务名称或摘要" /></Form.Item>
-            <Form.Item label="开始时间"><Input value={filters.startTime} onChange={event => set('startTime', event.target.value)} placeholder="2026-06-01T00:00:00" /></Form.Item>
-            <Form.Item label="结束时间"><Input value={filters.endTime} onChange={event => set('endTime', event.target.value)} placeholder="2026-06-30T23:59:59" /></Form.Item>
-            <Form.Item label="每页数量"><Input value={filters.pageSize} onChange={event => set('pageSize', event.target.value)} /></Form.Item>
-          </Form>
+        <div className="tracking-filter-actions">
           <Space wrap>
-            <Button type="primary" onClick={() => void list()}>查询</Button>
-            <Button onClick={() => void stats()}>统计</Button>
-            <Button onClick={() => void exportCsv()}>导出 CSV</Button>
+            <Button type="primary" loading={objectLoading} onClick={searchObjects}>查询对象</Button>
+            <Button disabled={objectLoading} onClick={resetObjects}>重置</Button>
           </Space>
-          {result ? <Alert type={traceCoverage?.level === 'partial' ? 'warning' : 'success'} showIcon message={result.message} style={{ marginTop: 12 }} /> : null}
-        </Card>
-
-        <Card title="审核流追踪">
-          <Descriptions size="small" bordered column={1}>
-            <Descriptions.Item label="追踪对象">{traceForm.targetSummary || '请先搜索或从日志列表选择业务对象'}</Descriptions.Item>
-            <Descriptions.Item label="对象类型">{targetTypeText(traceForm.targetType)}</Descriptions.Item>
-            <Descriptions.Item label="聚合方式">由后端统一解析版本、审核、来源与日志</Descriptions.Item>
-          </Descriptions>
-          <Space style={{ marginTop: 12 }}>
-            <Button type="primary" disabled={loading || !canTrace} loading={loading} onClick={() => void loadTrace()}>{loading ? '追踪中...' : '生成追踪链路'}</Button>
-          </Space>
-          <Alert type="info" showIcon message="业务对象搜索用于准确选中对象；追踪详情由单一聚合接口返回，页面不再拼接或推断审核链路。" style={{ marginTop: 12 }} />
-          {traceCoverage ? (
-            <Alert
-              type={traceCoverage.level === 'complete' ? 'success' : 'warning'}
-              showIcon
-              message={traceCoverage.level === 'complete' ? '完整覆盖' : traceCoverage.level === 'minimal' ? '最小覆盖' : '部分覆盖'}
-              description={traceCoverage.notes.join('；') || '当前可见历史已加载'}
-              style={{ marginTop: 12 }}
-            />
-          ) : null}
-        </Card>
-      </div>
-
-      <div className="page-grid two audit-query-grid">
-        <Card title="操作与审核时间线">
-          {timeline.length ? (
-            <Timeline items={timeline.map(item => ({
-              color: traceEventColor(item),
-              children: <div><Space><Tag>{traceSourceText(item.sourceType)}</Tag><strong>{item.title}</strong>{item.resultStatus ? <Tag color={statusColor(item.resultStatus)}>{statusText(item.resultStatus)}</Tag> : null}</Space><p>{display(item.summary, '暂无摘要')}</p><span>{display(item.occurredAt, '时间未记录')} · 操作者 {display(item.actorDisplayName, '未知操作者')}</span></div>
-            }))} />
-          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无追踪数据，请先选择业务对象后生成追踪链路。" />}
-        </Card>
-
-        <Card title="追踪摘要">
-          <Descriptions size="small" bordered column={1}>
-            <Descriptions.Item label="关联对象">{resolvedTargetSummary}</Descriptions.Item>
-            <Descriptions.Item label="审核事项">{latestReviewTask ? statusText(latestReviewTask.status) : '暂无审核事项'}</Descriptions.Item>
-            <Descriptions.Item label="审核意见">{display(latestReviewTask?.reviewComment)}</Descriptions.Item>
-            <Descriptions.Item label="版本记录">{traceDetail?.revisions.length || 0} 条</Descriptions.Item>
-            <Descriptions.Item label="来源绑定">{traceDetail?.sourceBindings.length || 0} 条</Descriptions.Item>
-            <Descriptions.Item label="截断分段">{traceCoverage?.truncatedSegments.join('、') || '-'}</Descriptions.Item>
-            <Descriptions.Item label="缺失分段">{traceCoverage?.missingSegments.join('、') || '-'}</Descriptions.Item>
-          </Descriptions>
-          <Space wrap style={{ marginTop: 12 }}>
-            {actionTypes.length ? actionTypes.map(([name, count]) => <Tag key={name}>{actionText(name)} × {count}</Tag>) : <Tag>暂无动作分布</Tag>}
-          </Space>
-          {traceDetail?.revisions.length ? (
-            <Table<TrackingTraceRevisionResponse>
-              size="small"
-              bordered
-              style={{ marginTop: 12 }}
-              rowKey={row => String(row.id)}
-              dataSource={traceDetail.revisions}
-              pagination={false}
-              columns={[
-                { key: 'changeType', title: '变更类型', dataIndex: 'changeType' },
-                { key: 'summary', title: '变更摘要', render: (_value, row) => display(row.diffSummary) },
-                { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
-                { key: 'submitter', title: '提交人', render: (_value, row) => display(row.submitterDisplayName, '未知操作者') },
-                { key: 'time', title: '提交时间', render: (_value, row) => display(row.submitTime, '时间未记录') }
-              ]}
-            />
-          ) : null}
-          {traceDetail?.sourceBindings.length ? (
-            <Table<TrackingTraceSourceBindingResponse>
-              size="small"
-              bordered
-              style={{ marginTop: 12 }}
-              rowKey={row => String(row.id)}
-              dataSource={traceDetail.sourceBindings}
-              pagination={false}
-              columns={[
-                { key: 'source', title: '来源', dataIndex: 'sourceDisplayName' },
-                { key: 'target', title: '关联对象', render: (_value, row) => display(row.targetDisplayName) },
-                { key: 'confidence', title: '可信度', render: (_value, row) => display(row.confidenceLevel) },
-                { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row.bindingStatus)}>{statusText(row.bindingStatus)}</Tag> }
-              ]}
-            />
-          ) : null}
-        </Card>
-      </div>
-
-      <Card title="审计日志列表">
-        <Table<OperationLogResponse>
-          size="small"
-          bordered
-          rowKey={row => String(row.id)}
-          dataSource={logRows}
-          pagination={false}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审计日志" /> }}
-          columns={[
-            { key: 'actionType', title: '动作', render: (_value, row) => actionText(row.actionType) },
-            { key: 'target', title: '业务对象', render: (_value, row) => targetTextFromLog(row) },
-            { key: 'branch', title: '支派', render: (_value, row) => display(row.targetBranchName) },
-            { key: 'actor', title: '操作者', render: (_value, row) => display(row.actorDisplayName, '未知操作者') },
-            { key: 'status', title: '结果状态', render: (_value, row) => row.resultStatus ? <Tag color={statusColor(row.resultStatus)}>{statusText(row.resultStatus)}</Tag> : '-' },
-            { key: 'summary', title: '摘要', render: (_value, row) => display(row.targetSummary || row.summary) },
-            { key: 'createdAt', title: '时间', dataIndex: 'createdAt' },
-            { key: 'trace', title: '追踪', width: 90, render: (_value, row) => <Button size="small" type="link" onClick={() => applyTraceFromLog(row)}>追踪</Button> }
-          ]}
-        />
+          <Text type="secondary">仅查询当前宗族、授权支派和隐私规则允许查看的对象。</Text>
+        </div>
       </Card>
+
+      {objectForbidden ? (
+        <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" />
+      ) : objectError ? (
+        <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button size="small" onClick={() => void loadObjects(objectFilters)}>重试</Button>} />
+      ) : (
+        <Card title="可追踪业务对象" extra={<Text type="secondary">点击整行直接查看追踪详情</Text>}>
+          <Table<TrackingObjectResponse>
+            size="small"
+            rowKey={row => `${row.objectType}-${row.objectId}`}
+            dataSource={objectRows}
+            loading={objectLoading}
+            scroll={{ x: 900 }}
+            onRow={row => ({ onClick: () => void loadTrace(row.objectType, String(row.objectId), row) })}
+            rowClassName="tracking-clickable-row"
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }}
+            pagination={{
+              current: objectPage?.pageNo || objectFilters.pageNo,
+              pageSize: objectPage?.pageSize || objectFilters.pageSize,
+              total: objectPage?.total || 0,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50'],
+              showTotal: total => `共 ${total} 个对象`,
+              onChange: (pageNo, pageSize) => {
+                const next = { ...objectFilters, pageNo, pageSize };
+                setObjectFilters(next);
+                void loadObjects(next);
+              }
+            }}
+            columns={[
+              { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
+              { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
+              { key: 'branch', title: '所属支派', width: 150, render: (_value, row) => display(row.branchName, '未归属支派') },
+              { key: 'summary', title: '业务摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+              { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
+              { key: 'changedAt', title: '最近变更', width: 180, render: (_value, row) => formatDateTime(row.changedAt) },
+              { key: 'open', title: '操作', width: 100, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); void loadTrace(row.objectType, String(row.objectId), row); }}>查看追踪</Button> }
+            ]}
+          />
+        </Card>
+      )}
+    </Space>
+  );
+
+  const auditTab = (
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Card className="tracking-filter-card">
+        <Form layout="vertical">
+          <div className="tracking-filter-grid tracking-filter-grid--audit">
+            <Form.Item label="时间范围">
+              <RangePicker
+                value={rangeValue(auditFilters.startTime, auditFilters.endTime)}
+                showTime
+                format="YYYY-MM-DD HH:mm"
+                allowClear
+                onChange={values => {
+                  const [startTime, endTime] = rangeStrings(values);
+                  setAuditFilters(prev => ({ ...prev, startTime, endTime }));
+                }}
+              />
+            </Form.Item>
+            <Form.Item label="操作者">
+              <Select
+                value={auditFilters.actorId || undefined}
+                options={actorOptions}
+                placeholder="全部操作者"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                notFoundContent="先查询日志后可按当前结果中的操作者筛选"
+                onChange={value => updateAuditFilter('actorId', value || '')}
+              />
+            </Form.Item>
+            <Form.Item label="动作分类">
+              <Select
+                value={auditFilters.actionType || undefined}
+                options={ACTION_OPTIONS}
+                placeholder="全部动作"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                onChange={value => updateAuditFilter('actionType', value || '')}
+              />
+            </Form.Item>
+            <Form.Item label="对象类型">
+              <Select value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} onChange={value => updateAuditFilter('targetType', value)} />
+            </Form.Item>
+            <Form.Item label="执行结果">
+              <Select value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} onChange={value => updateAuditFilter('resultStatus', value)} />
+            </Form.Item>
+            <Form.Item label="业务关键词">
+              <Input
+                value={auditFilters.keyword}
+                placeholder="业务名称、摘要或动作说明"
+                allowClear
+                maxLength={100}
+                onChange={event => updateAuditFilter('keyword', event.target.value)}
+                onPressEnter={searchAudit}
+              />
+            </Form.Item>
+          </div>
+        </Form>
+        <div className="tracking-filter-actions">
+          <Space wrap>
+            <Button type="primary" loading={auditLoading} onClick={searchAudit}>查询审计记录</Button>
+            <Button disabled={auditLoading} onClick={resetAudit}>重置</Button>
+            {canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
+          </Space>
+          <Text type="secondary">按操作时间倒序展示；导出入口仅在服务端返回真实导出权限信息时显示。</Text>
+        </div>
+      </Card>
+
+      {auditForbidden ? (
+        <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" />
+      ) : auditError ? (
+        <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button size="small" onClick={() => void loadAudit(auditFilters)}>重试</Button>} />
+      ) : (
+        <Card title="操作审计记录" extra={<Text type="secondary">点击整行查看详情，技术信息默认折叠</Text>}>
+          <Table<OperationLogResponse>
+            size="small"
+            rowKey={row => String(row.id)}
+            dataSource={auditRows}
+            loading={auditLoading}
+            scroll={{ x: 980 }}
+            onRow={row => ({ onClick: () => openAuditLog(row) })}
+            rowClassName="tracking-clickable-row"
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }}
+            pagination={{
+              current: auditPage?.pageNo || auditFilters.pageNo,
+              pageSize: auditPage?.pageSize || auditFilters.pageSize,
+              total: auditPage?.total || 0,
+              showSizeChanger: true,
+              pageSizeOptions: ['20', '50', '100'],
+              showTotal: total => `共 ${total} 条记录`,
+              onChange: (pageNo, pageSize) => {
+                const next = { ...auditFilters, pageNo, pageSize };
+                setAuditFilters(next);
+                void loadAudit(next, '');
+              }
+            }}
+            columns={[
+              { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
+              { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
+              { key: 'action', title: '动作', width: 140, render: (_value, row) => actionText(row.actionType) },
+              { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, '业务信息不可用')}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
+              { key: 'result', title: '结果', width: 110, render: (_value, row) => row.resultStatus ? <Tag color={statusColor(row.resultStatus)}>{statusText(row.resultStatus)}</Tag> : '未记录' },
+              { key: 'summary', title: '摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+              { key: 'detail', title: '操作', width: 90, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); openAuditLog(row); }}>查看</Button> }
+            ]}
+          />
+        </Card>
+      )}
+    </Space>
+  );
+
+  return (
+    <div className="audit-trace-page">
+      <Card className="tracking-center-intro">
+        <Title level={3}>变更与审计追踪</Title>
+        <Paragraph type="secondary">
+          对象追踪用于回看某个业务对象的变更、审核和来源链路；操作审计用于管理员检索、取证和导出操作记录。本页面只读，不提供审核决策或正式数据修改。
+        </Paragraph>
+      </Card>
+
+      {!workspace.clanId ? (
+        <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" />
+      ) : (
+        <Card className="tracking-center-tabs-card">
+          <Tabs
+            activeKey={activeTab}
+            onChange={changeTab}
+            items={[
+              { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
+              { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab }
+            ]}
+          />
+        </Card>
+      )}
+
+      <TrackingTraceDrawer
+        open={Boolean(selectedTrace.targetType && selectedTrace.targetId)}
+        loading={traceLoading}
+        error={traceError}
+        detail={traceDetail}
+        selectedObject={selectedObject}
+        onClose={() => {
+          traceRequestVersion.current += 1;
+          setTraceLoading(false);
+          setSelectedTrace({ targetType: '', targetId: '' });
+          setSelectedObject(null);
+          setTraceDetail(null);
+          setTraceError('');
+        }}
+      />
+
+      <OperationLogDrawer
+        log={selectedAuditLog}
+        onClose={() => {
+          setSelectedAuditLog(null);
+          setSelectedAuditLogId('');
+        }}
+      />
     </div>
   );
 }
