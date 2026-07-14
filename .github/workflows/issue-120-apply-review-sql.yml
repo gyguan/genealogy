@@ -1,0 +1,37 @@
+name: Issue 120 Apply Review SQL
+
+on:
+  push:
+    branches:
+      - agent/issue-120-business-object-search
+    paths:
+      - .github/scripts/fix-issue-120-review-sql.py
+      - .github/workflows/issue-120-apply-review-sql.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-120-business-object-search
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rewrite review visibility SQL
+        run: python .github/scripts/fix-issue-120-review-sql.py
+      - name: Compile and run SQL structure tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q -DskipTests compile && mvn -q -Dtest=TrackingObjectQueryRepositoryTest test
+      - name: Commit rewrite and remove temporary automation
+        run: |
+          rm .github/scripts/fix-issue-120-review-sql.py .github/workflows/issue-120-apply-review-sql.yml .github/workflows/issue-120-review-diagnostic.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: simplify tracking review visibility SQL for issue 120"
+          git push origin HEAD:agent/issue-120-business-object-search
