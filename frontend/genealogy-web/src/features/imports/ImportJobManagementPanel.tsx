@@ -3,12 +3,7 @@ import { Alert, Button, Card, Checkbox, Empty, Form, Input, InputNumber, Modal, 
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import {
-  importFileFormatOptions,
-  importFileFormatText,
-  importTypeOptions,
-  importTypeText
-} from './import-type-registry';
+import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
 
 type Props = {
   notify: (data: unknown, error?: boolean) => void;
@@ -33,10 +28,7 @@ type ImportJobSummary = {
   latestReviewTaskId?: number;
 };
 
-type ImportJobDetail = ImportJobSummary & {
-  errors?: { rowNo?: number; errorMessage?: string; rawData?: string }[];
-};
-
+type ImportJobDetail = ImportJobSummary & { errors?: { rowNo?: number; errorMessage?: string; rawData?: string }[] };
 type ImportRowPayload = Record<string, unknown>;
 
 type ImportJobRow = {
@@ -66,11 +58,22 @@ type RetryFormValues = {
   toPersonCode?: string;
   relationshipType?: string;
   description?: string;
+  sourceName?: string;
+  sourceType?: string;
+  providerName?: string;
+  bookTitle?: string;
+  volumeNo?: string;
+  pageNo?: string;
+  sourceDate?: string;
+  collectionLocation?: string;
+  sourceDescription?: string;
+  excerpt?: string;
+  confidenceLevel?: string;
+  privacyLevel?: string;
+  sensitiveLevel?: string;
 };
 
-type ReviewTaskCreated = {
-  id?: number;
-};
+type ReviewTaskCreated = { id?: number };
 
 const statusOptions = [
   { value: 'running', label: '处理中' },
@@ -85,6 +88,17 @@ const genderOptions = [
   { value: 'unknown', label: '未知' }
 ];
 
+const relationshipTypeOptions = [
+  { value: '父子', label: '父子' },
+  { value: '母子', label: '母子' },
+  { value: '配偶', label: '配偶' }
+];
+
+const sourceTypeOptions = ['谱书', '地方志', '墓碑', '照片', '口述', '档案', '其他'].map(value => ({ value, label: value }));
+const confidenceOptions = ['高', '中', '低', '未知'].map(value => ({ value, label: value }));
+const privacyOptions = ['公开', '宗族内', '支派内', '亲属可见', '私密', '封存'].map(value => ({ value, label: value }));
+const sensitiveOptions = ['普通', '敏感', '高度敏感'].map(value => ({ value, label: value }));
+
 function processingStatusText(row: ImportJobSummary) {
   const status = String(row.processingStatus || '').toLowerCase();
   const dict: Record<string, string> = {
@@ -93,12 +107,7 @@ function processingStatusText(row: ImportJobSummary) {
     ready_for_review: '可提交审核'
   };
   if (dict[status]) return dict[status];
-  const legacy: Record<string, string> = {
-    running: '处理中',
-    completed: '已完成',
-    partial_completed: '待修正',
-    failed: '全部失败'
-  };
+  const legacy: Record<string, string> = { running: '处理中', completed: '已完成', partial_completed: '待修正', failed: '全部失败' };
   return legacy[String(row.status || '').toLowerCase()] || row.status || '待维护';
 }
 
@@ -112,13 +121,7 @@ function processingStatusColor(row: ImportJobSummary) {
 }
 
 function reviewStatusText(value?: string) {
-  const dict: Record<string, string> = {
-    not_submitted: '未提交',
-    pending: '审核中',
-    approved: '已通过',
-    rejected: '已驳回',
-    cancelled: '已取消'
-  };
+  const dict: Record<string, string> = { not_submitted: '未提交', pending: '审核中', approved: '已通过', rejected: '已驳回', cancelled: '已取消' };
   return dict[String(value || '').toLowerCase()] || value || '未提交';
 }
 
@@ -131,12 +134,7 @@ function reviewStatusColor(value?: string) {
 }
 
 function rowStatusText(value?: string) {
-  const dict: Record<string, string> = {
-    invalid: '待修正',
-    retry_failed: '重试未通过',
-    draft_created: '已生成草稿',
-    excluded: '已排除'
-  };
+  const dict: Record<string, string> = { invalid: '待修正', retry_failed: '重试未通过', draft_created: '已生成草稿', excluded: '已排除' };
   return dict[String(value || '').toLowerCase()] || value || '待维护';
 }
 
@@ -165,7 +163,7 @@ function normalizedImportType(row?: ImportJobSummary | null) {
 }
 
 function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
-  return ['person', 'relationship'].includes(normalizedImportType(job))
+  return ['person', 'relationship', 'source'].includes(normalizedImportType(job))
     && ['invalid', 'retry_failed'].includes(String(row.rowStatus || '').toLowerCase())
     && !row.draftCreated;
 }
@@ -173,9 +171,7 @@ function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
 function canSubmitReview(job: ImportJobSummary) {
   const processingStatus = String(job.processingStatus || '').toLowerCase();
   const reviewStatus = String(job.reviewStatus || 'not_submitted').toLowerCase();
-  return processingStatus === 'ready_for_review'
-    && (job.failureCount || 0) === 0
-    && ['not_submitted', 'rejected'].includes(reviewStatus);
+  return processingStatus === 'ready_for_review' && (job.failureCount || 0) === 0 && ['not_submitted', 'rejected'].includes(reviewStatus);
 }
 
 export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
@@ -192,7 +188,6 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
   const [rows, setRows] = useState<ImportJobRow[]>([]);
   const [rowPageNo, setRowPageNo] = useState(1);
   const [rowPageSize, setRowPageSize] = useState(20);
@@ -200,7 +195,6 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [rowLoading, setRowLoading] = useState(false);
   const [editingRow, setEditingRow] = useState<ImportJobRow | null>(null);
   const [retryLoading, setRetryLoading] = useState(false);
-
   const [reviewJob, setReviewJob] = useState<ImportJobSummary | null>(null);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -220,20 +214,15 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
       if (status) params.set('status', status);
       if (importType) params.set('importType', importType);
       if (fileFormat) params.set('fileFormat', fileFormat);
-      const page = await apiClient.get<PageResponse<ImportJobSummary>>(
-        `/clans/${workspace.clanId}/imports?${params.toString()}`
-      );
+      const page = await apiClient.get<PageResponse<ImportJobSummary>>(`/clans/${workspace.clanId}/imports?${params.toString()}`);
       setJobs(page.records || []);
       setTotal(page.total || 0);
-      if (selectedJob && !(page.records || []).some(item => item.id === selectedJob.id)) {
-        clearSelection();
-      }
+      if (selectedJob && !(page.records || []).some(item => item.id === selectedJob.id)) clearSelection();
     } catch (error) {
-      const message = (error as Error).message || '导入任务加载失败';
       setJobs([]);
       setTotal(0);
       clearSelection();
-      setErrorMessage(message);
+      setErrorMessage((error as Error).message || '导入任务加载失败');
     } finally {
       setLoading(false);
     }
@@ -243,14 +232,8 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     if (!workspace.clanId) return;
     setRowLoading(true);
     try {
-      const params = new URLSearchParams({
-        status: 'failed',
-        pageNo: String(nextPage),
-        pageSize: String(nextPageSize)
-      });
-      const page = await apiClient.get<PageResponse<ImportJobRow>>(
-        `/clans/${workspace.clanId}/imports/${jobId}/rows?${params.toString()}`
-      );
+      const params = new URLSearchParams({ status: 'failed', pageNo: String(nextPage), pageSize: String(nextPageSize) });
+      const page = await apiClient.get<PageResponse<ImportJobRow>>(`/clans/${workspace.clanId}/imports/${jobId}/rows?${params.toString()}`);
       setRows(page.records || []);
       setRowTotal(page.total || 0);
     } catch (error) {
@@ -276,9 +259,8 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     setEditingRow(null);
     try {
       const detail = await refreshDetail(job.id);
-      if ((detail?.failureCount || 0) > 0) {
-        await loadRows(job.id, 1, rowPageSize);
-      } else {
+      if ((detail?.failureCount || 0) > 0) await loadRows(job.id, 1, rowPageSize);
+      else {
         setRows([]);
         setRowTotal(0);
       }
@@ -298,20 +280,35 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
 
   function openCorrection(row: ImportJobRow) {
     const values = row.correctedData || row.normalizedData || {};
-    if (normalizedImportType(selectedJob) === 'relationship') {
+    const type = normalizedImportType(selectedJob);
+    if (type === 'relationship') {
       form.setFieldsValue({
         fromPersonCode: String(payloadValue(values, 'fromPersonCode') || ''),
         toPersonCode: String(payloadValue(values, 'toPersonCode') || ''),
         relationshipType: String(payloadValue(values, 'relationshipType') || ''),
         description: String(payloadValue(values, 'description') || '')
       });
+    } else if (type === 'source') {
+      form.setFieldsValue({
+        sourceName: String(payloadValue(values, 'sourceName') || ''),
+        sourceType: String(payloadValue(values, 'sourceType') || ''),
+        providerName: String(payloadValue(values, 'providerName') || ''),
+        bookTitle: String(payloadValue(values, 'bookTitle') || ''),
+        volumeNo: String(payloadValue(values, 'volumeNo') || ''),
+        pageNo: String(payloadValue(values, 'pageNo') || ''),
+        sourceDate: String(payloadValue(values, 'sourceDate') || ''),
+        collectionLocation: String(payloadValue(values, 'collectionLocation') || ''),
+        sourceDescription: String(payloadValue(values, 'sourceDescription') || ''),
+        excerpt: String(payloadValue(values, 'excerpt') || ''),
+        confidenceLevel: String(payloadValue(values, 'confidenceLevel') || '未知'),
+        privacyLevel: String(payloadValue(values, 'privacyLevel') || '宗族内'),
+        sensitiveLevel: String(payloadValue(values, 'sensitiveLevel') || '普通')
+      });
     } else {
       form.setFieldsValue({
         name: String(payloadValue(values, 'name') || ''),
         gender: String(payloadValue(values, 'gender') || 'unknown'),
-        generationNo: typeof payloadValue(values, 'generationNo') === 'number'
-          ? Number(payloadValue(values, 'generationNo'))
-          : undefined,
+        generationNo: typeof payloadValue(values, 'generationNo') === 'number' ? Number(payloadValue(values, 'generationNo')) : undefined,
         generationWord: String(payloadValue(values, 'generationWord') || ''),
         birthDate: String(payloadValue(values, 'birthDate') || ''),
         isLiving: payloadValue(values, 'isLiving') === undefined ? true : Boolean(payloadValue(values, 'isLiving')),
@@ -326,14 +323,13 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     const values = await form.validateFields();
     setRetryLoading(true);
     try {
-      const relationship = normalizedImportType(selectedJob) === 'relationship';
-      const endpoint = relationship
+      const type = normalizedImportType(selectedJob);
+      const endpoint = type === 'relationship'
         ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/relationship-retry`
-        : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
-      const result = await apiClient.post<ImportJobRow>(
-        endpoint,
-        { ...values, expectedVersion: editingRow.version ?? 0 }
-      );
+        : type === 'source'
+          ? `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/source-retry`
+          : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
+      const result = await apiClient.post<ImportJobRow>(endpoint, { ...values, expectedVersion: editingRow.version ?? 0 });
       if (result.rowStatus === 'draft_created') {
         notify({ message: `第 ${result.rowNo || editingRow.rowNo || '-'} 行修正成功，已生成草稿` });
         setEditingRow(null);
@@ -356,10 +352,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     if (!workspace.clanId || !reviewJob) return;
     setReviewLoading(true);
     try {
-      const task = await apiClient.post<ReviewTaskCreated>(
-        `/clans/${workspace.clanId}/imports/${reviewJob.id}/submit-review`,
-        { comment: reviewComment.trim() || undefined }
-      );
+      const task = await apiClient.post<ReviewTaskCreated>(`/clans/${workspace.clanId}/imports/${reviewJob.id}/submit-review`, { comment: reviewComment.trim() || undefined });
       if (task.id) workspace.setReviewTaskId(String(task.id));
       notify({ message: `导入批次已提交第 ${(reviewJob.reviewRound || 0) + 1} 轮审核` });
       setReviewJob(null);
@@ -373,51 +366,61 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     }
   }
 
-  useEffect(() => {
-    void loadJobs();
-  }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);
+  useEffect(() => { void loadJobs(); }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);
+  useEffect(() => { if (selectedJob && (selectedJob.failureCount || 0) > 0) void loadRows(selectedJob.id, rowPageNo, rowPageSize); }, [rowPageNo, rowPageSize]);
 
-  useEffect(() => {
-    if (selectedJob && (selectedJob.failureCount || 0) > 0) {
-      void loadRows(selectedJob.id, rowPageNo, rowPageSize);
+  function renderCorrectionFields() {
+    const type = normalizedImportType(selectedJob);
+    if (type === 'relationship') {
+      return (
+        <>
+          <Form.Item name="fromPersonCode" label="关系主体编码" rules={[{ required: true, message: '请输入关系主体编码' }]}><Input maxLength={100} /></Form.Item>
+          <Form.Item name="toPersonCode" label="关系对象编码" rules={[{ required: true, message: '请输入关系对象编码' }]}><Input maxLength={100} /></Form.Item>
+          <Form.Item name="relationshipType" label="关系类型" rules={[{ required: true, message: '请选择关系类型' }]}><Select options={relationshipTypeOptions} /></Form.Item>
+          <Form.Item name="description" label="说明"><Input.TextArea maxLength={500} rows={3} showCount /></Form.Item>
+        </>
+      );
     }
-  }, [rowPageNo, rowPageSize]);
+    if (type === 'source') {
+      return (
+        <>
+          <Form.Item name="sourceName" label="资料名称" rules={[{ required: true, message: '请输入资料名称' }]}><Input maxLength={200} /></Form.Item>
+          <Form.Item name="sourceType" label="资料类型" rules={[{ required: true, message: '请选择资料类型' }]}><Select options={sourceTypeOptions} /></Form.Item>
+          <Form.Item name="providerName" label="作者/编纂者"><Input maxLength={100} /></Form.Item>
+          <Form.Item name="bookTitle" label="书名/题名"><Input maxLength={200} /></Form.Item>
+          <Form.Item name="volumeNo" label="卷号"><Input maxLength={100} /></Form.Item>
+          <Form.Item name="pageNo" label="页码"><Input maxLength={100} /></Form.Item>
+          <Form.Item name="sourceDate" label="形成时间"><Input maxLength={100} /></Form.Item>
+          <Form.Item name="collectionLocation" label="馆藏位置"><Input maxLength={200} /></Form.Item>
+          <Form.Item name="sourceDescription" label="来源说明"><Input.TextArea maxLength={1000} rows={3} showCount /></Form.Item>
+          <Form.Item name="excerpt" label="摘录内容"><Input.TextArea maxLength={5000} rows={4} showCount /></Form.Item>
+          <Form.Item name="confidenceLevel" label="可信度"><Select options={confidenceOptions} /></Form.Item>
+          <Form.Item name="privacyLevel" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}><Select options={privacyOptions} /></Form.Item>
+          <Form.Item name="sensitiveLevel" label="敏感级别"><Select options={sensitiveOptions} /></Form.Item>
+        </>
+      );
+    }
+    return (
+      <>
+        <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}><Input maxLength={100} /></Form.Item>
+        <Form.Item name="gender" label="性别" rules={[{ required: true, message: '请选择性别' }]}><Select options={genderOptions} /></Form.Item>
+        <Form.Item name="generationNo" label="代次"><InputNumber min={1} precision={0} style={{ width: '100%' }} /></Form.Item>
+        <Form.Item name="generationWord" label="字辈"><Input maxLength={50} /></Form.Item>
+        <Form.Item name="birthDate" label="出生日期"><Input type="date" /></Form.Item>
+        <Form.Item name="isLiving" valuePropName="checked"><Checkbox>在世</Checkbox></Form.Item>
+        <Form.Item name="confirmDuplicates" valuePropName="checked"><Checkbox>如修正后命中疑似重复人物，我已确认仍需生成草稿</Checkbox></Form.Item>
+      </>
+    );
+  }
 
   return (
     <>
-      <Card
-        title="导入任务"
-        style={{ marginTop: 16 }}
-        extra={<Button loading={loading} onClick={() => void loadJobs()}>刷新</Button>}
-      >
+      <Card title="导入任务" style={{ marginTop: 16 }} extra={<Button loading={loading} onClick={() => void loadJobs()}>刷新</Button>}>
         <Space wrap style={{ marginBottom: 16 }}>
-          <Select
-            allowClear
-            placeholder="全部状态"
-            value={status}
-            options={statusOptions}
-            style={{ width: 150 }}
-            onChange={value => { setStatus(value); setPageNo(1); clearSelection(); }}
-          />
-          <Select
-            allowClear
-            placeholder="全部业务类型"
-            value={importType}
-            options={importTypeOptions}
-            style={{ width: 180 }}
-            onChange={value => { setImportType(value); setPageNo(1); clearSelection(); }}
-          />
-          <Select
-            allowClear
-            placeholder="全部文件格式"
-            value={fileFormat}
-            options={[...importFileFormatOptions]}
-            style={{ width: 160 }}
-            onChange={value => { setFileFormat(value); setPageNo(1); clearSelection(); }}
-          />
-          <Typography.Text type="secondary">
-            {workspace.branchId ? '当前仅显示所选支派的导入任务' : '当前显示全宗族导入任务'}
-          </Typography.Text>
+          <Select allowClear placeholder="全部状态" value={status} options={statusOptions} style={{ width: 150 }} onChange={value => { setStatus(value); setPageNo(1); clearSelection(); }} />
+          <Select allowClear placeholder="全部业务类型" value={importType} options={importTypeOptions} style={{ width: 180 }} onChange={value => { setImportType(value); setPageNo(1); clearSelection(); }} />
+          <Select allowClear placeholder="全部文件格式" value={fileFormat} options={[...importFileFormatOptions]} style={{ width: 160 }} onChange={value => { setFileFormat(value); setPageNo(1); clearSelection(); }} />
+          <Typography.Text type="secondary">{workspace.branchId ? '当前仅显示所选支派的导入任务' : '当前显示全宗族导入任务'}</Typography.Text>
         </Space>
         {errorMessage ? <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} /> : null}
         <Table<ImportJobSummary>
@@ -435,11 +438,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             showSizeChanger: true,
             pageSizeOptions: [10, 20, 50],
             showTotal: value => `共 ${value} 个任务`,
-            onChange: (nextPage, nextPageSize) => {
-              setPageNo(nextPageSize === pageSize ? nextPage : 1);
-              setPageSize(nextPageSize);
-              clearSelection();
-            }
+            onChange: (nextPage, nextPageSize) => { setPageNo(nextPageSize === pageSize ? nextPage : 1); setPageSize(nextPageSize); clearSelection(); }
           }}
           columns={[
             { key: 'importType', title: '业务类型', width: 130, render: (_value, row) => importTypeText(row.importType || row.legacyImportType) },
@@ -452,20 +451,9 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             { key: 'reviewStatus', title: '审核状态', width: 105, render: (_value, row) => <Tag color={reviewStatusColor(row.reviewStatus)}>{reviewStatusText(row.reviewStatus)}</Tag> },
             { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => formatDateTime(row.createdAt) },
             {
-              key: 'actions',
-              title: '操作',
-              width: 110,
-              fixed: 'right',
-              render: (_value, row) => (
+              key: 'actions', title: '操作', width: 110, fixed: 'right', render: (_value, row) => (
                 <Space onClick={event => event.stopPropagation()}>
-                  <Button
-                    size="small"
-                    type="primary"
-                    disabled={!canSubmitReview(row)}
-                    onClick={() => { setReviewJob(row); setReviewComment(''); }}
-                  >
-                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}
-                  </Button>
+                  <Button size="small" type="primary" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>{row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}</Button>
                 </Space>
               )
             }
@@ -475,16 +463,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
       </Card>
 
       {selectedJob ? (
-        <Card
-          title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`}
-          loading={detailLoading}
-          style={{ marginTop: 16 }}
-          extra={canSubmitReview(selectedJob) ? (
-            <Button type="primary" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>
-              {selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}
-            </Button>
-          ) : null}
-        >
+        <Card title={`批次处理 · ${selectedJob.originalFilename || importTypeText(selectedJob.importType)}`} loading={detailLoading} style={{ marginTop: 16 }} extra={canSubmitReview(selectedJob) ? <Button type="primary" onClick={() => { setReviewJob(selectedJob); setReviewComment(''); }}>{selectedJob.reviewStatus === 'rejected' ? '修正后重新提交' : '提交审核'}</Button> : null}>
           <Space wrap style={{ marginBottom: 12 }}>
             <Tag>{importTypeText(selectedJob.importType || selectedJob.legacyImportType)}</Tag>
             <Tag>{importFileFormatText(selectedJob.fileFormat, selectedJob.legacyImportType)}</Tag>
@@ -495,13 +474,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           <Alert
             type={(selectedJob.failureCount || 0) > 0 ? 'warning' : selectedJob.reviewStatus === 'approved' ? 'success' : 'info'}
             showIcon
-            message={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved'
-              ? '审核已通过，批次数据已正式生效。'
-              : selectedJob.reviewStatus === 'pending'
-                ? '批次正在审核中，暂不能继续修改。'
-                : selectedJob.reviewStatus === 'rejected'
-                  ? '批次已驳回，可按审核意见调整后重新提交。'
-                  : '全部数据已生成草稿，可以提交审核。')}
+            message={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved' ? '审核已通过，批次数据已正式生效。' : selectedJob.reviewStatus === 'pending' ? '批次正在审核中，暂不能继续修改。' : selectedJob.reviewStatus === 'rejected' ? '批次已驳回，可按审核意见调整后重新提交。' : '全部数据已生成草稿，可以提交审核。')}
             description={(selectedJob.failureCount || 0) > 0 ? '修正失败行后系统会重新计算批次状态；原始行始终保留，不会被覆盖。' : undefined}
             style={{ marginBottom: 12 }}
           />
@@ -512,18 +485,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
               loading={rowLoading}
               rowKey="id"
               dataSource={rows}
-              pagination={{
-                current: rowPageNo,
-                pageSize: rowPageSize,
-                total: rowTotal,
-                showSizeChanger: true,
-                pageSizeOptions: [10, 20, 50],
-                showTotal: value => `共 ${value} 条待修正数据`,
-                onChange: (nextPage, nextPageSize) => {
-                  setRowPageNo(nextPageSize === rowPageSize ? nextPage : 1);
-                  setRowPageSize(nextPageSize);
-                }
-              }}
+              pagination={{ current: rowPageNo, pageSize: rowPageSize, total: rowTotal, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条待修正数据`, onChange: (nextPage, nextPageSize) => { setRowPageNo(nextPageSize === rowPageSize ? nextPage : 1); setRowPageSize(nextPageSize); } }}
               locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有待修正数据" /> }}
               columns={[
                 { key: 'rowNo', title: '行号', dataIndex: 'rowNo', width: 80 },
@@ -531,120 +493,32 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
                 { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage', width: 280 },
                 { key: 'rawData', title: '原始数据', dataIndex: 'rawData', ellipsis: true },
                 { key: 'retryCount', title: '重试次数', dataIndex: 'retryCount', width: 100 },
-                {
-                  key: 'action',
-                  title: '操作',
-                  width: 100,
-                  fixed: 'right',
-                  render: (_value, row) => (
-                    <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>
-                      修正
-                    </Button>
-                  )
-                }
+                { key: 'action', title: '操作', width: 100, fixed: 'right', render: (_value, row) => <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>修正</Button> }
               ]}
               scroll={{ x: 'max-content' }}
             />
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />
-          )}
+          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />}
         </Card>
       ) : null}
 
-      <Modal
-        title={`修正导入数据${editingRow?.rowNo ? ` · 第 ${editingRow.rowNo} 行` : ''}`}
-        open={Boolean(editingRow)}
-        confirmLoading={retryLoading}
-        okText="保存并重试"
-        cancelText="取消"
-        onOk={() => void retryRow()}
-        onCancel={() => { setEditingRow(null); form.resetFields(); }}
-        destroyOnHidden
-      >
+      <Modal title={`修正导入数据${editingRow?.rowNo ? ` · 第 ${editingRow.rowNo} 行` : ''}`} open={Boolean(editingRow)} confirmLoading={retryLoading} okText="保存并重试" cancelText="取消" onOk={() => void retryRow()} onCancel={() => { setEditingRow(null); form.resetFields(); }} destroyOnHidden>
         {editingRow ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Alert type="info" showIcon message="原始数据仅作对照；保存后将使用对应业务类型的修正规则重新校验，不会修改原始导入记录。" />
-            <Typography.Paragraph type="secondary" copyable={{ text: editingRow.rawData || '' }}>
-              原始数据：{editingRow.rawData || '-'}
-            </Typography.Paragraph>
+            <Typography.Paragraph type="secondary" copyable={{ text: editingRow.rawData || '' }}>原始数据：{editingRow.rawData || '-'}</Typography.Paragraph>
             {editingRow.errorMessage ? <Alert type="error" showIcon message={editingRow.errorMessage} /> : null}
-            <Form form={form} layout="vertical">
-              {normalizedImportType(selectedJob) === 'relationship' ? (
-                <>
-                  <Form.Item name="fromPersonCode" label="关系主体编码" rules={[{ required: true, message: '请输入关系主体编码' }]}>
-                    <Input maxLength={100} />
-                  </Form.Item>
-                  <Form.Item name="toPersonCode" label="关系对象编码" rules={[{ required: true, message: '请输入关系对象编码' }]}>
-                    <Input maxLength={100} />
-                  </Form.Item>
-                  <Form.Item name="relationshipType" label="关系类型" rules={[{ required: true, message: '请选择关系类型' }]}>
-                    <Select options={[
-                      { value: '父子', label: '父子' },
-                      { value: '母子', label: '母子' },
-                      { value: '配偶', label: '配偶' }
-                    ]} />
-                  </Form.Item>
-                  <Form.Item name="description" label="说明">
-                    <Input.TextArea maxLength={500} rows={3} showCount />
-                  </Form.Item>
-                </>
-              ) : (
-                <>
-                  <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-                    <Input maxLength={100} />
-                  </Form.Item>
-                  <Form.Item name="gender" label="性别" rules={[{ required: true, message: '请选择性别' }]}>
-                    <Select options={genderOptions} />
-                  </Form.Item>
-                  <Form.Item name="generationNo" label="代次">
-                    <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-                  </Form.Item>
-                  <Form.Item name="generationWord" label="字辈">
-                    <Input maxLength={50} />
-                  </Form.Item>
-                  <Form.Item name="birthDate" label="出生日期">
-                    <Input type="date" />
-                  </Form.Item>
-                  <Form.Item name="isLiving" valuePropName="checked">
-                    <Checkbox>在世</Checkbox>
-                  </Form.Item>
-                  <Form.Item name="confirmDuplicates" valuePropName="checked">
-                    <Checkbox>如修正后命中疑似重复人物，我已确认仍需生成草稿</Checkbox>
-                  </Form.Item>
-                </>
-              )}
-            </Form>
+            <Form form={form} layout="vertical">{renderCorrectionFields()}</Form>
           </Space>
         ) : null}
       </Modal>
 
-      <Modal
-        title={reviewJob?.reviewStatus === 'rejected' ? '重新提交导入批次审核' : '提交导入批次审核'}
-        open={Boolean(reviewJob)}
-        confirmLoading={reviewLoading}
-        okText="确认提交"
-        cancelText="取消"
-        onOk={() => void submitReview()}
-        onCancel={() => { setReviewJob(null); setReviewComment(''); }}
-        destroyOnHidden
-      >
+      <Modal title={reviewJob?.reviewStatus === 'rejected' ? '重新提交导入批次审核' : '提交导入批次审核'} open={Boolean(reviewJob)} confirmLoading={reviewLoading} okText="确认提交" cancelText="取消" onOk={() => void submitReview()} onCancel={() => { setReviewJob(null); setReviewComment(''); }} destroyOnHidden>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message="提交后，批次草稿将锁定，审核通过后统一正式生效；提交人不能审核自己的批次。"
-          />
+          <Alert type="info" showIcon message="提交后，批次草稿将锁定，审核通过后统一正式生效；提交人不能审核自己的批次。" />
           <Typography.Text>业务类型：{importTypeText(reviewJob?.importType || reviewJob?.legacyImportType)}</Typography.Text>
           <Typography.Text>文件：{reviewJob?.originalFilename || '-'}</Typography.Text>
           <Typography.Text>草稿数据：{reviewJob?.successCount || 0} 条</Typography.Text>
-          <Input.TextArea
-            value={reviewComment}
-            maxLength={500}
-            showCount
-            rows={4}
-            placeholder="填写本轮审核说明（可选）"
-            onChange={event => setReviewComment(event.target.value)}
-          />
+          <Input.TextArea value={reviewComment} maxLength={500} showCount rows={4} placeholder="填写本轮审核说明（可选）" onChange={event => setReviewComment(event.target.value)} />
         </Space>
       </Modal>
     </>
