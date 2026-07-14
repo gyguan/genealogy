@@ -6,3 +6,4 @@ cd "$ROOT_DIR"
 
 node scripts/api/check-tracking-contract.mjs
 node scripts/api/check-culture-contract.mjs
+node scripts/api/check-import-execution-contract.mjs
