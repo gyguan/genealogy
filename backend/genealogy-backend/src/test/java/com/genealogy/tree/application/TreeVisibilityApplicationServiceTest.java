@@ -6,6 +6,7 @@ import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.relationship.application.RelationshipApplicationService;
+import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.PersonProjection;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.Visibility;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -154,8 +156,46 @@ class TreeVisibilityApplicationServiceTest {
     }
 
     @Test
+    void officialViewHidesDraftRelationshipBeforeCallingExistingPolicy() {
+        PersonEntity from = person(10L, 10L, "official", "public", false);
+        PersonEntity to = person(11L, 10L, "official", "public", false);
+        RelationshipEntity relationship = relationship(100L, from, to, "draft");
+
+        boolean visible = service.canExposeRelationship(
+                relationship,
+                PersonProjection.full(from, PersonMapper.toResponse(from)),
+                PersonProjection.full(to, PersonMapper.toResponse(to)),
+                ACTOR_ID,
+                "official"
+        );
+
+        assertFalse(visible);
+        verify(relationshipApplicationService, never()).get(relationship.getId(), ACTOR_ID);
+    }
+
+    @Test
+    void existingRelationshipPrivacyDenialHidesEdge() {
+        PersonEntity from = person(12L, 10L, "official", "public", false);
+        PersonEntity to = person(13L, 10L, "official", "public", false);
+        RelationshipEntity relationship = relationship(101L, from, to, "official");
+        doThrow(new BusinessException("RELATIONSHIP_PRIVACY_FORBIDDEN", "forbidden"))
+                .when(relationshipApplicationService)
+                .get(relationship.getId(), ACTOR_ID);
+
+        boolean visible = service.canExposeRelationship(
+                relationship,
+                PersonProjection.full(from, PersonMapper.toResponse(from)),
+                PersonProjection.full(to, PersonMapper.toResponse(to)),
+                ACTOR_ID,
+                "official"
+        );
+
+        assertFalse(visible);
+    }
+
+    @Test
     void inaccessibleRootUsesNotFoundSemantics() {
-        PersonEntity root = person(10L, 30L, "official", "clan_only", false);
+        PersonEntity root = person(14L, 30L, "official", "clan_only", false);
         deny(root, "person:view");
 
         BusinessException exception = assertThrows(
@@ -201,5 +241,17 @@ class TreeVisibilityApplicationServiceTest {
         person.setPrivacyLevel(privacyLevel);
         person.setIsLiving(living);
         return person;
+    }
+
+    private RelationshipEntity relationship(Long id, PersonEntity from, PersonEntity to, String dataStatus) {
+        RelationshipEntity relationship = new RelationshipEntity();
+        relationship.setId(id);
+        relationship.setClanId(from.getClanId());
+        relationship.setFromPersonId(from.getId());
+        relationship.setToPersonId(to.getId());
+        relationship.setRelationType("parent_child");
+        relationship.setRelationCategory("blood");
+        relationship.setDataStatus(dataStatus);
+        return relationship;
     }
 }
