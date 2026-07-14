@@ -131,3 +131,40 @@ test('culture library restores URL state and uses real detail, governance and re
   await expect(page.getByText('文化资料检索')).toBeVisible();
   await expect(page.getByRole('button', { name: /新\s*增\s*资\s*料/ })).toBeVisible();
 });
+
+test('forbidden culture list does not disclose restricted object identity', async ({ page }) => {
+  await page.route('**/api/v1/**', async route => {
+    const url = new URL(route.request().url());
+    const path = url.pathname.replace('/api/v1', '');
+    if (path === '/auth/me') {
+      await route.fulfill(ok({ id: 8, username: 'viewer', displayName: '受限成员', status: 'active' }));
+      return;
+    }
+    if (path === '/clans') {
+      await route.fulfill(ok({ records: [{ id: 1, clanName: '黄氏宗族', surname: '黄' }], total: 1, pageNo: 1, pageSize: 20, totalPages: 1 }));
+      return;
+    }
+    if (path === '/clans/1/branches') {
+      await route.fulfill(ok([]));
+      return;
+    }
+    if (path === '/clans/1/culture-overview') {
+      await route.fulfill(ok({ clanId: 1, clanName: '黄氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 }, featuredItems: [], migrationHighlights: [], siteHighlights: [], missingHints: [] }));
+      return;
+    }
+    if (path === '/clans/1/culture-items') {
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: false, error: { code: 'FORBIDDEN', message: '当前账号无权查看该宗族文化资料' } })
+      });
+      return;
+    }
+    await route.fulfill(ok({}));
+  });
+
+  await page.goto('/?view=culture');
+  await expect(page.getByText('暂无权限')).toBeVisible();
+  await expect(page.getByText('当前账号无权查看该宗族文化资料')).toBeVisible();
+  await expect(page.getByText('封存祖源秘密')).toHaveCount(0);
+});
