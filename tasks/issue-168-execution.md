@@ -4,7 +4,7 @@
 - 工作分支：`agent/issue-168-culture-governance`
 - Draft PR：https://github.com/gyguan/genealogy/pull/189
 - 目标：让 `culture_item` 接入来源证据、revision/review apply、文化专属权限与范围、隐私最小披露和统一追踪，形成可信正式数据闭环。
-- 最后更新时间：2026-07-14 19:50，北京时间
+- 最后更新时间：2026-07-14 21:06，北京时间
 
 ## 实现范围
 
@@ -12,7 +12,7 @@
 - 实现文化资料提交审核、通过、驳回、revision apply、正式归档和精选变更审核。
 - 新增文化资料权限，映射内置角色及 `clan / branch_subtree` 数据范围。
 - 后端联合成员、角色、范围、隐私、敏感级别和状态计算 `allowedActions`。
-- 对 `private / sealed` 实施正文、摘录、附件元数据和对象存在性的最小披露。
+- 对 `private / sealed` 实施正文、摘录、附件元数据、操作日志和对象存在性的最小披露。
 - 追踪中心搜索和 trace 聚合支持 `culture_item`，聚合 revision、review task、source binding 和 operation log，并设置有界上限。
 - 新增、编辑、提交、审核、绑定、归档和精选操作记录安全日志，不写完整敏感正文。
 
@@ -30,18 +30,19 @@
 | 1 | 刷新规则、Issue、前置实现与现有通用治理框架 | ✅ 已完成 | 约 8 分钟 | 已读取根/后端规则、Issue 治理、#168 和 #167 合入基线；确认无现有分支或 PR |
 | 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | ✅ 已完成 | 约 4 分钟 | 分支、执行看板、Draft PR #189 和 Issue 回写已建立 |
 | 3 | 补齐文化来源、审核、权限与追踪 OpenAPI/领域契约 | ✅ 已完成 | 约 15 分钟 | 复用既有文化/Tracking OpenAPI；新增 Java 请求 DTO、受控 revision payload 和稳定错误语义 |
-| 4 | 实现文化 revision/review apply、归档和来源绑定范围校验 | ✅ 已完成 | 约 45 分钟 | `@Primary` 适配器接入通用 approve/reject/apply；正式更新、删除、归档和精选变更走审核；文化来源禁止直绑 |
-| 5 | 实现文化权限种子、隐私矩阵、allowedActions 和追踪聚合 | ✅ 已完成 | 约 40 分钟 | 新增 9 项文化权限；private/sealed 最小披露；tracking 搜索与 trace 有界聚合完成 |
-| 6 | 补充单元、权限矩阵、PostgreSQL 与契约测试 | ✅ 已完成 | 约 20 分钟 | 新增权限/治理测试和长期 Culture Governance CI；Migration、API、Backend 已通过，完整测试/PG 启动正在复跑 |
-| 7 | 执行完整验证、五轴 Review、合入 main 并关闭 Issue | 🔄 进行中 | 已累计约 8 分钟 | 检查最新 main、CI 和 Review，满足门禁后转 Ready 并合入 |
+| 4 | 实现文化 revision/review apply、归档和来源绑定范围校验 | ✅ 已完成 | 约 55 分钟 | 文化 apply 与现有异步导入 apply 组成单一委托链；正式更新、删除、归档和精选变更走审核；文化来源禁止直绑 |
+| 5 | 实现文化权限种子、隐私矩阵、allowedActions 和追踪聚合 | ✅ 已完成 | 约 50 分钟 | 新增 9 项文化权限；private/sealed 详情、来源旁路和日志最小披露；tracking 搜索与 trace 有界聚合完成 |
+| 6 | 补充单元、权限矩阵、PostgreSQL 与契约测试 | ✅ 已完成 | 约 35 分钟 | 定向测试、全量回归、PostgreSQL 集成、Flyway 和 JAR 启动均通过 |
+| 7 | 执行完整验证、五轴 Review、合入 main 并关闭 Issue | 🔄 进行中 | 已累计约 12 分钟 | 全部门禁通过、无 Review 线程、GitHub 可合并；准备转 Ready 并 squash 合入 |
 
 ## 关键设计
 
-1. **通用审核复用**：继续使用 `revision → review_task → approve/reject → apply`，通过 `@Primary` 文化适配器接入，不修改人物、关系、来源等现有审核行为。
+1. **通用审核复用**：继续使用 `revision → review_task → approve/reject → apply`。文化 apply 继承异步导入感知 apply，作为唯一 `@Primary`，非文化目标继续委托原实现。
 2. **敏感 payload 隔离**：正式更新正文只进入内部 `culture_revision_payload`，通用 revision/trace 仅保存字段摘要和正文长度；审核完成后删除内部 payload。
 3. **来源绑定审核化**：文化来源直绑返回 `CULTURE_SOURCE_BINDING_REVIEW_REQUIRED`；新增/替换/删除仍生成标准 `source_binding` revision，且 revision 不保存 excerpt 原文。
 4. **权限与隐私**：新增 `culture.view/create/update/delete/submit_review/review/archive/feature/view_sensitive`，复用 `clan / branch_subtree` 数据范围；sealed 和高度敏感对象无权时统一 not-found。
-5. **有界追踪**：搜索在 SQL 层完成范围、隐私、分页和计数；trace 对 revision、review task、source binding、operation log 各取最近 100 条，并返回截断段与覆盖说明。
+5. **旁路封堵**：source-centric binding 列表和精确目标查询同样执行文化对象可见性校验；受限文化操作日志只保存通用动作，不保存标题和详情。
+6. **有界追踪**：搜索在 SQL 层完成范围、隐私、分页和计数；trace 对 revision、review task、source binding、operation log 各取最近 100 条，并返回截断段与覆盖说明。
 
 ## 数据库与回滚
 
@@ -53,28 +54,37 @@
 
 ## 验证结果
 
-- Database Migration Governance：✅ 通过。
-- API Contract：✅ 通过。
-- Backend Compile：✅ 通过。
-- Culture Governance CI：🔄 最新 Head 正在执行完整 `mvn test`、PostgreSQL 16、Flyway 与健康检查。
-- Review：当前无未解决线程。
+- Database Migration Governance：✅ 通过，run `29331318073`。
+- API Contract：✅ 通过，run `29331318174`。
+- Backend CI：✅ 通过，run `29331318050`。
+- Culture Unit and Regression Tests：✅ 定向文化测试与全量 `mvn test` 通过。
+- Culture PostgreSQL and Flyway：✅ PostgreSQL 16 集成测试、Flyway、打包和 JAR 健康启动通过，run `29331318017`。
+- Review：✅ 无提交 Review、无未解决线程。
+- 合并检查：✅ GitHub `mergeable=true`；分支落后主干的并行提交未与文化文件冲突。
+
+## 五轴 Review
+
+- Correctness：✅ 正式更新、删除、归档和精选变更只经审核 apply 生效；发布驳回恢复 rejected；自审继续由通用审核拒绝。
+- Readability：✅ 文化能力通过目标适配器接入，Controller、Policy、Governance、Apply、Source 和 Tracking 职责分离。
+- Architecture：✅ 不建立第二套审核表；复用统一 revision、review task、source binding、RBAC、operation log 和 tracking。
+- Security：✅ 支派范围、sealed 存在性、正文 payload、来源摘录、source 旁路和操作日志均执行后端最小披露。
+- Performance：✅ 搜索数据库分页计数；trace 单段和总时间线限制 100；历史查询有匹配索引。
 
 ## 已知边界
 
 - 最终文化资料库 UI 由 #169 完成。
 - 文化来源绑定为保护摘录隐私，审核 revision 不保存 excerpt 原文；本 Issue 保留来源关系和可信度，受控摘录补录可在后续专用接口扩展。
-- 分支当前落后 `main` 两个并行提交（审核历史查询与追踪中心收尾），本 PR 只新增文化适配器和文件，GitHub 当前判定可合并；最终合入前再次核对。
+- source-centric 分页在过滤不可见文化目标后以当前可见记录重新计算响应总数，优先保证不泄露受限对象数量；后续可增加数据库级联合分页查询优化体验。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#168
 - 当前分支：`agent/issue-168-culture-governance`
 - Draft PR：#189
-- 最新业务 Commit：`5f77a08a5cf4dc26047ea6834b8826f54857f628`
-- 最新 CI Commit：由本次看板更新提交确定
-- 当前进行中：完整测试、PostgreSQL 启动、Review 与合入
-- CI 状态：Migration 已通过；API/Backend/Culture Governance 正在最新 Head 复跑
+- 最新业务 Commit：`4372e39a185530cde330a0b4cecbc4d0ed249393`
+- 当前进行中：转 Ready 并 squash 合入 `main`
+- CI 状态：全部通过
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：确认 Culture Governance CI 结果，完成五轴 Review并转 Ready
-- 最后更新时间：2026-07-14 19:50，北京时间
+- 下一步最小任务：标记 PR Ready，复核 head 与 mergeability 后合入
+- 最后更新时间：2026-07-14 21:06，北京时间
