@@ -18,9 +18,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend-compile:
-    name: Backend Compile
+  backend-validation:
+    name: Backend Tests and PostgreSQL Integration
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     steps:
       - name: Checkout
@@ -33,6 +47,29 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Compile and package backend
+      - name: Run unit and PostgreSQL integration tests
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipTests package
+        env:
+          RUN_POSTGRES_INTEGRATION_TESTS: "true"
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: "true"
+        run: mvn -B test
+
+      - name: Package and start backend
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: "true"
+        run: |
+          mvn -B -DskipTests package
+          nohup java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/issue-167-backend.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null && exit 0
+            sleep 2
+          done
+          tail -n 200 /tmp/issue-167-backend.log || true
+          exit 1
