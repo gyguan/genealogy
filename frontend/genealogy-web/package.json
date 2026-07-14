@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:tracking-center": "node src/features/logs/trackingCenterModel.test.mjs",
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
     "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts"
   },
