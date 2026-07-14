@@ -12,6 +12,7 @@ import './mvp1-source-step.css';
 import './mvp1-tree-step.css';
 import './mvp1-person-step.css';
 import './lineage-tree.css';
+import './lineage-graph.css';
 import './compact-ui.css';
 import './audit-trace.css';
 import './antd-bridge.css';
