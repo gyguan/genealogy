@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,12 +60,12 @@ class CultureItemGovernanceApplicationServiceTest {
                 operationLogApplicationService,
                 new ObjectMapper()
         );
-        when(revisionRepository.save(any())).thenAnswer(invocation -> {
+        lenient().when(revisionRepository.save(any())).thenAnswer(invocation -> {
             RevisionEntity revision = invocation.getArgument(0);
             revision.setId(20L);
             return revision;
         });
-        when(reviewTaskRepository.save(any())).thenAnswer(invocation -> {
+        lenient().when(reviewTaskRepository.save(any())).thenAnswer(invocation -> {
             ReviewTaskEntity task = invocation.getArgument(0);
             task.setId(30L);
             return task;
