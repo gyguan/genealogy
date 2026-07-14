@@ -1,0 +1,38 @@
+name: Issue 121 Contract Preview
+
+on:
+  push:
+    branches:
+      - agent/issue-121-trace-aggregation
+    paths:
+      - docs/api/openapi.tracking-trace.json
+      - scripts/api/generate-frontend-client.mjs
+      - .github/workflows/issue-121-contract-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+      - name: Generate contract files
+        working-directory: frontend/genealogy-web
+        run: npm run api:generate
+      - name: Upload generated contract files
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-121-generated-contract
+          path: |
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
+          if-no-files-found: error
