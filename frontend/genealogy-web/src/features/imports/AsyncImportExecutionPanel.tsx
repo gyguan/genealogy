@@ -64,10 +64,18 @@ function statusColor(status?: ImportExecutionStatus) {
   return 'default';
 }
 
-function allowedActions(status?: ImportExecutionStatus): ImportExecutionAction[] {
-  if (status === 'queued' || status === 'running' || status === 'retry_wait') return ['pause', 'cancel'];
-  if (status === 'paused') return ['resume', 'cancel'];
-  if (status === 'failed' || status === 'dead_letter') return ['retry', 'cancel'];
+function hasSideEffects(job: AsyncImportJob) {
+  return Number(job.processedCount || 0) > 0 || Number(job.publishedCount || 0) > 0;
+}
+
+function allowedActions(job: AsyncImportJob): ImportExecutionAction[] {
+  const cancellable = !hasSideEffects(job);
+  const status = job.executionStatus;
+  if (status === 'queued' || status === 'running' || status === 'retry_wait') {
+    return cancellable ? ['pause', 'cancel'] : ['pause'];
+  }
+  if (status === 'paused') return cancellable ? ['resume', 'cancel'] : ['resume'];
+  if (status === 'failed' || status === 'dead_letter') return cancellable ? ['retry', 'cancel'] : ['retry'];
   return [];
 }
 
@@ -158,11 +166,11 @@ export function AsyncImportExecutionPanel({ clanId, branchId, refreshKey, notify
       extra={<Button loading={loading} onClick={() => void load()}>刷新</Button>}
     >
       <Typography.Paragraph type="secondary">
-        大文件会在后台按分片处理。暂停和取消在当前分片提交完成后生效；失败任务会自动退避重试，超过上限后转为人工处理。
+        大文件会在后台按分片处理。任务尚未产生草稿时可取消；产生草稿或开始发布后只允许暂停、继续或重试，防止留下不可恢复的半成品。
       </Typography.Paragraph>
       {errorMessage ? <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 12 }} /> : null}
       {jobs.some(job => job.manualInterventionRequired) ? (
-        <Alert type="warning" showIcon message="存在超过自动重试上限的任务，请查看失败摘要并人工重试或取消。" style={{ marginBottom: 12 }} />
+        <Alert type="warning" showIcon message="存在超过自动重试上限的任务，请查看失败摘要并人工重试。" style={{ marginBottom: 12 }} />
       ) : null}
       <Table<AsyncImportJob>
         size="small"
@@ -207,7 +215,7 @@ export function AsyncImportExecutionPanel({ clanId, branchId, refreshKey, notify
             width: 150,
             render: (_value, row) => (
               <Space wrap>
-                {allowedActions(row.executionStatus).map(action => (
+                {allowedActions(row).map(action => (
                   <Button
                     key={action}
                     size="small"
