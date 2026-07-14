@@ -1,0 +1,27 @@
+name: Issue 130-132 Inspect Baseline
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Inspect migration and auth test baseline
+        shell: bash
+        run: |
+          echo '=== VERSION 3 MIGRATIONS ==='
+          find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort | awk '/^V0*3__|^V3__/'
+          echo '=== ALL MIGRATIONS ==='
+          find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort
+          echo '=== AUTH/E2E FILES ==='
+          find frontend/genealogy-web -maxdepth 3 -type f | grep -E 'playwright|cypress|e2e' || true
+          echo '=== WORKFLOWS ==='
+          find .github/workflows -maxdepth 1 -type f -printf '%f\n' | sort
