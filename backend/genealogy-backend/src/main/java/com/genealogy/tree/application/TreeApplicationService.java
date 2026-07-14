@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -209,8 +210,8 @@ public class TreeApplicationService {
             String dataView,
             Long actorId
     ) {
-        appendRelationships(personId, true, projections, nodes, edges, relationScopes, dataView, actorId, false, null);
-        appendRelationships(personId, false, projections, nodes, edges, relationScopes, dataView, actorId, false, null);
+        appendRelationships(personId, true, projections, nodes, edges, relationScopes, dataView, actorId, false, null, null);
+        appendRelationships(personId, false, projections, nodes, edges, relationScopes, dataView, actorId, false, null, null);
     }
 
     private void traverse(
@@ -387,7 +388,10 @@ public class TreeApplicationService {
         if (relationship.getRelationCategory() != null && !relationship.getRelationCategory().isBlank()) {
             return relationship.getRelationCategory().trim().toLowerCase(Locale.ROOT);
         }
-        return switch (relationship.getRelationType()) {
+        String relationType = relationship.getRelationType() == null
+                ? ""
+                : relationship.getRelationType().trim().toLowerCase(Locale.ROOT);
+        return switch (relationType) {
             case "spouse" -> SCOPE_MARRIAGE;
             case "adoptive", "successor", "out_adoption", "in_adoption", "dual_successor", "heir_son" -> SCOPE_RITUAL;
             case "no_descendant" -> SCOPE_STATUS;
@@ -401,7 +405,7 @@ public class TreeApplicationService {
         }
         Set<String> normalized = relationScopes.stream()
                 .filter(value -> value != null && !value.isBlank())
-                .flatMap(value -> List.of(value.split(",")).stream())
+                .flatMap(value -> Arrays.stream(value.split(",")))
                 .map(value -> value.trim().toLowerCase(Locale.ROOT))
                 .filter(value -> !value.isBlank())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
