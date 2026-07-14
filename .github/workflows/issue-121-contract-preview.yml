@@ -1,9 +1,9 @@
 name: Issue 121 Contract Preview
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/issue-121-trace-aggregation
+      - main
     paths:
       - docs/api/openapi.tracking-trace.json
       - scripts/api/generate-frontend-client.mjs
