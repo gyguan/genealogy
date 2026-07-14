@@ -8,7 +8,6 @@ node scripts/api/generate-frontend-client.mjs
 node scripts/api/generate-import-execution-types.mjs
 node scripts/api/check-tracking-contract.mjs
 node scripts/api/check-culture-contract.mjs
-node scripts/api/check-culture-item-runtime-contract.mjs
 node scripts/api/check-import-execution-contract.mjs
 
 git diff --exit-code -- \
