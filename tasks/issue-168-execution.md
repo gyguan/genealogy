@@ -1,10 +1,11 @@
 # Issue #168 执行看板：文化资料来源、审核、权限隐私与追踪
 
 - Issue：https://github.com/gyguan/genealogy/issues/168
-- 工作分支：`agent/issue-168-culture-governance`
-- Draft PR：https://github.com/gyguan/genealogy/pull/189
+- 实现分支：`agent/issue-168-culture-governance`
+- 实现 PR：https://github.com/gyguan/genealogy/pull/189
+- 合入 Commit：`b05d36557679c137d21211e5ba9a66efa23d5ae8`
 - 目标：让 `culture_item` 接入来源证据、revision/review apply、文化专属权限与范围、隐私最小披露和统一追踪，形成可信正式数据闭环。
-- 最后更新时间：2026-07-14 21:06，北京时间
+- 最后更新时间：2026-07-14 21:13，北京时间
 
 ## 实现范围
 
@@ -33,7 +34,7 @@
 | 4 | 实现文化 revision/review apply、归档和来源绑定范围校验 | ✅ 已完成 | 约 55 分钟 | 文化 apply 与现有异步导入 apply 组成单一委托链；正式更新、删除、归档和精选变更走审核；文化来源禁止直绑 |
 | 5 | 实现文化权限种子、隐私矩阵、allowedActions 和追踪聚合 | ✅ 已完成 | 约 50 分钟 | 新增 9 项文化权限；private/sealed 详情、来源旁路和日志最小披露；tracking 搜索与 trace 有界聚合完成 |
 | 6 | 补充单元、权限矩阵、PostgreSQL 与契约测试 | ✅ 已完成 | 约 35 分钟 | 定向测试、全量回归、PostgreSQL 集成、Flyway 和 JAR 启动均通过 |
-| 7 | 执行完整验证、五轴 Review、合入 main 并关闭 Issue | 🔄 进行中 | 已累计约 12 分钟 | 全部门禁通过、无 Review 线程、GitHub 可合并；准备转 Ready 并 squash 合入 |
+| 7 | 执行完整验证、五轴 Review、合入 main 并关闭 Issue | ✅ 已完成 | 约 15 分钟 | PR #189 已 Ready 后 squash 合入；Issue #168 自动关闭为 completed |
 
 ## 关键设计
 
@@ -60,7 +61,8 @@
 - Culture Unit and Regression Tests：✅ 定向文化测试与全量 `mvn test` 通过。
 - Culture PostgreSQL and Flyway：✅ PostgreSQL 16 集成测试、Flyway、打包和 JAR 健康启动通过，run `29331318017`。
 - Review：✅ 无提交 Review、无未解决线程。
-- 合并检查：✅ GitHub `mergeable=true`；分支落后主干的并行提交未与文化文件冲突。
+- 合并结果：✅ PR #189 squash 合入 `main`，Commit `b05d36557679c137d21211e5ba9a66efa23d5ae8`。
+- Issue 状态：✅ #168 已关闭，state reason 为 `completed`。
 
 ## 五轴 Review
 
@@ -76,15 +78,10 @@
 - 文化来源绑定为保护摘录隐私，审核 revision 不保存 excerpt 原文；本 Issue 保留来源关系和可信度，受控摘录补录可在后续专用接口扩展。
 - source-centric 分页在过滤不可见文化目标后以当前可见记录重新计算响应总数，优先保证不泄露受限对象数量；后续可增加数据库级联合分页查询优化体验。
 
-## 当前恢复检查点
+## 最终状态
 
-- 当前 Issue：#168
-- 当前分支：`agent/issue-168-culture-governance`
-- Draft PR：#189
-- 最新业务 Commit：`4372e39a185530cde330a0b4cecbc4d0ed249393`
-- 当前进行中：转 Ready 并 squash 合入 `main`
-- CI 状态：全部通过
-- 未解决 Review：无
-- 已知阻塞：无
-- 下一步最小任务：标记 PR Ready，复核 head 与 mergeability 后合入
-- 最后更新时间：2026-07-14 21:06，北京时间
+- 当前 Issue：#168，✅ completed
+- 实现 PR：#189，✅ merged
+- 主干 Commit：`b05d36557679c137d21211e5ba9a66efa23d5ae8`
+- EPIC #165：第 3 项 #168 已勾选
+- 下一顺序任务：#169 `[宗族文化 P0-04] 重构文化资料库列表、详情与编辑体验`
