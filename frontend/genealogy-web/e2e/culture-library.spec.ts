@@ -103,23 +103,25 @@ test('culture library restores URL state and uses real detail, governance and re
   await expect(page.getByLabel('关键词')).toHaveValue('堂号');
   await expect(page.getByText('正式资料').first()).toBeVisible();
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: '敦本堂堂号源流' })).toBeVisible();
-  await expect(page.getByText('敦本务实，敬宗睦族。')).toBeVisible();
+  const drawer = page.getByRole('dialog', { name: '敦本堂堂号源流' });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText('敦本务实，敬宗睦族。')).toBeVisible();
 
-  await page.getByRole('tab', { name: /来源与附件/ }).click();
-  await expect(page.getByText('黄氏族谱卷一')).toBeVisible();
-  await expect(page.getByText('敦本堂谱页.jpg')).toBeVisible();
+  await drawer.getByRole('tab', { name: /来源与附件/ }).click();
+  await expect(drawer.getByText('黄氏族谱卷一')).toBeVisible();
+  await expect(drawer.getByText('敦本堂谱页.jpg')).toBeVisible();
 
-  await page.getByRole('tab', { name: /审核与追踪/ }).click();
-  await expect(page.getByText('文化资料发布为正式内容')).toBeVisible();
-  await expect(page.getByRole('button', { name: '完整追踪' })).toBeVisible();
+  await drawer.getByRole('tab', { name: /审核与追踪/ }).click();
+  await expect(drawer.getByText('文化资料发布为正式内容')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '完整追踪' })).toBeVisible();
 
-  await page.getByRole('button', { name: '编辑', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '申请变更正式文化资料' })).toBeVisible();
-  await expect(page.getByText('正式资料不会被直接覆盖')).toBeVisible();
-  await page.getByRole('button', { name: '取消' }).click();
+  await drawer.getByRole('button', { name: '编辑', exact: true }).click();
+  const editDialog = page.getByRole('dialog', { name: '申请变更正式文化资料' });
+  await expect(editDialog).toBeVisible();
+  await expect(editDialog.getByText('正式资料不会被直接覆盖')).toBeVisible();
+  await editDialog.getByRole('button', { name: '取消' }).click();
 
-  await page.locator('button.ant-drawer-close').click();
+  await drawer.getByRole('button', { name: 'Close' }).click();
   await page.getByLabel('关键词').fill('家训');
   await page.getByRole('button', { name: '查询' }).click();
   await expect(page).toHaveURL(/cultureKeyword=%E5%AE%B6%E8%AE%AD/);
