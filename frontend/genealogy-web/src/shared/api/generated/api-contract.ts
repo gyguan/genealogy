@@ -216,6 +216,56 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseImportJobRowPage"
   },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-exclude": {
+    "operationId": "bulkExcludeImportRows",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-exclude",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": "ImportRowBulkExcludeRequest",
+    "response": "ImportRowBulkOperationResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-retry": {
+    "operationId": "bulkRetryImportRows",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/bulk-retry",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": "ImportRowBulkRetryRequest",
+    "response": "ImportRowBulkOperationResponse"
+  },
+  "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/corrections.xlsx": {
+    "operationId": "uploadImportRowCorrections",
+    "method": "POST",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/corrections.xlsx",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [
+      "retryAfterApply"
+    ],
+    "requestBody": "ImportCorrectionFileRequest",
+    "response": "ImportRowBulkOperationResponse"
+  },
+  "GET /api/v1/clans/{clanId}/imports/{jobId}/rows/failures.xlsx": {
+    "operationId": "exportImportFailureRows",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/imports/{jobId}/rows/failures.xlsx",
+    "pathParams": [
+      "clanId",
+      "jobId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": null
+  },
   "POST /api/v1/clans/{clanId}/imports/{jobId}/rows/{rowId}/generation-retry": {
     "operationId": "retryGenerationImportRow",
     "method": "POST",

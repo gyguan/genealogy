@@ -311,7 +311,8 @@ public class ImportJobReviewApplicationService {
                 .append(typeTitle(importType(job))).append("导入批次：")
                 .append(safe(job.getOriginalFilename()))
                 .append("，管理支派：").append(branchName)
-                .append("，草稿：").append(value(job.getSuccessCount())).append(" 条，第 ")
+                .append("，草稿：").append(value(job.getSuccessCount())).append(" 条")
+                .append("，排除：").append(importJobRowRepository.countByJobIdAndRowStatus(job.getId(), ImportJobRowEntity.STATUS_EXCLUDED)).append(" 条，第 ")
                 .append(reviewRound).append(" 轮审核");
         if (comment != null && !comment.isBlank()) summary.append("，说明：").append(comment.trim());
         return summary.toString();
