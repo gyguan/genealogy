@@ -9,7 +9,6 @@ on:
       - 'frontend/genealogy-web/package.json'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
-      - '.github/workflows/api-contract.yml'
   push:
     branches:
       - main
@@ -21,7 +20,6 @@ on:
       - 'frontend/genealogy-web/package.json'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
-      - '.github/workflows/api-contract.yml'
 
 jobs:
   api-contract:
@@ -40,18 +38,8 @@ jobs:
         run: npm install
 
       - name: Check generated API contract
-        run: bash scripts/api/check-api-contract.sh 2>&1 | tee /tmp/api-contract-check.log
+        run: bash scripts/api/check-api-contract.sh
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
-        run: npm run typecheck 2>&1 | tee /tmp/api-typecheck.log
-
-      - name: Upload contract diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-166-api-contract-diagnostics
-          path: |
-            /tmp/api-contract-check.log
-            /tmp/api-typecheck.log
-          if-no-files-found: ignore
+        run: npm run typecheck
