@@ -1,0 +1,88 @@
+name: Issue 130-132 E2E Diagnose
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare E2E
+        run: python3 .github/scripts/issue-130-132-e2e-apply.py
+      - name: Install browser
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install --save-dev @playwright/test
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start services
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+          GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED: 'true'
+          GENEALOGY_AUTH_EXPOSE_RESET_TOKEN: 'true'
+        shell: bash
+        run: |
+          cd backend/genealogy-backend
+          mvn -q -DskipTests package
+          nohup java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/backend.log 2>&1 &
+          cd ../../frontend/genealogy-web
+          nohup npm run dev >/tmp/frontend.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null && curl -fsS http://127.0.0.1:5179 >/dev/null && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: Persist Playwright failures and remove diagnostic workflow
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set +e
+          CI=true npx playwright test --reporter=line >/tmp/e2e.log 2>&1
+          status=$?
+          set -e
+          {
+            echo '# Auth Playwright diagnostic'
+            echo
+            echo "Exit status: $status"
+            echo
+            echo '```text'
+            tail -n 240 /tmp/e2e.log
+            echo '```'
+          } > ../../tasks/issue-130-132-e2e-diagnostic.md
+          cd ../..
+          rm .github/workflows/issue-130-132-e2e-diagnose.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tasks/issue-130-132-e2e-diagnostic.md .github/workflows/issue-130-132-e2e-diagnose.yml
+          git commit -m 'chore(auth): record Playwright diagnostic'
+          git push
