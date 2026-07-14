@@ -12,7 +12,11 @@
 -- Verification: clean PostgreSQL 16 migration, Hibernate validation, auth startup,
 -- and uniqueness checks on permission_code plus resource_code/action_code.
 
-create temporary table permission_seed_merge_plan on commit drop as
+-- Keep the temporary merge plan available across statements when this script is
+-- executed manually from database clients that auto-commit after each statement.
+drop table if exists pg_temp.permission_seed_merge_plan;
+
+create temporary table permission_seed_merge_plan as
 select
     resource_code,
     action_code,
@@ -110,3 +114,5 @@ where permission.permission_code like '%:%'
 
 create unique index if not exists ux_app_permission_resource_action
     on app_permission(resource_code, action_code);
+
+drop table if exists pg_temp.permission_seed_merge_plan;
