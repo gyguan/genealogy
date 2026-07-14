@@ -21,8 +21,11 @@ public class AuthProperties {
     private int rememberMeHours = 720;
     private int activityTouchMinutes = 5;
     private int loginWindowMinutes = 15;
+    private int loginCooldownMinutes = 15;
     private int accountMaxFailures = 5;
     private int ipMaxFailures = 20;
+    private long sessionCleanupIntervalMs = 3600000L;
+    private int sessionRetentionDays = 30;
     private int inviteHours = 72;
     private int resetMinutes = 30;
     private String resetBaseUrl = "http://localhost:5179/?auth=reset&resetToken=";

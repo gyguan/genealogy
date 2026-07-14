@@ -70,6 +70,20 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <!-- Immutable duplicate versions stay in Git; runtime packages canonical V3/V4/V5 plus forward compensation. -->
+                    <exclude>db/migration/V3__source_library_status_and_fields.sql</exclude>
+                    <exclude>db/migration/V4__source_attachment_access_fields.sql</exclude>
+                    <exclude>db/migration/V5__schema_validation_compat_tables.sql</exclude>
+                    <exclude>db/migration/V5__source_binding_review_indexes.sql</exclude>
+                    <exclude>db/migration/V22__permission_model_seed_update.sql</exclude>
+                    <exclude>db/migration/V20260713184500__add_operation_log_permissions.sql</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

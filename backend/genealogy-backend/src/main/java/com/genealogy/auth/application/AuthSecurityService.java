@@ -37,16 +37,31 @@ public class AuthSecurityService {
     }
 
     public void requireLoginAllowed(String account, String clientIp) {
-        LocalDateTime windowStart = LocalDateTime.now().minusMinutes(properties.getLoginWindowMinutes());
-        long accountFailures = loginAttemptRepository.countByAccountHashAndSuccessFalseAndCreatedAtAfter(
-                accountHash(account), windowStart
-        );
-        long ipFailures = loginAttemptRepository.countByIpHashAndSuccessFalseAndCreatedAtAfter(
-                ipHash(clientIp), windowStart
-        );
-        if (accountFailures >= properties.getAccountMaxFailures() || ipFailures >= properties.getIpMaxFailures()) {
+        LocalDateTime now = LocalDateTime.now();
+        String accountHash = accountHash(account);
+        String ipHash = ipHash(clientIp);
+        var latestAccountFailure = loginAttemptRepository
+                .findTopByAccountHashAndSuccessFalseOrderByCreatedAtDesc(accountHash);
+        var latestIpFailure = loginAttemptRepository
+                .findTopByIpHashAndSuccessFalseOrderByCreatedAtDesc(ipHash);
+        long accountFailures = latestAccountFailure
+                .map(latest -> loginAttemptRepository.countByAccountHashAndSuccessFalseAndCreatedAtAfter(
+                        accountHash, latest.getCreatedAt().minusMinutes(properties.getLoginWindowMinutes())))
+                .orElse(0L);
+        long ipFailures = latestIpFailure
+                .map(latest -> loginAttemptRepository.countByIpHashAndSuccessFalseAndCreatedAtAfter(
+                        ipHash, latest.getCreatedAt().minusMinutes(properties.getLoginWindowMinutes())))
+                .orElse(0L);
+        boolean accountCoolingDown = accountFailures >= properties.getAccountMaxFailures()
+                && latestAccountFailure.orElseThrow().getCreatedAt()
+                        .plusMinutes(properties.getLoginCooldownMinutes()).isAfter(now);
+        boolean ipCoolingDown = ipFailures >= properties.getIpMaxFailures()
+                && latestIpFailure.orElseThrow().getCreatedAt()
+                        .plusMinutes(properties.getLoginCooldownMinutes()).isAfter(now);
+        if (accountCoolingDown || ipCoolingDown) {
             recordEvent(null, "login_throttled", "AUTH_LOGIN_THROTTLED", "high", clientIp, null, null,
-                    "accountLimit=" + properties.getAccountMaxFailures() + ",ipLimit=" + properties.getIpMaxFailures());
+                    "accountLimited=" + accountCoolingDown + ",ipLimited=" + ipCoolingDown
+                            + ",cooldownMinutes=" + properties.getLoginCooldownMinutes());
             throw new BusinessException("AUTH_LOGIN_THROTTLED", "登录尝试过于频繁，请稍后再试");
         }
     }
