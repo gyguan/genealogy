@@ -277,6 +277,7 @@ export function ReviewCenterPage({ notify }: Props) {
             preserveSelectedRowKeys: false,
             onChange: keys => setSelectedRowKeys(keys)
           }}
+          onRow={row => ({ onClick: () => setDetailTask(row), style: { cursor: 'pointer' } })}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前没有待审核任务' : '请先选择宗族'} /> }}
           columns={[
             { key: 'title', title: '审核事项', ellipsis: true, render: (_value, row) => taskTitle(row) },
@@ -287,14 +288,13 @@ export function ReviewCenterPage({ notify }: Props) {
             {
               key: 'actions',
               title: '审核操作',
-              width: 230,
+              width: 170,
               fixed: 'right',
               render: (_value, row) => {
                 const key = rowKey(row);
                 const processing = processingKeys.includes(key);
                 return (
-                  <Space size="small" wrap>
-                    <Button size="small" onClick={() => setDetailTask(row)}>详情</Button>
+                  <Space size="small" wrap onClick={event => event.stopPropagation()}>
                     <Button size="small" type="primary" loading={processing} disabled={loading} onClick={() => void approveOne(row)}>通过</Button>
                     <Button size="small" danger loading={processing} disabled={loading} onClick={() => void rejectOne(row)}>驳回</Button>
                   </Space>
