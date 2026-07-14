@@ -9,7 +9,10 @@ import org.springframework.stereotype.Repository;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class TrackingObjectQueryRepository {
@@ -109,6 +112,75 @@ public class TrackingObjectQueryRepository {
                 Long.class
         );
         return PageResponse.of(records, total == null ? 0L : total, pageNo, pageSize);
+    }
+
+    public Optional<TrackingObjectResponse> findVisibleById(
+            Long clanId,
+            String objectType,
+            Long targetId,
+            boolean fullClanAccess,
+            List<Long> visibleBranchIds
+    ) {
+        if (targetId == null) {
+            return Optional.empty();
+        }
+        return findVisibleByIds(clanId, objectType, List.of(targetId), fullClanAccess, visibleBranchIds)
+                .stream()
+                .findFirst();
+    }
+
+    public List<TrackingObjectResponse> findVisibleByIds(
+            Long clanId,
+            String objectType,
+            Collection<Long> targetIds,
+            boolean fullClanAccess,
+            List<Long> visibleBranchIds
+    ) {
+        LinkedHashSet<Long> normalizedIds = targetIds == null
+                ? new LinkedHashSet<>()
+                : targetIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        if (normalizedIds.isEmpty()) {
+            return List.of();
+        }
+        SearchSql searchSql = switch (objectType) {
+            case "person" -> personSql();
+            case "relationship" -> relationshipSql();
+            case "source" -> sourceSql();
+            case "branch" -> branchSql();
+            case "review_task" -> reviewTaskSql();
+            default -> throw new IllegalArgumentException("unsupported tracking object type: " + objectType);
+        };
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("clanId", clanId, Types.BIGINT)
+                .addValue("keyword", "", Types.VARCHAR)
+                .addValue("keywordPattern", "%%", Types.VARCHAR)
+                .addValue("branchId", null, Types.BIGINT)
+                .addValue("hasBranchId", false, Types.BOOLEAN)
+                .addValue("status", "", Types.VARCHAR)
+                .addValue("changedFrom", null, Types.TIMESTAMP)
+                .addValue("hasChangedFrom", false, Types.BOOLEAN)
+                .addValue("changedTo", null, Types.TIMESTAMP)
+                .addValue("hasChangedTo", false, Types.BOOLEAN)
+                .addValue("fullClanAccess", fullClanAccess, Types.BOOLEAN)
+                .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
+                .addValue("targetIds", normalizedIds);
+        String sql = "select * from (" + searchSql.selectClause() + searchSql.fromWhereClause()
+                + ") visible_object where object_id in (:targetIds) order by object_id";
+        return jdbcTemplate.query(sql, parameters, (resultSet, rowNumber) -> {
+            Timestamp changedAt = resultSet.getTimestamp("changed_at");
+            return new TrackingObjectResponse(
+                    resultSet.getString("object_type"),
+                    resultSet.getLong("object_id"),
+                    resultSet.getString("display_name"),
+                    resultSet.getString("secondary_label"),
+                    resultSet.getString("branch_name"),
+                    resultSet.getString("summary"),
+                    resultSet.getString("result_status"),
+                    changedAt == null ? null : changedAt.toLocalDateTime()
+            );
+        });
     }
 
     private SearchSql personSql() {

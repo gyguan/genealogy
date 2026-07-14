@@ -17,6 +17,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,6 +64,55 @@ public class OperationLogApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<OperationLogResponse> list(Long clanId, String targetType, Long targetId, int pageNo, int pageSize) {
         return search(clanId, null, null, targetType, targetId, null, null, null, pageNo, pageSize, false);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OperationLogResponse> searchByTargets(
+            Long clanId,
+            Map<String, ? extends Collection<Long>> targetIdsByType,
+            int limit,
+            boolean includeTechnicalFields
+    ) {
+        Map<String, List<Long>> normalizedTargets = new LinkedHashMap<>();
+        if (targetIdsByType != null) {
+            targetIdsByType.forEach((type, ids) -> {
+                String normalizedType = normalize(type);
+                if (normalizedType == null || ids == null) {
+                    return;
+                }
+                List<Long> normalizedIds = ids.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .toList();
+                if (!normalizedIds.isEmpty()) {
+                    normalizedTargets.put(normalizedType, normalizedIds);
+                }
+            });
+        }
+        int normalizedLimit = Math.max(1, Math.min(limit, 500));
+        if (clanId == null || normalizedTargets.isEmpty()) {
+            return PageResponse.of(List.of(), 0L, 1, normalizedLimit);
+        }
+        Specification<OperationLogEntity> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> targetPredicates = new ArrayList<>();
+            normalizedTargets.forEach((type, ids) -> targetPredicates.add(criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("targetType"), type),
+                    root.get("targetId").in(ids)
+            )));
+            return criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("clanId"), clanId),
+                    criteriaBuilder.or(targetPredicates.toArray(new Predicate[0]))
+            );
+        };
+        PageRequest pageRequest = PageRequest.of(0, normalizedLimit,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
+        Page<OperationLogEntity> page = operationLogRepository.findAll(specification, pageRequest);
+        return PageResponse.of(
+                page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
+                page.getTotalElements(),
+                1,
+                normalizedLimit
+        );
     }
 
     /**
