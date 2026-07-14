@@ -12,12 +12,14 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Entity
+@DynamicUpdate
 @Table(name = "import_job")
 public class ImportJobEntity {
 
