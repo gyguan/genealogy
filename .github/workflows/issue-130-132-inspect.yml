@@ -5,23 +5,37 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inspect:
+    if: ${{ !contains(github.event.pull_request.head.sha, 'skip') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Inspect migration and auth test baseline
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Persist baseline and remove one-shot workflow
         shell: bash
         run: |
-          echo '=== VERSION 3 MIGRATIONS ==='
-          find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort | awk '/^V0*3__|^V3__/'
-          echo '=== ALL MIGRATIONS ==='
-          find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort
-          echo '=== AUTH/E2E FILES ==='
-          find frontend/genealogy-web -maxdepth 3 -type f | grep -E 'playwright|cypress|e2e' || true
-          echo '=== WORKFLOWS ==='
-          find .github/workflows -maxdepth 1 -type f -printf '%f\n' | sort
+          {
+            echo '# Issue 132 baseline inspection'
+            echo
+            echo '## Version 3 migrations'
+            find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort | awk '/^V0*3__|^V3__/'
+            echo
+            echo '## All migrations'
+            find backend/genealogy-backend/src/main/resources/db/migration -maxdepth 1 -type f -printf '%f\n' | sort
+            echo
+            echo '## Existing browser E2E files'
+            find frontend/genealogy-web -maxdepth 4 -type f | grep -E 'playwright|cypress|e2e' || true
+            echo
+            echo '## Existing workflows'
+            find .github/workflows -maxdepth 1 -type f -printf '%f\n' | sort
+          } > tasks/issue-132-baseline-inspection.md
+          rm .github/workflows/issue-130-132-inspect.yml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add tasks/issue-132-baseline-inspection.md .github/workflows/issue-130-132-inspect.yml
+          git commit -m 'chore(auth): record readiness baseline'
+          git push
