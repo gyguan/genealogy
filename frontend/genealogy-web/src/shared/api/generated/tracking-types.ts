@@ -190,3 +190,51 @@ export type ReviewDiffResponse = {
   diffSummary?: string | null;
   fields: FieldDiff[];
 };
+
+export type ReviewTaskView = "pending" | "submitted" | "processed";
+
+export type ReviewTaskScope = "mine" | "all";
+
+export type ReviewTargetSummaryResponse = {
+  displayTitle: string;
+  fileName?: string | null;
+  branchName?: string | null;
+  draftCount?: number | null;
+  excludedCount?: number | null;
+  reviewRound?: number | null;
+};
+
+export type ReviewTaskListItemResponse = {
+  id: number;
+  clanId: number;
+  revisionId: number;
+  branchId?: number | null;
+  branchName?: string | null;
+  status: string;
+  targetType: string;
+  targetId: number;
+  title: string;
+  diffSummary?: string | null;
+  submitterId: number;
+  submitterName?: string | null;
+  reviewerId?: number | null;
+  reviewerName?: string | null;
+  reviewComment?: string | null;
+  submitTime: string;
+  processedAt?: string | null;
+  processingDurationSeconds?: number | null;
+  targetSummary: ReviewTargetSummaryResponse;
+};
+
+export type ReviewTaskPage = {
+  records: ReviewTaskListItemResponse[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type ReviewTaskViewDetailResponse = {
+  task: ReviewTaskListItemResponse;
+  history: ReviewTaskListItemResponse[];
+};

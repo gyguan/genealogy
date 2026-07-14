@@ -54,6 +54,18 @@ public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity
             @Param("rowNo") Integer rowNo
     );
 
+    @Query("""
+            select row.jobId, count(row.id)
+            from ImportJobRowEntity row
+            where row.jobId in :jobIds
+              and row.rowStatus = :rowStatus
+            group by row.jobId
+            """)
+    List<Object[]> countByJobIdsAndRowStatus(
+            @Param("jobIds") Collection<Long> jobIds,
+            @Param("rowStatus") String rowStatus
+    );
+
     long countByJobId(Long jobId);
 
     long countByJobIdAndRowStatus(Long jobId, String rowStatus);
