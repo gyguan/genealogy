@@ -127,10 +127,6 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     return false;
   }
 
-  function taskExistsInCurrentPage(task: WorkbenchTask) {
-    return tasks.some(item => item.key === task.key);
-  }
-
   async function loadClans() {
     const clanRows = toRecordList<ClanLike>(unwrapData(await apiClient.get('/clans').catch(() => []), []));
     setClans(clanRows);
@@ -193,7 +189,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
       message.success('任务状态已刷新');
     } else {
       setSelectedTask(null);
-      message.info('任务状态已刷新：当前任务在最新任务池中已不存在，可能已处理完成，或当前筛选条件下不再命中。');
+      message.info('该任务已处理完成，或不再符合当前筛选条件。');
     }
   }
 
@@ -214,16 +210,6 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Card loading={loading}>
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-          <Typography.Text type="secondary">Workbench</Typography.Text>
-          <Typography.Title level={3} style={{ margin: 0 }}>修谱工作台</Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            聚合导入异常、审核退回、资料缺失、字辈/代次不一致和关系复核建议，帮助主编、支派负责人和采集员按任务处理修谱问题，而不是在多个页面之间反复查找。
-          </Typography.Paragraph>
-        </Space>
-      </Card>
-
       <Card>
         <Space wrap align="end" style={{ width: '100%' }}>
           <Space direction="vertical" size={4}>
@@ -268,7 +254,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
               ]}
             />
           </Space>
-          <Button type="primary" loading={loading} onClick={searchWorkbench}>查询工作台</Button>
+          <Button type="primary" loading={loading} onClick={searchWorkbench}>查询</Button>
         </Space>
       </Card>
 
@@ -278,13 +264,6 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">资料缺失</Typography.Text><Typography.Title level={3}>{summary.missingSourceCount ?? 0}</Typography.Title><Tag color={summary.missingSourceCount ? 'warning' : 'success'}>{summary.missingSourceCount ? '待补来源' : '来源正常'}</Tag></Card></Col>
         <Col xs={24} md={12} xl={6}><Card><Typography.Text type="secondary">代次/字辈问题</Typography.Text><Typography.Title level={3}>{summary.generationIssueCount ?? 0}</Typography.Title><Tag color={summary.generationIssueCount ? 'processing' : 'success'}>{summary.generationIssueCount ? '待校验' : '已校验'}</Tag></Card></Col>
       </Row>
-
-      <Alert
-        type="info"
-        showIcon
-        message="工作台定位"
-        description="当前页面只负责发现和组织修谱问题。审批通过/驳回仍进入审核中心；人物、来源、关系的具体维护仍进入对应业务页面。"
-      />
 
       <Card title="修谱问题任务池" loading={loading}>
         <Table<WorkbenchTask>
@@ -299,8 +278,8 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
             showSizeChanger: false,
             onChange: page => void loadWorkbench(workspace.clanId || String(activeClan?.id || ''), page)
           }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无修谱问题。可以先从导入管理、人物档案或来源资料库补充数据。" /> }}
-          onRow={row => ({ onClick: () => setSelectedTask(row), style: { cursor: 'pointer' }, title: '点击查看任务详情' })}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无修谱问题" /> }}
+          onRow={row => ({ onClick: () => setSelectedTask(row), style: { cursor: 'pointer' } })}
           columns={[
             { key: 'type', title: '问题类型', width: 140, render: (_value, row) => row.typeText },
             { key: 'objectName', title: '对象名称', render: (_value, row) => row.objectName },
@@ -331,7 +310,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
               <Tag color={riskColor(selectedTask.risk)}>风险：{riskText(selectedTask.risk)}</Tag>
               <Tag color={statusColor(selectedTask.status)}>{selectedTask.statusText}</Tag>
               <Tag color={selectedTask.reviewBlocked ? 'error' : 'success'}>{selectedTask.reviewBlocked ? '阻塞提交审核' : '不阻塞提交审核'}</Tag>
-              <Tag color={selectedTaskLocated ? 'success' : 'warning'}>{selectedTaskLocated ? '已定位目标页面' : '未定位到目标页面'}</Tag>
+              {selectedTaskLocated ? <Tag color="success">已定位</Tag> : null}
             </Space>
             <Alert
               type={selectedTask.reviewBlocked ? 'warning' : 'info'}
@@ -342,19 +321,9 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="涉及对象">{display(selectedTask.involvedObject || selectedTask.objectName)}</Descriptions.Item>
               <Descriptions.Item label="所属范围">{display(selectedTask.branchName)}</Descriptions.Item>
-              <Descriptions.Item label="当前状态说明">{display(selectedTask.statusDescription, '暂无状态说明')}</Descriptions.Item>
               <Descriptions.Item label="风险原因">{display(selectedTask.riskReason)}</Descriptions.Item>
               <Descriptions.Item label="建议处理">{display(selectedTask.suggestion)}</Descriptions.Item>
-              <Descriptions.Item label="定位状态">{selectedTaskLocated ? '已定位到目标页面，可返回目标页面继续处理。' : '尚未定位到目标页面，请先点击相关入口。'}</Descriptions.Item>
-              <Descriptions.Item label="任务刷新">{taskExistsInCurrentPage(selectedTask) ? '当前任务仍在任务池中。' : '当前任务不在本页任务池中，刷新后可能已完成或被筛选条件隐藏。'}</Descriptions.Item>
-              <Descriptions.Item label="相关入口">{display(selectedTask.relatedEntryText, '暂无相关入口')}</Descriptions.Item>
             </Descriptions>
-            <Alert
-              type="success"
-              showIcon
-              message="交付体验"
-              description="当前抽屉仅解释问题、显示定位状态并支持刷新任务池，不提供认领、处理、忽略、提交审核或审批动作。"
-            />
             <Space>
               <Button type="primary" disabled={!relatedView || !onNavigate} onClick={goRelatedEntry}>{selectedTask.relatedEntryText || '前往相关页面'}</Button>
               <Button loading={loading} onClick={() => void refreshTaskStatus()}>刷新任务状态</Button>
