@@ -111,14 +111,19 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   const auditRequestVersion = useRef(0);
   const traceRequestVersion = useRef(0);
   const initializedClan = useRef('');
+  const pendingClanRestore = useRef(initial.clanId);
 
   useEffect(() => {
-    if (!initial.clanId || initial.clanId === workspace.clanId) return;
+    if (!pendingClanRestore.current || pendingClanRestore.current === workspace.clanId) {
+      pendingClanRestore.current = '';
+      return;
+    }
     initializedClan.current = '';
-    workspace.patch({ clanId: initial.clanId, branchId: '' });
+    workspace.patch({ clanId: pendingClanRestore.current, branchId: '' });
   }, []);
 
   useEffect(() => {
+    if (pendingClanRestore.current && pendingClanRestore.current !== workspace.clanId) return;
     const search = writeTrackingCenterState({
       clanId: workspace.clanId,
       activeTab,
@@ -141,6 +146,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setSelectedAuditLogId(restored.selectedAuditLogId);
       setSelectedAuditLog(null);
       if (restored.clanId && restored.clanId !== workspace.clanId) {
+        pendingClanRestore.current = restored.clanId;
         initializedClan.current = '';
         workspace.patch({ clanId: restored.clanId, branchId: '' });
         return;
@@ -163,6 +169,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   useEffect(() => {
     if (!workspace.clanId || initializedClan.current === workspace.clanId) return;
+    pendingClanRestore.current = '';
     initializedClan.current = workspace.clanId;
     void loadObjects(objectFilters);
     if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
