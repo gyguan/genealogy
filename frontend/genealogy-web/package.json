@@ -11,17 +11,19 @@
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
     "test:members": "node --test src/features/members/memberPageModel.test.js",
-    "test:auth": "node --test src/features/auth/authPageModel.test.js"
+    "test:auth": "node --test src/features/auth/authPageModel.test.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "antd": "latest",
-    "vite": "latest",
-    "typescript": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   }
