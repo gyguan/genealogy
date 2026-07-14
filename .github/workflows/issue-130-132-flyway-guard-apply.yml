@@ -1,0 +1,112 @@
+name: Issue 130-132 Flyway Guard Apply
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Apply targeted migration guard
+        run: python3 .github/scripts/issue-130-132-flyway-guard-apply.py
+      - name: Run complete backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q clean test
+      - name: Build application
+        working-directory: backend/genealogy-backend
+        run: mvn -q -DskipTests package
+      - name: Verify clean PostgreSQL startup
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+        shell: bash
+        run: |
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/clean-startup.log 2>&1 &
+          pid=$!
+          trap 'kill $pid >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null && exit 0
+            kill -0 "$pid" 2>/dev/null || { tail -n 180 /tmp/clean-startup.log; exit 1; }
+            sleep 2
+          done
+          tail -n 180 /tmp/clean-startup.log
+          exit 1
+      - name: Verify allowlisted legacy checksum mismatch
+        working-directory: backend/genealogy-backend
+        env:
+          PGPASSWORD: genealogy
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+        shell: bash
+        run: |
+          psql -h localhost -U genealogy -d genealogy -c "update flyway_schema_history set checksum = checksum + 1 where version = '3'"
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/legacy-startup.log 2>&1 &
+          pid=$!
+          trap 'kill $pid >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null && exit 0
+            kill -0 "$pid" 2>/dev/null || { tail -n 180 /tmp/legacy-startup.log; exit 1; }
+            sleep 2
+          done
+          tail -n 180 /tmp/legacy-startup.log
+          exit 1
+      - name: Verify unexpected drift remains blocked
+        working-directory: backend/genealogy-backend
+        env:
+          PGPASSWORD: genealogy
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+        shell: bash
+        run: |
+          psql -h localhost -U genealogy -d genealogy -c "update flyway_schema_history set checksum = checksum + 1 where version = '6'"
+          set +e
+          timeout 35 java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/unexpected-drift.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo 'Application unexpectedly started with unapproved migration drift.'
+            exit 1
+          fi
+          grep -q 'Unexpected Flyway migration drift' /tmp/unexpected-drift.log || { tail -n 180 /tmp/unexpected-drift.log; exit 1; }
+      - name: Commit guard and remove temporary assets
+        shell: bash
+        run: |
+          rm .github/workflows/issue-130-132-flyway-guard-apply.yml
+          rm .github/scripts/issue-130-132-flyway-guard-apply.py
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          git commit -m 'fix(db): guard known legacy Flyway history drift'
+          git push
