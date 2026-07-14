@@ -265,7 +265,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         }
       }
 
-      const context = resolveTraceContext({ ...traceForm, clanId }, detail);
+      const context = resolveTraceContext({ ...traceForm, clanId }, detail, nextDiff);
       const scopes = buildOperationLogScopes(context);
       const scopeResults = await Promise.all(scopes.map(async scope => {
         const params = new URLSearchParams({
@@ -289,16 +289,18 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         diffState,
         scopeStates: scopeResults.map(item => ({ key: item.scope.key, loaded: item.loaded }))
       });
+      const trustedTask = context.reviewTaskTrusted ? detail?.task || null : null;
+      const trustedDiff = context.diffTrusted ? nextDiff : null;
 
       if (traceRequestVersion.current !== requestVersion) return;
       setTraceLogs(merged);
-      setReviewTask(detail?.task || null);
-      setReviewDiff(nextDiff);
+      setReviewTask(trustedTask);
+      setReviewDiff(trustedDiff);
       setResolvedTarget(context.businessTarget);
       setTraceCoverage(coverage);
       setResult({
         message: coverage.level === 'complete'
-          ? `追踪完成：日志 ${merged.length} 条，字段差异 ${nextDiff?.fields.length || 0} 项`
+          ? `追踪完成：日志 ${merged.length} 条，字段差异 ${trustedDiff?.fields.length || 0} 项`
           : `${coverage.title}：${coverage.message}`
       });
       notify({ message: coverage.title }, coverage.level === 'partial');
@@ -410,7 +412,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         <Card title="追踪摘要">
           <Descriptions size="small" bordered column={1}>
             <Descriptions.Item label="关联对象">{resolvedTargetSummary}</Descriptions.Item>
-            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '未加载真实审核任务'}</Descriptions.Item>
+            <Descriptions.Item label="审核任务">{reviewTask ? statusText(reviewTask.status) : '未加载可信审核任务'}</Descriptions.Item>
             <Descriptions.Item label="审核状态"><Tag color={statusColor(reviewTask?.status)}>{statusText(reviewTask?.status)}</Tag></Descriptions.Item>
             <Descriptions.Item label="审核意见">{display(reviewTask?.reviewComment, reviewTask ? '暂无审核意见' : '-')}</Descriptions.Item>
             <Descriptions.Item label="变更记录">{display(reviewDiff?.diffSummary, reviewDiff ? '字段变更已记录' : '-')}</Descriptions.Item>
