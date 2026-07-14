@@ -1,22 +1,23 @@
-name: Issue 121 Contract Preview
+name: Issue 121 Contract Generate
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
+      - agent/issue-121-trace-aggregation
     paths:
-      - docs/api/openapi.tracking-trace.json
-      - scripts/api/generate-frontend-client.mjs
       - .github/workflows/issue-121-contract-preview.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-121-trace-aggregation
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -28,11 +29,10 @@ jobs:
       - name: Generate contract files
         working-directory: frontend/genealogy-web
         run: npm run api:generate
-      - name: Upload generated contract files
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-121-generated-contract
-          path: |
-            frontend/genealogy-web/src/shared/api/generated/api-contract.ts
-            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
-          if-no-files-found: error
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts frontend/genealogy-web/src/shared/api/generated/tracking-types.ts
+          git commit -m "chore: generate issue 121 trace contract types"
+          git push origin HEAD:agent/issue-121-trace-aggregation
