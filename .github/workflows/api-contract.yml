@@ -3,7 +3,7 @@ name: API Contract
 on:
   pull_request:
     paths:
-      - 'docs/api/openapi.json'
+      - 'docs/api/openapi*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
       - 'frontend/genealogy-web/package.json'
@@ -14,7 +14,7 @@ on:
       - main
       - master
     paths:
-      - 'docs/api/openapi.json'
+      - 'docs/api/openapi*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
       - 'frontend/genealogy-web/package.json'
