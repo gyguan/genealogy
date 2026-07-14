@@ -1,9 +1,8 @@
 name: Issue 120 Focused Check
 
 on:
-  push:
-    branches:
-      - "agent/issue-120-business-object-search"
+  pull_request:
+    branches: ["main"]
     paths:
       - ".github/workflows/issue-120-focused-check.yml"
       - "backend/genealogy-backend/**"
