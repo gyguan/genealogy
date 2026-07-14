@@ -123,19 +123,21 @@ class TrackingObjectQueryRepositoryTest {
         verify(jdbcTemplate).queryForObject(countSql.capture(), any(MapSqlParameterSource.class), eq(Long.class));
 
         assertThat(selectSql.getValue().toLowerCase())
-                .contains("rev.target_type = 'person'")
+                .contains("case rev.target_type")
+                .contains("when 'person' then exists")
                 .contains("rvp.privacy_level")
-                .contains("rev.target_type = 'relationship'")
+                .contains("when 'relationship' then exists")
                 .contains("rvfp.privacy_level")
                 .contains("rvtp.privacy_level")
-                .contains("rev.target_type = 'source'")
+                .contains("when 'source' then exists")
                 .contains("rvs.privacy_level")
-                .contains("rev.target_type = 'branch'")
-                .contains("rvb.id in (:visiblebranchids)");
+                .contains("when 'branch' then exists")
+                .contains("rvb.id in (:visiblebranchids)")
+                .contains("else false end");
         assertThat(countSql.getValue().toLowerCase())
+                .contains("case rev.target_type")
                 .contains("rvp.privacy_level")
                 .contains("rvs.privacy_level")
                 .contains("rvb.id in (:visiblebranchids)");
     }
-
 }
