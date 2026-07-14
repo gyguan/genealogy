@@ -58,6 +58,21 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
             @Param("targetIds") Collection<Long> targetIds,
             @Param("excludedStatus") String excludedStatus);
 
+    @Query("""
+            select binding
+            from SourceBindingEntity binding
+            where binding.clanId = :clanId
+              and lower(binding.targetType) in :targetTypes
+              and binding.targetId in :targetIds
+              and lower(binding.bindingStatus) = 'official'
+              and binding.deletedAt is null
+            order by binding.targetType, binding.targetId, binding.id
+            """)
+    List<SourceBindingEntity> findTreeBindingsByTargets(
+            @Param("clanId") Long clanId,
+            @Param("targetTypes") Collection<String> targetTypes,
+            @Param("targetIds") Collection<Long> targetIds);
+
     boolean existsBySourceIdAndTargetTypeAndTargetId(Long sourceId, String targetType, Long targetId);
 
     boolean existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(Long sourceId, String targetType, Long targetId, String bindingStatus);
