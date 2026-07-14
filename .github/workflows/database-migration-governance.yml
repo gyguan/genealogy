@@ -8,6 +8,11 @@ on:
       - ".github/workflows/database-migration-governance.yml"
       - "docs/database-development-standard.md"
       - "backend/genealogy-backend/AGENTS.md"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -20,17 +25,23 @@ jobs:
       - name: Checkout pull request head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
       - name: Fetch base branch
+        if: github.event_name == 'pull_request'
         env:
           BASE_BRANCH: ${{ github.base_ref }}
         run: git fetch origin "${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}" --force
 
       - name: Validate migration naming and history
+        if: github.event_name == 'pull_request'
         env:
           BASE_BRANCH: ${{ github.base_ref }}
         run: >-
           python3 .github/scripts/validate-flyway-migrations.py
           --base-ref "origin/${BASE_BRANCH}"
+
+      - name: Manual migration governance reminder
+        if: github.event_name != 'pull_request'
+        run: echo "Run this workflow from a pull request to validate migration naming and history against the base branch."
