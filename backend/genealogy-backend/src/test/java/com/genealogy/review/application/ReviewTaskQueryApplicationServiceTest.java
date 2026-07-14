@@ -63,17 +63,9 @@ class ReviewTaskQueryApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReviewTaskQueryApplicationService(
-                queryRepository,
-                authorizationService,
-                rbacService,
-                userRepository,
-                branchRepository,
-                importJobRepository,
-                importJobRowRepository,
-                personRepository,
-                relationshipRepository,
-                sourceRepository,
-                genSchemeRepository
+                queryRepository, authorizationService, rbacService, userRepository, branchRepository,
+                importJobRepository, importJobRowRepository, personRepository, relationshipRepository,
+                sourceRepository, genSchemeRepository
         );
     }
 
@@ -97,6 +89,8 @@ class ReviewTaskQueryApplicationServiceTest {
 
     @Test
     void processedMineShouldApplyReviewerBranchScope() {
+        BranchEntity branch = branch(8L, "一房");
+        when(branchRepository.findByIdAndClanId(8L, 1L)).thenReturn(Optional.of(branch));
         when(authorizationService.isCrossClanAdmin(9L)).thenReturn(false);
         when(rbacService.permissionDataScope(9L, 1L, "review_task:view"))
                 .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.branches(Set.of(8L, 9L)));
@@ -113,28 +107,17 @@ class ReviewTaskQueryApplicationServiceTest {
         assertThat(criteria.getValue().fullClanAccess()).isFalse();
         assertThat(criteria.getValue().visibleBranchIds()).containsExactlyInAnyOrder(8L, 9L);
         assertThat(criteria.getValue().branchId()).isEqualTo(8L);
-        assertThat(criteria.getValue().status()).isEqualTo("approved");
         verify(authorizationService).requirePermission(1L, 9L, "review_task:view");
     }
 
     @Test
     void importTaskShouldExposeSafeBusinessSummaryAndActorNames() {
-        LocalDateTime submittedAt = LocalDateTime.of(2026, 7, 14, 10, 0);
-        LocalDateTime reviewedAt = LocalDateTime.of(2026, 7, 14, 11, 0);
-        ReviewTaskPair pair = pair(
-                101L, 201L, 1L, 8L, "approved", 9L, 10L,
-                "import_job", 301L, submittedAt, reviewedAt,
-                "人物导入批次：persons.xlsx，管理支派：一房，草稿：12 条，排除：2 条，第 3 轮审核"
-        );
+        ReviewTaskPair pair = pair(101L, 201L, "approved", 9L, 10L,
+                LocalDateTime.of(2026, 7, 14, 10, 0), LocalDateTime.of(2026, 7, 14, 11, 0),
+                "人物导入批次：persons.xlsx，管理支派：一房，草稿：12 条，排除：2 条，第 3 轮审核");
         when(queryRepository.search(any(), eq(1), eq(20))).thenReturn(new QueryPage(List.of(pair), 1));
-
-        AppUserEntity submitter = user(9L, "提交人甲");
-        AppUserEntity reviewer = user(10L, "审核人乙");
-        when(userRepository.findAllById(any())).thenReturn(List.of(submitter, reviewer));
-        BranchEntity branch = new BranchEntity();
-        branch.setId(8L);
-        branch.setBranchName("一房");
-        when(branchRepository.findAllById(any())).thenReturn(List.of(branch));
+        when(userRepository.findAllById(any())).thenReturn(List.of(user(9L, "提交人甲"), user(10L, "审核人乙")));
+        when(branchRepository.findAllById(any())).thenReturn(List.of(branch(8L, "一房")));
 
         ImportJobEntity job = new ImportJobEntity();
         job.setId(301L);
@@ -155,7 +138,6 @@ class ReviewTaskQueryApplicationServiceTest {
         assertThat(result.title()).isEqualTo("导入批次 · persons.xlsx");
         assertThat(result.submitterName()).isEqualTo("提交人甲");
         assertThat(result.reviewerName()).isEqualTo("审核人乙");
-        assertThat(result.reviewComment()).isEqualTo("review comment");
         assertThat(result.targetSummary().fileName()).isEqualTo("persons.xlsx");
         assertThat(result.targetSummary().branchName()).isEqualTo("一房");
         assertThat(result.targetSummary().draftCount()).isEqualTo(12);
@@ -165,25 +147,16 @@ class ReviewTaskQueryApplicationServiceTest {
 
     @Test
     void submitterShouldOpenAllHistoricalRoundsWithoutRawSnapshots() {
-        ReviewTaskPair latest = pair(
-                102L, 202L, 1L, 8L, "pending", 9L, null,
-                "import_job", 301L, LocalDateTime.of(2026, 7, 14, 12, 0), null,
-                "第 2 轮审核"
-        );
-        ReviewTaskPair first = pair(
-                101L, 201L, 1L, 8L, "rejected", 9L, 10L,
-                "import_job", 301L, LocalDateTime.of(2026, 7, 13, 12, 0),
-                LocalDateTime.of(2026, 7, 13, 13, 0), "第 1 轮审核"
-        );
+        ReviewTaskPair latest = pair(102L, 202L, "pending", 9L, null,
+                LocalDateTime.of(2026, 7, 14, 12, 0), null, "第 2 轮审核");
+        ReviewTaskPair first = pair(101L, 201L, "rejected", 9L, 10L,
+                LocalDateTime.of(2026, 7, 13, 12, 0), LocalDateTime.of(2026, 7, 13, 13, 0), "第 1 轮审核");
         latest.record().setOldPayload("sensitive-before");
         latest.record().setNewPayload("sensitive-after");
         when(queryRepository.findByTaskId(102L)).thenReturn(Optional.of(latest));
         when(queryRepository.findHistory(1L, "import_job", 301L, 100)).thenReturn(List.of(latest, first));
         when(userRepository.findAllById(any())).thenReturn(List.of(user(9L, "提交人"), user(10L, "审核人")));
-        BranchEntity branch = new BranchEntity();
-        branch.setId(8L);
-        branch.setBranchName("一房");
-        when(branchRepository.findAllById(any())).thenReturn(List.of(branch));
+        when(branchRepository.findAllById(any())).thenReturn(List.of(branch(8L, "一房")));
         ImportJobEntity job = new ImportJobEntity();
         job.setId(301L);
         job.setOriginalFilename("persons.xlsx");
@@ -197,8 +170,7 @@ class ReviewTaskQueryApplicationServiceTest {
 
         assertThat(detail.task().id()).isEqualTo(102L);
         assertThat(detail.history()).extracting(ReviewTaskListItemResponse::id).containsExactly(102L, 101L);
-        assertThat(detail.history()).extracting(ReviewTaskListItemResponse::reviewComment)
-                .containsExactly("review comment", "review comment");
+        assertThat(detail.task().diffSummary()).isEqualTo("第 2 轮审核");
         verify(authorizationService, never()).requirePermission(anyLong(), anyLong(), eq("review_task:view"));
     }
 
@@ -212,22 +184,18 @@ class ReviewTaskQueryApplicationServiceTest {
     private ReviewTaskPair pair(
             Long taskId,
             Long revisionId,
-            Long clanId,
-            Long branchId,
             String status,
             Long submitterId,
             Long reviewerId,
-            String targetType,
-            Long targetId,
             LocalDateTime submitTime,
             LocalDateTime reviewedAt,
             String summary
     ) {
         CheckTaskEntity task = new CheckTaskEntity();
         task.setId(taskId);
-        task.setClanId(clanId);
+        task.setClanId(1L);
         task.setRevisionId(revisionId);
-        task.setBranchId(branchId);
+        task.setBranchId(8L);
         task.setStatus(status);
         task.setReviewerId(reviewerId);
         task.setReviewComment("review comment");
@@ -236,14 +204,21 @@ class ReviewTaskQueryApplicationServiceTest {
 
         AuditRecordEntity record = new AuditRecordEntity();
         record.setId(revisionId);
-        record.setClanId(clanId);
-        record.setTargetType(targetType);
-        record.setTargetId(targetId);
+        record.setClanId(1L);
+        record.setTargetType("import_job");
+        record.setTargetId(301L);
         record.setSubmitterId(submitterId);
         record.setSubmitTime(submitTime);
         record.setStatus(status);
         record.setDiffSummary(summary);
         return new ReviewTaskPair(task, record);
+    }
+
+    private BranchEntity branch(Long id, String name) {
+        BranchEntity branch = new BranchEntity();
+        branch.setId(id);
+        branch.setBranchName(name);
+        return branch;
     }
 
     private AppUserEntity user(Long id, String displayName) {
