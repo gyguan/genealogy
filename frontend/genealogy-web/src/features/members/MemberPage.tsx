@@ -423,12 +423,12 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       <Alert
         type="info"
         showIcon
-        message="成员权限按角色与数据范围共同生效"
+        message="成员与权限按角色与数据范围共同生效"
         description="支派管理员只能查看和管理授权支派及下级支派；高风险授权和成员停用均需填写原因，后端会执行越级、范围和最后管理员校验。"
       />
 
       <Card
-        title="成员权限"
+        title="成员与权限"
         extra={(
           <Space wrap>
             <Select
