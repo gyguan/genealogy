@@ -202,7 +202,7 @@ public class ImportJobReviewApplicationService {
             throw new BusinessException("IMPORT_JOB_ROW_NOT_READY", "导入批次仍有未完成处理的数据行");
         }
         List<ImportJobRowEntity> draftRows = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), ImportJobRowEntity.STATUS_DRAFT_CREATED);
-        if (draftRows.isEmpty() || draftRows.stream().anyMatch(row -> targetId(row) == null)) {
+        if (draftRows.stream().anyMatch(row -> targetId(row) == null)) {
             throw new BusinessException("IMPORT_JOB_DRAFT_TARGET_MISSING", "导入批次存在未关联业务草稿的数据行");
         }
         return draftRows;
