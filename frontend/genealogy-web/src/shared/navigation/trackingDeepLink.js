@@ -29,16 +29,22 @@ const TRACKING_QUERY_KEYS = Object.freeze([
   'auditLog'
 ]);
 
+function positiveId(value) {
+  const normalized = String(value ?? '').trim();
+  if (!/^\d+$/.test(normalized)) return '';
+  return Number(normalized) > 0 ? normalized : '';
+}
+
 export function normalizeTrackingTargetType(value) {
   const normalized = String(value ?? '').trim().toLowerCase().replace(/-/g, '_');
   return TARGET_TYPE_ALIASES[normalized] || '';
 }
 
 export function normalizeTrackingTarget(input = {}) {
-  const clanId = String(input.clanId ?? '').trim();
+  const clanId = positiveId(input.clanId);
   const targetType = normalizeTrackingTargetType(input.targetType);
-  const targetId = String(input.targetId ?? '').trim();
-  const reviewTaskId = String(input.reviewTaskId ?? '').trim();
+  const targetId = positiveId(input.targetId);
+  const reviewTaskId = positiveId(input.reviewTaskId);
   if (!clanId || !targetType || !targetId) return null;
   return { clanId, targetType, targetId, reviewTaskId };
 }
