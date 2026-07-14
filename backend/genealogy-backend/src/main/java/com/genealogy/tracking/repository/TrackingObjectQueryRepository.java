@@ -30,13 +30,17 @@ public class TrackingObjectQueryRepository {
             + "and srp.deleted_at is null and srp.branch_id in (:visibleBranchIds)))"
             + "))";
 
-    private static final String SOURCE_BRANCH_NAME = "(select min(sb_branch.branch_name) from branch sb_branch where sb_branch.clan_id = s.clan_id and ("
-            + "exists (select 1 from source_binding sb1 where sb1.source_id = s.id and sb1.target_type = 'branch' and sb1.target_id = sb_branch.id) or "
+    private static final String SOURCE_BRANCH_NAME = "(select min(sb_branch.branch_name) from branch sb_branch where sb_branch.clan_id = s.clan_id "
+            + "and (:fullClanAccess = true or sb_branch.id in (:visibleBranchIds)) "
+            + "and (:hasBranchId = false or sb_branch.id = :branchId) and ("
+            + "exists (select 1 from source_binding sb1 where sb1.source_id = s.id and sb1.clan_id = s.clan_id and sb1.target_type = 'branch' and sb1.target_id = sb_branch.id) or "
             + "exists (select 1 from source_binding sb2 join person sbp on sbp.id = sb2.target_id "
-            + "where sb2.source_id = s.id and sb2.target_type = 'person' and sbp.deleted_at is null and sbp.branch_id = sb_branch.id) or "
+            + "where sb2.source_id = s.id and sb2.clan_id = s.clan_id and sb2.target_type = 'person' and sbp.clan_id = s.clan_id "
+            + "and sbp.deleted_at is null and sbp.branch_id = sb_branch.id) or "
             + "exists (select 1 from source_binding sb3 join relationship sbr on sbr.id = sb3.target_id "
-            + "join person sbrp on sbrp.id = sbr.from_person_id where sb3.source_id = s.id "
-            + "and sb3.target_type = 'relationship' and sbr.deleted_at is null and sbrp.deleted_at is null and sbrp.branch_id = sb_branch.id)"
+            + "join person sbrp on sbrp.id = sbr.from_person_id where sb3.source_id = s.id and sb3.clan_id = s.clan_id "
+            + "and sb3.target_type = 'relationship' and sbr.clan_id = s.clan_id and sbr.deleted_at is null "
+            + "and sbrp.clan_id = s.clan_id and sbrp.deleted_at is null and sbrp.branch_id = sb_branch.id)"
             + "))";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -205,6 +209,29 @@ public class TrackingObjectQueryRepository {
     }
 
     private SearchSql reviewTaskSql() {
+        String reviewTargetVisible = "(" 
+                + "(rev.target_type = 'person' and exists (select 1 from person rvp where rvp.id = rev.target_id and rvp.clan_id = rt.clan_id "
+                + "and rvp.deleted_at is null and coalesce(rvp.privacy_level, 'clan_only') <> 'sealed' "
+                + "and (:fullClanAccess = true or (rvp.branch_id in (:visibleBranchIds) and coalesce(rvp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only')))) or "
+                + "(rev.target_type = 'relationship' and exists (select 1 from relationship rvr "
+                + "join person rvfp on rvfp.id = rvr.from_person_id and rvfp.clan_id = rvr.clan_id and rvfp.deleted_at is null "
+                + "join person rvtp on rvtp.id = rvr.to_person_id and rvtp.clan_id = rvr.clan_id and rvtp.deleted_at is null "
+                + "where rvr.id = rev.target_id and rvr.clan_id = rt.clan_id and rvr.deleted_at is null "
+                + "and coalesce(rvfp.privacy_level, 'clan_only') <> 'sealed' and coalesce(rvtp.privacy_level, 'clan_only') <> 'sealed' "
+                + "and (:fullClanAccess = true or ((rvfp.branch_id in (:visibleBranchIds) and coalesce(rvfp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only')) "
+                + "and (rvtp.branch_id in (:visibleBranchIds) and coalesce(rvtp.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only'))))) or "
+                + "(rev.target_type = 'source' and exists (select 1 from source rvs where rvs.id = rev.target_id and rvs.clan_id = rt.clan_id "
+                + "and coalesce(rvs.privacy_level, 'clan_only') <> 'sealed' and (:fullClanAccess = true or ("
+                + "coalesce(rvs.privacy_level, 'clan_only') in ('public', 'clan_only', 'branch_only') and exists ("
+                + "select 1 from source_binding rvsb where rvsb.source_id = rvs.id and rvsb.clan_id = rvs.clan_id and ("
+                + "(rvsb.target_type = 'branch' and rvsb.target_id in (:visibleBranchIds)) or "
+                + "(rvsb.target_type = 'person' and exists (select 1 from person rvsp where rvsp.id = rvsb.target_id and rvsp.clan_id = rvs.clan_id and rvsp.deleted_at is null and rvsp.branch_id in (:visibleBranchIds))) or "
+                + "(rvsb.target_type = 'relationship' and exists (select 1 from relationship rvsr join person rvsrp on rvsrp.id = rvsr.from_person_id "
+                + "where rvsr.id = rvsb.target_id and rvsr.clan_id = rvs.clan_id and rvsr.deleted_at is null and rvsrp.deleted_at is null and rvsrp.branch_id in (:visibleBranchIds)))"
+                + "))))) or "
+                + "(rev.target_type = 'branch' and exists (select 1 from branch rvb where rvb.id = rev.target_id and rvb.clan_id = rt.clan_id "
+                + "and (:fullClanAccess = true or rvb.id in (:visibleBranchIds))))" 
+                + ")";
         String targetName = "case rev.target_type "
                 + "when 'person' then (select coalesce(nullif(rp.genealogy_name, ''), rp.name) from person rp where rp.id = rev.target_id and rp.clan_id = rt.clan_id and rp.deleted_at is null) "
                 + "when 'source' then (select rs.source_name from source rs where rs.id = rev.target_id and rs.clan_id = rt.clan_id) "
@@ -221,6 +248,7 @@ public class TrackingObjectQueryRepository {
         String fromWhere = "from review_task rt join revision rev on rev.id = rt.revision_id and rev.clan_id = rt.clan_id "
                 + "left join branch b on b.id = rt.branch_id and b.clan_id = rt.clan_id "
                 + "where rt.clan_id = :clanId "
+                + "and " + reviewTargetVisible + " "
                 + "and (:fullClanAccess = true or rt.branch_id in (:visibleBranchIds)) "
                 + "and (:hasBranchId = false or rt.branch_id = :branchId) "
                 + "and (:status = '' or lower(coalesce(rt.status, '')) = :status) "
