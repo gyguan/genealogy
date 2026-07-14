@@ -61,7 +61,13 @@ jobs:
         run: npm run build
       - name: Scan production auth artifacts
         working-directory: frontend/genealogy-web
-        run: '! grep -R -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth'
+        run: |
+          matches=$(grep -R -n -E "demo_admin|Admin@123456|genealogy\.token.*setItem" dist src/features/auth || true)
+          if [ -n "$matches" ]; then
+            echo "Blocked auth artifact matches:"
+            printf '%s\n' "$matches" | head -n 80
+            exit 1
+          fi
       - name: Start backend
         working-directory: backend/genealogy-backend
         env:
