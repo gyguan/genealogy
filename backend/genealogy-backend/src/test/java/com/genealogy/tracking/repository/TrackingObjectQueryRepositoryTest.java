@@ -85,6 +85,34 @@ class TrackingObjectQueryRepositoryTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void exactTraceLookupFiltersIdsAfterApplyingTheSameVisibilityBoundary() {
+        NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
+                .thenReturn(List.<TrackingObjectResponse>of());
+        TrackingObjectQueryRepository repository = new TrackingObjectQueryRepository(jdbcTemplate);
+
+        repository.findVisibleByIds(1L, "person", List.of(100L, 101L), false, List.of(10L));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<MapSqlParameterSource> parameters = ArgumentCaptor.forClass(MapSqlParameterSource.class);
+        verify(jdbcTemplate).query(sql.capture(), parameters.capture(), any(RowMapper.class));
+
+        String normalized = sql.getValue().toLowerCase();
+        assertThat(normalized)
+                .startsWith("select * from (")
+                .contains("p.clan_id = :clanid")
+                .contains("p.deleted_at is null")
+                .contains("p.branch_id in (:visiblebranchids)")
+                .contains("privacy_level")
+                .contains(") visible_object where object_id in (:targetids)")
+                .doesNotContain("limit :limit")
+                .doesNotContain("offset :offset");
+        assertThat(parameters.getValue().getValue("targetIds")).isEqualTo(List.of(100L, 101L));
+        assertThat(parameters.getValue().getValue("visibleBranchIds")).isEqualTo(List.of(10L));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void sourceBranchLabelUsesOnlyVisibleAndRequestedBranches() {
         NamedParameterJdbcTemplate jdbcTemplate = mock(NamedParameterJdbcTemplate.class);
         when(jdbcTemplate.query(anyString(), any(MapSqlParameterSource.class), any(RowMapper.class)))
