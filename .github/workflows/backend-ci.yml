@@ -5,17 +5,19 @@ on:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/**"
-      - "frontend/genealogy-web/**"
       - ".github/workflows/backend-ci.yml"
       - ".github/scripts/backend-startup-check.sh"
   pull_request:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/**"
-      - "frontend/genealogy-web/**"
       - ".github/workflows/backend-ci.yml"
       - ".github/scripts/backend-startup-check.sh"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
