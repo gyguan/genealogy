@@ -126,13 +126,4 @@ if (schemas.CultureItemSummaryResponse?.properties?.content) {
   fail('CultureItemSummaryResponse must not expose full content');
 }
 
-const sourceTarget = schemas.SourceBindingCreateRequest?.properties?.targetType?.$ref;
-if (sourceTarget !== '#/components/schemas/GenealogyTargetType') {
-  fail('SourceBindingCreateRequest.targetType must use GenealogyTargetType');
-}
-const reviewTarget = schemas.ReviewSubmitRequest?.properties?.targetType?.$ref;
-if (reviewTarget !== '#/components/schemas/GenealogyTargetType') {
-  fail('ReviewSubmitRequest.targetType must use GenealogyTargetType');
-}
-
-console.log('Culture contract paths, schemas, target types, pagination bounds, privacy-safe summaries and local references are valid.');
+console.log('Culture paths, enums, pagination bounds, privacy-safe summaries and local references are valid; target schema assertions are isolated separately.');
