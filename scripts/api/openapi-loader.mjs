@@ -22,10 +22,26 @@ export function mergeComponents(baseComponents = {}, overlayComponents = {}) {
   return merged;
 }
 
+function excludedOverlayDomains() {
+  return new Set(
+    (process.env.OPENAPI_EXCLUDE_DOMAINS || '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean)
+  );
+}
+
+function isExcludedOverlay(filename, excludedDomains) {
+  const domain = filename.slice('openapi.'.length, -'.json'.length);
+  return [...excludedDomains].some(excluded => domain === excluded || domain.startsWith(`${excluded}.`));
+}
+
 export function loadEffectiveOpenApi() {
   const base = JSON.parse(fs.readFileSync(baseOpenApiPath, 'utf8'));
+  const excludedDomains = excludedOverlayDomains();
   const overlayFiles = fs.readdirSync(apiDirectory)
     .filter(filename => /^openapi\..+\.json$/.test(filename))
+    .filter(filename => !isExcludedOverlay(filename, excludedDomains))
     .sort();
 
   for (const filename of overlayFiles) {
