@@ -68,9 +68,9 @@ public class RbacAuthorizationApplicationService {
         if (userId == null || clanId == null || permissionCode == null || permissionCode.isBlank()) {
             return false;
         }
-        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(clanId, userId)
+        List<ClanMembershipEntity> memberships = clanMembershipRepository
+                .findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
                 .stream()
-                .filter(membership -> membership.getMemberStatus() == MemberStatus.active)
                 .toList();
         if (memberships.isEmpty()) {
             return false;
@@ -143,9 +143,9 @@ public class RbacAuthorizationApplicationService {
         if (userId == null || clanId == null) {
             return Set.of();
         }
-        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanIdAndUserIdAndMemberStatus(clanId, userId)
+        List<ClanMembershipEntity> memberships = clanMembershipRepository
+                .findByClanIdAndUserIdAndMemberStatus(clanId, userId, MemberStatus.active)
                 .stream()
-                .filter(membership -> membership.getMemberStatus() == MemberStatus.active)
                 .toList();
         if (memberships.isEmpty()) {
             return Set.of();
