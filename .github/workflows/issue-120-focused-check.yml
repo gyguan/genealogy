@@ -25,7 +25,7 @@ jobs:
         run: mvn -q -DskipTests compile
       - name: Run issue 120 focused tests
         working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=TrackingObjectSearchApplicationServiceTest,TrackingControllerTest,OpLogControllerTest,OperationLogApplicationServiceTest test
+        run: mvn -q -Dtest=TrackingObjectSearchApplicationServiceTest,TrackingObjectQueryRepositoryTest,TrackingControllerTest,OpLogControllerTest,OperationLogApplicationServiceTest,OperationLogBusinessViewApplicationServiceTest test
 
   frontend-focused:
     runs-on: ubuntu-latest
