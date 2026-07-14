@@ -1,0 +1,47 @@
+name: Issue 120 Patch Nullable Filters
+
+on:
+  push:
+    branches:
+      - "agent/issue-120-business-object-search"
+    paths:
+      - ".github/workflows/issue-120-patch-null-filters.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-120-business-object-search
+          fetch-depth: 0
+      - name: Replace nullable IS NULL predicates with typed boolean flags
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java')
+          text = path.read_text()
+          anchor = '                  .addValue("branchId", branchId, Types.BIGINT)\n'
+          if '.addValue("hasBranchId"' not in text:
+              text = text.replace(anchor, anchor + '                  .addValue("hasBranchId", branchId != null, Types.BOOLEAN)\n')
+          anchor = '                  .addValue("changedFrom", changedFrom, Types.TIMESTAMP)\n'
+          if '.addValue("hasChangedFrom"' not in text:
+              text = text.replace(anchor, anchor + '                  .addValue("hasChangedFrom", changedFrom != null, Types.BOOLEAN)\n')
+          anchor = '                  .addValue("changedTo", changedTo, Types.TIMESTAMP)\n'
+          if '.addValue("hasChangedTo"' not in text:
+              text = text.replace(anchor, anchor + '                  .addValue("hasChangedTo", changedTo != null, Types.BOOLEAN)\n')
+          text = text.replace('(:branchId is null or', '(:hasBranchId = false or')
+          text = text.replace('(:changedFrom is null or', '(:hasChangedFrom = false or')
+          text = text.replace('(:changedTo is null or', '(:hasChangedTo = false or')
+          path.write_text(text)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java
+          git commit -m "fix(tracking): use typed flags for nullable filters"
+          git push origin HEAD:agent/issue-120-business-object-search
