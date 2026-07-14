@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -107,7 +108,7 @@ class TrackingObjectQueryRepositoryTest {
                 .contains(") visible_object where object_id in (:targetids)")
                 .doesNotContain("limit :limit")
                 .doesNotContain("offset :offset");
-        assertThat(parameters.getValue().getValue("targetIds")).isEqualTo(List.of(100L, 101L));
+        assertThat((Collection<?>) parameters.getValue().getValue("targetIds")).containsExactly(100L, 101L);
         assertThat(parameters.getValue().getValue("visibleBranchIds")).isEqualTo(List.of(10L));
     }
 
