@@ -11,6 +11,8 @@ const trackingSchemaNames = [
   'OperationLogPage',
   'OperationLogStatsItem',
   'OperationLogStatsResponse',
+  'TrackingObjectResponse',
+  'TrackingObjectPage',
   'CheckTaskResponse',
   'AuditRecordResponse',
   'ReviewTaskDetailResponse',
