@@ -358,6 +358,25 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseSourceBindingList"
   },
+  "GET /api/v1/tracking/objects": {
+    "operationId": "searchTrackingObjects",
+    "method": "GET",
+    "path": "/api/v1/tracking/objects",
+    "pathParams": [],
+    "queryParams": [
+      "branchId",
+      "changedFrom",
+      "changedTo",
+      "clanId",
+      "keyword",
+      "objectType",
+      "pageNo",
+      "pageSize",
+      "status"
+    ],
+    "requestBody": null,
+    "response": "ApiResponseTrackingObjectPage"
+  },
   "GET /api/v1/workbench/summary": {
     "operationId": "getWorkbenchSummary",
     "method": "GET",
