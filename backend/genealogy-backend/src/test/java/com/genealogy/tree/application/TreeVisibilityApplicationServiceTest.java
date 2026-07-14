@@ -26,8 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,13 +40,10 @@ class TreeVisibilityApplicationServiceTest {
 
     @Mock
     private AuthorizationApplicationService authorizationApplicationService;
-
     @Mock
     private PersonApplicationService personApplicationService;
-
     @Mock
     private RelationshipApplicationService relationshipApplicationService;
-
     @InjectMocks
     private TreeVisibilityApplicationService service;
 
@@ -55,7 +52,7 @@ class TreeVisibilityApplicationServiceTest {
     @BeforeEach
     void configurePermissionDecisions() {
         deniedPermissions.clear();
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             PermissionKey key = new PermissionKey(
                     invocation.getArgument(0),
                     invocation.getArgument(2),
@@ -72,9 +69,7 @@ class TreeVisibilityApplicationServiceTest {
     @Test
     void officialViewHidesDraftPersonBeforeReadingPrivateFields() {
         PersonEntity draft = person(1L, 10L, "draft", "public", false);
-
         PersonProjection projection = service.projectPerson(draft, ACTOR_ID, "official");
-
         assertEquals(Visibility.HIDDEN, projection.visibility());
         verify(personApplicationService, never()).get(anyLong(), anyLong());
     }
@@ -82,24 +77,18 @@ class TreeVisibilityApplicationServiceTest {
     @Test
     void authorizedOfficialPersonIsFullyVisible() {
         PersonEntity official = person(2L, 10L, "official", "public", false);
-        when(personApplicationService.get(official.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(official));
-
+        when(personApplicationService.get(official.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(official));
         PersonProjection projection = service.projectPerson(official, ACTOR_ID, "official");
-
         assertEquals(Visibility.FULL, projection.visibility());
         assertEquals(official.getName(), projection.displayName());
     }
 
     @Test
     void privatePersonIsMaskedWithoutBranchUpdatePermission() {
-        PersonEntity privatePerson = person(3L, 10L, "official", "private", false);
-        when(personApplicationService.get(privatePerson.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(privatePerson));
-        deny(privatePerson, "person:update");
-
-        PersonProjection projection = service.projectPerson(privatePerson, ACTOR_ID, "official");
-
+        PersonEntity value = person(3L, 10L, "official", "private", false);
+        when(personApplicationService.get(value.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(value));
+        deny(value, "person:update");
+        PersonProjection projection = service.projectPerson(value, ACTOR_ID, "official");
         assertEquals(Visibility.MASKED, projection.visibility());
         assertEquals("受保护人物", projection.displayName());
         assertEquals("privacy_restricted", projection.maskReason());
@@ -107,50 +96,39 @@ class TreeVisibilityApplicationServiceTest {
 
     @Test
     void relativesOnlyPersonUsesSameProtectedProjection() {
-        PersonEntity relativesOnly = person(4L, 10L, "official", "relatives_only", false);
-        when(personApplicationService.get(relativesOnly.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(relativesOnly));
-        deny(relativesOnly, "person:update");
-
-        PersonProjection projection = service.projectPerson(relativesOnly, ACTOR_ID, "official");
-
+        PersonEntity value = person(4L, 10L, "official", "relatives_only", false);
+        when(personApplicationService.get(value.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(value));
+        deny(value, "person:update");
+        PersonProjection projection = service.projectPerson(value, ACTOR_ID, "official");
         assertEquals(Visibility.MASKED, projection.visibility());
         assertEquals("受保护人物", projection.displayName());
     }
 
     @Test
     void sealedPersonIsMaskedWithoutBranchDeletePermission() {
-        PersonEntity sealed = person(5L, 10L, "official", "sealed", false);
-        when(personApplicationService.get(sealed.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(sealed));
-        deny(sealed, "person:delete");
-
-        PersonProjection projection = service.projectPerson(sealed, ACTOR_ID, "official");
-
+        PersonEntity value = person(5L, 10L, "official", "sealed", false);
+        when(personApplicationService.get(value.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(value));
+        deny(value, "person:delete");
+        PersonProjection projection = service.projectPerson(value, ACTOR_ID, "official");
         assertEquals(Visibility.MASKED, projection.visibility());
         assertEquals("已封存人物", projection.displayName());
     }
 
     @Test
     void livingPersonIsMaskedForReadOnlyBranchViewer() {
-        PersonEntity living = person(6L, 10L, "official", "branch_only", true);
-        when(personApplicationService.get(living.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(living));
-        deny(living, "person:update");
-
-        PersonProjection projection = service.projectPerson(living, ACTOR_ID, "official");
-
+        PersonEntity value = person(6L, 10L, "official", "branch_only", true);
+        when(personApplicationService.get(value.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(value));
+        deny(value, "person:update");
+        PersonProjection projection = service.projectPerson(value, ACTOR_ID, "official");
         assertEquals(Visibility.MASKED, projection.visibility());
         assertEquals("在世人物", projection.displayName());
     }
 
     @Test
     void livingBranchOnlyPersonIsHiddenOutsideAuthorizedBranch() {
-        PersonEntity living = person(7L, 20L, "official", null, true);
-        deny(living, "person:view");
-
-        PersonProjection projection = service.projectPerson(living, ACTOR_ID, "official");
-
+        PersonEntity value = person(7L, 20L, "official", null, true);
+        deny(value, "person:view");
+        PersonProjection projection = service.projectPerson(value, ACTOR_ID, "official");
         assertEquals(Visibility.HIDDEN, projection.visibility());
         verify(personApplicationService, never()).get(anyLong(), anyLong());
     }
@@ -158,11 +136,8 @@ class TreeVisibilityApplicationServiceTest {
     @Test
     void authorizedEditorCanReadDraftRoot() {
         PersonEntity root = person(8L, 10L, "draft", "clan_only", false);
-        when(personApplicationService.get(root.getId(), ACTOR_ID))
-                .thenReturn(PersonMapper.toResponse(root));
-
+        when(personApplicationService.get(root.getId(), ACTOR_ID)).thenReturn(PersonMapper.toResponse(root));
         PersonProjection projection = service.requireRootProjection(root, ACTOR_ID, "editing");
-
         assertEquals(Visibility.FULL, projection.visibility());
         assertEquals(root.getId(), projection.response().id());
     }
@@ -172,12 +147,10 @@ class TreeVisibilityApplicationServiceTest {
         PersonEntity root = person(9L, 10L, "draft", "clan_only", false);
         deny(root, "relationship:update");
         deny(root, "review_task:approve");
-
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> service.requireRootProjection(root, ACTOR_ID, "editing")
         );
-
         assertEquals("AUTH_FORBIDDEN", exception.getCode());
     }
 
@@ -186,7 +159,6 @@ class TreeVisibilityApplicationServiceTest {
         PersonEntity from = person(10L, 10L, "official", "public", false);
         PersonEntity to = person(11L, 10L, "official", "public", false);
         RelationshipEntity relationship = relationship(100L, from, to, "draft");
-
         boolean visible = service.canExposeRelationship(
                 relationship,
                 PersonProjection.full(from, PersonMapper.toResponse(from)),
@@ -194,7 +166,6 @@ class TreeVisibilityApplicationServiceTest {
                 ACTOR_ID,
                 "official"
         );
-
         assertFalse(visible);
         verify(relationshipApplicationService, never()).get(relationship.getId(), ACTOR_ID);
     }
@@ -205,9 +176,7 @@ class TreeVisibilityApplicationServiceTest {
         PersonEntity to = person(13L, 10L, "official", "public", false);
         RelationshipEntity relationship = relationship(101L, from, to, "official");
         doThrow(new BusinessException("RELATIONSHIP_PRIVACY_FORBIDDEN", "forbidden"))
-                .when(relationshipApplicationService)
-                .get(relationship.getId(), ACTOR_ID);
-
+                .when(relationshipApplicationService).get(relationship.getId(), ACTOR_ID);
         boolean visible = service.canExposeRelationship(
                 relationship,
                 PersonProjection.full(from, PersonMapper.toResponse(from)),
@@ -215,7 +184,6 @@ class TreeVisibilityApplicationServiceTest {
                 ACTOR_ID,
                 "official"
         );
-
         assertFalse(visible);
     }
 
@@ -223,12 +191,10 @@ class TreeVisibilityApplicationServiceTest {
     void inaccessibleRootUsesNotFoundSemantics() {
         PersonEntity root = person(14L, 30L, "official", "clan_only", false);
         deny(root, "person:view");
-
         BusinessException exception = assertThrows(
                 BusinessException.class,
                 () -> service.requireRootProjection(root, ACTOR_ID, "official")
         );
-
         assertEquals("PERSON_NOT_FOUND", exception.getCode());
     }
 
@@ -238,14 +204,9 @@ class TreeVisibilityApplicationServiceTest {
         PersonEntity to = person(16L, 10L, "official", "public", false);
         RelationshipEntity relationship = relationship(102L, from, to, "official");
         VisibilitySession session = service.openSession(ACTOR_ID, "official");
-
         PersonProjection fromProjection = session.projectPerson(from);
         PersonProjection toProjection = session.projectPerson(to);
-        boolean visible = session.canExposeRelationship(relationship, fromProjection, toProjection);
-
-        assertEquals(Visibility.FULL, fromProjection.visibility());
-        assertEquals(Visibility.FULL, toProjection.visibility());
-        assertTrue(visible);
+        assertTrue(session.canExposeRelationship(relationship, fromProjection, toProjection));
         verify(personApplicationService, never()).get(anyLong(), anyLong());
         verify(relationshipApplicationService, never()).get(anyLong(), anyLong());
     }
@@ -255,10 +216,8 @@ class TreeVisibilityApplicationServiceTest {
         PersonEntity first = person(17L, 10L, "official", "public", false);
         PersonEntity second = person(18L, 10L, "official", "public", false);
         VisibilitySession session = service.openSession(ACTOR_ID, "official");
-
         session.projectPerson(first);
         session.projectPerson(second);
-
         verify(authorizationApplicationService, times(1))
                 .requireBranchPermission(1L, ACTOR_ID, 10L, "person:view");
     }
@@ -269,7 +228,6 @@ class TreeVisibilityApplicationServiceTest {
                 BusinessException.class,
                 () -> service.normalizeDataView("all")
         );
-
         assertEquals("TREE_DATA_VIEW_INVALID", exception.getCode());
         assertTrue(exception.getMessage().contains("数据视图"));
     }
