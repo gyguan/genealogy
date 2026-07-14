@@ -71,22 +71,39 @@ function normalizeJsonBody(path: string, body: unknown) {
   return next;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function errorTextCandidate(value: unknown) {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value).trim();
+  }
+  return '';
+}
+
 function extractApiErrorMessage(payload: unknown, status: number) {
   if (typeof payload === 'string') {
     return normalizeApiErrorMessage(payload.trim()) || `HTTP ${status}`;
   }
-  if (payload && typeof payload === 'object') {
-    const record = payload as Record<string, unknown>;
+  const record = asRecord(payload);
+  if (record) {
+    const nestedError = asRecord(record.error);
     const candidates = [
       record.errorMessage,
       record.message,
-      record.error,
+      nestedError?.errorMessage,
+      nestedError?.message,
       record.detail,
+      nestedError?.detail,
       record.code,
+      nestedError?.code,
       record.data
     ];
     for (const item of candidates) {
-      const normalized = normalizeApiErrorMessage(String(item ?? '').trim());
+      const normalized = normalizeApiErrorMessage(errorTextCandidate(item));
       if (normalized) return normalized;
     }
   }
@@ -94,8 +111,10 @@ function extractApiErrorMessage(payload: unknown, status: number) {
 }
 
 function extractApiErrorCode(payload: unknown) {
-  if (!payload || typeof payload !== 'object') return undefined;
-  const code = String((payload as Record<string, unknown>).code ?? '').trim();
+  const record = asRecord(payload);
+  if (!record) return undefined;
+  const nestedError = asRecord(record.error);
+  const code = errorTextCandidate(record.code) || errorTextCandidate(nestedError?.code);
   return code || undefined;
 }
 
@@ -142,14 +161,22 @@ function hasImplicitErrorPayload(payload: unknown) {
   if (typeof payload === 'string') {
     return isErrorLikeMessage(payload.trim());
   }
-  if (!payload || typeof payload !== 'object') return false;
-  const record = payload as Record<string, unknown>;
-  const code = String(record.code ?? '').toUpperCase();
+  const record = asRecord(payload);
+  if (!record) return false;
+  const nestedError = asRecord(record.error);
+  const code = (errorTextCandidate(record.code) || errorTextCandidate(nestedError?.code)).toUpperCase();
   if (code && code !== 'SUCCESS' && /ERROR|DUPLICATED|DUPLICATE|CONFLICT|REQUIRED|UNSUPPORTED|NOT_FOUND|MISMATCH|FORBIDDEN|FAILED|INVALID/.test(code)) {
     return true;
   }
-  return [record.errorMessage, record.error, record.detail, record.data]
-    .some(item => isErrorLikeMessage(String(item ?? '').trim()));
+  return [
+    record.errorMessage,
+    record.message,
+    nestedError?.errorMessage,
+    nestedError?.message,
+    record.detail,
+    nestedError?.detail,
+    record.data
+  ].some(item => isErrorLikeMessage(errorTextCandidate(item)));
 }
 
 export class ApiClient {
