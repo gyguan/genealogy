@@ -163,7 +163,7 @@ export function formatDateTime(value?: string | null, fallback = '时间未记�
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
-  }).format(parsed).replaceAll('/', '-');
+  }).format(parsed).replace(/\//g, '-');
 }
 
 export function coverageText(level?: string | null) {
