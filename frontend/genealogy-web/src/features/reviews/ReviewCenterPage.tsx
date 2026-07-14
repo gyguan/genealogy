@@ -127,7 +127,7 @@ function reviewTimelineItems(row: ReviewTask) {
         <div>
           <Typography.Text strong>{processed ? statusText(row) : '等待审核处理'}</Typography.Text>
           <br />
-          <Typography.Text type="secondary">{processed ? `${row.updatedAt || '处理时间待维护'} · ${reviewerText(row)}` : '审核结论由后端返回后展示'}</Typography.Text>
+          <Typography.Text type="secondary">{processed ? `${row.updatedAt || '处理时间待维护'} · ${reviewerText(row)}` : '审核结果将在处理后更新'}</Typography.Text>
         </div>
       )
     }
@@ -310,14 +310,14 @@ export function ReviewCenterPage({ notify }: Props) {
 
   return (
     <div className="review-center-page">
-      <Panel title="审核中心" description="集中处理待审核任务，支持查看审核对象、流转状态和批量审批。">
+      <Panel title="审核中心" help="集中处理待审核任务，支持查看审核对象、流转状态和批量审批。">
         <Tabs
           activeKey={activeTab}
           onChange={key => setActiveTab(key as ReviewTabKey)}
           items={[
             { key: 'pending', label: `待我审核（${tasks.length}）`, children: renderPendingTable() },
-            { key: 'submitted', label: '我提交的', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回我提交的审核任务" /> },
-            { key: 'processed', label: '已处理', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="后端暂未返回已处理审核任务" /> }
+            { key: 'submitted', label: '我提交的', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无相关审核记录" /> },
+            { key: 'processed', label: '已处理', children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无相关审核记录" /> }
           ]}
         />
       </Panel>
