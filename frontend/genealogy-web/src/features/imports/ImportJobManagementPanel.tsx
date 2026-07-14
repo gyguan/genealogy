@@ -5,10 +5,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
 
-type Props = {
-  notify: (data: unknown, error?: boolean) => void;
-  refreshKey: number;
-};
+type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
 
 type ImportJobSummary = {
   id: number;
@@ -25,7 +22,6 @@ type ImportJobSummary = {
   processingStatus?: string;
   reviewStatus?: string;
   reviewRound?: number;
-  latestReviewTaskId?: number;
 };
 
 type ImportJobDetail = ImportJobSummary & { errors?: { rowNo?: number; errorMessage?: string; rawData?: string }[] };
@@ -38,12 +34,10 @@ type ImportJobRow = {
   normalizedData?: ImportRowPayload;
   correctedData?: ImportRowPayload;
   rowStatus?: string;
-  errorCode?: string;
   errorMessage?: string;
   retryCount?: number;
   draftCreated?: boolean;
   version?: number;
-  updatedAt?: string;
 };
 
 type RetryFormValues = {
@@ -81,19 +75,12 @@ const statusOptions = [
   { value: 'partial_completed', label: '部分完成' },
   { value: 'failed', label: '失败' }
 ];
-
 const genderOptions = [
   { value: 'male', label: '男' },
   { value: 'female', label: '女' },
   { value: 'unknown', label: '未知' }
 ];
-
-const relationshipTypeOptions = [
-  { value: '父子', label: '父子' },
-  { value: '母子', label: '母子' },
-  { value: '配偶', label: '配偶' }
-];
-
+const relationshipTypeOptions = ['父子', '母子', '配偶'].map(value => ({ value, label: value }));
 const sourceTypeOptions = ['谱书', '地方志', '墓碑', '照片', '口述', '档案', '其他'].map(value => ({ value, label: value }));
 const confidenceOptions = ['高', '中', '低', '未知'].map(value => ({ value, label: value }));
 const privacyOptions = ['公开', '宗族内', '支派内', '亲属可见', '私密', '封存'].map(value => ({ value, label: value }));
@@ -101,14 +88,9 @@ const sensitiveOptions = ['普通', '敏感', '高度敏感'].map(value => ({ va
 
 function processingStatusText(row: ImportJobSummary) {
   const status = String(row.processingStatus || '').toLowerCase();
-  const dict: Record<string, string> = {
-    processing: '处理中',
-    correction_required: '待修正',
-    ready_for_review: '可提交审核'
-  };
-  if (dict[status]) return dict[status];
+  const dict: Record<string, string> = { processing: '处理中', correction_required: '待修正', ready_for_review: '可提交审核' };
   const legacy: Record<string, string> = { running: '处理中', completed: '已完成', partial_completed: '待修正', failed: '全部失败' };
-  return legacy[String(row.status || '').toLowerCase()] || row.status || '待维护';
+  return dict[status] || legacy[String(row.status || '').toLowerCase()] || row.status || '待维护';
 }
 
 function processingStatusColor(row: ImportJobSummary) {
@@ -158,8 +140,7 @@ function payloadValue(payload: ImportRowPayload, key: string) {
 }
 
 function normalizedImportType(row?: ImportJobSummary | null) {
-  const value = String(row?.importType || row?.legacyImportType || '').toLowerCase();
-  return value.replace(/_(csv|xlsx)$/, '');
+  return String(row?.importType || row?.legacyImportType || '').toLowerCase().replace(/_(csv|xlsx)$/, '');
 }
 
 function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
@@ -169,9 +150,9 @@ function retryable(row: ImportJobRow, job?: ImportJobSummary | null) {
 }
 
 function canSubmitReview(job: ImportJobSummary) {
-  const processingStatus = String(job.processingStatus || '').toLowerCase();
-  const reviewStatus = String(job.reviewStatus || 'not_submitted').toLowerCase();
-  return processingStatus === 'ready_for_review' && (job.failureCount || 0) === 0 && ['not_submitted', 'rejected'].includes(reviewStatus);
+  return String(job.processingStatus || '').toLowerCase() === 'ready_for_review'
+    && (job.failureCount || 0) === 0
+    && ['not_submitted', 'rejected'].includes(String(job.reviewStatus || 'not_submitted').toLowerCase());
 }
 
 export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
@@ -198,6 +179,13 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
   const [reviewJob, setReviewJob] = useState<ImportJobSummary | null>(null);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewLoading, setReviewLoading] = useState(false);
+
+  function clearSelection() {
+    setSelectedJob(null);
+    setRows([]);
+    setRowTotal(0);
+    setEditingRow(null);
+  }
 
   async function loadJobs() {
     if (!workspace.clanId) {
@@ -269,13 +257,6 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     } finally {
       setDetailLoading(false);
     }
-  }
-
-  function clearSelection() {
-    setSelectedJob(null);
-    setRows([]);
-    setRowTotal(0);
-    setEditingRow(null);
   }
 
   function openCorrection(row: ImportJobRow) {
@@ -451,9 +432,14 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
             { key: 'reviewStatus', title: '审核状态', width: 105, render: (_value, row) => <Tag color={reviewStatusColor(row.reviewStatus)}>{reviewStatusText(row.reviewStatus)}</Tag> },
             { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => formatDateTime(row.createdAt) },
             {
-              key: 'actions', title: '操作', width: 110, fixed: 'right', render: (_value, row) => (
+              key: 'actions',
+              title: '操作',
+              width: 110,
+              render: (_value, row) => (
                 <Space onClick={event => event.stopPropagation()}>
-                  <Button size="small" type="primary" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>{row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}</Button>
+                  <Button size="small" type="primary" disabled={!canSubmitReview(row)} onClick={() => { setReviewJob(row); setReviewComment(''); }}>
+                    {row.reviewStatus === 'rejected' ? '重新提交' : '提交审核'}
+                  </Button>
                 </Space>
               )
             }
@@ -493,7 +479,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
                 { key: 'errorMessage', title: '错误原因', dataIndex: 'errorMessage', width: 280 },
                 { key: 'rawData', title: '原始数据', dataIndex: 'rawData', ellipsis: true },
                 { key: 'retryCount', title: '重试次数', dataIndex: 'retryCount', width: 100 },
-                { key: 'action', title: '操作', width: 100, fixed: 'right', render: (_value, row) => <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>修正</Button> }
+                { key: 'action', title: '操作', width: 100, render: (_value, row) => <Button size="small" type="primary" disabled={!retryable(row, selectedJob)} onClick={() => openCorrection(row)}>修正</Button> }
               ]}
               scroll={{ x: 'max-content' }}
             />
