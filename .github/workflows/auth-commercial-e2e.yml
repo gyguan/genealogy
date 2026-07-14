@@ -1,46 +1,10 @@
 name: Auth Commercial E2E
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/auth-commercial-e2e.yml'
-      - 'backend/genealogy-backend/pom.xml'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/auth/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/member/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/common/**'
-      - 'backend/genealogy-backend/src/main/resources/application*.yml'
-      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
-      - 'frontend/genealogy-web/package.json'
-      - 'frontend/genealogy-web/src/features/auth/**'
-      - 'frontend/genealogy-web/src/features/members/**'
-      - 'frontend/genealogy-web/src/shared/api/**'
-      - 'frontend/genealogy-web/src/shared/context/**'
-      - 'frontend/genealogy-web/src/shared/ui/**'
-      - 'frontend/genealogy-web/tests/**'
-      - 'frontend/genealogy-web/playwright.config.*'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/auth-commercial-e2e.yml'
-      - 'backend/genealogy-backend/pom.xml'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/auth/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/member/**'
-      - 'backend/genealogy-backend/src/main/java/com/genealogy/common/**'
-      - 'backend/genealogy-backend/src/main/resources/application*.yml'
-      - 'backend/genealogy-backend/src/main/resources/db/migration/**'
-      - 'frontend/genealogy-web/package.json'
-      - 'frontend/genealogy-web/src/features/auth/**'
-      - 'frontend/genealogy-web/src/features/members/**'
-      - 'frontend/genealogy-web/src/shared/api/**'
-      - 'frontend/genealogy-web/src/shared/context/**'
-      - 'frontend/genealogy-web/src/shared/ui/**'
-      - 'frontend/genealogy-web/tests/**'
-      - 'frontend/genealogy-web/playwright.config.*'
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
