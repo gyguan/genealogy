@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -66,17 +67,17 @@ public class TrackingObjectQueryRepository {
             default -> throw new IllegalArgumentException("unsupported tracking object type: " + objectType);
         };
         MapSqlParameterSource parameters = new MapSqlParameterSource()
-                .addValue("clanId", clanId)
-                .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase())
-                .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%")
-                .addValue("branchId", branchId)
-                .addValue("status", status == null ? "" : status.trim().toLowerCase())
-                .addValue("changedFrom", changedFrom)
-                .addValue("changedTo", changedTo)
-                .addValue("fullClanAccess", fullClanAccess)
-                .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
-                .addValue("limit", pageSize)
-                .addValue("offset", (pageNo - 1) * pageSize);
+        .addValue("clanId", clanId, Types.BIGINT)
+        .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase(), Types.VARCHAR)
+        .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%", Types.VARCHAR)
+        .addValue("branchId", branchId, Types.BIGINT)
+        .addValue("status", status == null ? "" : status.trim().toLowerCase(), Types.VARCHAR)
+        .addValue("changedFrom", changedFrom, Types.TIMESTAMP)
+        .addValue("changedTo", changedTo, Types.TIMESTAMP)
+        .addValue("fullClanAccess", fullClanAccess, Types.BOOLEAN)
+        .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
+        .addValue("limit", pageSize, Types.INTEGER)
+        .addValue("offset", (pageNo - 1) * pageSize, Types.INTEGER);
 
         List<TrackingObjectResponse> records = jdbcTemplate.query(
                 searchSql.selectClause() + searchSql.fromWhereClause() + searchSql.orderByClause() + " limit :limit offset :offset",
