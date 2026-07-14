@@ -1,0 +1,96 @@
+name: Issue 130-132 E2E Apply
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy -d genealogy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Create E2E assets
+        run: python3 .github/scripts/issue-130-132-e2e-apply.py
+      - name: Install Playwright dependency and Chromium
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install --save-dev @playwright/test
+          npx playwright install --with-deps chromium
+      - name: Verify frontend
+        working-directory: frontend/genealogy-web
+        run: |
+          npm run test:auth
+          npm run test:members
+          npm run typecheck
+          npm run api:check
+          npm run build
+      - name: Start backend
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/genealogy
+          SPRING_DATASOURCE_USERNAME: genealogy
+          SPRING_DATASOURCE_PASSWORD: genealogy
+          SPRING_FLYWAY_ENABLED: 'true'
+          GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED: 'true'
+          GENEALOGY_AUTH_EXPOSE_RESET_TOKEN: 'true'
+          GENEALOGY_AUTH_LOGIN_COOLDOWN_MINUTES: '1'
+        run: |
+          mvn -q -DskipTests package
+          nohup java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar >/tmp/e2e-backend.log 2>&1 &
+      - name: Start frontend
+        working-directory: frontend/genealogy-web
+        run: nohup npm run dev >/tmp/e2e-frontend.log 2>&1 &
+      - name: Wait for services
+        shell: bash
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/api/v1/health >/dev/null && curl -fsS http://127.0.0.1:5179 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          tail -n 160 /tmp/e2e-backend.log || true
+          tail -n 80 /tmp/e2e-frontend.log || true
+          exit 1
+      - name: Run browser E2E
+        working-directory: frontend/genealogy-web
+        env:
+          CI: 'true'
+        run: npm run test:e2e
+      - name: Commit E2E suite and remove temporary assets
+        shell: bash
+        run: |
+          rm .github/workflows/issue-130-132-e2e-apply.yml
+          rm .github/scripts/issue-130-132-e2e-apply.py
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A
+          git commit -m 'test(auth): add PostgreSQL browser E2E gate'
+          git push
