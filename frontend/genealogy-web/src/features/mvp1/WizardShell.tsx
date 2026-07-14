@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import { Steps } from 'antd';
-import { Panel } from '../../shared/ui/Panel';
+import { Card, Grid, Steps, Tooltip } from 'antd';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 export type WizardStepMeta<TKey extends string = string> = {
@@ -27,7 +26,9 @@ export function WizardShell<TKey extends string = string>({
   onStepChange,
   children
 }: WizardShellProps<TKey>) {
+  const screens = Grid.useBreakpoint();
   const activeIndex = Math.max(0, steps.findIndex(step => step.key === activeStep));
+  const direction = screens.md === false ? 'vertical' : 'horizontal';
 
   function handleStepChange(index: number) {
     const nextStep = steps[index];
@@ -36,19 +37,20 @@ export function WizardShell<TKey extends string = string>({
 
   return (
     <div className="mvp1-wizard-page">
-      <Panel title="MVP1 建谱向导" help="对象先保存为草稿，审核通过后才能进入后续关联步骤。">
+      <Card className="wizard-progress-card" size="small" aria-label="建谱进度">
         <Steps
           className="wizard-ant-steps"
-          direction="vertical"
+          direction={direction}
+          responsive={false}
           size="small"
           current={activeIndex}
           onChange={handleStepChange}
           items={steps.map(step => ({
-            title: step.title,
+            title: <Tooltip title={step.desc}><span>{step.title}</span></Tooltip>,
             status: step.key === activeStep ? 'process' : step.ready ? 'finish' : 'wait'
           }))}
         />
-      </Panel>
+      </Card>
       {result ? <ResultNotice result={result} /> : null}
       {!loaded ? <div className="wizard-step-hint">请选择步骤。</div> : null}
       {children}
