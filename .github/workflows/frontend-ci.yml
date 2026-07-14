@@ -37,7 +37,8 @@ jobs:
 
       - name: Test Tree graph model
         working-directory: frontend/genealogy-web
-        run: npm run test:tree
+        shell: bash
+        run: set -o pipefail; npm run test:tree 2>&1 | tee tree-test-output.log
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
@@ -46,3 +47,12 @@ jobs:
       - name: Build frontend
         working-directory: frontend/genealogy-web
         run: npm run build
+
+      - name: Upload failed frontend diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-diagnostics
+          path: frontend/genealogy-web/tree-test-output.log
+          if-no-files-found: ignore
+          retention-days: 3
