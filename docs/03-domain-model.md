@@ -39,6 +39,9 @@ Revision 审核变更
 | import_row | 导入明细 |
 | export_task | 导出任务 |
 | operation_log | 操作日志 |
+| culture_item | 文本型宗族文化档案，支持宗族级和支派级 |
+| migration_event | 支派的结构化迁徙事件 |
+| culture_site | 祠堂、祖居、墓园和纪念设施等文化场所 |
 
 ## 人物模型重点
 
@@ -85,9 +88,12 @@ relationship
 branch
 clan
 generation_word
+culture_item
+migration_event
+culture_site
 ```
 
-这样可以追溯某个人物、某个父子关系、某个支派迁徙或某个字辈来自哪本谱、哪一页、哪段原文。
+这样可以追溯某个人物、某个父子关系、某个支派迁徙、某个字辈或某项宗族文化结论来自哪本谱、哪一页、哪段原文。
 
 ### 来源资料库模块定位
 
@@ -151,7 +157,7 @@ generation_word
 | id | 绑定主键 |
 | clan_id | 所属宗族 |
 | source_id | 来源 ID |
-| target_type | 绑定对象类型：person / relationship / branch / clan / generation_word |
+| target_type | 绑定对象类型：person / relationship / branch / clan / generation_word / culture_item / migration_event / culture_site |
 | target_id | 绑定对象 ID，前端展示时必须转换为业务名称 |
 | binding_reason | 绑定原因 |
 | excerpt | 本次引用摘录 |
@@ -185,19 +191,19 @@ revision → review_task → approve/reject → apply
 
 审核通过后才写入正式数据。
 
-来源资料库相关审核规则：
+来源资料库和宗族文化相关审核规则：
 
-1. 新增来源默认进入 `draft`。
-2. 来源提交复核后进入 `pending_review`。
+1. 新增来源和文化对象默认进入 `draft`。
+2. 提交复核后进入 `pending_review`。
 3. 审核通过后进入 `official`，审核驳回后进入 `rejected`。
-4. `official` 来源的关键字段修改、删除和归档必须走 `revision → review_task → apply`。
-5. 正式人物、正式关系、正式支派、正式字辈的来源绑定或解绑必须走审核。
-6. 审核员不能审核自己提交的来源或来源绑定变更。
+4. `official` 对象的关键字段修改、删除、归档和首页精选变更必须走 `revision → review_task → apply`。
+5. 正式人物、正式关系、正式支派、正式字辈和正式文化对象的来源绑定或解绑必须走审核。
+6. 审核员不能审核自己提交的来源、来源绑定或文化变更。
 7. 来源附件上传可以先进入来源详情，但敏感附件上传、预览、下载需要单独权限和审计。
 
 ## 状态枚举
 
-人物、关系、来源、来源绑定统一使用以下数据状态：
+人物、关系、来源、来源绑定及宗族文化对象统一使用以下数据状态：
 
 ```text
 draft
@@ -252,3 +258,83 @@ normal
 sensitive
 highly_sensitive
 ```
+
+## 宗族文化领域模型
+
+### culture_item
+
+`culture_item` 保存文本型和内容型文化档案。`branch_id` 为空表示宗族级，不为空表示支派级。
+
+分类：
+
+```text
+surname_origin
+hall_name
+commandery
+family_instruction
+ancestor_instruction
+clan_rule
+genealogy_preface
+genealogy_rule
+person_story
+custom_tradition
+other
+```
+
+核心字段：
+
+| 字段 | 说明 |
+|---|---|
+| clan_id | 所属宗族 |
+| branch_id | 可空，表示宗族级或支派级范围 |
+| category | 文化分类 |
+| title | 业务标题 |
+| summary | 列表和首页摘要 |
+| content | 正文，列表默认不返回 |
+| historical_period | 历史时期文本 |
+| location_text | 相关地点文本 |
+| confidence_level | 可信度 |
+| privacy_level | 隐私级别 |
+| sensitive_level | 敏感级别 |
+| data_status | 数据状态 |
+| is_featured_on_home | 是否进入首页候选；正式展示仍需状态和权限过滤 |
+| sort_order | 排序 |
+| version | 乐观锁版本 |
+| created_by / created_at / updated_at / deleted_at | 审计和软删除字段 |
+
+### migration_event
+
+`migration_event` 表达某一支派的一次迁徙事实：
+
+```text
+branch_id + sequence_no + from_location + to_location + migration_time_text + founder_person_id
+```
+
+- `branch_id` 必填。
+- 同一未删除支派下 `sequence_no` 唯一且大于 0。
+- 迁出地和迁入地至少一个非空。
+- `founder_person_id` 可空，但补绑时必须与宗族一致。
+- 历史时期使用文本，避免将朝代、年号或模糊年代错误转换为精确日期。
+
+### culture_site
+
+`culture_site` 管理文化场所：
+
+```text
+ancestral_hall
+ancestral_home
+cemetery
+memorial
+other
+```
+
+`current_status` 描述场所的现实状态；`data_status` 描述资料的审核状态，两者不得混用。纬度、经度可空并设置合法范围约束，接口仍需按隐私规则最小披露。
+
+### 兼容与单一事实源
+
+- `clan.hall_name`、`clan.commandery`、`clan.origin_place` 暂时保留只读兼容，不与 `culture_item` 双写。
+- `branch.migration_from`、`branch.migration_to` 暂时保留只读兼容，不再作为多事件迁徙的事实源。
+- 本阶段不自动迁移历史数据。
+- 只有新模型的维护、审核、来源、权限、追踪、首页和文化页全部完成，并经过数据核验和回滚演练后，才能另行收口旧字段。
+
+完整设计、迁移和回滚策略见 `docs/17-culture-domain-foundation.md`。
