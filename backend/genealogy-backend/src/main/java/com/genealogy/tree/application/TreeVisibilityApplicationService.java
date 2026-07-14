@@ -23,7 +23,6 @@ public class TreeVisibilityApplicationService {
     private static final String STATUS_OFFICIAL = "official";
     private static final String STATUS_ARCHIVED = "archived";
 
-    private static final String PRIVACY_PUBLIC = "public";
     private static final String PRIVACY_CLAN_ONLY = "clan_only";
     private static final String PRIVACY_BRANCH_ONLY = "branch_only";
     private static final String PRIVACY_RELATIVES_ONLY = "relatives_only";
@@ -68,10 +67,12 @@ public class TreeVisibilityApplicationService {
     @Transactional(readOnly = true)
     public PersonProjection requireRootProjection(PersonEntity person, Long actorId, String dataView) {
         String normalizedView = normalizeDataView(dataView);
-        if (!hasBranchPermission(person, actorId, PERSON_VIEW)) {
+        if (!hasBranchPermission(person, actorId, PERSON_VIEW)
+                || !hasBranchPermission(person, actorId, RELATIONSHIP_VIEW)) {
             throw new BusinessException(ErrorCode.PERSON_NOT_FOUND);
         }
-        if (DATA_VIEW_EDITING.equals(normalizedView) && !canEditPerson(person, actorId)) {
+        if (DATA_VIEW_EDITING.equals(normalizedView)
+                && (!canEditPerson(person, actorId) || !canEditRelationship(person, actorId))) {
             throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限查看编辑态世系数据");
         }
         PersonProjection projection = projectPerson(person, actorId, normalizedView);
