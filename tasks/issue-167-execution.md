@@ -2,9 +2,9 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/167
 - 工作分支：`agent/issue-167-culture-item-core`
-- Draft PR：待创建
+- Draft PR：https://github.com/gyguan/genealogy/pull/181
 - 目标：实现 `culture_item` 的后端分页搜索、草稿维护、详情聚合、基础范围保护和状态约束，形成独立可测试的文化资料核心能力。
-- 最后更新时间：2026-07-14 17:44:00，北京时间
+- 最后更新时间：2026-07-14 17:49:00，北京时间
 
 ## 实现范围
 
@@ -27,8 +27,8 @@
 
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue、前置契约与现有实现，建立分支、看板和 Draft PR | 🔄 进行中 | 已累计约 9 分钟 | 分支和执行检查点已建立，正在创建 Draft PR |
-| 2 | 完成文化资料 DTO、领域校验、数据库分页查询与必要索引 | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue、前置契约与现有实现，建立分支、看板和 Draft PR | ✅ 已完成 | 约 12 分钟 | 分支、执行看板、Draft PR #181 和 Issue 回写现场已建立；临时 note 已清理 |
+| 2 | 完成文化资料 DTO、领域校验、数据库分页查询与必要索引 | 🔄 进行中 | 暂无 | 正在读取 branch/source/review/operationlog 聚合接口并确定查询实现 |
 | 3 | 实现 Application Service、Controller、详情聚合、基础 allowedActions 和安全日志 | ⏳ 待处理 | — |  |
 | 4 | 补充 Repository、Service、Controller 与 OpenAPI 一致性测试 | ⏳ 待处理 | — |  |
 | 5 | 执行 API、后端、PostgreSQL、迁移治理和五轴 Review，满足门禁后合入 main | ⏳ 待处理 | — |  |
@@ -62,13 +62,13 @@
 
 - 当前 Issue：#167
 - 当前分支：`agent/issue-167-culture-item-core`
-- Draft PR：待创建
+- Draft PR：#181
 - 最新 Commit：由本次看板更新提交确定
-- 最后完成任务：读取规则、Issue、前置契约和主要参考实现
-- 当前进行中：创建 Draft PR 并回写 Issue
-- 当前任务累计耗时：已累计约 9 分钟
-- CI 状态：未运行
+- 最后完成任务：完成 Issue 启动门禁和临时文件清理
+- 当前进行中：DTO、领域校验、数据库查询和索引设计
+- 当前任务累计耗时：暂无
+- CI 状态：治理提交已触发，尚未作为业务验证依据
 - 未解决 Review：无
 - 已知阻塞：本地无 `gh`，通过 GitHub Connector 提交，CI 作为构建与数据库验证事实依据
-- 下一步最小任务：创建 Draft PR 并将真实链接回写 Issue
-- 最后更新时间：2026-07-14 17:44:00，北京时间
+- 下一步最小任务：读取来源绑定、附件、审核任务与用户聚合查询，定义 DTO 和批量计数接口
+- 最后更新时间：2026-07-14 17:49:00，北京时间
