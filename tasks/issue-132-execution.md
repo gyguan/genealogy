@@ -3,7 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/132
 - 工作分支：`agent/issue-130-132-auth-security-closure`
 - Pull Request：https://github.com/gyguan/genealogy/pull/143
-- 状态：✅ 实现与验证完成，等待合入。
+- 状态：✅ 实现与专项验证完成，正在执行最新 HEAD 的默认准出门禁。
 
 ## 已完成
 
@@ -42,3 +42,7 @@ PR 合入前必须满足：
 - Auth Commercial E2E 通过；
 - 无临时脚本、诊断工作流或诊断文件残留；
 - Review 无未解决线程。
+
+## 当前检查点
+
+- 最新 HEAD 已进入正式默认 CI、迁移治理和浏览器 E2E 准出。
