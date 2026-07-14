@@ -24,21 +24,12 @@ jobs:
           from pathlib import Path
           path = Path('backend/genealogy-backend/src/main/java/com/genealogy/tracking/repository/TrackingObjectQueryRepository.java')
           text = path.read_text()
-          text = text.replace('import java.sql.Timestamp;\n', 'import java.sql.Timestamp;\nimport java.sql.Types;\n')
-          old = '''        MapSqlParameterSource parameters = new MapSqlParameterSource()
-                  .addValue("clanId", clanId)
-                  .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase())
-                  .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%")
-                  .addValue("branchId", branchId)
-                  .addValue("status", status == null ? "" : status.trim().toLowerCase())
-                  .addValue("changedFrom", changedFrom)
-                  .addValue("changedTo", changedTo)
-                  .addValue("fullClanAccess", fullClanAccess)
-                  .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
-                  .addValue("limit", pageSize)
-                  .addValue("offset", (pageNo - 1) * pageSize);
-'''
-          new = '''        MapSqlParameterSource parameters = new MapSqlParameterSource()
+          if 'import java.sql.Types;' not in text:
+              text = text.replace('import java.sql.Timestamp;', 'import java.sql.Timestamp;\nimport java.sql.Types;')
+          start = text.index('        MapSqlParameterSource parameters = new MapSqlParameterSource()')
+          marker = '\n\n        List<TrackingObjectResponse> records = jdbcTemplate.query('
+          end = text.index(marker, start)
+          block = '''        MapSqlParameterSource parameters = new MapSqlParameterSource()
                   .addValue("clanId", clanId, Types.BIGINT)
                   .addValue("keyword", keyword == null ? "" : keyword.trim().toLowerCase(), Types.VARCHAR)
                   .addValue("keywordPattern", "%" + (keyword == null ? "" : keyword.trim().toLowerCase()) + "%", Types.VARCHAR)
@@ -49,11 +40,8 @@ jobs:
                   .addValue("fullClanAccess", fullClanAccess, Types.BOOLEAN)
                   .addValue("visibleBranchIds", visibleBranchIds == null || visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds)
                   .addValue("limit", pageSize, Types.INTEGER)
-                  .addValue("offset", (pageNo - 1) * pageSize, Types.INTEGER);
-'''
-          if old not in text:
-              raise SystemExit('Expected parameter block not found')
-          path.write_text(text.replace(old, new))
+                  .addValue("offset", (pageNo - 1) * pageSize, Types.INTEGER);'''
+          path.write_text(text[:start] + block + text[end:])
           PY
       - name: Commit patch
         run: |
