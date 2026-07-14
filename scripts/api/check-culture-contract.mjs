@@ -87,4 +87,13 @@ if (schemas.CultureItemSummaryResponse?.properties?.content) {
   fail('CultureItemSummaryResponse must not expose full content');
 }
 
-console.log('Culture target types, enums, required operations, pagination and privacy-safe response shapes are valid.');
+const sourceTarget = schemas.SourceBindingCreateRequest?.properties?.targetType?.$ref;
+if (sourceTarget !== '#/components/schemas/GenealogyTargetType') {
+  fail('SourceBindingCreateRequest.targetType must use GenealogyTargetType');
+}
+const reviewTarget = schemas.ReviewSubmitRequest?.properties?.targetType?.$ref;
+if (reviewTarget !== '#/components/schemas/GenealogyTargetType') {
+  fail('ReviewSubmitRequest.targetType must use GenealogyTargetType');
+}
+
+console.log('Culture contract paths, schemas, target type integration, pagination and privacy-safe response shapes are valid.');
