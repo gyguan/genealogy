@@ -26,6 +26,8 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class ReviewTaskQueryController {
 
+    private static final String REVIEW_VIEW = "review_task:view";
+
     private final ReviewTaskQueryApplicationService reviewTaskQueryApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
@@ -59,6 +61,11 @@ public class ReviewTaskQueryController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
+        if ("pending".equalsIgnoreCase(view == null ? "" : view.trim())
+                && !authorizationApplicationService.can(clanId, actorId, REVIEW_VIEW)) {
+            return ApiResponse.success(PageResponse.of(List.of(), 0, pageNo, pageSize));
+        }
         return ApiResponse.success(reviewTaskQueryApplicationService.search(
                 clanId,
                 view,
