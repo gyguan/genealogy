@@ -69,12 +69,11 @@ public record ImportJobSummaryResponse(
             Integer reviewRound,
             Long latestReviewTaskId
     ) {
-        ImportJobDescriptor descriptor = descriptor(importType, originalFilename);
         this(
                 id,
-                descriptor.importType(),
-                descriptor.fileFormat(),
-                descriptor.legacyImportType(),
+                descriptor(importType, originalFilename).importType(),
+                descriptor(importType, originalFilename).fileFormat(),
+                descriptor(importType, originalFilename).legacyImportType(),
                 originalFilename,
                 totalCount,
                 successCount,
