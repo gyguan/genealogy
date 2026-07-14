@@ -2,9 +2,9 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/168
 - 工作分支：`agent/issue-168-culture-governance`
-- Draft PR：待创建
+- Draft PR：https://github.com/gyguan/genealogy/pull/189
 - 目标：让 `culture_item` 接入来源证据、revision/review apply、文化专属权限与范围、隐私最小披露和统一追踪，形成可信正式数据闭环。
-- 最后更新时间：2026-07-14 19:16，北京时间
+- 最后更新时间：2026-07-14 19:18，北京时间
 
 ## 实现范围
 
@@ -28,8 +28,8 @@
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
 | 1 | 刷新规则、Issue、前置实现与现有通用治理框架 | ✅ 已完成 | 约 8 分钟 | 已读取根/后端规则、Issue 治理、#168 和 #167 合入基线；确认无现有分支或 PR |
-| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | 🔄 进行中 | 已累计约 2 分钟 | 分支与执行看板已建立，正在创建 Draft PR |
-| 3 | 补齐文化来源、审核、权限与追踪 OpenAPI/领域契约 | ⏳ 待处理 | — |  |
+| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | ✅ 已完成 | 约 4 分钟 | 分支、执行看板和 Draft PR #189 已建立，正在完成 Issue 回写 |
+| 3 | 补齐文化来源、审核、权限与追踪 OpenAPI/领域契约 | 🔄 进行中 | 已累计约 1 分钟 | 开始读取通用 review/source/permission/tracking 实现 |
 | 4 | 实现文化 revision/review apply、归档和来源绑定范围校验 | ⏳ 待处理 | — |  |
 | 5 | 实现文化权限种子、隐私矩阵、allowedActions 和追踪聚合 | ⏳ 待处理 | — |  |
 | 6 | 补充单元、权限矩阵、PostgreSQL 与契约测试 | ⏳ 待处理 | — |  |
@@ -72,13 +72,14 @@
 
 - 当前 Issue：#168
 - 当前分支：`agent/issue-168-culture-governance`
-- Draft PR：待创建
+- Draft PR：#189
 - 最新基线：`0aeaa01a8d6feabbb521e7687de203782a7027c9`
-- 最后完成任务：刷新规则、需求和前置实现，建立分支与任务文件
-- 当前进行中：创建 Draft PR 并回写 Issue
-- 当前任务累计耗时：已累计约 2 分钟
-- CI 状态：未运行
+- 最新治理 Commit：由本次看板更新提交确定
+- 最后完成任务：完成 Issue 启动门禁并建立 Draft PR
+- 当前进行中：读取通用 review/source/permission/tracking 实现并补齐契约
+- 当前任务累计耗时：已累计约 1 分钟
+- CI 状态：治理提交已触发，不作为业务验证依据
 - 未解决 Review：无
 - 已知阻塞：无
-- 下一步最小任务：创建 Draft PR，回写真实 PR 编号，然后读取通用 review/source/tracking 实现
-- 最后更新时间：2026-07-14 19:16，北京时间
+- 下一步最小任务：读取通用审核 apply、来源目标校验、RBAC 范围和 tracking 聚合实现
+- 最后更新时间：2026-07-14 19:18，北京时间
