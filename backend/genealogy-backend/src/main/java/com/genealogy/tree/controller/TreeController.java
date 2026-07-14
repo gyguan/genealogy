@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.tree.application.TreeApplicationService;
 import com.genealogy.tree.dto.TreeGraphResponse;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,9 +38,9 @@ public class TreeController {
             @RequestParam(required = false) String direction,
             @RequestParam(required = false) List<String> relationScopes,
             @RequestParam(required = false) String dataView,
-            @Positive @RequestParam(required = false) Integer maxDepth,
-            @Positive @RequestParam(required = false) Integer maxNodes,
-            @Positive @RequestParam(required = false) Integer maxEdges,
+            @Positive @Max(20) @RequestParam(required = false) Integer maxDepth,
+            @Positive @Max(2000) @RequestParam(required = false) Integer maxNodes,
+            @Positive @Max(4000) @RequestParam(required = false) Integer maxEdges,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
@@ -53,8 +54,8 @@ public class TreeController {
             @Positive @PathVariable Long personId,
             @RequestParam(required = false) List<String> relationScopes,
             @RequestParam(required = false) String dataView,
-            @Positive @RequestParam(required = false) Integer maxNodes,
-            @Positive @RequestParam(required = false) Integer maxEdges,
+            @Positive @Max(2000) @RequestParam(required = false) Integer maxNodes,
+            @Positive @Max(4000) @RequestParam(required = false) Integer maxEdges,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
@@ -64,11 +65,11 @@ public class TreeController {
     @GetMapping("/descendants")
     public ApiResponse<TreeGraphResponse> descendants(
             @Positive @RequestParam Long rootPersonId,
-            @Positive @RequestParam(required = false) Integer maxDepth,
+            @Positive @Max(20) @RequestParam(required = false) Integer maxDepth,
             @RequestParam(required = false) List<String> relationScopes,
             @RequestParam(required = false) String dataView,
-            @Positive @RequestParam(required = false) Integer maxNodes,
-            @Positive @RequestParam(required = false) Integer maxEdges,
+            @Positive @Max(2000) @RequestParam(required = false) Integer maxNodes,
+            @Positive @Max(4000) @RequestParam(required = false) Integer maxEdges,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
@@ -80,11 +81,11 @@ public class TreeController {
     @GetMapping("/ancestors")
     public ApiResponse<TreeGraphResponse> ancestors(
             @Positive @RequestParam Long personId,
-            @Positive @RequestParam(required = false) Integer maxDepth,
+            @Positive @Max(20) @RequestParam(required = false) Integer maxDepth,
             @RequestParam(required = false) List<String> relationScopes,
             @RequestParam(required = false) String dataView,
-            @Positive @RequestParam(required = false) Integer maxNodes,
-            @Positive @RequestParam(required = false) Integer maxEdges,
+            @Positive @Max(2000) @RequestParam(required = false) Integer maxNodes,
+            @Positive @Max(4000) @RequestParam(required = false) Integer maxEdges,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
@@ -100,9 +101,9 @@ public class TreeController {
             @RequestParam(defaultValue = "true") boolean includeSubBranches,
             @RequestParam(required = false) List<String> relationScopes,
             @RequestParam(required = false) String dataView,
-            @Positive @RequestParam(required = false) Integer maxDepth,
-            @Positive @RequestParam(required = false) Integer maxNodes,
-            @Positive @RequestParam(required = false) Integer maxEdges,
+            @Positive @Max(20) @RequestParam(required = false) Integer maxDepth,
+            @Positive @Max(2000) @RequestParam(required = false) Integer maxNodes,
+            @Positive @Max(4000) @RequestParam(required = false) Integer maxEdges,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
