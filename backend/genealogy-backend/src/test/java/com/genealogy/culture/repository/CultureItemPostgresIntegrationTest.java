@@ -36,7 +36,7 @@ class CultureItemPostgresIntegrationTest {
     @Autowired private RevisionRepository revisionRepository;
 
     @Test
-    void executesBatchSourceAttachmentAndReviewCountsOnPostgres() {
+    void verifiesCultureBatchAggregationsAgainstPostgres() {
         ClanEntity clan = new ClanEntity();
         clan.setClanCode("culture-it-" + System.nanoTime());
         clan.setClanName("文化集成测试宗族");
