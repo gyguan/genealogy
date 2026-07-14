@@ -8,11 +8,17 @@ import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobPayloadEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -47,8 +53,9 @@ public class ImportAsyncApplicationService {
     public boolean shouldUseAsync(MultipartFile file, String requestedMode) {
         String mode = normalizeMode(requestedMode);
         if (MODE_ASYNC.equals(mode)) return true;
-        if (MODE_SYNC.equals(mode)) return false;
-        return file != null && file.getSize() >= properties.getAsyncFileBytesThreshold();
+        if (MODE_SYNC.equals(mode) || file == null || file.isEmpty()) return false;
+        if (file.getSize() >= properties.getAsyncFileBytesThreshold()) return true;
+        return estimateDataRows(file) >= properties.getAsyncRowCountThreshold();
     }
 
     @Transactional
@@ -114,6 +121,41 @@ public class ImportAsyncApplicationService {
                 saved.getChunkSize(), saved.getExecutionRetryCount(), saved.getExecutionMaxRetries(),
                 saved.getManualInterventionRequired(), saved.getNextRetryAt(), saved.getHeartbeatAt()
         );
+    }
+
+    private int estimateDataRows(MultipartFile file) {
+        String filename = file.getOriginalFilename() == null
+                ? ""
+                : file.getOriginalFilename().trim().toLowerCase(Locale.ROOT);
+        try {
+            if (filename.endsWith(".csv")) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+                    reader.readLine();
+                    int count = 0;
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (!line.isBlank()) count++;
+                        if (count >= properties.getAsyncRowCountThreshold()) return count;
+                    }
+                    return count;
+                }
+            }
+            if (filename.endsWith(".xlsx")) {
+                try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+                    Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+                    if (sheet == null) return 0;
+                    int count = 0;
+                    for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
+                        if (sheet.getRow(rowIndex) != null) count++;
+                        if (count >= properties.getAsyncRowCountThreshold()) return count;
+                    }
+                    return count;
+                }
+            }
+            return 0;
+        } catch (Exception exception) {
+            throw new BusinessException("IMPORT_FILE_READ_FAILED", "无法评估导入文件规模，请确认文件未损坏");
+        }
     }
 
     private byte[] readBytes(MultipartFile file) {
