@@ -1,4 +1,4 @@
-name: Issue 121 Frontend Integration
+name: Issue 121 Frontend Diagnostic
 
 on:
   pull_request:
@@ -9,16 +9,15 @@ on:
       - .github/workflows/issue-121-frontend-integration.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  integrate:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/issue-121-trace-aggregation
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -29,20 +28,15 @@ jobs:
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm ci
-      - name: Check generated contract
-        working-directory: frontend/genealogy-web
-        run: npm run api:check
       - name: Typecheck frontend
+        continue-on-error: true
         working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
-      - name: Commit integrated frontend
-        run: |
-          rm scripts/issue-121-frontend-patch.py .github/workflows/issue-121-frontend-integration.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "feat: consume unified issue 121 trace response"
-          git push origin HEAD:agent/issue-121-trace-aggregation
+        run: npm run typecheck > /tmp/issue-121-typecheck.log 2>&1
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-121-frontend-diagnostics
+          path: |
+            /tmp/issue-121-typecheck.log
+            frontend/genealogy-web/src/features/logs/LogPage.tsx
+          if-no-files-found: error
