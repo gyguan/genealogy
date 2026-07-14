@@ -13,7 +13,6 @@ import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
 import com.genealogy.review.repository.RevisionRepository;
-import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.tracking.dto.TrackingObjectResponse;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse;
@@ -44,6 +43,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -229,6 +229,37 @@ class TrackingTraceApplicationServiceTest {
         assertThat(result.traceCoverage().level()).isEqualTo("partial");
         assertThat(result.traceCoverage().truncatedSegments()).contains("revisions");
         assertThat(result.traceCoverage().missingSegments()).contains("reviewTasks");
+    }
+
+    @Test
+    void scopedTraceQueriesReviewTasksOnlyWithinVisibleBranches() {
+        when(rbacAuthorizationApplicationService.permissionDataScope(9L, 1L, "operation_log.view"))
+                .thenReturn(PermissionDataScope.branches(Set.of(10L)));
+        TrackingObjectResponse summary = summary("person", 100L);
+        when(trackingObjectQueryRepository.findVisibleById(1L, "person", 100L, false, List.of(10L)))
+                .thenReturn(Optional.of(summary));
+        RevisionEntity revision = revision(11L, "person", 100L);
+        ReviewTaskEntity task = reviewTask(21L, 11L, "pending");
+        when(revisionRepository.findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(revision)));
+        when(reviewTaskRepository.findByClanIdAndRevisionIdInAndBranchIdInOrderByCreatedAtDesc(
+                eq(1L), eq(List.of(11L)), eq(List.of(10L)), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(task)));
+        when(sourceBindingRepository.findByClanIdAndTargetTypeAndTargetIdOrderByCreatedAtDesc(
+                eq(1L), eq("person"), eq(100L), any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+
+        TrackingTraceDetailResponse result = service.trace(1L, 9L, "person", 100L, false);
+
+        assertThat(result.reviewTasks()).extracting(TrackingTraceDetailResponse.ReviewTaskItem::id)
+                .containsExactly(21L);
+        verify(reviewTaskRepository).findByClanIdAndRevisionIdInAndBranchIdInOrderByCreatedAtDesc(
+                eq(1L), eq(List.of(11L)), eq(List.of(10L)), any(Pageable.class)
+        );
+        verify(reviewTaskRepository, never()).findByClanIdAndRevisionIdInOrderByCreatedAtDesc(
+                anyLong(), any(), any(Pageable.class)
+        );
     }
 
     private TrackingObjectResponse summary(String type, Long id) {
