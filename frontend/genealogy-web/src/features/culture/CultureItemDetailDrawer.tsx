@@ -65,7 +65,7 @@ export function CultureItemDetailDrawer(props: Props) {
     <Drawer
       open={props.open}
       width={760}
-      title={item?.title || '文化资料详情'}
+      title={<Title level={4} style={{ margin: 0 }}>{item?.title || '文化资料详情'}</Title>}
       extra={headerActions}
       onClose={props.onClose}
       destroyOnHidden
