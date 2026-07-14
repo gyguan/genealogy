@@ -109,7 +109,10 @@ public class ImportAsyncApplicationService {
                 saved.getImportType() + "_" + saved.getFileFormat(), saved.getOriginalFilename(), saved.getTotalCount(),
                 saved.getSuccessCount(), saved.getFailureCount(), saved.getStatus(), saved.getErrorSummary(),
                 saved.getCreatedAt(), List.of(), saved.getProcessingStatus(), saved.getReviewStatus(),
-                saved.getReviewRound(), saved.getLatestReviewTaskId()
+                saved.getReviewRound(), saved.getLatestReviewTaskId(), saved.getExecutionMode(),
+                saved.getExecutionStatus(), saved.getExecutionStage(), saved.getProcessedCount(), saved.getPublishedCount(),
+                saved.getChunkSize(), saved.getExecutionRetryCount(), saved.getExecutionMaxRetries(),
+                saved.getManualInterventionRequired(), saved.getNextRetryAt(), saved.getHeartbeatAt()
         );
     }
 
