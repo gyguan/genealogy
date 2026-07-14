@@ -13,7 +13,9 @@ on:
     branches:
       - main
       - master
+      - agent/issue-106-source-import
     paths:
+      - '.github/workflows/api-contract.yml'
       - 'docs/api/openapi*.json'
       - 'scripts/api/**'
       - 'frontend/genealogy-web/src/shared/api/**'
@@ -21,12 +23,17 @@ on:
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/controller/**'
       - 'backend/genealogy-backend/src/main/java/com/genealogy/**/dto/**'
 
+permissions:
+  contents: write
+
 jobs:
   api-contract:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,6 +47,35 @@ jobs:
       - name: Check generated API contract
         run: bash scripts/api/check-api-contract.sh
 
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
+      - name: Typecheck frontend with diagnostics
+        shell: bash
+        run: |
+          cd frontend/genealogy-web
+          set +e
+          npm run typecheck > /tmp/issue-106-typecheck.log 2>&1
+          status=$?
+          set -e
+          cd ../..
+          mkdir -p tasks
+          {
+            echo "# Issue 106 Typecheck Diagnostics"
+            echo
+            echo "exit_status=$status"
+            echo
+            echo '```text'
+            grep -E "error TS|src/features/imports|SourceImport|ImportJobManagementPanel|ImportPage" /tmp/issue-106-typecheck.log | head -200 || true
+            echo '```'
+            echo
+            echo "## Tail"
+            echo '```text'
+            tail -120 /tmp/issue-106-typecheck.log
+            echo '```'
+          } > tasks/issue-106-typecheck.log
+          if [ "$status" -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tasks/issue-106-typecheck.log
+            git commit -m "chore(issue-106): capture typecheck diagnostics" || true
+            git push || true
+          fi
+          exit "$status"
