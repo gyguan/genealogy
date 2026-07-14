@@ -23,9 +23,9 @@ export const DEFAULT_AUDIT_FILTERS = Object.freeze({
 });
 
 const TRACKING_PARAM_KEYS = [
-  'view', 'trackingTab',
+  'view', 'tab', 'trackingTab', 'clanId',
   'objectType', 'objectKeyword', 'objectStatus', 'objectFrom', 'objectTo', 'objectPage', 'objectPageSize',
-  'traceType', 'traceId',
+  'targetType', 'targetId', 'reviewTaskId', 'traceType', 'traceId',
   'auditActor', 'auditAction', 'auditTarget', 'auditResult', 'auditKeyword', 'auditFrom', 'auditTo',
   'auditPage', 'auditPageSize', 'auditLog'
 ];
@@ -41,11 +41,15 @@ function text(params, key, fallback = '') {
 
 export function readTrackingCenterState(search = '') {
   const params = new URLSearchParams(String(search).replace(/^\?/, ''));
-  const activeTab = params.get('trackingTab') === TRACKING_TABS.AUDIT
+  const requestedTab = text(params, 'tab') || text(params, 'trackingTab');
+  const activeTab = requestedTab === TRACKING_TABS.AUDIT
     ? TRACKING_TABS.AUDIT
     : TRACKING_TABS.OBJECT;
+  const targetType = text(params, 'targetType') || text(params, 'traceType');
+  const targetId = text(params, 'targetId') || text(params, 'traceId');
 
   return {
+    clanId: text(params, 'clanId'),
     activeTab,
     objectFilters: {
       objectType: text(params, 'objectType', DEFAULT_OBJECT_FILTERS.objectType),
@@ -68,8 +72,9 @@ export function readTrackingCenterState(search = '') {
       pageSize: positiveInt(params.get('auditPageSize'), DEFAULT_AUDIT_FILTERS.pageSize)
     },
     selectedTrace: {
-      targetType: text(params, 'traceType'),
-      targetId: text(params, 'traceId')
+      targetType,
+      targetId,
+      reviewTaskId: text(params, 'reviewTaskId')
     },
     selectedAuditLogId: text(params, 'auditLog')
   };
@@ -85,8 +90,8 @@ export function writeTrackingCenterState(state, currentSearch = '') {
   const params = new URLSearchParams(String(currentSearch).replace(/^\?/, ''));
   TRACKING_PARAM_KEYS.forEach(key => params.delete(key));
   params.set('view', 'auditTrace');
-
-  if (state.activeTab === TRACKING_TABS.AUDIT) params.set('trackingTab', TRACKING_TABS.AUDIT);
+  params.set('tab', state.activeTab === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT);
+  setWhen(params, 'clanId', state.clanId);
 
   const object = state.objectFilters || DEFAULT_OBJECT_FILTERS;
   setWhen(params, 'objectType', object.objectType, DEFAULT_OBJECT_FILTERS.objectType);
@@ -108,8 +113,9 @@ export function writeTrackingCenterState(state, currentSearch = '') {
   setWhen(params, 'auditPage', audit.pageNo, DEFAULT_AUDIT_FILTERS.pageNo);
   setWhen(params, 'auditPageSize', audit.pageSize, DEFAULT_AUDIT_FILTERS.pageSize);
 
-  setWhen(params, 'traceType', state.selectedTrace?.targetType);
-  setWhen(params, 'traceId', state.selectedTrace?.targetId);
+  setWhen(params, 'targetType', state.selectedTrace?.targetType);
+  setWhen(params, 'targetId', state.selectedTrace?.targetId);
+  setWhen(params, 'reviewTaskId', state.selectedTrace?.reviewTaskId);
   setWhen(params, 'auditLog', state.selectedAuditLogId);
 
   const serialized = params.toString();
