@@ -15,8 +15,50 @@ public record TreeNodeResponse(
         String birthText,
         String deathText,
         String dataStatus,
-        String privacyLevel
+        String privacyLevel,
+        TreeEvidenceSummary evidenceSummary,
+        TreeReviewSummary reviewSummary,
+        TreeAnomalySummary anomalySummary
 ) {
+
+    public TreeNodeResponse(
+            String nodeId,
+            Long personId,
+            String displayName,
+            String name,
+            String visibility,
+            String maskReason,
+            String gender,
+            Integer generationNo,
+            String generationWord,
+            Long branchId,
+            String branchName,
+            String birthText,
+            String deathText,
+            String dataStatus,
+            String privacyLevel
+    ) {
+        this(
+                nodeId,
+                personId,
+                displayName,
+                name,
+                visibility,
+                maskReason,
+                gender,
+                generationNo,
+                generationWord,
+                branchId,
+                branchName,
+                birthText,
+                deathText,
+                dataStatus,
+                privacyLevel,
+                null,
+                null,
+                null
+        );
+    }
 
     public TreeNodeResponse(
             Long personId,
@@ -41,7 +83,37 @@ public record TreeNodeResponse(
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
+        );
+    }
+
+    public TreeNodeResponse withSummaries(
+            TreeEvidenceSummary evidence,
+            TreeReviewSummary review,
+            TreeAnomalySummary anomaly
+    ) {
+        return new TreeNodeResponse(
+                nodeId,
+                personId,
+                displayName,
+                name,
+                visibility,
+                maskReason,
+                gender,
+                generationNo,
+                generationWord,
+                branchId,
+                branchName,
+                birthText,
+                deathText,
+                dataStatus,
+                privacyLevel,
+                evidence,
+                review,
+                anomaly
         );
     }
 }
