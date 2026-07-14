@@ -112,6 +112,17 @@ public class ImportJobExecutionCoordinatorService {
     }
 
     private void cancelAtSafePoint(ImportJobEntity job, LocalDateTime now) {
+        if (hasSideEffects(job)) {
+            job.setRequestedAction(null);
+            job.setExecutionStatus(ImportJobEntity.EXECUTION_PAUSED);
+            job.setErrorSummary("任务在取消请求生效前已生成草稿或开始发布，已自动转为暂停以保护数据完整性");
+            job.setLeaseOwner(null);
+            job.setLeaseExpiresAt(null);
+            job.setHeartbeatAt(now);
+            job.setUpdatedAt(now);
+            jobRepository.save(job);
+            return;
+        }
         job.setRequestedAction(null);
         job.setExecutionStatus(ImportJobEntity.EXECUTION_CANCELLED);
         job.setExecutionStage(ImportJobEntity.STAGE_CANCELLED);
@@ -122,6 +133,10 @@ public class ImportJobExecutionCoordinatorService {
         job.setUpdatedAt(now);
         jobRepository.save(job);
         deletePayloadIfPresent(job.getId());
+    }
+
+    private boolean hasSideEffects(ImportJobEntity job) {
+        return value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
     }
 
     private void deletePayloadIfPresent(Long jobId) {
