@@ -9,6 +9,9 @@ create index if not exists idx_revision_clan_submitter_time
 create index if not exists idx_revision_clan_target_time
     on revision(clan_id, target_type, target_id, submit_time desc, id desc);
 
+create index if not exists idx_review_task_revision_id
+    on review_task(revision_id);
+
 create index if not exists idx_review_task_clan_status_created
     on review_task(clan_id, status, created_at desc, id desc);
 
