@@ -45,6 +45,20 @@ function detail(status = 'pending', overrides = {}) {
   };
 }
 
+function reviewDiff(overrides = {}) {
+  return {
+    reviewTaskId: 91,
+    revisionId: 301,
+    clanId: 7,
+    targetType: 'person',
+    targetId: 45,
+    changeType: 'modified',
+    diffSummary: '姓名字段调整',
+    fields: [],
+    ...overrides
+  };
+}
+
 test('approved, rejected and pending timeline states come only from the real task status', () => {
   assert.equal(timelineStatusFromReviewStatus('approved'), 'done');
   assert.equal(timelineStatusFromReviewStatus('rejected'), 'warn');
@@ -81,12 +95,14 @@ test('selecting a new business object clears the previous review task and trace 
   assert.equal(reset.coverage, null);
 });
 
-test('review task tracing uses the audit record business target and two explicit log scopes', () => {
+test('review task tracing trusts matching detail and diff and creates two explicit log scopes', () => {
   const selection = traceSelectionFromLog({ clanId: 7, targetType: 'review_task', targetId: 91 }, 7, '审核任务');
-  const context = resolveTraceContext(selection, detail('approved'));
+  const context = resolveTraceContext(selection, detail('approved'), reviewDiff());
 
   assert.deepEqual(context.businessTarget, { targetType: 'person', targetId: '45' });
   assert.equal(context.reviewTaskId, '91');
+  assert.equal(context.reviewTaskTrusted, true);
+  assert.equal(context.diffTrusted, true);
   assert.deepEqual(buildOperationLogScopes(context), [
     { key: 'object', targetType: 'person', targetId: '45' },
     { key: 'reviewTask', targetType: 'review_task', targetId: '91' }
@@ -96,7 +112,7 @@ test('review task tracing uses the audit record business target and two explicit
 
 test('business object tracing without an explicit review task is partial rather than inferred', () => {
   const selection = traceSelectionFromLog({ clanId: 7, targetType: 'relationships', targetId: 88 }, 7, '亲属关系');
-  const context = resolveTraceContext(selection, null);
+  const context = resolveTraceContext(selection, null, null);
   const coverage = evaluateTraceCoverage({
     context,
     scopeStates: [{ key: 'object', loaded: true }]
@@ -112,7 +128,7 @@ test('business object tracing without an explicit review task is partial rather 
 
 test('missing review detail is reported and never replaced with a guessed business target', () => {
   const selection = traceSelectionFromLog({ clanId: 7, targetType: 'review_task', targetId: 91 }, 7, '审核任务');
-  const context = resolveTraceContext(selection, null);
+  const context = resolveTraceContext(selection, null, null);
   const coverage = evaluateTraceCoverage({
     context,
     detailState: 'failed',
@@ -121,6 +137,8 @@ test('missing review detail is reported and never replaced with a guessed busine
   });
 
   assert.equal(context.businessTarget, null);
+  assert.equal(context.reviewTaskTrusted, false);
+  assert.equal(context.diffTrusted, false);
   assert.equal(coverage.level, 'partial');
   assert.match(coverage.message, /审核任务详情缺失/);
   assert.match(coverage.message, /无法确认关联业务对象/);
@@ -142,11 +160,56 @@ test('logs are deduplicated and sorted by real time with missing times last and 
   assert.deepEqual(logs.map(log => log.id), [1, 2, 3, 4]);
 });
 
-test('context mismatches are visible instead of silently joining different objects', () => {
+test('task and audit target mismatches are not used to query or display another object', () => {
   const selection = traceSelectionFromLog({ clanId: 7, targetType: 'review_task', targetId: 91 }, 7, '审核任务');
   const context = resolveTraceContext(selection, detail('approved', {
     task: { targetType: 'source', targetId: 99 },
     auditRecord: { targetType: 'person', targetId: 45 }
+  }), reviewDiff());
+  const coverage = evaluateTraceCoverage({
+    context,
+    detailState: 'loaded',
+    diffState: 'loaded',
+    scopeStates: [{ key: 'reviewTask', loaded: true }]
+  });
+
+  assert.equal(context.businessTarget, null);
+  assert.equal(context.reviewTaskTrusted, true);
+  assert.equal(context.diffTrusted, false);
+  assert.deepEqual(buildOperationLogScopes(context), [
+    { key: 'reviewTask', targetType: 'review_task', targetId: '91' }
+  ]);
+  assert.equal(coverage.level, 'partial');
+  assert.match(coverage.message, /指向的业务对象不一致/);
+});
+
+test('cross-clan or wrong-task detail is rejected as untrusted review state', () => {
+  const selection = traceSelectionFromLog({ clanId: 7, targetType: 'review_task', targetId: 91 }, 7, '审核任务');
+  const context = resolveTraceContext(selection, detail('rejected', {
+    task: { id: 92, clanId: 8 },
+    auditRecord: { clanId: 8 }
+  }), reviewDiff());
+  const coverage = evaluateTraceCoverage({
+    context,
+    detailState: 'loaded',
+    diffState: 'loaded',
+    scopeStates: [{ key: 'reviewTask', loaded: true }]
+  });
+
+  assert.equal(context.reviewTaskTrusted, false);
+  assert.equal(context.businessTarget, null);
+  assert.equal(coverage.level, 'partial');
+  assert.match(coverage.message, /当前任务标识不一致/);
+  assert.match(coverage.message, /不属于当前宗族/);
+  assert.match(coverage.message, /未通过一致性校验/);
+});
+
+test('diff mismatch is not presented as the selected review task change set', () => {
+  const selection = traceSelectionFromLog({ clanId: 7, targetType: 'review_task', targetId: 91 }, 7, '审核任务');
+  const context = resolveTraceContext(selection, detail('approved'), reviewDiff({
+    reviewTaskId: 92,
+    targetType: 'source',
+    targetId: 99
   }));
   const coverage = evaluateTraceCoverage({
     context,
@@ -158,6 +221,9 @@ test('context mismatches are visible instead of silently joining different objec
     ]
   });
 
+  assert.equal(context.reviewTaskTrusted, true);
+  assert.equal(context.diffTrusted, false);
   assert.equal(coverage.level, 'partial');
-  assert.match(coverage.message, /指向的业务对象不一致/);
+  assert.match(coverage.message, /审核 Diff 与当前任务标识不一致/);
+  assert.match(coverage.message, /字段变更明细未通过一致性校验/);
 });
