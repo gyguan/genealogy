@@ -121,7 +121,7 @@ public class TrackingTraceApplicationService {
 
         TraceSubject subject = resolveSubject(clanId, normalizedType, targetId, requestedSummary, scope);
         Segment<RevisionEntity> revisionSegment = loadRevisions(clanId, subject);
-        Segment<ReviewTaskEntity> reviewTaskSegment = loadReviewTasks(clanId, subject, revisionSegment.records());
+        Segment<ReviewTaskEntity> reviewTaskSegment = loadReviewTasks(clanId, subject, revisionSegment.records(), scope);
         Segment<SourceBindingEntity> bindingSegment = loadBindings(clanId, subject);
 
         List<SourceBindingItem> bindingItems = visibleBindingItems(
@@ -283,7 +283,8 @@ public class TrackingTraceApplicationService {
     private Segment<ReviewTaskEntity> loadReviewTasks(
             Long clanId,
             TraceSubject subject,
-            List<RevisionEntity> revisions
+            List<RevisionEntity> revisions,
+            PermissionDataScope scope
     ) {
         if (subject.selectedTask() != null) {
             return new Segment<>(List.of(subject.selectedTask()), false);
@@ -295,12 +296,12 @@ public class TrackingTraceApplicationService {
         if (revisionIds.isEmpty()) {
             return new Segment<>(List.of(), false);
         }
-        Page<ReviewTaskEntity> page = reviewTaskRepository
-                .findByClanIdAndRevisionIdInOrderByCreatedAtDesc(
-                        clanId,
-                        revisionIds,
-                        PageRequest.of(0, FETCH_LIMIT)
-                );
+        PageRequest pageRequest = PageRequest.of(0, FETCH_LIMIT);
+        Page<ReviewTaskEntity> page = scope.fullClanAccess()
+                ? reviewTaskRepository.findByClanIdAndRevisionIdInOrderByCreatedAtDesc(
+                        clanId, revisionIds, pageRequest)
+                : reviewTaskRepository.findByClanIdAndRevisionIdInAndBranchIdInOrderByCreatedAtDesc(
+                        clanId, revisionIds, scope.queryVisibleBranchIds(), pageRequest);
         return new Segment<>(limit(page.getContent()), page.getTotalElements() > SEGMENT_LIMIT);
     }
 
