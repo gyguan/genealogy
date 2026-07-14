@@ -8,19 +8,25 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4174",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:tracking-center": "node src/features/logs/trackingCenterModel.test.mjs",
     "api:generate": "node ../../scripts/api/generate-frontend-client.mjs",
-    "api:check": "npm run api:generate && git diff --exit-code src/shared/api/generated/api-contract.ts"
+    "api:check": "bash ../../scripts/api/check-api-contract.sh",
+    "test:members": "node --test src/features/members/memberPageModel.test.js",
+    "test:auth": "node --test src/features/auth/authPageModel.test.js",
+    "test:logs": "node --test src/features/logs/*.test.js src/features/logs/*.test.mjs",
+    "test:tracking-center": "node --test src/features/logs/trackingCenterModel.test.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "antd": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "dayjs": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   }

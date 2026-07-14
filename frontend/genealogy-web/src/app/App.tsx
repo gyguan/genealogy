@@ -41,6 +41,18 @@ const navItems = [
 type ViewKey = typeof navItems[number][0];
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
 
+function readViewFromUrl(): ViewKey {
+  const requested = new URLSearchParams(window.location.search).get('view');
+  return navItems.some(([key]) => key === requested) ? requested as ViewKey : 'home';
+}
+
+function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  if (key === 'home') url.searchParams.delete('view');
+  else url.searchParams.set('view', key);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
   if (data && typeof data === 'object') {
@@ -91,7 +103,7 @@ export function App() {
 }
 
 function AppShell() {
-  const [active, setActive] = useState<ViewKey>('home');
+  const [active, setActive] = useState<ViewKey>(readViewFromUrl);
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
@@ -153,9 +165,19 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
+  useEffect(() => {
+    const onPopState = () => {
+      setActive(readViewFromUrl());
+      setPageEntryVersion(prev => prev + 1);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
   function enterPage(key: ViewKey) {
     setActive(key);
     setPageEntryVersion(prev => prev + 1);
+    writeViewToUrl(key);
   }
 
   function renderPage() {
