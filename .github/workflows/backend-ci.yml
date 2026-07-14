@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend-compile:
-    name: Backend Compile
+  backend-verify:
+    name: Backend Verify
     runs-on: ubuntu-latest
 
     steps:
@@ -33,6 +33,15 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Compile and package backend
+      - name: Test and package backend
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipTests package
+        run: mvn -B verify
+
+      - name: Upload failed test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: backend/genealogy-backend/target/surefire-reports
+          if-no-files-found: ignore
+          retention-days: 3

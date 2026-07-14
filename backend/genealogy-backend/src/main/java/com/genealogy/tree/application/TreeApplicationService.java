@@ -11,11 +11,13 @@ import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.tree.application.TreeGraphAccumulator.EdgeAddResult;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.PersonProjection;
 import com.genealogy.tree.application.TreeVisibilityApplicationService.Visibility;
+import com.genealogy.tree.application.TreeVisibilityApplicationService.VisibilitySession;
 import com.genealogy.tree.dto.TreeEdgeResponse;
 import com.genealogy.tree.dto.TreeGraphMeta;
 import com.genealogy.tree.dto.TreeGraphResponse;
 import com.genealogy.tree.dto.TreeGraphWarning;
 import com.genealogy.tree.dto.TreeNodeResponse;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,12 +95,12 @@ public class TreeApplicationService {
     ) {
         String normalizedDirection = normalizeDirection(direction);
         Set<String> normalizedScopes = normalizeRelationScopes(relationScopes);
-        String normalizedView = visibilityApplicationService.normalizeDataView(dataView);
+        VisibilitySession visibility = visibilityApplicationService.openSession(actorId, dataView);
         QueryLimits limits = normalizeLimits(maxDepth, maxNodes, maxEdges);
         PersonEntity root = getPerson(personId);
-        PersonProjection rootProjection = visibilityApplicationService.requireRootProjection(root, actorId, normalizedView);
+        PersonProjection rootProjection = visibility.requireRootProjection(root);
         if (rootProjection.visibility() == Visibility.MASKED) {
-            return maskedRootGraph(rootProjection, normalizedDirection, normalizedView, limits);
+            return maskedRootGraph(rootProjection, normalizedDirection, visibility.dataView(), limits);
         }
 
         TreeGraphAccumulator graph = new TreeGraphAccumulator(
@@ -109,34 +111,35 @@ public class TreeApplicationService {
 
         switch (normalizedDirection) {
             case DIRECTION_FAMILY -> appendDirectRelationships(
-                    personId, projections, graph, normalizedScopes, normalizedView, actorId, false
+                    root.getClanId(), personId, projections, graph, normalizedScopes, visibility, false
             );
-            case DIRECTION_ANCESTORS -> traverse(
-                    personId, false, limits.appliedDepth(), projections, graph,
-                    normalizedScopes, normalizedView, actorId
+            case DIRECTION_ANCESTORS -> traverseByLayer(
+                    root.getClanId(), personId, false, limits.appliedDepth(), projections,
+                    graph, normalizedScopes, visibility
             );
-            case DIRECTION_DESCENDANTS -> traverse(
-                    personId, true, limits.appliedDepth(), projections, graph,
-                    normalizedScopes, normalizedView, actorId
+            case DIRECTION_DESCENDANTS -> traverseByLayer(
+                    root.getClanId(), personId, true, limits.appliedDepth(), projections,
+                    graph, normalizedScopes, visibility
             );
             case DIRECTION_BOTH -> {
                 appendDirectRelationships(
-                        personId, projections, graph, normalizedScopes, normalizedView, actorId, true
+                        root.getClanId(), personId, projections, graph,
+                        normalizedScopes, visibility, true
                 );
-                traverse(
-                        personId, false, limits.appliedDepth(), projections, graph,
-                        normalizedScopes, normalizedView, actorId
+                traverseByLayer(
+                        root.getClanId(), personId, false, limits.appliedDepth(), projections,
+                        graph, normalizedScopes, visibility
                 );
                 if (!graph.capacityReached()) {
-                    traverse(
-                            personId, true, limits.appliedDepth(), projections, graph,
-                            normalizedScopes, normalizedView, actorId
+                    traverseByLayer(
+                            root.getClanId(), personId, true, limits.appliedDepth(), projections,
+                            graph, normalizedScopes, visibility
                     );
                 }
             }
             default -> throw new BusinessException("TREE_DIRECTION_INVALID", "世系图谱查询方向无效");
         }
-        return graph.build(personId, normalizedDirection, normalizedView);
+        return graph.build(personId, normalizedDirection, visibility.dataView());
     }
 
     @Transactional(readOnly = true)
@@ -149,7 +152,8 @@ public class TreeApplicationService {
             Long actorId
     ) {
         return personLineage(
-                personId, DIRECTION_FAMILY, relationScopes, dataView, 1, maxNodes, maxEdges, actorId
+                personId, DIRECTION_FAMILY, relationScopes, dataView,
+                1, maxNodes, maxEdges, actorId
         );
     }
 
@@ -197,46 +201,56 @@ public class TreeApplicationService {
             Integer maxEdges,
             Long actorId
     ) {
-        String normalizedView = visibilityApplicationService.normalizeDataView(dataView);
+        VisibilitySession visibility = visibilityApplicationService.openSession(actorId, dataView);
         Set<String> normalizedScopes = normalizeRelationScopes(relationScopes);
         QueryLimits limits = normalizeLimits(maxDepth, maxNodes, maxEdges);
         BranchEntity rootBranch = branchRepository.findByIdAndClanId(branchId, clanId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
-        visibilityApplicationService.requireBranchQueryAccess(clanId, branchId, actorId, normalizedView);
+        visibility.requireBranchQueryAccess(clanId, branchId);
 
         Set<Long> branchScopeIds = includeSubBranches
-                ? findBranchScopeIds(clanId, rootBranch)
-                : Set.of(rootBranch.getId());
-        List<PersonEntity> candidates = personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
-                .filter(person -> person.getBranchId() != null && branchScopeIds.contains(person.getBranchId()))
-                .sorted(personComparator())
-                .toList();
+                ? new LinkedHashSet<>(branchRepository.findSubtreeIds(clanId, List.of(branchId)))
+                : Set.of(branchId);
+        if (branchScopeIds.isEmpty()) {
+            branchScopeIds = Set.of(branchId);
+        }
+
+        List<PersonEntity> candidates = personRepository.findTreePeopleByBranches(
+                clanId,
+                branchScopeIds,
+                visibility.visibleDataStatuses(),
+                PageRequest.of(0, limits.maxNodes() + 1)
+        );
 
         Map<Long, PersonProjection> visibleProjections = new LinkedHashMap<>();
         int filteredPersonCount = 0;
         for (PersonEntity person : candidates) {
-            PersonProjection projection = visibilityApplicationService.projectPerson(person, actorId, normalizedView);
+            PersonProjection projection = visibility.projectPerson(person);
             if (projection.visibility() == Visibility.FULL) {
-                visibleProjections.put(person.getId(), projection);
+                visibleProjections.putIfAbsent(person.getId(), projection);
             } else {
                 filteredPersonCount++;
             }
         }
 
+        List<RelationshipEntity> relationshipCandidates = visibleProjections.isEmpty()
+                ? List.of()
+                : relationshipRepository.findTreeWithinPeople(
+                        clanId,
+                        visibleProjections.keySet(),
+                        visibility.visibleDataStatuses(),
+                        normalizedScopes,
+                        PageRequest.of(0, limits.maxEdges() + 1)
+                );
+
         List<RelationshipEntity> safeRelationships = new ArrayList<>();
         Set<String> sourceEdgeKeys = new HashSet<>();
         int filteredRelationshipCount = 0;
         int duplicateSourceEdges = 0;
-        for (RelationshipEntity relationship : relationshipRepository.findByClanIdAndDeletedAtIsNull(clanId)) {
+        for (RelationshipEntity relationship : relationshipCandidates) {
             PersonProjection from = visibleProjections.get(relationship.getFromPersonId());
             PersonProjection to = visibleProjections.get(relationship.getToPersonId());
-            if (from == null || to == null || !relationScopeIncluded(relationship, normalizedScopes)) {
-                filteredRelationshipCount++;
-                continue;
-            }
-            if (!visibilityApplicationService.canExposeRelationship(
-                    relationship, from, to, actorId, normalizedView
-            )) {
+            if (from == null || to == null || !visibility.canExposeRelationship(relationship, from, to)) {
                 filteredRelationshipCount++;
                 continue;
             }
@@ -247,14 +261,7 @@ public class TreeApplicationService {
             }
             safeRelationships.add(relationship);
         }
-        safeRelationships.sort(Comparator
-                .comparing((RelationshipEntity relationship) -> personSortKey(
-                        visibleProjections.get(relationship.getFromPersonId()).entity()
-                ))
-                .thenComparing(relationship -> personSortKey(
-                        visibleProjections.get(relationship.getToPersonId()).entity()
-                ))
-                .thenComparing(relationship -> relationship.getId() == null ? Long.MAX_VALUE : relationship.getId()));
+        safeRelationships.sort(relationshipComparator(visibleProjections));
 
         TreeGraphAccumulator graph = new TreeGraphAccumulator(
                 limits.requestedDepth(), limits.appliedDepth(), limits.maxNodes(), limits.maxEdges()
@@ -290,10 +297,17 @@ public class TreeApplicationService {
 
         Set<Long> selectedIds = new LinkedHashSet<>();
         Set<Long> depthOmittedIds = new HashSet<>();
+        Map<Long, PersonProjection> selectedProjections = new LinkedHashMap<>();
         for (Long seed : seeds) {
             selectBranchComponent(
-                    seed, outgoingLineage, visibleProjections, selectedIds, depthOmittedIds,
-                    limits.appliedDepth(), graph
+                    seed,
+                    outgoingLineage,
+                    visibleProjections,
+                    selectedProjections,
+                    selectedIds,
+                    depthOmittedIds,
+                    limits.appliedDepth(),
+                    graph
             );
             if (graph.capacityReached()) {
                 break;
@@ -305,8 +319,14 @@ public class TreeApplicationService {
                     continue;
                 }
                 selectBranchComponent(
-                        candidateId, outgoingLineage, visibleProjections, selectedIds, depthOmittedIds,
-                        limits.appliedDepth(), graph
+                        candidateId,
+                        outgoingLineage,
+                        visibleProjections,
+                        selectedProjections,
+                        selectedIds,
+                        depthOmittedIds,
+                        limits.appliedDepth(),
+                        graph
                 );
                 if (graph.capacityReached()) {
                     break;
@@ -324,16 +344,15 @@ public class TreeApplicationService {
             }
             graph.addEdge(edgeKey(relationship), toEdge(relationship));
         }
-        detectBranchCycles(selectedIds, safeRelationships, graph);
+        detectBranchCycles(graph.edgeValues(), graph);
 
         Set<Long> incidentIds = graph.edgeValues().stream()
                 .flatMap(edge -> List.of(edge.fromPersonId(), edge.toPersonId()).stream())
                 .filter(id -> id != null)
                 .collect(Collectors.toSet());
-        int isolatedCount = (int) selectedIds.stream().filter(id -> !incidentIds.contains(id)).count();
-        graph.recordIsolatedNodes(isolatedCount);
+        graph.recordIsolatedNodes((int) selectedIds.stream().filter(id -> !incidentIds.contains(id)).count());
 
-        Long rootPersonId = chooseBranchRoot(rootBranch, selectedIds, safeRelationships);
+        Long rootPersonId = chooseBranchRoot(rootBranch, selectedIds, graph.edgeValues());
         if (rootBranch.getFounderPersonId() != null
                 && !selectedIds.contains(rootBranch.getFounderPersonId())) {
             graph.recordRootFiltered();
@@ -341,98 +360,148 @@ public class TreeApplicationService {
         if (rootPersonId == null && !visibleProjections.isEmpty()) {
             graph.recordRootFiltered();
         }
-        return graph.build(rootPersonId, DIRECTION_DESCENDANTS, normalizedView);
+        return graph.build(rootPersonId, DIRECTION_DESCENDANTS, visibility.dataView());
     }
 
     private void appendDirectRelationships(
+            Long clanId,
             Long personId,
             Map<Long, PersonProjection> projections,
             TreeGraphAccumulator graph,
             Set<String> relationScopes,
-            String dataView,
-            Long actorId,
+            VisibilitySession visibility,
             boolean excludeLineage
     ) {
-        appendRelationships(
-                personId, true, projections, graph, relationScopes, dataView, actorId,
-                false, excludeLineage, null, null, null, null
+        appendOneDirectionBatch(
+                clanId,
+                Map.of(personId, new TraversalState(personId, 0, Set.of(personId))),
+                true,
+                projections,
+                graph,
+                relationScopes,
+                visibility,
+                false,
+                excludeLineage,
+                null,
+                null
         );
         if (!graph.capacityReached()) {
-            appendRelationships(
-                    personId, false, projections, graph, relationScopes, dataView, actorId,
-                    false, excludeLineage, null, null, null, null
+            appendOneDirectionBatch(
+                    clanId,
+                    Map.of(personId, new TraversalState(personId, 0, Set.of(personId))),
+                    false,
+                    projections,
+                    graph,
+                    relationScopes,
+                    visibility,
+                    false,
+                    excludeLineage,
+                    null,
+                    null
             );
         }
     }
 
-    private void traverse(
+    private void traverseByLayer(
+            Long clanId,
             Long rootPersonId,
             boolean outgoing,
             int depthLimit,
             Map<Long, PersonProjection> projections,
             TreeGraphAccumulator graph,
             Set<String> relationScopes,
-            String dataView,
-            Long actorId
+            VisibilitySession visibility
     ) {
-        Queue<TraversalState> queue = new ArrayDeque<>();
+        Map<Long, TraversalState> frontier = new LinkedHashMap<>();
+        frontier.put(rootPersonId, new TraversalState(rootPersonId, 0, Set.of(rootPersonId)));
         Set<Long> visited = new HashSet<>();
         Set<Long> queued = new HashSet<>();
-        queue.add(new TraversalState(rootPersonId, 0, Set.of(rootPersonId)));
         queued.add(rootPersonId);
 
-        while (!queue.isEmpty() && !graph.capacityReached()) {
-            TraversalState current = queue.poll();
-            queued.remove(current.personId());
-            if (!visited.add(current.personId())) {
-                continue;
-            }
-            if (current.depth() >= depthLimit) {
-                if (hasVisibleNextLineage(
-                        current, outgoing, projections, relationScopes, dataView, actorId
+        while (!frontier.isEmpty() && !graph.capacityReached()) {
+            TraversalState first = frontier.values().iterator().next();
+            if (first.depth() >= depthLimit) {
+                if (hasVisibleNextLayer(
+                        clanId, frontier, outgoing, projections, relationScopes, visibility
                 )) {
                     graph.recordDepthLimit();
                 }
-                continue;
+                break;
             }
-            appendRelationships(
-                    current.personId(), outgoing, projections, graph, relationScopes, dataView, actorId,
-                    true, false, queue, visited, queued, current
+
+            Map<Long, TraversalState> nextFrontier = new LinkedHashMap<>();
+            appendOneDirectionBatch(
+                    clanId,
+                    frontier,
+                    outgoing,
+                    projections,
+                    graph,
+                    relationScopes,
+                    visibility,
+                    true,
+                    false,
+                    visited,
+                    nextFrontier
             );
+            visited.addAll(frontier.keySet());
+            queued.removeAll(frontier.keySet());
+            for (Long nextId : nextFrontier.keySet()) {
+                if (!visited.contains(nextId)) {
+                    queued.add(nextId);
+                }
+            }
+            frontier = nextFrontier.entrySet().stream()
+                    .filter(entry -> !visited.contains(entry.getKey()))
+                    .filter(entry -> queued.contains(entry.getKey()))
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (left, right) -> left,
+                            LinkedHashMap::new
+                    ));
         }
     }
 
-    private void appendRelationships(
-            Long personId,
+    private void appendOneDirectionBatch(
+            Long clanId,
+            Map<Long, TraversalState> frontier,
             boolean outgoing,
             Map<Long, PersonProjection> projections,
             TreeGraphAccumulator graph,
             Set<String> relationScopes,
-            String dataView,
-            Long actorId,
+            VisibilitySession visibility,
             boolean lineageOnly,
             boolean excludeLineage,
-            Queue<TraversalState> queue,
             Set<Long> visited,
-            Set<Long> queued,
-            TraversalState current
+            Map<Long, TraversalState> nextFrontier
     ) {
-        List<RelationshipEntity> relationships = outgoing
-                ? relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(personId)
-                : relationshipRepository.findByToPersonIdAndDeletedAtIsNull(personId);
+        if (frontier.isEmpty() || graph.capacityReached()) {
+            return;
+        }
+        List<RelationshipEntity> relationships = loadRelationships(
+                clanId,
+                frontier.keySet(),
+                outgoing,
+                visibility.visibleDataStatuses(),
+                relationScopes,
+                lineageOnly
+        );
+        if (excludeLineage) {
+            relationships = relationships.stream().filter(edge -> !isLineageRelationship(edge)).toList();
+        }
+
+        Set<Long> relatedIds = relationships.stream()
+                .map(edge -> outgoing ? edge.getToPersonId() : edge.getFromPersonId())
+                .filter(id -> id != null && !projections.containsKey(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, PersonEntity> relatedPeople = loadPeopleByIds(
+                clanId, relatedIds, visibility.visibleDataStatuses()
+        );
+
         Set<String> batchEdgeKeys = new HashSet<>();
         for (RelationshipEntity relationship : relationships) {
             if (graph.capacityReached()) {
                 return;
-            }
-            if (lineageOnly && !isLineageRelationship(relationship)) {
-                continue;
-            }
-            if (excludeLineage && isLineageRelationship(relationship)) {
-                continue;
-            }
-            if (!relationScopeIncluded(relationship, relationScopes)) {
-                continue;
             }
             String key = edgeKey(relationship);
             if (!batchEdgeKeys.add(key)) {
@@ -443,33 +512,37 @@ public class TreeApplicationService {
                 continue;
             }
 
-            Long relatedPersonId = outgoing ? relationship.getToPersonId() : relationship.getFromPersonId();
-            PersonEntity related = personRepository.findByIdAndDeletedAtIsNull(relatedPersonId).orElse(null);
-            if (related == null) {
-                graph.recordPartialVisibility(1);
+            Long currentId = outgoing ? relationship.getFromPersonId() : relationship.getToPersonId();
+            Long relatedId = outgoing ? relationship.getToPersonId() : relationship.getFromPersonId();
+            TraversalState current = frontier.get(currentId);
+            if (current == null) {
                 continue;
             }
-            PersonProjection relatedProjection = projections.get(relatedPersonId);
+
+            PersonProjection relatedProjection = projections.get(relatedId);
             if (relatedProjection == null) {
-                relatedProjection = visibilityApplicationService.projectPerson(related, actorId, dataView);
+                PersonEntity related = relatedPeople.get(relatedId);
+                if (related == null) {
+                    graph.recordPartialVisibility(1);
+                    continue;
+                }
+                relatedProjection = visibility.projectPerson(related);
             }
             if (relatedProjection.visibility() != Visibility.FULL) {
                 graph.recordPartialVisibility(1);
                 continue;
             }
-            PersonProjection currentProjection = projections.get(personId);
+
+            PersonProjection currentProjection = projections.get(currentId);
             PersonProjection fromProjection = outgoing ? currentProjection : relatedProjection;
             PersonProjection toProjection = outgoing ? relatedProjection : currentProjection;
             if (fromProjection == null || toProjection == null
-                    || !visibilityApplicationService.canExposeRelationship(
-                    relationship, fromProjection, toProjection, actorId, dataView
-            )) {
+                    || !visibility.canExposeRelationship(relationship, fromProjection, toProjection)) {
                 graph.recordPartialVisibility(1);
                 continue;
             }
 
-            boolean cycle = relatedPersonId.equals(personId)
-                    || current != null && current.path().contains(relatedPersonId);
+            boolean cycle = relatedId.equals(currentId) || current.path().contains(relatedId);
             if (cycle) {
                 graph.recordCycle();
             }
@@ -480,64 +553,116 @@ public class TreeApplicationService {
             if (edgeResult == EdgeAddResult.LIMIT_REACHED) {
                 return;
             }
-            if (queue != null && current != null && !cycle
-                    && !visited.contains(relatedPersonId) && queued.add(relatedPersonId)) {
+
+            if (nextFrontier != null && !cycle
+                    && (visited == null || !visited.contains(relatedId))
+                    && !frontier.containsKey(relatedId)
+                    && !nextFrontier.containsKey(relatedId)) {
                 Set<Long> nextPath = new LinkedHashSet<>(current.path());
-                nextPath.add(relatedPersonId);
-                queue.add(new TraversalState(
-                        relatedPersonId, current.depth() + 1, Set.copyOf(nextPath)
-                ));
+                nextPath.add(relatedId);
+                nextFrontier.put(
+                        relatedId,
+                        new TraversalState(relatedId, current.depth() + 1, Set.copyOf(nextPath))
+                );
             }
         }
     }
 
-    private boolean hasVisibleNextLineage(
-            TraversalState current,
+    private boolean hasVisibleNextLayer(
+            Long clanId,
+            Map<Long, TraversalState> frontier,
             boolean outgoing,
             Map<Long, PersonProjection> projections,
             Set<String> relationScopes,
-            String dataView,
-            Long actorId
+            VisibilitySession visibility
     ) {
-        List<RelationshipEntity> relationships = outgoing
-                ? relationshipRepository.findByFromPersonIdAndDeletedAtIsNull(current.personId())
-                : relationshipRepository.findByToPersonIdAndDeletedAtIsNull(current.personId());
+        List<RelationshipEntity> relationships = loadRelationships(
+                clanId,
+                frontier.keySet(),
+                outgoing,
+                visibility.visibleDataStatuses(),
+                relationScopes,
+                true
+        );
+        Set<Long> relatedIds = relationships.stream()
+                .map(edge -> outgoing ? edge.getToPersonId() : edge.getFromPersonId())
+                .filter(id -> id != null && !projections.containsKey(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, PersonEntity> relatedPeople = loadPeopleByIds(
+                clanId, relatedIds, visibility.visibleDataStatuses()
+        );
+
         for (RelationshipEntity relationship : relationships) {
-            if (!isLineageRelationship(relationship) || !relationScopeIncluded(relationship, relationScopes)) {
+            Long currentId = outgoing ? relationship.getFromPersonId() : relationship.getToPersonId();
+            Long relatedId = outgoing ? relationship.getToPersonId() : relationship.getFromPersonId();
+            TraversalState current = frontier.get(currentId);
+            if (current == null || current.path().contains(relatedId)) {
                 continue;
             }
-            Long relatedPersonId = outgoing ? relationship.getToPersonId() : relationship.getFromPersonId();
-            if (current.path().contains(relatedPersonId)) {
-                continue;
-            }
-            PersonEntity related = personRepository.findByIdAndDeletedAtIsNull(relatedPersonId).orElse(null);
-            if (related == null) {
-                continue;
-            }
-            PersonProjection relatedProjection = projections.get(relatedPersonId);
+            PersonProjection relatedProjection = projections.get(relatedId);
             if (relatedProjection == null) {
-                relatedProjection = visibilityApplicationService.projectPerson(related, actorId, dataView);
+                PersonEntity related = relatedPeople.get(relatedId);
+                if (related == null) {
+                    continue;
+                }
+                relatedProjection = visibility.projectPerson(related);
             }
             if (relatedProjection.visibility() != Visibility.FULL) {
                 continue;
             }
-            PersonProjection currentProjection = projections.get(current.personId());
+            PersonProjection currentProjection = projections.get(currentId);
             PersonProjection fromProjection = outgoing ? currentProjection : relatedProjection;
             PersonProjection toProjection = outgoing ? relatedProjection : currentProjection;
             if (fromProjection != null && toProjection != null
-                    && visibilityApplicationService.canExposeRelationship(
-                    relationship, fromProjection, toProjection, actorId, dataView
-            )) {
+                    && visibility.canExposeRelationship(relationship, fromProjection, toProjection)) {
                 return true;
             }
         }
         return false;
     }
 
+    private List<RelationshipEntity> loadRelationships(
+            Long clanId,
+            Set<Long> frontierIds,
+            boolean outgoing,
+            Set<String> statuses,
+            Set<String> relationScopes,
+            boolean lineageOnly
+    ) {
+        if (frontierIds.isEmpty()) {
+            return List.of();
+        }
+        return outgoing
+                ? relationshipRepository.findTreeOutgoing(
+                        clanId, frontierIds, statuses, relationScopes, lineageOnly
+                )
+                : relationshipRepository.findTreeIncoming(
+                        clanId, frontierIds, statuses, relationScopes, lineageOnly
+                );
+    }
+
+    private Map<Long, PersonEntity> loadPeopleByIds(
+            Long clanId,
+            Set<Long> personIds,
+            Set<String> statuses
+    ) {
+        if (personIds.isEmpty()) {
+            return Map.of();
+        }
+        return personRepository.findTreePeopleByIds(clanId, personIds, statuses).stream()
+                .collect(Collectors.toMap(
+                        PersonEntity::getId,
+                        person -> person,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+    }
+
     private void selectBranchComponent(
             Long seed,
             Map<Long, List<RelationshipEntity>> outgoingLineage,
             Map<Long, PersonProjection> visibleProjections,
+            Map<Long, PersonProjection> selectedProjections,
             Set<Long> selectedIds,
             Set<Long> depthOmittedIds,
             int depthLimit,
@@ -554,7 +679,7 @@ public class TreeApplicationService {
                 continue;
             }
             if (selectedIds.add(current.personId())
-                    && !addFullNode(graph, new LinkedHashMap<>(), projection)) {
+                    && !addFullNode(graph, selectedProjections, projection)) {
                 return;
             }
             List<RelationshipEntity> nextEdges = outgoingLineage.getOrDefault(current.personId(), List.of());
@@ -602,22 +727,22 @@ public class TreeApplicationService {
         }
     }
 
-    private void detectBranchCycles(
-            Set<Long> selectedIds,
-            List<RelationshipEntity> relationships,
-            TreeGraphAccumulator graph
-    ) {
-        Map<Long, List<Long>> adjacency = relationships.stream()
-                .filter(this::isLineageRelationship)
-                .filter(edge -> selectedIds.contains(edge.getFromPersonId())
-                        && selectedIds.contains(edge.getToPersonId()))
+    private void detectBranchCycles(List<TreeEdgeResponse> edges, TreeGraphAccumulator graph) {
+        Map<Long, List<Long>> adjacency = edges.stream()
+                .filter(edge -> Boolean.TRUE.equals(edge.isLineageRelation())
+                        || LINEAGE_RELATION_TYPE.equals(edge.relationType()))
+                .filter(edge -> edge.fromPersonId() != null && edge.toPersonId() != null)
                 .collect(Collectors.groupingBy(
-                        RelationshipEntity::getFromPersonId,
+                        TreeEdgeResponse::fromPersonId,
                         LinkedHashMap::new,
-                        Collectors.mapping(RelationshipEntity::getToPersonId, Collectors.toList())
+                        Collectors.mapping(TreeEdgeResponse::toPersonId, Collectors.toList())
                 ));
         Map<Long, VisitColor> colors = new HashMap<>();
-        for (Long nodeId : selectedIds) {
+        Set<Long> nodeIds = edges.stream()
+                .flatMap(edge -> List.of(edge.fromPersonId(), edge.toPersonId()).stream())
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        for (Long nodeId : nodeIds) {
             if (colors.getOrDefault(nodeId, VisitColor.WHITE) == VisitColor.WHITE) {
                 detectCyclesDepthFirst(nodeId, adjacency, colors, graph);
             }
@@ -738,13 +863,15 @@ public class TreeApplicationService {
                 relationship.getRelationType(),
                 relationship.getRelationLabel(),
                 category,
-                SCOPE_RITUAL.equals(category) ? relationship.getRelationType() : null,
+                relationship.getRitualRelationType() == null && SCOPE_RITUAL.equals(category)
+                        ? relationship.getRelationType()
+                        : relationship.getRitualRelationType(),
                 "visible",
                 relationship.getIsLineageRelation(),
-                null,
-                null,
+                relationship.getIsBiological(),
+                relationship.getIsPrimary(),
                 relationship.getDataStatus(),
-                null
+                relationship.getConfidenceLevel()
         );
     }
 
@@ -757,35 +884,19 @@ public class TreeApplicationService {
                 + "-" + String.valueOf(relationship.getRelationType());
     }
 
-    private Set<Long> findBranchScopeIds(Long clanId, BranchEntity rootBranch) {
-        String rootPath = rootBranch.getBranchPath();
-        return branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream()
-                .filter(branch -> branch.getId().equals(rootBranch.getId())
-                        || isDescendant(rootPath, branch.getBranchPath()))
-                .map(BranchEntity::getId)
-                .collect(Collectors.toCollection(HashSet::new));
-    }
-
-    private boolean isDescendant(String rootPath, String candidatePath) {
-        return rootPath != null && !rootPath.isBlank()
-                && candidatePath != null && !candidatePath.isBlank()
-                && (candidatePath.equals(rootPath) || candidatePath.startsWith(rootPath + "/"));
-    }
-
     private Long chooseBranchRoot(
             BranchEntity rootBranch,
             Set<Long> selectedIds,
-            List<RelationshipEntity> relationships
+            List<TreeEdgeResponse> edges
     ) {
         if (rootBranch.getFounderPersonId() != null
                 && selectedIds.contains(rootBranch.getFounderPersonId())) {
             return rootBranch.getFounderPersonId();
         }
-        Set<Long> childIds = relationships.stream()
-                .filter(this::isLineageRelationship)
-                .filter(edge -> selectedIds.contains(edge.getFromPersonId())
-                        && selectedIds.contains(edge.getToPersonId()))
-                .map(RelationshipEntity::getToPersonId)
+        Set<Long> childIds = edges.stream()
+                .filter(edge -> Boolean.TRUE.equals(edge.isLineageRelation())
+                        || LINEAGE_RELATION_TYPE.equals(edge.relationType()))
+                .map(TreeEdgeResponse::toPersonId)
                 .collect(Collectors.toSet());
         return selectedIds.stream()
                 .filter(id -> !childIds.contains(id))
@@ -794,12 +905,18 @@ public class TreeApplicationService {
                 .orElse(null);
     }
 
-    private Comparator<PersonEntity> personComparator() {
+    private Comparator<RelationshipEntity> relationshipComparator(
+            Map<Long, PersonProjection> projections
+    ) {
         return Comparator
-                .comparing((PersonEntity person) -> person.getGenerationNo() == null
-                        ? Integer.MAX_VALUE : person.getGenerationNo())
-                .thenComparing(person -> person.getPersonCode() == null ? "" : person.getPersonCode())
-                .thenComparing(PersonEntity::getId);
+                .comparing((RelationshipEntity relationship) -> personSortKey(
+                        projections.get(relationship.getFromPersonId()).entity()
+                ))
+                .thenComparing(relationship -> personSortKey(
+                        projections.get(relationship.getToPersonId()).entity()
+                ))
+                .thenComparing(relationship -> relationship.getId() == null
+                        ? Long.MAX_VALUE : relationship.getId());
     }
 
     private String personSortKey(PersonEntity person) {
@@ -816,10 +933,6 @@ public class TreeApplicationService {
     private boolean isLineageRelationship(RelationshipEntity relationship) {
         return LINEAGE_RELATION_TYPE.equals(relationship.getRelationType())
                 || Boolean.TRUE.equals(relationship.getIsLineageRelation());
-    }
-
-    private boolean relationScopeIncluded(RelationshipEntity relationship, Set<String> scopes) {
-        return scopes.contains(relationCategory(relationship));
     }
 
     private String relationCategory(RelationshipEntity relationship) {
