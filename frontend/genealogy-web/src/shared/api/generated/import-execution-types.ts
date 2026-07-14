@@ -4,10 +4,10 @@
  * Do not edit manually.
  */
 
-export type ImportExecutionMode = 'sync' | 'async';
-export type ImportExecutionStatus = 'queued' | 'running' | 'paused' | 'retry_wait' | 'completed' | 'failed' | 'cancelled' | 'dead_letter';
-export type ImportExecutionStage = 'queued' | 'parsing' | 'drafting' | 'ready_for_review' | 'publishing' | 'completed' | 'failed' | 'cancelled';
-export type ImportExecutionAction = 'pause' | 'resume' | 'cancel' | 'retry';
+export type ImportExecutionMode = "sync" | "async";
+export type ImportExecutionStatus = "queued" | "running" | "paused" | "retry_wait" | "completed" | "failed" | "cancelled" | "dead_letter";
+export type ImportExecutionStage = "queued" | "parsing" | "drafting" | "ready_for_review" | "publishing" | "completed" | "failed" | "cancelled";
+export type ImportExecutionAction = "pause" | "resume" | "cancel" | "retry";
 
 export type ImportJobExecutionResponse = {
   jobId: number;
