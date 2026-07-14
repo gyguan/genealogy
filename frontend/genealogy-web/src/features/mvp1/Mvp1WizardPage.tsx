@@ -7,13 +7,13 @@ type Notice = { message: string; id?: string | number };
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
 const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
-  { key: 'clan', title: '1. 创建宗族', desc: '独立创建宗族，创建后进入支派维护。' },
-  { key: 'branch', title: '2. 建立支派', desc: '支派需审核通过后才能用于字辈和人物。' },
-  { key: 'generation', title: '3. 维护字辈', desc: '字辈方案需审核通过后才能用于录入人物。' },
-  { key: 'person', title: '4. 录入人物', desc: '人物需审核通过后才能建立关系。' },
-  { key: 'relationship', title: '5. 建立关系', desc: '只允许选择已通过审核的人物。' },
-  { key: 'source', title: '6. 绑定来源', desc: '只允许绑定已通过审核的对象。' },
-  { key: 'review', title: '7. 审核进度', desc: '查看待审任务，也可补充提交草稿对象。' }
+  { key: 'clan', title: '宗族', desc: '创建宗族基础信息，完成后进入支派维护。' },
+  { key: 'branch', title: '支派', desc: '建立支派并提交审核，通过后可用于字辈和人物。' },
+  { key: 'generation', title: '字辈', desc: '维护字辈方案和明细，通过审核后可用于人物。' },
+  { key: 'person', title: '人物', desc: '录入人物档案，通过审核后可建立亲属关系。' },
+  { key: 'relationship', title: '关系', desc: '在已通过审核的人物之间建立亲属关系。' },
+  { key: 'source', title: '来源', desc: '为已通过审核的对象绑定可追溯来源。' },
+  { key: 'review', title: '审核', desc: '查看待审任务并补充提交草稿对象。' }
 ];
 
 export function Mvp1WizardPage({ notify }: Props) {
