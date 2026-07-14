@@ -36,11 +36,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/genealogy-web/package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
-        run: npm ci
+        run: npm install
       - name: Install Chromium
         working-directory: frontend/genealogy-web
         run: npx playwright install --with-deps chromium
