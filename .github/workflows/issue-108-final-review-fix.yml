@@ -1,0 +1,56 @@
+name: Issue 108 Final Review Fix
+
+on:
+  push:
+    branches:
+      - agent/issue-108-bulk-failure-handling
+    paths:
+      - '.github/workflows/issue-108-final-review-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-108-bulk-failure-handling
+      - name: Fix correction-only result and error disclosure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportRowBulkApplicationService.java')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  '                items.add(run(reference, () -> mutationExecutor.updateCorrection(\n                        clanId,\n                        jobId,\n                        correction.rowNo(),\n                        correction.expectedVersion(),\n                        correction.correctedData(),\n                        actorId\n                )));',
+                  '                items.add(runCorrectionUpdate(reference, () -> mutationExecutor.updateCorrection(\n                        clanId,\n                        jobId,\n                        correction.rowNo(),\n                        correction.expectedVersion(),\n                        correction.correctedData(),\n                        actorId\n                )));'
+              ),
+              (
+                  '    private ImportRowBulkItemResult failed(ImportRowVersionReference reference, String code, String message) {',
+                  '    private ImportRowBulkItemResult runCorrectionUpdate(ImportRowVersionReference reference, RowMutation mutation) {\n        try {\n            ImportJobRowResponse row = mutation.execute();\n            return new ImportRowBulkItemResult(\n                    stableKey(row.rowNo()), row.rowNo(), true, row.rowStatus(),\n                    row.errorCode(), row.errorMessage(), value(row.version())\n            );\n        } catch (BusinessException exception) {\n            return failed(reference, exception.getCode(), exception.getMessage());\n        } catch (OptimisticLockingFailureException exception) {\n            return failed(reference, "IMPORT_JOB_ROW_VERSION_CONFLICT", "该行已被其他用户修改，请刷新后重试");\n        } catch (RuntimeException exception) {\n            return failed(reference, "IMPORT_BULK_ROW_PROCESS_FAILED", safeError(exception));\n        }\n    }\n\n    private ImportRowBulkItemResult failed(ImportRowVersionReference reference, String code, String message) {'
+              ),
+              (
+                  '    private String safeError(RuntimeException exception) {\n        String message = exception.getMessage();\n        if (message == null || message.isBlank()) return "该行处理失败，请刷新后重试";\n        message = message.replace(\'\\n\', \' \').replace(\'\\r\', \' \').trim();\n        return message.length() > 500 ? message.substring(0, 500) : message;\n    }',
+                  '    private String safeError(RuntimeException exception) {\n        return "该行处理失败，请刷新后重试";\n    }'
+              )
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'missing patch target: {old[:120]!r}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportRowBulkApplicationService.java
+          git commit -m "fix(issue-108): report correction-only success safely"
+          git push origin HEAD:agent/issue-108-bulk-failure-handling
