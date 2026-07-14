@@ -1,0 +1,46 @@
+name: Issue 107 Sync And Generate
+
+on:
+  push:
+    branches:
+      - agent/issue-107-async-import-recovery
+    paths:
+      - '.github/workflows/issue-107-sync-generate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-107-async-import-recovery
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sync latest main and regenerate contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge origin/main --no-edit -X ours
+          node scripts/api/generate-frontend-client.mjs
+          node scripts/api/generate-import-execution-types.mjs
+          git add \
+            docs/api/openapi.shared-responses.json \
+            frontend/genealogy-web/src/shared/api/generated/api-contract.ts \
+            frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts \
+            frontend/genealogy-web/src/shared/api/generated/tracking-types.ts \
+            frontend/genealogy-web/src/shared/api/generated/culture-types.ts \
+            frontend/genealogy-web/src/shared/api/generated/import-execution-types.ts \
+            scripts/api/check-culture-contract.mjs \
+            tasks/issue-166-execution.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(issue-107): sync main and generated contracts"
+          fi
+          git push origin HEAD:agent/issue-107-async-import-recovery
