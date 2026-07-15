@@ -1,7 +1,9 @@
 package com.genealogy.culture.application;
 
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.repository.OperationLogRepository;
 import org.springframework.context.annotation.Primary;
@@ -18,13 +20,16 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
     private static final Set<String> RESTRICTED_PRIVACY = Set.of("private", "sealed");
 
     private final CultureItemRepository cultureItemRepository;
+    private final MigrationEventRepository migrationEventRepository;
 
     public CultureAwareOperationLogApplicationService(
             OperationLogRepository operationLogRepository,
-            CultureItemRepository cultureItemRepository
+            CultureItemRepository cultureItemRepository,
+            MigrationEventRepository migrationEventRepository
     ) {
         super(operationLogRepository);
         this.cultureItemRepository = cultureItemRepository;
+        this.migrationEventRepository = migrationEventRepository;
     }
 
     @Override
@@ -54,15 +59,14 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
             String requestId,
             String clientIp
     ) {
-        if (CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalize(targetType))
-                && restricted(targetId)) {
+        if (restrictedCultureTarget(targetType, targetId)) {
             super.record(
                     clanId,
                     actorId,
                     actionType,
                     targetType,
                     targetId,
-                    "受限文化资料操作",
+                    "受限文化对象操作",
                     null,
                     requestId,
                     clientIp
@@ -72,16 +76,30 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
         super.record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp);
     }
 
-    private boolean restricted(Long targetId) {
-        if (targetId == null) return true;
-        return cultureItemRepository.findById(targetId)
-                .map(this::restricted)
-                .orElse(true);
+    private boolean restrictedCultureTarget(String targetType, Long targetId) {
+        String normalizedType = normalize(targetType);
+        if (CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
+            if (targetId == null) return true;
+            return cultureItemRepository.findById(targetId).map(this::restricted).orElse(true);
+        }
+        if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
+            if (targetId == null) return true;
+            return migrationEventRepository.findById(targetId).map(this::restricted).orElse(true);
+        }
+        return false;
     }
 
     private boolean restricted(CultureItemEntity item) {
-        String privacy = normalize(item.getPrivacyLevel());
-        String sensitive = normalize(item.getSensitiveLevel());
+        return restricted(item.getPrivacyLevel(), item.getSensitiveLevel());
+    }
+
+    private boolean restricted(MigrationEventEntity event) {
+        return restricted(event.getPrivacyLevel(), event.getSensitiveLevel());
+    }
+
+    private boolean restricted(String privacyLevel, String sensitiveLevel) {
+        String privacy = normalize(privacyLevel);
+        String sensitive = normalize(sensitiveLevel);
         return RESTRICTED_PRIVACY.contains(privacy) || !sensitive.isEmpty() && !"normal".equals(sensitive);
     }
 
