@@ -14,7 +14,9 @@ async function openTree(page: Page, username = 'tree_editor') {
   await page.goto('/?view=treeProduct');
   await expect(page.getByText('世系图谱').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: '一、支派全局拓扑' })).toBeVisible();
-  await expect(page.locator('input[placeholder="姓名、谱名、字号"]')).toBeVisible();
+  await expect(page.locator('input[placeholder="输入姓名、谱名或字号"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: /展开结果/ })).toBeVisible();
+  await expect(page.locator('#lineage-person-search-results')).toHaveCount(0);
 }
 
 async function chooseComboboxOption(page: Page, comboboxIndex: number, optionName: string | RegExp) {
@@ -30,11 +32,20 @@ async function activateGraphControl(control: Locator) {
 }
 
 async function searchAndSelect(page: Page, keyword: string) {
-  const searchInput = page.locator('input[placeholder="姓名、谱名、字号"]');
+  const searchInput = page.locator('input[placeholder="输入姓名、谱名或字号"]');
   await searchInput.fill(keyword);
   await page.getByRole('button', { name: /搜\s*索/ }).click();
   await expect(page.getByText('共匹配 1 位人物')).toBeVisible();
-  await chooseComboboxOption(page, 2, new RegExp(keyword));
+
+  const results = page.locator('#lineage-person-search-results');
+  await expect(results).toBeVisible();
+  await expect(page.getByRole('button', { name: '收起结果' })).toBeVisible();
+  const resultItem = results.locator('.ant-list-item').filter({ hasText: keyword }).first();
+  await expect(resultItem).toBeVisible();
+  await resultItem.getByRole('button', { name: '设为中心' }).click();
+
+  await expect(results).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /展开结果/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: new RegExp(keyword) })).toBeVisible();
 }
 
@@ -48,9 +59,9 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await expect(personNodes.first()).toBeVisible();
   expect(await personNodes.count()).toBeGreaterThanOrEqual(2);
 
-  await chooseComboboxOption(page, 3, '2代');
-  await chooseComboboxOption(page, 3, '5代');
-  await expect(page.getByText('5代', { exact: true }).last()).toBeVisible();
+  await chooseComboboxOption(page, 3, '上下各 2 代');
+  await chooseComboboxOption(page, 3, '上下各 5 代');
+  await expect(page.getByText('上下各 5 代', { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
   const personCard = page.locator('.lineage-logic-card--person');
@@ -84,7 +95,7 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await edgeDetail.getByRole('button', { name: '关闭' }).click();
 
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
-  await chooseComboboxOption(page, 3, '3代');
+  await chooseComboboxOption(page, 3, '上下各 3 代');
   await expect(page.getByText(/人物图加载失败/)).toBeVisible();
   await page.getByRole('button', { name: '重试' }).last().click();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
