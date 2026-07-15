@@ -1,4 +1,0 @@
--- Issue #170 compatibility placeholder.
--- The concurrently added index definitions were redundant with the immutable #166 indexes
--- and V20260715091000__add_migration_event_runtime_indexes.sql.
--- Intentionally no-op: retained only to avoid destructive history rewriting on the active branch.
