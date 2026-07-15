@@ -42,7 +42,8 @@ jobs:
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
-        run: npm run typecheck
+        shell: bash
+        run: set -o pipefail; npm run typecheck 2>&1 | tee typecheck-output.log
 
       - name: Build frontend
         working-directory: frontend/genealogy-web
@@ -53,6 +54,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-diagnostics
-          path: frontend/genealogy-web/tree-test-output.log
+          path: |
+            frontend/genealogy-web/tree-test-output.log
+            frontend/genealogy-web/typecheck-output.log
           if-no-files-found: ignore
           retention-days: 3
