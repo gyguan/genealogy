@@ -32,6 +32,11 @@ jobs:
           end = workflow.index("\n          PY", start)
           raw = workflow[start:end]
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in raw.splitlines())
+          exact = "text = replace_once(text, old_search, new_search, 'search controls')"
+          resilient = """search_pattern = re.compile(r'          <Field label=\"人物搜索范围\">.*?          </Field>\\n          <Field label=\"搜索人物\">.*?          </Field>\\n', re.S)\nif not search_pattern.search(text):\n    raise SystemExit('missing replacement target: search controls')\ntext = search_pattern.sub(new_search, text, count=1)"""
+          if exact not in script:
+              raise SystemExit('missing search patch hook')
+          script = script.replace(exact, resilient)
           Path('/tmp/refine_lineage.py').write_text(script)
           PY
       - name: Apply refinement script
