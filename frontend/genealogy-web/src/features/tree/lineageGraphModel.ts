@@ -357,4 +357,4 @@ export function relationLabel(edge: TreeEdgeResponse) {
   return edge.relationLabel || labels[edge.relationType] || edge.relationType;
 }
 
-export { findLineagePath } from './lineagePathModel';
+export { findLineagePath } from './lineagePathModel.js';
