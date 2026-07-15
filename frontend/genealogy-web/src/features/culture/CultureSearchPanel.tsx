@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
 import type { CultureCategory, CultureDataStatus, CulturePrivacyLevel } from '../../shared/api/generated/culture-types';
-import type { CultureBranchOption, CultureClanOption } from './cultureLibraryService';
+import type { CultureBranchOption } from './cultureLibraryService';
 import { booleanOptions, categoryOptions, privacyOptions, sortOptions, statusOptions } from './cultureOptions';
 import type { CultureSearchState } from './cultureUrlState';
 import { defaultCultureSearch } from './cultureUrlState';
@@ -18,19 +18,13 @@ type FormValues = {
 };
 
 type Props = {
-  clans: CultureClanOption[];
   branches: CultureBranchOption[];
   clanId: string;
   search: CultureSearchState;
   loading: boolean;
-  onClanChange: (clanId: string) => void;
   onSearch: (search: CultureSearchState) => void;
   onCreate: () => void;
 };
-
-function clanLabel(clan: CultureClanOption) {
-  return clan.clanName || clan.surname || '未命名宗族';
-}
 
 function branchLabel(branch: CultureBranchOption) {
   return branch.branchName || branch.branchPath || '未命名支派';
@@ -80,18 +74,6 @@ export function CultureSearchPanel(props: Props) {
     <Card size="small" title="文化资料检索" extra={<Button type="primary" onClick={props.onCreate} disabled={!props.clanId}>新增资料</Button>}>
       <Form form={form} layout="vertical" onFinish={submit}>
         <Row gutter={[12, 0]}>
-          <Col xs={24} sm={12} lg={6}>
-            <Form.Item label="当前宗族">
-              <Select
-                value={props.clanId || undefined}
-                placeholder="请选择宗族"
-                showSearch
-                optionFilterProp="label"
-                onChange={value => props.onClanChange(String(value))}
-                options={props.clans.filter(clan => clan.id).map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
-              />
-            </Form.Item>
-          </Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
           <Col xs={24} sm={12} lg={4}><Form.Item name="category" label="分类"><Select allowClear options={categoryOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={4}><Form.Item name="branchId" label="支派"><Select allowClear showSearch optionFilterProp="label" options={props.branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
