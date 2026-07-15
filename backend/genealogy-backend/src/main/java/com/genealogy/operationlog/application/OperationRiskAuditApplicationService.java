@@ -3,16 +3,22 @@ package com.genealogy.operationlog.application;
 import com.genealogy.auth.application.RbacAuthorizationApplicationService.PermissionDataScope;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.member.entity.MemberRoleEntity;
+import com.genealogy.member.enums.MemberRoleScopeType;
 import com.genealogy.operationlog.dto.RiskAuditEventResponse;
 import com.genealogy.operationlog.dto.RiskAuditStatsResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
+import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.relationship.entity.RelationshipEntity;
+import com.genealogy.review.entity.ReviewTaskEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -124,12 +130,21 @@ public class OperationRiskAuditApplicationService {
         if (branchId != null && !effectiveScope.canAccessBranch(branchId)) {
             throw new BusinessException("AUTH_FORBIDDEN", "当前账号无权查看该支派的风险事件");
         }
+        Set<Long> constrainedBranchIds = branchId == null
+                ? effectiveScope.visibleBranchIds()
+                : Set.of(branchId);
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
             predicates.add(criteriaBuilder.isNotNull(root.get("riskEventType")));
-            if (!effectiveScope.fullClanAccess()) {
-                predicates.add(root.get("branchId").in(effectiveScope.queryVisibleBranchIds()));
+            if (branchId != null || !effectiveScope.fullClanAccess()) {
+                predicates.add(branchVisibilityPredicate(
+                        root,
+                        query,
+                        criteriaBuilder,
+                        clanId,
+                        constrainedBranchIds
+                ));
             }
             if (actorId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("actorId"), actorId));
@@ -139,9 +154,6 @@ public class OperationRiskAuditApplicationService {
             }
             if (normalizedEventType != null) {
                 predicates.add(criteriaBuilder.equal(root.get("riskEventType"), normalizedEventType));
-            }
-            if (branchId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("branchId"), branchId));
             }
             if (normalizedDisposition != null) {
                 predicates.add(criteriaBuilder.equal(root.get("dispositionStatus"), normalizedDisposition));
@@ -154,6 +166,79 @@ public class OperationRiskAuditApplicationService {
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    private Predicate branchVisibilityPredicate(
+            Root<OperationLogEntity> root,
+            CriteriaQuery<?> query,
+            CriteriaBuilder criteriaBuilder,
+            Long clanId,
+            Set<Long> branchIds
+    ) {
+        if (branchIds == null || branchIds.isEmpty()) {
+            return criteriaBuilder.disjunction();
+        }
+
+        Subquery<Long> personIds = query.subquery(Long.class);
+        Root<PersonEntity> person = personIds.from(PersonEntity.class);
+        personIds.select(person.get("id")).where(
+                criteriaBuilder.equal(person.get("clanId"), clanId),
+                person.get("branchId").in(branchIds)
+        );
+
+        Subquery<Long> relationshipIds = query.subquery(Long.class);
+        Root<RelationshipEntity> relationship = relationshipIds.from(RelationshipEntity.class);
+        relationshipIds.select(relationship.get("id")).where(
+                criteriaBuilder.equal(relationship.get("clanId"), clanId),
+                relationship.get("successorBranchId").in(branchIds)
+        );
+
+        Subquery<Long> reviewTaskIds = query.subquery(Long.class);
+        Root<ReviewTaskEntity> reviewTask = reviewTaskIds.from(ReviewTaskEntity.class);
+        reviewTaskIds.select(reviewTask.get("id")).where(
+                criteriaBuilder.equal(reviewTask.get("clanId"), clanId),
+                reviewTask.get("branchId").in(branchIds)
+        );
+
+        Subquery<Long> memberRoleIds = query.subquery(Long.class);
+        Root<MemberRoleEntity> memberRole = memberRoleIds.from(MemberRoleEntity.class);
+        memberRoleIds.select(memberRole.get("id")).where(
+                memberRole.get("scopeType").in(MemberRoleScopeType.branch, MemberRoleScopeType.branch_subtree),
+                memberRole.get("scopeId").in(branchIds)
+        );
+
+        return criteriaBuilder.or(
+                root.get("branchId").in(branchIds),
+                targetMatches(root, criteriaBuilder, "branch", branchIds),
+                targetMatches(root, criteriaBuilder, "person", personIds),
+                targetMatches(root, criteriaBuilder, "relationship", relationshipIds),
+                targetMatches(root, criteriaBuilder, "review_task", reviewTaskIds),
+                targetMatches(root, criteriaBuilder, "member_role", memberRoleIds)
+        );
+    }
+
+    private Predicate targetMatches(
+            Root<OperationLogEntity> root,
+            CriteriaBuilder criteriaBuilder,
+            String targetType,
+            Object ids
+    ) {
+        Predicate directIds = ids instanceof Subquery<?> subquery
+                ? root.get("targetId").in(subquery)
+                : root.get("targetId").in((Set<?>) ids);
+        Predicate businessIds = ids instanceof Subquery<?> subquery
+                ? root.get("businessTargetId").in(subquery)
+                : root.get("businessTargetId").in((Set<?>) ids);
+        return criteriaBuilder.or(
+                criteriaBuilder.and(
+                        criteriaBuilder.equal(root.get("targetType"), targetType),
+                        directIds
+                ),
+                criteriaBuilder.and(
+                        criteriaBuilder.equal(root.get("businessTargetType"), targetType),
+                        businessIds
+                )
+        );
     }
 
     private List<RiskAuditStatsResponse.Item> group(
