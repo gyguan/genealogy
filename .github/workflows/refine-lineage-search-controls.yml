@@ -1,0 +1,412 @@
+name: Refine Lineage Search Controls
+
+on:
+  push:
+    branches:
+      - agent/refine-lineage-search-and-canvas-controls
+    paths:
+      - .github/workflows/refine-lineage-search-controls.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply lineage interaction refinements
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f'missing replacement target: {label}')
+              return text.replace(old, new, 1)
+
+          page_path = Path('frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx')
+          text = page_path.read_text()
+
+          text = replace_once(text, '  TreeDataView,\n', '', 'TreeDataView import')
+          text = replace_once(
+              text,
+              "import {\n  readLineageUrlState,\n  withLineageUrlState,\n  type LineageMode,\n  type PersonSearchScope\n} from './lineageUrlState';",
+              "import { readLineageUrlState, withLineageUrlState, type LineageMode } from './lineageUrlState';",
+              'url state import'
+          )
+          text = replace_once(text, '  graphCompletenessText,\n', '', 'graph completeness import')
+          text = re.sub(r"const DATA_VIEW_OPTIONS = \[.*?\];\n\n", '', text, count=1, flags=re.S)
+          text = replace_once(text, "  const [searchScope, setSearchScope] = useState<PersonSearchScope>(initialUrlState.searchScope);\n", '', 'search scope state')
+          text = replace_once(text, "  const [dataView, setDataView] = useState<TreeDataView>(initialUrlState.dataView);\n", '', 'data view state')
+          text = replace_once(
+              text,
+              "  const [selectedEdge, setSelectedEdge] = useState<TreeEdgeResponse | null>(null);\n",
+              "  const [selectedEdge, setSelectedEdge] = useState<TreeEdgeResponse | null>(null);\n  const [locatedNodeId, setLocatedNodeId] = useState('');\n",
+              'located node state'
+          )
+          text = replace_once(
+              text,
+              "  function clearSelection() {\n    setSelectedNode(null);\n    setSelectedEdge(null);\n  }",
+              "  function clearSelection() {\n    setSelectedNode(null);\n    setSelectedEdge(null);\n    setLocatedNodeId('');\n  }",
+              'clear selection'
+          )
+          text = replace_once(
+              text,
+              "    nextBranches = branches,\n    requestedScope = searchScope,\n    branchId = selectedBranchId",
+              "    nextBranches = branches,\n    branchId = selectedBranchId",
+              'search signature'
+          )
+          text = replace_once(
+              text,
+              "        branchId: requestedScope === 'branch' ? branchId : undefined,",
+              "        branchId: branchId || undefined,",
+              'search branch scope'
+          )
+          text = replace_once(
+              text,
+              "      setSearchNotice(page.records.length ? `共匹配 ${page.total} 位人物` : '未找到匹配人物，请调整姓名、谱名、字号或搜索范围。');",
+              "      setSearchNotice(page.records.length ? `共匹配 ${page.total} 位人物` : '未找到匹配人物，请调整姓名、谱名、字号或支派条件。');",
+              'search notice'
+          )
+          text = replace_once(
+              text,
+              "    options: Partial<{ depth: string; direction: TreeDirection; relationScopes: TreeRelationScope[]; dataView: TreeDataView }> = {}",
+              "    options: Partial<{ depth: string; direction: TreeDirection; relationScopes: TreeRelationScope[] }> = {}",
+              'person graph options'
+          )
+          text = replace_once(text, "        dataView: options.dataView || dataView,", "        dataView: 'official',", 'person official view')
+          text = replace_once(
+              text,
+              "    options: Partial<{ depth: string; relationScopes: TreeRelationScope[]; dataView: TreeDataView; includeSubBranches: boolean }> = {},",
+              "    options: Partial<{ depth: string; relationScopes: TreeRelationScope[]; includeSubBranches: boolean }> = {},",
+              'branch graph options'
+          )
+          text = replace_once(text, "        dataView: options.dataView || dataView,", "        dataView: 'official',", 'branch official view')
+          text = replace_once(
+              text,
+              "      const page = await requestPersonPage(clanId, 1, '', branchRows, searchScope, nextBranchId);",
+              "      const page = await requestPersonPage(clanId, 1, '', branchRows, nextBranchId);",
+              'initialize search'
+          )
+
+          old_clan = """  async function handleClanChange(clanId: string) {
+    await initializeClan(clanId);
+    notify({ message: clanId ? '宗族已切换，旧图谱和人物状态已清空' : '已清空宗族选择' });
+  }
+
+  async function handleBranchChange(branchId: string) {
+    setSelectedBranchId(branchId);
+    workspace.patch({ branchId, relationshipId: '' });
+    clearSelection();
+    const tasks: Promise<unknown>[] = [loadBranchGraph(branchId, workspace.clanId, {}, true)];
+    if (searchScope === 'branch') tasks.push(requestPersonPage(workspace.clanId, 1, appliedKeyword, branches, 'branch', branchId));
+    await Promise.all(tasks);
+  }
+
+  async function handleSearchScopeChange(nextScope: PersonSearchScope) {
+    setSearchScope(nextScope);
+    await requestPersonPage(workspace.clanId, 1, appliedKeyword, branches, nextScope, selectedBranchId);
+  }
+"""
+          new_clan = """  async function handleClanChange(clanId: string) {
+    clearClanState(clanId);
+    if (!clanId) {
+      notify({ message: '已清空宗族选择' });
+      return;
+    }
+    const token = requestGate.current.begin('clan');
+    setScope('clan', { loading: true, error: '' });
+    try {
+      const branchRows = await loadBranches(clanId);
+      if (!requestGate.current.isCurrent(token)) return;
+      setBranches(branchRows);
+      const nextBranchId = text(branchRows[0]?.id);
+      setSelectedBranchId(nextBranchId);
+      workspace.patch({ clanId, branchId: nextBranchId, personId: '', relationshipId: '' });
+      setSearchNotice('请选择支派并点击搜索人物，图谱条件需点击“查询图谱”后生效。');
+      notify({ message: '宗族已切换，请选择查询条件后执行搜索' });
+    } catch (error) {
+      if (requestGate.current.isCurrent(token)) setScope('clan', { error: errorMessage(error) });
+    } finally {
+      if (requestGate.current.isCurrent(token)) setScope('clan', { loading: false });
+    }
+  }
+
+  function handleBranchChange(branchId: string) {
+    setSelectedBranchId(branchId);
+    workspace.patch({ branchId, relationshipId: '' });
+    setSearchPage(EMPTY_SEARCH);
+    setSearchNotice('支派条件已更新，点击“搜索”后查询人物。');
+    setSearchCollapsed(true);
+    clearSelection();
+  }
+"""
+          text = replace_once(text, old_clan, new_clan, 'clan and branch handlers')
+
+          old_handlers = """  async function handlePersonDepthChange(nextDepth: string) {
+    setPersonDepth(nextDepth);
+    clearSelection();
+    await loadPersonGraph(workspace.personId, { depth: nextDepth });
+  }
+
+  async function handleBranchDepthChange(nextDepth: string) {
+    setBranchDepth(nextDepth);
+    clearSelection();
+    await loadBranchGraph(selectedBranchId, workspace.clanId, { depth: nextDepth }, true);
+  }
+
+  async function handleDirectionChange(nextDirection: TreeDirection) {
+    setDirection(nextDirection);
+    clearSelection();
+    await loadPersonGraph(workspace.personId, { direction: nextDirection });
+  }
+
+  async function handleRelationScopeChange(nextScopes: TreeRelationScope[]) {
+    if (!nextScopes.length) return;
+    setRelationScopes(nextScopes);
+    clearSelection();
+    await Promise.all([
+      loadPersonGraph(workspace.personId, { relationScopes: nextScopes }),
+      loadBranchGraph(selectedBranchId, workspace.clanId, { relationScopes: nextScopes })
+    ]);
+  }
+
+  async function handleDataViewChange(nextDataView: TreeDataView) {
+    setDataView(nextDataView);
+    clearSelection();
+    await Promise.all([
+      loadPersonGraph(workspace.personId, { dataView: nextDataView }),
+      loadBranchGraph(selectedBranchId, workspace.clanId, { dataView: nextDataView })
+    ]);
+  }
+
+  async function handleIncludeSubBranchesChange(nextValue: boolean) {
+    setIncludeSubBranches(nextValue);
+    clearSelection();
+    await loadBranchGraph(selectedBranchId, workspace.clanId, { includeSubBranches: nextValue }, true);
+  }
+"""
+          new_handlers = """  function handlePersonDepthChange(nextDepth: string) {
+    setPersonDepth(nextDepth);
+    clearSelection();
+  }
+
+  function handleBranchDepthChange(nextDepth: string) {
+    setBranchDepth(nextDepth);
+    clearSelection();
+  }
+
+  function handleDirectionChange(nextDirection: TreeDirection) {
+    setDirection(nextDirection);
+    clearSelection();
+  }
+
+  function handleRelationScopeChange(nextScopes: TreeRelationScope[]) {
+    if (!nextScopes.length) return;
+    setRelationScopes(nextScopes);
+    clearSelection();
+  }
+
+  function handleIncludeSubBranchesChange(nextValue: boolean) {
+    setIncludeSubBranches(nextValue);
+    clearSelection();
+  }
+
+  async function handlePersonSearch() {
+    setSearchCollapsed(false);
+    await requestPersonPage(workspace.clanId, 1, searchInput, branches, selectedBranchId);
+  }
+
+  async function applyGraphQuery() {
+    clearSelection();
+    if (mode === 'person') {
+      await loadPersonGraph(workspace.personId, { depth: personDepth, direction, relationScopes });
+      return;
+    }
+    await loadBranchGraph(selectedBranchId, workspace.clanId, { depth: branchDepth, relationScopes, includeSubBranches }, true);
+  }
+"""
+          text = replace_once(text, old_handlers, new_handlers, 'query handlers')
+
+          text = replace_once(
+              text,
+              "  function selectNode(node: TreeNodeResponse) {\n    setSelectedEdge(null);\n    setSelectedNode(node);\n  }",
+              "  function selectNode(node: TreeNodeResponse) {\n    setSelectedEdge(null);\n    setSelectedNode(node);\n    setLocatedNodeId(node.nodeId);\n  }",
+              'select node'
+          )
+          text = replace_once(
+              text,
+              "      dataView,\n      includeSubBranches,\n      searchScope",
+              "      dataView: 'official',\n      includeSubBranches,\n      searchScope: 'branch'",
+              'url payload'
+          )
+          text = replace_once(
+              text,
+              "  }, [workspace.clanId, selectedBranchId, workspace.personId, mode, personDepth, branchDepth, direction, relationScopes, dataView, includeSubBranches, searchScope]);",
+              "  }, [workspace.clanId, selectedBranchId, workspace.personId, mode, personDepth, branchDepth, direction, relationScopes, includeSubBranches]);",
+              'url dependencies'
+          )
+          text = replace_once(text, "  const activeRoot = activeGraph?.nodes.find(node => node.nodeId === activeGraph.rootNodeId) || activeGraph?.nodes[0] || null;\n", '', 'active root')
+          text = replace_once(text, "  const currentDepth = mode === 'person' ? personDepth : branchDepth;\n", '', 'current depth')
+          text = replace_once(
+              text,
+              "  const highlightedPath = useMemo(\n    () => activeGraph && selectedNode && graphCenterNodeId\n      ? findLineagePath(activeGraph, graphCenterNodeId, selectedNode.nodeId)\n      : { nodeIds: [], edgeIds: [] },\n    [activeGraph, selectedNode, graphCenterNodeId]\n  );",
+              "  const locatedNode = selectedNode || activeGraph?.nodes.find(node => node.nodeId === locatedNodeId) || null;\n  const highlightedPath = useMemo(\n    () => activeGraph && locatedNode && graphCenterNodeId\n      ? findLineagePath(activeGraph, graphCenterNodeId, locatedNode.nodeId)\n      : { nodeIds: [], edgeIds: [] },\n    [activeGraph, locatedNode, graphCenterNodeId]\n  );",
+              'highlight path target'
+          )
+          text = replace_once(
+              text,
+              "  function locateNode(nodeId: string) {\n    const node = activeGraph?.nodes.find(item => item.nodeId === nodeId);\n    if (node) selectNode(node);\n  }",
+              "  function locateNode(nodeId: string) {\n    if (!activeGraph?.nodes.some(item => item.nodeId === nodeId)) return;\n    setSelectedNode(null);\n    setSelectedEdge(null);\n    setLocatedNodeId(nodeId);\n  }",
+              'locate node'
+          )
+
+          old_search = """          <Field label="人物搜索范围">
+            <Select
+              aria-label="人物搜索范围"
+              value={searchScope}
+              options={[{ value: 'clan', label: '全宗族' }, { value: 'branch', label: '当前支派' }]}
+              onChange={value => void handleSearchScopeChange(value as PersonSearchScope)}
+            />
+          </Field>
+          <Field label="搜索人物">
+            <Input.Search
+              allowClear
+              value={searchInput}
+              loading={loadState.search.loading}
+              enterButton={<><SearchOutlined /> 搜索</>}
+              placeholder="输入姓名、谱名或字号"
+              onChange={event => setSearchInput(event.target.value)}
+              onSearch={value => { setSearchCollapsed(false); void requestPersonPage(workspace.clanId, 1, value); }}
+              disabled={!workspace.clanId || (searchScope === 'branch' && !selectedBranchId)}
+            />
+          </Field>
+"""
+          new_search = """          <Field label="搜索人物">
+            <Space.Compact className="lineage-person-search-compact">
+              <Input
+                allowClear
+                className="lineage-person-search-input"
+                value={searchInput}
+                placeholder="输入姓名、谱名或字号"
+                onChange={event => setSearchInput(event.target.value)}
+                onPressEnter={() => void handlePersonSearch()}
+                disabled={!workspace.clanId || !selectedBranchId}
+              />
+              <Button
+                className="lineage-person-search-button"
+                type="primary"
+                icon={<SearchOutlined />}
+                loading={loadState.search.loading}
+                disabled={!workspace.clanId || !selectedBranchId}
+                onClick={() => void handlePersonSearch()}
+              >搜索</Button>
+            </Space.Compact>
+          </Field>
+"""
+          text = replace_once(text, old_search, new_search, 'search controls')
+          text = replace_once(text, "              <Tag>{searchScope === 'branch' ? '当前支派' : '全宗族'}</Tag>", "              <Tag>{branchName}</Tag>", 'search range tag')
+
+          old_head = """        <div className="lineage-workbench-head">
+          <div><span>{currentClanName}</span><h3>中国式世系关系工作台</h3><p>围绕当前人物或支派定位真实关系路径，详情在右侧展开，不遮挡图谱。</p></div>
+          <Segmented
+            aria-label="图谱视角"
+            value={mode}
+            options={[
+              { value: 'person', label: <Space size={6}><UserOutlined />人物中心</Space> },
+              { value: 'branch', label: <Space size={6}><BranchesOutlined />支派全局</Space> }
+            ]}
+            onChange={value => { setMode(value as LineageMode); clearSelection(); }}
+          />
+        </div>
+
+        <div className="summary-card lineage-workbench-summary">
+          <div><span>当前范围</span><strong>{mode === 'person' ? center?.name || '-' : branchName}</strong></div>
+          <div><span>当前展示人物</span><strong>{activeGraph?.meta.nodeCount ?? '-'}</strong></div>
+          <div><span>当前展示关系</span><strong>{activeGraph?.meta.edgeCount ?? '-'}</strong></div>
+          <div><span>当前图谱起点</span><strong>{activeRoot?.displayName || '-'}</strong></div>
+          <div><span>实际展开深度</span><strong>{activeGraph?.meta.appliedDepth ?? currentDepth} 代</strong></div>
+          <div><span>数据完整性</span><strong title={graphCompletenessText(activeGraph?.meta)}>{graphCompletenessText(activeGraph?.meta)}</strong></div>
+        </div>
+"""
+          new_head = """        <div className="lineage-workbench-head">
+          <div><span>{currentClanName}</span><h3>中国式世系关系工作台</h3><p>选择查询条件后点击“查询图谱”，点击画布人物卡片查看详情。</p></div>
+        </div>
+"""
+          text = replace_once(text, old_head, new_head, 'workbench head')
+
+          text = replace_once(
+              text,
+              "              value={selectedNode?.nodeId}\n              placeholder=\"搜索当前图人物\"",
+              "              className=\"lineage-locate-select\"\n              value={locatedNodeId || undefined}\n              placeholder=\"搜索当前图人物\"",
+              'locate select value'
+          )
+          text = replace_once(text, "              onChange={value => value ? locateNode(value) : clearSelection()}", "              onChange={value => value ? locateNode(value) : clearSelection()}", 'locate handler')
+          text = replace_once(text, "<Select aria-label=\"人物图查看方向\" value={direction} options={DIRECTION_OPTIONS} onChange={value => void handleDirectionChange(value as TreeDirection)} />", "<Select aria-label=\"人物图查看方向\" value={direction} options={DIRECTION_OPTIONS} onChange={value => handleDirectionChange(value as TreeDirection)} />", 'direction control')
+          text = replace_once(text, "              onChange={values => void handleRelationScopeChange(values as TreeRelationScope[])}", "              onChange={values => handleRelationScopeChange(values as TreeRelationScope[])}", 'relation control')
+          text = re.sub(r"          <Field label=\"数据视图\">.*?          </Field>\n", '', text, count=1, flags=re.S)
+          text = replace_once(text, "              onChange={value => mode === 'person' ? void handlePersonDepthChange(value) : void handleBranchDepthChange(value)}", "              onChange={value => mode === 'person' ? handlePersonDepthChange(value) : handleBranchDepthChange(value)}", 'depth control')
+          text = replace_once(text, "<Switch checked={includeSubBranches} onChange={value => void handleIncludeSubBranchesChange(value)} />", "<Switch checked={includeSubBranches} onChange={handleIncludeSubBranchesChange} />", 'branch switch')
+          text = replace_once(
+              text,
+              "          ) : null}\n        </div>\n\n        <section className={`lineage-logic-card lineage-logic-card--${mode}`}>\n          <div className=\"lineage-tree-title\">",
+              "          ) : null}\n          <div className=\"lineage-query-action\">\n            <Button type=\"primary\" icon={<SearchOutlined />} loading={activeLoadState.loading} onClick={() => void applyGraphQuery()}>查询图谱</Button>\n          </div>\n        </div>\n\n        <section className={`lineage-logic-card lineage-logic-card--${mode}`}>\n          <div className=\"lineage-graph-mode-bar\">\n            <Segmented\n              aria-label=\"图谱视角\"\n              value={mode}\n              options={[\n                { value: 'person', label: <Space size={6}><UserOutlined />人物中心</Space> },\n                { value: 'branch', label: <Space size={6}><BranchesOutlined />支派全局</Space> }\n              ]}\n              onChange={value => { setMode(value as LineageMode); clearSelection(); }}\n            />\n          </div>\n          <div className=\"lineage-tree-title\">",
+              'query action and mode bar'
+          )
+          text = replace_once(text, "            focusNodeId={selectedNode?.nodeId}", "            focusNodeId={locatedNodeId || selectedNode?.nodeId}", 'canvas focus node')
+
+          page_path.write_text(text)
+
+          css_path = Path('frontend/genealogy-web/src/lineage-tree.css')
+          css = css_path.read_text()
+          css = replace_once(css, '.lineage-search-grid--workbench { grid-template-columns: 150px 190px 150px minmax(280px, 1fr); }', '.lineage-search-grid--workbench { grid-template-columns: 160px 190px minmax(260px, 420px); justify-content: start; }', 'search grid css')
+          css = replace_once(
+              css,
+              '.lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }\n',
+              '.lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }\n.lineage-person-search-compact { width: 100%; }\n.lineage-person-search-input { height: 36px; line-height: 36px; padding: 0 12px !important; }\n.lineage-person-search-input::placeholder { line-height: 36px; }\n.lineage-person-search-button { height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0 16px; }\n',
+              'search control css'
+          )
+          css = replace_once(css, '.lineage-workbench-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 4px 2px 2px; }', '.lineage-workbench-head { display: flex; justify-content: flex-start; align-items: flex-start; gap: 20px; padding: 4px 2px 2px; }', 'workbench head css')
+          css = replace_once(css, '.lineage-query-toolbar { display: grid; grid-template-columns: minmax(200px, 1.2fr) repeat(4, minmax(140px, .8fr)); gap: 10px; align-items: end; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; background: #fff; }', '.lineage-query-toolbar { display: grid; grid-template-columns: minmax(220px, 1.25fr) repeat(3, minmax(150px, .8fr)) minmax(132px, .65fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; background: #fff; }', 'query toolbar css')
+          css = replace_once(css, '.lineage-switch-field { min-height: 32px; display: flex; align-items: center; gap: 8px; color: rgba(0,0,0,.65); white-space: nowrap; }', '.lineage-switch-field { min-height: 32px; display: flex; align-items: center; gap: 8px; color: rgba(0,0,0,.65); white-space: nowrap; }\n.lineage-query-action { display: flex; align-items: flex-end; }\n.lineage-query-action .ant-btn { min-width: 104px; height: 32px; }\n.lineage-graph-mode-bar { display: flex; justify-content: flex-start; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }', 'query action css')
+          css = replace_once(css, '.lineage-logic-card { min-width: 0; display: grid; grid-template-rows: auto auto 1fr;', '.lineage-logic-card { min-width: 0; display: grid; grid-template-rows: auto auto auto 1fr;', 'logic card rows')
+          css_path.write_text(css)
+
+          e2e_path = Path('frontend/genealogy-web/e2e/tree-release-gate.spec.ts')
+          e2e = e2e_path.read_text()
+          e2e = replace_once(e2e, "  await page.getByRole('button', { name: /搜\\s*索/ }).click();", "  await page.getByRole('button', { name: '搜索', exact: true }).click();", 'search button test')
+          e2e = replace_once(
+              e2e,
+              "  await chooseLabelledSelect(page, '人物中心展开深度', '上下各 5 代');\n  await expect(page).toHaveURL(/personDepth=5/);",
+              "  await chooseLabelledSelect(page, '人物中心展开深度', '上下各 5 代');\n  await page.getByRole('button', { name: '查询图谱', exact: true }).click();\n  await expect(page).toHaveURL(/personDepth=5/);",
+              'depth apply test'
+          )
+          e2e = replace_once(
+              e2e,
+              "  const secondaryNode = personNodes.filter({ hasNot: page.locator('.is-active') }).nth(1);",
+              "  const locateSelect = page.locator('.lineage-locate-select');\n  await locateSelect.click();\n  const locateDropdown = page.locator('.ant-select-dropdown:visible');\n  const locateOption = locateDropdown.locator('.ant-select-item-option').nth(1);\n  const locatedName = (await locateOption.textContent())?.trim() || '';\n  await locateOption.click();\n  await expect(page.locator('.ant-drawer:visible')).toHaveCount(0);\n  await expect(locateSelect.locator('.ant-select-selection-item')).toContainText(locatedName.split('·')[0].trim());\n\n  const secondaryNode = personNodes.filter({ hasNot: page.locator('.is-active') }).nth(1);",
+              'locate behavior test'
+          )
+          e2e = replace_once(
+              e2e,
+              "  await chooseLabelledSelect(page, '人物中心展开深度', '上下各 3 代');\n  await expect(page.getByText(/人物图加载失败/)).toBeVisible();",
+              "  await chooseLabelledSelect(page, '人物中心展开深度', '上下各 3 代');\n  await page.getByRole('button', { name: '查询图谱', exact: true }).click();\n  await expect(page.getByText(/人物图加载失败/)).toBeVisible();",
+              'error query test'
+          )
+          e2e_path.write_text(e2e)
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx \
+                  frontend/genealogy-web/src/lineage-tree.css \
+                  frontend/genealogy-web/e2e/tree-release-gate.spec.ts
+          git commit -m "refactor(tree): refine search and canvas controls"
+          git push origin HEAD:agent/refine-lineage-search-and-canvas-controls
