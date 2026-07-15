@@ -4,6 +4,8 @@ on:
   push:
     branches: ["agent/issue-277-builder"]
     paths: [".github/workflows/issue-277-build-clean.yml"]
+  pull_request:
+    branches: ["main"]
 
 permissions:
   contents: write
