@@ -64,7 +64,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
 
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 2 代');
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 5 代');
-  await expect(page.locator('[aria-label="人物中心展开深度"]')).toContainText('上下各 5 代');
+  await expect(page).toHaveURL(/personDepth=5/);
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
   const percent = personCard.locator('.lineage-graph-toolbar .ant-tag').filter({ hasText: '%' }).first();
