@@ -51,8 +51,6 @@ public final class OperationRiskPolicy {
             Map.entry("relationship_export", context(LEVEL_HIGH, EVENT_BULK_EXPORT, DISPOSITION_RESOLVED)),
             Map.entry("genealogy_book_export", context(LEVEL_HIGH, EVENT_BULK_EXPORT, DISPOSITION_RESOLVED)),
             Map.entry("attachment_export", context(LEVEL_HIGH, EVENT_BULK_EXPORT, DISPOSITION_RESOLVED)),
-            Map.entry("source_attachment_preview", context(LEVEL_MEDIUM, EVENT_SENSITIVE_ACCESS, DISPOSITION_RESOLVED)),
-            Map.entry("source_attachment_download", context(LEVEL_HIGH, EVENT_SENSITIVE_ACCESS, DISPOSITION_RESOLVED)),
             Map.entry("person_delete", context(LEVEL_CRITICAL, EVENT_FORMAL_DATA_CHANGE, DISPOSITION_RESOLVED)),
             Map.entry("relationship_delete", context(LEVEL_CRITICAL, EVENT_FORMAL_DATA_CHANGE, DISPOSITION_RESOLVED)),
             Map.entry("source_attachment_delete", context(LEVEL_HIGH, EVENT_FORMAL_DATA_CHANGE, DISPOSITION_RESOLVED)),
