@@ -62,6 +62,7 @@ public class MigrationEventApplicationService {
 
     private static final String TARGET_TYPE = MigrationEventGovernanceApplicationService.TARGET_TYPE;
     private static final String BINDING_ARCHIVED = "archived";
+    private static final String SOURCE_UPDATE_PERMISSION = "source:update";
     private static final Set<String> RESTRICTED_PRIVACY = Set.of("relatives_only", "private", "sealed");
 
     private final MigrationEventRepository migrationEventRepository;
@@ -154,9 +155,15 @@ public class MigrationEventApplicationService {
         authorizationApplicationService.requireClanMember(clanId, actorId);
         MigrationEventSearchCriteria normalized = domainService.normalize(criteria);
         List<BranchEntity> branches = branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId);
-        Map<Long, BranchEntity> branchesById = branches.stream().collect(Collectors.toMap(BranchEntity::getId, Function.identity()));
+        Map<Long, BranchEntity> branchesById = branches.stream()
+                .collect(Collectors.toMap(BranchEntity::getId, Function.identity()));
         List<Long> readableBranchIds = branches.stream()
-                .filter(branch -> canOnBranch(actorId, clanId, branch.getId(), MigrationEventPermissionPolicyService.VIEW))
+                .filter(branch -> canOnBranch(
+                        actorId,
+                        clanId,
+                        branch.getId(),
+                        MigrationEventPermissionPolicyService.VIEW
+                ))
                 .map(BranchEntity::getId)
                 .toList();
         if (readableBranchIds.isEmpty()) {
@@ -166,26 +173,38 @@ public class MigrationEventApplicationService {
             throw new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见");
         }
         List<Long> sensitiveBranchIds = branches.stream()
-                .filter(branch -> canOnBranch(actorId, clanId, branch.getId(), MigrationEventPermissionPolicyService.VIEW_SENSITIVE))
+                .filter(branch -> canOnBranch(
+                        actorId,
+                        clanId,
+                        branch.getId(),
+                        MigrationEventPermissionPolicyService.VIEW_SENSITIVE
+                ))
                 .map(BranchEntity::getId)
                 .toList();
 
         int safePageNo = Math.max(1, pageNo);
         int safePageSize = Math.max(1, Math.min(pageSize, MigrationEventDomainService.MAX_PAGE_SIZE));
-        Sort.Direction direction = domainService.sortAscending(normalized.sort()) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort.Direction direction = domainService.sortAscending(normalized.sort())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, domainService.sortField(normalized.sort()))
                 .and(Sort.by(Sort.Direction.ASC, "branchId"))
                 .and(Sort.by(Sort.Direction.ASC, "sequenceNo"))
                 .and(Sort.by(Sort.Direction.ASC, "id"));
         PageRequest pageRequest = PageRequest.of(safePageNo - 1, safePageSize, sort);
         Page<MigrationEventEntity> page = migrationEventRepository.findAll(
-                buildSpecification(clanId, normalized, readableBranchIds, sensitiveBranchIds),
+                buildSpecification(clanId, actorId, normalized, readableBranchIds, sensitiveBranchIds),
                 pageRequest
         );
 
         List<MigrationEventEntity> rows = page.getContent();
         Map<Long, PersonEntity> foundersById = personRepository.findAllById(
-                        rows.stream().map(MigrationEventEntity::getFounderPersonId).filter(Objects::nonNull).distinct().toList())
+                        rows.stream()
+                                .map(MigrationEventEntity::getFounderPersonId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .toList()
+                )
                 .stream()
                 .filter(person -> Objects.equals(person.getClanId(), clanId) && person.getDeletedAt() == null)
                 .collect(Collectors.toMap(PersonEntity::getId, Function.identity()));
@@ -247,7 +266,12 @@ public class MigrationEventApplicationService {
         domainService.requireExpectedVersion(event, request.version());
         MigrationEventDomainService.NormalizedMigrationInput input = domainService.normalize(request);
         requireBranch(event.getClanId(), input.branchId());
-        if (!canOnBranch(actorId, event.getClanId(), input.branchId(), MigrationEventPermissionPolicyService.UPDATE)) {
+        if (!canOnBranch(
+                actorId,
+                event.getClanId(),
+                input.branchId(),
+                MigrationEventPermissionPolicyService.UPDATE
+        )) {
             throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限将迁徙事件移动到该支派");
         }
         validateFounder(event.getClanId(), input.branchId(), input.founderPersonId());
@@ -255,7 +279,15 @@ public class MigrationEventApplicationService {
         String before = snapshot(event);
         domainService.apply(event, input);
         MigrationEventEntity saved = migrationEventRepository.save(event);
-        record(saved, actorId, "migration_event_update", "更新迁徙事件", "before=" + before + "; after=" + snapshot(saved), requestId, clientIp);
+        record(
+                saved,
+                actorId,
+                "migration_event_update",
+                "更新迁徙事件",
+                "before=" + before + "; after=" + snapshot(saved),
+                requestId,
+                clientIp
+        );
         return getDetail(saved.getId(), actorId);
     }
 
@@ -287,38 +319,93 @@ public class MigrationEventApplicationService {
         PersonEntity founder = event.getFounderPersonId() == null
                 ? null
                 : personRepository.findByIdAndDeletedAtIsNull(event.getFounderPersonId()).orElse(null);
-        if (founder != null && !Objects.equals(founder.getClanId(), event.getClanId())) founder = null;
+        if (founder != null && !Objects.equals(founder.getClanId(), event.getClanId())) {
+            founder = null;
+        }
         List<SourceBindingEntity> bindings = sourceBindingRepository
                 .findTop10ByClanIdAndTargetTypeAndTargetIdAndBindingStatusNotOrderByCreatedAtDesc(
-                        event.getClanId(), TARGET_TYPE, event.getId(), BINDING_ARCHIVED);
+                        event.getClanId(),
+                        TARGET_TYPE,
+                        event.getId(),
+                        BINDING_ARCHIVED
+                );
         Map<Long, SourceEntity> sourcesById = sourceRepository.findAllById(
-                        bindings.stream().map(SourceBindingEntity::getSourceId).filter(Objects::nonNull).distinct().toList())
+                        bindings.stream()
+                                .map(SourceBindingEntity::getSourceId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .toList()
+                )
                 .stream()
                 .filter(source -> Objects.equals(source.getClanId(), event.getClanId()))
                 .collect(Collectors.toMap(SourceEntity::getId, Function.identity()));
+        boolean canManageSources = canOnBranch(
+                actorId,
+                event.getClanId(),
+                event.getBranchId(),
+                SOURCE_UPDATE_PERMISSION
+        );
         List<CultureSourceSummaryResponse> sources = bindings.stream()
-                .map(binding -> {
-                    SourceEntity source = sourcesById.get(binding.getSourceId());
-                    if (source == null) return null;
-                    return new CultureSourceSummaryResponse(
-                            source.getId(),
-                            source.getSourceName(),
-                            source.getSourceType(),
-                            binding.getExcerpt() == null ? source.getExcerpt() : binding.getExcerpt(),
-                            binding.getConfidenceLevel(),
-                            binding.getBindingStatus()
-                    );
-                })
+                .map(binding -> toSourceSummary(
+                        binding,
+                        sourcesById.get(binding.getSourceId()),
+                        canManageSources
+                ))
                 .filter(Objects::nonNull)
                 .toList();
-        MigrationEventSummaryResponse summary = toSummary(event, clan, branch, founder, sources.size(), actorId);
+        MigrationEventSummaryResponse summary = toSummary(
+                event,
+                clan,
+                branch,
+                founder,
+                sources.size(),
+                actorId
+        );
         CultureReviewSummaryResponse review = latestReview(event);
         return new MigrationEventDetailResponse(
-                summary.id(), summary.scope(), summary.sequenceNo(), summary.fromLocation(), summary.toLocation(),
-                summary.migrationTimeText(), summary.founderPersonId(), summary.founderPersonName(), summary.reason(),
-                summary.confidenceLevel(), summary.privacyLevel(), summary.sensitiveLevel(), summary.dataStatus(),
-                summary.sourceCount(), summary.allowedActions(), summary.version(), summary.createdAt(), summary.updatedAt(),
-                event.getDescription(), sources, review
+                summary.id(),
+                summary.scope(),
+                summary.sequenceNo(),
+                summary.fromLocation(),
+                summary.toLocation(),
+                summary.migrationTimeText(),
+                summary.founderPersonId(),
+                summary.founderPersonName(),
+                summary.reason(),
+                summary.confidenceLevel(),
+                summary.privacyLevel(),
+                summary.sensitiveLevel(),
+                summary.dataStatus(),
+                summary.sourceCount(),
+                summary.allowedActions(),
+                summary.version(),
+                summary.createdAt(),
+                summary.updatedAt(),
+                event.getDescription(),
+                sources,
+                review
+        );
+    }
+
+    private CultureSourceSummaryResponse toSourceSummary(
+            SourceBindingEntity binding,
+            SourceEntity source,
+            boolean canManageSources
+    ) {
+        if (source == null || BINDING_ARCHIVED.equals(normalize(source.getVerificationStatus()))) {
+            return null;
+        }
+        boolean restricted = RESTRICTED_PRIVACY.contains(normalize(source.getPrivacyLevel()));
+        String excerpt = restricted && !canManageSources
+                ? null
+                : binding.getExcerpt() == null ? source.getExcerpt() : binding.getExcerpt();
+        return new CultureSourceSummaryResponse(
+                source.getId(),
+                source.getSourceName(),
+                source.getSourceType(),
+                excerpt,
+                binding.getConfidenceLevel(),
+                binding.getBindingStatus()
         );
     }
 
@@ -360,10 +447,18 @@ public class MigrationEventApplicationService {
 
     private CultureReviewSummaryResponse latestReview(MigrationEventEntity event) {
         RevisionEntity revision = revisionRepository
-                .findFirstByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(event.getClanId(), TARGET_TYPE, event.getId())
+                .findFirstByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
+                        event.getClanId(),
+                        TARGET_TYPE,
+                        event.getId()
+                )
                 .orElse(null);
-        if (revision == null) return CultureReviewSummaryResponse.empty();
-        ReviewTaskEntity task = reviewTaskRepository.findFirstByRevisionIdOrderByReviewLevelAsc(revision.getId()).orElse(null);
+        if (revision == null) {
+            return CultureReviewSummaryResponse.empty();
+        }
+        ReviewTaskEntity task = reviewTaskRepository
+                .findFirstByRevisionIdOrderByReviewLevelAsc(revision.getId())
+                .orElse(null);
         String submitterName = userName(revision.getSubmitterId());
         String reviewerName = task == null ? null : userName(task.getReviewerId());
         return new CultureReviewSummaryResponse(
@@ -378,7 +473,9 @@ public class MigrationEventApplicationService {
     }
 
     private String userName(Long userId) {
-        if (userId == null) return null;
+        if (userId == null) {
+            return null;
+        }
         return appUserRepository.findById(userId)
                 .map(AppUserEntity::getDisplayName)
                 .filter(name -> name != null && !name.isBlank())
@@ -387,6 +484,7 @@ public class MigrationEventApplicationService {
 
     private Specification<MigrationEventEntity> buildSpecification(
             Long clanId,
+            Long actorId,
             MigrationEventSearchCriteria criteria,
             Collection<Long> readableBranchIds,
             Collection<Long> sensitiveBranchIds
@@ -396,10 +494,18 @@ public class MigrationEventApplicationService {
             predicates.add(cb.equal(root.get("clanId"), clanId));
             predicates.add(cb.isNull(root.get("deletedAt")));
             predicates.add(root.get("branchId").in(readableBranchIds));
-            if (criteria.branchId() != null) predicates.add(cb.equal(root.get("branchId"), criteria.branchId()));
-            if (criteria.founderPersonId() != null) predicates.add(cb.equal(root.get("founderPersonId"), criteria.founderPersonId()));
-            if (criteria.dataStatus() != null) predicates.add(cb.equal(root.get("dataStatus"), criteria.dataStatus()));
-            if (criteria.privacyLevel() != null) predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
+            if (criteria.branchId() != null) {
+                predicates.add(cb.equal(root.get("branchId"), criteria.branchId()));
+            }
+            if (criteria.founderPersonId() != null) {
+                predicates.add(cb.equal(root.get("founderPersonId"), criteria.founderPersonId()));
+            }
+            if (criteria.dataStatus() != null) {
+                predicates.add(cb.equal(root.get("dataStatus"), criteria.dataStatus()));
+            }
+            if (criteria.privacyLevel() != null) {
+                predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
+            }
             addContains(predicates, root.get("fromLocation"), criteria.fromLocation(), cb);
             addContains(predicates, root.get("toLocation"), criteria.toLocation(), cb);
             addContains(predicates, root.get("migrationTimeText"), criteria.migrationTimeText(), cb);
@@ -413,33 +519,40 @@ public class MigrationEventApplicationService {
                         cb.like(cb.lower(root.get("description")), pattern)
                 ));
             }
-            if (sensitiveBranchIds.isEmpty()) {
-                predicates.add(cb.and(
-                        cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)),
-                        cb.notEqual(root.get("sensitiveLevel"), "sensitive"),
-                        cb.notEqual(root.get("sensitiveLevel"), "highly_sensitive")
-                ));
-            } else {
-                predicates.add(cb.or(
-                        cb.and(
-                                cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)),
-                                cb.notEqual(root.get("sensitiveLevel"), "sensitive"),
-                                cb.notEqual(root.get("sensitiveLevel"), "highly_sensitive")
-                        ),
-                        root.get("branchId").in(sensitiveBranchIds)
-                ));
+
+            Predicate unrestricted = cb.and(
+                    cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)),
+                    cb.notEqual(root.get("sensitiveLevel"), "sensitive"),
+                    cb.notEqual(root.get("sensitiveLevel"), "highly_sensitive")
+            );
+            List<Predicate> visibility = new ArrayList<>();
+            visibility.add(unrestricted);
+            visibility.add(cb.equal(root.get("createdBy"), actorId));
+            if (!sensitiveBranchIds.isEmpty()) {
+                visibility.add(root.get("branchId").in(sensitiveBranchIds));
             }
+            predicates.add(cb.or(visibility.toArray(Predicate[]::new)));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
     }
 
-    private void addContains(List<Predicate> predicates, jakarta.persistence.criteria.Path<String> path, String value, jakarta.persistence.criteria.CriteriaBuilder cb) {
-        if (value != null) predicates.add(cb.like(cb.lower(path), "%" + value.toLowerCase(Locale.ROOT) + "%"));
+    private void addContains(
+            List<Predicate> predicates,
+            jakarta.persistence.criteria.Path<String> path,
+            String value,
+            jakarta.persistence.criteria.CriteriaBuilder cb
+    ) {
+        if (value != null) {
+            predicates.add(cb.like(cb.lower(path), "%" + value.toLowerCase(Locale.ROOT) + "%"));
+        }
     }
 
     private MigrationEventEntity requireVisible(Long eventId, Long actorId) {
         MigrationEventEntity event = migrationEventRepository.findByIdAndDeletedAtIsNull(eventId)
-                .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见"));
+                .orElseThrow(() -> new BusinessException(
+                        "MIGRATION_EVENT_NOT_FOUND",
+                        "迁徙事件不存在或不可见"
+                ));
         permissionPolicyService.requireVisible(event, actorId);
         return event;
     }
@@ -451,27 +564,61 @@ public class MigrationEventApplicationService {
 
     private BranchEntity requireBranch(Long clanId, Long branchId) {
         return branchRepository.findByIdAndClanId(branchId, clanId)
-                .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_BRANCH_INVALID", "支派不属于当前宗族"));
+                .orElseThrow(() -> new BusinessException(
+                        "MIGRATION_EVENT_BRANCH_INVALID",
+                        "支派不属于当前宗族"
+                ));
     }
 
     private void validateFounder(Long clanId, Long branchId, Long founderPersonId) {
-        if (founderPersonId == null) return;
-        PersonEntity founder = personRepository.findByIdAndDeletedAtIsNull(founderPersonId)
-                .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_FOUNDER_INVALID", "始迁祖不存在"));
-        if (!Objects.equals(founder.getClanId(), clanId)) {
-            throw new BusinessException("MIGRATION_EVENT_FOUNDER_CLAN_MISMATCH", "始迁祖不属于当前宗族");
+        if (founderPersonId == null) {
+            return;
         }
-        if (founder.getBranchId() != null && !branchRepository.isDescendantOrSelf(clanId, branchId, founder.getBranchId())) {
-            throw new BusinessException("MIGRATION_EVENT_FOUNDER_BRANCH_MISMATCH", "始迁祖不属于迁徙事件支派或其下级支派");
+        PersonEntity founder = personRepository.findByIdAndDeletedAtIsNull(founderPersonId)
+                .orElseThrow(() -> new BusinessException(
+                        "MIGRATION_EVENT_FOUNDER_INVALID",
+                        "始迁祖不存在"
+                ));
+        if (!Objects.equals(founder.getClanId(), clanId)) {
+            throw new BusinessException(
+                    "MIGRATION_EVENT_FOUNDER_CLAN_MISMATCH",
+                    "始迁祖不属于当前宗族"
+            );
+        }
+        if (founder.getBranchId() != null
+                && !branchRepository.isDescendantOrSelf(clanId, branchId, founder.getBranchId())) {
+            throw new BusinessException(
+                    "MIGRATION_EVENT_FOUNDER_BRANCH_MISMATCH",
+                    "始迁祖不属于迁徙事件支派或其下级支派"
+            );
         }
     }
 
-    private void requireSequenceAvailable(Long clanId, Long branchId, Integer sequenceNo, Long currentId) {
+    private void requireSequenceAvailable(
+            Long clanId,
+            Long branchId,
+            Integer sequenceNo,
+            Long currentId
+    ) {
         boolean exists = currentId == null
-                ? migrationEventRepository.existsByClanIdAndBranchIdAndSequenceNoAndDeletedAtIsNull(clanId, branchId, sequenceNo)
-                : migrationEventRepository.existsByClanIdAndBranchIdAndSequenceNoAndIdNotAndDeletedAtIsNull(clanId, branchId, sequenceNo, currentId);
+                ? migrationEventRepository
+                        .existsByClanIdAndBranchIdAndSequenceNoAndDeletedAtIsNull(
+                                clanId,
+                                branchId,
+                                sequenceNo
+                        )
+                : migrationEventRepository
+                        .existsByClanIdAndBranchIdAndSequenceNoAndIdNotAndDeletedAtIsNull(
+                                clanId,
+                                branchId,
+                                sequenceNo,
+                                currentId
+                        );
         if (exists) {
-            throw new BusinessException("MIGRATION_EVENT_SEQUENCE_CONFLICT", "同一支派的迁徙顺序不能重复");
+            throw new BusinessException(
+                    "MIGRATION_EVENT_SEQUENCE_CONFLICT",
+                    "同一支派的迁徙顺序不能重复"
+            );
         }
     }
 
@@ -502,7 +649,15 @@ public class MigrationEventApplicationService {
             String clientIp
     ) {
         operationLogApplicationService.record(
-                event.getClanId(), actorId, action, TARGET_TYPE, event.getId(), summary, detail, requestId, clientIp
+                event.getClanId(),
+                actorId,
+                action,
+                TARGET_TYPE,
+                event.getId(),
+                summary,
+                detail,
+                requestId,
+                clientIp
         );
     }
 
