@@ -29,6 +29,16 @@ public class CultureSiteTargetGovernanceAdapter implements CultureTargetGovernan
     }
 
     @Override
+    public String sensitiveViewPermission() {
+        return CultureSitePermissionPolicyService.VIEW_SENSITIVE;
+    }
+
+    @Override
+    public String restrictedLogSummary() {
+        return "受限文化场所操作";
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CultureTargetContext requireExisting(Long targetId) {
         return context(requireEntity(targetId));
@@ -62,8 +72,8 @@ public class CultureSiteTargetGovernanceAdapter implements CultureTargetGovernan
                 entity.getPrivacyLevel(),
                 entity.getSensitiveLevel(),
                 entity.getCreatedBy(),
-                CultureSitePermissionPolicyService.VIEW_SENSITIVE,
-                "受限文化场所操作"
+                sensitiveViewPermission(),
+                restrictedLogSummary()
         );
     }
 
