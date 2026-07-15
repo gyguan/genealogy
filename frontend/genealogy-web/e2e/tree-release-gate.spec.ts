@@ -68,7 +68,8 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
 
   const searchBox = page.locator('.lineage-search-grid--workbench .ant-input-search');
   const inputBox = await searchBox.locator('.ant-input-affix-wrapper').boundingBox();
-  const searchButtonBox = await searchBox.locator('.ant-input-search-button').boundingBox();
+  const searchButtonBox = await searchBox.getByRole('button', { name: /搜索/ }).boundingBox();
+  expect(inputBox?.width || 0).toBeGreaterThanOrEqual(280);
   expect(inputBox?.width || 0).toBeLessThanOrEqual(360);
   expect(Math.abs((inputBox?.height || 0) - (searchButtonBox?.height || 0))).toBeLessThanOrEqual(1);
   expect(Math.abs((inputBox?.y || 0) - (searchButtonBox?.y || 0))).toBeLessThanOrEqual(1);
