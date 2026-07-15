@@ -20,10 +20,9 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract and apply refinement script
+      - name: Extract refinement script
         shell: bash
         run: |
-          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import textwrap
@@ -32,10 +31,29 @@ jobs:
           marker = "          python - <<'PY'\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n          PY", start)
-          script = textwrap.dedent(workflow[start:end])
-          Path('/tmp/refine_lineage.py').write_text(script)
+          Path('/tmp/refine_lineage.py').write_text(textwrap.dedent(workflow[start:end]))
           PY
-          python /tmp/refine_lineage.py
+      - name: Apply refinement script
+        id: apply
+        shell: bash
+        run: |
+          set +e
+          python /tmp/refine_lineage.py > refinement-diagnostics.log 2>&1
+          code=$?
+          cat refinement-diagnostics.log
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload refinement diagnostics
+        if: steps.apply.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineage-refinement-diagnostics
+          path: refinement-diagnostics.log
+          retention-days: 1
+      - name: Commit refinement
+        if: steps.apply.outputs.exit_code == '0'
+        shell: bash
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx \
@@ -43,3 +61,6 @@ jobs:
                   frontend/genealogy-web/e2e/tree-release-gate.spec.ts
           git commit -m "refactor(tree): refine search and canvas controls"
           git push origin HEAD:${{ github.head_ref }}
+      - name: Preserve failing conclusion
+        if: steps.apply.outputs.exit_code != '0'
+        run: exit 1
