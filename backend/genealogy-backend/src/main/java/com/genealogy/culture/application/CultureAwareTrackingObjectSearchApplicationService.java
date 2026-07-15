@@ -86,7 +86,7 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
         boolean sensitiveAccess = governedRbac.hasPermission(
                 actorId,
                 clanId,
-                adapter.requireExistingForMetadata().sensitiveViewPermission()
+                adapter.sensitiveViewPermission()
         );
         if ("migration_event".equals(normalizedType)) {
             return migrationTrackingQueryRepository.search(
