@@ -1,0 +1,71 @@
+name: Issue 124 Review Fix Runner
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-124-review-fix-runner.yml
+      - tools/issue124_review_fix.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout runner assets
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-124-review-fix-runner-v2
+          path: runner
+
+      - name: Checkout target feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-124-stable-trace-id
+          fetch-depth: 0
+          path: target
+
+      - name: Sync latest main
+        working-directory: target
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git merge --no-edit origin/main
+
+      - name: Apply review fix
+        working-directory: target
+        run: python ../runner/tools/issue124_review_fix.py
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: target/backend/genealogy-backend/pom.xml
+
+      - name: Run focused backend tests
+        working-directory: target/backend/genealogy-backend
+        run: >-
+          mvn -B
+          -Dtest=SourceBindingReviewApplicationServiceTest,CultureAwareSourceBindingReviewApplicationServiceTest,TrackingTraceApplicationServiceTest
+          test
+
+      - name: Package backend
+        working-directory: target/backend/genealogy-backend
+        run: mvn -B -DskipTests package
+
+      - name: Commit and push formal fix
+        working-directory: target
+        run: |
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceBindingReviewApplicationService.java \
+            backend/genealogy-backend/src/main/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationService.java \
+            backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceBindingReviewApplicationServiceTest.java \
+            backend/genealogy-backend/src/test/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationServiceTest.java
+          git commit -m "fix: trace source-binding creates to visible targets"
+          git push origin HEAD:agent/issue-124-stable-trace-id
