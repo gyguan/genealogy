@@ -105,17 +105,17 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   }
 
   const locatorInput = page.locator('[aria-label="图内定位人物"]');
-  const locatorSelect = locatorInput.locator('xpath=ancestor::div[contains(@class, "ant-select")]');
+  const locatorField = page.locator('.lineage-query-toolbar .field').filter({ has: locatorInput });
   await locatorInput.click();
   const locatorDropdown = page.locator('.ant-select-dropdown:visible');
   const locatorOption = locatorDropdown.locator('.ant-select-item-option').nth(1);
   const locatedLabel = (await locatorOption.textContent() || '').split(' · ')[0];
   await locatorOption.click();
-  await expect(locatorSelect.locator('.ant-select-selection-item')).toContainText(locatedLabel);
+  await expect(locatorField.locator('.ant-select-selection-item')).toContainText(locatedLabel);
   await expect(page.locator('.ant-drawer:visible')).toHaveCount(0);
   await expect(personCard.locator('.lineage-graph-node.is-path').first()).toBeVisible();
 
-  const secondaryNode = personNodes.filter({ hasNot: page.locator('.is-active') }).nth(1);
+  const secondaryNode = personCard.locator('.lineage-graph-node:not(.is-active)').first();
   if (await secondaryNode.count()) {
     await activateGraphControl(secondaryNode);
     await expect(personCard.locator('.lineage-graph-node.is-selected')).toBeVisible();
