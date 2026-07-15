@@ -269,7 +269,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setSearchInput('');
     setAppliedKeyword('');
     setSearchNotice('');
-    setSearchResultsExpanded(false);
+    setSearchCollapsed(true);
     setSelectedBranchId('');
     setPersonGraph(null);
     setBranchGraph(null);
@@ -435,7 +435,6 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   async function handlePersonSelection(item: PersonSearchItem) {
     setSearchCollapsed(true);
     const nextBranchId = item.branchId || selectedBranchId;
-    setSearchResultsExpanded(false);
     setSelectedBranchId(nextBranchId);
     clearSelection();
     workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' });
@@ -810,7 +809,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               ]}
             />
             {selectedNode.visibility !== 'masked' ? <DetailSummary target={selectedNode} indicators={nodeIndicators(selectedNode)} /> : <IndicatorTags indicators={nodeIndicators(selectedNode)} />}
-            <Divider orientation="left">相关关系</Divider>
+            <Divider orientation="start">相关关系</Divider>
             <List
               size="small"
               locale={{ emptyText: '暂无可见关系记录' }}
