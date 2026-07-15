@@ -1,0 +1,57 @@
+name: Issue 277 Build Clean Branch
+
+on:
+  push:
+    branches: ["agent/issue-277-builder"]
+    paths: [".github/workflows/issue-277-build-clean.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-277-builder
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Apply implementation to clean branch
+        shell: bash
+        run: |
+          cp .github/issue-277-patch.py /tmp/issue-277-patch.py
+          git fetch origin agent/issue-277-search-multiselect
+          git switch -C agent/issue-277-search-multiselect origin/agent/issue-277-search-multiselect
+          python /tmp/issue-277-patch.py
+      - name: Validate frontend and API contract
+        shell: bash
+        run: |
+          cd frontend/genealogy-web
+          npm install --package-lock=false
+          npm run test:culture-shell
+          npm run typecheck
+          npm run build
+          cd ../..
+          bash scripts/api/check-api-contract.sh
+          rm -f frontend/genealogy-web/package-lock.json
+      - name: Validate backend multi-select normalization
+        working-directory: backend/genealogy-backend
+        run: mvn -DskipITs -Dtest=CultureSearchMultiSelectDomainServiceTest test
+      - name: Publish one clean implementation commit
+        shell: bash
+        run: |
+          test ! -e .github/workflows/issue-277-build-clean.yml
+          test ! -e .github/issue-277-patch.py
+          rm -f frontend/genealogy-web/package-lock.json
+          git config user.name "openai-agent"
+          git config user.email "openai-agent@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(culture): sync multi-select filters across tabs"
+          git push --force origin HEAD:agent/issue-277-search-multiselect
