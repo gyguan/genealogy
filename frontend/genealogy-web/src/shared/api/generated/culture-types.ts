@@ -111,8 +111,8 @@ export type CultureItemPage = {
 export type MigrationEventCreateRequest = {
   branchId: number;
   sequenceNo: number;
-  fromLocation?: string | null;
-  toLocation?: string | null;
+  fromLocation: string;
+  toLocation: string;
   migrationTimeText?: string | null;
   founderPersonId?: number | null;
   reason?: string | null;
