@@ -66,6 +66,7 @@ public class CultureSitePermissionPolicyService {
 
     @Transactional(readOnly = true)
     public boolean canViewSensitive(CultureSiteEntity site, Long actorId) {
+        if (!requiresSensitiveAccess(site)) return true;
         return Objects.equals(site.getCreatedBy(), actorId) || can(site, actorId, VIEW_SENSITIVE);
     }
 
@@ -86,7 +87,7 @@ public class CultureSitePermissionPolicyService {
             addIf(actions, "request_archive", can(site, actorId, ARCHIVE));
             addIf(actions, "request_feature", can(site, actorId, FEATURE));
         }
-        addIf(actions, "view_sensitive", canViewSensitive(site, actorId));
+        addIf(actions, "view_sensitive", requiresSensitiveAccess(site) && canViewSensitive(site, actorId));
         return List.copyOf(actions);
     }
 
@@ -98,11 +99,15 @@ public class CultureSitePermissionPolicyService {
     }
 
     private boolean privacyAllows(CultureSiteEntity site, Long actorId) {
+        return !requiresSensitiveAccess(site) || canViewSensitive(site, actorId);
+    }
+
+    private boolean requiresSensitiveAccess(CultureSiteEntity site) {
         String privacy = normalize(site.getPrivacyLevel());
         String sensitive = normalize(site.getSensitiveLevel());
-        if ("sealed".equals(privacy) || "highly_sensitive".equals(sensitive)) return canViewSensitive(site, actorId);
-        if (RESTRICTED_PRIVACY.contains(privacy) || "sensitive".equals(sensitive)) return canViewSensitive(site, actorId);
-        return true;
+        return RESTRICTED_PRIVACY.contains(privacy)
+                || "sensitive".equals(sensitive)
+                || "highly_sensitive".equals(sensitive);
     }
 
     private void addIf(LinkedHashSet<String> actions, String action, boolean allowed) {
