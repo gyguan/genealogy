@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -24,6 +25,14 @@ export default defineConfig(({ mode }) => {
               proxyReq.removeHeader('origin');
             });
           }
+        }
+      }
+    },
+    build: {
+      rolldownOptions: {
+        input: {
+          main: fileURLToPath(new URL('./index.html', import.meta.url)),
+          pagePatterns: fileURLToPath(new URL('./page-patterns.html', import.meta.url))
         }
       }
     }
