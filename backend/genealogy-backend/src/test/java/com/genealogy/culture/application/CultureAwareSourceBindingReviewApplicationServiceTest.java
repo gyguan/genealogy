@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationTraceContext;
@@ -51,6 +54,8 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
     @Mock private CulturePermissionPolicyService culturePermissionPolicyService;
     @Mock private MigrationEventRepository migrationEventRepository;
     @Mock private MigrationEventPermissionPolicyService migrationPermissionPolicyService;
+    @Mock private CultureSiteRepository cultureSiteRepository;
+    @Mock private CultureSitePermissionPolicyService cultureSitePermissionPolicyService;
 
     private CultureAwareSourceBindingReviewApplicationService service;
 
@@ -68,7 +73,9 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
                 cultureItemRepository,
                 culturePermissionPolicyService,
                 migrationEventRepository,
-                migrationPermissionPolicyService
+                migrationPermissionPolicyService,
+                cultureSiteRepository,
+                cultureSitePermissionPolicyService
         );
     }
 
@@ -141,6 +148,30 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
         assertThat(task.getValue().getBranchId()).isEqualTo(19L);
         assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"migration_event\"");
     }
+
+
+@Test
+void submitCultureSiteCreateShouldUseReviewedBindingPathAndSitePermission() {
+    CultureSiteEntity site = new CultureSiteEntity();
+    site.setId(300L);
+    site.setClanId(1L);
+    site.setBranchId(29L);
+    site.setDataStatus("draft");
+
+    SourceEntity source = officialSource();
+    AtomicReference<RevisionEntity> revisionRef = prepareCreate(1L, 10L, "culture_site", 300L, source);
+    when(cultureSiteRepository.findByIdAndDeletedAtIsNull(300L)).thenReturn(Optional.of(site));
+
+    service.submitCreate(1L, request("culture_site", 300L), 2L, "req-site", "127.0.0.1");
+
+    verify(cultureSitePermissionPolicyService).requireAction(
+            site, 2L, CultureSitePermissionPolicyService.UPDATE
+    );
+    ArgumentCaptor<ReviewTaskEntity> task = ArgumentCaptor.forClass(ReviewTaskEntity.class);
+    verify(reviewTaskRepository).save(task.capture());
+    assertThat(task.getValue().getBranchId()).isEqualTo(29L);
+    assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"culture_site\"");
+}
 
     private AtomicReference<RevisionEntity> prepareCreate(
             Long clanId,
