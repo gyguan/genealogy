@@ -14,7 +14,9 @@ async function openTree(page: Page, username = 'tree_editor') {
   await page.goto('/?view=treeProduct');
   await expect(page.getByText('世系图谱').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: '一、支派全局拓扑' })).toBeVisible();
-  await expect(page.locator('input[placeholder="姓名、谱名、字号"]')).toBeVisible();
+  await expect(page.locator('input[placeholder="输入姓名、谱名或字号"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: /展开结果/ })).toBeVisible();
+  await expect(page.locator('#lineage-person-search-results')).toHaveCount(0);
 }
 
 async function chooseComboboxOption(page: Page, comboboxIndex: number, optionName: string | RegExp) {
@@ -30,11 +32,20 @@ async function activateGraphControl(control: Locator) {
 }
 
 async function searchAndSelect(page: Page, keyword: string) {
-  const searchInput = page.locator('input[placeholder="姓名、谱名、字号"]');
+  const searchInput = page.locator('input[placeholder="输入姓名、谱名或字号"]');
   await searchInput.fill(keyword);
   await page.getByRole('button', { name: /搜\s*索/ }).click();
   await expect(page.getByText('共匹配 1 位人物')).toBeVisible();
-  await chooseComboboxOption(page, 2, new RegExp(keyword));
+
+  const results = page.locator('#lineage-person-search-results');
+  await expect(results).toBeVisible();
+  await expect(page.getByRole('button', { name: '收起结果' })).toBeVisible();
+  const resultItem = results.locator('.ant-list-item').filter({ hasText: keyword }).first();
+  await expect(resultItem).toBeVisible();
+  await resultItem.getByRole('button', { name: '设为中心' }).click();
+
+  await expect(results).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /展开结果/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: new RegExp(keyword) })).toBeVisible();
 }
 
