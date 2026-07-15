@@ -9,6 +9,10 @@ import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
+import com.genealogy.culture.governance.CultureItemTargetGovernanceAdapter;
+import com.genealogy.culture.governance.CultureSiteTargetGovernanceAdapter;
+import com.genealogy.culture.governance.CultureTargetGovernanceRegistry;
+import com.genealogy.culture.governance.MigrationEventTargetGovernanceAdapter;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
@@ -30,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -61,6 +66,11 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
+        CultureTargetGovernanceRegistry registry = new CultureTargetGovernanceRegistry(List.of(
+                new CultureItemTargetGovernanceAdapter(cultureItemRepository, culturePermissionPolicyService),
+                new MigrationEventTargetGovernanceAdapter(migrationEventRepository, migrationPermissionPolicyService),
+                new CultureSiteTargetGovernanceAdapter(cultureSiteRepository, cultureSitePermissionPolicyService)
+        ));
         service = new CultureAwareSourceBindingReviewApplicationService(
                 sourceRepository,
                 sourceBindingRepository,
@@ -70,12 +80,7 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
                 operationLogApplicationService,
                 authorizationApplicationService,
                 new ObjectMapper(),
-                cultureItemRepository,
-                culturePermissionPolicyService,
-                migrationEventRepository,
-                migrationPermissionPolicyService,
-                cultureSiteRepository,
-                cultureSitePermissionPolicyService
+                registry
         );
     }
 
@@ -149,29 +154,28 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
         assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"migration_event\"");
     }
 
+    @Test
+    void submitCultureSiteCreateShouldUseReviewedBindingPathAndSitePermission() {
+        CultureSiteEntity site = new CultureSiteEntity();
+        site.setId(300L);
+        site.setClanId(1L);
+        site.setBranchId(29L);
+        site.setDataStatus("draft");
 
-@Test
-void submitCultureSiteCreateShouldUseReviewedBindingPathAndSitePermission() {
-    CultureSiteEntity site = new CultureSiteEntity();
-    site.setId(300L);
-    site.setClanId(1L);
-    site.setBranchId(29L);
-    site.setDataStatus("draft");
+        SourceEntity source = officialSource();
+        AtomicReference<RevisionEntity> revisionRef = prepareCreate(1L, 10L, "culture_site", 300L, source);
+        when(cultureSiteRepository.findByIdAndDeletedAtIsNull(300L)).thenReturn(Optional.of(site));
 
-    SourceEntity source = officialSource();
-    AtomicReference<RevisionEntity> revisionRef = prepareCreate(1L, 10L, "culture_site", 300L, source);
-    when(cultureSiteRepository.findByIdAndDeletedAtIsNull(300L)).thenReturn(Optional.of(site));
+        service.submitCreate(1L, request("culture_site", 300L), 2L, "req-site", "127.0.0.1");
 
-    service.submitCreate(1L, request("culture_site", 300L), 2L, "req-site", "127.0.0.1");
-
-    verify(cultureSitePermissionPolicyService).requireAction(
-            site, 2L, CultureSitePermissionPolicyService.UPDATE
-    );
-    ArgumentCaptor<ReviewTaskEntity> task = ArgumentCaptor.forClass(ReviewTaskEntity.class);
-    verify(reviewTaskRepository).save(task.capture());
-    assertThat(task.getValue().getBranchId()).isEqualTo(29L);
-    assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"culture_site\"");
-}
+        verify(cultureSitePermissionPolicyService).requireAction(
+                site, 2L, CultureSitePermissionPolicyService.UPDATE
+        );
+        ArgumentCaptor<ReviewTaskEntity> task = ArgumentCaptor.forClass(ReviewTaskEntity.class);
+        verify(reviewTaskRepository).save(task.capture());
+        assertThat(task.getValue().getBranchId()).isEqualTo(29L);
+        assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"culture_site\"");
+    }
 
     private AtomicReference<RevisionEntity> prepareCreate(
             Long clanId,
