@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Col, Empty, Progress, Row, Skeleton, Space, Statistic, Tag, Typography } from 'antd';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
 import { categoryOptions, formatCoverageRate, optionLabel, statusColor, statusOptions } from './cultureOptions';
+import { MigrationTimelinePanel } from './MigrationTimelinePanel';
 
 const { Text } = Typography;
 
@@ -59,6 +60,8 @@ export function CultureOverviewPanel({ overview, loading, error, onOpenItem }: P
           </Card>
         </Col>
       </Row>
+
+      <MigrationTimelinePanel />
     </Space>
   );
 }
