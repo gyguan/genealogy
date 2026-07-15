@@ -15,7 +15,7 @@ async function openTree(page: Page, username = 'tree_editor') {
   await expect(page.getByText('世系图谱').first()).toBeVisible();
   await expect(page.getByRole('heading', { name: '中国式世系关系工作台' })).toBeVisible();
   await expect(page.locator('input[placeholder="输入姓名、谱名或字号"]')).toBeVisible();
-  await expect(page.getByText('人物中心', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('图谱视角').getByText('人物中心', { exact: true })).toBeVisible();
   await expect(page.getByLabel('人物搜索范围')).toHaveCount(0);
   await expect(page.getByLabel('数据视图')).toHaveCount(0);
   await expect(page.locator('.lineage-workbench-summary')).toHaveCount(0);
@@ -131,7 +131,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   await expect(personDrawer.getByRole('button', { name: '查看来源证据' })).toBeVisible();
   await closeDrawer(page);
 
-  await page.getByText('支派全局', { exact: true }).click();
+  await page.getByLabel('图谱视角').getByText('支派全局', { exact: true }).click();
   await expect(page).toHaveURL(/mode=branch/);
   const branchCard = page.locator('.lineage-logic-card--branch');
   await expect(branchCard.getByRole('heading', { name: '支派全局拓扑' })).toBeVisible();
@@ -143,7 +143,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   await expect(edgeDrawer.getByText('关系类别', { exact: true })).toBeVisible();
   await closeDrawer(page);
 
-  await page.getByText('人物中心', { exact: true }).click();
+  await page.getByLabel('图谱视角').getByText('人物中心', { exact: true }).click();
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 3 代');
   await page.getByRole('button', { name: '查询图谱' }).click();
