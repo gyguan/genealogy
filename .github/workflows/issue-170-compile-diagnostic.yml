@@ -1,4 +1,4 @@
-name: Issue 170 Compile Diagnostic
+name: Issue 170 Verify Diagnostic
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  compile-diagnostic:
+  verify-diagnostic:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,18 +20,20 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Capture backend compile output
+      - name: Capture backend verify output
         working-directory: backend/genealogy-backend
         shell: bash
         run: |
           set +e
-          mvn -B -DskipTests compile > /tmp/issue-170-compile.log 2>&1
-          echo "exit_code=$?" >> /tmp/issue-170-compile.log
+          mvn -B verify > /tmp/issue-170-verify.log 2>&1
+          echo "exit_code=$?" >> /tmp/issue-170-verify.log
           exit 0
-      - name: Upload compile output
+      - name: Upload verify output
         uses: actions/upload-artifact@v4
         with:
-          name: issue-170-compile-log
-          path: /tmp/issue-170-compile.log
+          name: issue-170-verify-log
+          path: |
+            /tmp/issue-170-verify.log
+            backend/genealogy-backend/target/surefire-reports
           if-no-files-found: error
           retention-days: 1
