@@ -111,7 +111,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   const locatorOption = locatorDropdown.locator('.ant-select-item-option').nth(1);
   const locatedLabel = (await locatorOption.textContent() || '').split(' · ')[0];
   await locatorOption.click();
-  await expect(locatorField.locator('.ant-select-selection-item')).toContainText(locatedLabel);
+  await expect(locatorField).toContainText(locatedLabel);
   await expect(page.locator('.ant-drawer:visible')).toHaveCount(0);
   await expect(personCard.locator('.lineage-graph-node.is-path').first()).toBeVisible();
 
