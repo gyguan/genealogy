@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.dto.CheckTaskResponse;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.review.entity.CheckTaskEntity;
@@ -75,6 +76,7 @@ public class RevisionWorkflowApplicationService {
         CheckTaskEntity task = new CheckTaskEntity();
         task.setClanId(clanId);
         task.setRevisionId(savedRecord.getId());
+        task.setTraceId(savedRecord.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("clan_admin");
         task.setBranchId(branchId);
@@ -82,14 +84,18 @@ public class RevisionWorkflowApplicationService {
         task.setCreatedAt(now);
         CheckTaskEntity savedTask = checkTaskRepository.save(task);
 
-        operationLogApplicationService.record(clanId, submitterId, "revision_submit", targetType, targetId, logSummary, diffSummary);
+        operationLogApplicationService.record(
+                clanId, submitterId, "revision_submit", targetType, targetId, logSummary, diffSummary,
+                OperationTraceContext.of(savedRecord.getTraceId(), savedRecord.getId(), savedTask.getId(), targetType, targetId, "submitted")
+        );
         return toTaskResponse(savedTask);
     }
 
     private CheckTaskResponse toTaskResponse(CheckTaskEntity task) {
         return new CheckTaskResponse(
                 task.getId(), task.getClanId(), task.getRevisionId(), task.getReviewLevel(), task.getReviewerId(),
-                task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(), task.getReviewedAt(), task.getCreatedAt()
+                task.getReviewerRole(), task.getBranchId(), task.getStatus(), task.getReviewComment(), task.getReviewedAt(), task.getCreatedAt(),
+                null, null, null, null, null, null, task.getTraceId()
         );
     }
 

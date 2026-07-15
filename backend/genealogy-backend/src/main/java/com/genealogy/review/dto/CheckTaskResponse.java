@@ -1,6 +1,7 @@
 package com.genealogy.review.dto;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public record CheckTaskResponse(
         Long id,
@@ -19,7 +20,8 @@ public record CheckTaskResponse(
         String title,
         String diffSummary,
         Long submitterId,
-        LocalDateTime submitTime
+        LocalDateTime submitTime,
+        UUID traceId
 ) {
 
     public CheckTaskResponse(
@@ -36,6 +38,6 @@ public record CheckTaskResponse(
             LocalDateTime createdAt
     ) {
         this(id, clanId, revisionId, reviewLevel, reviewerId, reviewerRole, branchId, status, reviewComment,
-                reviewedAt, createdAt, null, null, null, null, null, null);
+                reviewedAt, createdAt, null, null, null, null, null, null, null);
     }
 }

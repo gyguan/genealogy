@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
@@ -20,11 +21,13 @@ import com.genealogy.source.repository.SourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,6 +87,7 @@ class SourceBindingReviewApplicationServiceTest {
         when(revisionRepository.save(any(RevisionEntity.class))).thenAnswer(invocation -> {
             RevisionEntity entity = invocation.getArgument(0);
             entity.setId(500L);
+            if (entity.getTraceId() == null) entity.setTraceId(UUID.randomUUID());
             savedRevisionRef.set(entity);
             return entity;
         });
@@ -99,8 +103,22 @@ class SourceBindingReviewApplicationServiceTest {
         assertThat(response.reviewTaskId()).isEqualTo(600L);
         assertThat(response.status()).isEqualTo("pending");
         assertThat(response.changeType()).isEqualTo("create");
+        assertThat(response.traceId()).isEqualTo(savedRevisionRef.get().getTraceId());
         assertThat(savedRevisionRef.get().getAfterData()).contains("\"targetType\":\"person\"");
-        verify(operationLogApplicationService).record(1L, 2L, "source_binding_revision_submit", "revision", 500L, "submit source binding create revision", savedRevisionRef.get().getDiffSummary(), "req-1", "127.0.0.1");
+        ArgumentCaptor<OperationTraceContext> trace = ArgumentCaptor.forClass(OperationTraceContext.class);
+        verify(operationLogApplicationService).record(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(2L),
+                org.mockito.ArgumentMatchers.eq("source_binding_revision_submit"), org.mockito.ArgumentMatchers.eq("revision"),
+                org.mockito.ArgumentMatchers.eq(500L), org.mockito.ArgumentMatchers.eq("submit source binding create revision"),
+                org.mockito.ArgumentMatchers.eq(savedRevisionRef.get().getDiffSummary()), org.mockito.ArgumentMatchers.eq("req-1"),
+                org.mockito.ArgumentMatchers.eq("127.0.0.1"), trace.capture()
+        );
+        assertThat(trace.getValue().traceId()).isEqualTo(response.traceId());
+        assertThat(trace.getValue().revisionId()).isEqualTo(500L);
+        assertThat(trace.getValue().reviewTaskId()).isEqualTo(600L);
+        assertThat(trace.getValue().businessTargetType()).isEqualTo("person");
+        assertThat(trace.getValue().businessTargetId()).isEqualTo(100L);
+        assertThat(trace.getValue().eventResult()).isEqualTo("submitted");
     }
 
     @Test
@@ -129,7 +147,26 @@ class SourceBindingReviewApplicationServiceTest {
         assertThat(savedBindingRef.get().getBindingStatus()).isEqualTo("official");
         assertThat(task.getReviewerId()).isEqualTo(3L);
         assertThat(task.getStatus()).isEqualTo("approved");
-        verify(operationLogApplicationService).record(1L, 3L, "source_binding_revision_approve", "revision", 500L, "approve source binding revision", revision.getDiffSummary(), "req-2", "127.0.0.1");
+        ArgumentCaptor<OperationTraceContext> applyTrace = ArgumentCaptor.forClass(OperationTraceContext.class);
+        verify(operationLogApplicationService).record(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(3L),
+                org.mockito.ArgumentMatchers.eq("source_binding_revision_apply"), org.mockito.ArgumentMatchers.eq("revision"),
+                org.mockito.ArgumentMatchers.eq(500L), org.mockito.ArgumentMatchers.eq("apply source binding revision"),
+                org.mockito.ArgumentMatchers.eq(revision.getDiffSummary()), org.mockito.ArgumentMatchers.eq("req-2"),
+                org.mockito.ArgumentMatchers.eq("127.0.0.1"), applyTrace.capture()
+        );
+        ArgumentCaptor<OperationTraceContext> approveTrace = ArgumentCaptor.forClass(OperationTraceContext.class);
+        verify(operationLogApplicationService).record(
+                org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.eq(3L),
+                org.mockito.ArgumentMatchers.eq("source_binding_revision_approve"), org.mockito.ArgumentMatchers.eq("revision"),
+                org.mockito.ArgumentMatchers.eq(500L), org.mockito.ArgumentMatchers.eq("approve source binding revision"),
+                org.mockito.ArgumentMatchers.eq(revision.getDiffSummary()), org.mockito.ArgumentMatchers.eq("req-2"),
+                org.mockito.ArgumentMatchers.eq("127.0.0.1"), approveTrace.capture()
+        );
+        assertThat(applyTrace.getValue().businessTargetType()).isEqualTo("person");
+        assertThat(applyTrace.getValue().businessTargetId()).isEqualTo(100L);
+        assertThat(approveTrace.getValue().businessTargetType()).isEqualTo("person");
+        assertThat(approveTrace.getValue().businessTargetId()).isEqualTo(100L);
     }
 
     @Test
@@ -149,6 +186,7 @@ class SourceBindingReviewApplicationServiceTest {
         when(revisionRepository.save(any(RevisionEntity.class))).thenAnswer(invocation -> {
             RevisionEntity entity = invocation.getArgument(0);
             entity.setId(501L);
+            if (entity.getTraceId() == null) entity.setTraceId(UUID.randomUUID());
             return entity;
         });
         when(reviewTaskRepository.save(any(ReviewTaskEntity.class))).thenAnswer(invocation -> {
@@ -200,6 +238,7 @@ class SourceBindingReviewApplicationServiceTest {
         revision.setSubmitterId(2L);
         revision.setSubmitTime(LocalDateTime.now());
         revision.setStatus("pending");
+        revision.setTraceId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
         return revision;
     }
 
@@ -208,6 +247,7 @@ class SourceBindingReviewApplicationServiceTest {
         task.setId(600L);
         task.setClanId(1L);
         task.setRevisionId(500L);
+        task.setTraceId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
         task.setReviewLevel(1);
         task.setStatus("pending");
         task.setCreatedAt(LocalDateTime.now());

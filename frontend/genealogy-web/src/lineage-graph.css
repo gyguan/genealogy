@@ -7,34 +7,65 @@
 .lineage-graph-viewport { position: relative; height: 580px; overflow: hidden; border: 1px solid #d6e4ff; border-radius: 12px; background-color: #f8fbff; background-image: linear-gradient(rgba(22,119,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,119,255,.045) 1px, transparent 1px); background-size: 32px 32px; }
 .lineage-graph-svg { width: 100%; height: 100%; cursor: grab; touch-action: none; user-select: none; }
 .lineage-graph-svg:active { cursor: grabbing; }
-.lineage-graph-edge path { fill: none; stroke: #8c8c8c; stroke-width: 2; vector-effect: non-scaling-stroke; }
-.lineage-graph-edge text { fill: rgba(0,0,0,.55); font-size: 11px; paint-order: stroke; stroke: #f8fbff; stroke-width: 4px; stroke-linejoin: round; }
-.lineage-graph-edge--parent path { stroke: #1677ff; }
-.lineage-graph-edge--spouse path { stroke: #eb2f96; stroke-width: 2.5; }
-.lineage-graph-edge--status path { stroke: #fa8c16; stroke-dasharray: 5 5; }
+.lineage-graph-edge { outline: none; cursor: pointer; }
+.lineage-graph-edge path { fill: none; stroke: #8c8c8c; stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke-width .15s, opacity .15s; }
+.lineage-graph-edge text { fill: rgba(0,0,0,.65); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #f8fbff; stroke-width: 4px; stroke-linejoin: round; }
+.lineage-graph-edge:hover path, .lineage-graph-edge:focus path { stroke-width: 3.5; opacity: 1; }
+.lineage-graph-edge--blood path { stroke: #1677ff; }
+.lineage-graph-edge--ritual path { stroke: #13a8a8; stroke-dasharray: 8 5; }
+.lineage-graph-edge--marriage path { stroke: #eb2f96; stroke-width: 2.5; }
+.lineage-graph-edge--status path { stroke: #fa8c16; stroke-dasharray: 9 4 2 4; }
 .lineage-graph-edge--other path { stroke: #722ed1; stroke-dasharray: 3 4; }
-.lineage-graph-svg marker path { fill: #1677ff; stroke: #1677ff; }
+.lineage-marker--blood path { fill: #1677ff; stroke: #1677ff; }
+.lineage-marker--ritual path { fill: #f8fbff; stroke: #13a8a8; stroke-width: 1.5; }
 .lineage-graph-node { cursor: pointer; outline: none; }
 .lineage-graph-node > rect { fill: #fff; stroke: #d9d9d9; stroke-width: 1.5; filter: drop-shadow(0 3px 7px rgba(0,0,0,.07)); }
 .lineage-graph-node:hover > rect, .lineage-graph-node:focus > rect { stroke: #69b1ff; stroke-width: 2; }
 .lineage-graph-node.is-active > rect { fill: #e6f4ff; stroke: #1677ff; stroke-width: 2.5; }
 .lineage-graph-node.is-masked > rect { fill: #fafafa; stroke-dasharray: 6 4; }
 .lineage-graph-node.is-isolated > rect { stroke: #faad14; stroke-dasharray: 5 4; }
+.lineage-graph-node.indicator-warning > rect { stroke: #faad14; }
+.lineage-graph-node.indicator-danger > rect { stroke: #ff4d4f; }
+.lineage-graph-node.indicator-info > rect { stroke: #1677ff; }
 .lineage-graph-node > circle { fill: #1677ff; }
 .lineage-graph-node.is-masked > circle { fill: #8c8c8c; }
 .lineage-graph-avatar-text { fill: #fff; font-size: 15px; font-weight: 700; }
 .lineage-graph-node-name { fill: rgba(0,0,0,.88); font-size: 14px; font-weight: 600; }
 .lineage-graph-node-meta, .lineage-graph-node-branch, .lineage-graph-node-status { fill: rgba(0,0,0,.55); font-size: 11px; }
-.lineage-graph-node-status { fill: #1677ff; }
+.lineage-graph-node-status { fill: #1677ff; font-weight: 600; }
+.lineage-graph-node.indicator-warning .lineage-graph-node-status { fill: #ad6800; }
+.lineage-graph-node.indicator-danger .lineage-graph-node-status { fill: #cf1322; }
+.lineage-graph-node-indicator circle { stroke: #fff; stroke-width: 2; }
+.lineage-graph-node-indicator text { fill: #fff; font-size: 12px; font-weight: 800; }
+.lineage-graph-node-indicator.indicator-info circle { fill: #1677ff; }
+.lineage-graph-node-indicator.indicator-warning circle { fill: #fa8c16; }
+.lineage-graph-node-indicator.indicator-danger circle { fill: #ff4d4f; }
+.lineage-graph-node-indicator.indicator-neutral circle { fill: #8c8c8c; }
 .lineage-graph-collapse { cursor: pointer; }
 .lineage-graph-collapse circle { fill: #fff; stroke: #1677ff; stroke-width: 1.5; }
 .lineage-graph-collapse text { fill: #1677ff; font-size: 15px; font-weight: 700; }
-.lineage-graph-legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 4px 2px; color: rgba(0,0,0,.55); font-size: 12px; }
+.lineage-graph-legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 6px 2px; color: rgba(0,0,0,.65); font-size: 12px; }
 .lineage-graph-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.lineage-graph-legend i { display: inline-block; width: 30px; height: 0; border-top: 2px solid; }
-.lineage-graph-legend .legend-parent { color: #1677ff; }
-.lineage-graph-legend .legend-ritual { color: #1677ff; border-top-style: dashed; }
-.lineage-graph-legend .legend-spouse { color: #eb2f96; }
-.lineage-graph-legend .legend-other { color: #722ed1; border-top-style: dashed; }
+.lineage-graph-legend i { display: inline-block; width: 30px; height: 0; border-top: 2px solid; position: relative; }
+.lineage-graph-legend .legend-blood { color: #1677ff; }
+.lineage-graph-legend .legend-blood::after { content: ''; position: absolute; right: -1px; top: -4px; border-left: 6px solid #1677ff; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
+.lineage-graph-legend .legend-ritual { color: #13a8a8; border-top-style: dashed; }
+.lineage-graph-legend .legend-ritual::after { content: '›'; position: absolute; right: -2px; top: -10px; font-size: 16px; font-weight: 700; }
+.lineage-graph-legend .legend-marriage { color: #eb2f96; }
+.lineage-graph-legend .legend-status { color: #fa8c16; border-top-style: dashed; }
+.lineage-graph-legend .legend-risk { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #fa8c16; color: #fff; font-size: 12px; }
+.lineage-detail-summary { display: grid; gap: 10px; margin-top: 14px; }
+.lineage-detail-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.lineage-detail-summary-card { padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 8px; background: #fafafa; }
+.lineage-detail-summary-card span { display: block; margin-bottom: 4px; color: rgba(0,0,0,.45); font-size: 12px; }
+.lineage-detail-summary-card strong { color: rgba(0,0,0,.88); font-size: 13px; }
+.lineage-detail-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.lineage-detail-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border-radius: 999px; border: 1px solid #d9d9d9; background: #fff; color: rgba(0,0,0,.65); font-size: 12px; }
+.lineage-detail-tag.tone-info { border-color: #91caff; background: #e6f4ff; color: #0958d9; }
+.lineage-detail-tag.tone-warning { border-color: #ffd591; background: #fff7e6; color: #ad4e00; }
+.lineage-detail-tag.tone-danger { border-color: #ffccc7; background: #fff2f0; color: #cf1322; }
+.lineage-edge-pop-head { padding-right: 42px; }
+.lineage-edge-pop-head h3 { margin: 0 0 4px; }
+.lineage-edge-pop-head p { margin: 0; color: rgba(0,0,0,.55); }
 @media (max-width: 1100px) { .lineage-graph-notices { grid-template-columns: 1fr; } .lineage-graph-toolbar { align-items: flex-start; flex-direction: column; } .lineage-graph-viewport { height: 520px; } }
-@media (max-width: 760px) { .lineage-graph-viewport { height: 460px; } .lineage-graph-help { display: none; } }
+@media (max-width: 760px) { .lineage-graph-viewport { height: 460px; } .lineage-graph-help { display: none; } .lineage-detail-summary-grid { grid-template-columns: 1fr; } }

@@ -184,7 +184,7 @@ function AppShell() {
     switch (active) {
       case 'home': return <StatisticsHomePage />;
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
-      case 'treeProduct': return <LineageTreeProductPage notify={notify} />;
+      case 'treeProduct': return <LineageTreeProductPage notify={notify} onNavigate={enterPage} />;
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
       case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceLibraryPage notify={notify} /></>;
       case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;

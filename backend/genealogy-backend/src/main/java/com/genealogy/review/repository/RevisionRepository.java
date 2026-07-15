@@ -11,10 +11,13 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface RevisionRepository extends JpaRepository<RevisionEntity, Long> {
 
     Optional<RevisionEntity> findByIdAndTargetType(Long id, String targetType);
+
+    Optional<RevisionEntity> findByTraceId(UUID traceId);
 
     Optional<RevisionEntity> findFirstByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
             Long clanId,
@@ -38,6 +41,19 @@ public interface RevisionRepository extends JpaRepository<RevisionEntity, Long> 
     List<TargetCountProjection> countByTargets(
             @Param("clanId") Long clanId,
             @Param("targetType") String targetType,
+            @Param("targetIds") Collection<Long> targetIds);
+
+    @Query("""
+            select revision
+            from RevisionEntity revision
+            where revision.clanId = :clanId
+              and lower(revision.targetType) in :targetTypes
+              and revision.targetId in :targetIds
+            order by revision.targetType, revision.targetId, revision.submitTime, revision.id
+            """)
+    List<RevisionEntity> findTreeRevisionsByTargets(
+            @Param("clanId") Long clanId,
+            @Param("targetTypes") Collection<String> targetTypes,
             @Param("targetIds") Collection<Long> targetIds);
 
     Page<RevisionEntity> findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
