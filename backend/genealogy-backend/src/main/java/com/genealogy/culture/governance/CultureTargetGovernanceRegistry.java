@@ -12,19 +12,30 @@ import java.util.Optional;
 public class CultureTargetGovernanceRegistry {
 
     private final Map<String, CultureTargetGovernanceAdapter> adapters;
+    private final List<CultureTargetGovernanceAdapter> canonicalAdapters;
 
     public CultureTargetGovernanceRegistry(List<CultureTargetGovernanceAdapter> registeredAdapters) {
         Map<String, CultureTargetGovernanceAdapter> values = new LinkedHashMap<>();
+        Map<String, CultureTargetGovernanceAdapter> canonical = new LinkedHashMap<>();
         for (CultureTargetGovernanceAdapter adapter : registeredAdapters) {
+            String canonicalType = normalize(adapter.targetType());
+            if (canonical.putIfAbsent(canonicalType, adapter) != null) {
+                throw new IllegalStateException("duplicate culture target governance adapter: " + canonicalType);
+            }
             for (String alias : adapter.aliases()) {
                 String normalized = normalize(alias);
                 CultureTargetGovernanceAdapter previous = values.putIfAbsent(normalized, adapter);
                 if (previous != null && previous != adapter) {
-                    throw new IllegalStateException("duplicate culture target governance adapter: " + normalized);
+                    throw new IllegalStateException("duplicate culture target governance adapter alias: " + normalized);
                 }
             }
         }
         this.adapters = Map.copyOf(values);
+        this.canonicalAdapters = List.copyOf(canonical.values());
+    }
+
+    public List<CultureTargetGovernanceAdapter> adapters() {
+        return canonicalAdapters;
     }
 
     public boolean supports(String targetType) {
@@ -48,13 +59,7 @@ public class CultureTargetGovernanceRegistry {
         return context;
     }
 
-    public CultureTargetContext require(
-            Long clanId,
-            String targetType,
-            Long targetId,
-            Long actorId,
-            CultureTargetAction action
-    ) {
+    public CultureTargetContext require(Long clanId, String targetType, Long targetId, Long actorId, CultureTargetAction action) {
         CultureTargetContext context = requireAdapter(targetType).require(targetId, actorId, action);
         requireClan(clanId, context);
         return context;
