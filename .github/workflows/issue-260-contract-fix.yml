@@ -1,0 +1,73 @@
+name: Issue 260 Contract Fix
+
+on:
+  push:
+    branches: ["agent/issue-260-culture-multiselect"]
+    paths: [".github/workflows/issue-260-contract-fix.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-260-culture-multiselect
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Move multiselect parameters to canonical culture contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          canonical = Path('docs/api/openapi.culture.json')
+          data = json.loads(canonical.read_text(encoding='utf-8'))
+          operation = data['paths']['/api/v1/clans/{clanId}/culture-items']['get']
+          operation['description'] = '分类、支派、状态、可见范围、来源与精选筛选均支持重复 query 参数；同一维度按 OR，不同维度按 AND。旧单值请求继续兼容。'
+          operation['parameters'] = [
+              {"name":"clanId","in":"path","required":True,"schema":{"type":"integer","format":"int64"}},
+              {"name":"keyword","in":"query","required":False,"schema":{"type":"string","maxLength":100}},
+              {"name":"category","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":20,"items":{"$ref":"#/components/schemas/CultureCategory"}}},
+              {"name":"branchId","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":100,"items":{"type":"integer","format":"int64","minimum":1}}},
+              {"name":"dataStatus","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":20,"items":{"$ref":"#/components/schemas/CultureDataStatus"}}},
+              {"name":"privacyLevel","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":20,"items":{"$ref":"#/components/schemas/CulturePrivacyLevel"}}},
+              {"name":"hasSource","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":2,"items":{"type":"boolean"}}},
+              {"name":"featuredOnHome","in":"query","required":False,"style":"form","explode":True,"schema":{"type":"array","maxItems":2,"items":{"type":"boolean"}}},
+              {"name":"pageNo","in":"query","required":False,"schema":{"type":"integer","minimum":1,"default":1}},
+              {"name":"pageSize","in":"query","required":False,"schema":{"type":"integer","minimum":1,"maximum":100,"default":20}},
+              {"name":"sort","in":"query","required":False,"schema":{"type":"string","default":"updatedAt,desc"}}
+          ]
+          canonical.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          runtime = Path('docs/api/openapi.culture.zz-runtime.json')
+          runtime_data = json.loads(runtime.read_text(encoding='utf-8'))
+          runtime_data.get('paths', {}).pop('/api/v1/clans/{clanId}/culture-items', None)
+          runtime.write_text(json.dumps(runtime_data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Generate contracts
+        run: node scripts/api/generate-all-api-contracts.mjs
+      - name: Run focused culture state tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:culture-shell
+      - name: Verify generated contract is clean
+        run: bash scripts/api/check-api-contract.sh
+      - name: Commit canonical contract and generated files
+        shell: bash
+        run: |
+          rm .github/workflows/issue-260-contract-fix.yml
+          git config user.name "openai-agent"
+          git config user.email "openai-agent@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(culture): align multiselect API contract"
+          git push origin HEAD:agent/issue-260-culture-multiselect
