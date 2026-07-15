@@ -24,13 +24,29 @@ jobs:
           python3 - <<'RUNNER' > /tmp/issue-171-patch.log 2>&1
           from pathlib import Path
           import textwrap
+
           workflow = Path('.github/workflows/issue-171-apply-review-fixes.yml').read_text(encoding='utf-8')
           start = "          python3 - <<'PY'\n"
           end = "\n          PY\n"
           print('start_found=', start in workflow)
           print('end_found=', end in workflow)
-          script = workflow.split(start, 1)[1].split(end, 1)[0]
-          exec(compile(textwrap.dedent(script), 'issue-171-patch.py', 'exec'))
+          script = textwrap.dedent(workflow.split(start, 1)[1].split(end, 1)[0])
+          original = '''def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              if text.count(old) != 1:
+                  raise SystemExit(f"expected one match in {path}, found {text.count(old)}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")'''
+          traced = '''def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              print(f"anchor path={path} count={count} old={old[:120]!r}")
+              if count != 1:
+                  raise SystemExit(f"expected one match in {path}, found {count}")
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")'''
+          if original not in script:
+              raise SystemExit('replace_once function not found for instrumentation')
+          script = script.replace(original, traced, 1)
+          exec(compile(script, 'issue-171-patch.py', 'exec'))
           RUNNER
           echo "exit_code=$?" >> /tmp/issue-171-patch.log
           exit 0
