@@ -12,6 +12,8 @@ import com.genealogy.operationlog.repository.OperationLogRepository;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.review.entity.ReviewTaskEntity;
+import com.genealogy.source.entity.SourceAttachmentEntity;
+import com.genealogy.source.entity.SourceBindingEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Tuple;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -190,7 +192,11 @@ public class OperationRiskAuditApplicationService {
         Root<RelationshipEntity> relationship = relationshipIds.from(RelationshipEntity.class);
         relationshipIds.select(relationship.get("id")).where(
                 criteriaBuilder.equal(relationship.get("clanId"), clanId),
-                relationship.get("successorBranchId").in(branchIds)
+                criteriaBuilder.or(
+                        relationship.get("successorBranchId").in(branchIds),
+                        relationship.get("fromPersonId").in(personIds),
+                        relationship.get("toPersonId").in(personIds)
+                )
         );
 
         Subquery<Long> reviewTaskIds = query.subquery(Long.class);
@@ -207,13 +213,42 @@ public class OperationRiskAuditApplicationService {
                 memberRole.get("scopeId").in(branchIds)
         );
 
+        Subquery<Long> sourceIds = query.subquery(Long.class);
+        Root<SourceBindingEntity> sourceBinding = sourceIds.from(SourceBindingEntity.class);
+        sourceIds.select(sourceBinding.get("sourceId")).distinct(true).where(
+                criteriaBuilder.equal(sourceBinding.get("clanId"), clanId),
+                criteriaBuilder.or(
+                        criteriaBuilder.and(
+                                criteriaBuilder.equal(sourceBinding.get("targetType"), "branch"),
+                                sourceBinding.get("targetId").in(branchIds)
+                        ),
+                        criteriaBuilder.and(
+                                criteriaBuilder.equal(sourceBinding.get("targetType"), "person"),
+                                sourceBinding.get("targetId").in(personIds)
+                        ),
+                        criteriaBuilder.and(
+                                criteriaBuilder.equal(sourceBinding.get("targetType"), "relationship"),
+                                sourceBinding.get("targetId").in(relationshipIds)
+                        )
+                )
+        );
+
+        Subquery<Long> attachmentIds = query.subquery(Long.class);
+        Root<SourceAttachmentEntity> sourceAttachment = attachmentIds.from(SourceAttachmentEntity.class);
+        attachmentIds.select(sourceAttachment.get("id")).where(
+                criteriaBuilder.equal(sourceAttachment.get("clanId"), clanId),
+                sourceAttachment.get("sourceId").in(sourceIds)
+        );
+
         return criteriaBuilder.or(
                 root.get("branchId").in(branchIds),
                 targetMatches(root, criteriaBuilder, "branch", branchIds),
                 targetMatches(root, criteriaBuilder, "person", personIds),
                 targetMatches(root, criteriaBuilder, "relationship", relationshipIds),
                 targetMatches(root, criteriaBuilder, "review_task", reviewTaskIds),
-                targetMatches(root, criteriaBuilder, "member_role", memberRoleIds)
+                targetMatches(root, criteriaBuilder, "member_role", memberRoleIds),
+                targetMatches(root, criteriaBuilder, "source", sourceIds),
+                targetMatches(root, criteriaBuilder, "source_attachment", attachmentIds)
         );
     }
 
@@ -221,22 +256,34 @@ public class OperationRiskAuditApplicationService {
             Root<OperationLogEntity> root,
             CriteriaBuilder criteriaBuilder,
             String targetType,
-            Object ids
+            Set<Long> ids
     ) {
-        Predicate directIds = ids instanceof Subquery<?> subquery
-                ? root.get("targetId").in(subquery)
-                : root.get("targetId").in((Set<?>) ids);
-        Predicate businessIds = ids instanceof Subquery<?> subquery
-                ? root.get("businessTargetId").in(subquery)
-                : root.get("businessTargetId").in((Set<?>) ids);
         return criteriaBuilder.or(
                 criteriaBuilder.and(
                         criteriaBuilder.equal(root.get("targetType"), targetType),
-                        directIds
+                        root.get("targetId").in(ids)
                 ),
                 criteriaBuilder.and(
                         criteriaBuilder.equal(root.get("businessTargetType"), targetType),
-                        businessIds
+                        root.get("businessTargetId").in(ids)
+                )
+        );
+    }
+
+    private Predicate targetMatches(
+            Root<OperationLogEntity> root,
+            CriteriaBuilder criteriaBuilder,
+            String targetType,
+            Subquery<Long> ids
+    ) {
+        return criteriaBuilder.or(
+                criteriaBuilder.and(
+                        criteriaBuilder.equal(root.get("targetType"), targetType),
+                        root.get("targetId").in(ids)
+                ),
+                criteriaBuilder.and(
+                        criteriaBuilder.equal(root.get("businessTargetType"), targetType),
+                        root.get("businessTargetId").in(ids)
                 )
         );
     }
