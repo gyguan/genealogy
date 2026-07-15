@@ -50,9 +50,7 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
 
   await chooseComboboxOption(page, 3, '2代');
   await chooseComboboxOption(page, 3, '5代');
-  await expect(
-    page.locator('.lineage-search-grid .ant-select-selection-item').filter({ hasText: '5代' }).last()
-  ).toBeVisible();
+  await expect(page.getByText('5代', { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
   const personCard = page.locator('.lineage-logic-card--person');
