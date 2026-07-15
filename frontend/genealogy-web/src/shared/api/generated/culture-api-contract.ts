@@ -92,11 +92,15 @@ export const API_OPERATIONS = {
       "branchId",
       "dataStatus",
       "founderPersonId",
+      "fromLocation",
+      "hasSource",
       "keyword",
+      "migrationTimeText",
       "pageNo",
       "pageSize",
       "privacyLevel",
-      "sort"
+      "sort",
+      "toLocation"
     ],
     "requestBody": null,
     "response": "ApiResponseMigrationEventPage"
@@ -242,6 +246,17 @@ export const API_OPERATIONS = {
     ],
     "queryParams": [],
     "requestBody": null,
+    "response": "ApiResponseCultureCommandResponse"
+  },
+  "POST /api/v1/migration-events/{migrationEventId}/archive": {
+    "operationId": "archiveMigrationEvent",
+    "method": "POST",
+    "path": "/api/v1/migration-events/{migrationEventId}/archive",
+    "pathParams": [
+      "migrationEventId"
+    ],
+    "queryParams": [],
+    "requestBody": "CultureArchiveRequest",
     "response": "ApiResponseCultureCommandResponse"
   },
   "POST /api/v1/migration-events/{migrationEventId}/submit-review": {
