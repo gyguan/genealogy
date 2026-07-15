@@ -20,7 +20,6 @@ public interface SourceRepository extends JpaRepository<SourceEntity, Long>, Jpa
             from SourceEntity source
             where source.clanId = :clanId
               and source.id in :sourceIds
-              and source.deletedAt is null
             """)
     List<SourceEntity> findTreeSourcesByIds(
             @Param("clanId") Long clanId,
