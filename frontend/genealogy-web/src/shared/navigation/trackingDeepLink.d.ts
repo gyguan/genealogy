@@ -7,7 +7,7 @@ export type TrackingTarget = {
 
 export type NormalizedTrackingTarget = {
   clanId: string;
-  targetType: 'person' | 'relationship' | 'source' | 'branch' | 'culture_item';
+  targetType: 'person' | 'relationship' | 'source' | 'branch' | 'culture_item' | 'migration_event';
   targetId: string;
   reviewTaskId: string;
 };
