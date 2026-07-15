@@ -46,10 +46,11 @@ class CultureQualityPostgresIntegrationTest {
         clan.setUpdatedAt(LocalDateTime.now());
         clan = clanRepository.saveAndFlush(clan);
 
-        CultureItemEntity complete = item(clan.getId(), "忠孝传家", "家训摘要", "家训正文", "high");
-        complete = cultureItemRepository.saveAndFlush(complete);
-        CultureItemEntity incomplete = item(clan.getId(), "待考家训", null, null, "unknown");
-        incomplete = cultureItemRepository.saveAndFlush(incomplete);
+        CultureItemEntity complete = cultureItemRepository.saveAndFlush(
+                item(clan.getId(), "忠孝传家", "家训摘要", "家训正文", "high"));
+        CultureItemEntity incomplete = cultureItemRepository.saveAndFlush(
+                item(clan.getId(), "待考家训", null, null, "unknown"));
+        Long incompleteId = incomplete.getId();
 
         SourceEntity source = new SourceEntity();
         source.setClanId(clan.getId());
@@ -77,7 +78,7 @@ class CultureQualityPostgresIntegrationTest {
         RevisionEntity revision = new RevisionEntity();
         revision.setClanId(clan.getId());
         revision.setTargetType("culture_item");
-        revision.setTargetId(incomplete.getId());
+        revision.setTargetId(incompleteId);
         revision.setChangeType("update");
         revision.setSubmitTime(LocalDateTime.now());
         revision.setStatus("pending");
@@ -97,7 +98,7 @@ class CultureQualityPostgresIntegrationTest {
         assertThat(qualityQueryRepository.issues(TargetConfig.CULTURE_ITEM, scope, 10))
                 .singleElement()
                 .satisfies(issue -> {
-                    assertThat(issue.targetId()).isEqualTo(incomplete.getId());
+                    assertThat(issue.targetId()).isEqualTo(incompleteId);
                     assertThat(issue.issueCodes()).contains("PENDING_REVIEW", "NO_SOURCE", "INCOMPLETE", "LOW_CONFIDENCE");
                 });
     }
