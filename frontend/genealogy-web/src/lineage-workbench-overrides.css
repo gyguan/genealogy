@@ -1,0 +1,66 @@
+/* Final lineage workbench overrides load after global Ant Design bridge rules. */
+.lineage-search-grid--workbench {
+  grid-template-columns: 150px 190px minmax(280px, 360px) !important;
+  justify-content: start;
+}
+
+.lineage-search-grid--workbench .ant-input-search {
+  width: 100% !important;
+  max-width: 360px;
+}
+
+.lineage-search-grid--workbench .ant-input-search .ant-input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.lineage-search-grid--workbench .ant-input-search .ant-input-affix-wrapper {
+  display: flex;
+  align-items: center;
+  height: 36px !important;
+  min-height: 36px !important;
+  padding-block: 0;
+}
+
+.lineage-search-grid--workbench .ant-input-search input.ant-input {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding-block: 0;
+  line-height: 34px;
+}
+
+.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px !important;
+  min-height: 36px !important;
+  min-width: 88px;
+  padding-inline: 14px;
+}
+
+.lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 1400px) {
+  .lineage-search-grid--workbench {
+    grid-template-columns: 140px 190px minmax(280px, 360px) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .lineage-search-grid--workbench {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lineage-search-grid--workbench .ant-input-search {
+    max-width: none;
+  }
+}
