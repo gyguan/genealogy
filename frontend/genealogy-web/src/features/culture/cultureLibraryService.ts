@@ -1,4 +1,4 @@
-import { apiClient } from '../../shared/api/client';
+import { ApiRequestError, apiClient } from '../../shared/api/client';
 import type {
   CultureArchiveRequest,
   CultureCommandResponse,
@@ -12,11 +12,15 @@ import type {
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { listBranches, listClans } from '../sources/sourceLibraryService';
+import { cultureSearchKey } from './cultureUrlState';
 import type { CultureSearchState } from './cultureUrlState';
 
 export type CultureClanOption = Awaited<ReturnType<typeof listClans>>[number];
 type RawCultureBranchOption = Awaited<ReturnType<typeof listBranches>>[number];
 export type CultureBranchOption = RawCultureBranchOption & { name: string };
+
+const cultureItemPageCache = new Map<string, CultureItemPage>();
+const cultureItemRefreshListeners = new Set<(message?: string) => void>();
 
 function queryString(values: Record<string, unknown>) {
   const params = new URLSearchParams();
@@ -25,6 +29,19 @@ function queryString(values: Record<string, unknown>) {
     params.set(key, String(value));
   });
   return params.toString();
+}
+
+function refreshErrorText(error: unknown) {
+  return error instanceof Error && error.message ? error.message : '文化资料刷新失败';
+}
+
+function publishCultureItemRefresh(message?: string) {
+  cultureItemRefreshListeners.forEach(listener => listener(message));
+}
+
+export function subscribeCultureItemRefresh(listener: (message?: string) => void) {
+  cultureItemRefreshListeners.add(listener);
+  return () => cultureItemRefreshListeners.delete(listener);
 }
 
 export function listCultureClans() {
@@ -59,7 +76,20 @@ export function listCultureItems(clanId: string, search: CultureSearchState) {
     pageNo: search.pageNo,
     pageSize: search.pageSize
   });
-  return apiClient.get<CultureItemPage>(`/clans/${clanId}/culture-items?${query}`);
+  const cacheKey = cultureSearchKey(clanId, search);
+  publishCultureItemRefresh(undefined);
+  return apiClient.get<CultureItemPage>(`/clans/${clanId}/culture-items?${query}`)
+    .then(page => {
+      cultureItemPageCache.set(cacheKey, page);
+      return page;
+    })
+    .catch(error => {
+      if (error instanceof ApiRequestError && error.status === 403) throw error;
+      const cached = cultureItemPageCache.get(cacheKey);
+      if (!cached) throw error;
+      publishCultureItemRefresh(refreshErrorText(error));
+      return cached;
+    });
 }
 
 export function getCultureItem(cultureItemId: number) {
