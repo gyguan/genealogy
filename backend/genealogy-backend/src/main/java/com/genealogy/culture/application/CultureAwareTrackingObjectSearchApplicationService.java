@@ -6,6 +6,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
 import com.genealogy.culture.repository.CultureTrackingQueryRepository;
+import com.genealogy.culture.repository.MigrationTrackingQueryRepository;
 import com.genealogy.tracking.application.TrackingObjectSearchApplicationService;
 import com.genealogy.tracking.dto.TrackingObjectResponse;
 import com.genealogy.tracking.repository.TrackingObjectQueryRepository;
@@ -22,15 +23,18 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
 
     private final RbacAuthorizationApplicationService governedRbac;
     private final CultureTrackingQueryRepository cultureTrackingQueryRepository;
+    private final MigrationTrackingQueryRepository migrationTrackingQueryRepository;
 
     public CultureAwareTrackingObjectSearchApplicationService(
             TrackingObjectQueryRepository queryRepository,
             RbacAuthorizationApplicationService rbacAuthorizationApplicationService,
-            CultureTrackingQueryRepository cultureTrackingQueryRepository
+            CultureTrackingQueryRepository cultureTrackingQueryRepository,
+            MigrationTrackingQueryRepository migrationTrackingQueryRepository
     ) {
         super(queryRepository, rbacAuthorizationApplicationService);
         this.governedRbac = rbacAuthorizationApplicationService;
         this.cultureTrackingQueryRepository = cultureTrackingQueryRepository;
+        this.migrationTrackingQueryRepository = migrationTrackingQueryRepository;
     }
 
     @Override
@@ -48,7 +52,7 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
             int pageSize
     ) {
         String normalizedType = normalize(objectType);
-        if (!"culture_item".equals(normalizedType)) {
+        if (!"culture_item".equals(normalizedType) && !"migration_event".equals(normalizedType)) {
             return super.search(
                     clanId, actorId, objectType, keyword, branchId, status,
                     changedFrom, changedTo, pageNo, pageSize
@@ -73,25 +77,28 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
         boolean sensitiveAccess = governedRbac.hasPermission(
                 actorId, clanId, CulturePermissionPolicyService.VIEW_SENSITIVE
         );
+        if ("migration_event".equals(normalizedType)) {
+            return migrationTrackingQueryRepository.search(
+                    clanId, normalizedKeyword, branchId, normalizedStatus, changedFrom, changedTo,
+                    scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess,
+                    normalizedPageNo, normalizedPageSize
+            );
+        }
         return cultureTrackingQueryRepository.search(
-                clanId,
-                normalizedKeyword,
-                branchId,
-                normalizedStatus,
-                changedFrom,
-                changedTo,
-                scope.fullClanAccess(),
-                scope.queryVisibleBranchIds(),
-                sensitiveAccess,
-                normalizedPageNo,
-                normalizedPageSize
+                clanId, normalizedKeyword, branchId, normalizedStatus, changedFrom, changedTo,
+                scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess,
+                normalizedPageNo, normalizedPageSize
         );
     }
 
     private String normalize(String value) {
         if (value == null) return "";
         String normalized = value.trim().toLowerCase();
-        return "culture_items".equals(normalized) ? "culture_item" : normalized;
+        return switch (normalized) {
+            case "culture_items" -> "culture_item";
+            case "migration_events" -> "migration_event";
+            default -> normalized;
+        };
     }
 
     private String normalizeOptional(String value, int maxLength, String errorCode, String message) {
