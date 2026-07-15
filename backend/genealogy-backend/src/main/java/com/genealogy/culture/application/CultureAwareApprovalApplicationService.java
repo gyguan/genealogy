@@ -5,8 +5,11 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.generation.repository.GenSchemeRepository;
 import com.genealogy.generation.repository.GenWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -35,6 +38,8 @@ public class CultureAwareApprovalApplicationService extends ApprovalApplicationS
     private final CheckTaskRepository governedCheckTaskRepository;
     private final CultureItemRepository cultureItemRepository;
     private final CulturePermissionPolicyService culturePermissionPolicy;
+    private final MigrationEventRepository migrationEventRepository;
+    private final MigrationEventPermissionPolicyService migrationPermissionPolicy;
 
     public CultureAwareApprovalApplicationService(
             PersonRepository personRepository,
@@ -50,7 +55,9 @@ public class CultureAwareApprovalApplicationService extends ApprovalApplicationS
             RevisionApplyService revisionApplyService,
             ObjectMapper objectMapper,
             CultureItemRepository cultureItemRepository,
-            CulturePermissionPolicyService culturePermissionPolicy
+            CulturePermissionPolicyService culturePermissionPolicy,
+            MigrationEventRepository migrationEventRepository,
+            MigrationEventPermissionPolicyService migrationPermissionPolicy
     ) {
         super(
                 personRepository,
@@ -70,6 +77,8 @@ public class CultureAwareApprovalApplicationService extends ApprovalApplicationS
         this.governedCheckTaskRepository = checkTaskRepository;
         this.cultureItemRepository = cultureItemRepository;
         this.culturePermissionPolicy = culturePermissionPolicy;
+        this.migrationEventRepository = migrationEventRepository;
+        this.migrationPermissionPolicy = migrationPermissionPolicy;
     }
 
     @Override
@@ -91,9 +100,20 @@ public class CultureAwareApprovalApplicationService extends ApprovalApplicationS
                 .orElseThrow(() -> new BusinessException("REVIEW_TASK_NOT_FOUND", "审核任务不存在"));
         AuditRecordEntity revision = governedAuditRecordRepository.findById(task.getRevisionId())
                 .orElseThrow(() -> new BusinessException("REVIEW_RECORD_NOT_FOUND", "审核版本不存在"));
-        if (!CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalize(revision.getTargetType()))) {
-            return;
+        String targetType = normalize(revision.getTargetType());
+        if (CultureItemGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
+            validateCultureItem(revision, task, request, rejecting);
+        } else if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
+            validateMigrationEvent(revision, task, request, rejecting);
         }
+    }
+
+    private void validateCultureItem(
+            AuditRecordEntity revision,
+            CheckTaskEntity task,
+            ReviewDecisionRequest request,
+            boolean rejecting
+    ) {
         CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(revision.getTargetId())
                 .orElseThrow(() -> new BusinessException("CULTURE_ITEM_NOT_FOUND", "文化资料不存在或不可见"));
         if (!Objects.equals(item.getClanId(), revision.getClanId())
@@ -101,8 +121,33 @@ public class CultureAwareApprovalApplicationService extends ApprovalApplicationS
             throw new BusinessException("CULTURE_REVIEW_SCOPE_MISMATCH", "审核任务范围与文化资料不一致");
         }
         culturePermissionPolicy.requireAction(item, request.reviewerId(), CulturePermissionPolicyService.REVIEW);
+        requireRejectReason(request, rejecting, "CULTURE_REVIEW_REASON_REQUIRED", "驳回文化资料必须填写原因");
+    }
+
+    private void validateMigrationEvent(
+            AuditRecordEntity revision,
+            CheckTaskEntity task,
+            ReviewDecisionRequest request,
+            boolean rejecting
+    ) {
+        MigrationEventEntity event = migrationEventRepository.findByIdAndDeletedAtIsNull(revision.getTargetId())
+                .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见"));
+        if (!Objects.equals(event.getClanId(), revision.getClanId())
+                || !Objects.equals(event.getBranchId(), task.getBranchId())) {
+            throw new BusinessException("MIGRATION_REVIEW_SCOPE_MISMATCH", "审核任务范围与迁徙事件不一致");
+        }
+        migrationPermissionPolicy.requireAction(event, request.reviewerId(), CulturePermissionPolicyService.REVIEW);
+        requireRejectReason(request, rejecting, "MIGRATION_REVIEW_REASON_REQUIRED", "驳回迁徙事件必须填写原因");
+    }
+
+    private void requireRejectReason(
+            ReviewDecisionRequest request,
+            boolean rejecting,
+            String code,
+            String message
+    ) {
         if (rejecting && (request.comment() == null || request.comment().isBlank())) {
-            throw new BusinessException("CULTURE_REVIEW_REASON_REQUIRED", "驳回文化资料必须填写原因");
+            throw new BusinessException(code, message);
         }
     }
 
