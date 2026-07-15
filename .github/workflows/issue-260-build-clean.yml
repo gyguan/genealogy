@@ -1,0 +1,52 @@
+name: Issue 260 Build Clean Branch
+
+on:
+  push:
+    branches: ["agent/issue-260-culture-multiselect"]
+    paths: [".github/workflows/issue-260-build-clean.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-260-culture-multiselect
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Build focused patch and apply to clean branch
+        shell: bash
+        run: |
+          git fetch origin main agent/issue-260-clean
+          git diff --binary origin/main...HEAD -- . ':(exclude).github/workflows/**' > /tmp/issue-260.patch
+          git switch -C agent/issue-260-clean origin/agent/issue-260-clean
+          git apply --index /tmp/issue-260.patch
+      - name: Validate focused implementation
+        shell: bash
+        run: |
+          cd frontend/genealogy-web
+          npm install --package-lock=false
+          npm run test:culture-shell
+          cd ../..
+          bash scripts/api/check-api-contract.sh
+          cd backend/genealogy-backend
+          mvn -DskipITs -Dtest=CultureItemDomainServiceMultiSelectTest test
+          cd ../..
+          rm -f frontend/genealogy-web/package-lock.json
+      - name: Commit one clean implementation commit
+        shell: bash
+        run: |
+          git config user.name "openai-agent"
+          git config user.email "openai-agent@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(culture): support multi-select item filters"
+          git push origin HEAD:agent/issue-260-clean
