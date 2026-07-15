@@ -31,11 +31,8 @@
 .lineage-workbench-head h3 { margin: 4px 0 6px; font-size: 20px; line-height: 1.25; color: rgba(0,0,0,.88); }
 .lineage-workbench-head p { margin: 0; color: rgba(0,0,0,.55); line-height: 1.6; }
 .lineage-workbench-actions { display: none; }
-.lineage-workbench-summary { margin: 0; grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.lineage-workbench-summary div { min-height: 68px; }
-.lineage-workbench-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lineage-workbench-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: stretch; }
-.lineage-query-toolbar { display: grid; grid-template-columns: minmax(220px, 1.25fr) repeat(3, minmax(150px, .8fr)) minmax(132px, .65fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; background: #fff; }
+.lineage-query-toolbar { display: grid; grid-template-columns: minmax(220px, 1.25fr) repeat(3, minmax(150px, .8fr)) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; background: #fff; }
 .lineage-query-toolbar .field { margin: 0; min-width: 0; }
 .lineage-query-toolbar .field label { margin-bottom: 4px; font-size: 12px; }
 .lineage-switch-field { min-height: 32px; display: flex; align-items: center; gap: 8px; color: rgba(0,0,0,.65); white-space: nowrap; }
@@ -108,7 +105,6 @@
 
 @media (max-width: 1400px) {
   .lineage-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lineage-workbench-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1200px) {
@@ -117,7 +113,7 @@
 }
 
 @media (max-width: 760px) {
-  .lineage-search-grid, .lineage-pop-grid, .lineage-workbench-summary, .lineage-query-toolbar { grid-template-columns: 1fr; }
+  .lineage-search-grid, .lineage-pop-grid, .lineage-query-toolbar { grid-template-columns: 1fr; }
   .lineage-search-results-head { align-items: flex-start; }
   .lineage-workbench { padding: 12px; }
   .lineage-logic-card, .lineage-tree-card { padding: 12px; }
