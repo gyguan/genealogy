@@ -9,10 +9,14 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
+import com.genealogy.culture.repository.CultureSiteTrackingQueryRepository;
 import com.genealogy.culture.repository.CultureTrackingQueryRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.culture.repository.MigrationTrackingQueryRepository;
@@ -51,7 +55,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -73,8 +76,10 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
     private final BranchRepository governedBranchRepository;
     private final CultureTrackingQueryRepository cultureTrackingQueryRepository;
     private final MigrationTrackingQueryRepository migrationTrackingQueryRepository;
+    private final CultureSiteTrackingQueryRepository cultureSiteTrackingQueryRepository;
     private final CultureItemRepository cultureItemRepository;
     private final MigrationEventRepository migrationEventRepository;
+    private final CultureSiteRepository cultureSiteRepository;
     private final SourceRepository sourceRepository;
 
     public CultureAwareTrackingTraceApplicationService(
@@ -89,8 +94,10 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
             BranchRepository branchRepository,
             CultureTrackingQueryRepository cultureTrackingQueryRepository,
             MigrationTrackingQueryRepository migrationTrackingQueryRepository,
+            CultureSiteTrackingQueryRepository cultureSiteTrackingQueryRepository,
             CultureItemRepository cultureItemRepository,
             MigrationEventRepository migrationEventRepository,
+            CultureSiteRepository cultureSiteRepository,
             SourceRepository sourceRepository
     ) {
         super(
@@ -114,8 +121,10 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         this.governedBranchRepository = branchRepository;
         this.cultureTrackingQueryRepository = cultureTrackingQueryRepository;
         this.migrationTrackingQueryRepository = migrationTrackingQueryRepository;
+        this.cultureSiteTrackingQueryRepository = cultureSiteTrackingQueryRepository;
         this.cultureItemRepository = cultureItemRepository;
         this.migrationEventRepository = migrationEventRepository;
+        this.cultureSiteRepository = cultureSiteRepository;
         this.sourceRepository = sourceRepository;
     }
 
@@ -129,14 +138,18 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
             boolean includeTechnicalFields
     ) {
         String normalizedType = normalizeType(targetType);
-        if (!"culture_item".equals(normalizedType) && !"migration_event".equals(normalizedType)) {
+        if (!"culture_item".equals(normalizedType)
+                && !"migration_event".equals(normalizedType)
+                && !"culture_site".equals(normalizedType)) {
             return super.trace(clanId, actorId, targetType, targetId, includeTechnicalFields);
         }
         PermissionDataScope scope = governedRbac.permissionDataScope(actorId, clanId, PERMISSION_VIEW);
         if (!scope.fullClanAccess() && scope.visibleBranchIds().isEmpty()) throw notFound();
-        String sensitivePermission = "migration_event".equals(normalizedType)
-                ? MigrationEventPermissionPolicyService.VIEW_SENSITIVE
-                : CulturePermissionPolicyService.VIEW_SENSITIVE;
+        String sensitivePermission = switch (normalizedType) {
+            case "migration_event" -> MigrationEventPermissionPolicyService.VIEW_SENSITIVE;
+            case "culture_site" -> CultureSitePermissionPolicyService.VIEW_SENSITIVE;
+            default -> CulturePermissionPolicyService.VIEW_SENSITIVE;
+        };
         boolean sensitiveAccess = governedRbac.hasPermission(actorId, clanId, sensitivePermission);
         TrackingObjectResponse summary = findVisibleSummary(
                 normalizedType, clanId, targetId, scope, sensitiveAccess
@@ -246,6 +259,11 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                     clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
             ).orElseThrow(this::notFound);
         }
+        if ("culture_site".equals(type)) {
+            return cultureSiteTrackingQueryRepository.findVisibleById(
+                    clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
+            ).orElseThrow(this::notFound);
+        }
         return cultureTrackingQueryRepository.findVisibleById(
                 clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
         ).orElseThrow(this::notFound);
@@ -257,6 +275,12 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                     .filter(value -> Objects.equals(value.getClanId(), clanId))
                     .orElseThrow(this::notFound);
             return new GovernedTarget(event.getBranchId(), event.getDataStatus());
+        }
+        if ("culture_site".equals(type)) {
+            CultureSiteEntity site = cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
+                    .filter(value -> Objects.equals(value.getClanId(), clanId))
+                    .orElseThrow(this::notFound);
+            return new GovernedTarget(site.getBranchId(), site.getDataStatus());
         }
         CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(targetId)
                 .filter(value -> Objects.equals(value.getClanId(), clanId))
@@ -272,7 +296,11 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
             List<OperationLogResponse> logs,
             Map<Long, String> actors
     ) {
-        String label = "migration_event".equals(targetType) ? "迁徙事件" : "文化资料";
+        String label = switch (targetType) {
+            case "migration_event" -> "迁徙事件";
+            case "culture_site" -> "文化场所";
+            default -> "文化资料";
+        };
         List<TimelineEvent> events = new ArrayList<>();
         revisions.forEach(revision -> events.add(new TimelineEvent(
                 "revision:" + revision.getId(), "revision_submitted", "revision", revision.getId(),
@@ -365,6 +393,7 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         return switch (normalized) {
             case "culture_items" -> "culture_item";
             case "migration_events" -> "migration_event";
+            case "culture_sites" -> "culture_site";
             default -> normalized;
         };
     }
@@ -373,6 +402,5 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         return new BusinessException("TRACKING_OBJECT_NOT_FOUND", "追踪对象不存在或当前用户不可见");
     }
 
-    private record GovernedTarget(Long branchId, String status) {
-    }
+    private record GovernedTarget(Long branchId, String status) {}
 }
