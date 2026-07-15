@@ -19,6 +19,7 @@ import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.tracking.dto.TrackingObjectResponse;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse;
+import com.genealogy.tracking.dto.TrackingTraceDetailResponse.ChangeChain;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.ReviewTaskItem;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.RevisionItem;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse.SourceBindingItem;
@@ -43,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -173,6 +175,12 @@ public class TrackingTraceApplicationService {
                 logs,
                 actorNames
         );
+        List<ChangeChain> changeChains = buildChangeChains(
+                revisionSegment.records(),
+                reviewTaskSegment.records(),
+                timeline,
+                logs
+        );
 
         List<String> truncatedSegments = new ArrayList<>();
         addIf(truncatedSegments, "revisions", revisionSegment.truncated());
@@ -189,6 +197,27 @@ public class TrackingTraceApplicationService {
         if (!revisionSegment.records().isEmpty() && reviewTaskSegment.records().isEmpty()) {
             missingSegments.add("reviewTasks");
             notes.add("已找到版本记录，但未找到对应审核事项");
+        }
+        boolean legacyTrace = revisionSegment.records().stream().anyMatch(revision -> revision.getTraceId() == null);
+        boolean inconsistentTrace = reviewTaskSegment.records().stream().anyMatch(task -> {
+            if (task.getRevisionId() == null) {
+                return task.getTraceId() == null;
+            }
+            RevisionEntity revision = revisionSegment.records().stream()
+                    .filter(item -> task.getRevisionId().equals(item.getId()))
+                    .findFirst()
+                    .orElse(null);
+            return revision != null && revision.getTraceId() != null
+                    && !revision.getTraceId().equals(task.getTraceId());
+        });
+        if (legacyTrace || inconsistentTrace) {
+            missingSegments.add("traceIds");
+            if (legacyTrace) {
+                notes.add("部分历史版本创建于稳定 trace_id 上线前，按独立 legacy 链路展示，不伪造关联");
+            }
+            if (inconsistentTrace) {
+                notes.add("部分审核事项缺少或不匹配版本 trace_id，链路标记为不一致");
+            }
         }
         if (bindingSegment.records().size() > visibleBindingEntities.size()) {
             notes.add("部分来源绑定因当前权限或隐私规则未返回");
@@ -209,6 +238,7 @@ public class TrackingTraceApplicationService {
                 requestedSummary,
                 requestedSummary.status(),
                 timeline,
+                changeChains,
                 revisions,
                 reviewTasks,
                 bindingItems,
@@ -453,7 +483,8 @@ public class TrackingTraceApplicationService {
                 displayName(actorNames, revision.getSubmitterId()),
                 revision.getSubmitTime(),
                 revision.getApprovedAt(),
-                revision.getRejectedReason()
+                revision.getRejectedReason(),
+                revision.getTraceId()
         );
     }
 
@@ -472,7 +503,8 @@ public class TrackingTraceApplicationService {
                 branchNames.get(task.getBranchId()),
                 task.getReviewComment(),
                 task.getCreatedAt(),
-                task.getReviewedAt()
+                task.getReviewedAt(),
+                task.getTraceId()
         );
     }
 
@@ -493,7 +525,11 @@ public class TrackingTraceApplicationService {
                 revision.getDiffSummary(),
                 revision.getSubmitTime(),
                 displayName(actorNames, revision.getSubmitterId()),
-                revision.getStatus()
+                revision.getStatus(),
+                revision.getTraceId(),
+                revision.getId(),
+                null,
+                "submitted"
         )));
         reviewTasks.forEach(task -> {
             addEvent(events, new TimelineEvent(
@@ -505,7 +541,11 @@ public class TrackingTraceApplicationService {
                     task.getReviewComment(),
                     task.getCreatedAt(),
                     null,
-                    task.getStatus()
+                    task.getStatus(),
+                    task.getTraceId(),
+                    task.getRevisionId(),
+                    task.getId(),
+                    "submitted"
             ));
             String status = normalizeOptional(task.getStatus());
             if ("approved".equals(status) || "rejected".equals(status)) {
@@ -518,7 +558,11 @@ public class TrackingTraceApplicationService {
                         task.getReviewComment(),
                         task.getReviewedAt(),
                         displayName(actorNames, task.getReviewerId()),
-                        task.getStatus()
+                        task.getStatus(),
+                        task.getTraceId(),
+                        task.getRevisionId(),
+                        task.getId(),
+                        status
                 ));
             }
         });
@@ -531,7 +575,11 @@ public class TrackingTraceApplicationService {
                 binding.getBindingReason(),
                 isBindingUpdated(binding) ? binding.getUpdatedAt() : binding.getCreatedAt(),
                 displayName(actorNames, binding.getCreatedBy()),
-                binding.getBindingStatus()
+                binding.getBindingStatus(),
+                null,
+                null,
+                null,
+                null
         )));
         logs.forEach(log -> addEvent(events, logEvent(log)));
         return events.values().stream()
@@ -562,13 +610,156 @@ public class TrackingTraceApplicationService {
                 nonBlank(log.targetSummary(), log.summary()),
                 log.createdAt(),
                 nonBlank(log.actorDisplayName(), "未知操作者"),
-                log.resultStatus()
+                log.resultStatus(),
+                log.traceId(),
+                log.revisionId(),
+                log.reviewTaskId(),
+                log.eventResult()
         );
+    }
+
+    private List<ChangeChain> buildChangeChains(
+            List<RevisionEntity> revisions,
+            List<ReviewTaskEntity> reviewTasks,
+            List<TimelineEvent> timeline,
+            List<OperationLogResponse> logs
+    ) {
+        Map<Long, List<ReviewTaskEntity>> tasksByRevision = reviewTasks.stream()
+                .filter(task -> task.getRevisionId() != null)
+                .collect(Collectors.groupingBy(ReviewTaskEntity::getRevisionId));
+        List<ChangeChain> chains = new ArrayList<>();
+        Set<UUID> revisionTraceIds = new LinkedHashSet<>();
+
+        for (RevisionEntity revision : revisions) {
+            List<ReviewTaskEntity> tasks = tasksByRevision.getOrDefault(revision.getId(), List.of());
+            UUID traceId = revision.getTraceId();
+            if (traceId != null) {
+                revisionTraceIds.add(traceId);
+            }
+            List<Long> taskIds = tasks.stream()
+                    .map(ReviewTaskEntity::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            boolean inconsistent = traceId != null && tasks.stream()
+                    .anyMatch(task -> !traceId.equals(task.getTraceId()));
+            String compatibility = traceId == null
+                    ? "legacy_partial"
+                    : inconsistent ? "inconsistent" : "complete";
+            List<TimelineEvent> chainEvents = timeline.stream()
+                    .filter(event -> belongsToRevision(event, revision.getId(), traceId, taskIds))
+                    .toList();
+            LocalDateTime completedAt = chainEvents.stream()
+                    .map(TimelineEvent::occurredAt)
+                    .filter(Objects::nonNull)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(revision.getApprovedAt());
+            String resultStatus = chainEvents.stream()
+                    .map(TimelineEvent::eventResult)
+                    .filter(value -> value != null && !value.isBlank())
+                    .filter(value -> Set.of("applied", "approved", "rejected", "failed").contains(value))
+                    .reduce((left, right) -> lifecyclePriority(right) >= lifecyclePriority(left) ? right : left)
+                    .orElse(nonBlank(normalizeOptional(revision.getStatus()), "unknown"));
+            chains.add(new ChangeChain(
+                    traceId == null ? "legacy-revision:" + revision.getId() : "trace:" + traceId,
+                    traceId,
+                    compatibility,
+                    revision.getId(),
+                    taskIds,
+                    revision.getTargetType(),
+                    revision.getTargetId(),
+                    resultStatus,
+                    revision.getSubmitTime(),
+                    completedAt,
+                    chainEvents.stream().map(TimelineEvent::eventKey).toList()
+            ));
+        }
+
+        logs.stream()
+                .filter(log -> log.traceId() != null && !revisionTraceIds.contains(log.traceId()))
+                .collect(Collectors.groupingBy(OperationLogResponse::traceId, LinkedHashMap::new, Collectors.toList()))
+                .forEach((traceId, traceLogs) -> {
+                    OperationLogResponse first = traceLogs.stream()
+                            .min(Comparator.comparing(OperationLogResponse::createdAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                            .orElse(traceLogs.get(0));
+                    LocalDateTime completedAt = traceLogs.stream()
+                            .map(OperationLogResponse::createdAt)
+                            .filter(Objects::nonNull)
+                            .max(LocalDateTime::compareTo)
+                            .orElse(null);
+                    List<String> eventKeys = timeline.stream()
+                            .filter(event -> traceId.equals(event.traceId()))
+                            .map(TimelineEvent::eventKey)
+                            .toList();
+                    String result = traceLogs.stream()
+                            .map(OperationLogResponse::eventResult)
+                            .filter(value -> value != null && !value.isBlank())
+                            .reduce((left, right) -> lifecyclePriority(right) >= lifecyclePriority(left) ? right : left)
+                            .orElse("unknown");
+                    chains.add(new ChangeChain(
+                            "trace:" + traceId,
+                            traceId,
+                            "orphan_partial",
+                            first.revisionId(),
+                            traceLogs.stream().map(OperationLogResponse::reviewTaskId).filter(Objects::nonNull).distinct().toList(),
+                            first.businessTargetType(),
+                            first.businessTargetId(),
+                            result,
+                            first.createdAt(),
+                            completedAt,
+                            eventKeys
+                    ));
+                });
+
+        return chains.stream()
+                .sorted(Comparator.comparing(ChangeChain::startedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(ChangeChain::chainKey))
+                .toList();
+    }
+
+    private boolean belongsToRevision(
+            TimelineEvent event,
+            Long revisionId,
+            UUID traceId,
+            List<Long> taskIds
+    ) {
+        if (traceId != null && traceId.equals(event.traceId())) {
+            return true;
+        }
+        if (revisionId != null && revisionId.equals(event.revisionId())) {
+            return true;
+        }
+        return event.reviewTaskId() != null && taskIds.contains(event.reviewTaskId());
+    }
+
+    private int lifecyclePriority(String value) {
+        if (value == null) {
+            return 0;
+        }
+        return switch (value.toLowerCase(Locale.ROOT)) {
+            case "failed" -> 5;
+            case "rejected" -> 4;
+            case "applied" -> 3;
+            case "approved" -> 2;
+            case "submitted", "pending" -> 1;
+            default -> 0;
+        };
     }
 
     private String operationEventType(String actionType) {
         if (actionType == null) {
             return "OPERATION_RECORDED";
+        }
+        if ("revision_apply".equals(actionType)) {
+            return "REVISION_APPLIED";
+        }
+        if ("review_submit".equals(actionType)) {
+            return "REVIEW_REQUESTED";
+        }
+        if ("review_approve".equals(actionType)) {
+            return "REVIEW_APPROVED";
+        }
+        if ("review_reject".equals(actionType)) {
+            return "REVIEW_REJECTED";
         }
         if (actionType.contains("import")) {
             return "IMPORT_COMPLETED";
@@ -599,6 +790,10 @@ public class TrackingTraceApplicationService {
             case "source_create" -> "创建来源";
             case "source_update" -> "更新来源";
             case "source_binding_create" -> "绑定来源";
+            case "review_submit" -> "提交审核";
+            case "review_approve" -> "审核通过";
+            case "review_reject" -> "审核驳回";
+            case "revision_apply" -> "正式生效";
             case "person_csv_import" -> "完成人物导入";
             case "relationship_csv_import" -> "完成关系导入";
             default -> actionType;

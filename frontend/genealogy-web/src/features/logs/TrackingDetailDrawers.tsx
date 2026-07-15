@@ -15,6 +15,7 @@ import {
 import type {
   OperationLogResponse,
   TrackingObjectResponse,
+  TrackingTraceChangeChainResponse,
   TrackingTraceDetailResponse,
   TrackingTraceReviewTaskResponse,
   TrackingTraceRevisionResponse,
@@ -97,6 +98,56 @@ function TraceTimeline({ detail }: { detail: TrackingTraceDetailResponse }) {
           </div>
         )
       }))}
+    />
+  );
+}
+
+
+function compatibilityText(value: string) {
+  if (value === 'complete') return '完整链路';
+  if (value === 'legacy_partial') return '历史兼容';
+  if (value === 'inconsistent') return '关联不一致';
+  if (value === 'orphan_partial') return '仅日志链路';
+  return value || '未知';
+}
+
+function ChangeChainTable({ rows }: { rows: TrackingTraceChangeChainResponse[] }) {
+  return (
+    <Table<TrackingTraceChangeChainResponse>
+      size="small"
+      rowKey={row => row.chainKey}
+      dataSource={rows}
+      pagination={false}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可识别的单次变更链路" /> }}
+      scroll={{ x: 940 }}
+      columns={[
+        {
+          key: 'trace',
+          title: '变更链路',
+          width: 260,
+          render: (_value, row) => (
+            <div>
+              <Text code copyable={Boolean(row.traceId)}>{row.traceId || row.chainKey}</Text>
+              <div><Text type="secondary">版本 #{display(row.revisionId, '历史记录')}</Text></div>
+            </div>
+          )
+        },
+        {
+          key: 'compatibility',
+          title: '覆盖状态',
+          width: 120,
+          render: (_value, row) => (
+            <Tag color={row.compatibilityStatus === 'complete' ? 'success' : row.compatibilityStatus === 'inconsistent' ? 'error' : 'warning'}>
+              {compatibilityText(row.compatibilityStatus)}
+            </Tag>
+          )
+        },
+        { key: 'result', title: '最终结果', width: 110, render: (_value, row) => <Tag color={statusColor(row.resultStatus)}>{statusText(row.resultStatus)}</Tag> },
+        { key: 'reviews', title: '审核事项', width: 110, render: (_value, row) => `${row.reviewTaskIds.length} 条` },
+        { key: 'started', title: '发起时间', width: 170, render: (_value, row) => formatDateTime(row.startedAt) },
+        { key: 'completed', title: '最终事件', width: 170, render: (_value, row) => formatDateTime(row.completedAt, '尚未完成') },
+        { key: 'events', title: '链路事件', width: 110, render: (_value, row) => `${row.eventKeys.length} 条` }
+      ]}
     />
   );
 }
@@ -228,7 +279,8 @@ export function TrackingTraceDrawer({
           defaultActiveKey="timeline"
           items={[
             { key: 'overview', label: '对象概览', children: <TraceOverview detail={detail} /> },
-            { key: 'timeline', label: `变更链路 (${detail.timeline.length})`, children: <TraceTimeline detail={detail} /> },
+            { key: 'timeline', label: `事件时间线 (${detail.timeline.length})`, children: <TraceTimeline detail={detail} /> },
+            { key: 'chains', label: `单次变更链路 (${detail.changeChains.length})`, children: <ChangeChainTable rows={detail.changeChains} /> },
             { key: 'changes', label: `字段差异 (${detail.revisions.length})`, children: <RevisionTable rows={detail.revisions} /> },
             { key: 'reviews', label: `审核记录 (${detail.reviewTasks.length})`, children: <ReviewTable rows={detail.reviewTasks} /> },
             { key: 'sources', label: `来源证据 (${detail.sourceBindings.length})`, children: <SourceTable rows={detail.sourceBindings} /> },
