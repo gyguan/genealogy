@@ -1,8 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
 import { Alert, Button, Empty, Space, Tag, Tooltip } from 'antd';
-import type { TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
-import { buildLineageLayout, relationLabel } from './lineageGraphModel';
+import type { TreeEdgeResponse, TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
+import { buildLineageLayout } from './lineageGraphModel';
+import { edgeVisual, nodeIndicators } from './lineageSemanticsModel';
 
 export type LineageGraphCanvasProps = {
   graph: TreeGraphResponse | null;
@@ -10,6 +11,7 @@ export type LineageGraphCanvasProps = {
   loading?: boolean;
   emptyText: string;
   onSelectNode: (node: TreeNodeResponse) => void;
+  onSelectEdge?: (edge: TreeEdgeResponse) => void;
   onSetCenter?: (node: TreeNodeResponse) => void;
 };
 
@@ -41,6 +43,7 @@ export function LineageGraphCanvas({
   loading = false,
   emptyText,
   onSelectNode,
+  onSelectEdge,
   onSetCenter
 }: LineageGraphCanvasProps) {
   const markerId = useId().replace(/:/g, '');
@@ -164,7 +167,7 @@ export function LineageGraphCanvas({
           {collapsedNodeIds.size ? <Button size="small" onClick={() => setCollapsedNodeIds(new Set())}>全部展开</Button> : null}
           <Tag>{Math.round(viewport.scale * 100)}%</Tag>
         </Space>
-        <span className="lineage-graph-help">滚轮缩放 · 拖动画布 · 点击人物查看详情</span>
+        <span className="lineage-graph-help">滚轮缩放 · 拖动画布 · 点击人物或关系查看详情</span>
       </div>
 
       {layout.notices.length ? (
@@ -192,36 +195,52 @@ export function LineageGraphCanvas({
           onPointerCancel={handlePointerEnd}
         >
           <defs>
-            <marker id={`${markerId}-parent`} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <marker id={`${markerId}-blood`} className="lineage-marker lineage-marker--blood" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
               <path d="M 0 0 L 8 4 L 0 8 z" />
             </marker>
-            <marker id={`${markerId}-ritual`} markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
+            <marker id={`${markerId}-ritual`} className="lineage-marker lineage-marker--ritual" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
               <path d="M 0 1 L 8 4.5 L 0 8" fill="none" />
             </marker>
           </defs>
           <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
-            {layout.edges.map(item => (
-              <g key={item.id} className={`lineage-graph-edge lineage-graph-edge--${item.kind}`}>
-                <path
-                  d={item.path}
-                  markerEnd={item.kind === 'parent'
-                    ? `url(#${markerId}-${item.edge.relationCategory === 'ritual' ? 'ritual' : 'parent'})`
-                    : undefined}
-                />
-                <text x={item.labelX} y={item.labelY}>{relationLabel(item.edge)}</text>
-              </g>
-            ))}
-
-            {layout.nodes.map(item => {
-              const active = item.id === activeNodeId || item.id === graph.rootNodeId;
+            {layout.edges.map(item => {
+              const visual = edgeVisual(item.edge);
+              const markerEnd = visual.marker === 'none' ? undefined : `url(#${markerId}-${visual.marker === 'ritual' ? 'ritual' : 'blood'})`;
               return (
                 <g
                   key={item.id}
-                  className={`lineage-graph-node ${active ? 'is-active' : ''} ${item.node.visibility === 'masked' ? 'is-masked' : ''} ${item.isolated ? 'is-isolated' : ''}`}
+                  className={`lineage-graph-edge lineage-graph-edge--${visual.tone}`}
+                  role={onSelectEdge ? 'button' : undefined}
+                  tabIndex={onSelectEdge ? 0 : undefined}
+                  aria-label={`${visual.description}，点击查看关系详情`}
+                  onClick={event => { event.stopPropagation(); onSelectEdge?.(item.edge); }}
+                  onKeyDown={event => {
+                    if (onSelectEdge && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault();
+                      onSelectEdge(item.edge);
+                    }
+                  }}
+                >
+                  <title>{visual.description}</title>
+                  <path d={item.path} markerEnd={markerEnd} />
+                  <text x={item.labelX} y={item.labelY}>{visual.label}</text>
+                </g>
+              );
+            })}
+
+            {layout.nodes.map(item => {
+              const active = item.id === activeNodeId || item.id === graph.rootNodeId;
+              const indicators = nodeIndicators(item.node);
+              const primaryIndicator = indicators[0];
+              const statusText = primaryIndicator?.label || (item.isolated ? '孤立人物' : active ? '当前定位' : item.node.dataStatus || '正式数据');
+              return (
+                <g
+                  key={item.id}
+                  className={`lineage-graph-node ${active ? 'is-active' : ''} ${item.node.visibility === 'masked' ? 'is-masked' : ''} ${item.isolated ? 'is-isolated' : ''} ${primaryIndicator ? `has-indicator indicator-${primaryIndicator.tone}` : ''}`}
                   transform={`translate(${item.x} ${item.y})`}
                   role="button"
                   tabIndex={0}
-                  aria-label={`查看人物 ${item.node.displayName}`}
+                  aria-label={`查看人物 ${item.node.displayName}${primaryIndicator ? `，${primaryIndicator.label}` : ''}`}
                   onClick={event => { event.stopPropagation(); onSelectNode(item.node); }}
                   onDoubleClick={event => { event.stopPropagation(); onSetCenter?.(item.node); }}
                   onKeyDown={event => {
@@ -236,8 +255,15 @@ export function LineageGraphCanvas({
                   <text className="lineage-graph-avatar-text" x="28" y="35" textAnchor="middle">{item.node.displayName.slice(0, 1) || '谱'}</text>
                   <text className="lineage-graph-node-name" x="54" y="27">{item.node.displayName.slice(0, 10)}</text>
                   <text className="lineage-graph-node-meta" x="54" y="48">{nodeSubtitle(item.node)}</text>
-                  <text className="lineage-graph-node-branch" x="16" y="78">{item.node.branchName || (item.node.branchId ? `支派 ${item.node.branchId}` : '支派未标注')}</text>
-                  <text className="lineage-graph-node-status" x="16" y="100">{item.isolated ? '孤立人物' : active ? '当前定位' : item.node.dataStatus || '正式数据'}</text>
+                  <text className="lineage-graph-node-branch" x="16" y="78">{item.node.visibility === 'masked' ? '支派信息受保护' : item.node.branchName || '支派未标注'}</text>
+                  <text className="lineage-graph-node-status" x="16" y="100">{statusText}</text>
+                  {primaryIndicator && item.node.visibility !== 'masked' ? (
+                    <g className={`lineage-graph-node-indicator indicator-${primaryIndicator.tone}`} transform={`translate(${item.width - 18} 18)`}>
+                      <title>{indicators.map(indicator => indicator.label).join('、')}</title>
+                      <circle r="10" />
+                      <text y="4" textAnchor="middle">!</text>
+                    </g>
+                  ) : null}
                   {item.hasChildren ? (
                     <g
                       className="lineage-graph-collapse"
@@ -258,10 +284,11 @@ export function LineageGraphCanvas({
       </div>
 
       <div className="lineage-graph-legend" aria-label="世系图谱图例">
-        <span><i className="legend-parent" />亲子/血缘</span>
-        <span><i className="legend-ritual" />承嗣/宗法</span>
-        <span><i className="legend-spouse" />婚配</span>
-        <span><i className="legend-other" />其他关系</span>
+        <span><i className="legend-blood" />实线箭头：血缘亲子</span>
+        <span><i className="legend-ritual" />虚线空心箭头：承嗣宗法</span>
+        <span><i className="legend-marriage" />无箭头实线：婚配</span>
+        <span><i className="legend-status" />点划线：状态关系</span>
+        <span><b className="legend-risk">!</b>徽标：证据、审核或修谱提示</span>
       </div>
     </div>
   );
