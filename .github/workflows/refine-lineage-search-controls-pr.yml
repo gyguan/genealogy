@@ -25,13 +25,14 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import textwrap
 
           workflow = Path('.github/workflows/refine-lineage-search-controls.yml').read_text()
           marker = "          python - <<'PY'\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n          PY", start)
-          Path('/tmp/refine_lineage.py').write_text(textwrap.dedent(workflow[start:end]))
+          raw = workflow[start:end]
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in raw.splitlines())
+          Path('/tmp/refine_lineage.py').write_text(script)
           PY
       - name: Apply refinement script
         id: apply
