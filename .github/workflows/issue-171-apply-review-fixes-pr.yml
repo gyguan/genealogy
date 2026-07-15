@@ -1,0 +1,60 @@
+name: Trigger Issue 171 Review Fixes
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-171-apply-review-fixes.yml
+      - .github/workflows/issue-171-apply-review-fixes-pr.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fixes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-171-review-fixes
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Execute embedded patch script
+        shell: bash
+        run: |
+          python3 - <<'RUNNER'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/issue-171-apply-review-fixes.yml').read_text(encoding='utf-8')
+          start = "          python3 - <<'PY'\n"
+          end = "\n          PY\n"
+          if start not in workflow or end not in workflow:
+              raise SystemExit('embedded patch script markers not found')
+          script = workflow.split(start, 1)[1].split(end, 1)[0]
+          exec(compile(textwrap.dedent(script), 'issue-171-patch.py', 'exec'))
+          RUNNER
+      - name: Run focused backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -B -q -Dtest=CultureAwareSourceBindingReviewApplicationServiceTest,CultureSiteApplicationServiceTest test
+      - name: Commit focused fix
+        shell: bash
+        run: |
+          rm .github/workflows/issue-171-apply-review-fixes.yml
+          rm .github/workflows/issue-171-apply-review-fixes-pr.yml
+          git config user.name "chatgpt-codex-connector[bot]"
+          git config user.email "199175422+chatgpt-codex-connector[bot]@users.noreply.github.com"
+          git add backend/genealogy-backend/src/main/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationService.java \
+                  backend/genealogy-backend/src/main/java/com/genealogy/culture/application/CultureSiteApplicationService.java \
+                  backend/genealogy-backend/src/main/java/com/genealogy/culture/domain/CultureSitePermissionPolicyService.java \
+                  backend/genealogy-backend/src/test/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationServiceTest.java \
+                  backend/genealogy-backend/src/test/java/com/genealogy/culture/application/CultureSiteApplicationServiceTest.java \
+                  .github/workflows/issue-171-apply-review-fixes.yml \
+                  .github/workflows/issue-171-apply-review-fixes-pr.yml
+          git commit -m "fix(culture): close culture site review gaps"
+          git push origin HEAD:agent/issue-171-review-fixes
