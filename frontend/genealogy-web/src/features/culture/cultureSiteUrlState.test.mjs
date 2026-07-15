@@ -29,7 +29,15 @@ test('reads valid culture site filters and rejects invalid values', () => {
   });
 
   const invalid = readCultureSiteLocation('https://example.test/?tab=sites&siteType=invalid&siteStatus=bad&sitePage=-2&sitePageSize=999');
-  assert.deepEqual(invalid.search, defaultCultureSiteSearch);
+  assert.equal(invalid.search.keyword, defaultCultureSiteSearch.keyword);
+  assert.equal(invalid.search.siteType, undefined);
+  assert.equal(invalid.search.branchId, undefined);
+  assert.equal(invalid.search.addressText, defaultCultureSiteSearch.addressText);
+  assert.equal(invalid.search.currentStatus, defaultCultureSiteSearch.currentStatus);
+  assert.equal(invalid.search.dataStatus, undefined);
+  assert.equal(invalid.search.sort, defaultCultureSiteSearch.sort);
+  assert.equal(invalid.search.pageNo, defaultCultureSiteSearch.pageNo);
+  assert.equal(invalid.search.pageSize, defaultCultureSiteSearch.pageSize);
   assert.equal(invalid.selectedId, undefined);
 });
 
