@@ -1,0 +1,142 @@
+{
+  "paths": {
+    "/api/v1/logs/risks": {
+      "get": {
+        "operationId": "listOperationRisks",
+        "tags": ["OperationLog"],
+        "summary": "分页查询当前宗族高风险操作事件",
+        "description": "要求当前用户为目标宗族有效成员并具备 operation_risk.view 权限。风险分类来自稳定业务动作与显式风险上下文，不解析日志摘要文本。",
+        "parameters": [
+          { "$ref": "#/components/parameters/OperationRiskAuthorization" },
+          { "$ref": "#/components/parameters/OperationRiskClanId" },
+          { "$ref": "#/components/parameters/OperationRiskActorId" },
+          { "$ref": "#/components/parameters/OperationRiskLevel" },
+          { "$ref": "#/components/parameters/OperationRiskEventType" },
+          { "$ref": "#/components/parameters/OperationRiskBranchId" },
+          { "$ref": "#/components/parameters/OperationRiskDisposition" },
+          { "$ref": "#/components/parameters/OperationRiskStartTime" },
+          { "$ref": "#/components/parameters/OperationRiskEndTime" },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseRiskAuditEventPage" } } } },
+          "401": { "$ref": "#/components/responses/OperationRiskUnauthorized" },
+          "403": { "$ref": "#/components/responses/OperationRiskForbidden" }
+        }
+      }
+    },
+    "/api/v1/logs/risks/stats": {
+      "get": {
+        "operationId": "getOperationRiskStats",
+        "tags": ["OperationLog"],
+        "summary": "统计当前宗族高风险操作事件",
+        "description": "统计与风险事件列表使用相同的后端过滤条件；鉴权发生在 count 和分组查询之前。",
+        "parameters": [
+          { "$ref": "#/components/parameters/OperationRiskAuthorization" },
+          { "$ref": "#/components/parameters/OperationRiskClanId" },
+          { "$ref": "#/components/parameters/OperationRiskActorId" },
+          { "$ref": "#/components/parameters/OperationRiskLevel" },
+          { "$ref": "#/components/parameters/OperationRiskEventType" },
+          { "$ref": "#/components/parameters/OperationRiskBranchId" },
+          { "$ref": "#/components/parameters/OperationRiskDisposition" },
+          { "$ref": "#/components/parameters/OperationRiskStartTime" },
+          { "$ref": "#/components/parameters/OperationRiskEndTime" }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseRiskAuditStats" } } } },
+          "401": { "$ref": "#/components/responses/OperationRiskUnauthorized" },
+          "403": { "$ref": "#/components/responses/OperationRiskForbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "OperationRiskAuthorization": { "name": "Authorization", "in": "header", "required": true, "schema": { "type": "string" } },
+      "OperationRiskClanId": { "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
+      "OperationRiskActorId": { "name": "actorId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+      "OperationRiskLevel": { "name": "riskLevel", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/RiskLevel" } },
+      "OperationRiskEventType": { "name": "eventType", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/RiskEventType" } },
+      "OperationRiskBranchId": { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+      "OperationRiskDisposition": { "name": "dispositionStatus", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/RiskDispositionStatus" } },
+      "OperationRiskStartTime": { "name": "startTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } },
+      "OperationRiskEndTime": { "name": "endTime", "in": "query", "required": false, "schema": { "type": "string", "format": "date-time" } }
+    },
+    "responses": {
+      "OperationRiskUnauthorized": { "description": "未登录或认证信息无效" },
+      "OperationRiskForbidden": { "description": "不是目标宗族有效成员或缺少 operation_risk.view 权限" }
+    },
+    "schemas": {
+      "RiskLevel": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+      "RiskEventType": { "type": "string", "enum": ["permission_change", "sensitive_access", "bulk_export", "formal_data_change", "review_anomaly", "access_denied"] },
+      "RiskDispositionStatus": { "type": "string", "enum": ["open", "reviewing", "resolved", "accepted"] },
+      "RiskAuditEventResponse": {
+        "type": "object",
+        "required": ["id", "clanId", "actionType", "riskLevel", "eventType", "dispositionStatus", "createdAt", "detailAvailable"],
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "actorId": { "type": "integer", "format": "int64", "nullable": true },
+          "actorDisplayName": { "type": "string", "nullable": true },
+          "actionType": { "type": "string" },
+          "riskLevel": { "$ref": "#/components/schemas/RiskLevel" },
+          "eventType": { "$ref": "#/components/schemas/RiskEventType" },
+          "dispositionStatus": { "$ref": "#/components/schemas/RiskDispositionStatus" },
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "targetType": { "type": "string", "nullable": true },
+          "targetId": { "type": "integer", "format": "int64", "nullable": true },
+          "targetDisplayName": { "type": "string", "nullable": true },
+          "targetBranchName": { "type": "string", "nullable": true },
+          "targetSummary": { "type": "string", "nullable": true },
+          "resultStatus": { "type": "string", "nullable": true },
+          "summary": { "type": "string", "nullable": true },
+          "detail": { "type": "string", "nullable": true },
+          "requestId": { "type": "string", "nullable": true },
+          "clientIp": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "traceId": { "type": "string", "format": "uuid", "nullable": true },
+          "revisionId": { "type": "integer", "format": "int64", "nullable": true },
+          "reviewTaskId": { "type": "integer", "format": "int64", "nullable": true },
+          "trackingTargetType": { "type": "string", "nullable": true },
+          "trackingTargetId": { "type": "integer", "format": "int64", "nullable": true },
+          "detailAvailable": { "type": "boolean" }
+        }
+      },
+      "RiskAuditEventPage": {
+        "type": "object",
+        "required": ["records", "total", "pageNo", "pageSize", "totalPages"],
+        "properties": {
+          "records": { "type": "array", "items": { "$ref": "#/components/schemas/RiskAuditEventResponse" } },
+          "total": { "type": "integer", "format": "int64" },
+          "pageNo": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "totalPages": { "type": "integer" }
+        }
+      },
+      "RiskAuditStatsItem": {
+        "type": "object",
+        "required": ["key", "count"],
+        "properties": { "key": { "type": "string" }, "count": { "type": "integer", "format": "int64" } }
+      },
+      "RiskAuditStatsResponse": {
+        "type": "object",
+        "required": ["total", "byLevel", "byEventType", "byDisposition"],
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "byLevel": { "type": "array", "items": { "$ref": "#/components/schemas/RiskAuditStatsItem" } },
+          "byEventType": { "type": "array", "items": { "$ref": "#/components/schemas/RiskAuditStatsItem" } },
+          "byDisposition": { "type": "array", "items": { "$ref": "#/components/schemas/RiskAuditStatsItem" } }
+        }
+      },
+      "ApiResponseRiskAuditEventPage": {
+        "type": "object",
+        "properties": { "success": { "type": "boolean" }, "code": { "type": "string" }, "message": { "type": "string" }, "data": { "$ref": "#/components/schemas/RiskAuditEventPage" }, "traceId": { "type": "string", "nullable": true } }
+      },
+      "ApiResponseRiskAuditStats": {
+        "type": "object",
+        "properties": { "success": { "type": "boolean" }, "code": { "type": "string" }, "message": { "type": "string" }, "data": { "$ref": "#/components/schemas/RiskAuditStatsResponse" }, "traceId": { "type": "string", "nullable": true } }
+      }
+    }
+  }
+}
