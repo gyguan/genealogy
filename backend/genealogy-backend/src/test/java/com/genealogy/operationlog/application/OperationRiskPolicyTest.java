@@ -2,6 +2,8 @@ package com.genealogy.operationlog.application;
 
 import com.genealogy.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,10 +21,39 @@ class OperationRiskPolicyTest {
         assertThat(unknown).isNull();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "member_grant_create",
+            "member_grant_update",
+            "member_grant_revoke",
+            "member_status_update"
+    })
+    void classifiesPermissionChangesFromStableActionTypes(String actionType) {
+        OperationRiskContext context = OperationRiskPolicy.resolve(actionType, null);
+
+        assertThat(context.riskLevel()).isEqualTo("high");
+        assertThat(context.eventType()).isEqualTo("permission_change");
+        assertThat(context.dispositionStatus()).isEqualTo("resolved");
+    }
+
+    @Test
+    void attachmentAccessRequiresExplicitSensitivityContext() {
+        assertThat(OperationRiskPolicy.resolve("source_attachment_preview", null)).isNull();
+        assertThat(OperationRiskPolicy.resolve("source_attachment_download", null)).isNull();
+
+        OperationRiskContext context = OperationRiskPolicy.resolve(
+                "source_attachment_download",
+                OperationRiskPolicy.sensitiveAccess(false, true, 88L)
+        );
+        assertThat(context.riskLevel()).isEqualTo("high");
+        assertThat(context.eventType()).isEqualTo("sensitive_access");
+        assertThat(context.branchId()).isEqualTo(88L);
+    }
+
     @Test
     void explicitContextOverridesCompatibilityMappingAndKeepsBranchSnapshot() {
         OperationRiskContext context = OperationRiskPolicy.resolve(
-                "source_attachment_preview",
+                "member_grant_create",
                 OperationRiskPolicy.permissionChange(true, 88L)
         );
 
