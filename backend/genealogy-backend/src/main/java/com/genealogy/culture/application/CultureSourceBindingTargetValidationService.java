@@ -2,8 +2,10 @@ package com.genealogy.culture.application;
 
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
@@ -20,16 +22,19 @@ public class CultureSourceBindingTargetValidationService extends SourceBindingTa
 
     private final CultureItemRepository cultureItemRepository;
     private final MigrationEventRepository migrationEventRepository;
+    private final CultureSiteRepository cultureSiteRepository;
 
     public CultureSourceBindingTargetValidationService(
             GenerationWordRepository generationWordRepository,
             GenerationSchemeRepository generationSchemeRepository,
             CultureItemRepository cultureItemRepository,
-            MigrationEventRepository migrationEventRepository
+            MigrationEventRepository migrationEventRepository,
+            CultureSiteRepository cultureSiteRepository
     ) {
         super(generationWordRepository, generationSchemeRepository);
         this.cultureItemRepository = cultureItemRepository;
         this.migrationEventRepository = migrationEventRepository;
+        this.cultureSiteRepository = cultureSiteRepository;
     }
 
     @Override
@@ -42,6 +47,10 @@ public class CultureSourceBindingTargetValidationService extends SourceBindingTa
         }
         if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalized)) {
             validateMigrationEvent(clanId, targetId);
+            return;
+        }
+        if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalized)) {
+            validateCultureSite(clanId, targetId);
             return;
         }
         super.validate(clanId, targetType, targetId);
@@ -66,6 +75,17 @@ public class CultureSourceBindingTargetValidationService extends SourceBindingTa
         }
         if ("archived".equals(normalize(event.getDataStatus()))) {
             throw new BusinessException("SOURCE_TARGET_ARCHIVED", "已归档迁徙事件不能新增来源绑定");
+        }
+    }
+
+    private void validateCultureSite(Long clanId, Long targetId) {
+        CultureSiteEntity site = cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
+                .orElseThrow(() -> new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见"));
+        if (!Objects.equals(clanId, site.getClanId())) {
+            throw new BusinessException("SOURCE_TARGET_CLAN_MISMATCH", "文化场所不属于当前宗族");
+        }
+        if ("archived".equals(normalize(site.getDataStatus()))) {
+            throw new BusinessException("SOURCE_TARGET_ARCHIVED", "已归档文化场所不能新增来源绑定");
         }
     }
 
