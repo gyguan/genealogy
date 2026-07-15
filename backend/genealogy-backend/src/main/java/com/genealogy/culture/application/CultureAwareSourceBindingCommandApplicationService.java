@@ -41,7 +41,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
         if (isCulture(request)) {
             throw new BusinessException(
                     "CULTURE_SOURCE_BINDING_REVIEW_REQUIRED",
-                    "文化资料来源绑定必须通过审核流程生效"
+                    "文化对象来源绑定必须通过审核流程生效"
             );
         }
         return super.bind(clanId, request, actorId);
@@ -99,7 +99,10 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
     }
 
     private boolean isCulture(SourceBindingCreateRequest request) {
-        return request != null && CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalize(request.targetType()));
+        if (request == null) return false;
+        String targetType = normalize(request.targetType());
+        return CultureItemGovernanceApplicationService.TARGET_TYPE.equals(targetType)
+                || MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(targetType);
     }
 
     private String normalize(String value) {
