@@ -2,12 +2,14 @@ import { apiClient } from '../../shared/api/client';
 import type {
   CultureArchiveRequest,
   CultureCommandResponse,
+  CultureDataStatus,
   CultureSubmitReviewRequest,
   MigrationEventCreateRequest,
   MigrationEventDetailResponse,
   MigrationEventPage,
   MigrationEventUpdateRequest
 } from '../../shared/api/generated/culture-types';
+import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 
 export type MigrationSearchState = {
   keyword?: string;
@@ -15,7 +17,8 @@ export type MigrationSearchState = {
   fromLocation?: string;
   toLocation?: string;
   migrationTimeText?: string;
-  dataStatus?: string;
+  dataStatus?: CultureDataStatus | string;
+  sort?: string;
   pageNo: number;
   pageSize: number;
 };
@@ -30,7 +33,7 @@ function queryString(values: Record<string, unknown>) {
 }
 
 export function listMigrationEvents(clanId: string, search: MigrationSearchState) {
-  const query = queryString({ ...search, sort: 'sequenceNo,asc' });
+  const query = queryString({ ...search, sort: search.sort || 'sequenceNo,asc' });
   return apiClient.get<MigrationEventPage>(`/clans/${clanId}/migration-events?${query}`);
 }
 
@@ -56,4 +59,10 @@ export function archiveMigrationEvent(id: number, request: CultureArchiveRequest
 
 export function deleteMigrationEvent(id: number) {
   return apiClient.delete<CultureCommandResponse>(`/migration-events/${id}`);
+}
+
+export function getMigrationEventTrace(clanId: string, id: number) {
+  return apiClient.get<TrackingTraceDetailResponse>(
+    `/tracking/objects/migration_event/${id}/trace?clanId=${encodeURIComponent(clanId)}`
+  );
 }
