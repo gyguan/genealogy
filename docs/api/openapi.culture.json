@@ -3,9 +3,7 @@
     "/api/v1/clans/{clanId}/culture-overview": {
       "get": {
         "operationId": "getCultureOverview",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "获取当前用户可见的宗族文化总览",
         "description": "只聚合当前用户可见且 official 的精选文化资料、迁徙事件和文化场所；每类结果均有数量上限。运行时由 Issue #172 实现。",
         "parameters": [
@@ -13,10 +11,7 @@
             "name": "clanId",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+            "schema": { "type": "integer", "format": "int64" }
           }
         ],
         "responses": {
@@ -24,211 +19,60 @@
             "description": "文化总览",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureOverviewResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureOverviewResponse" }
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     },
     "/api/v1/clans/{clanId}/culture-items": {
       "get": {
         "operationId": "listCultureItems",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "分页搜索宗族文化资料",
+        "description": "分类、支派、状态、可见范围、来源与精选筛选均支持重复 query 参数；同一维度按 OR，不同维度按 AND。旧单值请求继续兼容。",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "keyword",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 20,
-              "items": {
-                "$ref": "#/components/schemas/CultureCategory"
-              }
-            }
-          },
-          {
-            "name": "branchId",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 100,
-              "items": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 1
-              }
-            }
-          },
-          {
-            "name": "dataStatus",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 20,
-              "items": {
-                "$ref": "#/components/schemas/CultureDataStatus"
-              }
-            }
-          },
-          {
-            "name": "privacyLevel",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 20,
-              "items": {
-                "$ref": "#/components/schemas/CulturePrivacyLevel"
-              }
-            }
-          },
-          {
-            "name": "hasSource",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 2,
-              "items": {
-                "type": "boolean"
-              }
-            }
-          },
-          {
-            "name": "featuredOnHome",
-            "in": "query",
-            "required": false,
-            "style": "form",
-            "explode": true,
-            "schema": {
-              "type": "array",
-              "maxItems": 2,
-              "items": {
-                "type": "boolean"
-              }
-            }
-          },
-          {
-            "name": "pageNo",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "updatedAt,desc"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 100 } },
+          { "name": "category", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CultureCategory" } } },
+          { "name": "branchId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 100, "items": { "type": "integer", "format": "int64", "minimum": 1 } } },
+          { "name": "dataStatus", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CultureDataStatus" } } },
+          { "name": "privacyLevel", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CulturePrivacyLevel" } } },
+          { "name": "hasSource", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 2, "items": { "type": "boolean" } } },
+          { "name": "featuredOnHome", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 2, "items": { "type": "boolean" } } },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "sort", "in": "query", "required": false, "schema": { "type": "string", "default": "updatedAt,desc" } }
         ],
         "responses": {
           "200": {
             "description": "权限过滤后的文化资料分页结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureItemPage"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureItemPage" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        },
-        "description": "分类、支派、状态、可见范围、来源与精选筛选均支持重复 query 参数；同一维度按 OR，不同维度按 AND。旧单值请求继续兼容。"
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
       },
       "post": {
         "operationId": "createCultureItem",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "新增文化资料草稿",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureItemCreateRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/CultureItemCreateRequest" }
             }
           }
         },
@@ -237,88 +81,50 @@
             "description": "新建的文化资料草稿",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     },
     "/api/v1/culture-items/{cultureItemId}": {
       "get": {
         "operationId": "getCultureItem",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "获取文化资料聚合详情",
         "parameters": [
-          {
-            "name": "cultureItemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureItemId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "文化资料详情、来源、附件、审核摘要和 allowedActions",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse" }
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "description": "对象不存在、已删除或当前用户不可见"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "对象不存在、已删除或当前用户不可见" }
         }
       },
       "put": {
         "operationId": "updateCultureItem",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "更新草稿、驳回资料或创建正式资料变更申请",
         "parameters": [
-          {
-            "name": "cultureItemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureItemId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureItemUpdateRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/CultureItemUpdateRequest" }
             }
           }
         },
@@ -327,97 +133,53 @@
             "description": "更新后的详情或变更申请结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureItemDetailResponse" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "description": "对象不存在、已删除或当前用户不可见"
-          },
-          "409": {
-            "description": "版本冲突或当前工作流状态不允许修改"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "对象不存在、已删除或当前用户不可见" },
+          "409": { "description": "版本冲突或当前工作流状态不允许修改" }
         }
       },
       "delete": {
         "operationId": "deleteCultureItem",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "软删除草稿或创建正式资料删除申请",
         "parameters": [
-          {
-            "name": "cultureItemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureItemId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "删除或删除申请结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" }
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "description": "对象不存在、已删除或当前用户不可见"
-          },
-          "409": {
-            "description": "当前工作流状态不允许删除"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "对象不存在、已删除或当前用户不可见" },
+          "409": { "description": "当前工作流状态不允许删除" }
         }
       }
     },
     "/api/v1/culture-items/{cultureItemId}/submit-review": {
       "post": {
         "operationId": "submitCultureItemReview",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "提交文化资料审核",
         "parameters": [
-          {
-            "name": "cultureItemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureItemId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureSubmitReviewRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/CultureSubmitReviewRequest" }
             }
           }
         },
@@ -426,52 +188,30 @@
             "description": "审核提交结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "重复提交或当前状态不允许提交"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "重复提交或当前状态不允许提交" }
         }
       }
     },
     "/api/v1/culture-items/{cultureItemId}/archive": {
       "post": {
         "operationId": "archiveCultureItem",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "归档文化资料或创建正式资料归档申请",
         "parameters": [
-          {
-            "name": "cultureItemId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureItemId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureArchiveRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/CultureArchiveRequest" }
             }
           }
         },
@@ -480,164 +220,59 @@
             "description": "归档或归档申请结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "当前状态不允许归档"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "当前状态不允许归档" }
         }
       }
     },
     "/api/v1/clans/{clanId}/migration-events": {
       "get": {
         "operationId": "listMigrationEvents",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "分页搜索迁徙事件",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "keyword",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "branchId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "founderPersonId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "dataStatus",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/CultureDataStatus"
-            }
-          },
-          {
-            "name": "privacyLevel",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/CulturePrivacyLevel"
-            }
-          },
-          {
-            "name": "pageNo",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "sequenceNo,asc"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 100 } },
+          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "founderPersonId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "dataStatus", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CultureDataStatus" } },
+          { "name": "privacyLevel", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CulturePrivacyLevel" } },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "sort", "in": "query", "required": false, "schema": { "type": "string", "default": "sequenceNo,asc" } }
         ],
         "responses": {
           "200": {
             "description": "迁徙事件分页结果",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMigrationEventPage"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseMigrationEventPage" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       },
       "post": {
         "operationId": "createMigrationEvent",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "新增迁徙事件草稿",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MigrationEventCreateRequest"
-              }
+              "schema": { "$ref": "#/components/schemas/MigrationEventCreateRequest" }
             }
           }
         },
@@ -646,563 +281,226 @@
             "description": "新建的迁徙事件草稿",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse"
-                }
+                "schema": { "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     },
     "/api/v1/migration-events/{migrationEventId}": {
       "get": {
         "operationId": "getMigrationEvent",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "获取迁徙事件聚合详情",
         "parameters": [
-          {
-            "name": "migrationEventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "migrationEventId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "迁徙事件详情",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse" } } }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "description": "对象不存在、已删除或当前用户不可见"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "对象不存在、已删除或当前用户不可见" }
         }
       },
       "put": {
         "operationId": "updateMigrationEvent",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "更新迁徙事件或创建正式事件变更申请",
         "parameters": [
-          {
-            "name": "migrationEventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "migrationEventId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MigrationEventUpdateRequest"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MigrationEventUpdateRequest" } } }
         },
         "responses": {
           "200": {
             "description": "更新结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseMigrationEventDetailResponse" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "顺序冲突、版本冲突或工作流状态不允许修改"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "顺序冲突、版本冲突或工作流状态不允许修改" }
         }
       },
       "delete": {
         "operationId": "deleteMigrationEvent",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "软删除迁徙草稿或创建正式事件删除申请",
         "parameters": [
-          {
-            "name": "migrationEventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "migrationEventId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "删除或删除申请结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" } } }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "当前状态不允许删除"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "当前状态不允许删除" }
         }
       }
     },
     "/api/v1/migration-events/{migrationEventId}/submit-review": {
       "post": {
         "operationId": "submitMigrationEventReview",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "提交迁徙事件审核",
         "parameters": [
-          {
-            "name": "migrationEventId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "migrationEventId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureSubmitReviewRequest"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CultureSubmitReviewRequest" } } }
         },
         "responses": {
           "200": {
             "description": "审核提交结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "重复提交或当前状态不允许提交"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "重复提交或当前状态不允许提交" }
         }
       }
     },
     "/api/v1/clans/{clanId}/culture-sites": {
       "get": {
         "operationId": "listCultureSites",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "分页搜索文化场所",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "keyword",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "siteType",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/CultureSiteType"
-            }
-          },
-          {
-            "name": "branchId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "dataStatus",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/CultureDataStatus"
-            }
-          },
-          {
-            "name": "privacyLevel",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/CulturePrivacyLevel"
-            }
-          },
-          {
-            "name": "featuredOnHome",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "pageNo",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "updatedAt,desc"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 100 } },
+          { "name": "siteType", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CultureSiteType" } },
+          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "dataStatus", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CultureDataStatus" } },
+          { "name": "privacyLevel", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CulturePrivacyLevel" } },
+          { "name": "featuredOnHome", "in": "query", "required": false, "schema": { "type": "boolean" } },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "sort", "in": "query", "required": false, "schema": { "type": "string", "default": "updatedAt,desc" } }
         ],
         "responses": {
           "200": {
             "description": "文化场所分页结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureSitePage"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureSitePage" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       },
       "post": {
         "operationId": "createCultureSite",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "新增文化场所草稿",
         "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureSiteCreateRequest"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CultureSiteCreateRequest" } } }
         },
         "responses": {
           "200": {
             "description": "新建的文化场所草稿",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
         }
       }
     },
     "/api/v1/culture-sites/{cultureSiteId}": {
       "get": {
         "operationId": "getCultureSite",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "获取文化场所聚合详情",
         "parameters": [
-          {
-            "name": "cultureSiteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureSiteId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "文化场所详情",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse" } } }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "description": "对象不存在、已删除或当前用户不可见"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "对象不存在、已删除或当前用户不可见" }
         }
       },
       "put": {
         "operationId": "updateCultureSite",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "更新文化场所或创建正式场所变更申请",
         "parameters": [
-          {
-            "name": "cultureSiteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureSiteId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureSiteUpdateRequest"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CultureSiteUpdateRequest" } } }
         },
         "responses": {
           "200": {
             "description": "更新结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureSiteDetailResponse" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "版本冲突或工作流状态不允许修改"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "版本冲突或工作流状态不允许修改" }
         }
       },
       "delete": {
         "operationId": "deleteCultureSite",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "软删除场所草稿或创建正式场所删除申请",
         "parameters": [
-          {
-            "name": "cultureSiteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureSiteId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "responses": {
           "200": {
             "description": "删除或删除申请结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" } } }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "当前状态不允许删除"
-          }
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "当前状态不允许删除" }
         }
       }
     },
     "/api/v1/culture-sites/{cultureSiteId}/submit-review": {
       "post": {
         "operationId": "submitCultureSiteReview",
-        "tags": [
-          "Culture"
-        ],
+        "tags": ["Culture"],
         "summary": "提交文化场所审核",
         "parameters": [
-          {
-            "name": "cultureSiteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
+          { "name": "cultureSiteId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
         ],
         "requestBody": {
           "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CultureSubmitReviewRequest"
-              }
-            }
-          }
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CultureSubmitReviewRequest" } } }
         },
         "responses": {
           "200": {
             "description": "审核提交结果",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseCultureCommandResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseCultureCommandResponse" } } }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "description": "重复提交或当前状态不允许提交"
-          }
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "description": "重复提交或当前状态不允许提交" }
         }
       }
     }
@@ -1246,280 +544,105 @@
       },
       "CultureSiteType": {
         "type": "string",
-        "enum": [
-          "ancestral_hall",
-          "ancestral_home",
-          "cemetery",
-          "memorial",
-          "other"
-        ]
+        "enum": ["ancestral_hall", "ancestral_home", "cemetery", "memorial", "other"]
       },
       "CultureDataStatus": {
         "type": "string",
-        "enum": [
-          "draft",
-          "pending_review",
-          "official",
-          "rejected",
-          "archived"
-        ]
+        "enum": ["draft", "pending_review", "official", "rejected", "archived"]
       },
       "CultureConfidenceLevel": {
         "type": "string",
-        "enum": [
-          "high",
-          "medium",
-          "low",
-          "unknown"
-        ]
+        "enum": ["high", "medium", "low", "unknown"]
       },
       "CulturePrivacyLevel": {
         "type": "string",
-        "enum": [
-          "public",
-          "clan_only",
-          "branch_only",
-          "relatives_only",
-          "private",
-          "sealed"
-        ]
+        "enum": ["public", "clan_only", "branch_only", "relatives_only", "private", "sealed"]
       },
       "CultureSensitiveLevel": {
         "type": "string",
-        "enum": [
-          "normal",
-          "sensitive",
-          "highly_sensitive"
-        ]
+        "enum": ["normal", "sensitive", "highly_sensitive"]
       },
       "CultureScopeResponse": {
         "type": "object",
-        "required": [
-          "clanId",
-          "clanName"
-        ],
+        "required": ["clanId", "clanName"],
         "properties": {
-          "clanId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "clanName": {
-            "type": "string"
-          },
-          "branchId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "branchName": {
-            "type": "string",
-            "nullable": true
-          }
+          "clanId": { "type": "integer", "format": "int64" },
+          "clanName": { "type": "string" },
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "branchName": { "type": "string", "nullable": true }
         }
       },
       "CultureSourceSummaryResponse": {
         "type": "object",
-        "required": [
-          "sourceId",
-          "sourceName",
-          "sourceType",
-          "bindingStatus"
-        ],
+        "required": ["sourceId", "sourceName", "sourceType", "bindingStatus"],
         "properties": {
-          "sourceId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sourceName": {
-            "type": "string"
-          },
-          "sourceType": {
-            "type": "string"
-          },
-          "excerpt": {
-            "type": "string",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "bindingStatus": {
-            "$ref": "#/components/schemas/CultureDataStatus"
-          }
+          "sourceId": { "type": "integer", "format": "int64" },
+          "sourceName": { "type": "string" },
+          "sourceType": { "type": "string" },
+          "excerpt": { "type": "string", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "bindingStatus": { "$ref": "#/components/schemas/CultureDataStatus" }
         }
       },
       "CultureAttachmentSummaryResponse": {
         "type": "object",
-        "required": [
-          "attachmentId",
-          "fileName",
-          "fileSize",
-          "canPreview",
-          "canDownload"
-        ],
+        "required": ["attachmentId", "fileName", "fileSize", "canPreview", "canDownload"],
         "properties": {
-          "attachmentId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "fileName": {
-            "type": "string"
-          },
-          "contentType": {
-            "type": "string",
-            "nullable": true
-          },
-          "fileSize": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "canPreview": {
-            "type": "boolean"
-          },
-          "canDownload": {
-            "type": "boolean"
-          }
+          "attachmentId": { "type": "integer", "format": "int64" },
+          "fileName": { "type": "string" },
+          "contentType": { "type": "string", "nullable": true },
+          "fileSize": { "type": "integer", "format": "int64" },
+          "canPreview": { "type": "boolean" },
+          "canDownload": { "type": "boolean" }
         }
       },
       "CultureReviewSummaryResponse": {
         "type": "object",
         "properties": {
-          "reviewTaskId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "submitterName": {
-            "type": "string",
-            "nullable": true
-          },
-          "reviewerName": {
-            "type": "string",
-            "nullable": true
-          },
-          "submittedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "reviewedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "rejectedReason": {
-            "type": "string",
-            "nullable": true
-          }
+          "reviewTaskId": { "type": "integer", "format": "int64", "nullable": true },
+          "status": { "type": "string", "nullable": true },
+          "submitterName": { "type": "string", "nullable": true },
+          "reviewerName": { "type": "string", "nullable": true },
+          "submittedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "reviewedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "rejectedReason": { "type": "string", "nullable": true }
         }
       },
       "CulturePageMetadata": {
         "type": "object",
-        "required": [
-          "pageNo",
-          "pageSize",
-          "totalElements",
-          "totalPages"
-        ],
+        "required": ["pageNo", "pageSize", "totalElements", "totalPages"],
         "properties": {
-          "pageNo": {
-            "type": "integer"
-          },
-          "pageSize": {
-            "type": "integer"
-          },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer"
-          }
+          "pageNo": { "type": "integer" },
+          "pageSize": { "type": "integer" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer" }
         }
       },
       "CultureItemCreateRequest": {
         "type": "object",
-        "required": [
-          "category",
-          "title",
-          "confidenceLevel",
-          "privacyLevel",
-          "sensitiveLevel"
-        ],
+        "required": ["category", "title", "confidenceLevel", "privacyLevel", "sensitiveLevel"],
         "properties": {
-          "branchId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "category": {
-            "$ref": "#/components/schemas/CultureCategory"
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "summary": {
-            "type": "string",
-            "maxLength": 1000,
-            "nullable": true
-          },
-          "content": {
-            "type": "string",
-            "nullable": true
-          },
-          "historicalPeriod": {
-            "type": "string",
-            "maxLength": 200,
-            "nullable": true
-          },
-          "locationText": {
-            "type": "string",
-            "maxLength": 500,
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          },
-          "featuredOnHome": {
-            "type": "boolean",
-            "default": false
-          },
-          "sortOrder": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0
-          }
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "category": { "$ref": "#/components/schemas/CultureCategory" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "summary": { "type": "string", "maxLength": 1000, "nullable": true },
+          "content": { "type": "string", "nullable": true },
+          "historicalPeriod": { "type": "string", "maxLength": 200, "nullable": true },
+          "locationText": { "type": "string", "maxLength": 500, "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" },
+          "featuredOnHome": { "type": "boolean", "default": false },
+          "sortOrder": { "type": "integer", "minimum": 0, "default": 0 }
         }
       },
       "CultureItemUpdateRequest": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/CultureItemCreateRequest"
-          },
+          { "$ref": "#/components/schemas/CultureItemCreateRequest" },
           {
             "type": "object",
-            "required": [
-              "version"
-            ],
-            "properties": {
-              "version": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 0
-              }
-            }
+            "required": ["version"],
+            "properties": { "version": { "type": "integer", "format": "int64", "minimum": 0 } }
           }
         ]
       },
@@ -1544,208 +667,75 @@
           "updatedAt"
         ],
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/CultureScopeResponse"
-          },
-          "category": {
-            "$ref": "#/components/schemas/CultureCategory"
-          },
-          "title": {
-            "type": "string"
-          },
-          "summary": {
-            "type": "string",
-            "nullable": true
-          },
-          "historicalPeriod": {
-            "type": "string",
-            "nullable": true
-          },
-          "locationText": {
-            "type": "string",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          },
-          "dataStatus": {
-            "$ref": "#/components/schemas/CultureDataStatus"
-          },
-          "featuredOnHome": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "type": "integer"
-          },
-          "sourceCount": {
-            "type": "integer"
-          },
-          "attachmentCount": {
-            "type": "integer"
-          },
-          "allowedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "createdByName": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "id": { "type": "integer", "format": "int64" },
+          "scope": { "$ref": "#/components/schemas/CultureScopeResponse" },
+          "category": { "$ref": "#/components/schemas/CultureCategory" },
+          "title": { "type": "string" },
+          "summary": { "type": "string", "nullable": true },
+          "historicalPeriod": { "type": "string", "nullable": true },
+          "locationText": { "type": "string", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" },
+          "dataStatus": { "$ref": "#/components/schemas/CultureDataStatus" },
+          "featuredOnHome": { "type": "boolean" },
+          "sortOrder": { "type": "integer" },
+          "sourceCount": { "type": "integer" },
+          "attachmentCount": { "type": "integer" },
+          "allowedActions": { "type": "array", "items": { "type": "string" } },
+          "version": { "type": "integer", "format": "int64" },
+          "createdByName": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
       "CultureItemDetailResponse": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/CultureItemSummaryResponse"
-          },
+          { "$ref": "#/components/schemas/CultureItemSummaryResponse" },
           {
             "type": "object",
-            "required": [
-              "sources",
-              "attachments",
-              "review"
-            ],
+            "required": ["sources", "attachments", "review"],
             "properties": {
-              "content": {
-                "type": "string",
-                "nullable": true
-              },
-              "sources": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CultureSourceSummaryResponse"
-                }
-              },
-              "attachments": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CultureAttachmentSummaryResponse"
-                }
-              },
-              "review": {
-                "$ref": "#/components/schemas/CultureReviewSummaryResponse"
-              }
+              "content": { "type": "string", "nullable": true },
+              "sources": { "type": "array", "items": { "$ref": "#/components/schemas/CultureSourceSummaryResponse" } },
+              "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/CultureAttachmentSummaryResponse" } },
+              "review": { "$ref": "#/components/schemas/CultureReviewSummaryResponse" }
             }
           }
         ]
       },
       "CultureItemPage": {
         "type": "object",
-        "required": [
-          "items",
-          "page"
-        ],
+        "required": ["items", "page"],
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CultureItemSummaryResponse"
-            }
-          },
-          "page": {
-            "$ref": "#/components/schemas/CulturePageMetadata"
-          }
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/CultureItemSummaryResponse" } },
+          "page": { "$ref": "#/components/schemas/CulturePageMetadata" }
         }
       },
       "MigrationEventCreateRequest": {
         "type": "object",
-        "required": [
-          "branchId",
-          "sequenceNo",
-          "confidenceLevel",
-          "privacyLevel",
-          "sensitiveLevel"
-        ],
+        "required": ["branchId", "sequenceNo", "confidenceLevel", "privacyLevel", "sensitiveLevel"],
         "properties": {
-          "branchId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sequenceNo": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "fromLocation": {
-            "type": "string",
-            "maxLength": 500,
-            "nullable": true
-          },
-          "toLocation": {
-            "type": "string",
-            "maxLength": 500,
-            "nullable": true
-          },
-          "migrationTimeText": {
-            "type": "string",
-            "maxLength": 200,
-            "nullable": true
-          },
-          "founderPersonId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 1000,
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          }
+          "branchId": { "type": "integer", "format": "int64" },
+          "sequenceNo": { "type": "integer", "minimum": 1 },
+          "fromLocation": { "type": "string", "maxLength": 500, "nullable": true },
+          "toLocation": { "type": "string", "maxLength": 500, "nullable": true },
+          "migrationTimeText": { "type": "string", "maxLength": 200, "nullable": true },
+          "founderPersonId": { "type": "integer", "format": "int64", "nullable": true },
+          "reason": { "type": "string", "maxLength": 1000, "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" }
         }
       },
       "MigrationEventUpdateRequest": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/MigrationEventCreateRequest"
-          },
+          { "$ref": "#/components/schemas/MigrationEventCreateRequest" },
           {
             "type": "object",
-            "required": [
-              "version"
-            ],
-            "properties": {
-              "version": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 0
-              }
-            }
+            "required": ["version"],
+            "properties": { "version": { "type": "integer", "format": "int64", "minimum": 0 } }
           }
         ]
       },
@@ -1766,221 +756,76 @@
           "updatedAt"
         ],
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/CultureScopeResponse"
-          },
-          "sequenceNo": {
-            "type": "integer"
-          },
-          "fromLocation": {
-            "type": "string",
-            "nullable": true
-          },
-          "toLocation": {
-            "type": "string",
-            "nullable": true
-          },
-          "migrationTimeText": {
-            "type": "string",
-            "nullable": true
-          },
-          "founderPersonId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "founderPersonName": {
-            "type": "string",
-            "nullable": true
-          },
-          "reason": {
-            "type": "string",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          },
-          "dataStatus": {
-            "$ref": "#/components/schemas/CultureDataStatus"
-          },
-          "sourceCount": {
-            "type": "integer"
-          },
-          "allowedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "id": { "type": "integer", "format": "int64" },
+          "scope": { "$ref": "#/components/schemas/CultureScopeResponse" },
+          "sequenceNo": { "type": "integer" },
+          "fromLocation": { "type": "string", "nullable": true },
+          "toLocation": { "type": "string", "nullable": true },
+          "migrationTimeText": { "type": "string", "nullable": true },
+          "founderPersonId": { "type": "integer", "format": "int64", "nullable": true },
+          "founderPersonName": { "type": "string", "nullable": true },
+          "reason": { "type": "string", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" },
+          "dataStatus": { "$ref": "#/components/schemas/CultureDataStatus" },
+          "sourceCount": { "type": "integer" },
+          "allowedActions": { "type": "array", "items": { "type": "string" } },
+          "version": { "type": "integer", "format": "int64" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
       "MigrationEventDetailResponse": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/MigrationEventSummaryResponse"
-          },
+          { "$ref": "#/components/schemas/MigrationEventSummaryResponse" },
           {
             "type": "object",
-            "required": [
-              "sources",
-              "review"
-            ],
+            "required": ["sources", "review"],
             "properties": {
-              "description": {
-                "type": "string",
-                "nullable": true
-              },
-              "sources": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CultureSourceSummaryResponse"
-                }
-              },
-              "review": {
-                "$ref": "#/components/schemas/CultureReviewSummaryResponse"
-              }
+              "description": { "type": "string", "nullable": true },
+              "sources": { "type": "array", "items": { "$ref": "#/components/schemas/CultureSourceSummaryResponse" } },
+              "review": { "$ref": "#/components/schemas/CultureReviewSummaryResponse" }
             }
           }
         ]
       },
       "MigrationEventPage": {
         "type": "object",
-        "required": [
-          "items",
-          "page"
-        ],
+        "required": ["items", "page"],
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MigrationEventSummaryResponse"
-            }
-          },
-          "page": {
-            "$ref": "#/components/schemas/CulturePageMetadata"
-          }
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/MigrationEventSummaryResponse" } },
+          "page": { "$ref": "#/components/schemas/CulturePageMetadata" }
         }
       },
       "CultureSiteCreateRequest": {
         "type": "object",
-        "required": [
-          "siteType",
-          "siteName",
-          "confidenceLevel",
-          "privacyLevel",
-          "sensitiveLevel"
-        ],
+        "required": ["siteType", "siteName", "confidenceLevel", "privacyLevel", "sensitiveLevel"],
         "properties": {
-          "branchId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "siteType": {
-            "$ref": "#/components/schemas/CultureSiteType"
-          },
-          "siteName": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "addressText": {
-            "type": "string",
-            "maxLength": 500,
-            "nullable": true
-          },
-          "foundedPeriod": {
-            "type": "string",
-            "maxLength": 200,
-            "nullable": true
-          },
-          "currentStatus": {
-            "type": "string",
-            "maxLength": 100,
-            "nullable": true
-          },
-          "summary": {
-            "type": "string",
-            "maxLength": 1000,
-            "nullable": true
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "latitude": {
-            "type": "number",
-            "format": "double",
-            "minimum": -90,
-            "maximum": 90,
-            "nullable": true
-          },
-          "longitude": {
-            "type": "number",
-            "format": "double",
-            "minimum": -180,
-            "maximum": 180,
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          },
-          "featuredOnHome": {
-            "type": "boolean",
-            "default": false
-          },
-          "sortOrder": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0
-          }
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "siteType": { "$ref": "#/components/schemas/CultureSiteType" },
+          "siteName": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "addressText": { "type": "string", "maxLength": 500, "nullable": true },
+          "foundedPeriod": { "type": "string", "maxLength": 200, "nullable": true },
+          "currentStatus": { "type": "string", "maxLength": 100, "nullable": true },
+          "summary": { "type": "string", "maxLength": 1000, "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "latitude": { "type": "number", "format": "double", "minimum": -90, "maximum": 90, "nullable": true },
+          "longitude": { "type": "number", "format": "double", "minimum": -180, "maximum": 180, "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" },
+          "featuredOnHome": { "type": "boolean", "default": false },
+          "sortOrder": { "type": "integer", "minimum": 0, "default": 0 }
         }
       },
       "CultureSiteUpdateRequest": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/CultureSiteCreateRequest"
-          },
+          { "$ref": "#/components/schemas/CultureSiteCreateRequest" },
           {
             "type": "object",
-            "required": [
-              "version"
-            ],
-            "properties": {
-              "version": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 0
-              }
-            }
+            "required": ["version"],
+            "properties": { "version": { "type": "integer", "format": "int64", "minimum": 0 } }
           }
         ]
       },
@@ -2005,506 +850,199 @@
           "updatedAt"
         ],
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/CultureScopeResponse"
-          },
-          "siteType": {
-            "$ref": "#/components/schemas/CultureSiteType"
-          },
-          "siteName": {
-            "type": "string"
-          },
-          "addressText": {
-            "type": "string",
-            "nullable": true
-          },
-          "foundedPeriod": {
-            "type": "string",
-            "nullable": true
-          },
-          "currentStatus": {
-            "type": "string",
-            "nullable": true
-          },
-          "summary": {
-            "type": "string",
-            "nullable": true
-          },
-          "latitude": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "longitude": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "privacyLevel": {
-            "$ref": "#/components/schemas/CulturePrivacyLevel"
-          },
-          "sensitiveLevel": {
-            "$ref": "#/components/schemas/CultureSensitiveLevel"
-          },
-          "dataStatus": {
-            "$ref": "#/components/schemas/CultureDataStatus"
-          },
-          "featuredOnHome": {
-            "type": "boolean"
-          },
-          "sortOrder": {
-            "type": "integer"
-          },
-          "sourceCount": {
-            "type": "integer"
-          },
-          "attachmentCount": {
-            "type": "integer"
-          },
-          "allowedActions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "version": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "id": { "type": "integer", "format": "int64" },
+          "scope": { "$ref": "#/components/schemas/CultureScopeResponse" },
+          "siteType": { "$ref": "#/components/schemas/CultureSiteType" },
+          "siteName": { "type": "string" },
+          "addressText": { "type": "string", "nullable": true },
+          "foundedPeriod": { "type": "string", "nullable": true },
+          "currentStatus": { "type": "string", "nullable": true },
+          "summary": { "type": "string", "nullable": true },
+          "latitude": { "type": "number", "format": "double", "nullable": true },
+          "longitude": { "type": "number", "format": "double", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "privacyLevel": { "$ref": "#/components/schemas/CulturePrivacyLevel" },
+          "sensitiveLevel": { "$ref": "#/components/schemas/CultureSensitiveLevel" },
+          "dataStatus": { "$ref": "#/components/schemas/CultureDataStatus" },
+          "featuredOnHome": { "type": "boolean" },
+          "sortOrder": { "type": "integer" },
+          "sourceCount": { "type": "integer" },
+          "attachmentCount": { "type": "integer" },
+          "allowedActions": { "type": "array", "items": { "type": "string" } },
+          "version": { "type": "integer", "format": "int64" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
       "CultureSiteDetailResponse": {
         "allOf": [
-          {
-            "$ref": "#/components/schemas/CultureSiteSummaryResponse"
-          },
+          { "$ref": "#/components/schemas/CultureSiteSummaryResponse" },
           {
             "type": "object",
-            "required": [
-              "sources",
-              "attachments",
-              "review"
-            ],
+            "required": ["sources", "attachments", "review"],
             "properties": {
-              "description": {
-                "type": "string",
-                "nullable": true
-              },
-              "sources": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CultureSourceSummaryResponse"
-                }
-              },
-              "attachments": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CultureAttachmentSummaryResponse"
-                }
-              },
-              "review": {
-                "$ref": "#/components/schemas/CultureReviewSummaryResponse"
-              }
+              "description": { "type": "string", "nullable": true },
+              "sources": { "type": "array", "items": { "$ref": "#/components/schemas/CultureSourceSummaryResponse" } },
+              "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/CultureAttachmentSummaryResponse" } },
+              "review": { "$ref": "#/components/schemas/CultureReviewSummaryResponse" }
             }
           }
         ]
       },
       "CultureSitePage": {
         "type": "object",
-        "required": [
-          "items",
-          "page"
-        ],
+        "required": ["items", "page"],
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CultureSiteSummaryResponse"
-            }
-          },
-          "page": {
-            "$ref": "#/components/schemas/CulturePageMetadata"
-          }
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/CultureSiteSummaryResponse" } },
+          "page": { "$ref": "#/components/schemas/CulturePageMetadata" }
         }
       },
       "CultureOverviewStatistics": {
         "type": "object",
-        "required": [
-          "officialItemCount",
-          "pendingReviewCount",
-          "sourceCoverageRate"
-        ],
+        "required": ["officialItemCount", "pendingReviewCount", "sourceCoverageRate"],
         "properties": {
-          "officialItemCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "pendingReviewCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sourceCoverageRate": {
-            "type": "number",
-            "format": "double",
-            "minimum": 0,
-            "maximum": 1
-          }
+          "officialItemCount": { "type": "integer", "format": "int64" },
+          "pendingReviewCount": { "type": "integer", "format": "int64" },
+          "sourceCoverageRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 1 }
         }
       },
       "CultureOverviewResponse": {
         "type": "object",
-        "required": [
-          "clanId",
-          "clanName",
-          "statistics",
-          "featuredItems",
-          "migrationHighlights",
-          "siteHighlights",
-          "missingHints"
-        ],
+        "required": ["clanId", "clanName", "statistics", "featuredItems", "migrationHighlights", "siteHighlights", "missingHints"],
         "properties": {
-          "clanId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "clanName": {
-            "type": "string"
-          },
-          "statistics": {
-            "$ref": "#/components/schemas/CultureOverviewStatistics"
-          },
-          "featuredItems": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CultureItemSummaryResponse"
-            }
-          },
-          "migrationHighlights": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MigrationEventSummaryResponse"
-            }
-          },
-          "siteHighlights": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CultureSiteSummaryResponse"
-            }
-          },
-          "missingHints": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
+          "clanId": { "type": "integer", "format": "int64" },
+          "clanName": { "type": "string" },
+          "statistics": { "$ref": "#/components/schemas/CultureOverviewStatistics" },
+          "featuredItems": { "type": "array", "items": { "$ref": "#/components/schemas/CultureItemSummaryResponse" } },
+          "migrationHighlights": { "type": "array", "items": { "$ref": "#/components/schemas/MigrationEventSummaryResponse" } },
+          "siteHighlights": { "type": "array", "items": { "$ref": "#/components/schemas/CultureSiteSummaryResponse" } },
+          "missingHints": { "type": "array", "items": { "type": "string" } }
         }
       },
       "CultureSubmitReviewRequest": {
         "type": "object",
-        "properties": {
-          "comment": {
-            "type": "string",
-            "maxLength": 1000,
-            "nullable": true
-          }
-        }
+        "properties": { "comment": { "type": "string", "maxLength": 1000, "nullable": true } }
       },
       "CultureArchiveRequest": {
         "type": "object",
-        "required": [
-          "reason"
-        ],
-        "properties": {
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1000
-          }
-        }
+        "required": ["reason"],
+        "properties": { "reason": { "type": "string", "minLength": 1, "maxLength": 1000 } }
       },
       "CultureCommandResponse": {
         "type": "object",
-        "required": [
-          "targetType",
-          "targetId",
-          "status"
-        ],
+        "required": ["targetType", "targetId", "status"],
         "properties": {
-          "targetType": {
-            "$ref": "#/components/schemas/GenealogyTargetType"
-          },
-          "targetId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "status": {
-            "type": "string"
-          },
-          "reviewTaskId": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          }
+          "targetType": { "$ref": "#/components/schemas/GenealogyTargetType" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "status": { "type": "string" },
+          "reviewTaskId": { "type": "integer", "format": "int64", "nullable": true },
+          "message": { "type": "string", "nullable": true }
         }
       },
       "SourceBindingCreateRequest": {
         "type": "object",
-        "required": [
-          "sourceId",
-          "targetType",
-          "targetId"
-        ],
+        "required": ["sourceId", "targetType", "targetId"],
         "properties": {
-          "sourceId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "targetType": {
-            "$ref": "#/components/schemas/GenealogyTargetType"
-          },
-          "targetId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "bindingReason": {
-            "type": "string",
-            "maxLength": 255,
-            "nullable": true
-          },
-          "excerpt": {
-            "type": "string",
-            "maxLength": 5000,
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "submitReview": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "createdBy": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          }
+          "sourceId": { "type": "integer", "format": "int64" },
+          "targetType": { "$ref": "#/components/schemas/GenealogyTargetType" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "bindingReason": { "type": "string", "maxLength": 255, "nullable": true },
+          "excerpt": { "type": "string", "maxLength": 5000, "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "submitReview": { "type": "boolean", "nullable": true },
+          "createdBy": { "type": "integer", "format": "int64", "nullable": true }
         }
       },
       "SourceBindingResponse": {
         "type": "object",
-        "required": [
-          "id",
-          "clanId",
-          "sourceId",
-          "targetType",
-          "targetId",
-          "confidenceLevel",
-          "bindingStatus"
-        ],
+        "required": ["id", "clanId", "sourceId", "targetType", "targetId", "confidenceLevel", "bindingStatus"],
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "clanId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sourceId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "targetType": {
-            "$ref": "#/components/schemas/GenealogyTargetType"
-          },
-          "targetId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "bindingReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "excerpt": {
-            "type": "string",
-            "nullable": true
-          },
-          "confidenceLevel": {
-            "$ref": "#/components/schemas/CultureConfidenceLevel"
-          },
-          "bindingStatus": {
-            "$ref": "#/components/schemas/CultureDataStatus"
-          },
-          "createdBy": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "sourceId": { "type": "integer", "format": "int64" },
+          "targetType": { "$ref": "#/components/schemas/GenealogyTargetType" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "bindingReason": { "type": "string", "nullable": true },
+          "excerpt": { "type": "string", "nullable": true },
+          "confidenceLevel": { "$ref": "#/components/schemas/CultureConfidenceLevel" },
+          "bindingStatus": { "$ref": "#/components/schemas/CultureDataStatus" },
+          "createdBy": { "type": "integer", "format": "int64", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
         }
       },
       "ReviewSubmitRequest": {
         "type": "object",
-        "required": [
-          "targetType",
-          "targetId"
-        ],
+        "required": ["targetType", "targetId"],
         "properties": {
-          "targetType": {
-            "$ref": "#/components/schemas/GenealogyTargetType"
-          },
-          "targetId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "changeType": {
-            "type": "string",
-            "nullable": true
-          },
-          "comment": {
-            "type": "string",
-            "nullable": true
-          }
+          "targetType": { "$ref": "#/components/schemas/GenealogyTargetType" },
+          "targetId": { "type": "integer", "format": "int64" },
+          "changeType": { "type": "string", "nullable": true },
+          "comment": { "type": "string", "nullable": true }
         }
       },
       "ApiResponseCultureItemPage": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureItemPage"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureItemPage" }
         }
       },
       "ApiResponseCultureItemDetailResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureItemDetailResponse"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureItemDetailResponse" }
         }
       },
       "ApiResponseMigrationEventPage": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/MigrationEventPage"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/MigrationEventPage" }
         }
       },
       "ApiResponseMigrationEventDetailResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/MigrationEventDetailResponse"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/MigrationEventDetailResponse" }
         }
       },
       "ApiResponseCultureSitePage": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureSitePage"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureSitePage" }
         }
       },
       "ApiResponseCultureSiteDetailResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureSiteDetailResponse"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureSiteDetailResponse" }
         }
       },
       "ApiResponseCultureOverviewResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureOverviewResponse"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureOverviewResponse" }
         }
       },
       "ApiResponseCultureCommandResponse": {
         "type": "object",
         "properties": {
-          "code": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/CultureCommandResponse"
-          }
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CultureCommandResponse" }
         }
       }
     }
