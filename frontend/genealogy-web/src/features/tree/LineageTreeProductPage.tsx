@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Empty, Input, List, Pagination, Select, Space, Tag, Typography } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { apiClient } from '../../shared/api/client';
 import type { TreeEdgeResponse, TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -191,6 +191,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchPage, setSearchPage] = useState<SearchPage<PersonSearchItem>>(EMPTY_SEARCH);
   const [searchNotice, setSearchNotice] = useState('');
+  const [searchResultsExpanded, setSearchResultsExpanded] = useState(false);
   const [personDepth, setPersonDepth] = useState('3');
   const [branchDepth, setBranchDepth] = useState('8');
   const [selectedBranchId, setSelectedBranchId] = useState(workspace.branchId || '');
@@ -221,6 +222,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setSearchPage(EMPTY_SEARCH);
     setSearchKeyword('');
     setSearchNotice('');
+    setSearchResultsExpanded(false);
     setSelectedBranchId('');
     setPersonGraph(null);
     setBranchGraph(null);
@@ -249,6 +251,11 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     } finally {
       if (requestGate.current.isCurrent(token)) setScope('search', { loading: false });
     }
+  }
+
+  async function handlePersonSearch(pageNo = 1) {
+    setSearchResultsExpanded(true);
+    await requestPersonPage(workspace.clanId, pageNo, searchKeyword);
   }
 
   async function loadPersonGraph(personId: string, requestedDepth = personDepth) {
@@ -348,6 +355,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   async function handlePersonSelection(item: PersonSearchItem) {
     const nextBranchId = item.branchId || selectedBranchId;
+    setSearchResultsExpanded(false);
     setSelectedBranchId(nextBranchId);
     clearSelection();
     workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' });
@@ -460,54 +468,74 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               enterButton={<><SearchOutlined /> 搜索</>}
               placeholder="输入姓名、谱名或字号"
               onChange={event => setSearchKeyword(event.target.value)}
-              onSearch={() => void requestPersonPage(workspace.clanId, 1, searchKeyword)}
+              onSearch={() => void handlePersonSearch(1)}
               disabled={!workspace.clanId}
             />
           </Field>
         </div>
 
-        <div style={{ marginTop: 16, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', background: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginTop: 12, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ minHeight: 46, padding: '8px 12px 8px 16px', background: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <Typography.Text strong>查询结果</Typography.Text>
               <Typography.Text type="secondary" style={{ marginLeft: 8 }}>
                 {loadState.search.error ? `搜索失败：${loadState.search.error}` : searchNotice || `共 ${searchPage.total} 位人物`}
               </Typography.Text>
             </div>
-            <Typography.Text type="secondary">点击人物切换中心世系</Typography.Text>
+            <Space size={8}>
+              <Typography.Text type="secondary">
+                {searchResultsExpanded ? '点击人物切换中心世系' : center ? `当前中心：${center.name}` : '结果已收起'}
+              </Typography.Text>
+              <Button
+                type="text"
+                size="small"
+                aria-expanded={searchResultsExpanded}
+                aria-controls="lineage-person-search-results"
+                icon={searchResultsExpanded ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setSearchResultsExpanded(expanded => !expanded)}
+              >
+                {searchResultsExpanded ? '收起结果' : `展开结果${searchPage.total ? `（${searchPage.total}）` : ''}`}
+              </Button>
+            </Space>
           </div>
-          <List
-            loading={loadState.search.loading}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配人物" /> }}
-            dataSource={searchPage.records}
-            renderItem={item => {
-              const active = item.id === workspace.personId;
-              return (
-                <List.Item
-                  style={{ padding: '10px 16px', cursor: 'pointer', background: active ? '#e6f4ff' : undefined }}
-                  onClick={() => void handlePersonSelection(item)}
-                  actions={[<Button key="center" type={active ? 'primary' : 'link'} size="small">{active ? '当前中心' : '设为中心'}</Button>]}
-                >
-                  <List.Item.Meta
-                    avatar={<span className="lineage-avatar" style={{ width: 36, height: 36, fontSize: 16 }}>{firstChar(item.name)}</span>}
-                    title={<Space size={8}><Typography.Text strong>{item.name}</Typography.Text>{item.alias ? <Typography.Text type="secondary">{item.alias}</Typography.Text> : null}</Space>}
-                    description={<Space size={[6, 4]} wrap><Tag>{item.generation}</Tag><Tag>{item.branchName}</Tag></Space>}
+          {searchResultsExpanded ? (
+            <div id="lineage-person-search-results">
+              <div style={{ maxHeight: 288, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+                <List
+                  loading={loadState.search.loading}
+                  locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配人物" /> }}
+                  dataSource={searchPage.records}
+                  renderItem={item => {
+                    const active = item.id === workspace.personId;
+                    return (
+                      <List.Item
+                        style={{ padding: '8px 16px', cursor: 'pointer', background: active ? '#e6f4ff' : undefined }}
+                        onClick={() => void handlePersonSelection(item)}
+                        actions={[<Button key="center" type={active ? 'primary' : 'link'} size="small">{active ? '当前中心' : '设为中心'}</Button>]}
+                      >
+                        <List.Item.Meta
+                          avatar={<span className="lineage-avatar" style={{ width: 32, height: 32, fontSize: 15 }}>{firstChar(item.name)}</span>}
+                          title={<Space size={8}><Typography.Text strong>{item.name}</Typography.Text>{item.alias ? <Typography.Text type="secondary">{item.alias}</Typography.Text> : null}</Space>}
+                          description={<Space size={[6, 4]} wrap><Tag>{item.generation}</Tag><Tag>{item.branchName}</Tag></Space>}
+                        />
+                      </List.Item>
+                    );
+                  }}
+                />
+              </div>
+              {searchPage.total > searchPage.pageSize ? (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px', borderTop: '1px solid #f0f0f0' }}>
+                  <Pagination
+                    current={searchPage.pageNo}
+                    pageSize={searchPage.pageSize}
+                    total={searchPage.total}
+                    showSizeChanger={false}
+                    showTotal={total => `共 ${total} 条`}
+                    disabled={loadState.search.loading}
+                    onChange={page => void handlePersonSearch(page)}
                   />
-                </List.Item>
-              );
-            }}
-          />
-          {searchPage.total > searchPage.pageSize ? (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderTop: '1px solid #f0f0f0' }}>
-              <Pagination
-                current={searchPage.pageNo}
-                pageSize={searchPage.pageSize}
-                total={searchPage.total}
-                showSizeChanger={false}
-                showTotal={total => `共 ${total} 条`}
-                disabled={loadState.search.loading}
-                onChange={page => void requestPersonPage(workspace.clanId, page, searchKeyword)}
-              />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
