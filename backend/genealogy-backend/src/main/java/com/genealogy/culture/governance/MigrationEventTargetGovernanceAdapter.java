@@ -15,28 +15,15 @@ public class MigrationEventTargetGovernanceAdapter implements CultureTargetGover
     private final MigrationEventRepository repository;
     private final MigrationEventPermissionPolicyService permissionPolicy;
 
-    public MigrationEventTargetGovernanceAdapter(
-            MigrationEventRepository repository,
-            MigrationEventPermissionPolicyService permissionPolicy
-    ) {
+    public MigrationEventTargetGovernanceAdapter(MigrationEventRepository repository, MigrationEventPermissionPolicyService permissionPolicy) {
         this.repository = repository;
         this.permissionPolicy = permissionPolicy;
     }
 
-    @Override
-    public String targetType() {
-        return TARGET_TYPE;
-    }
-
-    @Override
-    public String sensitiveViewPermission() {
-        return MigrationEventPermissionPolicyService.VIEW_SENSITIVE;
-    }
-
-    @Override
-    public String restrictedLogSummary() {
-        return "受限迁徙事件操作";
-    }
+    @Override public String targetType() { return TARGET_TYPE; }
+    @Override public String viewPermission() { return MigrationEventPermissionPolicyService.VIEW; }
+    @Override public String sensitiveViewPermission() { return MigrationEventPermissionPolicyService.VIEW_SENSITIVE; }
+    @Override public String restrictedLogSummary() { return "受限迁徙事件操作"; }
 
     @Override
     @Transactional(readOnly = true)
@@ -64,19 +51,9 @@ public class MigrationEventTargetGovernanceAdapter implements CultureTargetGover
     private CultureTargetContext context(MigrationEventEntity entity) {
         String from = display(entity.getFromLocation(), "待维护迁出地");
         String to = display(entity.getToLocation(), "待维护迁入地");
-        return new CultureTargetContext(
-                entity.getClanId(),
-                entity.getBranchId(),
-                TARGET_TYPE,
-                entity.getId(),
-                from + " → " + to,
-                entity.getDataStatus(),
-                entity.getPrivacyLevel(),
-                entity.getSensitiveLevel(),
-                entity.getCreatedBy(),
-                sensitiveViewPermission(),
-                restrictedLogSummary()
-        );
+        return new CultureTargetContext(entity.getClanId(), entity.getBranchId(), TARGET_TYPE, entity.getId(),
+                from + " → " + to, entity.getDataStatus(), entity.getPrivacyLevel(), entity.getSensitiveLevel(),
+                entity.getCreatedBy(), sensitiveViewPermission(), restrictedLogSummary());
     }
 
     private String display(String value, String fallback) {
