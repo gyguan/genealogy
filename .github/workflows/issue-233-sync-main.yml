@@ -1,0 +1,61 @@
+name: Issue 233 Sync Main
+
+on:
+  push:
+    branches:
+      - agent/issue-233-lineage-workbench
+    paths:
+      - .github/workflows/issue-233-sync-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-main:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full branch history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge latest main and retain issue workbench resolution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "main is already included"
+            exit 0
+          fi
+          git merge --no-commit --no-ff -X ours origin/main
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx')
+          text = path.read_text()
+          text = text.replace(
+              "const [searchCollapsed, setSearchCollapsed] = useState(false);",
+              "const [searchCollapsed, setSearchCollapsed] = useState(true);"
+          )
+          text = text.replace(
+              "async function handlePersonSelection(item: PersonSearchItem) {\n    const nextBranchId = item.branchId || selectedBranchId;",
+              "async function handlePersonSelection(item: PersonSearchItem) {\n    setSearchCollapsed(true);\n    const nextBranchId = item.branchId || selectedBranchId;"
+          )
+          text = text.replace(
+              "onSearch={value => void requestPersonPage(workspace.clanId, 1, value)}",
+              "onSearch={value => { setSearchCollapsed(false); void requestPersonPage(workspace.clanId, 1, value); }}"
+          )
+          text = text.replace(
+              '<div className="lineage-search-results-list">',
+              '<div id="lineage-person-search-results" className="lineage-search-results-list">'
+          )
+          path.write_text(text)
+          PY
+          git add frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx
+          git commit -m "merge(main): sync compact lineage search interaction"
+          git push origin HEAD:agent/issue-233-lineage-workbench
