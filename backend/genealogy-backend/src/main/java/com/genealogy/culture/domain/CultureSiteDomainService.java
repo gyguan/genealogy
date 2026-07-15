@@ -8,7 +8,9 @@ import com.genealogy.culture.entity.CultureSiteEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -50,17 +52,17 @@ public class CultureSiteDomainService {
 
     public CultureSiteSearchCriteria normalize(CultureSiteSearchCriteria criteria) {
         CultureSiteSearchCriteria safe = criteria == null
-                ? new CultureSiteSearchCriteria(null, null, null, null, null, null, null, null, null, null, null)
+                ? CultureSiteSearchCriteria.multi(null, List.of(), List.of(), null, null, null, null, List.of(), null, null, null)
                 : criteria;
-        return new CultureSiteSearchCriteria(
+        return CultureSiteSearchCriteria.multi(
                 optionalText(safe.keyword(), 100, "CULTURE_SITE_KEYWORD_TOO_LONG", "搜索关键词不能超过 100 字"),
-                optionalEnum(safe.siteType(), this::normalizeSiteType),
-                safe.branchId(),
+                normalizeValues(safe.siteTypes(), this::normalizeSiteType),
+                normalizeValues(safe.branchIds(), this::normalizeBranchId),
                 optionalText(safe.addressText(), 500, "CULTURE_SITE_ADDRESS_TOO_LONG", "地址不能超过 500 字"),
                 optionalText(safe.foundedPeriod(), 200, "CULTURE_SITE_PERIOD_TOO_LONG", "始建年代不能超过 200 字"),
                 optionalText(safe.currentStatus(), 100, "CULTURE_SITE_CURRENT_STATUS_TOO_LONG", "现实状态不能超过 100 字"),
                 safe.relatedPersonId(),
-                optionalEnum(safe.dataStatus(), this::normalizeStatus),
+                normalizeValues(safe.dataStatuses(), this::normalizeStatus),
                 optionalEnum(safe.privacyLevel(), this::normalizePrivacy),
                 safe.featuredOnHome(),
                 normalizeSort(safe.sort())
@@ -217,6 +219,18 @@ public class CultureSiteDomainService {
         String normalized = value.trim();
         if (normalized.length() > maxLength) throw new BusinessException(code, message);
         return normalized;
+    }
+
+    private Long normalizeBranchId(Long value) {
+        if (value == null || value <= 0) {
+            throw new BusinessException("CULTURE_SITE_BRANCH_INVALID", "文化场所支派不合法");
+        }
+        return value;
+    }
+
+    private <T, R> List<R> normalizeValues(List<T> values, Function<T, R> normalizer) {
+        if (values == null || values.isEmpty()) return List.of();
+        return values.stream().filter(Objects::nonNull).map(normalizer).distinct().toList();
     }
 
     private String normalizeEnum(String value) {

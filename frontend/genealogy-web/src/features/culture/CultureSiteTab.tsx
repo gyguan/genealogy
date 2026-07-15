@@ -82,14 +82,19 @@ const sortOptions = [
   { value: 'sortOrder,asc', label: '业务顺序' },
   { value: 'updatedAt,desc', label: '最近更新' }
 ];
+const multiSelectProps = {
+  mode: 'multiple' as const,
+  allowClear: true,
+  maxTagCount: 'responsive' as const
+};
 
 type SearchFormValues = {
   keyword?: string;
-  siteType?: CultureSiteType;
-  branchId?: number;
+  siteType?: CultureSiteType[];
+  branchId?: number[];
   addressText?: string;
   currentStatus?: string;
-  dataStatus?: CultureDataStatus;
+  dataStatus?: CultureDataStatus[];
   sort?: string;
 };
 type SiteFormValues = CultureSiteCreateRequest & { version?: number };
@@ -495,11 +500,11 @@ export function CultureSiteTab() {
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[12, 0]}>
           <Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、年代或说明" /></Form.Item></Col>
-          <Col xs={24} md={8} xl={3}><Form.Item name="siteType" label="场所类型"><Select allowClear options={siteTypes} /></Form.Item></Col>
-          <Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col>
+          <Col xs={24} md={8} xl={3}><Form.Item name="siteType" label="场所类型"><Select {...multiSelectProps} placeholder="可多选" options={siteTypes} /></Form.Item></Col>
+          <Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="所属支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={4}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="currentStatus" label="当前状态"><Input allowClear placeholder="存续、遗址等" /></Form.Item></Col>
-          <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="数据状态"><Select allowClear options={statusOptions} /></Form.Item></Col>
+          <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="数据状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
           <Col xs={24} xl={6} className="culture-search-actions"><Space><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button onClick={resetSearch}>重置</Button></Space></Col>
         </Row>
