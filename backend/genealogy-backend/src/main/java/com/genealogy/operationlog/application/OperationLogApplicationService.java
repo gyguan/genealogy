@@ -38,11 +38,41 @@ public class OperationLogApplicationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null);
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            OperationTraceContext traceContext
+    ) {
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, traceContext);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail, String requestId, String clientIp) {
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            String requestId,
+            String clientIp,
+            OperationTraceContext traceContext
+    ) {
         try {
             OperationLogEntity entity = new OperationLogEntity();
             entity.setClanId(clanId);
@@ -54,6 +84,14 @@ public class OperationLogApplicationService {
             entity.setDetail(detail);
             entity.setRequestId(trim(requestId, 128));
             entity.setClientIp(trim(clientIp, 64));
+            if (traceContext != null) {
+                entity.setTraceId(traceContext.traceId());
+                entity.setRevisionId(traceContext.revisionId());
+                entity.setReviewTaskId(traceContext.reviewTaskId());
+                entity.setBusinessTargetType(normalize(traceContext.businessTargetType()));
+                entity.setBusinessTargetId(traceContext.businessTargetId());
+                entity.setEventResult(normalize(traceContext.eventResult()));
+            }
             entity.setCreatedAt(LocalDateTime.now());
             operationLogRepository.save(entity);
         } catch (Exception ignored) {
@@ -95,9 +133,15 @@ public class OperationLogApplicationService {
         }
         Specification<OperationLogEntity> specification = (root, query, criteriaBuilder) -> {
             List<Predicate> targetPredicates = new ArrayList<>();
-            normalizedTargets.forEach((type, ids) -> targetPredicates.add(criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("targetType"), type),
-                    root.get("targetId").in(ids)
+            normalizedTargets.forEach((type, ids) -> targetPredicates.add(criteriaBuilder.or(
+                    criteriaBuilder.and(
+                            criteriaBuilder.equal(root.get("targetType"), type),
+                            root.get("targetId").in(ids)
+                    ),
+                    criteriaBuilder.and(
+                            criteriaBuilder.equal(root.get("businessTargetType"), type),
+                            root.get("businessTargetId").in(ids)
+                    )
             )));
             return criteriaBuilder.and(
                     criteriaBuilder.equal(root.get("clanId"), clanId),
@@ -173,12 +217,14 @@ public class OperationLogApplicationService {
     ) {
         List<OperationLogEntity> logs = loadForExport(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword);
         StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, List.of("id", "clanId", "actorId", "actionType", "targetType", "targetId", "summary", "detail", "requestId", "clientIp", "createdAt"));
+        appendCsvRow(builder, List.of("id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId", "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "summary", "detail", "requestId", "clientIp", "createdAt"));
         for (OperationLogEntity log : logs) {
             appendCsvRow(builder, List.of(
                     value(log.getId()), value(log.getClanId()), value(log.getActorId()), value(log.getActionType()),
-                    value(log.getTargetType()), value(log.getTargetId()), value(log.getSummary()), value(log.getDetail()),
-                    value(log.getRequestId()), value(log.getClientIp()), value(log.getCreatedAt())
+                    value(log.getTargetType()), value(log.getTargetId()), value(log.getTraceId()), value(log.getRevisionId()),
+                    value(log.getReviewTaskId()), value(log.getBusinessTargetType()), value(log.getBusinessTargetId()),
+                    value(log.getEventResult()), value(log.getSummary()), value(log.getDetail()), value(log.getRequestId()),
+                    value(log.getClientIp()), value(log.getCreatedAt())
             ));
         }
         return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
@@ -274,7 +320,13 @@ public class OperationLogApplicationService {
                 includeTechnicalFields ? entity.getDetail() : null,
                 includeTechnicalFields ? entity.getRequestId() : null,
                 includeTechnicalFields ? entity.getClientIp() : null,
-                entity.getCreatedAt()
+                entity.getCreatedAt(),
+                entity.getTraceId(),
+                entity.getRevisionId(),
+                entity.getReviewTaskId(),
+                entity.getBusinessTargetType(),
+                entity.getBusinessTargetId(),
+                entity.getEventResult()
         );
     }
 

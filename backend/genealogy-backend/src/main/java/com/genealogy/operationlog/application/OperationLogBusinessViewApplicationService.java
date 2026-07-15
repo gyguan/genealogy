@@ -111,7 +111,9 @@ public class OperationLogBusinessViewApplicationService {
         String actorDisplayName = log.actorId() == null
                 ? "未知操作者"
                 : actorNames.getOrDefault(log.actorId(), "未知操作者");
-        BusinessView target = targetViews.get(new TargetKey(normalizeType(log.targetType()), log.targetId()));
+        String displayTargetType = log.businessTargetType() == null ? log.targetType() : log.businessTargetType();
+        Long displayTargetId = log.businessTargetId() == null ? log.targetId() : log.businessTargetId();
+        BusinessView target = targetViews.get(new TargetKey(normalizeType(displayTargetType), displayTargetId));
         return new OperationLogResponse(
                 log.id(),
                 log.clanId(),
@@ -128,7 +130,13 @@ public class OperationLogBusinessViewApplicationService {
                 log.detail(),
                 log.requestId(),
                 log.clientIp(),
-                log.createdAt()
+                log.createdAt(),
+                log.traceId(),
+                log.revisionId(),
+                log.reviewTaskId(),
+                log.businessTargetType(),
+                log.businessTargetId(),
+                log.eventResult()
         );
     }
 
@@ -156,7 +164,10 @@ public class OperationLogBusinessViewApplicationService {
             PermissionDataScope scope
     ) {
         Map<String, Set<Long>> idsByType = new HashMap<>();
-        logs.forEach(log -> addId(idsByType, normalizeType(log.targetType()), log.targetId()));
+        logs.forEach(log -> {
+            addId(idsByType, normalizeType(log.targetType()), log.targetId());
+            addId(idsByType, normalizeType(log.businessTargetType()), log.businessTargetId());
+        });
 
         Map<Long, ReviewTaskEntity> reviewTasks = byId(reviewTaskRepository.findAllById(ids(idsByType, "review_task")), ReviewTaskEntity::getId);
         Map<Long, RevisionEntity> revisions = byId(

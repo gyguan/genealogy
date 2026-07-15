@@ -10,13 +10,35 @@
           "createdAt"
         ],
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "actorId": { "type": "integer", "format": "int64", "nullable": true },
-          "actionType": { "type": "string" },
-          "targetType": { "type": "string", "nullable": true },
-          "targetId": { "type": "integer", "format": "int64", "nullable": true },
-          "summary": { "type": "string", "nullable": true },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actorId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "actionType": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
           "detail": {
             "type": "string",
             "nullable": true,
@@ -32,43 +54,116 @@
             "nullable": true,
             "description": "仅具备 operation_log.export 权限时返回；普通查看者为 null"
           },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "稳定的单次 revision 生命周期标识；历史数据可能为空"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "关联的版本记录 ID"
+          },
+          "reviewTaskId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "关联的审核任务 ID"
+          },
+          "businessTargetType": {
+            "type": "string",
+            "nullable": true,
+            "description": "revision 实际业务对象类型"
+          },
+          "businessTargetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "revision 实际业务对象 ID"
+          },
+          "eventResult": {
+            "type": "string",
+            "nullable": true,
+            "description": "生命周期事件结果，例如 submitted、approved、rejected、applied、failed"
+          }
         }
       },
       "OperationLogPage": {
         "type": "object",
-        "required": ["records", "total", "pageNo", "pageSize", "totalPages"],
+        "required": [
+          "records",
+          "total",
+          "pageNo",
+          "pageSize",
+          "totalPages"
+        ],
         "properties": {
           "records": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/OperationLogResponse" }
+            "items": {
+              "$ref": "#/components/schemas/OperationLogResponse"
+            }
           },
-          "total": { "type": "integer", "format": "int64" },
-          "pageNo": { "type": "integer" },
-          "pageSize": { "type": "integer" },
-          "totalPages": { "type": "integer" }
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pageNo": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
         }
       },
       "OperationLogStatsItem": {
         "type": "object",
-        "required": ["key", "count"],
+        "required": [
+          "key",
+          "count"
+        ],
         "properties": {
-          "key": { "type": "string" },
-          "count": { "type": "integer", "format": "int64" }
+          "key": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
         }
       },
       "OperationLogStatsResponse": {
         "type": "object",
-        "required": ["totalCount", "byActionType", "byActorId"],
+        "required": [
+          "totalCount",
+          "byActionType",
+          "byActorId"
+        ],
         "properties": {
-          "totalCount": { "type": "integer", "format": "int64" },
+          "totalCount": {
+            "type": "integer",
+            "format": "int64"
+          },
           "byActionType": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/OperationLogStatsItem" }
+            "items": {
+              "$ref": "#/components/schemas/OperationLogStatsItem"
+            }
           },
           "byActorId": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/OperationLogStatsItem" }
+            "items": {
+              "$ref": "#/components/schemas/OperationLogStatsItem"
+            }
           }
         }
       },
@@ -82,23 +177,85 @@
           "createdAt"
         ],
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "revisionId": { "type": "integer", "format": "int64" },
-          "reviewLevel": { "type": "integer", "nullable": true },
-          "reviewerId": { "type": "integer", "format": "int64", "nullable": true },
-          "reviewerRole": { "type": "string", "nullable": true },
-          "branchId": { "type": "integer", "format": "int64", "nullable": true },
-          "status": { "type": "string" },
-          "reviewComment": { "type": "string", "nullable": true },
-          "reviewedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "targetType": { "type": "string", "nullable": true },
-          "targetId": { "type": "integer", "format": "int64", "nullable": true },
-          "title": { "type": "string", "nullable": true },
-          "diffSummary": { "type": "string", "nullable": true },
-          "submitterId": { "type": "integer", "format": "int64", "nullable": true },
-          "submitTime": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reviewLevel": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reviewerId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "reviewerRole": {
+            "type": "string",
+            "nullable": true
+          },
+          "branchId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "reviewComment": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetType": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "diffSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "submitterId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "submitTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "稳定的单次 revision 生命周期标识；历史数据可能为空"
+          }
         }
       },
       "AuditRecordResponse": {
@@ -114,27 +271,77 @@
           "status"
         ],
         "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "changeType": { "type": "string" },
-          "oldPayload": { "type": "string", "nullable": true },
-          "newPayload": { "type": "string", "nullable": true },
-          "diffSummary": { "type": "string", "nullable": true },
-          "submitterId": { "type": "integer", "format": "int64" },
-          "submitTime": { "type": "string", "format": "date-time" },
-          "status": { "type": "string" },
-          "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "rejectedReason": { "type": "string", "nullable": true }
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changeType": {
+            "type": "string"
+          },
+          "oldPayload": {
+            "type": "string",
+            "nullable": true
+          },
+          "newPayload": {
+            "type": "string",
+            "nullable": true
+          },
+          "diffSummary": {
+            "type": "string",
+            "nullable": true
+          },
+          "submitterId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "submitTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "rejectedReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true,
+            "description": "稳定的单次 revision 生命周期标识；历史数据可能为空"
+          }
         }
       },
       "ReviewTaskDetailResponse": {
         "type": "object",
-        "required": ["task", "auditRecord"],
+        "required": [
+          "task",
+          "auditRecord"
+        ],
         "properties": {
-          "task": { "$ref": "#/components/schemas/CheckTaskResponse" },
-          "auditRecord": { "$ref": "#/components/schemas/AuditRecordResponse" }
+          "task": {
+            "$ref": "#/components/schemas/CheckTaskResponse"
+          },
+          "auditRecord": {
+            "$ref": "#/components/schemas/AuditRecordResponse"
+          }
         }
       },
       "ReviewDiffResponse": {
@@ -149,27 +356,61 @@
           "fields"
         ],
         "properties": {
-          "reviewTaskId": { "type": "integer", "format": "int64" },
-          "revisionId": { "type": "integer", "format": "int64" },
-          "clanId": { "type": "integer", "format": "int64" },
-          "targetType": { "type": "string" },
-          "targetId": { "type": "integer", "format": "int64" },
-          "changeType": { "type": "string" },
-          "diffSummary": { "type": "string", "nullable": true },
+          "reviewTaskId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "revisionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clanId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changeType": {
+            "type": "string"
+          },
+          "diffSummary": {
+            "type": "string",
+            "nullable": true
+          },
           "fields": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/FieldDiff" }
+            "items": {
+              "$ref": "#/components/schemas/FieldDiff"
+            }
           }
         }
       },
       "FieldDiff": {
         "type": "object",
-        "required": ["fieldName", "changeType"],
+        "required": [
+          "fieldName",
+          "changeType"
+        ],
         "properties": {
-          "fieldName": { "type": "string" },
-          "beforeValue": { "type": "string", "nullable": true },
-          "afterValue": { "type": "string", "nullable": true },
-          "changeType": { "type": "string" }
+          "fieldName": {
+            "type": "string"
+          },
+          "beforeValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "afterValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "changeType": {
+            "type": "string"
+          }
         }
       }
     }

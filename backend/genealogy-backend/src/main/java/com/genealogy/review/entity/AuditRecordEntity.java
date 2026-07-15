@@ -5,11 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -23,6 +25,9 @@ public class AuditRecordEntity {
 
     @Column(name = "clan_id")
     private Long clanId;
+
+    @Column(name = "trace_id")
+    private UUID traceId;
 
     @Column(name = "target_type")
     private String targetType;
@@ -55,4 +60,12 @@ public class AuditRecordEntity {
 
     @Column(name = "rejected_reason", columnDefinition = "text")
     private String rejectedReason;
+
+    @PrePersist
+    void ensureTraceId() {
+        if (traceId == null) {
+            traceId = UUID.randomUUID();
+        }
+    }
 }
+

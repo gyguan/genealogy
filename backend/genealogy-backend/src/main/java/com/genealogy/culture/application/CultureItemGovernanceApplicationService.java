@@ -13,6 +13,7 @@ import com.genealogy.culture.entity.CultureRevisionPayloadEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.culture.repository.CultureRevisionPayloadRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
@@ -104,7 +105,7 @@ public class CultureItemGovernanceApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(saved, revision);
-        record(saved, actorId, "culture_item_review_submit", "提交文化资料审核", revision.getDiffSummary(), requestId, clientIp);
+        record(saved, actorId, "culture_item_review_submit", "提交文化资料审核", revision.getDiffSummary(), requestId, clientIp, revision, task, "submitted");
         return command(saved, STATUS_PENDING_REVIEW, task.getId(), "文化资料已提交审核");
     }
 
@@ -137,7 +138,7 @@ public class CultureItemGovernanceApplicationService {
         );
         savePayload(revision.getId(), request);
         ReviewTaskEntity task = createReviewTask(item, revision);
-        record(item, actorId, "culture_item_change_submit", "提交正式文化资料变更", revision.getDiffSummary(), requestId, clientIp);
+        record(item, actorId, "culture_item_change_submit", "提交正式文化资料变更", revision.getDiffSummary(), requestId, clientIp, revision, task, "submitted");
         return command(item, "pending_review", task.getId(), "正式文化资料变更已提交审核");
     }
 
@@ -162,7 +163,7 @@ public class CultureItemGovernanceApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(item, revision);
-        record(item, actorId, "culture_item_delete_submit", "提交正式文化资料删除", revision.getDiffSummary(), requestId, clientIp);
+        record(item, actorId, "culture_item_delete_submit", "提交正式文化资料删除", revision.getDiffSummary(), requestId, clientIp, revision, task, "submitted");
         return command(item, "pending_review", task.getId(), "正式文化资料删除已提交审核");
     }
 
@@ -201,7 +202,7 @@ public class CultureItemGovernanceApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(item, revision);
-        record(item, actorId, "culture_item_archive_submit", "提交正式文化资料归档", revision.getDiffSummary(), requestId, clientIp);
+        record(item, actorId, "culture_item_archive_submit", "提交正式文化资料归档", revision.getDiffSummary(), requestId, clientIp, revision, task, "submitted");
         return command(item, "pending_review", task.getId(), "正式文化资料归档已提交审核");
     }
 
@@ -249,6 +250,7 @@ public class CultureItemGovernanceApplicationService {
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setClanId(item.getClanId());
         task.setRevisionId(revision.getId());
+        task.setTraceId(revision.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("reviewer");
         task.setBranchId(item.getBranchId());
@@ -312,6 +314,27 @@ public class CultureItemGovernanceApplicationService {
     ) {
         operationLogApplicationService.record(
                 item.getClanId(), actorId, action, TARGET_TYPE, item.getId(), summary, detail, requestId, clientIp
+        );
+    }
+
+    private void record(
+            CultureItemEntity item,
+            Long actorId,
+            String action,
+            String summary,
+            String detail,
+            String requestId,
+            String clientIp,
+            RevisionEntity revision,
+            ReviewTaskEntity task,
+            String result
+    ) {
+        operationLogApplicationService.record(
+                item.getClanId(), actorId, action, TARGET_TYPE, item.getId(), summary, detail, requestId, clientIp,
+                OperationTraceContext.of(
+                        revision.getTraceId(), revision.getId(), task == null ? null : task.getId(),
+                        revision.getTargetType(), revision.getTargetId(), result
+                )
         );
     }
 

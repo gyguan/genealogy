@@ -16,6 +16,7 @@ const trackingSchemaNames = [
   'TrackingObjectResponse',
   'TrackingObjectPage',
   'TrackingTraceTimelineEventResponse',
+  'TrackingTraceChangeChainResponse',
   'TrackingTraceRevisionResponse',
   'TrackingTraceReviewTaskResponse',
   'TrackingTraceSourceBindingResponse',

@@ -8,6 +8,7 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
@@ -101,7 +102,8 @@ public class SourceBindingReviewApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(revision);
-        operationLogApplicationService.record(clanId, actorId, "source_binding_revision_submit", "revision", revision.getId(), "submit source binding create revision", revision.getDiffSummary(), requestId, clientIp);
+        operationLogApplicationService.record(clanId, actorId, "source_binding_revision_submit", "revision", revision.getId(),
+                "submit source binding create revision", revision.getDiffSummary(), requestId, clientIp, trace(revision, task, "submitted"));
         return toResponse(revision, task);
     }
 
@@ -129,7 +131,8 @@ public class SourceBindingReviewApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(revision);
-        operationLogApplicationService.record(before.getClanId(), actorId, "source_binding_revision_submit", "revision", revision.getId(), "submit source binding replace revision", revision.getDiffSummary(), requestId, clientIp);
+        operationLogApplicationService.record(before.getClanId(), actorId, "source_binding_revision_submit", "revision", revision.getId(),
+                "submit source binding replace revision", revision.getDiffSummary(), requestId, clientIp, trace(revision, task, "submitted"));
         return toResponse(revision, task);
     }
 
@@ -149,7 +152,8 @@ public class SourceBindingReviewApplicationService {
                 actorId
         );
         ReviewTaskEntity task = createReviewTask(revision);
-        operationLogApplicationService.record(before.getClanId(), actorId, "source_binding_revision_submit", "revision", revision.getId(), "submit source binding delete revision", revision.getDiffSummary(), requestId, clientIp);
+        operationLogApplicationService.record(before.getClanId(), actorId, "source_binding_revision_submit", "revision", revision.getId(),
+                "submit source binding delete revision", revision.getDiffSummary(), requestId, clientIp, trace(revision, task, "submitted"));
         return toResponse(revision, task);
     }
 
@@ -170,7 +174,14 @@ public class SourceBindingReviewApplicationService {
         task.setReviewComment(request.reviewComment());
         task.setReviewedAt(LocalDateTime.now());
         ReviewTaskEntity savedTask = reviewTaskRepository.save(task);
-        operationLogApplicationService.record(revision.getClanId(), actorId, "source_binding_revision_approve", "revision", revision.getId(), "approve source binding revision", revision.getDiffSummary(), requestId, clientIp);
+        operationLogApplicationService.record(
+                revision.getClanId(), actorId, "source_binding_revision_apply", "revision", revision.getId(),
+                "apply source binding revision", revision.getDiffSummary(), requestId, clientIp, trace(savedRevision, savedTask, "applied")
+        );
+        operationLogApplicationService.record(
+                revision.getClanId(), actorId, "source_binding_revision_approve", "revision", revision.getId(),
+                "approve source binding revision", revision.getDiffSummary(), requestId, clientIp, trace(savedRevision, savedTask, "approved")
+        );
         return toResponse(savedRevision, savedTask);
     }
 
@@ -190,7 +201,10 @@ public class SourceBindingReviewApplicationService {
         task.setReviewComment(request.reviewComment());
         task.setReviewedAt(LocalDateTime.now());
         ReviewTaskEntity savedTask = reviewTaskRepository.save(task);
-        operationLogApplicationService.record(revision.getClanId(), actorId, "source_binding_revision_reject", "revision", revision.getId(), "reject source binding revision", request.reviewComment(), requestId, clientIp);
+        operationLogApplicationService.record(
+                revision.getClanId(), actorId, "source_binding_revision_reject", "revision", revision.getId(),
+                "reject source binding revision", request.reviewComment(), requestId, clientIp, trace(savedRevision, savedTask, "rejected")
+        );
         return toResponse(savedRevision, savedTask);
     }
 
@@ -268,6 +282,7 @@ public class SourceBindingReviewApplicationService {
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setClanId(revision.getClanId());
         task.setRevisionId(revision.getId());
+        task.setTraceId(revision.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("reviewer");
         task.setStatus(STATUS_PENDING);
@@ -373,7 +388,22 @@ public class SourceBindingReviewApplicationService {
                 revision.getSubmitterId(),
                 revision.getSubmitTime(),
                 revision.getApprovedAt(),
-                revision.getRejectedReason()
+                revision.getRejectedReason(),
+                revision.getTraceId()
+        );
+    }
+
+    private OperationTraceContext trace(RevisionEntity revision, ReviewTaskEntity task, String result) {
+        String businessTargetType = revision.getTargetType();
+        Long businessTargetId = revision.getTargetId();
+        if (CHANGE_CREATE.equals(revision.getChangeType())) {
+            Map<String, Object> data = parseJson(revision.getAfterData());
+            businessTargetType = stringValue(data.get("targetType"));
+            businessTargetId = longValue(data.get("targetId"));
+        }
+        return OperationTraceContext.of(
+                revision.getTraceId(), revision.getId(), task == null ? null : task.getId(),
+                businessTargetType, businessTargetId, result
         );
     }
 

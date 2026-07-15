@@ -10,6 +10,7 @@ import com.genealogy.culture.domain.CulturePermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
@@ -117,7 +118,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         ReviewTaskEntity task = createTask(revision, item.getBranchId());
         governedOperationLog.record(
                 clanId, actorId, "culture_source_binding_submit", "revision", revision.getId(),
-                "提交文化资料来源绑定审核", revision.getDiffSummary(), requestId, clientIp
+                "提交文化资料来源绑定审核", revision.getDiffSummary(), requestId, clientIp,
+                trace(revision, task, "submitted")
         );
         return response(revision, task);
     }
@@ -161,7 +163,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         ReviewTaskEntity task = createTask(revision, item.getBranchId());
         governedOperationLog.record(
                 before.getClanId(), actorId, "culture_source_binding_submit", "revision", revision.getId(),
-                "提交文化资料来源绑定变更", revision.getDiffSummary(), requestId, clientIp
+                "提交文化资料来源绑定变更", revision.getDiffSummary(), requestId, clientIp,
+                trace(revision, task, "submitted")
         );
         return response(revision, task);
     }
@@ -282,6 +285,7 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         ReviewTaskEntity task = new ReviewTaskEntity();
         task.setClanId(revision.getClanId());
         task.setRevisionId(revision.getId());
+        task.setTraceId(revision.getTraceId());
         task.setReviewLevel(1);
         task.setReviewerRole("reviewer");
         task.setBranchId(branchId);
@@ -333,7 +337,27 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         return new SourceBindingRevisionResponse(
                 revision.getId(), task.getId(), revision.getClanId(), revision.getTargetId(),
                 revision.getChangeType(), revision.getStatus(), revision.getDiffSummary(),
-                revision.getSubmitterId(), revision.getSubmitTime(), revision.getApprovedAt(), revision.getRejectedReason()
+                revision.getSubmitterId(), revision.getSubmitTime(), revision.getApprovedAt(), revision.getRejectedReason(), revision.getTraceId()
+        );
+    }
+
+    private OperationTraceContext trace(RevisionEntity revision, ReviewTaskEntity task, String result) {
+        String businessTargetType = revision.getTargetType();
+        Long businessTargetId = revision.getTargetId();
+        if ("create".equals(revision.getChangeType()) && revision.getAfterData() != null) {
+            try {
+                JsonNode data = governedObjectMapper.readTree(revision.getAfterData());
+                businessTargetType = data.path("targetType").asText(null);
+                businessTargetId = data.path("targetId").isIntegralNumber()
+                        ? data.path("targetId").longValue()
+                        : null;
+            } catch (JsonProcessingException exception) {
+                throw new BusinessException("SOURCE_BINDING_REVISION_DATA_INVALID", "来源绑定变更数据无法解析");
+            }
+        }
+        return OperationTraceContext.of(
+                revision.getTraceId(), revision.getId(), task == null ? null : task.getId(),
+                businessTargetType, businessTargetId, result
         );
     }
 

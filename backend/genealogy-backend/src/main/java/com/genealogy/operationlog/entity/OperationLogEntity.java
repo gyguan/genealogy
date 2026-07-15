@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -26,6 +27,25 @@ public class OperationLogEntity {
     private String actionType;
     private String targetType;
     private Long targetId;
+
+    @Column(name = "trace_id")
+    private UUID traceId;
+
+    @Column(name = "revision_id")
+    private Long revisionId;
+
+    @Column(name = "review_task_id")
+    private Long reviewTaskId;
+
+    @Column(name = "business_target_type")
+    private String businessTargetType;
+
+    @Column(name = "business_target_id")
+    private Long businessTargetId;
+
+    @Column(name = "event_result")
+    private String eventResult;
+
     private String summary;
 
     @Column(columnDefinition = "text")
