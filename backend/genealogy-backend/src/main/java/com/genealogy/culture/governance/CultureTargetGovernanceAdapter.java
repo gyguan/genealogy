@@ -6,6 +6,10 @@ public interface CultureTargetGovernanceAdapter {
 
     String targetType();
 
+    String sensitiveViewPermission();
+
+    String restrictedLogSummary();
+
     default Set<String> aliases() {
         return Set.of(targetType(), targetType() + "s");
     }
