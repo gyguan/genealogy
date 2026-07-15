@@ -8,7 +8,7 @@ public record CultureSiteDetailResponse(
         Long id,
         CultureScopeResponse scope,
         String siteType,
-        String siteName,
+        String name,
         String addressText,
         String foundedPeriod,
         String currentStatus,
