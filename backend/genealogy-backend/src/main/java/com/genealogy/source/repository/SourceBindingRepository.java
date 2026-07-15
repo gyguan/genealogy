@@ -65,7 +65,6 @@ public interface SourceBindingRepository extends JpaRepository<SourceBindingEnti
               and lower(binding.targetType) in :targetTypes
               and binding.targetId in :targetIds
               and lower(binding.bindingStatus) = 'official'
-              and binding.deletedAt is null
             order by binding.targetType, binding.targetId, binding.id
             """)
     List<SourceBindingEntity> findTreeBindingsByTargets(
