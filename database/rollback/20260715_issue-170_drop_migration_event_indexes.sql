@@ -1,0 +1,3 @@
+-- Issue #170 compatibility placeholder.
+-- The paired V20260715093000 migration is intentionally no-op.
+-- Actual rollback is database/rollback/20260715_issue-170_drop_migration_runtime_indexes.sql.
