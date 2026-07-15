@@ -33,7 +33,7 @@ async function activateGraphControl(control: Locator) {
 async function searchAndSelect(page: Page, keyword: string) {
   const searchInput = page.locator('input[placeholder="输入姓名、谱名或字号"]');
   await searchInput.fill(keyword);
-  await page.getByRole('button', { name: /搜\s*索/ }).click();
+  await page.getByRole('button', { name: '搜索', exact: true }).click();
   await expect(page.getByText('共匹配 1 位人物')).toBeVisible();
   const result = page.locator('.lineage-search-result-item').filter({ hasText: keyword }).first();
   await expect(result).toBeVisible();
@@ -64,6 +64,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
 
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 2 代');
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 5 代');
+  await page.getByRole('button', { name: '查询图谱', exact: true }).click();
   await expect(page).toHaveURL(/personDepth=5/);
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
@@ -77,6 +78,15 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
     await activateGraphControl(collapse);
     await expect(personCard.getByRole('button', { name: '展开后代' }).first()).toBeVisible();
   }
+
+  const locateSelect = page.locator('.lineage-locate-select');
+  await locateSelect.click();
+  const locateDropdown = page.locator('.ant-select-dropdown:visible');
+  const locateOption = locateDropdown.locator('.ant-select-item-option').nth(1);
+  const locatedName = (await locateOption.textContent())?.trim() || '';
+  await locateOption.click();
+  await expect(page.locator('.ant-drawer:visible')).toHaveCount(0);
+  await expect(locateSelect.locator('.ant-select-selection-item')).toContainText(locatedName.split('·')[0].trim());
 
   const secondaryNode = personNodes.filter({ hasNot: page.locator('.is-active') }).nth(1);
   if (await secondaryNode.count()) {
@@ -111,6 +121,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   await page.getByText('人物中心', { exact: true }).click();
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 3 代');
+  await page.getByRole('button', { name: '查询图谱', exact: true }).click();
   await expect(page.getByText(/人物图加载失败/)).toBeVisible();
   await page.getByRole('button', { name: '重试' }).last().click();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
