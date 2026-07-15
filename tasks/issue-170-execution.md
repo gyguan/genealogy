@@ -2,98 +2,101 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/170
 - 工作分支：`agent/issue-170-migration-timeline`
-- Draft PR：待创建
+- PR：https://github.com/gyguan/genealogy/pull/214
 - 目标：建设基于 `migration_event` 的多支派、多节点迁徙管理，形成后端分页、审核发布、权限隐私、来源追踪与前端时间轴闭环。
-- 最后更新时间：2026-07-15 08:35，北京时间
+- 最后更新时间：2026-07-15 10:10，北京时间
 
-## 实现范围
+## 完成范围
 
-- 补全迁徙事件 OpenAPI：筛选、详情聚合、归档接口、稳定错误语义和生成类型。
-- 实现迁徙事件列表、详情、新增、编辑、软删除/正式删除申请、归档和提交审核。
-- 在数据库层完成宗族、支派子树、隐私、状态、关键词、迁出地、迁入地、历史时期、始迁祖筛选与分页。
-- 校验支派、始迁祖和宗族归属一致；拒绝空起止地、同地迁徙、顺序冲突和跨宗族关联。
-- 正式事件修改、归档和删除统一进入 `revision → review_task → approve/reject → apply`，禁止直接覆盖。
-- 复用来源绑定、附件可见性、操作日志、Tracking trace 和对象级 `allowedActions`。
-- 在宗族文化页面增加“迁徙脉络”专题，提供真实时间轴、分页列表、详情和编辑抽屉。
-- 只展示后端返回的真实迁徙数据；缺失时间、地点、来源仅显示完整度提示，不补造路线。
-- 保留旧 `branch.migrationFrom/migrationTo` 只读兼容，不写回、不自动迁移，并记录退出条件。
-- 新增与实际查询匹配的迁徙索引，使用更高版本 Flyway 前向迁移。
+- 补全迁徙 OpenAPI：地点、时期、始迁祖、状态、隐私、来源覆盖、分页、排序、详情、归档和稳定响应语义。
+- 实现迁徙事件分页列表、详情、新增、编辑、软删除、正式删除申请、归档和提交审核。
+- 权限、支派子树、隐私与来源覆盖过滤在数据库分页和总数统计前完成。
+- 校验宗族、支派和始迁祖归属；拒绝空起止地、同地迁徙、顺序冲突、版本冲突和跨宗族关联。
+- 正式事件修改、归档和删除统一使用 `revision → review_task → approve/reject → apply`，审批 apply 时再次校验数据漂移。
+- 迁徙对象复用来源绑定审核、来源反查保护、日志脱敏、Tracking 搜索和 Trace 变更链。
+- 宗族文化页新增真实迁徙专题：时间轴、全量筛选、分页列表、详情、编辑、提交审核及高风险确认。
+- 缺失时期、始迁祖、原因或来源只显示完整度提示，不拼接或推断路线。
+- 旧 `branch.migrationFrom/migrationTo` 保持只读，不双写、不自动迁移，并记录退出条件。
+- 新增迁徙时间轴和版本历史索引；不修改任何历史 Flyway。
 
 ## 非目标
 
 - 不接入地图 SDK、路径规划、GIS、历史地名转换或复杂动画。
 - 不使用 AI 生成迁徙结论。
 - 不实现 #171 文化场所和 #172 首页统一摘要。
-- 不修改已有 Flyway 历史脚本，不进行旧字段双写或无来源自动迁移。
+- 不自动把旧支派字段转换为迁徙事实。
 
 ## 执行任务看板
 
-| 序号 | 任务 | 状态 | 活跃耗时 | Commit / 结果或说明 |
+| 序号 | 任务 | 状态 | 活跃耗时 | 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue、前置实现和现有迁徙模型/契约 | ✅ 已完成 | 约 12 分钟 | 已确认 #169 完成，#170 无分支/PR；现有实体/仓储和 OpenAPI 仅为骨架 |
-| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | 🔄 进行中 | 已累计约 4 分钟 | 分支已创建，本文件为首个检查点 |
-| 3 | Contract First 补全迁徙 API、生成类型与兼容说明 | ⏳ 待处理 | — |  |
-| 4 | 实现领域校验、数据库分页/索引与基础 CRUD | ⏳ 待处理 | — |  |
-| 5 | 接入来源、审核、权限隐私、日志和 Tracking | ⏳ 待处理 | — |  |
-| 6 | 实现迁徙时间轴、列表、详情、表单和高风险交互 | ⏳ 待处理 | — |  |
-| 7 | 补充后端、PostgreSQL、契约、前端和浏览器测试 | ⏳ 待处理 | — |  |
-| 8 | 五轴 Review、处理线程、更新记录并 squash 合入 main | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue、前置实现和迁徙模型/契约 | ✅ 已完成 | 约 12 分钟 | 已确认 #169 完成，#170 无重复现场；原实体/仓储/契约仅为骨架 |
+| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | ✅ 已完成 | 约 5 分钟 | 分支、看板、Draft PR #214 和启动评论完成 |
+| 3 | Contract First 补全迁徙 API、生成类型与兼容说明 | ✅ 已完成 | 约 20 分钟 | 新增 migration runtime overlay，生成类型/操作清单与兼容退出文档一致 |
+| 4 | 实现领域校验、数据库分页/索引与基础 CRUD | ✅ 已完成 | 约 35 分钟 | 领域不变量、Specification 分页、聚合详情、前向索引和回滚脚本完成 |
+| 5 | 接入来源、审核、权限隐私、日志和 Tracking | ✅ 已完成 | 约 45 分钟 | 统一 revision/review/apply、来源审核、反查保护、日志脱敏、Tracking 搜索/Trace 完成 |
+| 6 | 实现迁徙时间轴、列表、详情、表单和高风险交互 | ✅ 已完成 | 约 35 分钟 | URL 恢复、全量筛选、真实时间轴、编辑、审核/归档/删除语义与移动端完成 |
+| 7 | 补充后端、PostgreSQL、契约、前端和浏览器测试 | ✅ 已完成 | 约 30 分钟 | 领域测试、全量回归、PostgreSQL/Flyway、API、TypeScript、构建和 Playwright 通过 |
+| 8 | 五轴 Review、清理产物、更新记录并合入 main | 🔄 进行中 | 已累计约 15 分钟 | 已清理报告、测试状态、重复迁移和锁文件；无 Review 线程，准备转 Ready 合入 |
 
-## 影响模块
+## 核心不变量
 
-- 后端：`culture` 下迁徙 controller/application/domain/dto/repository；复用 `source`、`review`、`tracking`、`operationlog`、`auth`。
-- 数据库：`migration_event` 查询和顺序唯一性索引；仅新增前向 Flyway 和对应回滚说明。
-- API：`docs/api/openapi.culture.json`、生成脚本、`culture-api-contract.ts`、`culture-types.ts`。
-- 前端：`features/culture` 迁徙专题、URL 状态、Tracking 深链和 Playwright。
-- 文档：领域/API/兼容退出策略及本执行记录。
+1. `branchId` 必须属于请求宗族；始迁祖非空时必须属于同宗族，并位于事件支派或其下级支派。
+2. 同一宗族、同一支派的有效事件 `sequenceNo` 唯一；更新排除自身，软删除后可复用。
+3. `fromLocation`、`toLocation` 均必填，规范化空白和大小写后不得相同。
+4. 权限、支派子树和隐私过滤在数据库分页与 `totalElements` 统计之前执行。
+5. 历史时期保持来源文本，不自动推断或换算年代。
+6. 草稿/驳回可直接维护；正式事件修改、归档和删除必须审核通过后生效。
+7. 前端动作由对象自身 `allowedActions` 驱动，后端每次写操作再次鉴权。
+8. 来源、日志和 Tracking 只返回授权内容，不从日志或 Diff 恢复封存信息。
 
-## 设计与不变量
+## 数据库变更
 
-1. `branchId` 必须属于请求宗族；`founderPersonId` 为空时允许后补，非空时人物必须属于同一宗族且在支派授权范围内。
-2. 同一宗族同一支派的有效事件 `sequenceNo` 唯一；更新时排除自身，软删除后可复用。
-3. `fromLocation` 与 `toLocation` 至少各有一个非空值，规范化后不能相同。
-4. 列表总数、分页和排序必须在权限/隐私过滤之后计算；禁止内存分页。
-5. 默认排序为支派、`sequenceNo`、`updatedAt`，未知历史时间仅作为文本，不参与不可靠推断。
-6. 草稿/驳回可直接维护；`official` 修改、归档和删除创建审核申请；审核通过后才更新正式时间轴。
-7. 前端动作由每个对象自己的 `allowedActions` 驱动，后端始终再次鉴权。
-8. 来源、附件、审核与 Tracking 只展示后端已授权的数据，不从日志或 Diff 推断封存信息。
+- 新增迁移：`V20260715091000__add_migration_event_runtime_indexes.sql`。
+- 新增索引：
+  - `idx_migration_event__clan_branch_status_sequence`
+  - `idx_revision__migration_event_history`
+- #166 已有的部分唯一顺序索引继续作为并发最终约束，本 Issue 不重复创建。
+- 风险：创建普通/部分索引会占用短时 DDL 锁和额外存储；不改写业务数据。
+- 回滚：`database/rollback/20260715_issue-170_drop_migration_runtime_indexes.sql`，只删除本次索引，不删除迁徙数据。
 
-## 数据库变更方案
+## 验证结果
 
-- 方案：新增针对 `clan_id + branch_id + sequence_no + deleted_at`、宗族分页/状态/更新时间及始迁祖筛选的索引；顺序唯一性优先使用 PostgreSQL 部分唯一索引 `WHERE deleted_at IS NULL`。
-- 影响：索引创建会占用短时 DDL 锁和额外存储；表当前为新模块，风险可控。
-- 历史数据：不从旧支派字段自动回填，避免制造无来源迁徙结论。
-- 兼容：旧字段保持只读；新写入只进入 `migration_event`。
-- 回滚：删除本 Issue 新增索引；业务代码回滚后新表数据保持不丢失。
+- Backend CI：✅ `29383230895`。
+- Culture Governance 聚焦测试与全量回归：✅ `29383230871`。
+- Culture PostgreSQL 集成、打包与 Flyway 启动：✅ `29383230871`。
+- API Contract：✅ `29383230875`。
+- Database Migration Governance：✅ `29383230908`。
+- Frontend CI：✅ `29383230874`。
+- Culture Library UI CI：✅ `29383230861`。
+- Playwright：✅ 文化资料库回归、迁徙 URL 恢复、地点筛选写回、真实详情/来源/Trace、390px 响应式和 403 最小披露。
+- 主干同步：✅ 与最新 `main` 比较为 `ahead`，`behind=0`。
+- Review：✅ 无提交 Review、无未解决线程。
 
-## 验证方案
+## 五轴 Review
 
-- 领域：空起止地、同地迁徙、顺序冲突、版本冲突、跨宗族支派/人物拒绝。
-- 查询：关键词、迁出地、迁入地、历史时期、始迁祖、状态、隐私、支派子树和稳定排序。
-- 审核：草稿提交、重复提交、自审拒绝、正式修改/归档/删除审核通过后 apply。
-- 来源与追踪：来源摘要、审核摘要、日志、trace coverage 和对象名称。
-- 数据库：Flyway 治理、PostgreSQL 启动、部分唯一索引和查询计划基础检查。
-- 前端：URL 恢复、时间轴顺序、真实详情、完整度提示、动作权限、390px 响应式和 403 最小披露。
-- 命令：`mvn test`、`npm run api:generate`、`npm run api:check`、`npm run typecheck`、`npm run build`、迁徙 Playwright。
+- Correctness：✅ 列表、详情、顺序/版本校验及正式变更审核语义与契约一致。
+- Readability：✅ controller、application、domain、governance、tracking 和前端时间轴职责分离。
+- Architecture：✅ 复用文化权限、来源、审核、日志和 Tracking，不建设第二套治理基础设施。
+- Security：✅ 对象级权限、支派子树、敏感事件、来源反查、日志和 Trace 均执行最小披露。
+- Performance：✅ 数据库分页、批量聚合、稳定排序、受限 Trace 每段上限 100，无前端全量扫描。
 
-## 已知风险
+## 已知边界
 
-- 现有 OpenAPI 已预留迁徙路由，但缺少迁出/迁入/历史时期独立筛选和归档接口，需要 Contract First 前向补全。
-- 通用审核/权限服务目前主要围绕 `culture_item`，迁徙对象接入时必须复用而非复制一套流程。
-- 人物与支派归属模型可能不是直接外键，需要读取现有 Person/Branch 查询接口后确定最小一致性校验。
-- 主干可能并行推进其他 Issue；每个阶段结束前复核 `main` 和冲突。
+- 起止地为来源文本，不提供 GIS 路径或历史地名标准化。
+- 浏览器测试使用严格契约形状 mock；真实权限、审核、数据库和 Flyway 由后端/PostgreSQL 门禁覆盖。
+- 并发顺序冲突最终由 #166 部分唯一索引兜底；前置检查用于稳定业务提示。
+- 旧字段退出需满足人工核对迁移、一个发布周期无读取和专项扫描三个条件。
 
 ## 当前恢复检查点
 
 - 当前 Issue：#170
 - 当前分支：`agent/issue-170-migration-timeline`
-- Draft PR：待创建
-- 最后完成任务：规则、需求、现场、实体、仓储和 OpenAPI 基线确认
-- 当前进行中：创建 Draft PR 并回写 Issue
-- 当前任务累计耗时：已累计约 4 分钟
-- 最新 Commit：由本检查点提交确定
-- CI 状态：尚未触发业务验证
+- PR：#214
+- 最新业务 Head：`050950e88de8c4ab8830e52cbe9fd225664b7981`
+- CI 状态：全部通过
 - 未解决 Review：无
-- 已知阻塞：无
-- 下一步最小任务：创建 Draft PR，回写 Issue，然后读取同类文化治理实现与迁徙生成类型
-- 最后更新时间：2026-07-15 08:35，北京时间
+- 主干状态：`behind=0`，GitHub `mergeable=true`
+- 当前进行中：更新 PR 验收记录，转 Ready 后复核并 squash 合入
+- 下一顺序任务：#171 建设祠堂与文化场所管理
+- 最后更新时间：2026-07-15 10:10，北京时间
