@@ -243,7 +243,6 @@ class TreeSummaryApplicationServiceTest {
         SourceEntity source = new SourceEntity();
         source.setId(id);
         source.setClanId(CLAN_ID);
-        source.setDataStatus("official");
         source.setVerificationStatus("official");
         source.setConfidenceLevel("high");
         return source;
