@@ -24,8 +24,14 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
         this.targetRegistry = targetRegistry;
     }
 
+    /*
+     * This primary bean overrides the operation-log entry points, so it must keep
+     * the same best-effort transaction boundary as the base service. Suspending
+     * the caller transaction ensures an audit failure cannot mark culture-item,
+     * migration-event or culture-site creation rollback-only.
+     */
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(
             Long clanId,
             Long actorId,
@@ -39,7 +45,7 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(
             Long clanId,
             Long actorId,
