@@ -7,8 +7,11 @@ import com.genealogy.culture.dto.MigrationEventUpdateRequest;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 @Service
 public class MigrationEventDomainService {
@@ -44,16 +47,16 @@ public class MigrationEventDomainService {
 
     public MigrationEventSearchCriteria normalize(MigrationEventSearchCriteria criteria) {
         MigrationEventSearchCriteria safe = criteria == null
-                ? new MigrationEventSearchCriteria(null, null, null, null, null, null, null, null, null)
+                ? MigrationEventSearchCriteria.multi(null, List.of(), null, null, null, null, List.of(), null, null)
                 : criteria;
-        return new MigrationEventSearchCriteria(
+        return MigrationEventSearchCriteria.multi(
                 optionalText(safe.keyword(), 100, "MIGRATION_EVENT_KEYWORD_TOO_LONG", "搜索关键词不能超过 100 字"),
-                safe.branchId(),
+                normalizeValues(safe.branchIds(), this::normalizeBranchId),
                 optionalText(safe.fromLocation(), 500, "MIGRATION_EVENT_FROM_TOO_LONG", "迁出地不能超过 500 字"),
                 optionalText(safe.toLocation(), 500, "MIGRATION_EVENT_TO_TOO_LONG", "迁入地不能超过 500 字"),
                 optionalText(safe.migrationTimeText(), 200, "MIGRATION_EVENT_TIME_TOO_LONG", "迁徙时间不能超过 200 字"),
                 safe.founderPersonId(),
-                optionalEnum(safe.dataStatus(), this::normalizeStatus),
+                normalizeValues(safe.dataStatuses(), this::normalizeStatus),
                 optionalEnum(safe.privacyLevel(), this::normalizePrivacy),
                 normalizeSort(safe.sort())
         );
@@ -192,6 +195,18 @@ public class MigrationEventDomainService {
         String normalized = value.trim();
         if (normalized.length() > maxLength) throw new BusinessException(code, message);
         return normalized;
+    }
+
+    private Long normalizeBranchId(Long value) {
+        if (value == null || value <= 0) {
+            throw new BusinessException("MIGRATION_EVENT_BRANCH_INVALID", "迁徙事件支派不合法");
+        }
+        return value;
+    }
+
+    private <T, R> List<R> normalizeValues(List<T> values, Function<T, R> normalizer) {
+        if (values == null || values.isEmpty()) return List.of();
+        return values.stream().filter(Objects::nonNull).map(normalizer).distinct().toList();
     }
 
     private String normalizeEnum(String value) {

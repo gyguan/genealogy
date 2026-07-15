@@ -169,8 +169,10 @@ public class MigrationEventApplicationService {
         if (readableBranchIds.isEmpty()) {
             throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限查看迁徙事件");
         }
-        if (normalized.branchId() != null && !readableBranchIds.contains(normalized.branchId())) {
-            throw new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见");
+        for (Long branchId : normalized.branchIds()) {
+            if (!readableBranchIds.contains(branchId)) {
+                throw new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见");
+            }
         }
         List<Long> sensitiveBranchIds = branches.stream()
                 .filter(branch -> canOnBranch(
@@ -494,14 +496,14 @@ public class MigrationEventApplicationService {
             predicates.add(cb.equal(root.get("clanId"), clanId));
             predicates.add(cb.isNull(root.get("deletedAt")));
             predicates.add(root.get("branchId").in(readableBranchIds));
-            if (criteria.branchId() != null) {
-                predicates.add(cb.equal(root.get("branchId"), criteria.branchId()));
+            if (!criteria.branchIds().isEmpty()) {
+                predicates.add(root.get("branchId").in(criteria.branchIds()));
             }
             if (criteria.founderPersonId() != null) {
                 predicates.add(cb.equal(root.get("founderPersonId"), criteria.founderPersonId()));
             }
-            if (criteria.dataStatus() != null) {
-                predicates.add(cb.equal(root.get("dataStatus"), criteria.dataStatus()));
+            if (!criteria.dataStatuses().isEmpty()) {
+                predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
             }
             if (criteria.privacyLevel() != null) {
                 predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));

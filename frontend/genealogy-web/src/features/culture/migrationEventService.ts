@@ -13,11 +13,11 @@ import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tra
 
 export type MigrationSearchState = {
   keyword?: string;
-  branchId?: number;
+  branchId?: number[];
   fromLocation?: string;
   toLocation?: string;
   migrationTimeText?: string;
-  dataStatus?: CultureDataStatus | string;
+  dataStatus?: CultureDataStatus[];
   sort?: string;
   pageNo: number;
   pageSize: number;
@@ -27,6 +27,10 @@ function queryString(values: Record<string, unknown>) {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach(item => params.append(key, String(item)));
+      return;
+    }
     params.set(key, String(value));
   });
   return params.toString();

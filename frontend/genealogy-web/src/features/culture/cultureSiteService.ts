@@ -12,13 +12,13 @@ import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tra
 
 export type CultureSiteSearchState = {
   keyword?: string;
-  siteType?: string;
-  branchId?: number;
+  siteType?: string[];
+  branchId?: number[];
   addressText?: string;
   foundedPeriod?: string;
   currentStatus?: string;
   relatedPersonId?: number;
-  dataStatus?: string;
+  dataStatus?: string[];
   privacyLevel?: string;
   featuredOnHome?: boolean;
   sort: string;
@@ -30,6 +30,10 @@ function queryString(values: Record<string, unknown>) {
   const params = new URLSearchParams();
   Object.entries(values).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach(item => params.append(key, String(item)));
+      return;
+    }
     params.set(key, String(value));
   });
   return params.toString();
