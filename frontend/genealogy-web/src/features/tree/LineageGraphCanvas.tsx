@@ -1,121 +1,110 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
-import { Alert, Button, Empty, Space, Tag, Tooltip } from 'antd';
+import { Alert, Button, Empty, Space, Spin, Tag, Tooltip } from 'antd';
 import type { TreeEdgeResponse, TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
 import { buildLineageLayout } from './lineageGraphModel';
 import { edgeVisual, nodeIndicators } from './lineageSemanticsModel';
 
-export type LineageGraphCanvasProps = {
+type Props = {
   graph: TreeGraphResponse | null;
-  activeNodeId?: string | null;
   loading?: boolean;
   emptyText: string;
+  activeNodeId?: string | null;
   onSelectNode: (node: TreeNodeResponse) => void;
   onSelectEdge?: (edge: TreeEdgeResponse) => void;
   onSetCenter?: (node: TreeNodeResponse) => void;
 };
 
-type Viewport = { scale: number; x: number; y: number };
-type DragState = { pointerId: number; x: number; y: number; originX: number; originY: number } | null;
+type Viewport = { x: number; y: number; scale: number };
+type DragState = { pointerId: number; x: number; y: number; originX: number; originY: number };
 
-const MIN_SCALE = 0.3;
-const MAX_SCALE = 2.2;
+const INITIAL_VIEWPORT: Viewport = { x: 48, y: 48, scale: 1 };
 
-function clampScale(value: number) {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, value));
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function noticeType(code: string): 'info' | 'warning' | 'error' {
+  if (code.includes('cycle') || code.includes('limit') || code.includes('truncat')) return 'warning';
+  if (code.includes('error')) return 'error';
+  return 'info';
 }
 
 function nodeSubtitle(node: TreeNodeResponse) {
-  if (node.visibility === 'masked') return '受保护人物';
+  if (node.visibility === 'masked') return '隐私信息已保护';
   const generation = node.generationNo ? `${node.generationNo}世` : '世次未维护';
   const word = node.generationWord ? `${node.generationWord}字辈` : '字辈未维护';
   return `${generation} · ${word}`;
 }
 
-function noticeType(code: string) {
-  if (code.includes('cycle') || code.includes('limit') || code === 'root_filtered') return 'warning' as const;
-  return 'info' as const;
-}
-
-export function LineageGraphCanvas({
-  graph,
-  activeNodeId,
-  loading = false,
-  emptyText,
-  onSelectNode,
-  onSelectEdge,
-  onSetCenter
-}: LineageGraphCanvasProps) {
-  const markerId = useId().replace(/:/g, '');
+export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNodeId, onSelectNode, onSelectEdge, onSetCenter }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<DragState>(null);
-  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(() => new Set());
-  const [viewport, setViewport] = useState<Viewport>({ scale: 1, x: 24, y: 24 });
+  const dragRef = useRef<DragState | null>(null);
+  const markerId = useId().replace(/:/g, '');
+  const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
 
   const layout = useMemo(
     () => graph ? buildLineageLayout(graph, collapsedNodeIds) : null,
     [graph, collapsedNodeIds]
   );
 
+  useEffect(() => {
+    setCollapsedNodeIds(new Set());
+    setViewport(INITIAL_VIEWPORT);
+  }, [graph?.rootNodeId, graph?.meta.generatedAt]);
+
   function fitToCanvas() {
     if (!layout || !containerRef.current) return;
-    const width = containerRef.current.clientWidth || 900;
-    const height = containerRef.current.clientHeight || 560;
-    const scale = clampScale(Math.min((width - 48) / layout.width, (height - 48) / layout.height));
+    const rect = containerRef.current.getBoundingClientRect();
+    const padding = 48;
+    const scale = clamp(Math.min(
+      (rect.width - padding * 2) / Math.max(layout.width, 1),
+      (rect.height - padding * 2) / Math.max(layout.height, 1)
+    ), 0.25, 1.35);
     setViewport({
       scale,
-      x: (width - layout.width * scale) / 2,
-      y: (height - layout.height * scale) / 2
+      x: (rect.width - layout.width * scale) / 2,
+      y: (rect.height - layout.height * scale) / 2
     });
   }
 
   function centerActiveNode() {
     if (!layout || !containerRef.current) return;
-    const target = layout.nodes.find(item => item.id === activeNodeId)
-      || layout.nodes.find(item => item.id === graph?.rootNodeId)
-      || layout.nodes[0];
+    const targetId = activeNodeId || graph?.rootNodeId;
+    const target = layout.nodes.find(item => item.id === targetId) || layout.nodes[0];
     if (!target) return;
-    const width = containerRef.current.clientWidth || 900;
-    const height = containerRef.current.clientHeight || 560;
+    const rect = containerRef.current.getBoundingClientRect();
     setViewport(previous => ({
       ...previous,
-      x: width / 2 - (target.x + target.width / 2) * previous.scale,
-      y: height / 2 - (target.y + target.height / 2) * previous.scale
+      x: rect.width / 2 - (target.x + target.width / 2) * previous.scale,
+      y: rect.height / 2 - (target.y + target.height / 2) * previous.scale
     }));
   }
 
-  useEffect(() => {
-    setCollapsedNodeIds(new Set());
-  }, [graph?.rootNodeId, graph?.meta.generatedAt]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(fitToCanvas);
-    return () => window.cancelAnimationFrame(frame);
-  }, [layout?.width, layout?.height]);
-
-  function zoom(multiplier: number, originX?: number, originY?: number) {
-    setViewport(previous => {
-      const nextScale = clampScale(previous.scale * multiplier);
-      const ratio = nextScale / previous.scale;
-      const x = originX ?? (containerRef.current?.clientWidth || 0) / 2;
-      const y = originY ?? (containerRef.current?.clientHeight || 0) / 2;
-      return {
-        scale: nextScale,
-        x: x - (x - previous.x) * ratio,
-        y: y - (y - previous.y) * ratio
-      };
-    });
+  function zoom(factor: number) {
+    setViewport(previous => ({ ...previous, scale: clamp(previous.scale * factor, 0.25, 2.6) }));
   }
 
   function handleWheel(event: ReactWheelEvent<SVGSVGElement>) {
     event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    zoom(event.deltaY < 0 ? 1.12 : 0.9, event.clientX - bounds.left, event.clientY - bounds.top);
+    const factor = event.deltaY > 0 ? 0.88 : 1.12;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
+    setViewport(previous => {
+      const scale = clamp(previous.scale * factor, 0.25, 2.6);
+      const ratio = scale / previous.scale;
+      return {
+        scale,
+        x: pointerX - (pointerX - previous.x) * ratio,
+        y: pointerY - (pointerY - previous.y) * ratio
+      };
+    });
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     if (event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -123,6 +112,7 @@ export function LineageGraphCanvas({
       originX: viewport.x,
       originY: viewport.y
     };
+    event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
@@ -151,7 +141,7 @@ export function LineageGraphCanvas({
   if (!graph || !layout?.nodes.length) {
     return (
       <div className="lineage-graph-empty" aria-busy={loading}>
-        <Empty description={loading ? '正在生成世系拓扑…' : emptyText} />
+        {loading ? <Spin /> : <Empty description={emptyText} />}
       </div>
     );
   }
@@ -269,8 +259,16 @@ export function LineageGraphCanvas({
                       className="lineage-graph-collapse"
                       transform={`translate(${item.width - 16} ${item.height - 14})`}
                       role="button"
+                      tabIndex={0}
                       aria-label={item.collapsed ? '展开后代' : '折叠后代'}
                       onClick={event => { event.stopPropagation(); toggleCollapsed(item.id); }}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggleCollapsed(item.id);
+                        }
+                      }}
                     >
                       <circle r="11" />
                       <text y="4" textAnchor="middle">{item.collapsed ? '+' : '−'}</text>
