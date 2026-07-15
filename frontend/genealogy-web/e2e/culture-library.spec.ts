@@ -100,7 +100,7 @@ test('culture library restores URL state and uses real detail, governance and re
   await page.goto('/?view=culture&cultureKeyword=%E5%A0%82%E5%8F%B7&cultureItem=11');
 
   await expect(page.getByRole('heading', { name: '宗族文化资料库' })).toBeVisible();
-  await expect(page.getByLabel('关键词')).toHaveValue('堂号');
+  await expect(page.getByRole('textbox', { name: '关键词', exact: true })).toHaveValue('堂号');
   await expect(page.getByText('正式资料').first()).toBeVisible();
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
   const drawer = page.getByRole('dialog', { name: '敦本堂堂号源流' });
@@ -122,8 +122,8 @@ test('culture library restores URL state and uses real detail, governance and re
   await editDialog.getByRole('button', { name: /取\s*消/ }).click();
 
   await drawer.getByRole('button', { name: 'Close' }).click();
-  await page.getByLabel('关键词').fill('家训');
-  await page.getByRole('button', { name: /查\s*询/ }).click();
+  await page.getByRole('textbox', { name: '关键词', exact: true }).fill('家训');
+  await page.getByRole('button', { name: /查\s*询/ }).first().click();
   await expect(page).toHaveURL(/cultureKeyword=%E5%AE%B6%E8%AE%AD/);
   await expect(page.getByText('黄氏家训')).toBeVisible();
 
