@@ -3,7 +3,7 @@
     "/api/v1/logs/risks": {
       "get": {
         "operationId": "listOperationRisks",
-        "tags": ["OperationLog"],
+        "tags": ["OperationRisk"],
         "summary": "分页查询当前宗族高风险操作事件",
         "description": "要求当前用户为目标宗族有效成员并具备 operation_risk.view 权限。风险分类来自稳定业务动作与显式风险上下文，不解析日志摘要文本。",
         "parameters": [
@@ -29,7 +29,7 @@
     "/api/v1/logs/risks/stats": {
       "get": {
         "operationId": "getOperationRiskStats",
-        "tags": ["OperationLog"],
+        "tags": ["OperationRisk"],
         "summary": "统计当前宗族高风险操作事件",
         "description": "统计与风险事件列表使用相同的后端过滤条件；鉴权发生在 count 和分组查询之前。",
         "parameters": [
