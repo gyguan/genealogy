@@ -16,6 +16,10 @@ async function openTree(page: Page, username = 'tree_editor') {
   await expect(page.getByRole('heading', { name: '中国式世系关系工作台' })).toBeVisible();
   await expect(page.locator('input[placeholder="输入姓名、谱名或字号"]')).toBeVisible();
   await expect(page.getByText('人物中心', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('人物搜索范围')).toHaveCount(0);
+  await expect(page.getByLabel('数据视图')).toHaveCount(0);
+  await expect(page.locator('.lineage-workbench-summary')).toHaveCount(0);
+  await expect(page.locator('.lineage-canvas-mode-bar')).toBeVisible();
 }
 
 async function chooseLabelledSelect(page: Page, label: string, optionName: string | RegExp) {
@@ -62,8 +66,28 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   await expect(personNodes.first()).toBeVisible();
   expect(await personNodes.count()).toBeGreaterThanOrEqual(2);
 
+  const searchBox = page.locator('.lineage-search-grid--workbench .ant-input-search');
+  const inputBox = await searchBox.locator('.ant-input-affix-wrapper').boundingBox();
+  const searchButtonBox = await searchBox.locator('.ant-input-search-button').boundingBox();
+  expect(inputBox?.width || 0).toBeLessThanOrEqual(360);
+  expect(Math.abs((inputBox?.height || 0) - (searchButtonBox?.height || 0))).toBeLessThanOrEqual(1);
+  expect(Math.abs((inputBox?.y || 0) - (searchButtonBox?.y || 0))).toBeLessThanOrEqual(1);
+
+  let personQueryRequests = 0;
+  page.on('request', request => {
+    if (request.url().includes('/api/v1/tree/person/')) personQueryRequests += 1;
+  });
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 2 代');
+  await page.waitForTimeout(200);
+  expect(personQueryRequests).toBe(0);
+  await expect(page).not.toHaveURL(/personDepth=2/);
+  const firstQuery = page.waitForRequest(request => request.url().includes('/api/v1/tree/person/'));
+  await page.getByRole('button', { name: '查询图谱' }).click();
+  await firstQuery;
+  await expect(page).toHaveURL(/personDepth=2/);
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 5 代');
+  await expect(page).toHaveURL(/personDepth=2/);
+  await page.getByRole('button', { name: '查询图谱' }).click();
   await expect(page).toHaveURL(/personDepth=5/);
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
@@ -77,6 +101,17 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
     await activateGraphControl(collapse);
     await expect(personCard.getByRole('button', { name: '展开后代' }).first()).toBeVisible();
   }
+
+  const locatorInput = page.locator('[aria-label="图内定位人物"]');
+  const locatorSelect = locatorInput.locator('xpath=ancestor::div[contains(@class, "ant-select")]');
+  await locatorInput.click();
+  const locatorDropdown = page.locator('.ant-select-dropdown:visible');
+  const locatorOption = locatorDropdown.locator('.ant-select-item-option').nth(1);
+  const locatedLabel = (await locatorOption.textContent() || '').split(' · ')[0];
+  await locatorOption.click();
+  await expect(locatorSelect.locator('.ant-select-selection-item')).toContainText(locatedLabel);
+  await expect(page.locator('.ant-drawer:visible')).toHaveCount(0);
+  await expect(personCard.locator('.lineage-graph-node.is-path').first()).toBeVisible();
 
   const secondaryNode = personNodes.filter({ hasNot: page.locator('.is-active') }).nth(1);
   if (await secondaryNode.count()) {
@@ -111,6 +146,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   await page.getByText('人物中心', { exact: true }).click();
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
   await chooseLabelledSelect(page, '人物中心展开深度', '上下各 3 代');
+  await page.getByRole('button', { name: '查询图谱' }).click();
   await expect(page.getByText(/人物图加载失败/)).toBeVisible();
   await page.getByRole('button', { name: '重试' }).last().click();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
