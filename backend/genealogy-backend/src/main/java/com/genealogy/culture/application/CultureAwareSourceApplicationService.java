@@ -6,10 +6,13 @@ import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
@@ -37,6 +40,8 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
     private final CulturePermissionPolicyService culturePermissionPolicyService;
     private final MigrationEventRepository migrationEventRepository;
     private final MigrationEventPermissionPolicyService migrationPermissionPolicyService;
+    private final CultureSiteRepository cultureSiteRepository;
+    private final CultureSitePermissionPolicyService cultureSitePermissionPolicyService;
 
     public CultureAwareSourceApplicationService(
             SourceRepository sourceRepository,
@@ -54,7 +59,9 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
             CultureItemRepository cultureItemRepository,
             CulturePermissionPolicyService culturePermissionPolicyService,
             MigrationEventRepository migrationEventRepository,
-            MigrationEventPermissionPolicyService migrationPermissionPolicyService
+            MigrationEventPermissionPolicyService migrationPermissionPolicyService,
+            CultureSiteRepository cultureSiteRepository,
+            CultureSitePermissionPolicyService cultureSitePermissionPolicyService
     ) {
         super(
                 sourceRepository,
@@ -74,6 +81,8 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
         this.culturePermissionPolicyService = culturePermissionPolicyService;
         this.migrationEventRepository = migrationEventRepository;
         this.migrationPermissionPolicyService = migrationPermissionPolicyService;
+        this.cultureSiteRepository = cultureSiteRepository;
+        this.cultureSitePermissionPolicyService = cultureSitePermissionPolicyService;
     }
 
     @Override
@@ -125,6 +134,10 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
             MigrationEventEntity event = requireMigration(targetId);
             if (clanId == null || !clanId.equals(event.getClanId())) throw migrationNotFound();
             migrationPermissionPolicyService.requireVisible(event, actorId);
+        } else if ("culture_site".equals(normalized) || "culture_sites".equals(normalized)) {
+            CultureSiteEntity site = requireSite(targetId);
+            if (clanId == null || !clanId.equals(site.getClanId())) throw siteNotFound();
+            cultureSitePermissionPolicyService.requireVisible(site, actorId);
         }
     }
 
@@ -139,6 +152,10 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
                 MigrationEventEntity event = requireMigration(targetId);
                 if (clanId != null && !clanId.equals(event.getClanId())) return false;
                 migrationPermissionPolicyService.requireVisible(event, actorId);
+            } else if ("culture_site".equals(normalized) || "culture_sites".equals(normalized)) {
+                CultureSiteEntity site = requireSite(targetId);
+                if (clanId != null && !clanId.equals(site.getClanId())) return false;
+                cultureSitePermissionPolicyService.requireVisible(site, actorId);
             }
             return true;
         } catch (BusinessException ignored) {
@@ -156,6 +173,11 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
                 .orElseThrow(this::migrationNotFound);
     }
 
+    private CultureSiteEntity requireSite(Long targetId) {
+        return cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
+                .orElseThrow(this::siteNotFound);
+    }
+
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase();
     }
@@ -166,5 +188,9 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
 
     private BusinessException migrationNotFound() {
         return new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见");
+    }
+
+    private BusinessException siteNotFound() {
+        return new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见");
     }
 }
