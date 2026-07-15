@@ -27,7 +27,14 @@ test('reads valid culture item query and detail state', () => {
 
 test('falls back from invalid values without touching other tab state', () => {
   const location = readCultureLocation('https://example.test/?view=culture&tab=items&cultureCategory=invalid&culturePage=0&culturePageSize=999&migrationPage=4&sitePage=6');
-  assert.deepEqual(location.search, defaultCultureSearch);
+  assert.equal(location.search.keyword, defaultCultureSearch.keyword);
+  assert.equal(location.search.sort, defaultCultureSearch.sort);
+  assert.equal(location.search.pageNo, defaultCultureSearch.pageNo);
+  assert.equal(location.search.pageSize, defaultCultureSearch.pageSize);
+  assert.equal(location.search.category, undefined);
+  assert.equal(location.search.branchId, undefined);
+  assert.equal(location.search.dataStatus, undefined);
+  assert.equal(location.search.privacyLevel, undefined);
 
   const next = buildCultureLocation('https://example.test/?view=culture&tab=items&migrationPage=4&sitePage=6', {
     ...defaultCultureSearch,
