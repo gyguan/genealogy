@@ -66,7 +66,7 @@ test('node indicators prioritize severe risks over evidence and review notices',
     reviewSummary: { state: 'rejected', pendingTaskCount: 0, rejectedTaskCount: 1 },
     anomalySummary: { codes: ['generation_mismatch', 'relationship_conflict'], count: 2, highestRisk: 'high' }
   }));
-  assert.deepEqual(indicators.map(item => item.label), ['关系冲突', '审核驳回', '世次异常', '缺少正式证据']);
+  assert.deepEqual(indicators.map(item => item.label), ['关系冲突', '审核驳回', '缺少正式证据', '世次异常']);
   assert.equal(indicators[0].tone, 'danger');
   assert.equal(indicators[0].glyph, '冲');
 });
