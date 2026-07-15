@@ -3,6 +3,8 @@ import type { TableProps } from 'antd';
 import type { CultureItemSummaryResponse } from '../../shared/api/generated/culture-types';
 import {
   categoryOptions,
+  confidenceColor,
+  confidenceOptions,
   formatDateTime,
   optionLabel,
   privacyColor,
@@ -53,6 +55,10 @@ export function CultureItemTable(props: Props) {
       render: (_, item) => item.scope.branchName || item.scope.clanName
     },
     {
+      title: '可信度', dataIndex: 'confidenceLevel', key: 'confidenceLevel', width: 100,
+      render: value => <Tag color={confidenceColor(value)}>{optionLabel(confidenceOptions, value)}</Tag>
+    },
+    {
       title: '状态', dataIndex: 'dataStatus', key: 'dataStatus', width: 110,
       render: value => <Tag color={statusColor(value)}>{optionLabel(statusOptions, value)}</Tag>
     },
@@ -89,7 +95,7 @@ export function CultureItemTable(props: Props) {
       loading={props.loading}
       columns={columns}
       dataSource={props.items}
-      scroll={{ x: 1260 }}
+      scroll={{ x: 1360 }}
       onRow={item => ({ onClick: () => props.onOpen(item) })}
       pagination={{
         current: props.pageNo,
