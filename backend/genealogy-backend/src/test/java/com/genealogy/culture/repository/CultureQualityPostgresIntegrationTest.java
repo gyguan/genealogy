@@ -85,7 +85,8 @@ class CultureQualityPostgresIntegrationTest {
         revisionRepository.saveAndFlush(revision);
 
         QualityScope scope = new QualityScope(
-                clan.getId(), 999L, true, List.of(-1L), true, LocalDateTime.now().minusDays(365));
+                clan.getId(), 999L, true, List.of(-1L), true, List.of(-1L),
+                LocalDateTime.now().minusDays(365));
         QualityMetrics metrics = qualityQueryRepository.metrics(TargetConfig.CULTURE_ITEM, scope);
 
         assertThat(metrics.officialCount()).isEqualTo(2);
