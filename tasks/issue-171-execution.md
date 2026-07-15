@@ -3,6 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/171
 - 工作分支：`agent/issue-171-culture-sites`
 - PR：#223
+- 主干提交：`1bcba431af55b33880c27534e33e5a61bb4dc47d`
 - 目标：基于 `culture_site` 建设有来源、可审核、有权限、可追踪的祠堂、祖居、墓园和纪念设施管理。
 
 ## 交付成本判断
@@ -38,7 +39,7 @@
 | 4 | 接入来源、审核、权限隐私、日志、Tracking 和首页精选审核 | ✅ 已完成 | 复用通用 revision/review/source/attachment/operation-log/trace；正式更新、删除、归档和精选走审核 |
 | 5 | 实现场所卡片/列表、详情和编辑体验 | ✅ 已完成 | 卡片+分页表格、详情抽屉、来源影像、正式变更提示和移动端已实现 |
 | 6 | 补充后端、契约、前端和浏览器测试 | ✅ 已完成 | 领域测试、Tracking 深链、文化资料回归、场所主路径和 403 最小披露均通过 |
-| 7 | 五轴 Review、修复问题并 squash 合入 main | ✅ 准备合入 | 无 Review/未解决线程；GitHub `mergeable=true`；等待执行 squash merge |
+| 7 | 五轴 Review、修复问题并 squash 合入 main | ✅ 已完成 | PR #223 已 squash 合入，主干提交 `1bcba431af55b33880c27534e33e5a61bb4dc47d` |
 
 ## 自动验证证据
 
