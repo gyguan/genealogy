@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
@@ -30,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,6 +49,8 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
     @Mock private AuthorizationApplicationService authorizationApplicationService;
     @Mock private CultureItemRepository cultureItemRepository;
     @Mock private CulturePermissionPolicyService culturePermissionPolicyService;
+    @Mock private MigrationEventRepository migrationEventRepository;
+    @Mock private MigrationEventPermissionPolicyService migrationPermissionPolicyService;
 
     private CultureAwareSourceBindingReviewApplicationService service;
 
@@ -60,7 +66,9 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
                 authorizationApplicationService,
                 new ObjectMapper(),
                 cultureItemRepository,
-                culturePermissionPolicyService
+                culturePermissionPolicyService,
+                migrationEventRepository,
+                migrationPermissionPolicyService
         );
     }
 
@@ -72,20 +80,89 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
         item.setBranchId(9L);
         item.setDataStatus("draft");
 
-        SourceEntity source = new SourceEntity();
-        source.setId(10L);
-        source.setClanId(1L);
-        source.setVerificationStatus("official");
-        source.setConfidenceLevel("high");
-
-        AtomicReference<RevisionEntity> revisionRef = new AtomicReference<>();
-        when(clanRepository.existsById(1L)).thenReturn(true);
+        SourceEntity source = officialSource();
+        AtomicReference<RevisionEntity> revisionRef = prepareCreate(1L, 10L, "culture_item", 100L, source);
         when(cultureItemRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(item));
-        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source));
+
+        service.submitCreate(
+                1L,
+                request("culture_item", 100L),
+                2L,
+                "req-culture",
+                "127.0.0.1"
+        );
+
+        ArgumentCaptor<OperationTraceContext> trace = ArgumentCaptor.forClass(OperationTraceContext.class);
+        verify(operationLogApplicationService).record(
+                eq(1L),
+                eq(2L),
+                eq("culture_source_binding_submit"),
+                eq("revision"),
+                eq(500L),
+                eq("提交文化对象来源绑定审核"),
+                eq(revisionRef.get().getDiffSummary()),
+                eq("req-culture"),
+                eq("127.0.0.1"),
+                trace.capture()
+        );
+        assertThat(revisionRef.get().getTargetType()).isEqualTo("source_binding");
+        assertThat(revisionRef.get().getTargetId()).isEqualTo(10L);
+        assertThat(trace.getValue().businessTargetType()).isEqualTo("culture_item");
+        assertThat(trace.getValue().businessTargetId()).isEqualTo(100L);
+    }
+
+    @Test
+    void submitMigrationCreateShouldUseReviewedBindingPathAndMigrationPermission() {
+        MigrationEventEntity event = new MigrationEventEntity();
+        event.setId(200L);
+        event.setClanId(1L);
+        event.setBranchId(19L);
+        event.setDataStatus("draft");
+
+        SourceEntity source = officialSource();
+        AtomicReference<RevisionEntity> revisionRef = prepareCreate(1L, 10L, "migration_event", 200L, source);
+        when(migrationEventRepository.findByIdAndDeletedAtIsNull(200L)).thenReturn(Optional.of(event));
+
+        service.submitCreate(
+                1L,
+                request("migration_event", 200L),
+                2L,
+                "req-migration",
+                "127.0.0.1"
+        );
+
+        verify(migrationPermissionPolicyService).requireAction(
+                event,
+                2L,
+                MigrationEventPermissionPolicyService.UPDATE
+        );
+        ArgumentCaptor<ReviewTaskEntity> task = ArgumentCaptor.forClass(ReviewTaskEntity.class);
+        verify(reviewTaskRepository).save(task.capture());
+        assertThat(task.getValue().getBranchId()).isEqualTo(19L);
+        assertThat(revisionRef.get().getAfterData()).contains("\"targetType\":\"migration_event\"");
+    }
+
+    private AtomicReference<RevisionEntity> prepareCreate(
+            Long clanId,
+            Long sourceId,
+            String targetType,
+            Long targetId,
+            SourceEntity source
+    ) {
+        AtomicReference<RevisionEntity> revisionRef = new AtomicReference<>();
+        when(clanRepository.existsById(clanId)).thenReturn(true);
+        when(sourceRepository.findById(sourceId)).thenReturn(Optional.of(source));
         when(sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(
-                10L, "culture_item", 100L, "archived")).thenReturn(false);
-        when(revisionRepository.existsByTargetTypeAndTargetIdAndStatus("source_binding", 10L, "pending"))
-                .thenReturn(false);
+                sourceId,
+                targetType,
+                targetId,
+                "archived"
+        )).thenReturn(false);
+        when(revisionRepository.existsByTargetTypeAndTargetIdAndStatus(
+                "source_binding",
+                sourceId,
+                "pending"
+        )).thenReturn(false);
         when(revisionRepository.save(any(RevisionEntity.class))).thenAnswer(invocation -> {
             RevisionEntity revision = invocation.getArgument(0);
             revision.setId(500L);
@@ -98,43 +175,31 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
             task.setId(600L);
             return task;
         });
+        return revisionRef;
+    }
 
-        service.submitCreate(
-                1L,
-                new SourceBindingRevisionSubmitRequest(
-                        new SourceBindingCreateRequest(
-                                10L,
-                                "culture_item",
-                                100L,
-                                "文化资料证据",
-                                "摘录",
-                                "high",
-                                true,
-                                null
-                        ),
-                        "新增证据"
+    private SourceEntity officialSource() {
+        SourceEntity source = new SourceEntity();
+        source.setId(10L);
+        source.setClanId(1L);
+        source.setVerificationStatus("official");
+        source.setConfidenceLevel("high");
+        return source;
+    }
+
+    private SourceBindingRevisionSubmitRequest request(String targetType, Long targetId) {
+        return new SourceBindingRevisionSubmitRequest(
+                new SourceBindingCreateRequest(
+                        10L,
+                        targetType,
+                        targetId,
+                        "文化对象证据",
+                        "摘录",
+                        "high",
+                        true,
+                        null
                 ),
-                2L,
-                "req-culture",
-                "127.0.0.1"
+                "新增证据"
         );
-
-        ArgumentCaptor<OperationTraceContext> trace = ArgumentCaptor.forClass(OperationTraceContext.class);
-        verify(operationLogApplicationService).record(
-                org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.eq(2L),
-                org.mockito.ArgumentMatchers.eq("culture_source_binding_submit"),
-                org.mockito.ArgumentMatchers.eq("revision"),
-                org.mockito.ArgumentMatchers.eq(500L),
-                org.mockito.ArgumentMatchers.eq("提交文化资料来源绑定审核"),
-                org.mockito.ArgumentMatchers.eq(revisionRef.get().getDiffSummary()),
-                org.mockito.ArgumentMatchers.eq("req-culture"),
-                org.mockito.ArgumentMatchers.eq("127.0.0.1"),
-                trace.capture()
-        );
-        assertThat(revisionRef.get().getTargetType()).isEqualTo("source_binding");
-        assertThat(revisionRef.get().getTargetId()).isEqualTo(10L);
-        assertThat(trace.getValue().businessTargetType()).isEqualTo("culture_item");
-        assertThat(trace.getValue().businessTargetId()).isEqualTo(100L);
     }
 }
