@@ -29,6 +29,16 @@ public class MigrationEventTargetGovernanceAdapter implements CultureTargetGover
     }
 
     @Override
+    public String sensitiveViewPermission() {
+        return MigrationEventPermissionPolicyService.VIEW_SENSITIVE;
+    }
+
+    @Override
+    public String restrictedLogSummary() {
+        return "受限迁徙事件操作";
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public CultureTargetContext requireExisting(Long targetId) {
         return context(requireEntity(targetId));
@@ -64,8 +74,8 @@ public class MigrationEventTargetGovernanceAdapter implements CultureTargetGover
                 entity.getPrivacyLevel(),
                 entity.getSensitiveLevel(),
                 entity.getCreatedBy(),
-                MigrationEventPermissionPolicyService.VIEW_SENSITIVE,
-                "受限迁徙事件操作"
+                sensitiveViewPermission(),
+                restrictedLogSummary()
         );
     }
 
