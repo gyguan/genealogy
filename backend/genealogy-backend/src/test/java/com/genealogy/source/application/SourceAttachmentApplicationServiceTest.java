@@ -3,6 +3,7 @@ package com.genealogy.source.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationRiskPolicy;
 import com.genealogy.source.dto.SourceAttachmentFileResponse;
 import com.genealogy.source.dto.SourceAttachmentResponse;
 import com.genealogy.source.entity.SourceAttachmentEntity;
@@ -30,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -93,7 +95,7 @@ class SourceAttachmentApplicationServiceTest {
     }
 
     @Test
-    void previewHighlySensitiveAttachmentShouldRequireDownloadPermission() throws Exception {
+    void previewHighlySensitiveAttachmentShouldWriteExplicitRiskAudit() throws Exception {
         SourceAttachmentEntity attachment = attachment("highly_sensitive");
         Path filePath = tempDir.resolve("secure.pdf");
         Files.writeString(filePath, "secure-content");
@@ -108,7 +110,44 @@ class SourceAttachmentApplicationServiceTest {
 
         assertThat(response.fileName()).isEqualTo("old-book.pdf");
         assertThat(new String(response.content())).isEqualTo("secure-content");
-        verify(operationLogApplicationService).record(1L, 2L, "source_attachment_preview", "source_attachment", 30L, "preview source attachment: old-book.pdf", "sourceId=10", "req-2", "127.0.0.1");
+        verify(operationLogApplicationService).recordRisk(
+                1L,
+                2L,
+                "source_attachment_preview",
+                "source_attachment",
+                30L,
+                "preview source attachment: old-book.pdf",
+                "sourceId=10; sensitiveLevel=highly_sensitive",
+                "req-2",
+                "127.0.0.1",
+                OperationRiskPolicy.sensitiveAccess(true, false, null)
+        );
+    }
+
+    @Test
+    void previewNormalAttachmentShouldRemainOrdinaryAuditLog() throws Exception {
+        SourceAttachmentEntity attachment = attachment("normal");
+        Path filePath = tempDir.resolve("normal.pdf");
+        Files.writeString(filePath, "normal-content");
+        attachment.setStoragePath(filePath.toString());
+
+        when(sourceAttachmentRepository.findByIdAndDeletedAtIsNull(30L)).thenReturn(Optional.of(attachment));
+        when(authorizationApplicationService.can(1L, 2L, "attachment:preview")).thenReturn(true);
+
+        service.preview(30L, 2L, "req-normal", "127.0.0.1");
+
+        verify(operationLogApplicationService).record(
+                1L,
+                2L,
+                "source_attachment_preview",
+                "source_attachment",
+                30L,
+                "preview source attachment: old-book.pdf",
+                "sourceId=10; sensitiveLevel=normal",
+                "req-normal",
+                "127.0.0.1"
+        );
+        verifyNoMoreInteractions(operationLogApplicationService);
     }
 
     @Test
