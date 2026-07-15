@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Empty, Input, List, Pagination, Select, Space, Tag, Typography } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { apiClient } from '../../shared/api/client';
 import type { TreeEdgeResponse, TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -49,6 +51,18 @@ type PersonCard = {
 
 const IDLE: LoadState = { loading: false, error: '' };
 const EMPTY_SEARCH: SearchPage<PersonSearchItem> = { records: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 1 };
+const PERSON_DEPTH_OPTIONS = [
+  { value: '2', label: '上下各 2 代' },
+  { value: '3', label: '上下各 3 代' },
+  { value: '5', label: '上下各 5 代' },
+  { value: '8', label: '上下各 8 代' }
+];
+const BRANCH_DEPTH_OPTIONS = [
+  { value: '3', label: '展开 3 代' },
+  { value: '5', label: '展开 5 代' },
+  { value: '8', label: '展开 8 代' },
+  { value: '12', label: '展开 12 代' }
+];
 
 function asRecord(value: unknown): GenericRow {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as GenericRow : {};
@@ -177,7 +191,8 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchPage, setSearchPage] = useState<SearchPage<PersonSearchItem>>(EMPTY_SEARCH);
   const [searchNotice, setSearchNotice] = useState('');
-  const [depth, setDepth] = useState('3');
+  const [personDepth, setPersonDepth] = useState('3');
+  const [branchDepth, setBranchDepth] = useState('8');
   const [selectedBranchId, setSelectedBranchId] = useState(workspace.branchId || '');
   const [personGraph, setPersonGraph] = useState<TreeGraphResponse | null>(null);
   const [branchGraph, setBranchGraph] = useState<TreeGraphResponse | null>(null);
@@ -236,7 +251,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     }
   }
 
-  async function loadPersonGraph(personId: string, requestedDepth = depth) {
+  async function loadPersonGraph(personId: string, requestedDepth = personDepth) {
     requestGate.current.invalidate('personGraph');
     if (!personId) {
       setPersonGraph(null);
@@ -255,7 +270,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     }
   }
 
-  async function loadBranchGraph(branchId: string, clanId: string, requestedDepth = depth, showNotice = false) {
+  async function loadBranchGraph(branchId: string, clanId: string, requestedDepth = branchDepth, showNotice = false) {
     requestGate.current.invalidate('branchGraph');
     if (!branchId || !clanId) {
       setBranchGraph(null);
@@ -295,8 +310,8 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       setSelectedBranchId(nextBranchId);
       workspace.patch({ clanId, branchId: nextBranchId, personId: nextPersonId, relationshipId: '', sourceId: '', sourceFocusReason: '', reviewTaskId: '' });
       await Promise.all([
-        loadPersonGraph(nextPersonId),
-        loadBranchGraph(nextBranchId, clanId)
+        loadPersonGraph(nextPersonId, personDepth),
+        loadBranchGraph(nextBranchId, clanId, branchDepth)
       ]);
     } catch (error) {
       if (requestGate.current.isCurrent(token)) setScope('clan', { error: errorMessage(error) });
@@ -328,7 +343,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setSelectedBranchId(branchId);
     workspace.patch({ branchId, relationshipId: '' });
     clearSelection();
-    await loadBranchGraph(branchId, workspace.clanId, depth, true);
+    await loadBranchGraph(branchId, workspace.clanId, branchDepth, true);
   }
 
   async function handlePersonSelection(item: PersonSearchItem) {
@@ -337,18 +352,21 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     clearSelection();
     workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' });
     await Promise.all([
-      loadPersonGraph(item.id),
-      nextBranchId !== selectedBranchId ? loadBranchGraph(nextBranchId, workspace.clanId) : Promise.resolve()
+      loadPersonGraph(item.id, personDepth),
+      nextBranchId !== selectedBranchId ? loadBranchGraph(nextBranchId, workspace.clanId, branchDepth) : Promise.resolve()
     ]);
   }
 
-  async function handleDepthChange(nextDepth: string) {
-    setDepth(nextDepth);
+  async function handlePersonDepthChange(nextDepth: string) {
+    setPersonDepth(nextDepth);
     clearSelection();
-    await Promise.all([
-      loadPersonGraph(workspace.personId, nextDepth),
-      loadBranchGraph(selectedBranchId, workspace.clanId, nextDepth)
-    ]);
+    await loadPersonGraph(workspace.personId, nextDepth);
+  }
+
+  async function handleBranchDepthChange(nextDepth: string) {
+    setBranchDepth(nextDepth);
+    clearSelection();
+    await loadBranchGraph(selectedBranchId, workspace.clanId, nextDepth, true);
   }
 
   async function setAsCenter(node: TreeNodeResponse) {
@@ -359,8 +377,8 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     clearSelection();
     workspace.patch({ personId, branchId, relationshipId: '' });
     await Promise.all([
-      loadPersonGraph(personId),
-      branchId !== selectedBranchId ? loadBranchGraph(branchId, workspace.clanId) : Promise.resolve()
+      loadPersonGraph(personId, personDepth),
+      branchId !== selectedBranchId ? loadBranchGraph(branchId, workspace.clanId, branchDepth) : Promise.resolve()
     ]);
   }
 
@@ -412,20 +430,87 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   }, [personGraph, branchGraph]);
   const branchName = branches.find(item => text(item.id) === selectedBranchId)?.branchName || '支派';
   const currentClanName = clans.find(item => text(item.id) === workspace.clanId)?.clanName || '族谱';
-  const selectedSearchId = searchPage.records.some(item => item.id === workspace.personId) ? workspace.personId : '';
 
   return (
     <div className="lineage-page lineage-tree-page">
-      <Panel title="世系图谱" description="按宗族和支派查看真实世系关系，点击人物或连线查看证据、审核与修谱提示。">
+      <Panel title="世系图谱" description="先查询并选择中心人物，再分别控制支派全局拓扑和人物中心世系的展开范围。">
         <div className="lineage-search-grid">
-          <Field label="宗族"><select disabled={loadState.clan.loading} value={workspace.clanId} onChange={event => void handleClanChange(event.target.value)}><option value="">请选择宗族</option>{clans.map(clan => <option key={text(clan.id)} value={text(clan.id)}>{clan.clanName || clan.surname || '未命名宗族'}</option>)}</select></Field>
-          <Field label="支派范围"><select value={selectedBranchId} onChange={event => void handleBranchChange(event.target.value)}><option value="">请选择支派</option>{branches.map(branch => <option key={text(branch.id)} value={text(branch.id)}>{branch.branchName || '未命名支派'}</option>)}</select></Field>
-          <Field label="搜索人物"><input value={searchKeyword} onChange={event => setSearchKeyword(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void requestPersonPage(workspace.clanId, 1, searchKeyword); }} placeholder="姓名、谱名、字号" /></Field>
-          <Field label="搜索结果"><select value={selectedSearchId} onChange={event => { const item = searchPage.records.find(value => value.id === event.target.value); if (item) void handlePersonSelection(item); }}><option value="">请选择中心人物</option>{searchPage.records.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
-          <Field label="展开深度"><select value={depth} onChange={event => void handleDepthChange(event.target.value)}><option value="2">2代</option><option value="3">3代</option><option value="5">5代</option><option value="8">8代</option></select></Field>
-          <Actions><button disabled={loadState.search.loading || !workspace.clanId} onClick={() => void requestPersonPage(workspace.clanId, 1, searchKeyword)}>{loadState.search.loading ? '搜索中...' : '搜索'}</button><button className="secondary" disabled={searchPage.pageNo <= 1 || loadState.search.loading} onClick={() => void requestPersonPage(workspace.clanId, searchPage.pageNo - 1, searchKeyword)}>上一页</button><button className="secondary" disabled={searchPage.pageNo >= searchPage.totalPages || loadState.search.loading} onClick={() => void requestPersonPage(workspace.clanId, searchPage.pageNo + 1, searchKeyword)}>下一页</button></Actions>
+          <Field label="宗族">
+            <Select
+              disabled={loadState.clan.loading}
+              value={workspace.clanId || undefined}
+              placeholder="请选择宗族"
+              options={clans.map(clan => ({ value: text(clan.id), label: clan.clanName || clan.surname || '未命名宗族' }))}
+              onChange={value => void handleClanChange(value)}
+            />
+          </Field>
+          <Field label="支派范围">
+            <Select
+              value={selectedBranchId || undefined}
+              placeholder="请选择支派"
+              options={branches.map(branch => ({ value: text(branch.id), label: branch.branchName || '未命名支派' }))}
+              onChange={value => void handleBranchChange(value)}
+            />
+          </Field>
+          <Field label="搜索人物">
+            <Input.Search
+              allowClear
+              value={searchKeyword}
+              loading={loadState.search.loading}
+              enterButton={<><SearchOutlined /> 搜索</>}
+              placeholder="输入姓名、谱名或字号"
+              onChange={event => setSearchKeyword(event.target.value)}
+              onSearch={() => void requestPersonPage(workspace.clanId, 1, searchKeyword)}
+              disabled={!workspace.clanId}
+            />
+          </Field>
         </div>
-        <div className="lineage-search-hint">{loadState.search.error ? `搜索失败：${loadState.search.error}` : searchNotice || `第 ${searchPage.pageNo}/${searchPage.totalPages} 页`}</div>
+
+        <div style={{ marginTop: 16, border: '1px solid #f0f0f0', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', background: '#fafafa', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div>
+              <Typography.Text strong>查询结果</Typography.Text>
+              <Typography.Text type="secondary" style={{ marginLeft: 8 }}>
+                {loadState.search.error ? `搜索失败：${loadState.search.error}` : searchNotice || `共 ${searchPage.total} 位人物`}
+              </Typography.Text>
+            </div>
+            <Typography.Text type="secondary">点击人物切换中心世系</Typography.Text>
+          </div>
+          <List
+            loading={loadState.search.loading}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配人物" /> }}
+            dataSource={searchPage.records}
+            renderItem={item => {
+              const active = item.id === workspace.personId;
+              return (
+                <List.Item
+                  style={{ padding: '10px 16px', cursor: 'pointer', background: active ? '#e6f4ff' : undefined }}
+                  onClick={() => void handlePersonSelection(item)}
+                  actions={[<Button key="center" type={active ? 'primary' : 'link'} size="small">{active ? '当前中心' : '设为中心'}</Button>]}
+                >
+                  <List.Item.Meta
+                    avatar={<span className="lineage-avatar" style={{ width: 36, height: 36, fontSize: 16 }}>{firstChar(item.name)}</span>}
+                    title={<Space size={8}><Typography.Text strong>{item.name}</Typography.Text>{item.alias ? <Typography.Text type="secondary">{item.alias}</Typography.Text> : null}</Space>}
+                    description={<Space size={[6, 4]} wrap><Tag>{item.generation}</Tag><Tag>{item.branchName}</Tag></Space>}
+                  />
+                </List.Item>
+              );
+            }}
+          />
+          {searchPage.total > searchPage.pageSize ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px', borderTop: '1px solid #f0f0f0' }}>
+              <Pagination
+                current={searchPage.pageNo}
+                pageSize={searchPage.pageSize}
+                total={searchPage.total}
+                showSizeChanger={false}
+                showTotal={total => `共 ${total} 条`}
+                disabled={loadState.search.loading}
+                onChange={page => void requestPersonPage(workspace.clanId, page, searchKeyword)}
+              />
+            </div>
+          ) : null}
+        </div>
       </Panel>
 
       <section className="lineage-workbench">
@@ -434,15 +519,21 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
         <div className="lineage-workbench-grid">
           <section className="lineage-logic-card lineage-logic-card--branch">
-            <div className="lineage-tree-title"><div><span>{branchPath(branches, selectedBranchId)}</span><h3>一、支派全局拓扑</h3></div><small>血缘 · 婚配 · 承嗣</small></div>
-            {loadState.branchGraph.error ? <div className="lineage-search-hint">支派图加载失败：{loadState.branchGraph.error} <button onClick={() => void loadBranchGraph(selectedBranchId, workspace.clanId)}>重试</button></div> : null}
+            <div className="lineage-tree-title">
+              <div><span>{branchPath(branches, selectedBranchId)}</span><h3>一、支派全局拓扑</h3></div>
+              <Space size={8}><small>血缘 · 婚配 · 承嗣</small><Select size="small" value={branchDepth} options={BRANCH_DEPTH_OPTIONS} onChange={value => void handleBranchDepthChange(value)} /></Space>
+            </div>
+            {loadState.branchGraph.error ? <div className="lineage-search-hint">支派图加载失败：{loadState.branchGraph.error} <Button type="link" size="small" onClick={() => void loadBranchGraph(selectedBranchId, workspace.clanId)}>重试</Button></div> : null}
             <LineageGraphCanvas graph={branchGraph} loading={loadState.branchGraph.loading} emptyText="暂无支派世系数据。" activeNodeId={centerNode?.nodeId} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} />
           </section>
 
           <section className="lineage-logic-card lineage-logic-card--person">
-            <div className="lineage-tree-title"><div><span>{center?.branchName || branchName}</span><h3>{center ? `二、${center.name} 的中心世系拓扑` : '二、中心人物世系拓扑'}</h3></div><small>证据 · 审核 · 修谱提示</small></div>
-            {loadState.personGraph.error ? <div className="lineage-search-hint">人物图加载失败：{loadState.personGraph.error} <button onClick={() => void loadPersonGraph(workspace.personId)}>重试</button></div> : null}
-            <LineageGraphCanvas graph={personGraph} loading={loadState.personGraph.loading} emptyText="请通过服务端搜索选择中心人物。" activeNodeId={centerNode?.nodeId} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} />
+            <div className="lineage-tree-title">
+              <div><span>{center?.branchName || branchName}</span><h3>{center ? `二、${center.name} 的中心世系拓扑` : '二、中心人物世系拓扑'}</h3></div>
+              <Space size={8}><small>证据 · 审核 · 修谱提示</small><Select size="small" value={personDepth} options={PERSON_DEPTH_OPTIONS} onChange={value => void handlePersonDepthChange(value)} /></Space>
+            </div>
+            {loadState.personGraph.error ? <div className="lineage-search-hint">人物图加载失败：{loadState.personGraph.error} <Button type="link" size="small" onClick={() => void loadPersonGraph(workspace.personId)}>重试</Button></div> : null}
+            <LineageGraphCanvas graph={personGraph} loading={loadState.personGraph.loading} emptyText="请从查询结果中选择中心人物。" activeNodeId={centerNode?.nodeId} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} />
           </section>
         </div>
       </section>

@@ -21,6 +21,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@ant-design/icons": "latest",
     "@vitejs/plugin-react": "latest",
     "antd": "latest",
     "dayjs": "latest",
