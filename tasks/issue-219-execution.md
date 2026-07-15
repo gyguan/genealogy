@@ -15,7 +15,7 @@
 | 3 | 新增统一 API 请求日志 Filter | ✅ 已完成 | 约 8 分钟 | `84c6440`、`508140d`，新增轻量 API 请求日志 Filter，修复异常捕获编译风险 |
 | 4 | 补齐全局异常日志与审计失败 warn | ✅ 已完成 | 约 10 分钟 | `85f3dc3`、`61ee9bc`，未知异常输出堆栈，业务/校验异常输出摘要，审计写入失败 warn |
 | 5 | 补充轻量测试或最小验证说明 | ✅ 已完成 | 约 4 分钟 | `0ab08c4`，新增 Filter 作用范围与链路透传测试 |
-| 6 | 检查 diff、更新 PR 和 Issue 收尾 | 🔄 进行中 | 已累计约 2 分钟 | 正在核对 diff 与自动门禁状态 |
+| 6 | 检查 diff、更新 PR 和 Issue 收尾 | ✅ 已完成 | 约 4 分钟 | diff 已核对；Backend CI run `29383142090` 通过 |
 
 ## 实现内容
 
@@ -24,7 +24,7 @@
 - `GlobalExceptionHandler` 增加 BusinessException、参数校验异常和未知异常日志；
 - 未知异常使用 `log.error(..., exception)` 输出堆栈；
 - `OperationLogApplicationService.record(...)` 审计日志写入失败时输出 warn，但不阻塞主业务链路；
-- 新增 `ApiRequestLoggingFilterTest` 覆盖过滤范围和请求链路透传。
+- 新增 `ApiRequestLoggingFilterTest` 覆盖过滤范围和链路透传。
 
 ## 非目标
 
@@ -35,23 +35,21 @@
 
 ## 验证结果
 
-- 本次未执行本地命令；
-- 已通过远程 GitHub diff 进行静态检查；
-- 待 Backend CI 自动门禁反馈。
+- GitHub diff 已核对：5 个文件变更，聚焦后端日志与任务看板；
+- Backend CI：通过，run `29383142090`；
+- 本次未执行本地命令。
 
-## 当前进行中
+## 耗时汇总
 
-核对 PR diff、自动门禁和最终收尾状态。
-
-## 下一步最小任务
-
-确认 Backend CI 状态；如自动门禁通过，则转 Ready 并合入 main。
+- 已完成任务活跃耗时：约 34 分钟；
+- 外部等待：Backend CI 排队和运行时间不计入活跃耗时；
+- 未记录历史任务：0 项。
 
 ## 恢复检查点
 
 - 当前 Issue：#219
 - 当前 PR：#222
 - 当前分支：`agent/issue-219-api-logging`
-- 最新完成任务：API 请求日志、异常日志、审计失败 warn 和聚焦测试已提交
-- 当前进行中：diff 与自动门禁核对
+- 当前阶段：实现完成，等待合入 main
+- 最新完成任务：diff、PR 描述和自动门禁核对
 - 未解决阻塞：无
