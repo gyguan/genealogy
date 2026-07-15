@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
@@ -45,6 +47,8 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
     @Mock private AuthorizationApplicationService authorizationApplicationService;
     @Mock private CultureItemRepository cultureItemRepository;
     @Mock private CulturePermissionPolicyService culturePermissionPolicyService;
+    @Mock private MigrationEventRepository migrationEventRepository;
+    @Mock private MigrationEventPermissionPolicyService migrationEventPermissionPolicyService;
 
     private CultureAwareSourceBindingReviewApplicationService service;
 
@@ -60,7 +64,9 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
                 authorizationApplicationService,
                 new ObjectMapper(),
                 cultureItemRepository,
-                culturePermissionPolicyService
+                culturePermissionPolicyService,
+                migrationEventRepository,
+                migrationEventPermissionPolicyService
         );
     }
 
@@ -126,7 +132,7 @@ class CultureAwareSourceBindingReviewApplicationServiceTest {
                 org.mockito.ArgumentMatchers.eq("culture_source_binding_submit"),
                 org.mockito.ArgumentMatchers.eq("revision"),
                 org.mockito.ArgumentMatchers.eq(500L),
-                org.mockito.ArgumentMatchers.eq("提交文化资料来源绑定审核"),
+                org.mockito.ArgumentMatchers.eq("提交文化对象来源绑定审核"),
                 org.mockito.ArgumentMatchers.eq(revisionRef.get().getDiffSummary()),
                 org.mockito.ArgumentMatchers.eq("req-culture"),
                 org.mockito.ArgumentMatchers.eq("127.0.0.1"),
