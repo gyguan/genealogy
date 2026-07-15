@@ -28,6 +28,10 @@ function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
 }
 
+function emptyPage(pageSize = 10) {
+  return { items: [], page: { pageNo: 1, pageSize, totalElements: 0, totalPages: 0 } };
+}
+
 async function mockCultureApi(page: Page) {
   await page.route('**/api/v1/**', async (route: Route) => {
     const request = route.request();
@@ -56,6 +60,14 @@ async function mockCultureApi(page: Page) {
         siteHighlights: [],
         missingHints: ['家训资料尚未形成正式记录']
       }));
+      return;
+    }
+    if (path === '/clans/1/migration-events' && request.method() === 'GET') {
+      await route.fulfill(ok(emptyPage()));
+      return;
+    }
+    if (path === '/clans/1/culture-sites' && request.method() === 'GET') {
+      await route.fulfill(ok(emptyPage(12)));
       return;
     }
     if (path === '/clans/1/culture-items' && request.method() === 'GET') {
@@ -150,6 +162,14 @@ test('forbidden culture list does not disclose restricted object identity', asyn
     }
     if (path === '/clans/1/culture-overview') {
       await route.fulfill(ok({ clanId: 1, clanName: '黄氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 }, featuredItems: [], migrationHighlights: [], siteHighlights: [], missingHints: [] }));
+      return;
+    }
+    if (path === '/clans/1/migration-events') {
+      await route.fulfill(ok(emptyPage()));
+      return;
+    }
+    if (path === '/clans/1/culture-sites') {
+      await route.fulfill(ok(emptyPage(12)));
       return;
     }
     if (path === '/clans/1/culture-items') {
