@@ -17,13 +17,17 @@ async function openTree(page: Page, username = 'tree_editor') {
   await expect(page.locator('input[placeholder="姓名、谱名、字号"]')).toBeVisible();
 }
 
+async function chooseComboboxOption(page: Page, comboboxIndex: number, optionName: string | RegExp) {
+  await page.getByRole('combobox').nth(comboboxIndex).click();
+  await page.getByRole('option', { name: optionName }).click();
+}
+
 async function searchAndSelect(page: Page, keyword: string) {
   const searchInput = page.locator('input[placeholder="姓名、谱名、字号"]');
   await searchInput.fill(keyword);
   await page.getByRole('button', { name: /搜\s*索/ }).click();
   await expect(page.getByText('共匹配 1 位人物')).toBeVisible();
-  const resultSelect = page.getByRole('combobox').nth(2);
-  await resultSelect.selectOption({ index: 1 });
+  await chooseComboboxOption(page, 2, new RegExp(keyword));
   await expect(page.getByRole('heading', { name: new RegExp(keyword) })).toBeVisible();
 }
 
@@ -37,10 +41,9 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await expect(personNodes.first()).toBeVisible();
   expect(await personNodes.count()).toBeGreaterThanOrEqual(2);
 
-  const depthSelect = page.getByRole('combobox').nth(3);
-  await depthSelect.selectOption('2');
-  await depthSelect.selectOption('5');
-  await expect(depthSelect).toHaveValue('5');
+  await chooseComboboxOption(page, 3, '2代');
+  await chooseComboboxOption(page, 3, '5代');
+  await expect(page.getByText('5代', { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
   const personCard = page.locator('.lineage-logic-card--person');
@@ -72,7 +75,7 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await page.getByRole('button', { name: '关闭' }).click();
 
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
-  await depthSelect.selectOption('3');
+  await chooseComboboxOption(page, 3, '3代');
   await expect(page.getByText(/人物图加载失败/)).toBeVisible();
   await page.getByRole('button', { name: '重试' }).last().click();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
