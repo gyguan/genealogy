@@ -77,9 +77,11 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   const ritualEdge = page.locator('.lineage-logic-card--branch .lineage-graph-edge--ritual').first();
   await expect(ritualEdge).toBeAttached();
   await activateGraphControl(ritualEdge);
-  await expect(page.getByText(/宗法承嗣关系/)).toBeVisible();
-  await expect(page.getByText(/关系类别/)).toBeVisible();
-  await page.getByRole('button', { name: '关闭' }).click();
+  const edgeDetail = page.locator('.lineage-person-pop').filter({ hasText: '关系类别' }).last();
+  await expect(edgeDetail).toBeVisible();
+  await expect(edgeDetail.locator('.lineage-edge-pop-head p')).toContainText('宗法承嗣关系');
+  await expect(edgeDetail.getByText('关系类别', { exact: true })).toBeVisible();
+  await edgeDetail.getByRole('button', { name: '关闭' }).click();
 
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
   await chooseComboboxOption(page, 3, '3代');
