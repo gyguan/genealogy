@@ -9,9 +9,13 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.culture.repository.CultureTrackingQueryRepository;
+import com.genealogy.culture.repository.MigrationEventRepository;
+import com.genealogy.culture.repository.MigrationTrackingQueryRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationLogBusinessViewApplicationService;
 import com.genealogy.operationlog.dto.OperationLogResponse;
@@ -68,7 +72,9 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
     private final AppUserRepository governedUserRepository;
     private final BranchRepository governedBranchRepository;
     private final CultureTrackingQueryRepository cultureTrackingQueryRepository;
+    private final MigrationTrackingQueryRepository migrationTrackingQueryRepository;
     private final CultureItemRepository cultureItemRepository;
+    private final MigrationEventRepository migrationEventRepository;
     private final SourceRepository sourceRepository;
 
     public CultureAwareTrackingTraceApplicationService(
@@ -82,7 +88,9 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
             AppUserRepository appUserRepository,
             BranchRepository branchRepository,
             CultureTrackingQueryRepository cultureTrackingQueryRepository,
+            MigrationTrackingQueryRepository migrationTrackingQueryRepository,
             CultureItemRepository cultureItemRepository,
+            MigrationEventRepository migrationEventRepository,
             SourceRepository sourceRepository
     ) {
         super(
@@ -105,7 +113,9 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         this.governedUserRepository = appUserRepository;
         this.governedBranchRepository = branchRepository;
         this.cultureTrackingQueryRepository = cultureTrackingQueryRepository;
+        this.migrationTrackingQueryRepository = migrationTrackingQueryRepository;
         this.cultureItemRepository = cultureItemRepository;
+        this.migrationEventRepository = migrationEventRepository;
         this.sourceRepository = sourceRepository;
     }
 
@@ -118,27 +128,27 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
             Long targetId,
             boolean includeTechnicalFields
     ) {
-        if (!"culture_item".equals(normalize(targetType)) && !"culture_items".equals(normalize(targetType))) {
+        String normalizedType = normalizeType(targetType);
+        if (!"culture_item".equals(normalizedType) && !"migration_event".equals(normalizedType)) {
             return super.trace(clanId, actorId, targetType, targetId, includeTechnicalFields);
         }
         PermissionDataScope scope = governedRbac.permissionDataScope(actorId, clanId, PERMISSION_VIEW);
         if (!scope.fullClanAccess() && scope.visibleBranchIds().isEmpty()) throw notFound();
-        boolean sensitiveAccess = governedRbac.hasPermission(
-                actorId, clanId, CulturePermissionPolicyService.VIEW_SENSITIVE
+        String sensitivePermission = "migration_event".equals(normalizedType)
+                ? MigrationEventPermissionPolicyService.VIEW_SENSITIVE
+                : CulturePermissionPolicyService.VIEW_SENSITIVE;
+        boolean sensitiveAccess = governedRbac.hasPermission(actorId, clanId, sensitivePermission);
+        TrackingObjectResponse summary = findVisibleSummary(
+                normalizedType, clanId, targetId, scope, sensitiveAccess
         );
-        TrackingObjectResponse summary = cultureTrackingQueryRepository.findVisibleById(
-                clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
-        ).orElseThrow(this::notFound);
-        CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(targetId)
-                .filter(value -> Objects.equals(value.getClanId(), clanId))
-                .orElseThrow(this::notFound);
+        GovernedTarget target = requireTarget(normalizedType, clanId, targetId);
 
         Page<RevisionEntity> revisionPage = governedRevisionRepository
                 .findByClanIdAndTargetTypeAndTargetIdOrderBySubmitTimeDesc(
-                        clanId, "culture_item", targetId, PageRequest.of(0, FETCH_LIMIT)
+                        clanId, normalizedType, targetId, PageRequest.of(0, FETCH_LIMIT)
                 );
         List<RevisionEntity> revisions = limit(revisionPage.getContent());
-        List<Long> revisionIds = revisions.stream().map(RevisionEntity::getId).toList();
+        List<Long> revisionIds = revisions.stream().map(RevisionEntity::getId).filter(Objects::nonNull).toList();
         Page<ReviewTaskEntity> taskPage = revisionIds.isEmpty()
                 ? Page.empty()
                 : scope.fullClanAccess()
@@ -149,16 +159,16 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         List<ReviewTaskEntity> tasks = limit(taskPage.getContent());
         Page<SourceBindingEntity> bindingPage = governedBindingRepository
                 .findByClanIdAndTargetTypeAndTargetIdOrderByCreatedAtDesc(
-                        clanId, "culture_item", targetId, PageRequest.of(0, FETCH_LIMIT)
+                        clanId, normalizedType, targetId, PageRequest.of(0, FETCH_LIMIT)
                 );
         List<SourceBindingEntity> bindings = limit(bindingPage.getContent());
 
         PageResponse<OperationLogResponse> rawLogs = governedOperationLog.searchByTargets(
                 clanId,
                 Map.of(
-                        "culture_item", List.of(targetId),
+                        normalizedType, List.of(targetId),
                         "revision", revisionIds,
-                        "review_task", tasks.stream().map(ReviewTaskEntity::getId).toList()
+                        "review_task", tasks.stream().map(ReviewTaskEntity::getId).filter(Objects::nonNull).toList()
                 ),
                 FETCH_LIMIT,
                 includeTechnicalFields
@@ -171,8 +181,8 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                 bindings.stream().map(SourceBindingEntity::getSourceId).filter(Objects::nonNull).distinct().toList()
         ).stream().filter(source -> Objects.equals(source.getClanId(), clanId))
                 .collect(Collectors.toMap(SourceEntity::getId, Function.identity()));
-        String branchName = item.getBranchId() == null ? null : governedBranchRepository
-                .findByIdAndClanId(item.getBranchId(), clanId)
+        String branchName = target.branchId() == null ? null : governedBranchRepository
+                .findByIdAndClanId(target.branchId(), clanId)
                 .map(BranchEntity::getBranchName)
                 .orElse(null);
 
@@ -195,7 +205,7 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                         binding.getCreatedAt(), binding.getUpdatedAt()
                 )).toList();
 
-        List<TimelineEvent> timeline = timeline(revisions, tasks, bindings, logs, actorNames);
+        List<TimelineEvent> timeline = timeline(normalizedType, revisions, tasks, bindings, logs, actorNames);
         List<ChangeChain> changeChains = changeChains(revisions, tasks, timeline);
         List<String> truncated = new ArrayList<>();
         addIf(truncated, "revisions", revisionPage.getTotalElements() > LIMIT);
@@ -204,54 +214,83 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         addIf(truncated, "operationLogs", enrichedLogs.total() > LIMIT);
         List<String> notes = new ArrayList<>();
         if (!truncated.isEmpty()) notes.add("部分历史记录超过单段100条上限，响应仅返回最近记录");
-        if (timeline.isEmpty()) notes.add("当前文化资料未发现可见历史事件");
+        if (timeline.isEmpty()) notes.add("当前对象未发现可见历史事件");
         LocalDateTime historyFrom = timeline.stream().map(TimelineEvent::occurredAt)
                 .filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null);
         boolean legacyTrace = revisions.stream().anyMatch(revision -> revision.getTraceId() == null);
         List<String> missing = legacyTrace ? List.of("traceIds") : List.of();
-        if (legacyTrace) notes.add("部分历史文化资料版本缺少稳定 trace_id，按独立 legacy 链路展示");
+        if (legacyTrace) notes.add("部分历史版本缺少稳定 trace_id，按独立 legacy 链路展示");
         boolean complete = truncated.isEmpty() && missing.isEmpty();
         TraceCoverage coverage = new TraceCoverage(
-                complete ? "complete" : "partial",
-                complete,
-                historyFrom,
-                List.copyOf(truncated),
-                missing,
-                List.copyOf(notes)
+                complete ? "complete" : "partial", complete, historyFrom,
+                List.copyOf(truncated), missing, List.copyOf(notes)
         );
         List<String> allowedActions = includeTechnicalFields
                 ? List.of(ACTION_VIEW_TRACE, ACTION_EXPORT_LOGS)
                 : List.of(ACTION_VIEW_TRACE);
         return new TrackingTraceDetailResponse(
-                summary, item.getDataStatus(), timeline, changeChains, revisionItems, reviewTaskItems,
+                summary, target.status(), timeline, changeChains, revisionItems, reviewTaskItems,
                 bindingItems, logs, allowedActions, coverage
         );
     }
 
+    private TrackingObjectResponse findVisibleSummary(
+            String type,
+            Long clanId,
+            Long targetId,
+            PermissionDataScope scope,
+            boolean sensitiveAccess
+    ) {
+        if ("migration_event".equals(type)) {
+            return migrationTrackingQueryRepository.findVisibleById(
+                    clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
+            ).orElseThrow(this::notFound);
+        }
+        return cultureTrackingQueryRepository.findVisibleById(
+                clanId, targetId, scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess
+        ).orElseThrow(this::notFound);
+    }
+
+    private GovernedTarget requireTarget(String type, Long clanId, Long targetId) {
+        if ("migration_event".equals(type)) {
+            MigrationEventEntity event = migrationEventRepository.findByIdAndDeletedAtIsNull(targetId)
+                    .filter(value -> Objects.equals(value.getClanId(), clanId))
+                    .orElseThrow(this::notFound);
+            return new GovernedTarget(event.getBranchId(), event.getDataStatus());
+        }
+        CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(targetId)
+                .filter(value -> Objects.equals(value.getClanId(), clanId))
+                .orElseThrow(this::notFound);
+        return new GovernedTarget(item.getBranchId(), item.getDataStatus());
+    }
+
     private List<TimelineEvent> timeline(
+            String targetType,
             List<RevisionEntity> revisions,
             List<ReviewTaskEntity> tasks,
             List<SourceBindingEntity> bindings,
             List<OperationLogResponse> logs,
             Map<Long, String> actors
     ) {
+        String label = "migration_event".equals(targetType) ? "迁徙事件" : "文化资料";
         List<TimelineEvent> events = new ArrayList<>();
         revisions.forEach(revision -> events.add(new TimelineEvent(
                 "revision:" + revision.getId(), "revision_submitted", "revision", revision.getId(),
-                "文化资料变更已提交", revision.getDiffSummary(), revision.getSubmitTime(),
+                label + "变更已提交", revision.getDiffSummary(), revision.getSubmitTime(),
                 actors.get(revision.getSubmitterId()), revision.getStatus(), revision.getTraceId(),
                 revision.getId(), null, "submitted"
         )));
         tasks.forEach(task -> events.add(new TimelineEvent(
                 "review_task:" + task.getId(), task.getReviewedAt() == null ? "review_pending" : "review_decided",
-                "review_task", task.getId(), task.getReviewedAt() == null ? "等待审核" : "文化资料审核已处理",
+                "review_task", task.getId(), task.getReviewedAt() == null ? "等待审核" : label + "审核已处理",
                 task.getReviewComment(), task.getReviewedAt() == null ? task.getCreatedAt() : task.getReviewedAt(),
                 actors.get(task.getReviewerId()), task.getStatus(), task.getTraceId(), task.getRevisionId(),
                 task.getId(), task.getReviewedAt() == null ? "submitted" : task.getStatus()
         )));
         bindings.forEach(binding -> events.add(new TimelineEvent(
                 "source_binding:" + binding.getId(), "source_bound", "source_binding", binding.getId(),
-                "来源证据已关联", binding.getBindingReason(), binding.getUpdatedAt() == null ? binding.getCreatedAt() : binding.getUpdatedAt(),
+                "来源证据已关联", binding.getBindingReason(),
+                binding.getUpdatedAt() == null ? binding.getCreatedAt() : binding.getUpdatedAt(),
                 actors.get(binding.getCreatedBy()), binding.getBindingStatus(), null, null, null, null
         )));
         logs.forEach(log -> events.add(new TimelineEvent(
@@ -277,7 +316,7 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
                 .collect(Collectors.groupingBy(ReviewTaskEntity::getRevisionId));
         return revisions.stream().map(revision -> {
             List<ReviewTaskEntity> related = tasksByRevision.getOrDefault(revision.getId(), List.of());
-            List<Long> taskIds = related.stream().map(ReviewTaskEntity::getId).filter(Objects::nonNull).toList();
+            List<Long> taskIds = related.stream().map(ReviewTaskEntity::getId).toList();
             UUID traceId = revision.getTraceId();
             boolean inconsistent = traceId != null && related.stream().anyMatch(task -> !traceId.equals(task.getTraceId()));
             List<TimelineEvent> events = timeline.stream().filter(event ->
@@ -321,11 +360,19 @@ public class CultureAwareTrackingTraceApplicationService extends TrackingTraceAp
         if (condition) values.add(value);
     }
 
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
+    private String normalizeType(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        return switch (normalized) {
+            case "culture_items" -> "culture_item";
+            case "migration_events" -> "migration_event";
+            default -> normalized;
+        };
     }
 
     private BusinessException notFound() {
         return new BusinessException("TRACKING_OBJECT_NOT_FOUND", "追踪对象不存在或当前用户不可见");
+    }
+
+    private record GovernedTarget(Long branchId, String status) {
     }
 }
