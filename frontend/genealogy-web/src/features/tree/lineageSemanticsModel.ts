@@ -1,5 +1,5 @@
 import type { TreeEdgeResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
-import { riskLevelText } from './treeDisplayModel';
+import { riskLevelText } from './treeDisplayModel.js';
 
 export type LineageSemanticTone = 'blood' | 'marriage' | 'ritual' | 'status' | 'other';
 export type LineageIndicatorTone = 'neutral' | 'info' | 'warning' | 'danger';
