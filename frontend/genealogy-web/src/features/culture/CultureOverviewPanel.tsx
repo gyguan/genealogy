@@ -1,5 +1,10 @@
+import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Progress, Row, Skeleton, Space, Statistic, Tag, Typography } from 'antd';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
+import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { listCultureBranches } from './cultureLibraryService';
+import type { CultureBranchOption } from './cultureLibraryService';
+import { MigrationTimelinePanel } from './MigrationTimelinePanel';
 import { categoryOptions, formatCoverageRate, optionLabel, statusColor, statusOptions } from './cultureOptions';
 
 const { Text } = Typography;
@@ -12,6 +17,21 @@ type Props = {
 };
 
 export function CultureOverviewPanel({ overview, loading, error, onOpenItem }: Props) {
+  const workspace = useWorkspace();
+  const [branches, setBranches] = useState<CultureBranchOption[]>([]);
+
+  useEffect(() => {
+    if (!workspace.clanId) {
+      setBranches([]);
+      return;
+    }
+    let active = true;
+    listCultureBranches(workspace.clanId)
+      .then(rows => { if (active) setBranches(rows); })
+      .catch(() => { if (active) setBranches([]); });
+    return () => { active = false; };
+  }, [workspace.clanId]);
+
   if (loading && !overview) return <Card><Skeleton active paragraph={{ rows: 3 }} /></Card>;
   if (error && !overview) return <Alert type="error" showIcon message="文化总览加载失败" description={error} />;
   if (!overview) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择宗族后查看文化总览" />;
@@ -59,6 +79,8 @@ export function CultureOverviewPanel({ overview, loading, error, onOpenItem }: P
           </Card>
         </Col>
       </Row>
+
+      <MigrationTimelinePanel clanId={workspace.clanId} branches={branches} />
     </Space>
   );
 }
