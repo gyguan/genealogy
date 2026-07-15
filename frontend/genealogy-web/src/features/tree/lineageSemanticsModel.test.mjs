@@ -59,24 +59,26 @@ test('relationship matrix exposes accessible Chinese semantics', () => {
   assert.equal(status.label, '无嗣');
 });
 
-test('node indicators only reflect backend-provided summaries', () => {
+test('node indicators prioritize severe risks over evidence and review notices', () => {
   assert.deepEqual(nodeIndicators(node()), []);
   const indicators = nodeIndicators(node({
     evidenceSummary: { bindingCount: 1, officialBindingCount: 0, confidenceLevel: 'low', missingOfficialEvidence: true },
     reviewSummary: { state: 'rejected', pendingTaskCount: 0, rejectedTaskCount: 1 },
     anomalySummary: { codes: ['generation_mismatch', 'relationship_conflict'], count: 2, highestRisk: 'high' }
   }));
-  assert.deepEqual(indicators.map(item => item.label), ['缺少正式证据', '审核驳回', '世次异常', '关系冲突']);
-  assert.equal(indicators.find(item => item.code === 'relationship_conflict').tone, 'danger');
+  assert.deepEqual(indicators.map(item => item.label), ['关系冲突', '审核驳回', '世次异常', '缺少正式证据']);
+  assert.equal(indicators[0].tone, 'danger');
+  assert.equal(indicators[0].glyph, '冲');
 });
 
-test('edge indicators expose evidence review and returned anomaly codes', () => {
+test('edge indicators expose distinct glyphs and severity ordering', () => {
   const indicators = edgeIndicators(edge({
     evidenceSummary: { bindingCount: 2, officialBindingCount: 2, confidenceLevel: 'low', missingOfficialEvidence: false },
     reviewSummary: { state: 'pending', pendingTaskCount: 1, rejectedTaskCount: 0 },
     anomalySummary: { codes: ['possible_duplicate'], count: 1, highestRisk: 'medium' }
   }));
-  assert.deepEqual(indicators.map(item => item.label), ['低可信', '待审核', '疑似重复']);
+  assert.deepEqual(indicators.map(item => item.label), ['低可信', '疑似重复', '待审核']);
+  assert.deepEqual(indicators.map(item => item.glyph), ['低', '重', '审']);
 });
 
 test('masked objects never expose internal summary indicators', () => {
@@ -84,18 +86,18 @@ test('masked objects never expose internal summary indicators', () => {
     visibility: 'masked',
     evidenceSummary: { bindingCount: 9, officialBindingCount: 0, confidenceLevel: 'low', missingOfficialEvidence: true },
     anomalySummary: { codes: ['relationship_conflict'], count: 1, highestRisk: 'high' }
-  })), [{ code: 'privacy', label: '隐私保护', tone: 'neutral' }]);
+  })), [{ code: 'privacy', label: '隐私保护', tone: 'neutral', glyph: '私' }]);
   assert.deepEqual(edgeIndicators(edge({
     visibility: 'masked',
     reviewSummary: { state: 'rejected', pendingTaskCount: 0, rejectedTaskCount: 1 }
   })), []);
 });
 
-test('summary text stays empty when backend omitted summaries', () => {
+test('summary text localizes backend review and risk values', () => {
   assert.equal(summaryText(), '');
   assert.equal(summaryText(
     { bindingCount: 3, officialBindingCount: 2, confidenceLevel: 'high', missingOfficialEvidence: false },
     { state: 'pending', pendingTaskCount: 1, rejectedTaskCount: 0 },
     { codes: ['possible_duplicate'], count: 1, highestRisk: 'medium' }
-  ), '证据 2/3 · 审核：pending · 异常 1');
+  ), '证据 2/3 · 审核：待审核 · 异常 1 · 中风险');
 });
