@@ -4,11 +4,12 @@ import com.genealogy.culture.entity.MigrationEventEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface MigrationEventRepository extends JpaRepository<MigrationEventEntity, Long> {
+public interface MigrationEventRepository extends JpaRepository<MigrationEventEntity, Long>, JpaSpecificationExecutor<MigrationEventEntity> {
 
     Optional<MigrationEventEntity> findByIdAndDeletedAtIsNull(Long id);
 
@@ -22,4 +23,10 @@ public interface MigrationEventRepository extends JpaRepository<MigrationEventEn
             Long clanId,
             Long branchId,
             Integer sequenceNo);
+
+    boolean existsByClanIdAndBranchIdAndSequenceNoAndIdNotAndDeletedAtIsNull(
+            Long clanId,
+            Long branchId,
+            Integer sequenceNo,
+            Long id);
 }
