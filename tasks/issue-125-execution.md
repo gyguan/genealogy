@@ -4,7 +4,7 @@
 - 工作分支：`agent/issue-125-risk-audit`
 - 当前 PR：[#220](https://github.com/gyguan/genealogy/pull/220)
 - 目标：基于后端真实审计数据建设高风险事件模型、分页筛选、统计与追踪跳转，并补齐批量导出、权限变更和敏感访问的可验证日志。
-- 最后更新时间：2026-07-15 10:30（北京时间）
+- 最后更新时间：2026-07-15 10:36（北京时间）
 
 ## DEFINE：范围与边界
 
@@ -26,6 +26,7 @@
 ### 数据库影响与回滚
 
 - `operation_log` 新增可空的 `risk_level`、`risk_event_type`、`disposition_status`、`branch_id` 字段、值域约束及与实际筛选匹配的部分索引。
+- Flyway：`V20260715235959_01__add_operation_risk_audit_fields.sql`；因开发期间主干新增 `V20260715235959`，使用同时间戳序号 `_01` 保证严格递增且不改写主干迁移。
 - 新日志由显式风险上下文或稳定 `actionType` 分类；历史数据仅按确定动作码或附件真实敏感级别回填。
 - 支派查询优先使用快照字段；快照缺失时基于人物、关系、审核任务、成员授权、来源绑定等结构化对象回退匹配，不解析文本。
 - 回滚采用前向补偿：先停止写入和读取新字段，再删除索引、约束和字段；原始操作日志与业务结果不回滚。
@@ -41,7 +42,7 @@
 | 5 | 对关键业务动作补齐显式风险审计记录 | ✅ 已完成 | 未单独精确固化 | 导出显式记录；权限变更按稳定动作码分类；敏感附件访问按真实敏感级别显式记录 |
 | 6 | 接入风险审计前端视图、URL 筛选恢复和详情跳转 | ✅ 已完成 | 未单独精确固化 | 新增风险页签、统计卡片、筛选、分页、日志详情和对象追踪入口 |
 | 7 | 补充后端、契约、前端模型与权限回归测试 | ✅ 已完成 | 未单独精确固化 | 覆盖无权统计泄露、字段最小化、支派拒绝、分类、敏感访问和 URL 恢复 |
-| 8 | 执行完整验证、五轴 Review、处理反馈并合入 main | 🔄 进行中 | 未单独精确固化 | 四项标准 CI 已通过；正在转 Ready 并等待最终 Review |
+| 8 | 执行完整验证、五轴 Review、处理反馈并合入 main | 🔄 进行中 | 未单独精确固化 | 已处理主干新增迁移导致的版本冲突，最终四项门禁重跑中 |
 
 > 除启动阶段已及时固化的耗时外，后续任务未形成可审计的逐项计时记录，不事后补造。
 
@@ -61,19 +62,20 @@
 - ✅ `OpLogControllerTest`：独立风险权限、鉴权先于 count、跨宗族拒绝和导出权限。
 - ✅ `OperationLogExportApplicationServiceTest`：批量导出产生显式高风险事件且不复制敏感关键词。
 - ✅ `SourceAttachmentApplicationServiceTest`：敏感附件访问产生风险日志，普通附件访问仅保留普通审计。
-- ✅ Backend CI #2430。
+- ✅ 前一轮 Backend CI #2430；迁移重编号后的最终 Backend CI #2436 运行中。
 
 ### 数据库
 
-- ✅ Database Migration Governance #461。
+- ✅ 前一轮 Database Migration Governance #461。
+- 🔄 主干在实现期间新增更高版本迁移后，已将本迁移重编号为 `V20260715235959_01`；最终 Database Migration Governance #466 运行中。
 - ✅ 新增 PostgreSQL 条件集成测试，覆盖字段、索引和人物风险按支派查询 SQL。
 - ⚠️ 标准 Backend CI 未提供 PostgreSQL 服务且未设置 `RUN_POSTGRES_INTEGRATION_TESTS=true`，因此该条件测试本轮仅完成编译，未在 CI 中实际执行；不虚构实库通过结论。
 
 ### API 与前端
 
-- ✅ API Contract #1124，生成文件无漂移。
+- ✅ 前一轮 API Contract #1124，生成文件无漂移；最终 API Contract #1129 运行中。
 - ✅ `trackingCenterModel.test.mjs` 覆盖风险筛选和选中日志 URL 往返恢复。
-- ✅ Frontend CI #329，包含模型测试、API check、TypeScript typecheck 和生产构建。
+- ✅ 前一轮 Frontend CI #329；最终 Frontend CI #335 运行中。
 
 ## 五轴 Review
 
@@ -93,16 +95,16 @@
 
 - 当前 Issue：#125（open）
 - 当前分支：`agent/issue-125-risk-audit`
-- 当前 PR：#220（Draft，待转 Ready）
-- 最后完成任务：功能实现、回归测试、标准 CI 和五轴自检
-- 当前进行中任务：转 Ready、处理最终 Review、满足门禁后 squash merge
+- 当前 PR：#220（Draft）
+- 最后完成任务：处理主干新迁移造成的 Flyway 版本冲突
+- 当前进行中任务：等待最终四项门禁，随后转 Ready、处理 Review 并 squash merge
 - 当前任务累计耗时：未单独精确固化
-- 最新功能 Commit：`275826925eab8bb075d591113876b96e5bb3f6d6`
-- CI 状态：Backend、Frontend、API Contract、Database Migration Governance 全部通过
+- 最新 Commit：`a3ff5ea6549aa2a19d1c6612e26caccd770bd7cd`
+- CI 状态：Backend #2436、Frontend #335、API Contract #1129、Database Governance #466 运行中
 - 未解决 Review：无
-- 已知阻塞：无
-- 下一步最小任务：更新 PR 描述并转 Ready，检查自动 Review
-- 最后更新时间：2026-07-15 10:30（北京时间）
+- 已知阻塞：无；门禁尚未完成
+- 下一步最小任务：确认最终 CI 全绿并检查评审线程
+- 最后更新时间：2026-07-15 10:36（北京时间）
 
 ## 耗时汇总
 
