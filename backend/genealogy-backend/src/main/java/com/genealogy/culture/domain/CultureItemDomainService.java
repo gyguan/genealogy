@@ -7,8 +7,11 @@ import com.genealogy.culture.dto.CultureItemUpdateRequest;
 import com.genealogy.culture.entity.CultureItemEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 @Service
 public class CultureItemDomainService {
@@ -68,16 +71,16 @@ public class CultureItemDomainService {
 
     public CultureItemSearchCriteria normalize(CultureItemSearchCriteria criteria) {
         CultureItemSearchCriteria safe = criteria == null
-                ? new CultureItemSearchCriteria(null, null, null, null, null, null, null, null)
+                ? CultureItemSearchCriteria.multi(null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null)
                 : criteria;
-        return new CultureItemSearchCriteria(
+        return CultureItemSearchCriteria.multi(
                 optionalText(safe.keyword(), 100, "CULTURE_ITEM_KEYWORD_TOO_LONG", "搜索关键词不能超过 100 字"),
-                optionalEnum(safe.category(), this::normalizeCategory),
-                safe.branchId(),
-                optionalEnum(safe.dataStatus(), this::normalizeStatus),
-                optionalEnum(safe.privacyLevel(), this::normalizePrivacy),
-                safe.hasSource(),
-                safe.featuredOnHome(),
+                normalizeValues(safe.categories(), this::normalizeCategory),
+                normalizeValues(safe.branchIds(), this::normalizeBranchId),
+                normalizeValues(safe.dataStatuses(), this::normalizeStatus),
+                normalizeValues(safe.privacyLevels(), this::normalizePrivacy),
+                normalizeValues(safe.hasSourceValues(), value -> value),
+                normalizeValues(safe.featuredOnHomeValues(), value -> value),
                 normalizeSort(safe.sort())
         );
     }
@@ -205,6 +208,24 @@ public class CultureItemDomainService {
             throw new BusinessException(code, message);
         }
         return normalized;
+    }
+
+    private Long normalizeBranchId(Long value) {
+        if (value == null || value <= 0) {
+            throw new BusinessException("CULTURE_ITEM_BRANCH_INVALID", "文化资料支派不合法");
+        }
+        return value;
+    }
+
+    private <T, R> List<R> normalizeValues(List<T> values, Function<T, R> normalizer) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(normalizer)
+                .distinct()
+                .toList();
     }
 
     private String normalizeEnum(String value) {

@@ -12,7 +12,7 @@ import type {
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { listBranches, listClans } from '../sources/sourceLibraryService';
-import { cultureSearchKey } from './cultureUrlState';
+import { buildCultureQueryString, cultureSearchKey } from './cultureUrlState';
 import type { CultureSearchState } from './cultureUrlState';
 
 export type CultureClanOption = Awaited<ReturnType<typeof listClans>>[number];
@@ -21,15 +21,6 @@ export type CultureBranchOption = RawCultureBranchOption & { name: string };
 
 const cultureItemPageCache = new Map<string, CultureItemPage>();
 const cultureItemRefreshListeners = new Set<(message?: string) => void>();
-
-function queryString(values: Record<string, unknown>) {
-  const params = new URLSearchParams();
-  Object.entries(values).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === '') return;
-    params.set(key, String(value));
-  });
-  return params.toString();
-}
 
 function refreshErrorText(error: unknown) {
   return error instanceof Error && error.message ? error.message : '文化资料刷新失败';
@@ -66,18 +57,7 @@ export function getCultureQuality(clanId: string) {
 }
 
 export function listCultureItems(clanId: string, search: CultureSearchState) {
-  const query = queryString({
-    keyword: search.keyword,
-    category: search.category,
-    branchId: search.branchId,
-    dataStatus: search.dataStatus,
-    privacyLevel: search.privacyLevel,
-    hasSource: search.hasSource,
-    featuredOnHome: search.featuredOnHome,
-    sort: search.sort,
-    pageNo: search.pageNo,
-    pageSize: search.pageSize
-  });
+  const query = buildCultureQueryString(search);
   const cacheKey = cultureSearchKey(clanId, search);
   publishCultureItemRefresh(undefined);
   return apiClient.get<CultureItemPage>(`/clans/${clanId}/culture-items?${query}`)
