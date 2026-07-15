@@ -1,11 +1,11 @@
 -- Purpose: add explicit risk-audit fields, deterministic historical classification and risk-view permission.
 -- Issue/PR: #125 / PR #220
 -- Risk: medium
--- Lock impact: ADD COLUMN and CHECK constraints take short metadata locks; historical backfill scans operation_log once.
--- Data volume: updates only rows whose action_type is in the stable allowlist below.
+-- Lock impact: ADD COLUMN and CHECK constraints take short metadata locks; historical backfill performs bounded scans of operation_log.
+-- Data volume: updates only rows whose action_type is in the stable allowlist or whose attachment is explicitly sensitive.
 -- Compatibility: all new fields are nullable; old application versions continue to read and write operation_log.
 -- Rollback/Compensation: stop writing risk fields, then use a higher-version migration to drop indexes, constraints and columns.
--- Verification: validate columns/constraints/indexes and compare classified rows with the exact action_type allowlist.
+-- Verification: validate columns/constraints/indexes and compare classified rows with stable action types and attachment sensitivity.
 
 ALTER TABLE operation_log
     ADD COLUMN IF NOT EXISTS risk_level varchar(16),
@@ -55,7 +55,7 @@ SET risk_level = CASE
         WHEN action_type IN (
             'member_grant_create', 'member_grant_update', 'member_grant_revoke', 'member_status_update',
             'operation_log_export', 'person_export', 'relationship_export', 'genealogy_book_export', 'attachment_export',
-            'source_attachment_download', 'source_attachment_delete', 'authorization_denied', 'permission_denied'
+            'source_attachment_delete', 'authorization_denied', 'permission_denied'
         ) THEN 'high'
         ELSE 'medium'
     END,
@@ -64,8 +64,6 @@ SET risk_level = CASE
             THEN 'permission_change'
         WHEN action_type IN ('operation_log_export', 'person_export', 'relationship_export', 'genealogy_book_export', 'attachment_export')
             THEN 'bulk_export'
-        WHEN action_type IN ('source_attachment_preview', 'source_attachment_download')
-            THEN 'sensitive_access'
         WHEN action_type IN ('person_delete', 'relationship_delete', 'source_attachment_delete')
             THEN 'formal_data_change'
         WHEN action_type = 'review_reject'
@@ -81,8 +79,66 @@ WHERE risk_event_type IS NULL
   AND action_type IN (
       'member_grant_create', 'member_grant_update', 'member_grant_revoke', 'member_status_update',
       'operation_log_export', 'person_export', 'relationship_export', 'genealogy_book_export', 'attachment_export',
-      'source_attachment_preview', 'source_attachment_download', 'source_attachment_delete',
-      'person_delete', 'relationship_delete', 'review_reject', 'authorization_denied', 'permission_denied'
+      'source_attachment_delete', 'person_delete', 'relationship_delete', 'review_reject',
+      'authorization_denied', 'permission_denied'
+  );
+
+UPDATE operation_log log
+SET risk_level = CASE
+        WHEN attachment.sensitive_level = 'highly_sensitive'
+             OR log.action_type = 'source_attachment_download' THEN 'high'
+        ELSE 'medium'
+    END,
+    risk_event_type = 'sensitive_access',
+    disposition_status = 'resolved'
+FROM source_attachment attachment
+WHERE log.risk_event_type IS NULL
+  AND log.action_type IN ('source_attachment_preview', 'source_attachment_download')
+  AND log.target_type = 'source_attachment'
+  AND log.target_id = attachment.id
+  AND coalesce(attachment.sensitive_level, 'normal') <> 'normal';
+
+UPDATE operation_log log
+SET branch_id = person.branch_id
+FROM person
+WHERE log.branch_id IS NULL
+  AND person.clan_id = log.clan_id
+  AND person.branch_id IS NOT NULL
+  AND (
+      (log.target_type = 'person' AND log.target_id = person.id)
+      OR (log.business_target_type = 'person' AND log.business_target_id = person.id)
+  );
+
+UPDATE operation_log log
+SET branch_id = relationship.successor_branch_id
+FROM relationship
+WHERE log.branch_id IS NULL
+  AND relationship.clan_id = log.clan_id
+  AND relationship.successor_branch_id IS NOT NULL
+  AND (
+      (log.target_type = 'relationship' AND log.target_id = relationship.id)
+      OR (log.business_target_type = 'relationship' AND log.business_target_id = relationship.id)
+  );
+
+UPDATE operation_log log
+SET branch_id = review_task.branch_id
+FROM review_task
+WHERE log.branch_id IS NULL
+  AND review_task.clan_id = log.clan_id
+  AND review_task.branch_id IS NOT NULL
+  AND (
+      (log.target_type = 'review_task' AND log.target_id = review_task.id)
+      OR log.review_task_id = review_task.id
+  );
+
+UPDATE operation_log log
+SET branch_id = member_role.scope_id
+FROM member_role
+WHERE log.branch_id IS NULL
+  AND member_role.scope_type IN ('branch', 'branch_subtree')
+  AND (
+      (log.target_type = 'member_role' AND log.target_id = member_role.id)
+      OR (log.business_target_type = 'member_role' AND log.business_target_id = member_role.id)
   );
 
 CREATE INDEX IF NOT EXISTS idx_operation_log__risk_recent
