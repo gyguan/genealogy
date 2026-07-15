@@ -116,7 +116,8 @@ public class CultureQualityQueryRepository {
                 config.displayExpression(), PENDING_REVIEW, ACTIVE_SOURCE, complete,
                 config.tableName(), visibleWhere(), PENDING_REVIEW, ACTIVE_SOURCE, complete
         );
-        MapSqlParameterSource parameters = parameters(config, scope).addValue("limit", Math.max(1, Math.min(limit, 30)), Types.INTEGER);
+        MapSqlParameterSource parameters = parameters(config, scope)
+                .addValue("limit", Math.max(1, Math.min(limit, 30)), Types.INTEGER);
         return jdbcTemplate.query(sql, parameters, (resultSet, rowNumber) -> {
             List<String> codes = new ArrayList<>();
             if (resultSet.getBoolean("pending_review")) codes.add("PENDING_REVIEW");
@@ -143,12 +144,13 @@ public class CultureQualityQueryRepository {
                   and t.deleted_at is null
                   and (:fullClanAccess = true or t.branch_id is null or t.branch_id in (:visibleBranchIds))
                   and (
-                        :sensitiveAccess = true
-                        or (
+                        (
                             lower(coalesce(t.privacy_level, 'clan_only')) in ('public', 'clan_only', 'branch_only')
                             and lower(coalesce(t.sensitive_level, 'normal')) = 'normal'
                         )
                         or t.created_by = :actorId
+                        or :sensitiveFullClanAccess = true
+                        or (t.branch_id is not null and t.branch_id in (:sensitiveBranchIds))
                   )
                 """;
     }
@@ -159,17 +161,19 @@ public class CultureQualityQueryRepository {
                 .addValue("actorId", scope.actorId(), Types.BIGINT)
                 .addValue("targetType", config.targetType(), Types.VARCHAR)
                 .addValue("fullClanAccess", scope.fullClanAccess(), Types.BOOLEAN)
-                .addValue("visibleBranchIds", scope.visibleBranchIds() == null || scope.visibleBranchIds().isEmpty()
-                        ? List.of(-1L) : scope.visibleBranchIds())
-                .addValue("sensitiveAccess", scope.sensitiveAccess(), Types.BOOLEAN)
+                .addValue("visibleBranchIds", safeIds(scope.visibleBranchIds()))
+                .addValue("sensitiveFullClanAccess", scope.sensitiveFullClanAccess(), Types.BOOLEAN)
+                .addValue("sensitiveBranchIds", safeIds(scope.sensitiveBranchIds()))
                 .addValue("staleBefore", scope.staleBefore(), Types.TIMESTAMP);
+    }
+
+    private List<Long> safeIds(List<Long> ids) {
+        return ids == null || ids.isEmpty() ? List.of(-1L) : ids;
     }
 
     public enum TargetConfig {
         CULTURE_ITEM(
-                "culture_item",
-                "文化资料",
-                "culture_item",
+                "culture_item", "文化资料", "culture_item",
                 "coalesce(nullif(btrim(t.title), ''), '未命名文化资料')",
                 """
                 length(btrim(coalesce(t.title, ''))) > 0
@@ -179,9 +183,7 @@ public class CultureQualityQueryRepository {
                 """
         ),
         MIGRATION_EVENT(
-                "migration_event",
-                "迁徙事件",
-                "migration_event",
+                "migration_event", "迁徙事件", "migration_event",
                 "concat(coalesce(nullif(btrim(t.from_location), ''), '待维护迁出地'), ' → ', coalesce(nullif(btrim(t.to_location), ''), '待维护迁入地'))",
                 """
                 t.branch_id is not null
@@ -193,9 +195,7 @@ public class CultureQualityQueryRepository {
                 """
         ),
         CULTURE_SITE(
-                "culture_site",
-                "文化场所",
-                "culture_site",
+                "culture_site", "文化场所", "culture_site",
                 "coalesce(nullif(btrim(t.site_name), ''), '未命名文化场所')",
                 """
                 length(btrim(coalesce(t.site_name, ''))) > 0
@@ -239,7 +239,8 @@ public class CultureQualityQueryRepository {
             Long actorId,
             boolean fullClanAccess,
             List<Long> visibleBranchIds,
-            boolean sensitiveAccess,
+            boolean sensitiveFullClanAccess,
+            List<Long> sensitiveBranchIds,
             LocalDateTime staleBefore
     ) {
     }
