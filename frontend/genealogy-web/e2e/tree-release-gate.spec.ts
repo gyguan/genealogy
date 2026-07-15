@@ -19,7 +19,9 @@ async function openTree(page: Page, username = 'tree_editor') {
 
 async function chooseComboboxOption(page: Page, comboboxIndex: number, optionName: string | RegExp) {
   await page.getByRole('combobox').nth(comboboxIndex).click();
-  await page.getByRole('option', { name: optionName }).click();
+  const dropdown = page.locator('.ant-select-dropdown:visible');
+  await expect(dropdown).toBeVisible();
+  await dropdown.locator('.ant-select-item-option').filter({ hasText: optionName }).first().click();
 }
 
 async function searchAndSelect(page: Page, keyword: string) {
