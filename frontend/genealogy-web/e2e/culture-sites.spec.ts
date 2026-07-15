@@ -73,23 +73,23 @@ test('culture site cards, detail, sources, governance and mobile layout use real
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   await expect(page.getByText('湖南省长沙市某村').first()).toBeVisible();
 
-  await page.getByRole('button', { name: '详情' }).last().click();
+  await page.getByRole('button', { name: /详\s*情/ }).last().click();
   const drawer = page.getByRole('dialog', { name: '文化场所详情' });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText('黄公讳德昌')).toBeVisible();
   await expect(drawer.getByText('敦本堂重修碑记')).toBeVisible();
   await expect(drawer.getByText('敦本堂正门.jpg')).toBeVisible();
   await expect(drawer.getByText('文化场所审核已处理')).toBeVisible();
-  await expect(drawer.getByRole('button', { name: '打开完整追踪' })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: /打\s*开\s*完\s*整\s*追\s*踪/ })).toBeVisible();
 
-  await drawer.getByRole('button', { name: '编辑' }).click();
+  await drawer.getByRole('button', { name: /编\s*辑/ }).click();
   const dialog = page.getByRole('dialog', { name: '提交正式场所变更申请' });
   await expect(dialog.getByText('正式场所不会被直接覆盖')).toBeVisible();
   await expect(dialog.getByLabel('场所名称')).toHaveValue('敦本堂宗祠');
-  await dialog.getByRole('button', { name: '取消' }).click();
+  await dialog.getByRole('button', { name: /取\s*消/ }).click();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('button', { name: '新增场所' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /新\s*增\s*场\s*所/ })).toBeVisible();
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
 });
 
