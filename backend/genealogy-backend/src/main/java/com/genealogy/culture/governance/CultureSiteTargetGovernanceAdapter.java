@@ -15,28 +15,15 @@ public class CultureSiteTargetGovernanceAdapter implements CultureTargetGovernan
     private final CultureSiteRepository repository;
     private final CultureSitePermissionPolicyService permissionPolicy;
 
-    public CultureSiteTargetGovernanceAdapter(
-            CultureSiteRepository repository,
-            CultureSitePermissionPolicyService permissionPolicy
-    ) {
+    public CultureSiteTargetGovernanceAdapter(CultureSiteRepository repository, CultureSitePermissionPolicyService permissionPolicy) {
         this.repository = repository;
         this.permissionPolicy = permissionPolicy;
     }
 
-    @Override
-    public String targetType() {
-        return TARGET_TYPE;
-    }
-
-    @Override
-    public String sensitiveViewPermission() {
-        return CultureSitePermissionPolicyService.VIEW_SENSITIVE;
-    }
-
-    @Override
-    public String restrictedLogSummary() {
-        return "受限文化场所操作";
-    }
+    @Override public String targetType() { return TARGET_TYPE; }
+    @Override public String viewPermission() { return CultureSitePermissionPolicyService.VIEW; }
+    @Override public String sensitiveViewPermission() { return CultureSitePermissionPolicyService.VIEW_SENSITIVE; }
+    @Override public String restrictedLogSummary() { return "受限文化场所操作"; }
 
     @Override
     @Transactional(readOnly = true)
@@ -62,19 +49,9 @@ public class CultureSiteTargetGovernanceAdapter implements CultureTargetGovernan
     }
 
     private CultureTargetContext context(CultureSiteEntity entity) {
-        return new CultureTargetContext(
-                entity.getClanId(),
-                entity.getBranchId(),
-                TARGET_TYPE,
-                entity.getId(),
-                display(entity.getSiteName(), "文化场所"),
-                entity.getDataStatus(),
-                entity.getPrivacyLevel(),
-                entity.getSensitiveLevel(),
-                entity.getCreatedBy(),
-                sensitiveViewPermission(),
-                restrictedLogSummary()
-        );
+        return new CultureTargetContext(entity.getClanId(), entity.getBranchId(), TARGET_TYPE, entity.getId(),
+                display(entity.getSiteName(), "文化场所"), entity.getDataStatus(), entity.getPrivacyLevel(),
+                entity.getSensitiveLevel(), entity.getCreatedBy(), sensitiveViewPermission(), restrictedLogSummary());
     }
 
     private String display(String value, String fallback) {
