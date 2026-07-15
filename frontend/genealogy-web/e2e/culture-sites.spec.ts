@@ -4,7 +4,7 @@ const site = {
   id: 61,
   scope: { clanId: 1, clanName: '黄氏宗族', branchId: 2, branchName: '长沙支' },
   siteType: 'ancestral_hall',
-  siteName: '敦本堂宗祠',
+  name: '敦本堂宗祠',
   addressText: '湖南省长沙市某村',
   foundedPeriod: '清乾隆年间',
   currentStatus: '存续并完成修缮',
@@ -55,7 +55,7 @@ async function mockSiteApi(page: Page) {
       review: { reviewTaskId: 101, status: 'approved', submitterName: '场所管理员', reviewerName: '宗族审核员', submittedAt: '2026-07-12T09:00:00', reviewedAt: '2026-07-13T09:00:00' }
     }));
     if (path === '/tracking/objects/culture_site/61/trace') return route.fulfill(ok({
-      objectSummary: { objectType: 'culture_site', objectId: 61, displayName: site.siteName, branchName: '长沙支', status: 'official', changedAt: site.updatedAt },
+      objectSummary: { objectType: 'culture_site', objectId: 61, displayName: site.name, branchName: '长沙支', status: 'official', changedAt: site.updatedAt },
       currentStatus: 'official',
       timeline: [{ eventKey: 'review-101', eventType: 'review_decided', sourceType: 'review_task', sourceId: 101, title: '文化场所审核已处理', summary: '审核通过', occurredAt: '2026-07-13T09:00:00', actorDisplayName: '宗族审核员', resultStatus: 'approved' }],
       changeChains: [], revisions: [], reviewTasks: [], sourceBindings: [], operationLogs: [], allowedActions: ['view'],
