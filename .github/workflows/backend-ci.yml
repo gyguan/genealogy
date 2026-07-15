@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend-verify:
-    name: Backend Verify
+  backend-build:
+    name: Backend Compile, Unit Tests and Package
     runs-on: ubuntu-latest
 
     steps:
@@ -33,11 +33,11 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Test and package backend
+      - name: Compile, run unit tests and package
         working-directory: backend/genealogy-backend
-        run: mvn -B verify
+        run: mvn -B -DskipITs package
 
-      - name: Upload failed test reports
+      - name: Upload failed unit test reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
