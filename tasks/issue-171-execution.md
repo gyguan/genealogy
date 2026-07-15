@@ -2,8 +2,17 @@
 
 - Issue：https://github.com/gyguan/genealogy/issues/171
 - 工作分支：`agent/issue-171-culture-sites`
-- Draft PR：待创建
+- Draft PR：#223
 - 目标：基于 `culture_site` 建设有来源、可审核、有权限、可追踪的祠堂、祖居、墓园和纪念设施管理。
+
+## 交付成本判断
+
+- Issue 类型：重型治理闭环，包含 Contract First、Flyway、权限/隐私、审核 apply、来源附件、Tracking 和前端页面。
+- 流程强度：重型；保留独立分支、Draft PR、执行看板、正式审核闭环和数据库治理。
+- 验证强度：复用现有 Backend、Frontend、API Contract、Database Migration、Culture Governance 和 Culture Library UI 自动门禁；不新增临时 workflow。
+- 是否继续拆分：否。#171 已是 EPIC #165 拆分后的独立 P1-06；领域基础由 #166、通用治理由 #168、页面基线由 #169、Tracking 模式由 #170 提供，本次未引入异步状态机、重复附件存储或地图平台。
+- 活跃耗时：当前未形成自动可验证累计值，不以会话持续时间补造；仅记录实现、聚焦修复、diff/Review 和收尾动作。
+- 外部等待：GitHub Actions 排队和运行独立记录，不计入活跃实施耗时。
 
 ## 实施范围
 
@@ -23,13 +32,13 @@
 
 | 序号 | 任务 | 状态 | 结果 |
 |---|---|---|---|
-| 1 | 刷新 Issue、主干、`culture_site` 模型、契约和既有治理模式 | ✅ 已完成 | #170 已合入；确认基础实体/仓储存在，尚无运行时管理闭环 |
-| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | 🔄 进行中 | 分支与看板已建立 |
-| 3 | 完善数据库、DTO、领域校验和分页查询 | ⏳ 待处理 |  |
-| 4 | 接入来源、审核、权限隐私、日志、Tracking 和首页精选审核 | ⏳ 待处理 |  |
-| 5 | 实现场所卡片/列表、详情和编辑体验 | ⏳ 待处理 |  |
-| 6 | 补充后端、契约、前端和浏览器测试 | ⏳ 待处理 |  |
-| 7 | 五轴 Review、修复问题并 squash 合入 main | ⏳ 待处理 |  |
+| 1 | 刷新 Issue、主干、`culture_site` 模型、契约和既有治理模式 | ✅ 已完成 | #170 已合入；确认基础实体/仓储和预留 OpenAPI |
+| 2 | 建立分支、执行看板、Draft PR 和 Issue 回写 | ✅ 已完成 | 分支 `agent/issue-171-culture-sites`，Draft PR #223 |
+| 3 | 完善数据库、DTO、领域校验和分页查询 | ✅ 已完成 | 关联人物、坐标约束、权限种子、数据库分页及稳定错误码已实现 |
+| 4 | 接入来源、审核、权限隐私、日志、Tracking 和首页精选审核 | ✅ 已完成 | 复用通用 revision/review/source/attachment/operation-log/trace；正式更新、删除、归档和精选走审核 |
+| 5 | 实现场所卡片/列表、详情和编辑体验 | ✅ 已完成 | 卡片+分页表格、详情抽屉、来源影像、正式变更提示和移动端已实现 |
+| 6 | 补充后端、契约、前端和浏览器测试 | ✅ 已完成 | 领域测试、Tracking 深链、文化资料回归、场所主路径和 403 最小披露已纳入自动门禁 |
+| 7 | 五轴 Review、修复问题并 squash 合入 main | 🔄 进行中 | 等待最新 Head 自动门禁完成后收尾 |
 
 ## 关键约束
 
