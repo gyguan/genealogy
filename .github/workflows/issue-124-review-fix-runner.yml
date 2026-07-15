@@ -6,22 +6,14 @@ on:
       - main
     paths:
       - .github/workflows/issue-124-review-fix-runner.yml
-      - tools/issue124_review_fix.py
-      - tools/issue124_merge_resolution.py
 
 permissions:
   contents: write
 
 jobs:
-  patch-test-push:
+  rebuild-test-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout runner assets
-        uses: actions/checkout@v4
-        with:
-          ref: agent/issue-124-review-fix-runner-v2
-          path: runner
-
       - name: Checkout target feature branch
         uses: actions/checkout@v4
         with:
@@ -29,7 +21,7 @@ jobs:
           fetch-depth: 0
           path: target
 
-      - name: Sync latest main and resolve additive repository conflicts
+      - name: Rebuild as one clean commit on latest main
         working-directory: target
         shell: bash
         run: |
@@ -37,42 +29,18 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git fetch origin main
-
-          set +e
-          git merge --no-commit --no-edit origin/main
-          merge_status=$?
-          set -e
-
-          if [ "$merge_status" -ne 0 ]; then
-            mapfile -t conflicts < <(git diff --name-only --diff-filter=U | sort)
-            if [ "${#conflicts[@]}" -eq 0 ]; then
-              echo "Merge failed without unresolved paths"
-              exit 1
-            fi
-            for conflict in "${conflicts[@]}"; do
-              case "$conflict" in
-                backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java|backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java)
-                  git checkout --theirs -- "$conflict"
-                  ;;
-                *)
-                  printf 'Unexpected conflict: %s\n' "$conflict"
-                  exit 1
-                  ;;
-              esac
-            done
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "Feature branch does not contain latest main; refusing lossy rebuild"
+            exit 1
           fi
-
-          python ../runner/tools/issue124_merge_resolution.py
-          git add \
-            backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java \
-            backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java
-          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
-            git commit --no-edit
+          git diff --binary origin/main HEAD > ../issue124-final.patch
+          test -s ../issue124-final.patch
+          git checkout -B issue-124-clean origin/main
+          git apply --index ../issue124-final.patch
+          if git diff --cached --name-only | grep -q '^\.github/workflows/'; then
+            echo "Final feature diff unexpectedly contains workflow changes"
+            exit 1
           fi
-
-      - name: Apply review fix
-        working-directory: target
-        run: python ../runner/tools/issue124_review_fix.py
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -86,20 +54,15 @@ jobs:
         working-directory: target/backend/genealogy-backend
         run: >-
           mvn -B
-          -Dtest=SourceBindingReviewApplicationServiceTest,CultureAwareSourceBindingReviewApplicationServiceTest,TrackingTraceApplicationServiceTest
+          -Dtest=SourceBindingReviewApplicationServiceTest,CultureAwareSourceBindingReviewApplicationServiceTest,TrackingTraceApplicationServiceTest,ApprovalTraceLifecycleTest,RevisionTraceIdTest
           test
 
       - name: Package backend
         working-directory: target/backend/genealogy-backend
         run: mvn -B -DskipTests package
 
-      - name: Commit and push formal fix
+      - name: Commit and force-push clean feature history
         working-directory: target
         run: |
-          git add \
-            backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceBindingReviewApplicationService.java \
-            backend/genealogy-backend/src/main/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationService.java \
-            backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceBindingReviewApplicationServiceTest.java \
-            backend/genealogy-backend/src/test/java/com/genealogy/culture/application/CultureAwareSourceBindingReviewApplicationServiceTest.java
-          git commit -m "fix: trace source-binding creates to visible targets"
-          git push origin HEAD:agent/issue-124-stable-trace-id
+          git commit -m "feat: add stable trace ids across revision lifecycle"
+          git push --force origin HEAD:agent/issue-124-stable-trace-id
