@@ -616,7 +616,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
             />
           </Field>
           <Field label="搜索人物">
-  <Space.Compact className="lineage-person-search-compact">
+  <div className="lineage-person-search-compact">
     <Input
       allowClear
       className="lineage-person-search-input"
@@ -634,7 +634,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       disabled={!workspace.clanId || !selectedBranchId}
       onClick={() => void handlePersonSearch()}
     >搜索</Button>
-  </Space.Compact>
+  </div>
 </Field>
         </div>
 

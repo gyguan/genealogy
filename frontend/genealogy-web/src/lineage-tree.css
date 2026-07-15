@@ -4,7 +4,7 @@
 .lineage-search-grid--workbench { grid-template-columns: 160px 190px minmax(260px, 420px); justify-content: start; }
 .lineage-search-grid .field { margin-bottom: 0; }
 .lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }
-.lineage-person-search-compact { width: 100%; }
+.lineage-person-search-compact { display: flex; width: 100%; }
 .lineage-person-search-input { flex: 1 1 auto; width: auto; min-width: 0; height: 36px; padding: 0 12px !important; }
 .lineage-person-search-input .ant-input { min-width: 0; height: 34px; padding: 0; line-height: 34px; }
 .lineage-person-search-input .ant-input::placeholder { line-height: 34px; }
