@@ -12,6 +12,7 @@ import com.genealogy.culture.dto.CultureItemDetailResponse;
 import com.genealogy.culture.dto.CultureItemPageResponse;
 import com.genealogy.culture.dto.CultureItemSearchCriteria;
 import com.genealogy.culture.dto.CultureItemUpdateRequest;
+import com.genealogy.culture.dto.CultureOverviewResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -41,6 +42,16 @@ public class CultureItemController {
     ) {
         this.cultureItemApplicationService = cultureItemApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
+    }
+
+
+    @GetMapping("/clans/{clanId}/culture-overview")
+    public ApiResponse<CultureOverviewResponse> overview(
+            @Positive @PathVariable Long clanId,
+            HttpServletRequest servletRequest
+    ) {
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        return ApiResponse.success(cultureItemApplicationService.getOverview(clanId, context.userId()));
     }
 
     @GetMapping("/clans/{clanId}/culture-items")

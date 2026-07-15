@@ -12,6 +12,7 @@ import com.genealogy.culture.dto.CultureItemCreateRequest;
 import com.genealogy.culture.dto.CultureItemPageResponse;
 import com.genealogy.culture.dto.CultureItemSearchCriteria;
 import com.genealogy.culture.dto.CultureItemUpdateRequest;
+import com.genealogy.culture.dto.CultureOverviewResponse;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -154,6 +155,39 @@ class CultureItemApplicationServiceTest {
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(cultureItemRepository).findAll(any(Specification.class), pageable.capture());
         assertEquals(100, pageable.getValue().getPageSize());
+    }
+
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void returnsCultureOverviewForConfiguredContractEndpoint() {
+        ClanEntity clan = clan(1L);
+        CultureItemEntity featured = cultureItem(10L, 1L, null, "official");
+        featured.setFeaturedOnHome(true);
+        when(clanRepository.findById(1L)).thenReturn(Optional.of(clan));
+        when(authorizationApplicationService.isCrossClanAdmin(7L)).thenReturn(false);
+        when(rbacAuthorizationApplicationService.permissionDataScope(eq(7L), eq(1L), any()))
+                .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.full());
+        when(cultureItemRepository.count(any(Specification.class))).thenReturn(3L, 1L, 2L);
+        when(cultureItemRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(featured)));
+        when(sourceBindingRepository.countActiveByTargets(eq(1L), eq("culture_item"), any(), eq("archived")))
+                .thenReturn(List.of());
+        when(sourceAttachmentRepository.countActiveByTargets(eq(1L), eq("culture_item"), any(), eq("archived")))
+                .thenReturn(List.of());
+        when(revisionRepository.countByTargets(eq(1L), eq("culture_item"), any())).thenReturn(List.of());
+        when(branchRepository.findAllById(any())).thenReturn(List.of());
+        when(appUserRepository.findAllById(any())).thenReturn(List.of());
+
+        CultureOverviewResponse response = service.getOverview(1L, 7L);
+
+        assertEquals(1L, response.clanId());
+        assertEquals("张氏宗族", response.clanName());
+        assertEquals(3L, response.statistics().officialItemCount());
+        assertEquals(1L, response.statistics().pendingReviewCount());
+        assertEquals(2D / 3D, response.statistics().sourceCoverageRate());
+        assertEquals(1, response.featuredItems().size());
+        assertEquals("敦本堂", response.featuredItems().get(0).title());
     }
 
     @Test

@@ -19,6 +19,8 @@ import com.genealogy.culture.dto.CultureItemPageResponse;
 import com.genealogy.culture.dto.CultureItemSearchCriteria;
 import com.genealogy.culture.dto.CultureItemSummaryResponse;
 import com.genealogy.culture.dto.CultureItemUpdateRequest;
+import com.genealogy.culture.dto.CultureOverviewResponse;
+import com.genealogy.culture.dto.CultureOverviewStatisticsResponse;
 import com.genealogy.culture.dto.CulturePageMetadata;
 import com.genealogy.culture.dto.CultureReviewSummaryResponse;
 import com.genealogy.culture.dto.CultureSourceSummaryResponse;
@@ -194,6 +196,60 @@ public class CultureItemApplicationService {
         return new CultureItemPageResponse(
                 items,
                 new CulturePageMetadata(normalizedPageNo, normalizedPageSize, page.getTotalElements(), page.getTotalPages())
+        );
+    }
+
+
+    @Transactional(readOnly = true)
+    public CultureOverviewResponse getOverview(Long clanId, Long actorId) {
+        ClanEntity clan = requireClan(clanId);
+        authorizationApplicationService.requireClanMember(clanId, actorId);
+        AccessScope readScope = requireReadableScope(clanId, actorId);
+        AccessScope updateScope = permissionScope(clanId, actorId, UPDATE_PERMISSION);
+        AccessScope deleteScope = permissionScope(clanId, actorId, DELETE_PERMISSION);
+
+        CultureItemSearchCriteria officialCriteria = new CultureItemSearchCriteria(
+                null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, null, null, "updatedAt,desc");
+        long officialItemCount = cultureItemRepository.count(
+                buildSearchSpecification(clanId, actorId, officialCriteria, readScope, updateScope));
+
+        CultureItemSearchCriteria pendingCriteria = new CultureItemSearchCriteria(
+                null, null, null, CultureItemDomainService.STATUS_PENDING_REVIEW, null, null, null, "updatedAt,desc");
+        long pendingReviewCount = cultureItemRepository.count(
+                buildSearchSpecification(clanId, actorId, pendingCriteria, readScope, updateScope));
+
+        CultureItemSearchCriteria officialWithSourceCriteria = new CultureItemSearchCriteria(
+                null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, true, null, "updatedAt,desc");
+        long officialWithSourceCount = cultureItemRepository.count(
+                buildSearchSpecification(clanId, actorId, officialWithSourceCriteria, readScope, updateScope));
+        double sourceCoverageRate = officialItemCount == 0 ? 0D : (double) officialWithSourceCount / officialItemCount;
+
+        CultureItemSearchCriteria featuredCriteria = new CultureItemSearchCriteria(
+                null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, null, true, "sortOrder,asc");
+        PageRequest featuredPage = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "sortOrder").and(Sort.by(Sort.Direction.DESC, "updatedAt")));
+        List<CultureItemEntity> featuredRows = cultureItemRepository.findAll(
+                buildSearchSpecification(clanId, actorId, featuredCriteria, readScope, updateScope), featuredPage).getContent();
+        AggregationContext aggregation = aggregatePage(clan, featuredRows, actorId, updateScope, deleteScope);
+        List<CultureItemSummaryResponse> featuredItems = featuredRows.stream()
+                .map(entity -> toSummary(entity, clan, aggregation, updateScope, deleteScope))
+                .toList();
+
+        List<String> missingHints = new ArrayList<>();
+        if (featuredItems.isEmpty()) {
+            missingHints.add("暂无可展示的首页精选文化资料，请维护并审核正式文化资料后设为精选。");
+        }
+        if (officialItemCount > 0 && officialWithSourceCount < officialItemCount) {
+            missingHints.add("部分正式文化资料尚未绑定来源证据。");
+        }
+
+        return new CultureOverviewResponse(
+                clan.getId(),
+                clan.getClanName(),
+                new CultureOverviewStatisticsResponse(officialItemCount, pendingReviewCount, sourceCoverageRate),
+                featuredItems,
+                List.of(),
+                List.of(),
+                missingHints
         );
     }
 
