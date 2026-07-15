@@ -41,7 +41,9 @@ function publishCultureItemRefresh(message?: string) {
 
 export function subscribeCultureItemRefresh(listener: (message?: string) => void) {
   cultureItemRefreshListeners.add(listener);
-  return () => cultureItemRefreshListeners.delete(listener);
+  return () => {
+    cultureItemRefreshListeners.delete(listener);
+  };
 }
 
 export function listCultureClans() {
