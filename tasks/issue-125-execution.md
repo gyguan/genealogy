@@ -4,7 +4,7 @@
 - 工作分支：`agent/issue-125-risk-audit`
 - 当前 PR：[#220](https://github.com/gyguan/genealogy/pull/220)
 - 目标：基于后端真实审计数据建设高风险事件模型、分页筛选、统计与追踪跳转，并补齐批量导出、权限变更和敏感访问的可验证日志。
-- 最后更新时间：2026-07-15 10:40（北京时间）
+- 最后更新时间：2026-07-15 10:58（北京时间）
 
 ## DEFINE：范围与边界
 
@@ -42,7 +42,7 @@
 | 5 | 对关键业务动作补齐显式风险审计记录 | ✅ 已完成 | 未单独精确固化 | 导出显式记录；权限变更按稳定动作码分类；敏感附件访问按真实敏感级别显式记录 |
 | 6 | 接入风险审计前端视图、URL 筛选恢复和详情跳转 | ✅ 已完成 | 未单独精确固化 | 新增风险页签、统计卡片、筛选、分页、日志详情和对象追踪入口 |
 | 7 | 补充后端、契约、前端模型与权限回归测试 | ✅ 已完成 | 未单独精确固化 | 覆盖无权统计泄露、字段最小化、支派拒绝、分类、敏感访问和 URL 恢复 |
-| 8 | 执行完整验证、五轴 Review、处理反馈并合入 main | 🔄 进行中 | 未单独精确固化 | 最终四项门禁已通过，准备转 Ready 并执行最终 Review |
+| 8 | 完成验证、五轴 Review 并达到 `main` 合入门禁 | ✅ 已完成 | 未单独精确固化 | 干净 PR diff、分支 CI 与最新主干合并态六项门禁均已核对，无阻塞性 Review |
 
 > 除启动阶段已及时固化的耗时外，后续任务未形成可审计的逐项计时记录，不事后补造。
 
@@ -55,27 +55,36 @@
 
 ## 验证结果
 
-### 后端
+### 干净 PR Head
+
+- ✅ PR Files changed 仅包含 Issue #125 的 30 个文件。
+- ✅ Backend CI #2454。
+- ✅ Frontend CI #342。
+- ✅ API Contract #1143，生成文件无漂移。
+- ✅ Database Migration Governance #473。
+
+### 最新主干合并态
+
+为验证与当前 `main` `646f398ba8476f59ebafc7c9e2c1e7593b2d1c6c` 的兼容性，使用合并态提交 `59bb94e2fdf13346e4d45e232623020e89206d19` 完成验证：
+
+- ✅ Backend CI #2443。
+- ✅ Frontend CI #340。
+- ✅ API Contract #1133。
+- ✅ Database Migration Governance #471。
+- ✅ Culture Library UI CI #79。
+- ✅ Culture Governance CI #120：全量后端回归、PostgreSQL 文化集成测试、PostgreSQL 启动与全量 Flyway 验证通过。
+
+验证后分支恢复到干净 head，避免主干其他 Issue 文件进入 PR diff；GitHub 当前 PR base 仍为同一 `main` commit。
+
+### 聚焦验证
 
 - ✅ `OperationRiskPolicyTest`：稳定动作分类、权限变更、显式敏感访问、非法值拒绝。
 - ✅ `OperationRiskAuditApplicationServiceTest`：支派越权在查询前拒绝、枚举校验、分页和技术字段最小化。
 - ✅ `OpLogControllerTest`：独立风险权限、鉴权先于 count、跨宗族拒绝和导出权限。
 - ✅ `OperationLogExportApplicationServiceTest`：批量导出产生显式高风险事件且不复制敏感关键词。
 - ✅ `SourceAttachmentApplicationServiceTest`：敏感附件访问产生风险日志，普通附件访问仅保留普通审计。
-- ✅ Backend CI #2437。
-
-### 数据库
-
-- ✅ Database Migration Governance #467。
-- ✅ 主干新增更高版本迁移后，本迁移已重编号为 `V20260715235959_01` 并通过递增校验。
-- ✅ 新增 PostgreSQL 条件集成测试，覆盖字段、索引和人物风险按支派查询 SQL。
-- ⚠️ 标准 Backend CI 未提供 PostgreSQL 服务且未设置 `RUN_POSTGRES_INTEGRATION_TESTS=true`，因此该条件测试本轮仅完成编译，未在 CI 中实际执行；不虚构实库通过结论。
-
-### API 与前端
-
-- ✅ API Contract #1130，生成文件无漂移。
-- ✅ `trackingCenterModel.test.mjs` 覆盖风险筛选和选中日志 URL 往返恢复。
-- ✅ Frontend CI #336，包含模型测试、API check、TypeScript typecheck 和生产构建。
+- ✅ `trackingCenterModel.test.mjs`：风险筛选、页码和选中日志 URL 往返恢复。
+- ⚠️ `OperationRiskAuditPostgresIntegrationTest` 已提交并在标准 CI 完成编译，但现有工作流未单独执行该条件测试；不虚构该测试用例已运行通过。合并态 CI 已证明本迁移可在 PostgreSQL 完成全量 Flyway 和应用启动。
 
 ## 五轴 Review
 
@@ -87,27 +96,25 @@
 
 ## 已知风险与后续
 
-- PostgreSQL 条件集成测试已提交但未在标准 CI 实际运行；合入后应在具备 PostgreSQL 16 的验证环境执行一次。
+- PostgreSQL 风险查询条件测试尚未由现有工作流实际执行；可在具备 PostgreSQL 16 且设置 `RUN_POSTGRES_INTEGRATION_TESTS=true` 的环境补跑。
 - 历史来源绑定跨多个支派时不强行回填单一 `branch_id`，查询通过结构化绑定关系判定可见范围。
 - 首期处置状态为审计事实字段和筛选维度，不包含自动封禁、自动撤权或通用告警编排。
 
-## 当前恢复检查点
+## 最终合入检查点
 
-- 当前 Issue：#125（open）
+- 当前 Issue：#125（open，PR 合入后由 `Closes #125` 自动关闭）
 - 当前分支：`agent/issue-125-risk-audit`
-- 当前 PR：#220（Draft，准备转 Ready）
-- 最后完成任务：最终 Backend、Frontend、API Contract、Database Governance 门禁全部通过
-- 当前进行中任务：转 Ready、处理最终 Review、满足门禁后 squash merge
-- 当前任务累计耗时：未单独精确固化
-- 最新 Commit：`b4dd5e60b299abb8ff517b2a94d627c72fb5abd4`
-- CI 状态：Backend #2437、Frontend #336、API Contract #1130、Database Governance #467 全部通过
-- 未解决 Review：无
+- 当前 PR：#220（Ready）
+- 完成状态：全部原子任务和验收项已完成，达到合入门禁
+- PR diff：30 个 Issue #125 文件，无主干污染
+- CI 状态：干净 head 四项标准门禁与最新主干合并态六项门禁全部通过
+- Review 状态：已完成五轴自检；当前无评审意见和未解决线程
 - 已知阻塞：无
-- 下一步最小任务：转 Ready 并检查自动 Review
-- 最后更新时间：2026-07-15 10:40（北京时间）
+- 下一步最小动作：Squash Merge PR #220 至 `main`，确认 Issue 自动关闭并回写最终完成摘要
+- 最后更新时间：2026-07-15 10:58（北京时间）
 
 ## 耗时汇总
 
 - 已固化启动阶段活跃耗时：约 6 分钟
 - 后续任务活跃耗时：未逐项精确固化，不事后补造
-- 外部等待：CI 排队与运行，未计入活跃耗时
+- 外部等待：CI 排队、运行及自动 Review 等待，未计入活跃耗时
