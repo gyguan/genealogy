@@ -6,6 +6,8 @@ public interface CultureTargetGovernanceAdapter {
 
     String targetType();
 
+    String viewPermission();
+
     String sensitiveViewPermission();
 
     String restrictedLogSummary();
