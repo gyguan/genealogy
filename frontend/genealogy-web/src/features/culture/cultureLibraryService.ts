@@ -7,6 +7,7 @@ import type {
   CultureItemPage,
   CultureItemUpdateRequest,
   CultureOverviewResponse,
+  CultureQualityResponse,
   CultureSubmitReviewRequest
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
@@ -39,6 +40,10 @@ export function listCultureBranches(clanId: string): Promise<CultureBranchOption
 
 export function getCultureOverview(clanId: string) {
   return apiClient.get<CultureOverviewResponse>(`/clans/${clanId}/culture-overview`);
+}
+
+export function getCultureQuality(clanId: string) {
+  return apiClient.get<CultureQualityResponse>(`/clans/${clanId}/culture-quality`);
 }
 
 export function listCultureItems(clanId: string, search: CultureSearchState) {
