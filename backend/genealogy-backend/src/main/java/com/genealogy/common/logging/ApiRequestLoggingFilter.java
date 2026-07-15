@@ -38,9 +38,9 @@ public class ApiRequestLoggingFilter extends OncePerRequestFilter {
         Throwable failure = null;
         try {
             filterChain.doFilter(request, response);
-        } catch (Throwable throwable) {
-            failure = throwable;
-            throw throwable;
+        } catch (ServletException | IOException | RuntimeException exception) {
+            failure = exception;
+            throw exception;
         } finally {
             long costMs = Math.max(0, (System.nanoTime() - startedAt) / 1_000_000);
             log.info(
