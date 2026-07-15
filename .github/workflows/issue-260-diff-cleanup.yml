@@ -1,0 +1,74 @@
+name: Issue 260 Diff Cleanup
+
+on:
+  push:
+    branches: ["agent/issue-260-culture-multiselect"]
+    paths: [".github/workflows/issue-260-diff-cleanup.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-260-culture-multiselect
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Restore compact contracts and apply targeted parameter changes
+        shell: bash
+        run: |
+          git show origin/main:docs/api/openapi.culture.json > docs/api/openapi.culture.json
+          git show origin/main:docs/api/openapi.culture.zz-runtime.json > docs/api/openapi.culture.zz-runtime.json
+          rm -f frontend/genealogy-web/package-lock.json
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('docs/api/openapi.culture.json')
+          text = path.read_text(encoding='utf-8')
+          old = '''        "summary": "分页搜索宗族文化资料",
+                  "parameters": [
+                    { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+                    { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 100 } },
+                    { "name": "category", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CultureCategory" } },
+                    { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+                    { "name": "dataStatus", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CultureDataStatus" } },
+                    { "name": "privacyLevel", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/CulturePrivacyLevel" } },
+                    { "name": "hasSource", "in": "query", "required": false, "schema": { "type": "boolean" } },
+                    { "name": "featuredOnHome", "in": "query", "required": false, "schema": { "type": "boolean" } },'''
+          new = '''        "summary": "分页搜索宗族文化资料",
+                  "description": "分类、支派、状态、可见范围、来源与精选筛选均支持重复 query 参数；同一维度按 OR，不同维度按 AND。旧单值请求继续兼容。",
+                  "parameters": [
+                    { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+                    { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string", "maxLength": 100 } },
+                    { "name": "category", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CultureCategory" } } },
+                    { "name": "branchId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 100, "items": { "type": "integer", "format": "int64", "minimum": 1 } } },
+                    { "name": "dataStatus", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CultureDataStatus" } } },
+                    { "name": "privacyLevel", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/CulturePrivacyLevel" } } },
+                    { "name": "hasSource", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 2, "items": { "type": "boolean" } } },
+                    { "name": "featuredOnHome", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "maxItems": 2, "items": { "type": "boolean" } } },'''
+          if old not in text:
+              raise SystemExit('canonical parameter block not found')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+      - name: Install without lockfile
+        working-directory: frontend/genealogy-web
+        run: npm install --package-lock=false
+      - name: Run focused culture state tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:culture-shell
+      - name: Verify API contract
+        run: bash scripts/api/check-api-contract.sh
+      - name: Commit clean diff
+        shell: bash
+        run: |
+          rm .github/workflows/issue-260-diff-cleanup.yml
+          rm -f frontend/genealogy-web/package-lock.json
+          git config user.name "openai-agent"
+          git config user.email "openai-agent@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(culture): keep multiselect contract diff focused"
+          git push origin HEAD:agent/issue-260-culture-multiselect
