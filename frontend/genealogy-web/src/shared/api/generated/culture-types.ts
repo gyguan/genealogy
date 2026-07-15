@@ -177,15 +177,13 @@ export type CultureSiteSummaryResponse = {
   id: number;
   scope: CultureScopeResponse;
   siteType: CultureSiteType;
-  siteName: string;
+  name: string;
   addressText?: string | null;
   foundedPeriod?: string | null;
   currentStatus?: string | null;
   summary?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  relatedPersonId?: number | null;
-  relatedPersonName?: string | null;
   confidenceLevel: CultureConfidenceLevel;
   privacyLevel: CulturePrivacyLevel;
   sensitiveLevel: CultureSensitiveLevel;
@@ -200,7 +198,7 @@ export type CultureSiteSummaryResponse = {
   updatedAt: string;
 };
 
-export type CultureSiteDetailResponse = CultureSiteSummaryResponse & { description?: string | null; sources: CultureSourceSummaryResponse[]; attachments: CultureAttachmentSummaryResponse[]; review: CultureReviewSummaryResponse; };
+export type CultureSiteDetailResponse = CultureSiteSummaryResponse & { relatedPersonId?: number | null; relatedPersonName?: string | null; description?: string | null; sources: CultureSourceSummaryResponse[]; attachments: CultureAttachmentSummaryResponse[]; review: CultureReviewSummaryResponse; };
 
 export type CultureSitePage = {
   items: CultureSiteSummaryResponse[];
