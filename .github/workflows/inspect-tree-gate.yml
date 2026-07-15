@@ -1,0 +1,33 @@
+name: Inspect Tree Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/inspect-tree-gate.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read workflow metadata and source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/workflows/313378121" > tree-gate-metadata.json
+          path=$(jq -r '.path' tree-gate-metadata.json)
+          gh api "repos/$GH_REPO/contents/$path?ref=main" --jq '.content' | base64 -d > tree-gate-workflow.yml
+          cat tree-gate-metadata.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tree-gate-workflow-source
+          path: |
+            tree-gate-metadata.json
+            tree-gate-workflow.yml
+          retention-days: 1
