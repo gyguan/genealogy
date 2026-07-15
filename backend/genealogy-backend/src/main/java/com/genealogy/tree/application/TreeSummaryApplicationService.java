@@ -20,9 +20,6 @@ import com.genealogy.tree.dto.TreeReviewSummary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -71,13 +68,6 @@ public class TreeSummaryApplicationService {
             return graph;
         }
 
-        Map<String, TreeNodeResponse> nodesByNodeId = graph.nodes().stream()
-                .collect(Collectors.toMap(
-                        TreeNodeResponse::nodeId,
-                        Function.identity(),
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ));
         Set<Long> personIds = graph.nodes().stream()
                 .filter(node -> "visible".equals(node.visibility()))
                 .map(TreeNodeResponse::personId)
@@ -102,9 +92,12 @@ public class TreeSummaryApplicationService {
                 ? loadReviews(clanId, allTargetIds)
                 : Map.of();
 
+        List<TreeEdgeResponse> normalizedEdges = graph.edges().stream()
+                .map(this::normalizeSemantics)
+                .toList();
         Map<String, Integer> incidentCounts = new HashMap<>();
         Map<String, Integer> duplicateCounts = new HashMap<>();
-        for (TreeEdgeResponse edge : graph.edges()) {
+        for (TreeEdgeResponse edge : normalizedEdges) {
             incidentCounts.merge(edge.fromNodeId(), 1, Integer::sum);
             incidentCounts.merge(edge.toNodeId(), 1, Integer::sum);
             duplicateCounts.merge(semanticEdgeKey(edge), 1, Integer::sum);
@@ -122,10 +115,14 @@ public class TreeSummaryApplicationService {
                 ))
                 .toList();
         Map<String, TreeNodeResponse> enrichedNodeMap = enrichedNodes.stream()
-                .collect(Collectors.toMap(TreeNodeResponse::nodeId, Function.identity()));
+                .collect(Collectors.toMap(
+                        TreeNodeResponse::nodeId,
+                        Function.identity(),
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
 
-        List<TreeEdgeResponse> enrichedEdges = graph.edges().stream()
-                .map(this::normalizeSemantics)
+        List<TreeEdgeResponse> enrichedEdges = normalizedEdges.stream()
                 .map(edge -> enrichEdge(
                         edge,
                         enrichedNodeMap,
@@ -192,6 +189,9 @@ public class TreeSummaryApplicationService {
             boolean canViewAnomalies,
             boolean possibleDuplicate
     ) {
+        if (!"visible".equals(edge.visibility())) {
+            return edge.withSummaries(null, null, null);
+        }
         TargetKey key = edge.relationshipId() == null
                 ? null
                 : new TargetKey(TARGET_RELATIONSHIP, edge.relationshipId());
@@ -382,7 +382,6 @@ public class TreeSummaryApplicationService {
 
     private boolean isOfficialSource(SourceEntity source) {
         return source != null
-                && OFFICIAL_SOURCE_STATUSES.contains(normalize(source.getDataStatus()))
                 && OFFICIAL_SOURCE_STATUSES.contains(normalize(source.getVerificationStatus()));
     }
 
