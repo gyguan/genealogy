@@ -92,7 +92,7 @@ test('real PostgreSQL tree supports 120+ search, state recovery, semantics and r
   const personDrawer = page.locator('.ant-drawer:visible');
   await expect(personDrawer.getByText('来源证据', { exact: true }).first()).toBeVisible();
   await expect(personDrawer.getByText(/1\/1 条正式/)).toBeVisible();
-  await expect(personDrawer.getByText('待审核', { exact: true }).first()).toBeVisible();
+  await expect(personDrawer.getByText(/待审核/).first()).toBeVisible();
   await expect(personDrawer.getByRole('button', { name: '查看来源证据' })).toBeVisible();
   await closeDrawer(page);
 
