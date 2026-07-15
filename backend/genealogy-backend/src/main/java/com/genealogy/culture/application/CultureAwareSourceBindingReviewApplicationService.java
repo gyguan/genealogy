@@ -6,15 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
-import com.genealogy.culture.domain.CulturePermissionPolicyService;
-import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
-import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
-import com.genealogy.culture.entity.CultureItemEntity;
-import com.genealogy.culture.entity.CultureSiteEntity;
-import com.genealogy.culture.entity.MigrationEventEntity;
-import com.genealogy.culture.repository.CultureItemRepository;
-import com.genealogy.culture.repository.CultureSiteRepository;
-import com.genealogy.culture.repository.MigrationEventRepository;
+import com.genealogy.culture.governance.CultureTargetAction;
+import com.genealogy.culture.governance.CultureTargetContext;
+import com.genealogy.culture.governance.CultureTargetGovernanceRegistry;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationTraceContext;
 import com.genealogy.review.entity.ReviewTaskEntity;
@@ -54,13 +48,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
     private final ReviewTaskRepository governedReviewTaskRepository;
     private final ClanRepository governedClanRepository;
     private final OperationLogApplicationService governedOperationLog;
-    private final CultureItemRepository cultureItemRepository;
-    private final CulturePermissionPolicyService culturePermissionPolicy;
-    private final MigrationEventRepository migrationEventRepository;
-    private final MigrationEventPermissionPolicyService migrationPermissionPolicy;
-    private final CultureSiteRepository cultureSiteRepository;
-    private final CultureSitePermissionPolicyService cultureSitePermissionPolicy;
     private final ObjectMapper governedObjectMapper;
+    private final CultureTargetGovernanceRegistry targetRegistry;
 
     public CultureAwareSourceBindingReviewApplicationService(
             SourceRepository sourceRepository,
@@ -71,12 +60,7 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
             OperationLogApplicationService operationLogApplicationService,
             AuthorizationApplicationService authorizationApplicationService,
             ObjectMapper objectMapper,
-            CultureItemRepository cultureItemRepository,
-            CulturePermissionPolicyService culturePermissionPolicy,
-            MigrationEventRepository migrationEventRepository,
-            MigrationEventPermissionPolicyService migrationPermissionPolicy,
-            CultureSiteRepository cultureSiteRepository,
-            CultureSitePermissionPolicyService cultureSitePermissionPolicy
+            CultureTargetGovernanceRegistry targetRegistry
     ) {
         super(
                 sourceRepository,
@@ -94,13 +78,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         this.governedReviewTaskRepository = reviewTaskRepository;
         this.governedClanRepository = clanRepository;
         this.governedOperationLog = operationLogApplicationService;
-        this.cultureItemRepository = cultureItemRepository;
-        this.culturePermissionPolicy = culturePermissionPolicy;
-        this.migrationEventRepository = migrationEventRepository;
-        this.migrationPermissionPolicy = migrationPermissionPolicy;
-        this.cultureSiteRepository = cultureSiteRepository;
-        this.cultureSitePermissionPolicy = cultureSitePermissionPolicy;
         this.governedObjectMapper = objectMapper;
+        this.targetRegistry = targetRegistry;
     }
 
     @Override
@@ -118,12 +97,12 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         if (!governedClanRepository.existsById(clanId)) {
             throw new BusinessException("CLAN_NOT_FOUND", "宗族不存在");
         }
-        CultureTarget target = requireCultureTarget(
+        CultureTargetContext target = requireCultureTarget(
                 clanId,
                 request.binding().targetType(),
                 request.binding().targetId(),
                 actorId,
-                TargetAction.UPDATE
+                CultureTargetAction.UPDATE
         );
         SourceEntity source = requireOfficialSource(clanId, request.binding().sourceId());
         ensureNoActiveBinding(request.binding());
@@ -172,12 +151,12 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         if (before == null || BINDING_ARCHIVED.equals(normalize(before.getBindingStatus()))) {
             throw new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在或已归档");
         }
-        CultureTarget target = requireCultureTarget(
+        CultureTargetContext target = requireCultureTarget(
                 before.getClanId(),
                 request.binding().targetType(),
                 request.binding().targetId(),
                 actorId,
-                TargetAction.UPDATE
+                CultureTargetAction.UPDATE
         );
         SourceEntity source = requireOfficialSource(before.getClanId(), request.binding().sourceId());
         if (!Objects.equals(before.getSourceId(), request.binding().sourceId())
@@ -228,7 +207,7 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
                     binding.getTargetType(),
                     binding.getTargetId(),
                     actorId,
-                    TargetAction.UPDATE
+                    CultureTargetAction.UPDATE
             );
         }
         return super.submitDelete(bindingId, request, actorId, requestId, clientIp);
@@ -243,14 +222,14 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
             String requestId,
             String clientIp
     ) {
-        CultureTarget target = cultureTargetFromRevision(revisionId);
+        RevisionTarget target = cultureTargetFromRevision(revisionId);
         if (target != null) {
             requireCultureTarget(
                     target.clanId(),
                     target.targetType(),
                     target.targetId(),
                     actorId,
-                    TargetAction.REVIEW
+                    CultureTargetAction.REVIEW
             );
         }
         return super.approve(revisionId, request, actorId, requestId, clientIp);
@@ -265,14 +244,14 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
             String requestId,
             String clientIp
     ) {
-        CultureTarget target = cultureTargetFromRevision(revisionId);
+        RevisionTarget target = cultureTargetFromRevision(revisionId);
         if (target != null) {
             requireCultureTarget(
                     target.clanId(),
                     target.targetType(),
                     target.targetId(),
                     actorId,
-                    TargetAction.REVIEW
+                    CultureTargetAction.REVIEW
             );
             if (request.reviewComment() == null || request.reviewComment().isBlank()) {
                 throw new BusinessException("CULTURE_REVIEW_REASON_REQUIRED", "驳回文化对象来源绑定必须填写原因");
@@ -281,74 +260,18 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         return super.reject(revisionId, request, actorId, requestId, clientIp);
     }
 
-    private CultureTarget requireCultureTarget(
+    private CultureTargetContext requireCultureTarget(
             Long clanId,
             String targetType,
             Long targetId,
             Long actorId,
-            TargetAction action
+            CultureTargetAction action
     ) {
-        String normalizedType = normalize(targetType);
-        if (CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
-            CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(targetId)
-                    .orElseThrow(() -> new BusinessException("CULTURE_ITEM_NOT_FOUND", "文化资料不存在或不可见"));
-            if (!Objects.equals(clanId, item.getClanId())) {
-                throw clanMismatch();
-            }
-            culturePermissionPolicy.requireAction(
-                    item,
-                    actorId,
-                    action == TargetAction.REVIEW
-                            ? CulturePermissionPolicyService.REVIEW
-                            : CulturePermissionPolicyService.UPDATE
-            );
-            if (BINDING_ARCHIVED.equals(normalize(item.getDataStatus()))) {
-                throw archivedTarget();
-            }
-            return new CultureTarget(clanId, item.getBranchId(), normalizedType, targetId);
+        CultureTargetContext target = targetRegistry.require(clanId, targetType, targetId, actorId, action);
+        if (target.archived()) {
+            throw new BusinessException("SOURCE_TARGET_ARCHIVED", "已归档文化对象不能变更来源绑定");
         }
-        if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
-            MigrationEventEntity event = migrationEventRepository.findByIdAndDeletedAtIsNull(targetId)
-                    .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见"));
-            if (!Objects.equals(clanId, event.getClanId())) {
-                throw clanMismatch();
-            }
-            if (action == TargetAction.REVIEW) {
-                migrationPermissionPolicy.requireVisible(event, actorId);
-            } else {
-                migrationPermissionPolicy.requireAction(
-                        event,
-                        actorId,
-                        MigrationEventPermissionPolicyService.UPDATE
-                );
-            }
-            if (BINDING_ARCHIVED.equals(normalize(event.getDataStatus()))) {
-                throw archivedTarget();
-            }
-            return new CultureTarget(clanId, event.getBranchId(), normalizedType, targetId);
-        }
-
-if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
-    CultureSiteEntity site = cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
-            .orElseThrow(() -> new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见"));
-    if (!Objects.equals(clanId, site.getClanId())) {
-        throw clanMismatch();
-    }
-    if (action == TargetAction.REVIEW) {
-        cultureSitePermissionPolicy.requireVisible(site, actorId);
-    } else {
-        cultureSitePermissionPolicy.requireAction(
-                site,
-                actorId,
-                CultureSitePermissionPolicyService.UPDATE
-        );
-    }
-    if (BINDING_ARCHIVED.equals(normalize(site.getDataStatus()))) {
-        throw archivedTarget();
-    }
-    return new CultureTarget(clanId, site.getBranchId(), normalizedType, targetId);
-}
-        throw new BusinessException("SOURCE_TARGET_TYPE_UNSUPPORTED", "不支持的文化对象类型");
+        return target;
     }
 
     private SourceEntity requireOfficialSource(Long clanId, Long sourceId) {
@@ -366,7 +289,7 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
     private void ensureNoActiveBinding(SourceBindingCreateRequest request) {
         if (governedBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(
                 request.sourceId(),
-                normalize(request.targetType()),
+                targetRegistry.normalizeType(request.targetType()),
                 request.targetId(),
                 BINDING_ARCHIVED
         )) {
@@ -423,7 +346,7 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
     private Map<String, Object> snapshot(SourceBindingCreateRequest request, String fallbackConfidence) {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("sourceId", request.sourceId());
-        value.put("targetType", normalize(request.targetType()));
+        value.put("targetType", targetRegistry.normalizeType(request.targetType()));
         value.put("targetId", request.targetId());
         value.put("bindingReason", request.bindingReason());
         value.put("excerpt", request.excerpt());
@@ -438,7 +361,7 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("id", binding.getId());
         value.put("sourceId", binding.getSourceId());
-        value.put("targetType", normalize(binding.getTargetType()));
+        value.put("targetType", targetRegistry.normalizeType(binding.getTargetType()));
         value.put("targetId", binding.getTargetId());
         value.put("bindingReason", binding.getBindingReason());
         value.put("excerpt", binding.getExcerpt());
@@ -447,28 +370,19 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
         return value;
     }
 
-    private CultureTarget cultureTargetFromRevision(Long revisionId) {
+    private RevisionTarget cultureTargetFromRevision(Long revisionId) {
         RevisionEntity revision = governedRevisionRepository
                 .findByIdAndTargetType(revisionId, TARGET_SOURCE_BINDING)
                 .orElse(null);
-        if (revision == null) {
-            return null;
-        }
-        String json = revision.getAfterData() == null
-                ? revision.getBeforeData()
-                : revision.getAfterData();
-        if (json == null || json.isBlank()) {
-            return null;
-        }
+        if (revision == null) return null;
+        String json = revision.getAfterData() == null ? revision.getBeforeData() : revision.getAfterData();
+        if (json == null || json.isBlank()) return null;
         try {
             JsonNode data = governedObjectMapper.readTree(json);
-            String targetType = normalize(data.path("targetType").asText(null));
-            if (!isCulture(targetType)) {
-                return null;
-            }
-            return new CultureTarget(
+            String targetType = targetRegistry.normalizeType(data.path("targetType").asText(null));
+            if (!isCulture(targetType)) return null;
+            return new RevisionTarget(
                     revision.getClanId(),
-                    null,
                     targetType,
                     data.path("targetId").longValue()
             );
@@ -500,7 +414,7 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
         if ("create".equals(revision.getChangeType()) && revision.getAfterData() != null) {
             try {
                 JsonNode data = governedObjectMapper.readTree(revision.getAfterData());
-                businessTargetType = normalize(data.path("targetType").asText(null));
+                businessTargetType = targetRegistry.normalizeType(data.path("targetType").asText(null));
                 businessTargetId = data.path("targetId").isIntegralNumber()
                         ? data.path("targetId").longValue()
                         : null;
@@ -519,9 +433,7 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
     }
 
     private String toJson(Map<String, Object> value) {
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
         try {
             return governedObjectMapper.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
@@ -530,33 +442,17 @@ if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) 
     }
 
     private boolean isCulture(String targetType) {
-        String normalizedType = normalize(targetType);
-        return CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)
-                || MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)
-                || CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType);
+        return targetRegistry.supports(targetType);
     }
 
     private String reason(String value) {
         return value == null || value.isBlank() ? "" : "，原因：" + value.trim();
     }
 
-    private BusinessException clanMismatch() {
-        return new BusinessException("SOURCE_TARGET_CLAN_MISMATCH", "文化对象不属于当前宗族");
-    }
-
-    private BusinessException archivedTarget() {
-        return new BusinessException("SOURCE_TARGET_ARCHIVED", "已归档文化对象不能变更来源绑定");
-    }
-
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase();
     }
 
-    private enum TargetAction {
-        UPDATE,
-        REVIEW
-    }
-
-    private record CultureTarget(Long clanId, Long branchId, String targetType, Long targetId) {
+    private record RevisionTarget(Long clanId, String targetType, Long targetId) {
     }
 }
