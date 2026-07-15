@@ -236,7 +236,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const [searchScope, setSearchScope] = useState<PersonSearchScope>(initialUrlState.searchScope);
   const [searchPage, setSearchPage] = useState<SearchPage<PersonSearchItem>>(EMPTY_SEARCH);
   const [searchNotice, setSearchNotice] = useState('');
-  const [searchCollapsed, setSearchCollapsed] = useState(false);
+  const [searchCollapsed, setSearchCollapsed] = useState(true);
   const [mode, setMode] = useState<LineageMode>(initialUrlState.mode);
   const [personDepth, setPersonDepth] = useState(initialUrlState.personDepth);
   const [branchDepth, setBranchDepth] = useState(initialUrlState.branchDepth);
@@ -269,6 +269,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setSearchInput('');
     setAppliedKeyword('');
     setSearchNotice('');
+    setSearchResultsExpanded(false);
     setSelectedBranchId('');
     setPersonGraph(null);
     setBranchGraph(null);
@@ -432,7 +433,9 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   }
 
   async function handlePersonSelection(item: PersonSearchItem) {
+    setSearchCollapsed(true);
     const nextBranchId = item.branchId || selectedBranchId;
+    setSearchResultsExpanded(false);
     setSelectedBranchId(nextBranchId);
     clearSelection();
     workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' });
@@ -629,7 +632,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               enterButton={<><SearchOutlined /> 搜索</>}
               placeholder="输入姓名、谱名或字号"
               onChange={event => setSearchInput(event.target.value)}
-              onSearch={value => void requestPersonPage(workspace.clanId, 1, value)}
+              onSearch={value => { setSearchCollapsed(false); void requestPersonPage(workspace.clanId, 1, value); }}
               disabled={!workspace.clanId || (searchScope === 'branch' && !selectedBranchId)}
             />
           </Field>
@@ -649,7 +652,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
           </div>
           {!searchCollapsed ? (
             <>
-              <div className="lineage-search-results-list">
+              <div id="lineage-person-search-results" className="lineage-search-results-list">
                 <List
                   loading={loadState.search.loading}
                   locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配人物" /> }}
