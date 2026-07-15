@@ -26,6 +26,14 @@ export class ApiRequestError extends Error {
 
 const pendingGetRequests = new Map<string, Promise<unknown>>();
 
+export function normalizeApiBaseUrl(value: string | null | undefined) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '/api/v1';
+  const withoutTrailingSlash = trimmed.replace(/\/$/, '');
+  if (/^https?:\/\//i.test(withoutTrailingSlash)) return withoutTrailingSlash;
+  return withoutTrailingSlash.startsWith('/') ? withoutTrailingSlash : `/${withoutTrailingSlash}`;
+}
+
 function normalizeReviewTargetType(value: unknown) {
   const text = String(value ?? '').trim();
   const map: Record<string, string> = {
@@ -185,7 +193,7 @@ export class ApiClient {
   private csrfToken: string;
 
   constructor() {
-    this.baseUrl = localStorage.getItem('genealogy.apiBase') || '/api/v1';
+    this.baseUrl = normalizeApiBaseUrl(localStorage.getItem('genealogy.apiBase'));
     // Compatibility window: consume a historical Bearer token once, then remove
     // it from persistent browser storage. New sessions use secure cookies.
     this.token = localStorage.getItem('genealogy.token') || '';
@@ -198,7 +206,7 @@ export class ApiClient {
   }
 
   setBaseUrl(baseUrl: string) {
-    this.baseUrl = (baseUrl || '/api/v1').replace(/\/$/, '');
+    this.baseUrl = normalizeApiBaseUrl(baseUrl);
     localStorage.setItem('genealogy.apiBase', this.baseUrl);
     this.clearPendingGetRequests();
   }
@@ -342,7 +350,8 @@ export class ApiClient {
   }
 
   private resolve(path: string) {
-    return `${this.baseUrl}${path}`;
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${this.baseUrl}${normalizedPath}`;
   }
 
   private authHeaders(): Record<string, string> {

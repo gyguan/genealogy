@@ -73,7 +73,7 @@ DEFINE → PLAN → BUILD → VERIFY → REVIEW
 
 ### 3.2 Issue 创建门禁
 
-创建 Issue 时，必须遵循 `docs/ai/issue-creation-standard.md`。核心要求：
+创建 Issue 时，必须遵循 `docs/ai/issue-creation-standard.md`，并按 `docs/ai/issue-delivery-cost-experience.md` 先判断 Issue 类型、流程强度、契约强度、验证强度和拆分信号。核心要求：
 
 1. 同一功能点拆分多个 Issue 前，先明确统一功能前缀、总目标和拆分边界；
 2. 同一功能点下的 Issue 标题必须包含统一前缀和执行序号，例如 `[来源资料库 P0-01] 建立来源资料分页搜索接口`；
@@ -85,7 +85,7 @@ DEFINE → PLAN → BUILD → VERIFY → REVIEW
 
 ### 3.3 Issue 实现门禁
 
-执行或恢复 Issue 时，必须遵循 `docs/ai/issue-execution-governance.md`。核心要求：
+执行或恢复 Issue 时，必须遵循 `docs/ai/issue-execution-governance.md`，并按 `docs/ai/issue-delivery-cost-experience.md` 固化轻量 / 重型流程取舍、活跃耗时 / 外部等待分离和验证强度。核心要求：
 
 1. 重新读取 `main` 最新规则和 Issue 全部现场；
 2. 创建或恢复 `tasks/issue-<N>-execution.md`；
@@ -160,8 +160,8 @@ API 变更必须 Contract First：
 
 | 任务类型 | 必读规则 / 文档 |
 |---|---|
-| Issue 创建、拆分、批量建单 | `docs/ai/issue-creation-standard.md` |
-| Issue 实现、恢复 | `docs/ai/issue-execution-governance.md` |
+| Issue 创建、拆分、批量建单 | `docs/ai/issue-creation-standard.md`、`docs/ai/issue-delivery-cost-experience.md` |
+| Issue 实现、恢复 | `docs/ai/issue-execution-governance.md`、`docs/ai/issue-delivery-cost-experience.md` |
 | 聊天式长任务、任务看板 | `docs/ai/chat-driven-github-workflow.md`、`docs/ai/task-duration-standard.md` |
 | MVP 主流程 | `docs/01-mvp1-requirements.md` |
 | 数据模型、领域规则 | `docs/03-domain-model.md` |
@@ -234,6 +234,7 @@ npm run api:check
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - Issue 创建与分组：`docs/ai/issue-creation-standard.md`
 - Issue 实现与恢复：`docs/ai/issue-execution-governance.md`
+- Issue 交付耗时经验：`docs/ai/issue-delivery-cost-experience.md`
 - 聊天式开发与看板：`docs/ai/chat-driven-github-workflow.md`
 - 任务耗时记录：`docs/ai/task-duration-standard.md`
 - Skill 映射：`docs/ai/skill-mapping.md`
