@@ -1,7 +1,6 @@
-import type { TreeDataView, TreeDirection, TreeRelationScope } from '../../shared/api/generated/tree-types';
+import type { TreeDirection, TreeRelationScope } from '../../shared/api/generated/tree-types';
 
 export type LineageMode = 'person' | 'branch';
-export type PersonSearchScope = 'clan' | 'branch';
 
 export type LineageUrlState = {
   clanId: string;
@@ -12,9 +11,7 @@ export type LineageUrlState = {
   branchDepth: string;
   direction: TreeDirection;
   relationScopes: TreeRelationScope[];
-  dataView: TreeDataView;
   includeSubBranches: boolean;
-  searchScope: PersonSearchScope;
 };
 
 const DIRECTIONS = new Set<TreeDirection>(['family', 'ancestors', 'descendants', 'both']);
@@ -42,9 +39,7 @@ export function readLineageUrlState(input: string | URL): LineageUrlState {
     branchDepth: valueOrDefault(url.searchParams.get('branchDepth'), BRANCH_DEPTHS, '8'),
     direction: valueOrDefault(url.searchParams.get('direction'), DIRECTIONS, 'both'),
     relationScopes: relationScopes.length ? relationScopes : DEFAULT_RELATIONS,
-    dataView: url.searchParams.get('dataView') === 'editing' ? 'editing' : 'official',
-    includeSubBranches: url.searchParams.get('includeSubBranches') !== 'false',
-    searchScope: url.searchParams.get('searchScope') === 'branch' ? 'branch' : 'clan'
+    includeSubBranches: url.searchParams.get('includeSubBranches') !== 'false'
   };
 }
 
@@ -59,13 +54,13 @@ export function withLineageUrlState(input: string | URL, state: LineageUrlState)
     branchDepth: state.branchDepth,
     direction: state.direction,
     relations: state.relationScopes.join(','),
-    dataView: state.dataView,
-    includeSubBranches: String(state.includeSubBranches),
-    searchScope: state.searchScope
+    includeSubBranches: String(state.includeSubBranches)
   };
   Object.entries(values).forEach(([key, value]) => {
     if (value) url.searchParams.set(key, value);
     else url.searchParams.delete(key);
   });
+  url.searchParams.delete('dataView');
+  url.searchParams.delete('searchScope');
   return `${url.pathname}${url.search}${url.hash}`;
 }
