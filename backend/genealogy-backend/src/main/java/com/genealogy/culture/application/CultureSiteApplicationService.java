@@ -205,15 +205,16 @@ public class CultureSiteApplicationService {
         CultureSiteDomainService.NormalizedSiteInput input = domainService.normalize(request);
         requireBranchInClan(site.getClanId(), input.branchId());
         validateRelatedPerson(site.getClanId(), input.branchId(), input.relatedPersonId());
+
+if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actorId)) {
+    throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限将文化场所移动到该范围");
+}
         if (CultureSiteDomainService.STATUS_OFFICIAL.equals(normalize(site.getDataStatus()))) {
             governanceApplicationService.submitOfficialUpdate(site, request, actorId, requestId, clientIp);
             return getDetail(siteId, actorId);
         }
         domainService.requireDirectlyMutable(site);
         domainService.requireExpectedVersion(site, request.version());
-        if (!permissionPolicyService.canCreate(site.getClanId(), input.branchId(), actorId)) {
-            throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限将文化场所移动到该范围");
-        }
         String before = safeSnapshot(site);
         domainService.apply(site, input);
         CultureSiteEntity saved = siteRepository.save(site);

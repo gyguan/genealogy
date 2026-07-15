@@ -65,6 +65,11 @@ public class CultureSitePermissionPolicyService {
     }
 
     @Transactional(readOnly = true)
+    public boolean canUpdate(Long clanId, Long branchId, Long actorId) {
+        return canOnScope(actorId, clanId, branchId, UPDATE);
+    }
+
+    @Transactional(readOnly = true)
     public boolean canViewSensitive(CultureSiteEntity site, Long actorId) {
         if (!requiresSensitiveAccess(site)) return true;
         return Objects.equals(site.getCreatedBy(), actorId) || can(site, actorId, VIEW_SENSITIVE);

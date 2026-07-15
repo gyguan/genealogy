@@ -7,10 +7,13 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationTraceContext;
@@ -55,6 +58,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
     private final CulturePermissionPolicyService culturePermissionPolicy;
     private final MigrationEventRepository migrationEventRepository;
     private final MigrationEventPermissionPolicyService migrationPermissionPolicy;
+    private final CultureSiteRepository cultureSiteRepository;
+    private final CultureSitePermissionPolicyService cultureSitePermissionPolicy;
     private final ObjectMapper governedObjectMapper;
 
     public CultureAwareSourceBindingReviewApplicationService(
@@ -69,7 +74,9 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
             CultureItemRepository cultureItemRepository,
             CulturePermissionPolicyService culturePermissionPolicy,
             MigrationEventRepository migrationEventRepository,
-            MigrationEventPermissionPolicyService migrationPermissionPolicy
+            MigrationEventPermissionPolicyService migrationPermissionPolicy,
+            CultureSiteRepository cultureSiteRepository,
+            CultureSitePermissionPolicyService cultureSitePermissionPolicy
     ) {
         super(
                 sourceRepository,
@@ -91,6 +98,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
         this.culturePermissionPolicy = culturePermissionPolicy;
         this.migrationEventRepository = migrationEventRepository;
         this.migrationPermissionPolicy = migrationPermissionPolicy;
+        this.cultureSiteRepository = cultureSiteRepository;
+        this.cultureSitePermissionPolicy = cultureSitePermissionPolicy;
         this.governedObjectMapper = objectMapper;
     }
 
@@ -318,6 +327,27 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
             }
             return new CultureTarget(clanId, event.getBranchId(), normalizedType, targetId);
         }
+
+if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)) {
+    CultureSiteEntity site = cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
+            .orElseThrow(() -> new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见"));
+    if (!Objects.equals(clanId, site.getClanId())) {
+        throw clanMismatch();
+    }
+    if (action == TargetAction.REVIEW) {
+        cultureSitePermissionPolicy.requireVisible(site, actorId);
+    } else {
+        cultureSitePermissionPolicy.requireAction(
+                site,
+                actorId,
+                CultureSitePermissionPolicyService.UPDATE
+        );
+    }
+    if (BINDING_ARCHIVED.equals(normalize(site.getDataStatus()))) {
+        throw archivedTarget();
+    }
+    return new CultureTarget(clanId, site.getBranchId(), normalizedType, targetId);
+}
         throw new BusinessException("SOURCE_TARGET_TYPE_UNSUPPORTED", "不支持的文化对象类型");
     }
 
@@ -502,7 +532,8 @@ public class CultureAwareSourceBindingReviewApplicationService extends SourceBin
     private boolean isCulture(String targetType) {
         String normalizedType = normalize(targetType);
         return CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)
-                || MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalizedType);
+                || MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(normalizedType)
+                || CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(normalizedType);
     }
 
     private String reason(String value) {
