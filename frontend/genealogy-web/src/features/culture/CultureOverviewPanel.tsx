@@ -4,6 +4,7 @@ import type { CultureOverviewResponse } from '../../shared/api/generated/culture
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { listCultureBranches } from './cultureLibraryService';
 import type { CultureBranchOption } from './cultureLibraryService';
+import { CultureSitePanel } from './CultureSitePanel';
 import { MigrationTimelinePanel } from './MigrationTimelinePanel';
 import { categoryOptions, formatCoverageRate, optionLabel, statusColor, statusOptions } from './cultureOptions';
 
@@ -81,6 +82,7 @@ export function CultureOverviewPanel({ overview, loading, error, onOpenItem }: P
       </Row>
 
       <MigrationTimelinePanel clanId={workspace.clanId} branches={branches} />
+      <CultureSitePanel clanId={workspace.clanId} branches={branches} />
     </Space>
   );
 }

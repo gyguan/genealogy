@@ -57,13 +57,17 @@ export const API_OPERATIONS = {
       "clanId"
     ],
     "queryParams": [
+      "addressText",
       "branchId",
+      "currentStatus",
       "dataStatus",
       "featuredOnHome",
+      "foundedPeriod",
       "keyword",
       "pageNo",
       "pageSize",
       "privacyLevel",
+      "relatedPersonId",
       "siteType",
       "sort"
     ],
@@ -198,6 +202,17 @@ export const API_OPERATIONS = {
     ],
     "queryParams": [],
     "requestBody": null,
+    "response": "ApiResponseCultureCommandResponse"
+  },
+  "POST /api/v1/culture-sites/{cultureSiteId}/archive": {
+    "operationId": "archiveCultureSite",
+    "method": "POST",
+    "path": "/api/v1/culture-sites/{cultureSiteId}/archive",
+    "pathParams": [
+      "cultureSiteId"
+    ],
+    "queryParams": [],
+    "requestBody": "CultureArchiveRequest",
     "response": "ApiResponseCultureCommandResponse"
   },
   "POST /api/v1/culture-sites/{cultureSiteId}/submit-review": {

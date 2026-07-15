@@ -5,7 +5,9 @@ import com.genealogy.auth.application.RbacAuthorizationApplicationService.Permis
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CulturePermissionPolicyService;
+import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
+import com.genealogy.culture.repository.CultureSiteTrackingQueryRepository;
 import com.genealogy.culture.repository.CultureTrackingQueryRepository;
 import com.genealogy.culture.repository.MigrationTrackingQueryRepository;
 import com.genealogy.tracking.application.TrackingObjectSearchApplicationService;
@@ -25,17 +27,20 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
     private final RbacAuthorizationApplicationService governedRbac;
     private final CultureTrackingQueryRepository cultureTrackingQueryRepository;
     private final MigrationTrackingQueryRepository migrationTrackingQueryRepository;
+    private final CultureSiteTrackingQueryRepository cultureSiteTrackingQueryRepository;
 
     public CultureAwareTrackingObjectSearchApplicationService(
             TrackingObjectQueryRepository queryRepository,
             RbacAuthorizationApplicationService rbacAuthorizationApplicationService,
             CultureTrackingQueryRepository cultureTrackingQueryRepository,
-            MigrationTrackingQueryRepository migrationTrackingQueryRepository
+            MigrationTrackingQueryRepository migrationTrackingQueryRepository,
+            CultureSiteTrackingQueryRepository cultureSiteTrackingQueryRepository
     ) {
         super(queryRepository, rbacAuthorizationApplicationService);
         this.governedRbac = rbacAuthorizationApplicationService;
         this.cultureTrackingQueryRepository = cultureTrackingQueryRepository;
         this.migrationTrackingQueryRepository = migrationTrackingQueryRepository;
+        this.cultureSiteTrackingQueryRepository = cultureSiteTrackingQueryRepository;
     }
 
     @Override
@@ -53,7 +58,9 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
             int pageSize
     ) {
         String normalizedType = normalize(objectType);
-        if (!"culture_item".equals(normalizedType) && !"migration_event".equals(normalizedType)) {
+        if (!"culture_item".equals(normalizedType)
+                && !"migration_event".equals(normalizedType)
+                && !"culture_site".equals(normalizedType)) {
             return super.search(
                     clanId, actorId, objectType, keyword, branchId, status,
                     changedFrom, changedTo, pageNo, pageSize
@@ -75,37 +82,30 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
         if (branchId != null && !scope.canAccessBranch(branchId)) {
             return PageResponse.of(List.of(), 0L, normalizedPageNo, normalizedPageSize);
         }
-        String sensitivePermission = "migration_event".equals(normalizedType)
-                ? MigrationEventPermissionPolicyService.VIEW_SENSITIVE
-                : CulturePermissionPolicyService.VIEW_SENSITIVE;
+        String sensitivePermission = switch (normalizedType) {
+            case "migration_event" -> MigrationEventPermissionPolicyService.VIEW_SENSITIVE;
+            case "culture_site" -> CultureSitePermissionPolicyService.VIEW_SENSITIVE;
+            default -> CulturePermissionPolicyService.VIEW_SENSITIVE;
+        };
         boolean sensitiveAccess = governedRbac.hasPermission(actorId, clanId, sensitivePermission);
         if ("migration_event".equals(normalizedType)) {
             return migrationTrackingQueryRepository.search(
-                    clanId,
-                    normalizedKeyword,
-                    branchId,
-                    normalizedStatus,
-                    changedFrom,
-                    changedTo,
-                    scope.fullClanAccess(),
-                    scope.queryVisibleBranchIds(),
-                    sensitiveAccess,
-                    normalizedPageNo,
-                    normalizedPageSize
+                    clanId, normalizedKeyword, branchId, normalizedStatus, changedFrom, changedTo,
+                    scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess,
+                    normalizedPageNo, normalizedPageSize
+            );
+        }
+        if ("culture_site".equals(normalizedType)) {
+            return cultureSiteTrackingQueryRepository.search(
+                    clanId, normalizedKeyword, branchId, normalizedStatus, changedFrom, changedTo,
+                    scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess,
+                    normalizedPageNo, normalizedPageSize
             );
         }
         return cultureTrackingQueryRepository.search(
-                clanId,
-                normalizedKeyword,
-                branchId,
-                normalizedStatus,
-                changedFrom,
-                changedTo,
-                scope.fullClanAccess(),
-                scope.queryVisibleBranchIds(),
-                sensitiveAccess,
-                normalizedPageNo,
-                normalizedPageSize
+                clanId, normalizedKeyword, branchId, normalizedStatus, changedFrom, changedTo,
+                scope.fullClanAccess(), scope.queryVisibleBranchIds(), sensitiveAccess,
+                normalizedPageNo, normalizedPageSize
         );
     }
 
@@ -115,6 +115,7 @@ public class CultureAwareTrackingObjectSearchApplicationService extends Tracking
         return switch (normalized) {
             case "culture_items" -> "culture_item";
             case "migration_events" -> "migration_event";
+            case "culture_sites" -> "culture_site";
             default -> normalized;
         };
     }

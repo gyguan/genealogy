@@ -21,7 +21,7 @@ import java.util.Set;
 @Service
 public class CultureAwareSourceBindingCommandApplicationService extends SourceBindingCommandApplicationService {
 
-    private static final Set<String> GOVERNED_TARGET_TYPES = Set.of("culture_item", "migration_event");
+    private static final Set<String> GOVERNED_TARGET_TYPES = Set.of("culture_item", "migration_event", "culture_site");
 
     public CultureAwareSourceBindingCommandApplicationService(
             SourceApplicationService sourceApplicationService,
@@ -45,7 +45,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
         if (isGoverned(request)) {
             throw new BusinessException(
                     "CULTURE_SOURCE_BINDING_REVIEW_REQUIRED",
-                    "文化资料与迁徙事件的来源绑定必须通过审核流程生效"
+                    "文化资料、迁徙事件和文化场所的来源绑定必须通过审核流程生效"
             );
         }
         return super.bind(clanId, request, actorId);

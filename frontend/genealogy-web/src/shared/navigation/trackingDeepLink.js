@@ -4,7 +4,8 @@ export const TRACKABLE_TARGET_TYPES = Object.freeze([
   'source',
   'branch',
   'culture_item',
-  'migration_event'
+  'migration_event',
+  'culture_site'
 ]);
 
 const TARGET_TYPE_ALIASES = Object.freeze({
@@ -19,7 +20,9 @@ const TARGET_TYPE_ALIASES = Object.freeze({
   culture_item: 'culture_item',
   culture_items: 'culture_item',
   migration_event: 'migration_event',
-  migration_events: 'migration_event'
+  migration_events: 'migration_event',
+  culture_site: 'culture_site',
+  culture_sites: 'culture_site'
 });
 
 const TRACKING_QUERY_KEYS = Object.freeze([

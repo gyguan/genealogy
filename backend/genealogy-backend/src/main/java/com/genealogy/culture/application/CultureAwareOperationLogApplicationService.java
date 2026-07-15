@@ -1,8 +1,10 @@
 package com.genealogy.culture.application;
 
 import com.genealogy.culture.entity.CultureItemEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.repository.OperationLogRepository;
@@ -21,15 +23,18 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
 
     private final CultureItemRepository cultureItemRepository;
     private final MigrationEventRepository migrationEventRepository;
+    private final CultureSiteRepository cultureSiteRepository;
 
     public CultureAwareOperationLogApplicationService(
             OperationLogRepository operationLogRepository,
             CultureItemRepository cultureItemRepository,
-            MigrationEventRepository migrationEventRepository
+            MigrationEventRepository migrationEventRepository,
+            CultureSiteRepository cultureSiteRepository
     ) {
         super(operationLogRepository);
         this.cultureItemRepository = cultureItemRepository;
         this.migrationEventRepository = migrationEventRepository;
+        this.cultureSiteRepository = cultureSiteRepository;
     }
 
     @Override
@@ -61,9 +66,11 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
     ) {
         String normalizedType = normalize(targetType);
         if (restricted(normalizedType, targetId)) {
-            String safeSummary = "migration_event".equals(normalizedType)
-                    ? "受限迁徙事件操作"
-                    : "受限文化资料操作";
+            String safeSummary = switch (normalizedType) {
+                case "migration_event" -> "受限迁徙事件操作";
+                case "culture_site" -> "受限文化场所操作";
+                default -> "受限文化资料操作";
+            };
             super.record(
                     clanId,
                     actorId,
@@ -88,6 +95,9 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
         if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
             return migrationEventRepository.findById(targetId).map(this::restricted).orElse(true);
         }
+        if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
+            return cultureSiteRepository.findById(targetId).map(this::restricted).orElse(true);
+        }
         return false;
     }
 
@@ -97,6 +107,10 @@ public class CultureAwareOperationLogApplicationService extends OperationLogAppl
 
     private boolean restricted(MigrationEventEntity event) {
         return restricted(event.getPrivacyLevel(), event.getSensitiveLevel());
+    }
+
+    private boolean restricted(CultureSiteEntity site) {
+        return restricted(site.getPrivacyLevel(), site.getSensitiveLevel());
     }
 
     private boolean restricted(String privacyValue, String sensitiveValue) {

@@ -154,6 +154,7 @@ export type MigrationEventPage = {
 
 export type CultureSiteCreateRequest = {
   branchId?: number | null;
+  relatedPersonId?: number | null;
   siteType: CultureSiteType;
   siteName: string;
   addressText?: string | null;
@@ -176,7 +177,7 @@ export type CultureSiteSummaryResponse = {
   id: number;
   scope: CultureScopeResponse;
   siteType: CultureSiteType;
-  siteName: string;
+  name: string;
   addressText?: string | null;
   foundedPeriod?: string | null;
   currentStatus?: string | null;
@@ -197,7 +198,7 @@ export type CultureSiteSummaryResponse = {
   updatedAt: string;
 };
 
-export type CultureSiteDetailResponse = CultureSiteSummaryResponse & { description?: string | null; sources: CultureSourceSummaryResponse[]; attachments: CultureAttachmentSummaryResponse[]; review: CultureReviewSummaryResponse; };
+export type CultureSiteDetailResponse = CultureSiteSummaryResponse & { relatedPersonId?: number | null; relatedPersonName?: string | null; description?: string | null; sources: CultureSourceSummaryResponse[]; attachments: CultureAttachmentSummaryResponse[]; review: CultureReviewSummaryResponse; };
 
 export type CultureSitePage = {
   items: CultureSiteSummaryResponse[];
