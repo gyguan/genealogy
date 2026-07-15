@@ -59,9 +59,9 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await expect(personNodes.first()).toBeVisible();
   expect(await personNodes.count()).toBeGreaterThanOrEqual(2);
 
-  await chooseComboboxOption(page, 3, '2代');
-  await chooseComboboxOption(page, 3, '5代');
-  await expect(page.getByText('5代', { exact: true }).last()).toBeVisible();
+  await chooseComboboxOption(page, 3, '上下各 2 代');
+  await chooseComboboxOption(page, 3, '上下各 5 代');
+  await expect(page.getByText('上下各 5 代', { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
 
   const personCard = page.locator('.lineage-logic-card--person');
@@ -95,7 +95,7 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await edgeDetail.getByRole('button', { name: '关闭' }).click();
 
   await page.route('**/api/v1/tree/person/**', route => route.abort(), { times: 1 });
-  await chooseComboboxOption(page, 3, '3代');
+  await chooseComboboxOption(page, 3, '上下各 3 代');
   await expect(page.getByText(/人物图加载失败/)).toBeVisible();
   await page.getByRole('button', { name: '重试' }).last().click();
   await expect(page.getByText(/人物图加载失败/)).toHaveCount(0);
