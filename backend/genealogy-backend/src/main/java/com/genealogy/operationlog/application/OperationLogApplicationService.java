@@ -5,6 +5,9 @@ import com.genealogy.operationlog.dto.OperationLogResponse;
 import com.genealogy.operationlog.dto.OperationLogStatsResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
+import jakarta.persistence.criteria.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.criteria.Predicate;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OperationLogApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(OperationLogApplicationService.class);
 
     public static final int EXPORT_LIMIT = 10000;
 
@@ -94,8 +98,17 @@ public class OperationLogApplicationService {
             }
             entity.setCreatedAt(LocalDateTime.now());
             operationLogRepository.save(entity);
-        } catch (Exception ignored) {
-            // 审计日志失败不能阻塞主业务链路。
+        } catch (Exception exception) {
+            log.warn(
+                    "operation_log_record_failed clanId={} actorId={} actionType={} targetType={} targetId={} requestId={}",
+                    clanId,
+                    actorId,
+                    normalize(actionType),
+                    normalize(targetType),
+                    targetId,
+                    trim(requestId, 128),
+                    exception
+            );
         }
     }
 
