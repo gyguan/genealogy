@@ -1,5 +1,4 @@
 import type { CultureCategory, CultureDataStatus, CulturePrivacyLevel } from '../../shared/api/generated/culture-types';
-import { categoryOptions, privacyOptions, sortOptions, statusOptions } from './cultureOptions';
 
 export type CultureSearchState = {
   keyword: string;
@@ -18,6 +17,13 @@ export const defaultCultureSearch: CultureSearchState = {
   keyword: '', sort: 'updatedAt,desc', pageNo: 1, pageSize: 10
 };
 
+const categories: CultureCategory[] = [
+  'surname_origin', 'hall_name', 'commandery', 'family_instruction', 'ancestor_instruction',
+  'clan_rule', 'genealogy_preface', 'genealogy_rule', 'person_story', 'custom_tradition', 'other'
+];
+const statuses: CultureDataStatus[] = ['draft', 'pending_review', 'official', 'rejected', 'archived'];
+const privacyLevels: CulturePrivacyLevel[] = ['public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed'];
+const sorts = ['updatedAt,desc', 'createdAt,desc', 'title,asc', 'category,asc', 'sortOrder,asc'];
 const keys = [
   'cultureKeyword', 'cultureCategory', 'cultureBranch', 'cultureStatus', 'culturePrivacy',
   'cultureHasSource', 'cultureFeatured', 'cultureSort', 'culturePage', 'culturePageSize', 'cultureItem'
@@ -35,8 +41,8 @@ function bool(value: string | null) {
   return undefined;
 }
 
-function valid<T extends string>(options: Array<{ value: T }>, value: string | null) {
-  return options.some(option => option.value === value) ? value as T : undefined;
+function valid<T extends string>(values: readonly T[], value: string | null) {
+  return values.includes(value as T) ? value as T : undefined;
 }
 
 export function readCultureLocation(href = window.location.href) {
@@ -45,13 +51,13 @@ export function readCultureLocation(href = window.location.href) {
   return {
     search: {
       keyword: String(url.searchParams.get('cultureKeyword') || '').trim().slice(0, 100),
-      category: valid(categoryOptions, url.searchParams.get('cultureCategory')),
+      category: valid(categories, url.searchParams.get('cultureCategory')),
       branchId: positive(url.searchParams.get('cultureBranch')),
-      dataStatus: valid(statusOptions, url.searchParams.get('cultureStatus')),
-      privacyLevel: valid(privacyOptions, url.searchParams.get('culturePrivacy')),
+      dataStatus: valid(statuses, url.searchParams.get('cultureStatus')),
+      privacyLevel: valid(privacyLevels, url.searchParams.get('culturePrivacy')),
       hasSource: bool(url.searchParams.get('cultureHasSource')),
       featuredOnHome: bool(url.searchParams.get('cultureFeatured')),
-      sort: valid(sortOptions, url.searchParams.get('cultureSort')) || defaultCultureSearch.sort,
+      sort: valid(sorts, url.searchParams.get('cultureSort')) || defaultCultureSearch.sort,
       pageNo: positive(url.searchParams.get('culturePage'), 1) || 1,
       pageSize: [10, 20, 50].includes(pageSize) ? pageSize : 10
     } satisfies CultureSearchState,
