@@ -5,15 +5,8 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
-import com.genealogy.culture.domain.CulturePermissionPolicyService;
-import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
-import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
-import com.genealogy.culture.entity.CultureItemEntity;
-import com.genealogy.culture.entity.CultureSiteEntity;
-import com.genealogy.culture.entity.MigrationEventEntity;
-import com.genealogy.culture.repository.CultureItemRepository;
-import com.genealogy.culture.repository.CultureSiteRepository;
-import com.genealogy.culture.repository.MigrationEventRepository;
+import com.genealogy.culture.governance.CultureTargetAction;
+import com.genealogy.culture.governance.CultureTargetGovernanceRegistry;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -36,12 +29,7 @@ import java.util.List;
 @Service
 public class CultureAwareSourceApplicationService extends SourceApplicationService {
 
-    private final CultureItemRepository cultureItemRepository;
-    private final CulturePermissionPolicyService culturePermissionPolicyService;
-    private final MigrationEventRepository migrationEventRepository;
-    private final MigrationEventPermissionPolicyService migrationPermissionPolicyService;
-    private final CultureSiteRepository cultureSiteRepository;
-    private final CultureSitePermissionPolicyService cultureSitePermissionPolicyService;
+    private final CultureTargetGovernanceRegistry targetRegistry;
 
     public CultureAwareSourceApplicationService(
             SourceRepository sourceRepository,
@@ -56,12 +44,7 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
             ClanRepository clanRepository,
             OperationLogApplicationService operationLogApplicationService,
             AuthorizationApplicationService authorizationApplicationService,
-            CultureItemRepository cultureItemRepository,
-            CulturePermissionPolicyService culturePermissionPolicyService,
-            MigrationEventRepository migrationEventRepository,
-            MigrationEventPermissionPolicyService migrationPermissionPolicyService,
-            CultureSiteRepository cultureSiteRepository,
-            CultureSitePermissionPolicyService cultureSitePermissionPolicyService
+            CultureTargetGovernanceRegistry targetRegistry
     ) {
         super(
                 sourceRepository,
@@ -77,12 +60,7 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
                 operationLogApplicationService,
                 authorizationApplicationService
         );
-        this.cultureItemRepository = cultureItemRepository;
-        this.culturePermissionPolicyService = culturePermissionPolicyService;
-        this.migrationEventRepository = migrationEventRepository;
-        this.migrationPermissionPolicyService = migrationPermissionPolicyService;
-        this.cultureSiteRepository = cultureSiteRepository;
-        this.cultureSitePermissionPolicyService = cultureSitePermissionPolicyService;
+        this.targetRegistry = targetRegistry;
     }
 
     @Override
@@ -125,37 +103,22 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
     }
 
     private void requireGovernedTargetVisible(String targetType, Long targetId, Long clanId, Long actorId) {
-        String normalized = normalize(targetType);
-        if ("culture_item".equals(normalized) || "culture_items".equals(normalized)) {
-            CultureItemEntity item = requireCulture(targetId);
-            if (clanId == null || !clanId.equals(item.getClanId())) throw cultureNotFound();
-            culturePermissionPolicyService.requireVisible(item, actorId);
-        } else if ("migration_event".equals(normalized) || "migration_events".equals(normalized)) {
-            MigrationEventEntity event = requireMigration(targetId);
-            if (clanId == null || !clanId.equals(event.getClanId())) throw migrationNotFound();
-            migrationPermissionPolicyService.requireVisible(event, actorId);
-        } else if ("culture_site".equals(normalized) || "culture_sites".equals(normalized)) {
-            CultureSiteEntity site = requireSite(targetId);
-            if (clanId == null || !clanId.equals(site.getClanId())) throw siteNotFound();
-            cultureSitePermissionPolicyService.requireVisible(site, actorId);
+        if (!targetRegistry.supports(targetType)) return;
+        try {
+            targetRegistry.require(clanId, targetType, targetId, actorId, CultureTargetAction.VISIBLE);
+        } catch (BusinessException exception) {
+            throw notFound();
         }
     }
 
     private boolean visible(String targetType, Long targetId, Long clanId, Long actorId) {
-        String normalized = normalize(targetType);
+        if (!targetRegistry.supports(targetType)) return true;
         try {
-            if ("culture_item".equals(normalized) || "culture_items".equals(normalized)) {
-                CultureItemEntity item = requireCulture(targetId);
-                if (clanId != null && !clanId.equals(item.getClanId())) return false;
-                culturePermissionPolicyService.requireVisible(item, actorId);
-            } else if ("migration_event".equals(normalized) || "migration_events".equals(normalized)) {
-                MigrationEventEntity event = requireMigration(targetId);
-                if (clanId != null && !clanId.equals(event.getClanId())) return false;
-                migrationPermissionPolicyService.requireVisible(event, actorId);
-            } else if ("culture_site".equals(normalized) || "culture_sites".equals(normalized)) {
-                CultureSiteEntity site = requireSite(targetId);
-                if (clanId != null && !clanId.equals(site.getClanId())) return false;
-                cultureSitePermissionPolicyService.requireVisible(site, actorId);
+            if (clanId == null) {
+                var existing = targetRegistry.requireAdapter(targetType).requireExisting(targetId);
+                targetRegistry.require(existing.clanId(), targetType, targetId, actorId, CultureTargetAction.VISIBLE);
+            } else {
+                targetRegistry.require(clanId, targetType, targetId, actorId, CultureTargetAction.VISIBLE);
             }
             return true;
         } catch (BusinessException ignored) {
@@ -163,34 +126,7 @@ public class CultureAwareSourceApplicationService extends SourceApplicationServi
         }
     }
 
-    private CultureItemEntity requireCulture(Long targetId) {
-        return cultureItemRepository.findByIdAndDeletedAtIsNull(targetId)
-                .orElseThrow(this::cultureNotFound);
-    }
-
-    private MigrationEventEntity requireMigration(Long targetId) {
-        return migrationEventRepository.findByIdAndDeletedAtIsNull(targetId)
-                .orElseThrow(this::migrationNotFound);
-    }
-
-    private CultureSiteEntity requireSite(Long targetId) {
-        return cultureSiteRepository.findByIdAndDeletedAtIsNull(targetId)
-                .orElseThrow(this::siteNotFound);
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
-    }
-
-    private BusinessException cultureNotFound() {
-        return new BusinessException("CULTURE_ITEM_NOT_FOUND", "文化资料不存在或不可见");
-    }
-
-    private BusinessException migrationNotFound() {
-        return new BusinessException("MIGRATION_EVENT_NOT_FOUND", "迁徙事件不存在或不可见");
-    }
-
-    private BusinessException siteNotFound() {
-        return new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见");
+    private BusinessException notFound() {
+        return new BusinessException("CULTURE_TARGET_NOT_FOUND", "文化对象不存在或当前用户不可见");
     }
 }
