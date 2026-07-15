@@ -34,6 +34,7 @@
   align-items: center;
 }
 
+.lineage-search-grid--workbench .ant-input-search .ant-input-search-btn,
 .lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
   display: inline-flex;
   align-items: center;
