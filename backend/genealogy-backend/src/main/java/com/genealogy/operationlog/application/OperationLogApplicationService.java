@@ -40,12 +40,18 @@ public class OperationLogApplicationService {
         this.operationLogRepository = operationLogRepository;
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    /*
+     * Suspend the caller transaction before writing an audit record. Spring Data
+     * then opens and completes the repository transaction inside the try/catch in
+     * the terminal record method, so commit-time failures cannot roll back the
+     * surrounding business operation.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail) {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(
             Long clanId,
             Long actorId,
@@ -59,12 +65,12 @@ public class OperationLogApplicationService {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, traceContext, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail, String requestId, String clientIp) {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(
             Long clanId,
             Long actorId,
@@ -80,7 +86,7 @@ public class OperationLogApplicationService {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, traceContext, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void recordRisk(
             Long clanId,
             Long actorId,
@@ -94,7 +100,7 @@ public class OperationLogApplicationService {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null, riskContext);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void recordRisk(
             Long clanId,
             Long actorId,
@@ -110,7 +116,7 @@ public class OperationLogApplicationService {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, riskContext);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void record(
             Long clanId,
             Long actorId,
