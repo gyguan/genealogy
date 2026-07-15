@@ -154,6 +154,7 @@ export type MigrationEventPage = {
 
 export type CultureSiteCreateRequest = {
   branchId?: number | null;
+  relatedPersonId?: number | null;
   siteType: CultureSiteType;
   siteName: string;
   addressText?: string | null;
@@ -183,6 +184,8 @@ export type CultureSiteSummaryResponse = {
   summary?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  relatedPersonId?: number | null;
+  relatedPersonName?: string | null;
   confidenceLevel: CultureConfidenceLevel;
   privacyLevel: CulturePrivacyLevel;
   sensitiveLevel: CultureSensitiveLevel;
