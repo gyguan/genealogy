@@ -1,15 +1,29 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
-import { Alert, Button, Empty, Space, Spin, Tag, Tooltip } from 'antd';
-import type { TreeEdgeResponse, TreeGraphResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
+import { Alert, Button, Empty, Popover, Space, Spin, Tag, Tooltip } from 'antd';
+import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined } from '@ant-design/icons';
+import type {
+  TreeEdgeResponse,
+  TreeGraphResponse,
+  TreeNodeResponse,
+  TreeRelationScope
+} from '../../shared/api/generated/tree-types';
 import { buildLineageLayout } from './lineageGraphModel';
-import { edgeVisual, nodeIndicators } from './lineageSemanticsModel';
+import { edgeIndicators, edgeVisual, nodeIndicators } from './lineageSemanticsModel';
+import { dataStatusText } from './treeDisplayModel';
 
 type Props = {
   graph: TreeGraphResponse | null;
   loading?: boolean;
   emptyText: string;
   activeNodeId?: string | null;
+  selectedNodeId?: string | null;
+  selectedEdgeId?: string | null;
+  highlightedNodeIds?: string[];
+  highlightedEdgeIds?: string[];
+  focusNodeId?: string | null;
+  autoFocus?: 'fit' | 'active' | 'none';
+  relationScopes?: TreeRelationScope[];
   onSelectNode: (node: TreeNodeResponse) => void;
   onSelectEdge?: (edge: TreeEdgeResponse) => void;
   onSetCenter?: (node: TreeNodeResponse) => void;
@@ -37,22 +51,37 @@ function nodeSubtitle(node: TreeNodeResponse) {
   return `${generation} · ${word}`;
 }
 
-export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNodeId, onSelectNode, onSelectEdge, onSetCenter }: Props) {
+export function LineageGraphCanvas({
+  graph,
+  loading = false,
+  emptyText,
+  activeNodeId,
+  selectedNodeId,
+  selectedEdgeId,
+  highlightedNodeIds = [],
+  highlightedEdgeIds = [],
+  focusNodeId,
+  autoFocus = 'none',
+  relationScopes = ['blood', 'ritual', 'marriage'],
+  onSelectNode,
+  onSelectEdge,
+  onSetCenter
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const markerId = useId().replace(/:/g, '');
   const [viewport, setViewport] = useState<Viewport>(INITIAL_VIEWPORT);
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
+  const [fullScreen, setFullScreen] = useState(false);
 
   const layout = useMemo(
     () => graph ? buildLineageLayout(graph, collapsedNodeIds) : null,
     [graph, collapsedNodeIds]
   );
-
-  useEffect(() => {
-    setCollapsedNodeIds(new Set());
-    setViewport(INITIAL_VIEWPORT);
-  }, [graph?.rootNodeId, graph?.meta.generatedAt]);
+  const highlightedNodeSet = useMemo(() => new Set(highlightedNodeIds), [highlightedNodeIds]);
+  const highlightedEdgeSet = useMemo(() => new Set(highlightedEdgeIds), [highlightedEdgeIds]);
+  const hasPath = highlightedNodeSet.size > 1 || highlightedEdgeSet.size > 0;
+  const overviewMode = Boolean(layout && (viewport.scale < 0.58 || (layout.nodes.length > 220 && viewport.scale < 0.9)));
 
   function fitToCanvas() {
     if (!layout || !containerRef.current) return;
@@ -69,21 +98,68 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
     });
   }
 
-  function centerActiveNode() {
+  function centerNode(nodeId?: string | null) {
     if (!layout || !containerRef.current) return;
-    const targetId = activeNodeId || graph?.rootNodeId;
+    const targetId = nodeId || activeNodeId || graph?.rootNodeId;
     const target = layout.nodes.find(item => item.id === targetId) || layout.nodes[0];
     if (!target) return;
     const rect = containerRef.current.getBoundingClientRect();
-    setViewport(previous => ({
-      ...previous,
-      x: rect.width / 2 - (target.x + target.width / 2) * previous.scale,
-      y: rect.height / 2 - (target.y + target.height / 2) * previous.scale
-    }));
+    setViewport(previous => {
+      const scale = Math.max(previous.scale, 0.72);
+      return {
+        scale,
+        x: rect.width / 2 - (target.x + target.width / 2) * scale,
+        y: rect.height / 2 - (target.y + target.height / 2) * scale
+      };
+    });
   }
 
+  function resetViewport() {
+    if (autoFocus === 'fit') fitToCanvas();
+    else if (autoFocus === 'active') centerNode(activeNodeId || graph?.rootNodeId);
+    else setViewport(INITIAL_VIEWPORT);
+  }
+
+  useEffect(() => {
+    setCollapsedNodeIds(new Set());
+    const frame = window.requestAnimationFrame(resetViewport);
+    return () => window.cancelAnimationFrame(frame);
+  }, [graph?.rootNodeId, graph?.meta.generatedAt, autoFocus]);
+
+  useEffect(() => {
+    if (!focusNodeId) return;
+    const frame = window.requestAnimationFrame(() => centerNode(focusNodeId));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusNodeId]);
+
+  useEffect(() => {
+    if (!containerRef.current || !layout) return;
+    const observer = new ResizeObserver(() => {
+      if (autoFocus === 'fit') fitToCanvas();
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [layout?.width, layout?.height, autoFocus]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(resetViewport);
+    return () => window.cancelAnimationFrame(frame);
+  }, [fullScreen]);
+
   function zoom(factor: number) {
-    setViewport(previous => ({ ...previous, scale: clamp(previous.scale * factor, 0.25, 2.6) }));
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const pointerX = rect.width / 2;
+    const pointerY = rect.height / 2;
+    setViewport(previous => {
+      const scale = clamp(previous.scale * factor, 0.25, 2.6);
+      const ratio = scale / previous.scale;
+      return {
+        scale,
+        x: pointerX - (pointerX - previous.x) * ratio,
+        y: pointerY - (pointerY - previous.y) * ratio
+      };
+    });
   }
 
   function handleWheel(event: ReactWheelEvent<SVGSVGElement>) {
@@ -146,36 +222,50 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
     );
   }
 
+  const noticeContent = (
+    <Space direction="vertical" size={8} className="lineage-graph-notice-popover">
+      {layout.notices.map(notice => (
+        <Alert
+          key={notice.code}
+          type={noticeType(notice.code)}
+          showIcon
+          message={`${notice.message}${notice.count > 1 ? `（${notice.count}）` : ''}`}
+        />
+      ))}
+    </Space>
+  );
+
   return (
-    <div className="lineage-graph-shell">
+    <div className={`lineage-graph-shell ${fullScreen ? 'is-fullscreen' : ''}`}>
       <div className="lineage-graph-toolbar">
         <Space wrap size={6}>
-          <Tooltip title="放大"><Button size="small" onClick={() => zoom(1.2)}>＋</Button></Tooltip>
-          <Tooltip title="缩小"><Button size="small" onClick={() => zoom(0.82)}>－</Button></Tooltip>
+          <Tooltip title="放大"><Button aria-label="放大" size="small" onClick={() => zoom(1.2)}>＋</Button></Tooltip>
+          <Tooltip title="缩小"><Button aria-label="缩小" size="small" onClick={() => zoom(0.82)}>－</Button></Tooltip>
           <Button size="small" onClick={fitToCanvas}>适配画布</Button>
-          <Button size="small" onClick={centerActiveNode}>居中人物</Button>
+          <Button size="small" onClick={() => centerNode(activeNodeId || graph.rootNodeId)}>居中人物</Button>
+          <Button size="small" icon={<ReloadOutlined />} onClick={resetViewport}>重置视图</Button>
           {collapsedNodeIds.size ? <Button size="small" onClick={() => setCollapsedNodeIds(new Set())}>全部展开</Button> : null}
+          <Button size="small" icon={fullScreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} onClick={() => setFullScreen(value => !value)}>{fullScreen ? '退出全屏' : '全屏查看'}</Button>
           <Tag>{Math.round(viewport.scale * 100)}%</Tag>
+          {hasPath ? <Tag color="processing">已高亮关系路径</Tag> : null}
         </Space>
-        <span className="lineage-graph-help">滚轮缩放 · 拖动画布 · 点击人物或关系查看详情</span>
+        <span className="lineage-graph-help">滚轮缩放 · 拖动画布 · 单击查看详情 · 双击设为中心</span>
       </div>
 
       {layout.notices.length ? (
         <div className="lineage-graph-notices">
-          {layout.notices.slice(0, 3).map(notice => (
-            <Alert
-              key={notice.code}
-              type={noticeType(notice.code)}
-              showIcon
-              message={`${notice.message}${notice.count > 1 ? `（${notice.count}）` : ''}`}
-            />
-          ))}
+          <Alert
+            type={noticeType(layout.notices[0].code)}
+            showIcon
+            message={`${layout.notices[0].message}${layout.notices[0].count > 1 ? `（${layout.notices[0].count}）` : ''}`}
+            action={layout.notices.length > 1 ? <Popover trigger="click" placement="bottomRight" content={noticeContent}><Button type="link" size="small">查看全部 {layout.notices.length} 项</Button></Popover> : null}
+          />
         </div>
       ) : null}
 
       <div className="lineage-graph-viewport" ref={containerRef}>
         <svg
-          className="lineage-graph-svg"
+          className={`lineage-graph-svg ${overviewMode ? 'is-overview' : ''}`}
           role="img"
           aria-label="关系边驱动的世系拓扑图"
           onWheel={handleWheel}
@@ -196,10 +286,15 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
             {layout.edges.map(item => {
               const visual = edgeVisual(item.edge);
               const markerEnd = visual.marker === 'none' ? undefined : `url(#${markerId}-${visual.marker === 'ritual' ? 'ritual' : 'blood'})`;
+              const indicators = edgeIndicators(item.edge);
+              const primaryIndicator = indicators[0];
+              const pathActive = highlightedEdgeSet.has(item.id);
+              const selected = item.id === selectedEdgeId;
+              const dimmed = hasPath && !pathActive;
               return (
                 <g
                   key={item.id}
-                  className={`lineage-graph-edge lineage-graph-edge--${visual.tone}`}
+                  className={`lineage-graph-edge lineage-graph-edge--${visual.tone} ${pathActive ? 'is-path' : ''} ${selected ? 'is-selected' : ''} ${dimmed ? 'is-dimmed' : ''}`}
                   role={onSelectEdge ? 'button' : undefined}
                   tabIndex={onSelectEdge ? 0 : undefined}
                   aria-label={`${visual.description}，点击查看关系详情`}
@@ -211,22 +306,31 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
                     }
                   }}
                 >
-                  <title>{visual.description}</title>
+                  <title>{visual.description}{indicators.length ? `，${indicators.map(indicator => indicator.label).join('、')}` : ''}</title>
                   <path d={item.path} markerEnd={markerEnd} />
-                  <text x={item.labelX} y={item.labelY}>{visual.label}</text>
+                  <text className="lineage-graph-edge-label" x={item.labelX} y={item.labelY}>{visual.label}</text>
+                  {primaryIndicator ? (
+                    <g className={`lineage-graph-edge-indicator indicator-${primaryIndicator.tone}`} transform={`translate(${item.labelX + 18} ${item.labelY - 4})`}>
+                      <circle r="8" />
+                      <text y="3" textAnchor="middle">{primaryIndicator.glyph}</text>
+                    </g>
+                  ) : null}
                 </g>
               );
             })}
 
             {layout.nodes.map(item => {
               const active = item.id === activeNodeId || item.id === graph.rootNodeId;
+              const selected = item.id === selectedNodeId;
+              const pathActive = highlightedNodeSet.has(item.id);
+              const dimmed = hasPath && !pathActive;
               const indicators = nodeIndicators(item.node);
               const primaryIndicator = indicators[0];
-              const statusText = primaryIndicator?.label || (item.isolated ? '孤立人物' : active ? '当前定位' : item.node.dataStatus || '正式数据');
+              const statusText = primaryIndicator?.label || (item.isolated ? '孤立人物' : active ? '当前定位' : dataStatusText(item.node.dataStatus || 'official'));
               return (
                 <g
                   key={item.id}
-                  className={`lineage-graph-node ${active ? 'is-active' : ''} ${item.node.visibility === 'masked' ? 'is-masked' : ''} ${item.isolated ? 'is-isolated' : ''} ${primaryIndicator ? `has-indicator indicator-${primaryIndicator.tone}` : ''}`}
+                  className={`lineage-graph-node ${active ? 'is-active' : ''} ${selected ? 'is-selected' : ''} ${pathActive ? 'is-path' : ''} ${dimmed ? 'is-dimmed' : ''} ${item.node.visibility === 'masked' ? 'is-masked' : ''} ${item.isolated ? 'is-isolated' : ''} ${primaryIndicator ? `has-indicator indicator-${primaryIndicator.tone}` : ''}`}
                   transform={`translate(${item.x} ${item.y})`}
                   role="button"
                   tabIndex={0}
@@ -251,7 +355,7 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
                     <g className={`lineage-graph-node-indicator indicator-${primaryIndicator.tone}`} transform={`translate(${item.width - 18} 18)`}>
                       <title>{indicators.map(indicator => indicator.label).join('、')}</title>
                       <circle r="10" />
-                      <text y="4" textAnchor="middle">!</text>
+                      <text y="4" textAnchor="middle">{primaryIndicator.glyph}</text>
                     </g>
                   ) : null}
                   {item.hasChildren ? (
@@ -282,11 +386,11 @@ export function LineageGraphCanvas({ graph, loading = false, emptyText, activeNo
       </div>
 
       <div className="lineage-graph-legend" aria-label="世系图谱图例">
-        <span><i className="legend-blood" />实线箭头：血缘亲子</span>
-        <span><i className="legend-ritual" />虚线空心箭头：承嗣宗法</span>
-        <span><i className="legend-marriage" />无箭头实线：婚配</span>
-        <span><i className="legend-status" />点划线：状态关系</span>
-        <span><b className="legend-risk">!</b>徽标：证据、审核或修谱提示</span>
+        {relationScopes.includes('blood') ? <span><i className="legend-blood" />实线箭头：血缘亲子</span> : null}
+        {relationScopes.includes('ritual') ? <span><i className="legend-ritual" />虚线空心箭头：承嗣宗法</span> : null}
+        {relationScopes.includes('marriage') ? <span><i className="legend-marriage" />无箭头实线：婚配</span> : null}
+        {relationScopes.includes('status') ? <span><i className="legend-status" />点划线：状态关系</span> : null}
+        <span><b className="legend-risk">证</b>徽标：证据、审核或修谱提示</span>
       </div>
     </div>
   );

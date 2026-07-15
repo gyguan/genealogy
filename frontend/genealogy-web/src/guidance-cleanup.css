@@ -1,11 +1,15 @@
 /* Issue #178: keep primary tasks above low-frequency product narration. */
 
-.lineage-workbench-head,
 .lineage-section-desc,
 .audit-trace-page .tracking-center-intro,
 .tracking-filter-actions > .ant-typography,
 .person-archive-search .archive-search-summary {
   display: none;
+}
+
+/* The lineage workbench heading now contains the person/branch mode control and remains visible. */
+.lineage-workbench-head p {
+  max-width: 760px;
 }
 
 /* The source library already has a global module title in App Header. */

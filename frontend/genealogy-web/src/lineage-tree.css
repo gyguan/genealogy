@@ -1,6 +1,7 @@
 .lineage-page { display: grid; gap: 16px; }
 
 .lineage-search-grid { display: grid; grid-template-columns: 150px 180px minmax(240px, 1fr) 120px auto; gap: 12px; align-items: end; }
+.lineage-search-grid--workbench { grid-template-columns: 150px 190px 150px minmax(280px, 1fr); }
 .lineage-search-grid .field { margin-bottom: 0; }
 .lineage-search-grid .field label { font-size: 12px; margin-bottom: 4px; }
 .lineage-search-grid input, .lineage-search-grid select { min-height: 36px; padding: 8px 10px; border-radius: 8px; }
@@ -8,16 +9,32 @@
 .lineage-search-grid .actions button { min-height: 36px; padding: 8px 14px; white-space: nowrap; }
 .lineage-search-hint { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: #f5faff; color: #1677ff; font-size: 13px; font-weight: 500; }
 
+.lineage-search-results { margin-top: 16px; overflow: hidden; border: 1px solid #f0f0f0; border-radius: 10px; background: #fff; }
+.lineage-search-results.is-collapsed { background: #fafafa; }
+.lineage-search-results-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: #fafafa; }
+.lineage-search-results-head > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.lineage-search-results-list { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
+.lineage-search-result-item { padding: 10px 14px !important; cursor: pointer; transition: background .15s ease; }
+.lineage-search-result-item:hover { background: #f5faff; }
+.lineage-search-result-item.is-active { background: #e6f4ff; }
+.lineage-search-result-item mark { padding: 0 2px; border-radius: 2px; background: #fff1b8; color: inherit; }
+.lineage-search-results-pagination { display: flex; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid #f0f0f0; background: #fff; }
+.lineage-avatar--search { width: 36px; height: 36px; font-size: 16px; }
+
 .lineage-workbench { display: grid; gap: 14px; padding: 16px; border: 1px solid #d6e4ff; border-radius: 14px; background: linear-gradient(180deg, #ffffff, #f8fbff); box-shadow: 0 1px 2px rgba(0,0,0,.03); }
 .lineage-workbench-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 4px 2px 2px; }
 .lineage-workbench-head span { color: #1677ff; font-size: 12px; font-weight: 600; }
 .lineage-workbench-head h3 { margin: 4px 0 6px; font-size: 20px; line-height: 1.25; color: rgba(0,0,0,.88); }
 .lineage-workbench-head p { margin: 0; color: rgba(0,0,0,.55); line-height: 1.6; }
 .lineage-workbench-actions { display: none; }
-.lineage-workbench-summary { margin: 0; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.lineage-workbench-summary { margin: 0; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .lineage-workbench-summary div { min-height: 68px; }
 .lineage-workbench-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lineage-workbench-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: stretch; }
+.lineage-query-toolbar { display: grid; grid-template-columns: minmax(200px, 1.2fr) repeat(4, minmax(140px, .8fr)); gap: 10px; align-items: end; padding: 12px; border: 1px solid #edf1f7; border-radius: 10px; background: #fff; }
+.lineage-query-toolbar .field { margin: 0; min-width: 0; }
+.lineage-query-toolbar .field label { margin-bottom: 4px; font-size: 12px; }
+.lineage-switch-field { min-height: 32px; display: flex; align-items: center; gap: 8px; color: rgba(0,0,0,.65); white-space: nowrap; }
 .lineage-logic-card { min-width: 0; display: grid; grid-template-rows: auto auto 1fr; gap: 12px; padding: 16px; border: 1px solid #edf1f7; border-radius: 12px; background: #fff; overflow: hidden; }
 .lineage-logic-card--branch { border-color: #d6e4ff; background: linear-gradient(180deg, #ffffff, #fbfdff); }
 .lineage-logic-card--person { border-color: #f0f0f0; }
@@ -62,7 +79,7 @@
 .lineage-person-pop-mask { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: rgba(0, 0, 0, .45); }
 .lineage-person-pop { position: relative; width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border-radius: 12px; border: 1px solid #f0f0f0; background: #fff; padding: 20px; box-shadow: 0 6px 16px rgba(0,0,0,.12); }
 .lineage-pop-close { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: #f5f5f5; color: rgba(0,0,0,.65); font-size: 18px; }
-.lineage-pop-head { display: flex; gap: 14px; align-items: center; padding-right: 40px; margin-bottom: 16px; }
+.lineage-pop-head { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; }
 .lineage-pop-head .lineage-avatar { width: 48px; height: 48px; font-size: 20px; }
 .lineage-pop-head h3 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
 .lineage-pop-head p { margin: 0; color: rgba(0,0,0,.45); }
@@ -74,21 +91,31 @@
 .lineage-pop-relations h4 { margin: 0 0 8px; font-weight: 600; }
 .lineage-pop-relations p { margin: 6px 0; color: rgba(0,0,0,.65); line-height: 1.55; }
 .lineage-person-pop .actions { margin-top: 14px; }
+.lineage-drawer-content { display: grid; gap: 12px; }
+.lineage-related-edge { cursor: pointer; border-radius: 8px; transition: background .15s ease; }
+.lineage-related-edge:hover { background: #f5faff; }
+
+@media (max-width: 1500px) {
+  .lineage-query-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 @media (max-width: 1400px) {
-  .lineage-search-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lineage-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lineage-workbench-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1200px) {
-  .lineage-search-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lineage-workbench-head { display: grid; }
+  .lineage-query-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
-  .lineage-search-grid, .lineage-pop-grid, .lineage-workbench-summary { grid-template-columns: 1fr; }
+  .lineage-search-grid, .lineage-pop-grid, .lineage-workbench-summary, .lineage-query-toolbar { grid-template-columns: 1fr; }
+  .lineage-search-results-head { align-items: flex-start; }
   .lineage-workbench { padding: 12px; }
   .lineage-logic-card, .lineage-tree-card { padding: 12px; }
+  .lineage-tree-title { display: grid; }
+  .lineage-tree-title small { white-space: normal; }
   .lineage-tree-canvas { min-width: 640px; }
   .branch-lineage-canvas { min-width: 720px; }
 }

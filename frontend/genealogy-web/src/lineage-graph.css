@@ -1,16 +1,21 @@
 .lineage-graph-shell { display: grid; gap: 10px; min-width: 0; }
+.lineage-graph-shell.is-fullscreen { position: fixed; inset: 12px; z-index: 1100; padding: 12px; border: 1px solid #d9d9d9; border-radius: 14px; background: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.22); }
+.lineage-graph-shell.is-fullscreen .lineage-graph-viewport { height: calc(100vh - 150px); }
 .lineage-graph-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid #f0f0f0; border-radius: 10px; background: #fafafa; }
 .lineage-graph-help { color: rgba(0,0,0,.45); font-size: 12px; }
-.lineage-graph-notices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.lineage-graph-notices { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .lineage-graph-notices .ant-alert { padding: 6px 10px; }
+.lineage-graph-notice-popover { width: min(420px, 70vw); max-height: 360px; overflow-y: auto; }
 .lineage-graph-empty { min-height: 360px; display: grid; place-items: center; border: 1px dashed #d9d9d9; border-radius: 12px; background: #fafafa; }
-.lineage-graph-viewport { position: relative; height: 580px; overflow: hidden; border: 1px solid #d6e4ff; border-radius: 12px; background-color: #f8fbff; background-image: linear-gradient(rgba(22,119,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,119,255,.045) 1px, transparent 1px); background-size: 32px 32px; }
+.lineage-graph-viewport { position: relative; height: 640px; overflow: hidden; border: 1px solid #d6e4ff; border-radius: 12px; background-color: #f8fbff; background-image: linear-gradient(rgba(22,119,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,119,255,.045) 1px, transparent 1px); background-size: 32px 32px; }
 .lineage-graph-svg { width: 100%; height: 100%; cursor: grab; touch-action: none; user-select: none; }
 .lineage-graph-svg:active { cursor: grabbing; }
-.lineage-graph-edge { outline: none; cursor: pointer; }
-.lineage-graph-edge path { fill: none; stroke: #8c8c8c; stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke-width .15s, opacity .15s; }
+.lineage-graph-edge { outline: none; cursor: pointer; transition: opacity .16s ease; }
+.lineage-graph-edge path { fill: none; stroke: #8c8c8c; stroke-width: 2; vector-effect: non-scaling-stroke; transition: stroke-width .15s, opacity .15s, filter .15s; }
 .lineage-graph-edge text { fill: rgba(0,0,0,.65); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: #f8fbff; stroke-width: 4px; stroke-linejoin: round; }
-.lineage-graph-edge:hover path, .lineage-graph-edge:focus path { stroke-width: 3.5; opacity: 1; }
+.lineage-graph-edge:hover path, .lineage-graph-edge:focus path, .lineage-graph-edge.is-selected path { stroke-width: 4; opacity: 1; filter: drop-shadow(0 0 3px rgba(22,119,255,.35)); }
+.lineage-graph-edge.is-path path { stroke-width: 4; opacity: 1; filter: drop-shadow(0 0 4px rgba(114,46,209,.45)); }
+.lineage-graph-edge.is-dimmed { opacity: .16; }
 .lineage-graph-edge--blood path { stroke: #1677ff; }
 .lineage-graph-edge--ritual path { stroke: #13a8a8; stroke-dasharray: 8 5; }
 .lineage-graph-edge--marriage path { stroke: #eb2f96; stroke-width: 2.5; }
@@ -18,10 +23,19 @@
 .lineage-graph-edge--other path { stroke: #722ed1; stroke-dasharray: 3 4; }
 .lineage-marker--blood path { fill: #1677ff; stroke: #1677ff; }
 .lineage-marker--ritual path { fill: #f8fbff; stroke: #13a8a8; stroke-width: 1.5; }
-.lineage-graph-node { cursor: pointer; outline: none; }
-.lineage-graph-node > rect { fill: #fff; stroke: #d9d9d9; stroke-width: 1.5; filter: drop-shadow(0 3px 7px rgba(0,0,0,.07)); }
+.lineage-graph-edge-indicator circle { stroke: #fff; stroke-width: 1.5; }
+.lineage-graph-edge-indicator text { fill: #fff; stroke: none; font-size: 9px; font-weight: 700; paint-order: normal; }
+.lineage-graph-edge-indicator.indicator-info circle { fill: #1677ff; }
+.lineage-graph-edge-indicator.indicator-warning circle { fill: #fa8c16; }
+.lineage-graph-edge-indicator.indicator-danger circle { fill: #ff4d4f; }
+.lineage-graph-edge-indicator.indicator-neutral circle { fill: #8c8c8c; }
+.lineage-graph-node { cursor: pointer; outline: none; transition: opacity .16s ease; }
+.lineage-graph-node > rect { fill: #fff; stroke: #d9d9d9; stroke-width: 1.5; filter: drop-shadow(0 3px 7px rgba(0,0,0,.07)); transition: stroke-width .15s, opacity .15s, filter .15s; }
 .lineage-graph-node:hover > rect, .lineage-graph-node:focus > rect { stroke: #69b1ff; stroke-width: 2; }
 .lineage-graph-node.is-active > rect { fill: #e6f4ff; stroke: #1677ff; stroke-width: 2.5; }
+.lineage-graph-node.is-selected > rect { stroke: #722ed1; stroke-width: 3.5; filter: drop-shadow(0 5px 11px rgba(114,46,209,.23)); }
+.lineage-graph-node.is-path > rect { stroke: #722ed1; stroke-width: 2.5; }
+.lineage-graph-node.is-dimmed { opacity: .22; }
 .lineage-graph-node.is-masked > rect { fill: #fafafa; stroke-dasharray: 6 4; }
 .lineage-graph-node.is-isolated > rect { stroke: #faad14; stroke-dasharray: 5 4; }
 .lineage-graph-node.indicator-warning > rect { stroke: #faad14; }
@@ -36,7 +50,7 @@
 .lineage-graph-node.indicator-warning .lineage-graph-node-status { fill: #ad6800; }
 .lineage-graph-node.indicator-danger .lineage-graph-node-status { fill: #cf1322; }
 .lineage-graph-node-indicator circle { stroke: #fff; stroke-width: 2; }
-.lineage-graph-node-indicator text { fill: #fff; font-size: 12px; font-weight: 800; }
+.lineage-graph-node-indicator text { fill: #fff; font-size: 9px; font-weight: 800; }
 .lineage-graph-node-indicator.indicator-info circle { fill: #1677ff; }
 .lineage-graph-node-indicator.indicator-warning circle { fill: #fa8c16; }
 .lineage-graph-node-indicator.indicator-danger circle { fill: #ff4d4f; }
@@ -44,6 +58,11 @@
 .lineage-graph-collapse { cursor: pointer; }
 .lineage-graph-collapse circle { fill: #fff; stroke: #1677ff; stroke-width: 1.5; }
 .lineage-graph-collapse text { fill: #1677ff; font-size: 15px; font-weight: 700; }
+.lineage-graph-svg.is-overview .lineage-graph-node-branch,
+.lineage-graph-svg.is-overview .lineage-graph-node-status,
+.lineage-graph-svg.is-overview .lineage-graph-edge-label,
+.lineage-graph-svg.is-overview .lineage-graph-edge-indicator { display: none; }
+.lineage-graph-svg.is-overview .lineage-graph-node > rect { filter: none; }
 .lineage-graph-legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 6px 2px; color: rgba(0,0,0,.65); font-size: 12px; }
 .lineage-graph-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .lineage-graph-legend i { display: inline-block; width: 30px; height: 0; border-top: 2px solid; position: relative; }
@@ -53,7 +72,7 @@
 .lineage-graph-legend .legend-ritual::after { content: '›'; position: absolute; right: -2px; top: -10px; font-size: 16px; font-weight: 700; }
 .lineage-graph-legend .legend-marriage { color: #eb2f96; }
 .lineage-graph-legend .legend-status { color: #fa8c16; border-top-style: dashed; }
-.lineage-graph-legend .legend-risk { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #fa8c16; color: #fff; font-size: 12px; }
+.lineage-graph-legend .legend-risk { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #fa8c16; color: #fff; font-size: 10px; }
 .lineage-detail-summary { display: grid; gap: 10px; margin-top: 14px; }
 .lineage-detail-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .lineage-detail-summary-card { padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 8px; background: #fafafa; }
@@ -64,8 +83,7 @@
 .lineage-detail-tag.tone-info { border-color: #91caff; background: #e6f4ff; color: #0958d9; }
 .lineage-detail-tag.tone-warning { border-color: #ffd591; background: #fff7e6; color: #ad4e00; }
 .lineage-detail-tag.tone-danger { border-color: #ffccc7; background: #fff2f0; color: #cf1322; }
-.lineage-edge-pop-head { padding-right: 42px; }
 .lineage-edge-pop-head h3 { margin: 0 0 4px; }
 .lineage-edge-pop-head p { margin: 0; color: rgba(0,0,0,.55); }
-@media (max-width: 1100px) { .lineage-graph-notices { grid-template-columns: 1fr; } .lineage-graph-toolbar { align-items: flex-start; flex-direction: column; } .lineage-graph-viewport { height: 520px; } }
-@media (max-width: 760px) { .lineage-graph-viewport { height: 460px; } .lineage-graph-help { display: none; } .lineage-detail-summary-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .lineage-graph-toolbar { align-items: flex-start; flex-direction: column; } .lineage-graph-viewport { height: 540px; } }
+@media (max-width: 760px) { .lineage-graph-shell.is-fullscreen { inset: 4px; padding: 6px; } .lineage-graph-shell.is-fullscreen .lineage-graph-viewport { height: calc(100vh - 180px); } .lineage-graph-viewport { height: 470px; } .lineage-graph-help { display: none; } .lineage-detail-summary-grid { grid-template-columns: 1fr; } }

@@ -1,4 +1,5 @@
 import type { TreeEdgeResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
+import { riskLevelText } from './treeDisplayModel.js';
 
 export type LineageSemanticTone = 'blood' | 'marriage' | 'ritual' | 'status' | 'other';
 export type LineageIndicatorTone = 'neutral' | 'info' | 'warning' | 'danger';
@@ -14,6 +15,7 @@ export type LineageIndicator = {
   code: string;
   label: string;
   tone: LineageIndicatorTone;
+  glyph: string;
 };
 
 const RELATION_LABELS: Record<string, string> = {
@@ -33,17 +35,35 @@ const RELATION_LABELS: Record<string, string> = {
   other: '其他关系'
 };
 
-const ANOMALY_LABELS: Record<string, { label: string; tone: LineageIndicatorTone }> = {
-  generation_mismatch: { label: '世次异常', tone: 'warning' },
-  relationship_conflict: { label: '关系冲突', tone: 'danger' },
-  possible_duplicate: { label: '疑似重复', tone: 'warning' },
-  missing_source: { label: '来源缺失', tone: 'warning' },
-  isolated_person: { label: '孤立人物', tone: 'info' },
-  other: { label: '待复核', tone: 'warning' }
+const ANOMALY_LABELS: Record<string, { label: string; tone: LineageIndicatorTone; glyph: string }> = {
+  generation_mismatch: { label: '世次异常', tone: 'warning', glyph: '世' },
+  relationship_conflict: { label: '关系冲突', tone: 'danger', glyph: '冲' },
+  possible_duplicate: { label: '疑似重复', tone: 'warning', glyph: '重' },
+  missing_source: { label: '来源缺失', tone: 'warning', glyph: '证' },
+  isolated_person: { label: '孤立人物', tone: 'info', glyph: '孤' },
+  other: { label: '待复核', tone: 'warning', glyph: '核' }
+};
+
+const TONE_PRIORITY: Record<LineageIndicatorTone, number> = {
+  danger: 0,
+  warning: 1,
+  info: 2,
+  neutral: 3
+};
+
+const REVIEW_LABELS: Record<string, string> = {
+  pending: '待审核',
+  approved: '已通过',
+  rejected: '已驳回',
+  mixed: '状态混合'
 };
 
 function normalized(value?: string | null) {
   return String(value || '').trim().toLowerCase();
+}
+
+function sortIndicators(items: LineageIndicator[]) {
+  return [...items].sort((left, right) => TONE_PRIORITY[left.tone] - TONE_PRIORITY[right.tone] || left.label.localeCompare(right.label, 'zh-CN'));
 }
 
 export function relationshipDisplayLabel(edge: TreeEdgeResponse) {
@@ -74,20 +94,20 @@ export function edgeVisual(edge: TreeEdgeResponse): LineageEdgeVisual {
 
 export function nodeIndicators(node: TreeNodeResponse): LineageIndicator[] {
   if (node.visibility === 'masked') {
-    return [{ code: 'privacy', label: '隐私保护', tone: 'neutral' }];
+    return [{ code: 'privacy', label: '隐私保护', tone: 'neutral', glyph: '私' }];
   }
   const indicators: LineageIndicator[] = [];
   if (node.evidenceSummary?.missingOfficialEvidence) {
-    indicators.push({ code: 'missing-evidence', label: '缺少正式证据', tone: 'warning' });
+    indicators.push({ code: 'missing-evidence', label: '缺少正式证据', tone: 'warning', glyph: '证' });
   } else if (node.evidenceSummary?.confidenceLevel === 'low') {
-    indicators.push({ code: 'low-confidence', label: '低可信', tone: 'warning' });
+    indicators.push({ code: 'low-confidence', label: '低可信', tone: 'warning', glyph: '低' });
   }
   if (node.reviewSummary?.state === 'pending') {
-    indicators.push({ code: 'review-pending', label: '待审核', tone: 'info' });
+    indicators.push({ code: 'review-pending', label: '待审核', tone: 'info', glyph: '审' });
   } else if (node.reviewSummary?.state === 'rejected') {
-    indicators.push({ code: 'review-rejected', label: '审核驳回', tone: 'danger' });
+    indicators.push({ code: 'review-rejected', label: '审核驳回', tone: 'danger', glyph: '驳' });
   } else if (node.reviewSummary?.state === 'mixed') {
-    indicators.push({ code: 'review-mixed', label: '审核状态混合', tone: 'warning' });
+    indicators.push({ code: 'review-mixed', label: '审核状态混合', tone: 'warning', glyph: '审' });
   }
   for (const code of node.anomalySummary?.codes || []) {
     const item = ANOMALY_LABELS[code] || ANOMALY_LABELS.other;
@@ -95,23 +115,23 @@ export function nodeIndicators(node: TreeNodeResponse): LineageIndicator[] {
       indicators.push({ code, ...item });
     }
   }
-  return indicators;
+  return sortIndicators(indicators);
 }
 
 export function edgeIndicators(edge: TreeEdgeResponse): LineageIndicator[] {
   if (edge.visibility === 'masked') return [];
   const indicators: LineageIndicator[] = [];
   if (edge.evidenceSummary?.missingOfficialEvidence) {
-    indicators.push({ code: 'missing-evidence', label: '缺少正式证据', tone: 'warning' });
+    indicators.push({ code: 'missing-evidence', label: '缺少正式证据', tone: 'warning', glyph: '证' });
   } else if (edge.evidenceSummary?.confidenceLevel === 'low') {
-    indicators.push({ code: 'low-confidence', label: '低可信', tone: 'warning' });
+    indicators.push({ code: 'low-confidence', label: '低可信', tone: 'warning', glyph: '低' });
   }
   if (edge.reviewSummary?.state === 'pending') {
-    indicators.push({ code: 'review-pending', label: '待审核', tone: 'info' });
+    indicators.push({ code: 'review-pending', label: '待审核', tone: 'info', glyph: '审' });
   } else if (edge.reviewSummary?.state === 'rejected') {
-    indicators.push({ code: 'review-rejected', label: '审核驳回', tone: 'danger' });
+    indicators.push({ code: 'review-rejected', label: '审核驳回', tone: 'danger', glyph: '驳' });
   } else if (edge.reviewSummary?.state === 'mixed') {
-    indicators.push({ code: 'review-mixed', label: '审核状态混合', tone: 'warning' });
+    indicators.push({ code: 'review-mixed', label: '审核状态混合', tone: 'warning', glyph: '审' });
   }
   for (const code of edge.anomalySummary?.codes || []) {
     const item = ANOMALY_LABELS[code] || ANOMALY_LABELS.other;
@@ -119,7 +139,7 @@ export function edgeIndicators(edge: TreeEdgeResponse): LineageIndicator[] {
       indicators.push({ code, ...item });
     }
   }
-  return indicators;
+  return sortIndicators(indicators);
 }
 
 export function summaryText(
@@ -129,7 +149,7 @@ export function summaryText(
 ) {
   const parts: string[] = [];
   if (evidence) parts.push(`证据 ${evidence.officialBindingCount}/${evidence.bindingCount}`);
-  if (review && review.state !== 'none') parts.push(`审核：${review.state}`);
-  if (anomaly?.count) parts.push(`异常 ${anomaly.count}`);
+  if (review && review.state !== 'none') parts.push(`审核：${REVIEW_LABELS[review.state] || review.state}`);
+  if (anomaly?.count) parts.push(`异常 ${anomaly.count} · ${riskLevelText(anomaly.highestRisk)}`);
   return parts.join(' · ');
 }
