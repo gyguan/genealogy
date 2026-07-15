@@ -809,7 +809,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               ]}
             />
             {selectedNode.visibility !== 'masked' ? <DetailSummary target={selectedNode} indicators={nodeIndicators(selectedNode)} /> : <IndicatorTags indicators={nodeIndicators(selectedNode)} />}
-            <Divider orientation="start">相关关系</Divider>
+            <Divider>相关关系</Divider>
             <List
               size="small"
               locale={{ emptyText: '暂无可见关系记录' }}
