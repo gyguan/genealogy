@@ -72,6 +72,9 @@ const cultureSchemaNames = [
   'CultureSitePage',
   'CultureOverviewStatistics',
   'CultureOverviewResponse',
+  'CultureQualityMetricResponse',
+  'CultureQualityIssueResponse',
+  'CultureQualityResponse',
   'CultureSubmitReviewRequest',
   'CultureArchiveRequest',
   'CultureCommandResponse'
@@ -97,9 +100,7 @@ function responseName(operation) {
 function resolveParameter(openapi, parameter) {
   const reference = parameter?.['$ref'];
   const prefix = '#/components/parameters/';
-  if (!reference || !reference.startsWith(prefix)) {
-    return parameter;
-  }
+  if (!reference || !reference.startsWith(prefix)) return parameter;
   const name = reference.slice(prefix.length);
   return openapi.components?.parameters?.[name] || parameter;
 }
@@ -158,33 +159,21 @@ function arrayItemType(type) {
 
 function schemaToType(schema) {
   if (!schema) return 'unknown';
-
   let type;
-  if (schema['$ref']) {
-    type = schema['$ref'].split('/').pop();
-  } else if (Array.isArray(schema.enum) && schema.enum.length > 0) {
-    type = schema.enum.map(value => JSON.stringify(value)).join(' | ');
-  } else if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) {
-    type = schema.oneOf.map(schemaToType).join(' | ');
-  } else if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) {
-    type = schema.anyOf.map(schemaToType).join(' | ');
-  } else if (Array.isArray(schema.allOf) && schema.allOf.length > 0) {
-    type = schema.allOf.map(schemaToType).join(' & ');
-  } else if (schema.type === 'array') {
-    type = `${arrayItemType(schemaToType(schema.items))}[]`;
-  } else if (schema.type === 'integer' || schema.type === 'number') {
-    type = 'number';
-  } else if (schema.type === 'boolean') {
-    type = 'boolean';
-  } else if (schema.type === 'string') {
-    type = 'string';
-  } else if (schema.type === 'object' || schema.properties) {
+  if (schema['$ref']) type = schema['$ref'].split('/').pop();
+  else if (Array.isArray(schema.enum) && schema.enum.length > 0) type = schema.enum.map(value => JSON.stringify(value)).join(' | ');
+  else if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) type = schema.oneOf.map(schemaToType).join(' | ');
+  else if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) type = schema.anyOf.map(schemaToType).join(' | ');
+  else if (Array.isArray(schema.allOf) && schema.allOf.length > 0) type = schema.allOf.map(schemaToType).join(' & ');
+  else if (schema.type === 'array') type = `${arrayItemType(schemaToType(schema.items))}[]`;
+  else if (schema.type === 'integer' || schema.type === 'number') type = 'number';
+  else if (schema.type === 'boolean') type = 'boolean';
+  else if (schema.type === 'string') type = 'string';
+  else if (schema.type === 'object' || schema.properties) {
     const required = new Set(schema.required || []);
     const properties = Object.entries(schema.properties || {});
     if (properties.length === 0) {
-      type = schema.additionalProperties
-        ? `Record<string, ${schemaToType(schema.additionalProperties)}>`
-        : 'Record<string, unknown>';
+      type = schema.additionalProperties ? `Record<string, ${schemaToType(schema.additionalProperties)}>` : 'Record<string, unknown>';
     } else {
       const fields = properties.map(([name, property]) => {
         const optional = required.has(name) ? '' : '?';
@@ -192,18 +181,12 @@ function schemaToType(schema) {
       });
       type = `{ ${fields.join(' ')} }`;
     }
-  } else {
-    type = 'unknown';
-  }
-
+  } else type = 'unknown';
   return schema.nullable ? `${type} | null` : type;
 }
 
 function renderNamedSchema(name, schema) {
-  if (schema.type !== 'object' && !schema.properties) {
-    return `export type ${name} = ${schemaToType(schema)};`;
-  }
-
+  if (schema.type !== 'object' && !schema.properties) return `export type ${name} = ${schemaToType(schema)};`;
   const required = new Set(schema.required || []);
   const fields = Object.entries(schema.properties || {}).map(([property, propertySchema]) => {
     const optional = required.has(property) ? '' : '?';
@@ -215,14 +198,8 @@ function renderNamedSchema(name, schema) {
 function renderSchemaTypes(openapi, schemaNames, description) {
   const schemas = openapi.components?.schemas || {};
   const missing = schemaNames.filter(name => !schemas[name]);
-  if (missing.length > 0) {
-    throw new Error(`Missing ${description} schemas in effective OpenAPI: ${missing.join(', ')}`);
-  }
-
-  const body = schemaNames
-    .map(name => renderNamedSchema(name, schemas[name]))
-    .join('\n\n');
-
+  if (missing.length > 0) throw new Error(`Missing ${description} schemas in effective OpenAPI: ${missing.join(', ')}`);
+  const body = schemaNames.map(name => renderNamedSchema(name, schemas[name])).join('\n\n');
   return `/* eslint-disable */\n/**\n * Auto-generated ${description} DTOs from the effective OpenAPI contract.\n * Do not edit manually.\n */\n\n${body}\n`;
 }
 
@@ -232,24 +209,11 @@ function writeGeneratedFile(file, content) {
 }
 
 const { openapi, overlayFiles } = loadEffectiveOpenApi();
-writeGeneratedFile(operationOutput, renderOperations(collectOperations(
-  openapi,
-  operation => !isCultureOperation(operation) && !isRiskOperation(operation)
-)));
-writeGeneratedFile(
-  cultureOperationOutput,
-  renderOperations(collectOperations(openapi, isCultureOperation), 'docs/api/openapi.culture.json')
-);
-writeGeneratedFile(
-  riskOperationOutput,
-  renderOperations(collectOperations(openapi, isRiskOperation), 'docs/api/openapi.operation-risk-audit.json')
-);
+writeGeneratedFile(operationOutput, renderOperations(collectOperations(openapi, operation => !isCultureOperation(operation) && !isRiskOperation(operation))));
+writeGeneratedFile(cultureOperationOutput, renderOperations(collectOperations(openapi, isCultureOperation), 'docs/api/openapi.culture.json'));
+writeGeneratedFile(riskOperationOutput, renderOperations(collectOperations(openapi, isRiskOperation), 'docs/api/openapi.operation-risk-audit.json'));
 writeGeneratedFile(trackingTypesOutput, renderSchemaTypes(openapi, trackingSchemaNames, 'tracking-center'));
 writeGeneratedFile(cultureTypesOutput, renderSchemaTypes(openapi, cultureSchemaNames, 'culture-domain'));
 
 const overlays = overlayFiles.length ? ` with ${overlayFiles.join(', ')}` : '';
-console.log(
-  `Generated ${path.relative(repositoryRoot, operationOutput)}, ${path.relative(repositoryRoot, cultureOperationOutput)}, `
-  + `${path.relative(repositoryRoot, riskOperationOutput)}, ${path.relative(repositoryRoot, trackingTypesOutput)} and `
-  + `${path.relative(repositoryRoot, cultureTypesOutput)} from docs/api/openapi.json${overlays}`
-);
+console.log(`Generated ${path.relative(repositoryRoot, operationOutput)}, ${path.relative(repositoryRoot, cultureOperationOutput)}, ${path.relative(repositoryRoot, riskOperationOutput)}, ${path.relative(repositoryRoot, trackingTypesOutput)} and ${path.relative(repositoryRoot, cultureTypesOutput)} from docs/api/openapi.json${overlays}`);
