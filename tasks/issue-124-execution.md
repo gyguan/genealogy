@@ -3,7 +3,7 @@
 - Issue：[#124 引入稳定 trace_id 贯通变更、审核与正式生效链路](https://github.com/gyguan/genealogy/issues/124)
 - 工作分支：`agent/issue-124-stable-trace-id`
 - 当前 PR：[#211](https://github.com/gyguan/genealogy/pull/211)
-- 已关闭未合入 PR：[#206](https://github.com/gyguan/genealogy/pull/206)，因实施阶段临时 workflow 导致 PR 级 `action_required` 标记，已由干净单提交 PR #211 替代。
+- 已关闭未合入 PR：[#206](https://github.com/gyguan/genealogy/pull/206)，因实施阶段临时 workflow 导致 PR 级 `action_required` 标记，已由干净 PR #211 替代。
 - 目标：为一次 revision 变更建立稳定 trace_id，并贯通 review_task、审核决策、正式生效与 operation_log。
 
 ## DEFINE：最终规则
@@ -16,6 +16,7 @@
 6. trace 只用于关联和取证，不作为权限凭证，不改变审核和正式生效规则。
 7. operation_log 不增加外键：其 `REQUIRES_NEW` 事务不能依赖父事务尚未提交的 revision/task。
 8. 同一对象的不同 revision 永远按 revision/trace 分成独立链，不按对象 ID 粗粒度合并。
+9. 来源绑定新增尚无 binding ID 时，日志关联到请求中的真实可见业务目标，不使用 `source_binding:<sourceId>` 占位关联。
 
 ## PLAN：原子任务
 
@@ -28,8 +29,9 @@
 | 5 | approve/reject/apply/operation_log 贯通 trace_id 与结果 | ✅ 已完成 | submitted/approved/rejected/applied 事件显式记录 |
 | 6 | 统一追踪接口按 trace_id 聚合单次变更并标记历史覆盖 | ✅ 已完成 | complete/legacy_partial/inconsistent/orphan_partial |
 | 7 | 补充并发、驳回重提、通过生效、实库迁移和索引测试 | ✅ 已完成 | PostgreSQL 16 全量 Flyway、Hibernate 校验及三表持久化均通过 |
-| 8 | 五轴 Review、清理实施资产并建立干净 PR | ✅ 已完成 | 最终分支基于最新 main，仅保留一个产品提交 |
-| 9 | 标准 CI、自动 Review 与 squash merge | 🔄 进行中 | PR #211 门禁通过后转 Ready |
+| 8 | 五轴 Review、清理实施资产并建立干净 PR | ✅ 已完成 | 最终差异无临时 workflow、补丁分片或 package-lock |
+| 9 | 处理自动 Review 反馈 | ✅ 已完成 | 普通及文化来源绑定新增日志改为关联真实业务目标，线程已回复并关闭 |
+| 10 | 最终标准 CI 与 squash merge | 🔄 进行中 | 等待当前 head 门禁完成后合入 |
 
 ## 数据模型
 
@@ -51,12 +53,14 @@
 
 ### 后端与领域规则
 
-- ✅ Maven 编译。
+- ✅ Maven 编译和完整打包。
 - ✅ UUID 稳定性与 2000 并发生成唯一性。
 - ✅ submit → approve → apply 复用同一 trace。
 - ✅ reject 后重提生成新 trace。
 - ✅ 自审禁止规则保持有效。
 - ✅ 来源绑定与文化治理生命周期接入。
+- ✅ 普通来源绑定新增关联真实目标，例如 `person:100`。
+- ✅ 文化来源绑定新增关联真实目标，例如 `culture_item:100`。
 - ✅ 同一对象多 revision 分链。
 - ✅ 历史无 trace 独立且标记 partial。
 
@@ -94,6 +98,7 @@
 
 ## 当前检查点
 
-- 当前阶段：PR #211 标准 CI 与自动 Review。
-- 分支状态：基于最新 `main`，单一产品提交，无临时 workflow、补丁分片或 package-lock。
+- 当前阶段：PR #211 最终标准 CI。
+- 分支状态：基于最新 `main`，无主干漂移，无临时 workflow 或验证资产。
+- Review 状态：唯一 P2 反馈已修复、回复并关闭线程。
 - 已知阻塞：无产品代码阻塞。
