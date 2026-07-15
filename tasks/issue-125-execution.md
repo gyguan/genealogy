@@ -1,10 +1,11 @@
 # Issue #125 执行看板
 
 - Issue：[#125 建设高风险操作审计视图与异常追踪能力](https://github.com/gyguan/genealogy/issues/125)
-- 工作分支：`agent/issue-125-risk-audit`
-- 当前 PR：[#220](https://github.com/gyguan/genealogy/pull/220)
+- 工作分支：`agent/issue-125-risk-audit`（已删除）
+- 交付 PR：[#220](https://github.com/gyguan/genealogy/pull/220)（已合入）
+- `main` 合入 Commit：`c4d8c173e215e66f9ed5509bc39cd555bd488acd`
 - 目标：基于后端真实审计数据建设高风险事件模型、分页筛选、统计与追踪跳转，并补齐批量导出、权限变更和敏感访问的可验证日志。
-- 最后更新时间：2026-07-15 10:58（北京时间）
+- 最后更新时间：2026-07-15 11:01（北京时间）
 
 ## DEFINE：范围与边界
 
@@ -43,6 +44,7 @@
 | 6 | 接入风险审计前端视图、URL 筛选恢复和详情跳转 | ✅ 已完成 | 未单独精确固化 | 新增风险页签、统计卡片、筛选、分页、日志详情和对象追踪入口 |
 | 7 | 补充后端、契约、前端模型与权限回归测试 | ✅ 已完成 | 未单独精确固化 | 覆盖无权统计泄露、字段最小化、支派拒绝、分类、敏感访问和 URL 恢复 |
 | 8 | 完成验证、五轴 Review 并达到 `main` 合入门禁 | ✅ 已完成 | 未单独精确固化 | 干净 PR diff、分支 CI 与最新主干合并态六项门禁均已核对，无阻塞性 Review |
+| 9 | Squash Merge、Issue 关闭与交付现场收尾 | ✅ 已完成 | 未单独精确固化 | PR #220 合入 `main`，Issue #125 自动关闭，工作分支已删除 |
 
 > 除启动阶段已及时固化的耗时外，后续任务未形成可审计的逐项计时记录，不事后补造。
 
@@ -55,17 +57,17 @@
 
 ## 验证结果
 
-### 干净 PR Head
+### 最终干净 PR Head
 
 - ✅ PR Files changed 仅包含 Issue #125 的 30 个文件。
-- ✅ Backend CI #2454。
-- ✅ Frontend CI #342。
-- ✅ API Contract #1143，生成文件无漂移。
-- ✅ Database Migration Governance #473。
+- ✅ Backend CI #2459。
+- ✅ Frontend CI #344。
+- ✅ API Contract #1146，生成文件无漂移。
+- ✅ Database Migration Governance #475。
 
 ### 最新主干合并态
 
-为验证与当前 `main` `646f398ba8476f59ebafc7c9e2c1e7593b2d1c6c` 的兼容性，使用合并态提交 `59bb94e2fdf13346e4d45e232623020e89206d19` 完成验证：
+为验证与合入前 `main` `646f398ba8476f59ebafc7c9e2c1e7593b2d1c6c` 的兼容性，使用合并态提交 `59bb94e2fdf13346e4d45e232623020e89206d19` 完成验证：
 
 - ✅ Backend CI #2443。
 - ✅ Frontend CI #340。
@@ -74,7 +76,7 @@
 - ✅ Culture Library UI CI #79。
 - ✅ Culture Governance CI #120：全量后端回归、PostgreSQL 文化集成测试、PostgreSQL 启动与全量 Flyway 验证通过。
 
-验证后分支恢复到干净 head，避免主干其他 Issue 文件进入 PR diff；GitHub 当前 PR base 仍为同一 `main` commit。
+验证后分支恢复到干净 head，避免主干其他 Issue 文件进入 PR diff；最终 Squash Merge 仅合入 Issue #125 的 30 个文件。
 
 ### 聚焦验证
 
@@ -100,18 +102,17 @@
 - 历史来源绑定跨多个支派时不强行回填单一 `branch_id`，查询通过结构化绑定关系判定可见范围。
 - 首期处置状态为审计事实字段和筛选维度，不包含自动封禁、自动撤权或通用告警编排。
 
-## 最终合入检查点
+## 最终交付状态
 
-- 当前 Issue：#125（open，PR 合入后由 `Closes #125` 自动关闭）
-- 当前分支：`agent/issue-125-risk-audit`
-- 当前 PR：#220（Ready）
-- 完成状态：全部原子任务和验收项已完成，达到合入门禁
-- PR diff：30 个 Issue #125 文件，无主干污染
-- CI 状态：干净 head 四项标准门禁与最新主干合并态六项门禁全部通过
-- Review 状态：已完成五轴自检；当前无评审意见和未解决线程
-- 已知阻塞：无
-- 下一步最小动作：Squash Merge PR #220 至 `main`，确认 Issue 自动关闭并回写最终完成摘要
-- 最后更新时间：2026-07-15 10:58（北京时间）
+- 完成状态：PR #220 已 Squash Merge 至 `main`。
+- `main` 合入 Commit：`c4d8c173e215e66f9ed5509bc39cd555bd488acd`。
+- Issue 状态：#125 已自动关闭，状态原因为 `completed`。
+- PR 状态：`merged=true`，最终变更文件数 30。
+- Review 状态：五轴 Review 已提交，无阻塞性评审意见和未解决线程。
+- 分支状态：`agent/issue-125-risk-audit` 已删除。
+- 已知阻塞：无。
+- 后续事项：仅保留上述 PostgreSQL 条件测试补跑建议，不影响本次交付完成判定。
+- 完成时间：2026-07-15 11:01（北京时间）。
 
 ## 耗时汇总
 
