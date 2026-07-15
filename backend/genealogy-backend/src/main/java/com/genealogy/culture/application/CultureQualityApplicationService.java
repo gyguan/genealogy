@@ -64,14 +64,17 @@ public class CultureQualityApplicationService {
                 continue;
             }
             hasAnyScope = true;
-            boolean sensitiveAccess = crossClanAdmin || rbacAuthorizationApplicationService.hasPermission(
-                    actorId, clanId, adapter.sensitiveViewPermission());
+            PermissionDataScope sensitiveScope = crossClanAdmin
+                    ? PermissionDataScope.full()
+                    : rbacAuthorizationApplicationService.permissionDataScope(
+                            actorId, clanId, adapter.sensitiveViewPermission());
             QualityScope scope = new QualityScope(
                     clanId,
                     actorId,
                     dataScope.fullClanAccess(),
                     dataScope.queryVisibleBranchIds(),
-                    sensitiveAccess,
+                    sensitiveScope.fullClanAccess(),
+                    sensitiveScope.queryVisibleBranchIds(),
                     staleBefore
             );
             TargetConfig config = TargetConfig.require(adapter.targetType());
@@ -95,7 +98,7 @@ public class CultureQualityApplicationService {
         List<CultureQualityIssueResponse> boundedIssues = issues.stream().limit(TOTAL_ISSUE_LIMIT).toList();
         CultureQualityMetricResponse overall = aggregate(metrics);
         List<String> notes = List.of(
-                "统计仅包含当前用户可见范围，受限对象按最小披露规则过滤。",
+                "统计仅包含当前用户可见范围，敏感权限按宗族或支派范围逐对象过滤。",
                 "待审核数量基于对象的 pending revision，包含正式对象更新、删除、归档和精选变更。",
                 "长期未复核阈值为 " + STALE_DAYS + " 天；问题清单最多返回 " + TOTAL_ISSUE_LIMIT + " 条。"
         );
@@ -104,30 +107,18 @@ public class CultureQualityApplicationService {
 
     private CultureQualityMetricResponse toMetric(TargetConfig config, QualityMetrics values) {
         return new CultureQualityMetricResponse(
-                config.targetType(),
-                config.displayName(),
-                values.officialCount(),
-                values.pendingReviewCount(),
-                values.sourceCoveredCount(),
-                ratio(values.sourceCoveredCount(), values.officialCount()),
-                values.strongSourceCount(),
-                ratio(values.strongSourceCount(), values.officialCount()),
-                values.completeCount(),
-                ratio(values.completeCount(), values.officialCount()),
-                values.lowConfidenceCount(),
-                values.staleCount()
+                config.targetType(), config.displayName(), values.officialCount(), values.pendingReviewCount(),
+                values.sourceCoveredCount(), ratio(values.sourceCoveredCount(), values.officialCount()),
+                values.strongSourceCount(), ratio(values.strongSourceCount(), values.officialCount()),
+                values.completeCount(), ratio(values.completeCount(), values.officialCount()),
+                values.lowConfidenceCount(), values.staleCount()
         );
     }
 
     private CultureQualityIssueResponse toIssue(QualityIssue issue) {
         return new CultureQualityIssueResponse(
-                issue.targetType(),
-                issue.targetId(),
-                issue.displayName(),
-                issue.branchId(),
-                issue.branchName(),
-                issue.issueCodes(),
-                issue.updatedAt()
+                issue.targetType(), issue.targetId(), issue.displayName(), issue.branchId(), issue.branchName(),
+                issue.issueCodes(), issue.updatedAt()
         );
     }
 
@@ -140,18 +131,8 @@ public class CultureQualityApplicationService {
         long lowConfidence = values.stream().mapToLong(CultureQualityMetricResponse::lowConfidenceCount).sum();
         long stale = values.stream().mapToLong(CultureQualityMetricResponse::staleCount).sum();
         return new CultureQualityMetricResponse(
-                "all",
-                "全部宗族文化对象",
-                official,
-                pending,
-                sourced,
-                ratio(sourced, official),
-                strong,
-                ratio(strong, official),
-                complete,
-                ratio(complete, official),
-                lowConfidence,
-                stale
+                "all", "全部宗族文化对象", official, pending, sourced, ratio(sourced, official),
+                strong, ratio(strong, official), complete, ratio(complete, official), lowConfidence, stale
         );
     }
 
