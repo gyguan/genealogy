@@ -5,6 +5,7 @@ import { loadEffectiveOpenApi, repositoryRoot } from './openapi-loader.mjs';
 
 const operationOutput = path.join(repositoryRoot, 'frontend/genealogy-web/src/shared/api/generated/api-contract.ts');
 const cultureOperationOutput = path.join(repositoryRoot, 'frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts');
+const riskOperationOutput = path.join(repositoryRoot, 'frontend/genealogy-web/src/shared/api/generated/risk-api-contract.ts');
 const trackingTypesOutput = path.join(repositoryRoot, 'frontend/genealogy-web/src/shared/api/generated/tracking-types.ts');
 const cultureTypesOutput = path.join(repositoryRoot, 'frontend/genealogy-web/src/shared/api/generated/culture-types.ts');
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
@@ -114,6 +115,10 @@ function paramsOf(openapi, pathItem, operation, location) {
 
 function isCultureOperation(operation) {
   return (operation.tags || []).includes('Culture');
+}
+
+function isRiskOperation(operation) {
+  return (operation.tags || []).includes('OperationRisk');
 }
 
 function collectOperations(openapi, predicate = () => true) {
@@ -227,10 +232,17 @@ function writeGeneratedFile(file, content) {
 }
 
 const { openapi, overlayFiles } = loadEffectiveOpenApi();
-writeGeneratedFile(operationOutput, renderOperations(collectOperations(openapi, operation => !isCultureOperation(operation))));
+writeGeneratedFile(operationOutput, renderOperations(collectOperations(
+  openapi,
+  operation => !isCultureOperation(operation) && !isRiskOperation(operation)
+)));
 writeGeneratedFile(
   cultureOperationOutput,
   renderOperations(collectOperations(openapi, isCultureOperation), 'docs/api/openapi.culture.json')
+);
+writeGeneratedFile(
+  riskOperationOutput,
+  renderOperations(collectOperations(openapi, isRiskOperation), 'docs/api/openapi.operation-risk-audit.json')
 );
 writeGeneratedFile(trackingTypesOutput, renderSchemaTypes(openapi, trackingSchemaNames, 'tracking-center'));
 writeGeneratedFile(cultureTypesOutput, renderSchemaTypes(openapi, cultureSchemaNames, 'culture-domain'));
@@ -238,6 +250,6 @@ writeGeneratedFile(cultureTypesOutput, renderSchemaTypes(openapi, cultureSchemaN
 const overlays = overlayFiles.length ? ` with ${overlayFiles.join(', ')}` : '';
 console.log(
   `Generated ${path.relative(repositoryRoot, operationOutput)}, ${path.relative(repositoryRoot, cultureOperationOutput)}, `
-  + `${path.relative(repositoryRoot, trackingTypesOutput)} and ${path.relative(repositoryRoot, cultureTypesOutput)} `
-  + `from docs/api/openapi.json${overlays}`
+  + `${path.relative(repositoryRoot, riskOperationOutput)}, ${path.relative(repositoryRoot, trackingTypesOutput)} and `
+  + `${path.relative(repositoryRoot, cultureTypesOutput)} from docs/api/openapi.json${overlays}`
 );
