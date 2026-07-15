@@ -3,6 +3,8 @@ package com.genealogy.tree.controller;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.tree.application.TreeApplicationService;
+import com.genealogy.tree.application.TreeQueryContextApplicationService;
+import com.genealogy.tree.application.TreeSummaryApplicationService;
 import com.genealogy.tree.dto.TreeGraphResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
@@ -22,13 +24,19 @@ import java.util.List;
 public class TreeController {
 
     private final TreeApplicationService treeApplicationService;
+    private final TreeSummaryApplicationService treeSummaryApplicationService;
+    private final TreeQueryContextApplicationService treeQueryContextApplicationService;
     private final AuthorizationApplicationService authorizationApplicationService;
 
     public TreeController(
             TreeApplicationService treeApplicationService,
+            TreeSummaryApplicationService treeSummaryApplicationService,
+            TreeQueryContextApplicationService treeQueryContextApplicationService,
             AuthorizationApplicationService authorizationApplicationService
     ) {
         this.treeApplicationService = treeApplicationService;
+        this.treeSummaryApplicationService = treeSummaryApplicationService;
+        this.treeQueryContextApplicationService = treeQueryContextApplicationService;
         this.authorizationApplicationService = authorizationApplicationService;
     }
 
@@ -44,10 +52,11 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.personLineage(
+        TreeGraphResponse graph = treeApplicationService.personLineage(
                 personId, direction, relationScopes, dataView,
                 maxDepth, maxNodes, maxEdges, actorId
-        ));
+        );
+        return ApiResponse.success(enrichPersonGraph(personId, actorId, graph));
     }
 
     @GetMapping("/person/{personId}/family")
@@ -60,9 +69,10 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.family(
+        TreeGraphResponse graph = treeApplicationService.family(
                 personId, relationScopes, dataView, maxNodes, maxEdges, actorId
-        ));
+        );
+        return ApiResponse.success(enrichPersonGraph(personId, actorId, graph));
     }
 
     @GetMapping("/descendants")
@@ -76,10 +86,11 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.descendants(
+        TreeGraphResponse graph = treeApplicationService.descendants(
                 rootPersonId, maxDepth, relationScopes, dataView,
                 maxNodes, maxEdges, actorId
-        ));
+        );
+        return ApiResponse.success(enrichPersonGraph(rootPersonId, actorId, graph));
     }
 
     @GetMapping("/ancestors")
@@ -93,10 +104,11 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.ancestors(
+        TreeGraphResponse graph = treeApplicationService.ancestors(
                 personId, maxDepth, relationScopes, dataView,
                 maxNodes, maxEdges, actorId
-        ));
+        );
+        return ApiResponse.success(enrichPersonGraph(personId, actorId, graph));
     }
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/lineage")
@@ -112,9 +124,15 @@ public class TreeController {
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        return ApiResponse.success(treeApplicationService.branchLineage(
+        TreeGraphResponse graph = treeApplicationService.branchLineage(
                 clanId, branchId, includeSubBranches, relationScopes, dataView,
                 maxDepth, maxNodes, maxEdges, actorId
-        ));
+        );
+        return ApiResponse.success(treeSummaryApplicationService.enrich(clanId, actorId, graph));
+    }
+
+    private TreeGraphResponse enrichPersonGraph(Long personId, Long actorId, TreeGraphResponse graph) {
+        Long clanId = treeQueryContextApplicationService.requireClanId(personId);
+        return treeSummaryApplicationService.enrich(clanId, actorId, graph);
     }
 }
