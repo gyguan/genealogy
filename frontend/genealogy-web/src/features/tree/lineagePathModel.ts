@@ -2,11 +2,15 @@ import type { TreeGraphResponse } from '../../shared/api/generated/tree-types';
 
 export type LineagePath = { nodeIds: string[]; edgeIds: string[] };
 
+function emptyPath(): LineagePath {
+  return { nodeIds: [], edgeIds: [] };
+}
+
 export function findLineagePath(graph: TreeGraphResponse, startNodeId: string, targetNodeId: string): LineagePath {
-  if (!startNodeId || !targetNodeId) return { nodeIds: [], edgeIds: [] };
+  if (!startNodeId || !targetNodeId) return emptyPath();
   if (startNodeId === targetNodeId) return { nodeIds: [startNodeId], edgeIds: [] };
   const visibleNodeIds = new Set(graph.nodes.map(node => node.nodeId));
-  if (!visibleNodeIds.has(startNodeId) || !visibleNodeIds.has(targetNodeId)) return { nodeIds: [], edgeIds: [] };
+  if (!visibleNodeIds.has(startNodeId) || !visibleNodeIds.has(targetNodeId)) return emptyPath();
 
   const adjacency = new Map<string, Array<{ nodeId: string; edgeId: string }>>();
   graph.edges.forEach(edge => {
@@ -30,7 +34,7 @@ export function findLineagePath(graph: TreeGraphResponse, startNodeId: string, t
         let cursor = targetNodeId;
         while (cursor !== startNodeId) {
           const step = previous.get(cursor);
-          if (!step) return { nodeIds: [], edgeIds: [] };
+          if (!step) return emptyPath();
           edgeIds.unshift(step.edgeId);
           cursor = step.nodeId;
           nodeIds.unshift(cursor);
@@ -40,5 +44,5 @@ export function findLineagePath(graph: TreeGraphResponse, startNodeId: string, t
       queue.push(next.nodeId);
     }
   }
-  return { nodeIds: [], edgeIds: [] };
+  return emptyPath();
 }
