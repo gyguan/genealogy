@@ -172,9 +172,9 @@ public class CultureItemApplicationService {
         AccessScope updateScope = permissionScope(clanId, actorId, UPDATE_PERMISSION);
         AccessScope deleteScope = permissionScope(clanId, actorId, DELETE_PERMISSION);
         CultureItemSearchCriteria normalized = domainService.normalize(criteria);
-        if (normalized.branchId() != null) {
-            requireBranchInClan(clanId, normalized.branchId());
-            if (!readScope.canReadBranch(normalized.branchId())) {
+        for (Long branchId : normalized.branchIds()) {
+            requireBranchInClan(clanId, branchId);
+            if (!readScope.canReadBranch(branchId)) {
                 throw new BusinessException("CULTURE_ITEM_NOT_FOUND", "文化资料不存在或不可见");
             }
         }
@@ -443,24 +443,24 @@ public class CultureItemApplicationService {
                         likeIgnoreCase(cb, root, "locationText", pattern)
                 ));
             }
-            if (criteria.category() != null) {
-                predicates.add(cb.equal(root.get("category"), criteria.category()));
+            if (!criteria.categories().isEmpty()) {
+                predicates.add(root.get("category").in(criteria.categories()));
             }
-            if (criteria.branchId() != null) {
-                predicates.add(cb.equal(root.get("branchId"), criteria.branchId()));
+            if (!criteria.branchIds().isEmpty()) {
+                predicates.add(root.get("branchId").in(criteria.branchIds()));
             }
-            if (criteria.dataStatus() != null) {
-                predicates.add(cb.equal(root.get("dataStatus"), criteria.dataStatus()));
+            if (!criteria.dataStatuses().isEmpty()) {
+                predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
             }
-            if (criteria.privacyLevel() != null) {
-                predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
+            if (!criteria.privacyLevels().isEmpty()) {
+                predicates.add(root.get("privacyLevel").in(criteria.privacyLevels()));
             }
-            if (criteria.featuredOnHome() != null) {
-                predicates.add(cb.equal(root.get("featuredOnHome"), criteria.featuredOnHome()));
+            if (criteria.featuredOnHomeValues().size() == 1) {
+                predicates.add(cb.equal(root.get("featuredOnHome"), criteria.featuredOnHomeValues().get(0)));
             }
-            if (criteria.hasSource() != null) {
+            if (criteria.hasSourceValues().size() == 1) {
                 Predicate sourceExists = cb.exists(sourceBindingSubquery(root, query, cb, clanId));
-                predicates.add(criteria.hasSource() ? sourceExists : cb.not(sourceExists));
+                predicates.add(criteria.hasSourceValues().get(0) ? sourceExists : cb.not(sourceExists));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
