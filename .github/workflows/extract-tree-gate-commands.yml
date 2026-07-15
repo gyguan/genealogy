@@ -26,9 +26,10 @@ jobs:
             "https://api.github.com/repos/$GH_REPO/actions/jobs/87294472043/logs" \
             -o tree-gate-full.log
           grep -n -E '##\[group\]Run|working-directory:|SPRING_|POSTGRES_|npm run|mvn|playwright|java -jar|vite|curl --fail|nohup' tree-gate-full.log > tree-gate-commands.txt || true
-          cat tree-gate-commands.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: recovered-tree-gate-commands
-          path: tree-gate-commands.txt
+          name: recovered-tree-gate-full-log
+          path: |
+            tree-gate-full.log
+            tree-gate-commands.txt
           retention-days: 1
