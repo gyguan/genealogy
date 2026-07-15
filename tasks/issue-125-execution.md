@@ -4,7 +4,7 @@
 - 工作分支：`agent/issue-125-risk-audit`
 - 当前 PR：[#220](https://github.com/gyguan/genealogy/pull/220)
 - 目标：基于后端真实审计数据建设高风险事件模型、分页筛选、统计与追踪跳转，并补齐批量导出、权限变更和敏感访问的可验证日志。
-- 最后更新时间：2026-07-15 10:36（北京时间）
+- 最后更新时间：2026-07-15 10:40（北京时间）
 
 ## DEFINE：范围与边界
 
@@ -42,7 +42,7 @@
 | 5 | 对关键业务动作补齐显式风险审计记录 | ✅ 已完成 | 未单独精确固化 | 导出显式记录；权限变更按稳定动作码分类；敏感附件访问按真实敏感级别显式记录 |
 | 6 | 接入风险审计前端视图、URL 筛选恢复和详情跳转 | ✅ 已完成 | 未单独精确固化 | 新增风险页签、统计卡片、筛选、分页、日志详情和对象追踪入口 |
 | 7 | 补充后端、契约、前端模型与权限回归测试 | ✅ 已完成 | 未单独精确固化 | 覆盖无权统计泄露、字段最小化、支派拒绝、分类、敏感访问和 URL 恢复 |
-| 8 | 执行完整验证、五轴 Review、处理反馈并合入 main | 🔄 进行中 | 未单独精确固化 | 已处理主干新增迁移导致的版本冲突，最终四项门禁重跑中 |
+| 8 | 执行完整验证、五轴 Review、处理反馈并合入 main | 🔄 进行中 | 未单独精确固化 | 最终四项门禁已通过，准备转 Ready 并执行最终 Review |
 
 > 除启动阶段已及时固化的耗时外，后续任务未形成可审计的逐项计时记录，不事后补造。
 
@@ -62,20 +62,20 @@
 - ✅ `OpLogControllerTest`：独立风险权限、鉴权先于 count、跨宗族拒绝和导出权限。
 - ✅ `OperationLogExportApplicationServiceTest`：批量导出产生显式高风险事件且不复制敏感关键词。
 - ✅ `SourceAttachmentApplicationServiceTest`：敏感附件访问产生风险日志，普通附件访问仅保留普通审计。
-- ✅ 前一轮 Backend CI #2430；迁移重编号后的最终 Backend CI #2436 运行中。
+- ✅ Backend CI #2437。
 
 ### 数据库
 
-- ✅ 前一轮 Database Migration Governance #461。
-- 🔄 主干在实现期间新增更高版本迁移后，已将本迁移重编号为 `V20260715235959_01`；最终 Database Migration Governance #466 运行中。
+- ✅ Database Migration Governance #467。
+- ✅ 主干新增更高版本迁移后，本迁移已重编号为 `V20260715235959_01` 并通过递增校验。
 - ✅ 新增 PostgreSQL 条件集成测试，覆盖字段、索引和人物风险按支派查询 SQL。
 - ⚠️ 标准 Backend CI 未提供 PostgreSQL 服务且未设置 `RUN_POSTGRES_INTEGRATION_TESTS=true`，因此该条件测试本轮仅完成编译，未在 CI 中实际执行；不虚构实库通过结论。
 
 ### API 与前端
 
-- ✅ 前一轮 API Contract #1124，生成文件无漂移；最终 API Contract #1129 运行中。
+- ✅ API Contract #1130，生成文件无漂移。
 - ✅ `trackingCenterModel.test.mjs` 覆盖风险筛选和选中日志 URL 往返恢复。
-- ✅ 前一轮 Frontend CI #329；最终 Frontend CI #335 运行中。
+- ✅ Frontend CI #336，包含模型测试、API check、TypeScript typecheck 和生产构建。
 
 ## 五轴 Review
 
@@ -95,16 +95,16 @@
 
 - 当前 Issue：#125（open）
 - 当前分支：`agent/issue-125-risk-audit`
-- 当前 PR：#220（Draft）
-- 最后完成任务：处理主干新迁移造成的 Flyway 版本冲突
-- 当前进行中任务：等待最终四项门禁，随后转 Ready、处理 Review 并 squash merge
+- 当前 PR：#220（Draft，准备转 Ready）
+- 最后完成任务：最终 Backend、Frontend、API Contract、Database Governance 门禁全部通过
+- 当前进行中任务：转 Ready、处理最终 Review、满足门禁后 squash merge
 - 当前任务累计耗时：未单独精确固化
-- 最新 Commit：`a3ff5ea6549aa2a19d1c6612e26caccd770bd7cd`
-- CI 状态：Backend #2436、Frontend #335、API Contract #1129、Database Governance #466 运行中
+- 最新 Commit：`b4dd5e60b299abb8ff517b2a94d627c72fb5abd4`
+- CI 状态：Backend #2437、Frontend #336、API Contract #1130、Database Governance #467 全部通过
 - 未解决 Review：无
-- 已知阻塞：无；门禁尚未完成
-- 下一步最小任务：确认最终 CI 全绿并检查评审线程
-- 最后更新时间：2026-07-15 10:36（北京时间）
+- 已知阻塞：无
+- 下一步最小任务：转 Ready 并检查自动 Review
+- 最后更新时间：2026-07-15 10:40（北京时间）
 
 ## 耗时汇总
 
