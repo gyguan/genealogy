@@ -265,12 +265,13 @@ public class CultureSiteApplicationService {
                 .toList();
         CultureReviewSummaryResponse review = latestReview(site);
         return new CultureSiteDetailResponse(
-                summary.id(), summary.scope(), summary.siteType(), summary.siteName(), summary.addressText(),
+                summary.id(), summary.scope(), summary.siteType(), summary.name(), summary.addressText(),
                 summary.foundedPeriod(), summary.currentStatus(), summary.summary(), summary.latitude(), summary.longitude(),
-                summary.relatedPersonId(), summary.relatedPersonName(), summary.confidenceLevel(), summary.privacyLevel(),
-                summary.sensitiveLevel(), summary.dataStatus(), summary.featuredOnHome(), summary.sortOrder(),
-                summary.sourceCount(), summary.attachmentCount(), summary.allowedActions(), summary.version(),
-                summary.createdAt(), summary.updatedAt(), site.getDescription(), sources, attachments, review
+                site.getRelatedPersonId(), aggregation.personNames().get(site.getRelatedPersonId()),
+                summary.confidenceLevel(), summary.privacyLevel(), summary.sensitiveLevel(), summary.dataStatus(),
+                summary.featuredOnHome(), summary.sortOrder(), summary.sourceCount(), summary.attachmentCount(),
+                summary.allowedActions(), summary.version(), summary.createdAt(), summary.updatedAt(),
+                site.getDescription(), sources, attachments, review
         );
     }
 
@@ -293,8 +294,6 @@ public class CultureSiteApplicationService {
                 site.getSummary(),
                 sensitiveAccess ? site.getLatitude() : null,
                 sensitiveAccess ? site.getLongitude() : null,
-                site.getRelatedPersonId(),
-                aggregation.personNames().get(site.getRelatedPersonId()),
                 site.getConfidenceLevel(),
                 site.getPrivacyLevel(),
                 site.getSensitiveLevel(),
