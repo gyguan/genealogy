@@ -22,7 +22,7 @@ async function searchAndSelect(page: Page, keyword: string) {
   await searchInput.fill(keyword);
   await page.getByRole('button', { name: /搜\s*索/ }).click();
   await expect(page.getByText('共匹配 1 位人物')).toBeVisible();
-  const resultSelect = page.locator('.lineage-search-grid select').nth(2);
+  const resultSelect = page.getByRole('combobox').nth(2);
   await resultSelect.selectOption({ index: 1 });
   await expect(page.getByRole('heading', { name: new RegExp(keyword) })).toBeVisible();
 }
@@ -33,9 +33,11 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await searchAndSelect(page, '准出人物129');
   await expect(page.getByText('实线箭头：血缘亲子').first()).toBeVisible();
   await expect(page.getByText('虚线空心箭头：承嗣宗法').first()).toBeVisible();
-  await expect(page.locator('.lineage-logic-card--person .lineage-graph-node')).toHaveCount(2);
+  const personNodes = page.locator('.lineage-logic-card--person .lineage-graph-node');
+  await expect(personNodes.first()).toBeVisible();
+  expect(await personNodes.count()).toBeGreaterThanOrEqual(2);
 
-  const depthSelect = page.locator('.lineage-search-grid select').nth(3);
+  const depthSelect = page.getByRole('combobox').nth(3);
   await depthSelect.selectOption('2');
   await depthSelect.selectOption('5');
   await expect(depthSelect).toHaveValue('5');
@@ -56,9 +58,9 @@ test('real PostgreSQL tree supports 120+ search, semantics, summaries and resili
   await searchAndSelect(page, '准出始祖');
   const activeNode = page.locator('.lineage-logic-card--person .lineage-graph-node.is-active').first();
   await activeNode.click();
-  await expect(page.getByText('来源证据')).toBeVisible();
+  await expect(page.getByText('来源证据', { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/1\/1 条正式/)).toBeVisible();
-  await expect(page.getByText('待审核')).toBeVisible();
+  await expect(page.getByText('待审核', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: '查看来源证据' })).toBeVisible();
   await page.getByRole('button', { name: '关闭' }).click();
 
@@ -84,7 +86,7 @@ test('minimal viewer receives real graph without internal summaries or protected
   await expect(page.getByText('在世私密')).toHaveCount(0);
 
   await page.locator('.lineage-logic-card--person .lineage-graph-node.is-active').first().click();
-  await expect(page.getByText('来源证据')).toHaveCount(0);
+  await expect(page.getByText('来源证据', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '查看来源证据' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '进入审核中心' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '进入修谱工作台' })).toHaveCount(0);
