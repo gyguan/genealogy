@@ -44,17 +44,22 @@ jobs:
           set -e
 
           if [ "$merge_status" -ne 0 ]; then
-            conflicts="$(git diff --name-only --diff-filter=U | sort)"
-            expected="$(printf '%s\n' \
-              'backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java' \
-              'backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java' | sort)"
-            if [ "$conflicts" != "$expected" ]; then
-              printf 'Unexpected conflicts:\n%s\n' "$conflicts"
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U | sort)
+            if [ "${#conflicts[@]}" -eq 0 ]; then
+              echo "Merge failed without unresolved paths"
               exit 1
             fi
-            git checkout --theirs -- \
-              backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java \
-              backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java
+            for conflict in "${conflicts[@]}"; do
+              case "$conflict" in
+                backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java|backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java)
+                  git checkout --theirs -- "$conflict"
+                  ;;
+                *)
+                  printf 'Unexpected conflict: %s\n' "$conflict"
+                  exit 1
+                  ;;
+              esac
+            done
           fi
 
           python ../runner/tools/issue124_merge_resolution.py
