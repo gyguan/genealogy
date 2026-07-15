@@ -2,6 +2,7 @@ import { apiClient } from '../../shared/api/client';
 import type {
   CultureArchiveRequest,
   CultureCommandResponse,
+  CultureDataStatus,
   CultureSubmitReviewRequest,
   MigrationEventCreateRequest,
   MigrationEventDetailResponse,
@@ -9,9 +10,18 @@ import type {
   MigrationEventUpdateRequest
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
-import type { MigrationSearchState } from './migrationEventUrlState';
 
-export type { MigrationSearchState } from './migrationEventUrlState';
+export type MigrationSearchState = {
+  keyword?: string;
+  branchId?: number;
+  fromLocation?: string;
+  toLocation?: string;
+  migrationTimeText?: string;
+  dataStatus?: CultureDataStatus | string;
+  sort?: string;
+  pageNo: number;
+  pageSize: number;
+};
 
 function queryString(values: Record<string, unknown>) {
   const params = new URLSearchParams();
@@ -23,7 +33,7 @@ function queryString(values: Record<string, unknown>) {
 }
 
 export function listMigrationEvents(clanId: string, search: MigrationSearchState) {
-  const query = queryString(search);
+  const query = queryString({ ...search, sort: search.sort || 'sequenceNo,asc' });
   return apiClient.get<MigrationEventPage>(`/clans/${clanId}/migration-events?${query}`);
 }
 
