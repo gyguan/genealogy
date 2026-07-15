@@ -8,6 +8,7 @@ on:
       - "frontend/genealogy-web/src/shared/api/client.ts"
       - "frontend/genealogy-web/src/shared/navigation/trackingDeepLink*"
       - "frontend/genealogy-web/e2e/culture-library.spec.ts"
+      - "frontend/genealogy-web/e2e/migration-timeline.spec.ts"
       - "frontend/genealogy-web/package.json"
       - ".github/workflows/culture-library-ui-ci.yml"
   push:
@@ -17,6 +18,7 @@ on:
       - "frontend/genealogy-web/src/shared/api/client.ts"
       - "frontend/genealogy-web/src/shared/navigation/trackingDeepLink*"
       - "frontend/genealogy-web/e2e/culture-library.spec.ts"
+      - "frontend/genealogy-web/e2e/migration-timeline.spec.ts"
       - "frontend/genealogy-web/package.json"
       - ".github/workflows/culture-library-ui-ci.yml"
   workflow_dispatch:
@@ -66,11 +68,11 @@ jobs:
           done
           tail -n 120 /tmp/culture-ui-vite.log || true
           exit 1
-      - name: Run culture browser test
+      - name: Run culture browser tests
         working-directory: frontend/genealogy-web
         env:
           CI: "true"
-        run: npm run test:culture
+        run: npm run test:culture && npm run test:migration
       - name: Upload browser evidence on failure
         if: failure()
         uses: actions/upload-artifact@v4
