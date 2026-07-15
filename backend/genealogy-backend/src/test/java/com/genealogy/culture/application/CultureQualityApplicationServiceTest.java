@@ -16,6 +16,7 @@ import com.genealogy.culture.repository.CultureQualityQueryRepository.TargetConf
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -43,31 +44,25 @@ class CultureQualityApplicationServiceTest {
     @BeforeEach
     void setUp() {
         CultureTargetGovernanceRegistry registry = new CultureTargetGovernanceRegistry(List.of(
-                adapter("culture_item"),
-                adapter("migration_event"),
-                adapter("culture_site")
+                adapter("culture_item"), adapter("migration_event"), adapter("culture_site")
         ));
         service = new CultureQualityApplicationService(
-                authorizationApplicationService,
-                rbacAuthorizationApplicationService,
-                registry,
-                qualityQueryRepository
-        );
+                authorizationApplicationService, rbacAuthorizationApplicationService, registry, qualityQueryRepository);
     }
 
     @Test
-    void aggregatesOnlyTargetTypesWithVisibleScope() {
+    void aggregatesOnlyTargetTypesWithVisibleScopeAndPreservesSensitiveBranchScope() {
         when(authorizationApplicationService.isCrossClanAdmin(7L)).thenReturn(false);
         when(rbacAuthorizationApplicationService.permissionDataScope(7L, 1L, "culture_item.view"))
                 .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.full());
         when(rbacAuthorizationApplicationService.permissionDataScope(7L, 1L, "migration_event.view"))
-                .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.branches(Set.of(20L)));
+                .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.branches(Set.of(20L, 21L)));
         when(rbacAuthorizationApplicationService.permissionDataScope(7L, 1L, "culture_site.view"))
                 .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.none());
-        when(rbacAuthorizationApplicationService.hasPermission(7L, 1L, "culture_item.view_sensitive"))
-                .thenReturn(true);
-        when(rbacAuthorizationApplicationService.hasPermission(7L, 1L, "migration_event.view_sensitive"))
-                .thenReturn(false);
+        when(rbacAuthorizationApplicationService.permissionDataScope(7L, 1L, "culture_item.view_sensitive"))
+                .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.branches(Set.of(10L)));
+        when(rbacAuthorizationApplicationService.permissionDataScope(7L, 1L, "migration_event.view_sensitive"))
+                .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.none());
 
         when(qualityQueryRepository.metrics(eq(TargetConfig.CULTURE_ITEM), any(QualityScope.class)))
                 .thenReturn(new QualityMetrics(10, 2, 8, 5, 7, 2, 1));
@@ -92,6 +87,12 @@ class CultureQualityApplicationServiceTest {
         assertThat(response.issues()).extracting(issue -> issue.targetType())
                 .containsExactly("migration_event", "culture_item");
         verify(qualityQueryRepository, never()).metrics(eq(TargetConfig.CULTURE_SITE), any(QualityScope.class));
+
+        ArgumentCaptor<QualityScope> itemScope = ArgumentCaptor.forClass(QualityScope.class);
+        verify(qualityQueryRepository).metrics(eq(TargetConfig.CULTURE_ITEM), itemScope.capture());
+        assertThat(itemScope.getValue().fullClanAccess()).isTrue();
+        assertThat(itemScope.getValue().sensitiveFullClanAccess()).isFalse();
+        assertThat(itemScope.getValue().sensitiveBranchIds()).containsExactly(10L);
     }
 
     @Test
