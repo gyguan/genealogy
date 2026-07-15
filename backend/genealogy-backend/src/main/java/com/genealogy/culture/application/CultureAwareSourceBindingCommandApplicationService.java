@@ -15,9 +15,13 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
+
 @Primary
 @Service
 public class CultureAwareSourceBindingCommandApplicationService extends SourceBindingCommandApplicationService {
+
+    private static final Set<String> GOVERNED_TARGET_TYPES = Set.of("culture_item", "migration_event");
 
     public CultureAwareSourceBindingCommandApplicationService(
             SourceApplicationService sourceApplicationService,
@@ -38,10 +42,10 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
     @Override
     @Transactional
     public SourceBindingResponse bind(Long clanId, SourceBindingCreateRequest request, Long actorId) {
-        if (isCulture(request)) {
+        if (isGoverned(request)) {
             throw new BusinessException(
                     "CULTURE_SOURCE_BINDING_REVIEW_REQUIRED",
-                    "文化资料来源绑定必须通过审核流程生效"
+                    "文化资料与迁徙事件的来源绑定必须通过审核流程生效"
             );
         }
         return super.bind(clanId, request, actorId);
@@ -58,7 +62,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
     ) {
         return super.submitCreate(
                 clanId,
-                isCulture(request.binding()) ? sanitize(request) : request,
+                isGoverned(request.binding()) ? sanitize(request) : request,
                 actorId,
                 requestId,
                 clientIp
@@ -76,7 +80,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
     ) {
         return super.submitReplace(
                 bindingId,
-                isCulture(request.binding()) ? sanitize(request) : request,
+                isGoverned(request.binding()) ? sanitize(request) : request,
                 actorId,
                 requestId,
                 clientIp
@@ -98,8 +102,8 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
         return new SourceBindingRevisionSubmitRequest(sanitized, request.changeReason());
     }
 
-    private boolean isCulture(SourceBindingCreateRequest request) {
-        return request != null && CultureItemGovernanceApplicationService.TARGET_TYPE.equals(normalize(request.targetType()));
+    private boolean isGoverned(SourceBindingCreateRequest request) {
+        return request != null && GOVERNED_TARGET_TYPES.contains(normalize(request.targetType()));
     }
 
     private String normalize(String value) {

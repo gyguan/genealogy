@@ -14,7 +14,8 @@ import { listBranches, listClans } from '../sources/sourceLibraryService';
 import type { CultureSearchState } from './cultureUrlState';
 
 export type CultureClanOption = Awaited<ReturnType<typeof listClans>>[number];
-export type CultureBranchOption = Awaited<ReturnType<typeof listBranches>>[number];
+type RawCultureBranchOption = Awaited<ReturnType<typeof listBranches>>[number];
+export type CultureBranchOption = RawCultureBranchOption & { name: string };
 
 function queryString(values: Record<string, unknown>) {
   const params = new URLSearchParams();
@@ -29,8 +30,11 @@ export function listCultureClans() {
   return listClans();
 }
 
-export function listCultureBranches(clanId: string) {
-  return listBranches(clanId);
+export function listCultureBranches(clanId: string): Promise<CultureBranchOption[]> {
+  return listBranches(clanId).then(rows => rows.map(row => ({
+    ...row,
+    name: row.branchName || row.branchPath || '未命名支派'
+  })));
 }
 
 export function getCultureOverview(clanId: string) {
