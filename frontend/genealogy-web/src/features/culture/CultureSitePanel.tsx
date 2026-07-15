@@ -25,9 +25,6 @@ import {
   message
 } from 'antd';
 import type {
-  CultureConfidenceLevel,
-  CulturePrivacyLevel,
-  CultureSensitiveLevel,
   CultureSiteCreateRequest,
   CultureSiteDetailResponse,
   CultureSiteSummaryResponse,
@@ -179,7 +176,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
         branchId: data.scope.branchId || undefined,
         relatedPersonId: data.relatedPersonId || undefined,
         siteType: data.siteType,
-        siteName: data.siteName,
+        siteName: data.name,
         addressText: data.addressText || undefined,
         foundedPeriod: data.foundedPeriod || undefined,
         currentStatus: data.currentStatus || undefined,
@@ -305,7 +302,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
   </Space>;
 
   const columns = [
-    { title: '场所', render: (_: unknown, row: CultureSiteSummaryResponse) => <Button type="link" onClick={() => setSelectedId(row.id)}>{row.siteName}</Button> },
+    { title: '场所', render: (_: unknown, row: CultureSiteSummaryResponse) => <Button type="link" onClick={() => setSelectedId(row.id)}>{row.name}</Button> },
     { title: '类型', render: (_: unknown, row: CultureSiteSummaryResponse) => siteTypeLabel(row.siteType) },
     { title: '支派', render: (_: unknown, row: CultureSiteSummaryResponse) => row.scope.branchName || '宗族级' },
     { title: '地址', dataIndex: 'addressText', render: (value?: string) => value || <Text type="secondary">未披露/待补充</Text> },
@@ -329,7 +326,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
     {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : <>
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {items.slice(0, 4).map(item => <Col key={item.id} xs={24} sm={12} xl={6}>
-          <Card size="small" loading={loading} title={item.siteName} extra={<Tag>{siteTypeLabel(item.siteType)}</Tag>}>
+          <Card size="small" loading={loading} title={item.name} extra={<Tag>{siteTypeLabel(item.siteType)}</Tag>}>
             <Space direction="vertical" size={4} style={{ width: '100%' }}>
               <Text type="secondary">{item.scope.branchName || '宗族级'} · {item.foundedPeriod || '年代待考证'}</Text>
               <Text>{item.addressText || '地址未披露或待补充'}</Text>
@@ -346,7 +343,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
     <Drawer open={Boolean(selectedId)} width={680} title={<Title level={4} style={{ margin: 0 }}>文化场所详情</Title>} loading={detailLoading} onClose={() => setSelectedId(undefined)}>
       {detail ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Descriptions bordered size="small" column={1}>
-          <Descriptions.Item label="场所名称">{detail.siteName}</Descriptions.Item>
+          <Descriptions.Item label="场所名称">{detail.name}</Descriptions.Item>
           <Descriptions.Item label="类型">{siteTypeLabel(detail.siteType)}</Descriptions.Item>
           <Descriptions.Item label="支派">{detail.scope.branchName || '宗族级'}</Descriptions.Item>
           <Descriptions.Item label="关联人物">{detail.relatedPersonName || (detail.relatedPersonId ? `人物 #${detail.relatedPersonId}` : '未关联')}</Descriptions.Item>
