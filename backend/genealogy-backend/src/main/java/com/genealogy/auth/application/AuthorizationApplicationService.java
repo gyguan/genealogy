@@ -129,7 +129,7 @@ public class AuthorizationApplicationService {
                 && rbacAuthorizationApplicationService.hasPermission(userId, clanId, permissionCode);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, noRollbackFor = BusinessException.class)
     public ClanMembershipEntity requirePermission(Long clanId, Long userId, String permissionCode) {
         if (userId == null) {
             if (isLegacyAttachmentControllerPermission(permissionCode)) {
@@ -146,7 +146,7 @@ public class AuthorizationApplicationService {
         return activeMembership(clanId, userId).orElse(null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, noRollbackFor = BusinessException.class)
     public ClanMembershipEntity requireBranchPermission(Long clanId, Long userId, Long branchId, String permissionCode) {
         if (userId == null) {
             throw new BusinessException("AUTH_UNAUTHORIZED", "请先登录");
