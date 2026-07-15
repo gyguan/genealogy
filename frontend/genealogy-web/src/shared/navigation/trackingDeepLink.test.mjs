@@ -10,10 +10,12 @@ assert.equal(normalizeTrackingTargetType('relationships'), 'relationship');
 assert.equal(normalizeTrackingTargetType('SOURCE'), 'source');
 assert.equal(normalizeTrackingTargetType('culture-items'), 'culture_item');
 assert.equal(normalizeTrackingTargetType('migration-events'), 'migration_event');
+assert.equal(normalizeTrackingTargetType('culture-sites'), 'culture_site');
 assert.equal(normalizeTrackingTargetType('review_task'), '');
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 9 })?.targetId, '9');
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'culture_item', targetId: 19 })?.targetType, 'culture_item');
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'migration_event', targetId: 29 })?.targetType, 'migration_event');
+assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'culture_site', targetId: 39 })?.targetType, 'culture_site');
 assert.equal(normalizeTrackingTarget({ clanId: '', targetType: 'person', targetId: 9 }), null);
 assert.equal(normalizeTrackingTarget({ clanId: 1, targetType: 'person', targetId: 0 }), null);
 assert.equal(normalizeTrackingTarget({ clanId: 'abc', targetType: 'person', targetId: 9 }), null);
@@ -57,6 +59,17 @@ assert.equal(migrationUrl.searchParams.get('view'), 'auditTrace');
 assert.equal(migrationUrl.searchParams.get('targetType'), 'migration_event');
 assert.equal(migrationUrl.searchParams.get('targetId'), '52');
 assert.equal(migrationUrl.searchParams.get('migrationEvent'), '52');
+
+const siteHref = buildTrackingDeepLink('https://example.test/app?view=culture&cultureSite=62', {
+  clanId: 7,
+  targetType: 'culture_site',
+  targetId: 62
+});
+const siteUrl = new URL(siteHref, 'https://example.test');
+assert.equal(siteUrl.searchParams.get('view'), 'auditTrace');
+assert.equal(siteUrl.searchParams.get('targetType'), 'culture_site');
+assert.equal(siteUrl.searchParams.get('targetId'), '62');
+assert.equal(siteUrl.searchParams.get('cultureSite'), '62');
 
 const events = [];
 const browser = {
