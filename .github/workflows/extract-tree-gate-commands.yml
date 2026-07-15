@@ -1,0 +1,36 @@
+name: Recover Tree Gate Commands
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/extract-tree-gate-commands.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download historical successful job log
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          curl -L --fail \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GH_REPO/actions/jobs/87294472043/logs" \
+            -o tree-gate-logs.zip
+          unzip -q tree-gate-logs.zip -d tree-gate-logs
+          cat tree-gate-logs/* > tree-gate-full.log
+          grep -n -E '##\[group\]Run|working-directory:|SPRING_|POSTGRES_|npm run|mvn|playwright|java -jar|vite|curl --fail' tree-gate-full.log > tree-gate-commands.txt || true
+          cat tree-gate-commands.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recovered-tree-gate-commands
+          path: tree-gate-commands.txt
+          retention-days: 1
