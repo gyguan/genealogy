@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/v1")
@@ -44,7 +46,6 @@ public class CultureItemController {
         this.requestContextApplicationService = requestContextApplicationService;
     }
 
-
     @GetMapping("/clans/{clanId}/culture-overview")
     public ApiResponse<CultureOverviewResponse> overview(
             @Positive @PathVariable Long clanId,
@@ -59,24 +60,24 @@ public class CultureItemController {
             @Positive @PathVariable Long clanId,
             PageQuery pageQuery,
             @Size(max = 100) @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String category,
-            @Positive @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) String dataStatus,
-            @RequestParam(required = false) String privacyLevel,
-            @RequestParam(required = false) Boolean hasSource,
-            @RequestParam(required = false) Boolean featuredOnHome,
+            @Size(max = 20) @RequestParam(name = "category", required = false) List<String> categories,
+            @Size(max = 100) @RequestParam(name = "branchId", required = false) List<@Positive Long> branchIds,
+            @Size(max = 20) @RequestParam(name = "dataStatus", required = false) List<String> dataStatuses,
+            @Size(max = 20) @RequestParam(name = "privacyLevel", required = false) List<String> privacyLevels,
+            @Size(max = 2) @RequestParam(name = "hasSource", required = false) List<Boolean> hasSourceValues,
+            @Size(max = 2) @RequestParam(name = "featuredOnHome", required = false) List<Boolean> featuredOnHomeValues,
             @RequestParam(required = false) String sort,
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        CultureItemSearchCriteria criteria = new CultureItemSearchCriteria(
+        CultureItemSearchCriteria criteria = CultureItemSearchCriteria.multi(
                 keyword,
-                category,
-                branchId,
-                dataStatus,
-                privacyLevel,
-                hasSource,
-                featuredOnHome,
+                categories,
+                branchIds,
+                dataStatuses,
+                privacyLevels,
+                hasSourceValues,
+                featuredOnHomeValues,
                 sort
         );
         return ApiResponse.success(cultureItemApplicationService.search(
@@ -96,11 +97,7 @@ public class CultureItemController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(cultureItemApplicationService.create(
-                clanId,
-                request,
-                context.userId(),
-                context.requestId(),
-                context.clientIp()
+                clanId, request, context.userId(), context.requestId(), context.clientIp()
         ));
     }
 
@@ -121,11 +118,7 @@ public class CultureItemController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(cultureItemApplicationService.update(
-                cultureItemId,
-                request,
-                context.userId(),
-                context.requestId(),
-                context.clientIp()
+                cultureItemId, request, context.userId(), context.requestId(), context.clientIp()
         ));
     }
 
@@ -136,10 +129,7 @@ public class CultureItemController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(cultureItemApplicationService.delete(
-                cultureItemId,
-                context.userId(),
-                context.requestId(),
-                context.clientIp()
+                cultureItemId, context.userId(), context.requestId(), context.clientIp()
         ));
     }
 }
