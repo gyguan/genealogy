@@ -21,6 +21,7 @@ import './person-archive-source.css';
 import './runtime-error.css';
 import './home-dashboard-overrides.css';
 import './guidance-cleanup.css';
+import './lineage-workbench-overrides.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
