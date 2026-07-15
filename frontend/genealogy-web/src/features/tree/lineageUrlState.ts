@@ -19,7 +19,8 @@ export type LineageUrlState = {
 
 const DIRECTIONS = new Set<TreeDirection>(['family', 'ancestors', 'descendants', 'both']);
 const RELATION_SCOPES = new Set<TreeRelationScope>(['blood', 'ritual', 'marriage', 'status']);
-const DEPTHS = new Set(['2', '3', '5', '8', '12']);
+const PERSON_DEPTHS = new Set(['2', '3', '5', '8']);
+const BRANCH_DEPTHS = new Set(['3', '5', '8', '12']);
 const DEFAULT_RELATIONS: TreeRelationScope[] = ['blood', 'ritual', 'marriage'];
 
 function valueOrDefault<T extends string>(value: string | null, allowed: ReadonlySet<T>, fallback: T): T {
@@ -37,8 +38,8 @@ export function readLineageUrlState(input: string | URL): LineageUrlState {
     branchId: url.searchParams.get('branchId') || '',
     personId: url.searchParams.get('personId') || '',
     mode: url.searchParams.get('mode') === 'branch' ? 'branch' : 'person',
-    personDepth: valueOrDefault(url.searchParams.get('personDepth'), DEPTHS, '3'),
-    branchDepth: valueOrDefault(url.searchParams.get('branchDepth'), DEPTHS, '8'),
+    personDepth: valueOrDefault(url.searchParams.get('personDepth'), PERSON_DEPTHS, '3'),
+    branchDepth: valueOrDefault(url.searchParams.get('branchDepth'), BRANCH_DEPTHS, '8'),
     direction: valueOrDefault(url.searchParams.get('direction'), DIRECTIONS, 'both'),
     relationScopes: relationScopes.length ? relationScopes : DEFAULT_RELATIONS,
     dataView: url.searchParams.get('dataView') === 'editing' ? 'editing' : 'official',
