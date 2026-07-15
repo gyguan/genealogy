@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/issue-124-review-fix-runner.yml
       - tools/issue124_review_fix.py
+      - tools/issue124_merge_resolution.py
 
 permissions:
   contents: write
@@ -28,13 +29,41 @@ jobs:
           fetch-depth: 0
           path: target
 
-      - name: Sync latest main
+      - name: Sync latest main and resolve additive repository conflicts
         working-directory: target
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git fetch origin main
-          git merge --no-edit origin/main
+
+          set +e
+          git merge --no-commit --no-edit origin/main
+          merge_status=$?
+          set -e
+
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U | sort)"
+            expected="$(printf '%s\n' \
+              'backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java' \
+              'backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java' | sort)"
+            if [ "$conflicts" != "$expected" ]; then
+              printf 'Unexpected conflicts:\n%s\n' "$conflicts"
+              exit 1
+            fi
+            git checkout --theirs -- \
+              backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java \
+              backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java
+          fi
+
+          python ../runner/tools/issue124_merge_resolution.py
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/review/repository/ReviewTaskRepository.java \
+            backend/genealogy-backend/src/main/java/com/genealogy/review/repository/RevisionRepository.java
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git commit --no-edit
+          fi
 
       - name: Apply review fix
         working-directory: target
