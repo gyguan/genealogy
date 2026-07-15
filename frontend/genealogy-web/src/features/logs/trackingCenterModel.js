@@ -1,4 +1,4 @@
-export const TRACKING_TABS = Object.freeze({ OBJECT: 'object', AUDIT: 'audit' });
+export const TRACKING_TABS = Object.freeze({ OBJECT: 'object', AUDIT: 'audit', RISK: 'risk' });
 
 export const DEFAULT_OBJECT_FILTERS = Object.freeze({
   objectType: 'person',
@@ -22,12 +22,26 @@ export const DEFAULT_AUDIT_FILTERS = Object.freeze({
   pageSize: 20
 });
 
+export const DEFAULT_RISK_FILTERS = Object.freeze({
+  actorId: '',
+  riskLevel: '',
+  eventType: '',
+  branchId: '',
+  dispositionStatus: '',
+  startTime: '',
+  endTime: '',
+  pageNo: 1,
+  pageSize: 20
+});
+
 const TRACKING_PARAM_KEYS = [
   'view', 'tab', 'trackingTab', 'clanId',
   'objectType', 'objectKeyword', 'objectStatus', 'objectFrom', 'objectTo', 'objectPage', 'objectPageSize',
   'targetType', 'targetId', 'reviewTaskId', 'traceType', 'traceId',
   'auditActor', 'auditAction', 'auditTarget', 'auditResult', 'auditKeyword', 'auditFrom', 'auditTo',
-  'auditPage', 'auditPageSize', 'auditLog'
+  'auditPage', 'auditPageSize', 'auditLog',
+  'riskActor', 'riskLevel', 'riskEvent', 'riskBranch', 'riskDisposition', 'riskFrom', 'riskTo',
+  'riskPage', 'riskPageSize', 'riskLog'
 ];
 
 function positiveInt(value, fallback) {
@@ -44,7 +58,9 @@ export function readTrackingCenterState(search = '') {
   const requestedTab = text(params, 'tab') || text(params, 'trackingTab');
   const activeTab = requestedTab === TRACKING_TABS.AUDIT
     ? TRACKING_TABS.AUDIT
-    : TRACKING_TABS.OBJECT;
+    : requestedTab === TRACKING_TABS.RISK
+      ? TRACKING_TABS.RISK
+      : TRACKING_TABS.OBJECT;
   const targetType = text(params, 'targetType') || text(params, 'traceType');
   const targetId = text(params, 'targetId') || text(params, 'traceId');
 
@@ -71,12 +87,24 @@ export function readTrackingCenterState(search = '') {
       pageNo: positiveInt(params.get('auditPage'), DEFAULT_AUDIT_FILTERS.pageNo),
       pageSize: positiveInt(params.get('auditPageSize'), DEFAULT_AUDIT_FILTERS.pageSize)
     },
+    riskFilters: {
+      actorId: text(params, 'riskActor'),
+      riskLevel: text(params, 'riskLevel'),
+      eventType: text(params, 'riskEvent'),
+      branchId: text(params, 'riskBranch'),
+      dispositionStatus: text(params, 'riskDisposition'),
+      startTime: text(params, 'riskFrom'),
+      endTime: text(params, 'riskTo'),
+      pageNo: positiveInt(params.get('riskPage'), DEFAULT_RISK_FILTERS.pageNo),
+      pageSize: positiveInt(params.get('riskPageSize'), DEFAULT_RISK_FILTERS.pageSize)
+    },
     selectedTrace: {
       targetType,
       targetId,
       reviewTaskId: text(params, 'reviewTaskId')
     },
-    selectedAuditLogId: text(params, 'auditLog')
+    selectedAuditLogId: text(params, 'auditLog'),
+    selectedRiskLogId: text(params, 'riskLog')
   };
 }
 
@@ -90,7 +118,7 @@ export function writeTrackingCenterState(state, currentSearch = '') {
   const params = new URLSearchParams(String(currentSearch).replace(/^\?/, ''));
   TRACKING_PARAM_KEYS.forEach(key => params.delete(key));
   params.set('view', 'auditTrace');
-  params.set('tab', state.activeTab === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT);
+  params.set('tab', Object.values(TRACKING_TABS).includes(state.activeTab) ? state.activeTab : TRACKING_TABS.OBJECT);
   setWhen(params, 'clanId', state.clanId);
 
   const object = state.objectFilters || DEFAULT_OBJECT_FILTERS;
@@ -113,10 +141,22 @@ export function writeTrackingCenterState(state, currentSearch = '') {
   setWhen(params, 'auditPage', audit.pageNo, DEFAULT_AUDIT_FILTERS.pageNo);
   setWhen(params, 'auditPageSize', audit.pageSize, DEFAULT_AUDIT_FILTERS.pageSize);
 
+  const risk = state.riskFilters || DEFAULT_RISK_FILTERS;
+  setWhen(params, 'riskActor', risk.actorId);
+  setWhen(params, 'riskLevel', risk.riskLevel);
+  setWhen(params, 'riskEvent', risk.eventType);
+  setWhen(params, 'riskBranch', risk.branchId);
+  setWhen(params, 'riskDisposition', risk.dispositionStatus);
+  setWhen(params, 'riskFrom', risk.startTime);
+  setWhen(params, 'riskTo', risk.endTime);
+  setWhen(params, 'riskPage', risk.pageNo, DEFAULT_RISK_FILTERS.pageNo);
+  setWhen(params, 'riskPageSize', risk.pageSize, DEFAULT_RISK_FILTERS.pageSize);
+
   setWhen(params, 'targetType', state.selectedTrace?.targetType);
   setWhen(params, 'targetId', state.selectedTrace?.targetId);
   setWhen(params, 'reviewTaskId', state.selectedTrace?.reviewTaskId);
   setWhen(params, 'auditLog', state.selectedAuditLogId);
+  setWhen(params, 'riskLog', state.selectedRiskLogId);
 
   const serialized = params.toString();
   return serialized ? `?${serialized}` : '';
@@ -148,6 +188,22 @@ export function buildAuditQuery(filters, clanId) {
   if (filters.targetType?.trim()) params.set('targetType', filters.targetType.trim());
   if (filters.resultStatus?.trim()) params.set('resultStatus', filters.resultStatus.trim());
   if (filters.keyword?.trim()) params.set('keyword', filters.keyword.trim());
+  if (filters.startTime?.trim()) params.set('startTime', filters.startTime.trim());
+  if (filters.endTime?.trim()) params.set('endTime', filters.endTime.trim());
+  return params.toString();
+}
+
+export function buildRiskQuery(filters, clanId) {
+  const params = new URLSearchParams({
+    clanId: String(clanId || ''),
+    pageNo: String(positiveInt(filters.pageNo, DEFAULT_RISK_FILTERS.pageNo)),
+    pageSize: String(positiveInt(filters.pageSize, DEFAULT_RISK_FILTERS.pageSize))
+  });
+  if (filters.actorId?.trim()) params.set('actorId', filters.actorId.trim());
+  if (filters.riskLevel?.trim()) params.set('riskLevel', filters.riskLevel.trim());
+  if (filters.eventType?.trim()) params.set('eventType', filters.eventType.trim());
+  if (filters.branchId?.trim()) params.set('branchId', filters.branchId.trim());
+  if (filters.dispositionStatus?.trim()) params.set('dispositionStatus', filters.dispositionStatus.trim());
   if (filters.startTime?.trim()) params.set('startTime', filters.startTime.trim());
   if (filters.endTime?.trim()) params.set('endTime', filters.endTime.trim());
   return params.toString();

@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.operationlog.application.OperationRiskPolicy;
 import com.genealogy.source.dto.SourceAttachmentFileResponse;
 import com.genealogy.source.dto.SourceAttachmentResponse;
 import com.genealogy.source.entity.SourceAttachmentEntity;
@@ -123,7 +124,7 @@ public class SourceAttachmentApplicationService {
         SourceAttachmentEntity attachment = getAttachment(attachmentId);
         requirePreviewPermission(attachment, actorId);
         SourceAttachmentFileResponse response = readFile(attachment);
-        operationLogApplicationService.record(attachment.getClanId(), actorId, "source_attachment_preview", "source_attachment", attachment.getId(), "preview source attachment: " + attachment.getOriginalFilename(), "sourceId=" + attachment.getSourceId(), requestId, clientIp);
+        recordAttachmentAccess(attachment, actorId, false, requestId, clientIp);
         return response;
     }
 
@@ -132,7 +133,7 @@ public class SourceAttachmentApplicationService {
         SourceAttachmentEntity attachment = getAttachment(attachmentId);
         requireDownloadPermission(attachment, actorId);
         SourceAttachmentFileResponse response = readFile(attachment);
-        operationLogApplicationService.record(attachment.getClanId(), actorId, "source_attachment_download", "source_attachment", attachment.getId(), "download source attachment: " + attachment.getOriginalFilename(), "sourceId=" + attachment.getSourceId(), requestId, clientIp);
+        recordAttachmentAccess(attachment, actorId, true, requestId, clientIp);
         return response;
     }
 
@@ -143,6 +144,54 @@ public class SourceAttachmentApplicationService {
         attachment.setDeletedAt(LocalDateTime.now());
         sourceAttachmentRepository.save(attachment);
         operationLogApplicationService.record(attachment.getClanId(), actorId, "source_attachment_delete", "source_attachment", attachment.getId(), "delete source attachment: " + attachment.getOriginalFilename(), "sourceId=" + attachment.getSourceId(), requestId, clientIp);
+    }
+
+    private void recordAttachmentAccess(
+            SourceAttachmentEntity attachment,
+            Long actorId,
+            boolean download,
+            String requestId,
+            String clientIp
+    ) {
+        String actionType = download ? "source_attachment_download" : "source_attachment_preview";
+        String actionName = download ? "download" : "preview";
+        String summary = actionName + " source attachment: " + attachment.getOriginalFilename();
+        String detail = "sourceId=" + attachment.getSourceId()
+                + "; sensitiveLevel=" + normalizeSensitiveLevel(attachment.getSensitiveLevel());
+        if (isSensitive(attachment)) {
+            operationLogApplicationService.recordRisk(
+                    attachment.getClanId(),
+                    actorId,
+                    actionType,
+                    "source_attachment",
+                    attachment.getId(),
+                    summary,
+                    detail,
+                    requestId,
+                    clientIp,
+                    OperationRiskPolicy.sensitiveAccess(
+                            SENSITIVE_HIGHLY.equals(normalizeSensitiveLevel(attachment.getSensitiveLevel())),
+                            download,
+                            null
+                    )
+            );
+            return;
+        }
+        operationLogApplicationService.record(
+                attachment.getClanId(),
+                actorId,
+                actionType,
+                "source_attachment",
+                attachment.getId(),
+                summary,
+                detail,
+                requestId,
+                clientIp
+        );
+    }
+
+    private boolean isSensitive(SourceAttachmentEntity attachment) {
+        return !SENSITIVE_NORMAL.equals(normalizeSensitiveLevel(attachment.getSensitiveLevel()));
     }
 
     private SourceEntity getSource(Long sourceId) {

@@ -46,6 +46,18 @@ public class OperationLogEntity {
     @Column(name = "event_result")
     private String eventResult;
 
+    @Column(name = "risk_level")
+    private String riskLevel;
+
+    @Column(name = "risk_event_type")
+    private String riskEventType;
+
+    @Column(name = "disposition_status")
+    private String dispositionStatus;
+
+    @Column(name = "branch_id")
+    private Long branchId;
+
     private String summary;
 
     @Column(columnDefinition = "text")

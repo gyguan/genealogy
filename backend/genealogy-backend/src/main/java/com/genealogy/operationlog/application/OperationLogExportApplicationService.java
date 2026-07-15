@@ -38,14 +38,15 @@ public class OperationLogExportApplicationService {
                 keyword
         );
 
-        operationLogApplicationService.record(
+        operationLogApplicationService.recordRisk(
                 clanId,
                 exportedByUserId,
                 EXPORT_ACTION,
                 EXPORT_TARGET,
                 null,
                 "导出操作日志",
-                buildAuditDetail(actorId, actionType, targetType, targetId, startTime, endTime, keyword)
+                buildAuditDetail(actorId, actionType, targetType, targetId, startTime, endTime, keyword),
+                OperationRiskPolicy.bulkExport(null)
         );
         return content;
     }

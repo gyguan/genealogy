@@ -16,7 +16,7 @@ class OperationLogExportApplicationServiceTest {
     private final OperationLogExportApplicationService service = new OperationLogExportApplicationService(operationLogApplicationService);
 
     @Test
-    void successfulExportWritesAnAuditRecordWithoutCopyingKeyword() {
+    void successfulExportWritesExplicitRiskAuditWithoutCopyingKeyword() {
         byte[] expected = new byte[]{1, 2, 3};
         LocalDateTime start = LocalDateTime.of(2026, 7, 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(2026, 7, 13, 23, 59);
@@ -27,18 +27,21 @@ class OperationLogExportApplicationServiceTest {
 
         assertThat(result).isSameAs(expected);
         ArgumentCaptor<String> detailCaptor = ArgumentCaptor.forClass(String.class);
-        verify(operationLogApplicationService).record(
+        ArgumentCaptor<OperationRiskContext> riskCaptor = ArgumentCaptor.forClass(OperationRiskContext.class);
+        verify(operationLogApplicationService).recordRisk(
                 org.mockito.ArgumentMatchers.eq(1L),
                 org.mockito.ArgumentMatchers.eq(99L),
                 org.mockito.ArgumentMatchers.eq("operation_log_export"),
                 org.mockito.ArgumentMatchers.eq("operation_log"),
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.eq("导出操作日志"),
-                detailCaptor.capture()
+                detailCaptor.capture(),
+                riskCaptor.capture()
         );
         assertThat(detailCaptor.getValue())
                 .contains("exportLimit=10000")
                 .contains("keywordProvided=true")
                 .doesNotContain("张三");
+        assertThat(riskCaptor.getValue()).isEqualTo(OperationRiskPolicy.bulkExport(null));
     }
 }

@@ -42,7 +42,7 @@ public class OperationLogApplicationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null);
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null, null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -56,12 +56,12 @@ public class OperationLogApplicationService {
             String detail,
             OperationTraceContext traceContext
     ) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, traceContext);
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, traceContext, null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail, String requestId, String clientIp) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null);
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -76,6 +76,53 @@ public class OperationLogApplicationService {
             String requestId,
             String clientIp,
             OperationTraceContext traceContext
+    ) {
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, traceContext, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordRisk(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            OperationRiskContext riskContext
+    ) {
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null, riskContext);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordRisk(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            String requestId,
+            String clientIp,
+            OperationRiskContext riskContext
+    ) {
+        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, riskContext);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void record(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            String requestId,
+            String clientIp,
+            OperationTraceContext traceContext,
+            OperationRiskContext riskContext
     ) {
         try {
             OperationLogEntity entity = new OperationLogEntity();
@@ -95,6 +142,13 @@ public class OperationLogApplicationService {
                 entity.setBusinessTargetType(normalize(traceContext.businessTargetType()));
                 entity.setBusinessTargetId(traceContext.businessTargetId());
                 entity.setEventResult(normalize(traceContext.eventResult()));
+            }
+            OperationRiskContext resolvedRisk = OperationRiskPolicy.resolve(actionType, riskContext);
+            if (resolvedRisk != null) {
+                entity.setRiskLevel(resolvedRisk.riskLevel());
+                entity.setRiskEventType(resolvedRisk.eventType());
+                entity.setDispositionStatus(resolvedRisk.dispositionStatus());
+                entity.setBranchId(resolvedRisk.branchId());
             }
             entity.setCreatedAt(LocalDateTime.now());
             operationLogRepository.save(entity);
@@ -172,9 +226,6 @@ public class OperationLogApplicationService {
         );
     }
 
-    /**
-     * Compatibility overload with secure-by-default response minimization.
-     */
     @Transactional(readOnly = true)
     public PageResponse<OperationLogResponse> search(
             Long clanId,
@@ -205,7 +256,8 @@ public class OperationLogApplicationService {
             int pageSize,
             boolean includeTechnicalFields
     ) {
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<OperationLogEntity> page = operationLogRepository.findAll(buildSpecification(
                 clanId, actorId, normalize(actionType), normalize(targetType), targetId, startTime, endTime, trimToNull(keyword)
         ), pageRequest);
@@ -230,14 +282,19 @@ public class OperationLogApplicationService {
     ) {
         List<OperationLogEntity> logs = loadForExport(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword);
         StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, List.of("id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId", "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "summary", "detail", "requestId", "clientIp", "createdAt"));
+        appendCsvRow(builder, List.of(
+                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
+                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
+                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
+        ));
         for (OperationLogEntity log : logs) {
             appendCsvRow(builder, List.of(
                     value(log.getId()), value(log.getClanId()), value(log.getActorId()), value(log.getActionType()),
                     value(log.getTargetType()), value(log.getTargetId()), value(log.getTraceId()), value(log.getRevisionId()),
                     value(log.getReviewTaskId()), value(log.getBusinessTargetType()), value(log.getBusinessTargetId()),
-                    value(log.getEventResult()), value(log.getSummary()), value(log.getDetail()), value(log.getRequestId()),
-                    value(log.getClientIp()), value(log.getCreatedAt())
+                    value(log.getEventResult()), value(log.getRiskLevel()), value(log.getRiskEventType()),
+                    value(log.getDispositionStatus()), value(log.getBranchId()), value(log.getSummary()), value(log.getDetail()),
+                    value(log.getRequestId()), value(log.getClientIp()), value(log.getCreatedAt())
             ));
         }
         return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);

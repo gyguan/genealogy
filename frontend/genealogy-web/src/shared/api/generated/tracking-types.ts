@@ -48,6 +48,61 @@ export type OperationLogStatsResponse = {
   byActorId: OperationLogStatsItem[];
 };
 
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+
+export type RiskEventType = "permission_change" | "sensitive_access" | "bulk_export" | "formal_data_change" | "review_anomaly" | "access_denied";
+
+export type RiskDispositionStatus = "open" | "reviewing" | "resolved" | "accepted";
+
+export type RiskAuditEventResponse = {
+  id: number;
+  clanId: number;
+  actorId?: number | null;
+  actorDisplayName?: string | null;
+  actionType: string;
+  riskLevel: RiskLevel;
+  eventType: RiskEventType;
+  dispositionStatus: RiskDispositionStatus;
+  branchId?: number | null;
+  targetType?: string | null;
+  targetId?: number | null;
+  targetDisplayName?: string | null;
+  targetBranchName?: string | null;
+  targetSummary?: string | null;
+  resultStatus?: string | null;
+  summary?: string | null;
+  detail?: string | null;
+  requestId?: string | null;
+  clientIp?: string | null;
+  createdAt: string;
+  traceId?: string | null;
+  revisionId?: number | null;
+  reviewTaskId?: number | null;
+  trackingTargetType?: string | null;
+  trackingTargetId?: number | null;
+  detailAvailable: boolean;
+};
+
+export type RiskAuditEventPage = {
+  records: RiskAuditEventResponse[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type RiskAuditStatsItem = {
+  key: string;
+  count: number;
+};
+
+export type RiskAuditStatsResponse = {
+  total: number;
+  byLevel: RiskAuditStatsItem[];
+  byEventType: RiskAuditStatsItem[];
+  byDisposition: RiskAuditStatsItem[];
+};
+
 export type TrackingObjectResponse = {
   objectType: "person" | "relationship" | "source" | "branch" | "review_task" | "culture_item" | "migration_event" | "culture_site";
   objectId: number;

@@ -28,13 +28,14 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import {
   DEFAULT_AUDIT_FILTERS,
   DEFAULT_OBJECT_FILTERS,
+  DEFAULT_RISK_FILTERS,
   TRACKING_TABS,
   buildAuditQuery,
   buildObjectQuery,
   readTrackingCenterState,
   writeTrackingCenterState
 } from './trackingCenterModel.js';
-import type { AuditFilters, ObjectFilters, TrackingTab } from './trackingCenterModel.js';
+import type { AuditFilters, ObjectFilters, RiskFilters, TrackingTab } from './trackingCenterModel.js';
 import {
   ACTION_OPTIONS,
   AUDIT_RESULT_OPTIONS,
@@ -49,6 +50,7 @@ import {
   targetTypeText
 } from './trackingCenterLabels';
 import { OperationLogDrawer, TrackingTraceDrawer } from './TrackingDetailDrawers';
+import { RiskAuditPanel } from './RiskAuditPanel';
 
 const { Paragraph, Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -86,6 +88,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
   const [objectFilters, setObjectFilters] = useState<ObjectFilters>(initial.objectFilters);
   const [auditFilters, setAuditFilters] = useState<AuditFilters>(initial.auditFilters);
+  const [riskFilters, setRiskFilters] = useState<RiskFilters>(initial.riskFilters);
 
   const [objectPage, setObjectPage] = useState<TrackingObjectPage | null>(null);
   const [objectLoading, setObjectLoading] = useState(false);
@@ -106,6 +109,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
 
   const [selectedAuditLogId, setSelectedAuditLogId] = useState(initial.selectedAuditLogId);
   const [selectedAuditLog, setSelectedAuditLog] = useState<OperationLogResponse | null>(null);
+  const [selectedRiskLogId, setSelectedRiskLogId] = useState(initial.selectedRiskLogId);
 
   const objectRequestVersion = useRef(0);
   const auditRequestVersion = useRef(0);
@@ -129,12 +133,14 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       activeTab,
       objectFilters,
       auditFilters,
+      riskFilters,
       selectedTrace,
-      selectedAuditLogId
+      selectedAuditLogId,
+      selectedRiskLogId
     }, window.location.search);
     const nextUrl = `${window.location.pathname}${search}${window.location.hash}`;
     window.history.replaceState(window.history.state, '', nextUrl);
-  }, [activeTab, objectFilters, auditFilters, selectedTrace, selectedAuditLogId]);
+  }, [activeTab, objectFilters, auditFilters, riskFilters, selectedTrace, selectedAuditLogId, selectedRiskLogId]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -142,8 +148,10 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setActiveTab(restored.activeTab);
       setObjectFilters(restored.objectFilters);
       setAuditFilters(restored.auditFilters);
+      setRiskFilters(restored.riskFilters);
       setSelectedTrace(restored.selectedTrace);
       setSelectedAuditLogId(restored.selectedAuditLogId);
+      setSelectedRiskLogId(restored.selectedRiskLogId);
       setSelectedAuditLog(null);
       if (restored.clanId && restored.clanId !== workspace.clanId) {
         pendingClanRestore.current = restored.clanId;
@@ -302,7 +310,11 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   }
 
   function changeTab(key: string) {
-    const next = key === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT;
+    const next = key === TRACKING_TABS.RISK
+      ? TRACKING_TABS.RISK
+      : key === TRACKING_TABS.AUDIT
+        ? TRACKING_TABS.AUDIT
+        : TRACKING_TABS.OBJECT;
     setActiveTab(next);
     if (next === TRACKING_TABS.OBJECT && !objectPage && !objectLoading) void loadObjects(objectFilters);
     if (next === TRACKING_TABS.AUDIT && !auditPage && !auditLoading) void loadAudit(auditFilters);
@@ -556,12 +568,25 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     </Space>
   );
 
+  const riskTab = (
+    <RiskAuditPanel
+      active={activeTab === TRACKING_TABS.RISK}
+      clanId={workspace.clanId}
+      workspaceBranchId={workspace.branchId}
+      filters={riskFilters}
+      setFilters={setRiskFilters}
+      selectedRiskLogId={selectedRiskLogId}
+      setSelectedRiskLogId={setSelectedRiskLogId}
+      onOpenTrace={(targetType, targetId, reviewTaskId = '') => void loadTrace(targetType, targetId, null, reviewTaskId)}
+    />
+  );
+
   return (
     <div className="audit-trace-page">
       <Card className="tracking-center-intro">
         <Title level={3}>变更与审计追踪</Title>
         <Paragraph type="secondary">
-          对象追踪用于回看某个业务对象的变更、审核和来源链路；操作审计用于管理员检索、取证和导出操作记录。本页面只读，不提供审核决策或正式数据修改。
+          对象追踪用于回看业务对象的变更、审核和来源链路；操作审计用于检索与取证；风险审计聚合权限变更、敏感访问、批量导出和异常操作。本页面只读。
         </Paragraph>
       </Card>
 
@@ -574,7 +599,8 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             onChange={changeTab}
             items={[
               { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
-              { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab }
+              { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab },
+              { key: TRACKING_TABS.RISK, label: '风险审计', children: riskTab }
             ]}
           />
         </Card>

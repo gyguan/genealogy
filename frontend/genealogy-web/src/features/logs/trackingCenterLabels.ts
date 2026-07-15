@@ -1,4 +1,4 @@
-import type { TrackingTraceTimelineEventResponse } from '../../shared/api/generated/tracking-types';
+import type { RiskAuditEventResponse, TrackingTraceTimelineEventResponse } from '../../shared/api/generated/tracking-types';
 
 export const OBJECT_TYPE_OPTIONS = [
   { value: 'person', label: '人物' },
@@ -33,6 +33,32 @@ export const AUDIT_RESULT_OPTIONS = [
   { value: 'failed', label: '失败' },
   { value: 'approved', label: '已通过' },
   { value: 'rejected', label: '已驳回' }
+];
+
+export const RISK_LEVEL_OPTIONS = [
+  { value: '', label: '全部等级' },
+  { value: 'critical', label: '严重' },
+  { value: 'high', label: '高风险' },
+  { value: 'medium', label: '中风险' },
+  { value: 'low', label: '低风险' }
+];
+
+export const RISK_EVENT_OPTIONS = [
+  { value: '', label: '全部事件' },
+  { value: 'permission_change', label: '权限与管理员变更' },
+  { value: 'sensitive_access', label: '敏感资料访问' },
+  { value: 'bulk_export', label: '批量导出' },
+  { value: 'formal_data_change', label: '正式数据高影响变更' },
+  { value: 'review_anomaly', label: '审核异常' },
+  { value: 'access_denied', label: '越权拒绝' }
+];
+
+export const RISK_DISPOSITION_OPTIONS = [
+  { value: '', label: '全部处置状态' },
+  { value: 'open', label: '待处置' },
+  { value: 'reviewing', label: '处置中' },
+  { value: 'resolved', label: '已完成' },
+  { value: 'accepted', label: '已接受风险' }
 ];
 
 export const ACTION_OPTIONS = [
@@ -110,6 +136,36 @@ export function statusColor(value?: string | null) {
   return 'default';
 }
 
+export function riskLevelText(value?: string | null) {
+  const dict: Record<string, string> = { critical: '严重', high: '高风险', medium: '中风险', low: '低风险' };
+  return dict[String(value || '').toLowerCase()] || value || '-';
+}
+
+export function riskLevelColor(value?: string | null) {
+  const level = String(value || '').toLowerCase();
+  if (level === 'critical') return 'error';
+  if (level === 'high') return 'volcano';
+  if (level === 'medium') return 'warning';
+  if (level === 'low') return 'processing';
+  return 'default';
+}
+
+export function riskEventText(value?: RiskAuditEventResponse['eventType'] | null) {
+  return RISK_EVENT_OPTIONS.find(option => option.value === value)?.label || value || '-';
+}
+
+export function riskDispositionText(value?: RiskAuditEventResponse['dispositionStatus'] | null) {
+  return RISK_DISPOSITION_OPTIONS.find(option => option.value === value)?.label || value || '-';
+}
+
+export function riskDispositionColor(value?: RiskAuditEventResponse['dispositionStatus'] | null) {
+  if (value === 'open') return 'error';
+  if (value === 'reviewing') return 'processing';
+  if (value === 'resolved') return 'success';
+  if (value === 'accepted') return 'warning';
+  return 'default';
+}
+
 export function actionText(value?: string | null) {
   for (const group of ACTION_OPTIONS) {
     const found = group.options.find(option => option.value === value);
@@ -126,6 +182,10 @@ export function targetTypeText(type?: string | null) {
     relationships: '亲属关系',
     source: '来源资料',
     sources: '来源资料',
+    source_attachment: '来源附件',
+    member_role: '成员授权',
+    clan_membership: '宗族成员',
+    operation_log: '操作日志',
     branch: '支派',
     branches: '支派',
     clan: '宗族',
