@@ -29,6 +29,11 @@ public class CultureItemTargetGovernanceAdapter implements CultureTargetGovernan
     }
 
     @Override
+    public String viewPermission() {
+        return CulturePermissionPolicyService.VIEW;
+    }
+
+    @Override
     public String sensitiveViewPermission() {
         return CulturePermissionPolicyService.VIEW_SENSITIVE;
     }
