@@ -1,9 +1,11 @@
 name: Issue 170 Compile Diagnostic
 
 on:
-  push:
-    branches:
-      - agent/issue-170-minimal-gate-fix
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - ".github/workflows/issue-170-compile-diagnostic.yml"
 
 permissions:
   contents: read
