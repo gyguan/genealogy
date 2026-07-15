@@ -5,14 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.domain.CultureItemDomainService;
+import com.genealogy.culture.domain.CultureSiteDomainService;
 import com.genealogy.culture.domain.MigrationEventDomainService;
 import com.genealogy.culture.dto.CultureItemUpdateRequest;
+import com.genealogy.culture.dto.CultureSiteUpdateRequest;
 import com.genealogy.culture.dto.MigrationEventUpdateRequest;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.culture.entity.CultureRevisionPayloadEntity;
+import com.genealogy.culture.entity.CultureSiteEntity;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.culture.repository.CultureItemRepository;
 import com.genealogy.culture.repository.CultureRevisionPayloadRepository;
+import com.genealogy.culture.repository.CultureSiteRepository;
 import com.genealogy.culture.repository.MigrationEventRepository;
 import com.genealogy.generation.repository.GenSchemeRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
@@ -45,6 +49,8 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
     private final MigrationEventRepository migrationEventRepository;
     private final MigrationEventDomainService migrationEventDomainService;
     private final PersonRepository culturePersonRepository;
+    private final CultureSiteRepository cultureSiteRepository;
+    private final CultureSiteDomainService cultureSiteDomainService;
 
     public CultureAwareRevisionApplyService(
             PersonRepository personRepository,
@@ -59,7 +65,9 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
             CultureRevisionPayloadRepository payloadRepository,
             CultureItemDomainService cultureItemDomainService,
             MigrationEventRepository migrationEventRepository,
-            MigrationEventDomainService migrationEventDomainService
+            MigrationEventDomainService migrationEventDomainService,
+            CultureSiteRepository cultureSiteRepository,
+            CultureSiteDomainService cultureSiteDomainService
     ) {
         super(
                 personRepository,
@@ -79,6 +87,8 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         this.migrationEventRepository = migrationEventRepository;
         this.migrationEventDomainService = migrationEventDomainService;
         this.culturePersonRepository = personRepository;
+        this.cultureSiteRepository = cultureSiteRepository;
+        this.cultureSiteDomainService = cultureSiteDomainService;
     }
 
     @Override
@@ -91,6 +101,10 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         }
         if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
             applyMigrationEvent(revision, applyTime);
+            return;
+        }
+        if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
+            applyCultureSite(revision, applyTime);
             return;
         }
         super.apply(revision, applyTime);
@@ -106,6 +120,10 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         }
         if (MigrationEventGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
             rejectMigrationEvent(revision);
+            return;
+        }
+        if (CultureSiteGovernanceApplicationService.TARGET_TYPE.equals(targetType)) {
+            rejectCultureSite(revision);
             return;
         }
         super.reject(revision, rejectTime);
@@ -151,6 +169,28 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         if (MigrationEventGovernanceApplicationService.CHANGE_PUBLISH.equals(normalize(revision.getChangeType()))) {
             event.setDataStatus("rejected");
             migrationEventRepository.save(event);
+        }
+        deletePayloadIfPresent(revision.getId());
+    }
+
+    private void applyCultureSite(AuditRecordEntity revision, LocalDateTime applyTime) {
+        CultureSiteEntity site = requireCultureSite(revision);
+        switch (normalize(revision.getChangeType())) {
+            case CultureSiteGovernanceApplicationService.CHANGE_PUBLISH -> applySitePublish(site);
+            case CultureSiteGovernanceApplicationService.CHANGE_UPDATE -> applySiteUpdate(site, revision);
+            case CultureSiteGovernanceApplicationService.CHANGE_DELETE -> applySiteDelete(site, applyTime);
+            case CultureSiteGovernanceApplicationService.CHANGE_ARCHIVE -> applySiteArchive(site);
+            default -> throw new BusinessException("CULTURE_SITE_REVISION_CHANGE_INVALID", "文化场所变更类型不合法");
+        }
+        deletePayloadIfPresent(revision.getId());
+    }
+
+    private void rejectCultureSite(AuditRecordEntity revision) {
+        requireRejectReason(revision, "CULTURE_SITE_REVIEW_REASON_REQUIRED", "驳回文化场所必须填写原因");
+        CultureSiteEntity site = requireCultureSite(revision);
+        if (CultureSiteGovernanceApplicationService.CHANGE_PUBLISH.equals(normalize(revision.getChangeType()))) {
+            site.setDataStatus("rejected");
+            cultureSiteRepository.save(site);
         }
         deletePayloadIfPresent(revision.getId());
     }
@@ -226,6 +266,39 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         migrationEventRepository.save(event);
     }
 
+    private void applySitePublish(CultureSiteEntity site) {
+        if (!"pending_review".equals(normalize(site.getDataStatus()))) {
+            throw new BusinessException("CULTURE_SITE_REVIEW_STATE_CONFLICT", "文化场所状态与审核任务不一致");
+        }
+        site.setDataStatus("official");
+        cultureSiteRepository.save(site);
+    }
+
+    private void applySiteUpdate(CultureSiteEntity site, AuditRecordEntity revision) {
+        if (!"official".equals(normalize(site.getDataStatus()))) {
+            throw new BusinessException("CULTURE_SITE_REVIEW_STATE_CONFLICT", "正式文化场所状态已变化，不能应用审核结果");
+        }
+        CultureSiteUpdateRequest request = readSitePayload(requirePayload(revision).getPayloadJson());
+        cultureSiteDomainService.requireExpectedVersion(site, request.version());
+        if (request.branchId() != null && cultureBranchRepository.findByIdAndClanId(request.branchId(), site.getClanId()).isEmpty()) {
+            throw new BusinessException("CULTURE_SITE_BRANCH_INVALID", "支派不属于当前宗族");
+        }
+        validateRelatedPersonForApply(site.getClanId(), request.branchId(), request.relatedPersonId());
+        cultureSiteDomainService.apply(site, cultureSiteDomainService.normalize(request));
+        site.setDataStatus("official");
+        cultureSiteRepository.save(site);
+    }
+
+    private void applySiteDelete(CultureSiteEntity site, LocalDateTime applyTime) {
+        site.setDeletedAt(applyTime.atZone(BUSINESS_ZONE).toOffsetDateTime());
+        cultureSiteRepository.save(site);
+    }
+
+    private void applySiteArchive(CultureSiteEntity site) {
+        site.setDataStatus("archived");
+        cultureSiteRepository.save(site);
+    }
+
     private CultureItemEntity requireCultureItem(AuditRecordEntity revision) {
         CultureItemEntity item = cultureItemRepository.findByIdAndDeletedAtIsNull(revision.getTargetId())
                 .orElseThrow(() -> new BusinessException("CULTURE_ITEM_NOT_FOUND", "文化资料不存在或不可见"));
@@ -242,6 +315,15 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
             throw new BusinessException("MIGRATION_EVENT_CLAN_MISMATCH", "迁徙事件不属于审核任务宗族");
         }
         return event;
+    }
+
+    private CultureSiteEntity requireCultureSite(AuditRecordEntity revision) {
+        CultureSiteEntity site = cultureSiteRepository.findByIdAndDeletedAtIsNull(revision.getTargetId())
+                .orElseThrow(() -> new BusinessException("CULTURE_SITE_NOT_FOUND", "文化场所不存在或不可见"));
+        if (!Objects.equals(site.getClanId(), revision.getClanId())) {
+            throw new BusinessException("CULTURE_SITE_CLAN_MISMATCH", "文化场所不属于审核任务宗族");
+        }
+        return site;
     }
 
     private CultureRevisionPayloadEntity requirePayload(AuditRecordEntity revision) {
@@ -262,6 +344,19 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
         }
     }
 
+    private void validateRelatedPersonForApply(Long clanId, Long branchId, Long personId) {
+        if (personId == null) return;
+        PersonEntity person = culturePersonRepository.findByIdAndDeletedAtIsNull(personId)
+                .orElseThrow(() -> new BusinessException("CULTURE_SITE_PERSON_INVALID", "关联人物不存在"));
+        if (!Objects.equals(person.getClanId(), clanId)) {
+            throw new BusinessException("CULTURE_SITE_PERSON_CLAN_MISMATCH", "关联人物不属于当前宗族");
+        }
+        if (branchId != null && person.getBranchId() != null
+                && !cultureBranchRepository.isDescendantOrSelf(clanId, branchId, person.getBranchId())) {
+            throw new BusinessException("CULTURE_SITE_PERSON_BRANCH_MISMATCH", "关联人物不属于场所支派或其下级支派");
+        }
+    }
+
     private CultureItemUpdateRequest readCulturePayload(String json) {
         try {
             return cultureObjectMapper.readValue(json, CultureItemUpdateRequest.class);
@@ -275,6 +370,14 @@ public class CultureAwareRevisionApplyService extends AsyncAwareRevisionApplySer
             return cultureObjectMapper.readValue(json, MigrationEventUpdateRequest.class);
         } catch (JsonProcessingException exception) {
             throw new BusinessException("MIGRATION_REVISION_PAYLOAD_INVALID", "迁徙事件审核载荷无法解析");
+        }
+    }
+
+    private CultureSiteUpdateRequest readSitePayload(String json) {
+        try {
+            return cultureObjectMapper.readValue(json, CultureSiteUpdateRequest.class);
+        } catch (JsonProcessingException exception) {
+            throw new BusinessException("CULTURE_SITE_REVISION_PAYLOAD_INVALID", "文化场所审核载荷无法解析");
         }
     }
 
