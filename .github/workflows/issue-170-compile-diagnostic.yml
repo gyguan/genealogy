@@ -1,0 +1,35 @@
+name: Issue 170 Compile Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/issue-170-minimal-gate-fix
+
+permissions:
+  contents: read
+
+jobs:
+  compile-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Capture backend compile output
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set +e
+          mvn -B -DskipTests compile > /tmp/issue-170-compile.log 2>&1
+          echo "exit_code=$?" >> /tmp/issue-170-compile.log
+          exit 0
+      - name: Upload compile output
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-170-compile-log
+          path: /tmp/issue-170-compile.log
+          if-no-files-found: error
+          retention-days: 1
