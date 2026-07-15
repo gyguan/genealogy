@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/v1")
@@ -54,12 +56,12 @@ public class MigrationEventController {
             @Positive @PathVariable Long clanId,
             PageQuery pageQuery,
             @Size(max = 100) @RequestParam(required = false) String keyword,
-            @Positive @RequestParam(required = false) Long branchId,
+            @Size(max = 100) @RequestParam(name = "branchId", required = false) List<@Positive Long> branchIds,
             @Size(max = 500) @RequestParam(required = false) String fromLocation,
             @Size(max = 500) @RequestParam(required = false) String toLocation,
             @Size(max = 200) @RequestParam(required = false) String migrationTimeText,
             @Positive @RequestParam(required = false) Long founderPersonId,
-            @RequestParam(required = false) String dataStatus,
+            @Size(max = 20) @RequestParam(name = "dataStatus", required = false) List<String> dataStatuses,
             @RequestParam(required = false) String privacyLevel,
             @RequestParam(required = false) String sort,
             HttpServletRequest servletRequest
@@ -67,14 +69,14 @@ public class MigrationEventController {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(migrationEventApplicationService.search(
                 clanId,
-                new MigrationEventSearchCriteria(
+                MigrationEventSearchCriteria.multi(
                         keyword,
-                        branchId,
+                        branchIds,
                         fromLocation,
                         toLocation,
                         migrationTimeText,
                         founderPersonId,
-                        dataStatus,
+                        dataStatuses,
                         privacyLevel,
                         sort
                 ),

@@ -30,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Validated
 @RestController
 @RequestMapping("/api/v1")
@@ -54,13 +56,13 @@ public class CultureSiteController {
             @Positive @PathVariable Long clanId,
             PageQuery pageQuery,
             @Size(max = 100) @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String siteType,
-            @Positive @RequestParam(required = false) Long branchId,
+            @Size(max = 20) @RequestParam(name = "siteType", required = false) List<String> siteTypes,
+            @Size(max = 100) @RequestParam(name = "branchId", required = false) List<@Positive Long> branchIds,
             @Size(max = 500) @RequestParam(required = false) String addressText,
             @Size(max = 200) @RequestParam(required = false) String foundedPeriod,
             @Size(max = 100) @RequestParam(required = false) String currentStatus,
             @Positive @RequestParam(required = false) Long relatedPersonId,
-            @RequestParam(required = false) String dataStatus,
+            @Size(max = 20) @RequestParam(name = "dataStatus", required = false) List<String> dataStatuses,
             @RequestParam(required = false) String privacyLevel,
             @RequestParam(required = false) Boolean featuredOnHome,
             @RequestParam(required = false) String sort,
@@ -69,9 +71,9 @@ public class CultureSiteController {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(applicationService.search(
                 clanId,
-                new CultureSiteSearchCriteria(
-                        keyword, siteType, branchId, addressText, foundedPeriod, currentStatus, relatedPersonId,
-                        dataStatus, privacyLevel, featuredOnHome, sort
+                CultureSiteSearchCriteria.multi(
+                        keyword, siteTypes, branchIds, addressText, foundedPeriod, currentStatus, relatedPersonId,
+                        dataStatuses, privacyLevel, featuredOnHome, sort
                 ),
                 pageQuery.normalizedPageNo(),
                 Math.min(pageQuery.normalizedPageSize(), CultureSiteDomainService.MAX_PAGE_SIZE),

@@ -161,9 +161,9 @@ public class CultureSiteApplicationService {
         AccessScope readScope = requireReadableScope(clanId, actorId);
         AccessScope sensitiveScope = permissionScope(clanId, actorId, CultureSitePermissionPolicyService.VIEW_SENSITIVE);
         CultureSiteSearchCriteria normalized = domainService.normalize(criteria);
-        if (normalized.branchId() != null) {
-            requireBranchInClan(clanId, normalized.branchId());
-            if (!readScope.canReadBranch(normalized.branchId())) throw notFound();
+        for (Long branchId : normalized.branchIds()) {
+            requireBranchInClan(clanId, branchId);
+            if (!readScope.canReadBranch(branchId)) throw notFound();
         }
         int safePageNo = Math.max(1, pageNo);
         int safePageSize = Math.max(1, Math.min(pageSize, CultureSiteDomainService.MAX_PAGE_SIZE));
@@ -367,10 +367,10 @@ if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actor
                         cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pattern)
                 ));
             }
-            if (criteria.siteType() != null) predicates.add(cb.equal(root.get("siteType"), criteria.siteType()));
-            if (criteria.branchId() != null) predicates.add(cb.equal(root.get("branchId"), criteria.branchId()));
+            if (!criteria.siteTypes().isEmpty()) predicates.add(root.get("siteType").in(criteria.siteTypes()));
+            if (!criteria.branchIds().isEmpty()) predicates.add(root.get("branchId").in(criteria.branchIds()));
             if (criteria.relatedPersonId() != null) predicates.add(cb.equal(root.get("relatedPersonId"), criteria.relatedPersonId()));
-            if (criteria.dataStatus() != null) predicates.add(cb.equal(root.get("dataStatus"), criteria.dataStatus()));
+            if (!criteria.dataStatuses().isEmpty()) predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
             if (criteria.privacyLevel() != null) predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
             if (criteria.featuredOnHome() != null) predicates.add(cb.equal(root.get("featuredOnHome"), criteria.featuredOnHome()));
             addContains(predicates, root.get("addressText"), criteria.addressText(), cb);

@@ -72,14 +72,19 @@ const migrationSortOptions = [
   { value: 'updatedAt,desc', label: '最近更新' },
   { value: 'migrationTimeText,asc', label: '历史时期' }
 ];
+const multiSelectProps = {
+  mode: 'multiple' as const,
+  allowClear: true,
+  maxTagCount: 'responsive' as const
+};
 
 type SearchFormValues = {
   keyword?: string;
-  branchId?: number;
+  branchId?: number[];
   fromLocation?: string;
   toLocation?: string;
   migrationTimeText?: string;
-  dataStatus?: CultureDataStatus;
+  dataStatus?: CultureDataStatus[];
   sort?: string;
 };
 
@@ -470,10 +475,10 @@ export function MigrationEventTab() {
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[12, 0]}>
           <Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col>
-          <Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select allowClear showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col>
+          <Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={4}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col>
           <Col xs={24} md={8} xl={4}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col>
-          <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="状态"><Select allowClear options={statusOptions} /></Form.Item></Col>
+          <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={4}><Form.Item name="sort" label="排序"><Select options={migrationSortOptions} /></Form.Item></Col>
           <Col xs={24}><Space style={{ marginBottom: 16 }}><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button onClick={resetSearch}>重置</Button></Space></Col>
         </Row>

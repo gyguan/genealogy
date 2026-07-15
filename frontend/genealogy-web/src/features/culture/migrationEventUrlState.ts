@@ -2,11 +2,11 @@ import type { CultureDataStatus } from '../../shared/api/generated/culture-types
 
 export type MigrationSearchState = {
   keyword: string;
-  branchId?: number;
+  branchId?: number[];
   fromLocation: string;
   toLocation: string;
   migrationTimeText: string;
-  dataStatus?: CultureDataStatus;
+  dataStatus?: CultureDataStatus[];
   sort: string;
   pageNo: number;
   pageSize: number;
@@ -35,12 +35,26 @@ function positive(value: string | null, fallback?: number) {
   return parsed > 0 ? parsed : fallback;
 }
 
+function positives(values: string[]) {
+  const result = [...new Set(values.map(value => positive(value)).filter((value): value is number => Boolean(value)))];
+  return result.length ? result : undefined;
+}
+
 function valid<T extends string>(values: readonly T[], value: string | null) {
   return values.includes(value as T) ? value as T : undefined;
 }
 
+function valids<T extends string>(allowed: readonly T[], values: string[]) {
+  const result = [...new Set(values.map(value => valid(allowed, value)).filter((value): value is T => Boolean(value)))];
+  return result.length ? result : undefined;
+}
+
 function text(value: string | null, maxLength: number) {
   return String(value || '').trim().slice(0, maxLength);
+}
+
+function appendAll(params: URLSearchParams, key: string, values?: Array<string | number>) {
+  values?.forEach(value => params.append(key, String(value)));
 }
 
 export function readMigrationLocation(href = window.location.href) {
@@ -49,11 +63,11 @@ export function readMigrationLocation(href = window.location.href) {
   return {
     search: {
       keyword: text(url.searchParams.get('migrationKeyword'), 100),
-      branchId: positive(url.searchParams.get('migrationBranch')),
+      branchId: positives(url.searchParams.getAll('migrationBranch')),
       fromLocation: text(url.searchParams.get('migrationFrom'), 200),
       toLocation: text(url.searchParams.get('migrationTo'), 200),
       migrationTimeText: text(url.searchParams.get('migrationTime'), 100),
-      dataStatus: valid(statuses, url.searchParams.get('migrationStatus')),
+      dataStatus: valids(statuses, url.searchParams.getAll('migrationStatus')),
       sort: valid(sorts, url.searchParams.get('migrationSort')) || defaultMigrationSearch.sort,
       pageNo: positive(url.searchParams.get('migrationPage'), 1) || 1,
       pageSize: [10, 20, 50].includes(pageSize) ? pageSize : defaultMigrationSearch.pageSize
@@ -66,11 +80,11 @@ export function buildMigrationLocation(href: string, search: MigrationSearchStat
   const url = new URL(href, 'https://genealogy.local');
   keys.forEach(key => url.searchParams.delete(key));
   if (search.keyword.trim()) url.searchParams.set('migrationKeyword', search.keyword.trim());
-  if (search.branchId) url.searchParams.set('migrationBranch', String(search.branchId));
+  appendAll(url.searchParams, 'migrationBranch', search.branchId);
   if (search.fromLocation.trim()) url.searchParams.set('migrationFrom', search.fromLocation.trim());
   if (search.toLocation.trim()) url.searchParams.set('migrationTo', search.toLocation.trim());
   if (search.migrationTimeText.trim()) url.searchParams.set('migrationTime', search.migrationTimeText.trim());
-  if (search.dataStatus) url.searchParams.set('migrationStatus', search.dataStatus);
+  appendAll(url.searchParams, 'migrationStatus', search.dataStatus);
   if (search.sort !== defaultMigrationSearch.sort) url.searchParams.set('migrationSort', search.sort);
   if (search.pageNo > 1) url.searchParams.set('migrationPage', String(search.pageNo));
   if (search.pageSize !== defaultMigrationSearch.pageSize) url.searchParams.set('migrationPageSize', String(search.pageSize));
@@ -82,11 +96,11 @@ export function migrationSearchKey(clanId: string, search: MigrationSearchState)
   return JSON.stringify([
     clanId,
     search.keyword.trim(),
-    search.branchId || '',
+    search.branchId || [],
     search.fromLocation.trim(),
     search.toLocation.trim(),
     search.migrationTimeText.trim(),
-    search.dataStatus || '',
+    search.dataStatus || [],
     search.sort,
     search.pageNo,
     search.pageSize
