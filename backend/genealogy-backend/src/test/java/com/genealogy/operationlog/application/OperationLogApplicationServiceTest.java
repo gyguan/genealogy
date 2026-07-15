@@ -8,12 +8,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.transaction.UnexpectedRollbackException;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,6 +28,44 @@ class OperationLogApplicationServiceTest {
 
     private final OperationLogRepository repository = mock(OperationLogRepository.class);
     private final OperationLogApplicationService service = new OperationLogApplicationService(repository);
+
+    @Test
+    void auditRollbackDoesNotEscapeToTheBusinessCall() {
+        when(repository.save(any(OperationLogEntity.class)))
+                .thenThrow(new UnexpectedRollbackException("audit transaction marked rollback-only"));
+
+        assertThatCode(() -> service.record(
+                1L,
+                20L,
+                "culture_item_create",
+                "culture_item",
+                30L,
+                "create culture item",
+                "title=家训",
+                "request-1",
+                "192.0.2.8"
+        )).doesNotThrowAnyException();
+    }
+
+    @Test
+    void cultureCreateRecordSuspendsTheCallerTransaction() throws NoSuchMethodException {
+        Method method = OperationLogApplicationService.class.getMethod(
+                "record",
+                Long.class,
+                Long.class,
+                String.class,
+                String.class,
+                Long.class,
+                String.class,
+                String.class,
+                String.class,
+                String.class
+        );
+
+        Transactional transactional = method.getAnnotation(Transactional.class);
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.propagation()).isEqualTo(Propagation.NOT_SUPPORTED);
+    }
 
     @Test
     @SuppressWarnings("unchecked")
