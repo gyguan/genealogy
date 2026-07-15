@@ -49,6 +49,17 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseCultureOverviewResponse"
   },
+  "GET /api/v1/clans/{clanId}/culture-quality": {
+    "operationId": "getCultureQuality",
+    "method": "GET",
+    "path": "/api/v1/clans/{clanId}/culture-quality",
+    "pathParams": [
+      "clanId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponseCultureQualityResponse"
+  },
   "GET /api/v1/clans/{clanId}/culture-sites": {
     "operationId": "listCultureSites",
     "method": "GET",

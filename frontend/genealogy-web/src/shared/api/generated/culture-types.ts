@@ -221,6 +221,40 @@ export type CultureOverviewResponse = {
   missingHints: string[];
 };
 
+export type CultureQualityMetricResponse = {
+  targetType: "all" | "culture_item" | "migration_event" | "culture_site";
+  targetTypeName: string;
+  officialCount: number;
+  pendingReviewCount: number;
+  sourceCoveredCount: number;
+  sourceCoverageRate: number;
+  strongSourceCount: number;
+  strongSourceCoverageRate: number;
+  completeCount: number;
+  completenessRate: number;
+  lowConfidenceCount: number;
+  staleCount: number;
+};
+
+export type CultureQualityIssueResponse = {
+  targetType: "culture_item" | "migration_event" | "culture_site";
+  targetId: number;
+  displayName: string;
+  branchId?: number | null;
+  branchName?: string | null;
+  issueCodes: ("PENDING_REVIEW" | "NO_SOURCE" | "INCOMPLETE" | "LOW_CONFIDENCE" | "STALE")[];
+  updatedAt: string | null;
+};
+
+export type CultureQualityResponse = {
+  clanId: number;
+  generatedAt: string;
+  overall: CultureQualityMetricResponse;
+  byTargetType: CultureQualityMetricResponse[];
+  issues: CultureQualityIssueResponse[];
+  notes: string[];
+};
+
 export type CultureSubmitReviewRequest = {
   comment?: string | null;
 };

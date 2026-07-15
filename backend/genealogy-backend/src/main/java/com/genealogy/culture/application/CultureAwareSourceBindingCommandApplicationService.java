@@ -2,6 +2,7 @@ package com.genealogy.culture.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.culture.governance.CultureTargetGovernanceRegistry;
 import com.genealogy.review.repository.RevisionRepository;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.application.SourceBindingCommandApplicationService;
@@ -15,20 +16,19 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
-
 @Primary
 @Service
 public class CultureAwareSourceBindingCommandApplicationService extends SourceBindingCommandApplicationService {
 
-    private static final Set<String> GOVERNED_TARGET_TYPES = Set.of("culture_item", "migration_event", "culture_site");
+    private final CultureTargetGovernanceRegistry targetRegistry;
 
     public CultureAwareSourceBindingCommandApplicationService(
             SourceApplicationService sourceApplicationService,
             SourceBindingReviewApplicationService sourceBindingReviewApplicationService,
             SourceBindingTargetValidationService targetValidationService,
             RevisionRepository revisionRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            CultureTargetGovernanceRegistry targetRegistry
     ) {
         super(
                 sourceApplicationService,
@@ -37,6 +37,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
                 revisionRepository,
                 objectMapper
         );
+        this.targetRegistry = targetRegistry;
     }
 
     @Override
@@ -45,7 +46,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
         if (isGoverned(request)) {
             throw new BusinessException(
                     "CULTURE_SOURCE_BINDING_REVIEW_REQUIRED",
-                    "文化资料、迁徙事件和文化场所的来源绑定必须通过审核流程生效"
+                    "宗族文化对象的来源绑定必须通过审核流程生效"
             );
         }
         return super.bind(clanId, request, actorId);
@@ -91,7 +92,7 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
         SourceBindingCreateRequest binding = request.binding();
         SourceBindingCreateRequest sanitized = new SourceBindingCreateRequest(
                 binding.sourceId(),
-                binding.targetType(),
+                targetRegistry.normalizeType(binding.targetType()),
                 binding.targetId(),
                 binding.bindingReason(),
                 null,
@@ -103,10 +104,6 @@ public class CultureAwareSourceBindingCommandApplicationService extends SourceBi
     }
 
     private boolean isGoverned(SourceBindingCreateRequest request) {
-        return request != null && GOVERNED_TARGET_TYPES.contains(normalize(request.targetType()));
-    }
-
-    private String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase();
+        return request != null && targetRegistry.supports(request.targetType());
     }
 }

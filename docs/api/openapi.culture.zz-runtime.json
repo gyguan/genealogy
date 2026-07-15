@@ -1,4 +1,34 @@
 {
+  "paths": {
+    "/api/v1/clans/{clanId}/culture-quality": {
+      "get": {
+        "operationId": "getCultureQuality",
+        "tags": ["Culture"],
+        "summary": "获取当前用户可见范围内的宗族文化质量与运营问题",
+        "description": "按宗族、支派、隐私和敏感权限范围统计三类文化对象；问题清单有界且不泄露不可见对象。",
+        "parameters": [
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "权限过滤后的文化质量指标和运营问题清单",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCultureQualityResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
   "components": {
     "schemas": {
       "CultureItemCreateRequest": {
@@ -21,25 +51,7 @@
       },
       "CultureItemSummaryResponse": {
         "type": "object",
-        "required": [
-          "id",
-          "scope",
-          "category",
-          "title",
-          "confidenceLevel",
-          "privacyLevel",
-          "sensitiveLevel",
-          "dataStatus",
-          "featuredOnHome",
-          "sortOrder",
-          "sourceCount",
-          "attachmentCount",
-          "reviewCount",
-          "allowedActions",
-          "version",
-          "createdAt",
-          "updatedAt"
-        ],
+        "required": ["id", "scope", "category", "title", "confidenceLevel", "privacyLevel", "sensitiveLevel", "dataStatus", "featuredOnHome", "sortOrder", "sourceCount", "attachmentCount", "reviewCount", "allowedActions", "version", "createdAt", "updatedAt"],
         "properties": {
           "id": { "type": "integer", "format": "int64" },
           "scope": { "$ref": "#/components/schemas/CultureScopeResponse" },
@@ -62,6 +74,63 @@
           "createdByName": { "type": "string", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CultureQualityMetricResponse": {
+        "type": "object",
+        "required": ["targetType", "targetTypeName", "officialCount", "pendingReviewCount", "sourceCoveredCount", "sourceCoverageRate", "strongSourceCount", "strongSourceCoverageRate", "completeCount", "completenessRate", "lowConfidenceCount", "staleCount"],
+        "properties": {
+          "targetType": { "type": "string", "enum": ["all", "culture_item", "migration_event", "culture_site"] },
+          "targetTypeName": { "type": "string" },
+          "officialCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "pendingReviewCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "sourceCoveredCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "sourceCoverageRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 1 },
+          "strongSourceCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "strongSourceCoverageRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 1 },
+          "completeCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "completenessRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 1 },
+          "lowConfidenceCount": { "type": "integer", "format": "int64", "minimum": 0 },
+          "staleCount": { "type": "integer", "format": "int64", "minimum": 0 }
+        }
+      },
+      "CultureQualityIssueResponse": {
+        "type": "object",
+        "required": ["targetType", "targetId", "displayName", "issueCodes", "updatedAt"],
+        "properties": {
+          "targetType": { "type": "string", "enum": ["culture_item", "migration_event", "culture_site"] },
+          "targetId": { "type": "integer", "format": "int64", "minimum": 1 },
+          "displayName": { "type": "string" },
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "branchName": { "type": "string", "nullable": true },
+          "issueCodes": {
+            "type": "array",
+            "maxItems": 5,
+            "items": { "type": "string", "enum": ["PENDING_REVIEW", "NO_SOURCE", "INCOMPLETE", "LOW_CONFIDENCE", "STALE"] }
+          },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "CultureQualityResponse": {
+        "type": "object",
+        "required": ["clanId", "generatedAt", "overall", "byTargetType", "issues", "notes"],
+        "properties": {
+          "clanId": { "type": "integer", "format": "int64" },
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "overall": { "$ref": "#/components/schemas/CultureQualityMetricResponse" },
+          "byTargetType": { "type": "array", "items": { "$ref": "#/components/schemas/CultureQualityMetricResponse" }, "maxItems": 3 },
+          "issues": { "type": "array", "items": { "$ref": "#/components/schemas/CultureQualityIssueResponse" }, "maxItems": 30 },
+          "notes": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ApiResponseCultureQualityResponse": {
+        "type": "object",
+        "required": ["success", "data"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string", "nullable": true },
+          "message": { "type": "string", "nullable": true },
+          "data": { "$ref": "#/components/schemas/CultureQualityResponse" }
         }
       }
     }

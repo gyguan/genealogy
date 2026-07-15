@@ -6,7 +6,8 @@ import type {
   CultureItemPage,
   CultureItemSummaryResponse,
   CultureItemUpdateRequest,
-  CultureOverviewResponse
+  CultureOverviewResponse,
+  CultureQualityResponse
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { ApiRequestError } from '../../shared/api/client';
@@ -16,6 +17,7 @@ import { CultureItemDetailDrawer } from './CultureItemDetailDrawer';
 import { CultureItemFormModal } from './CultureItemFormModal';
 import { CultureItemTable } from './CultureItemTable';
 import { CultureOverviewPanel } from './CultureOverviewPanel';
+import { CultureQualityPanel } from './CultureQualityPanel';
 import { CultureSearchPanel } from './CultureSearchPanel';
 import {
   archiveCultureItem,
@@ -24,6 +26,7 @@ import {
   downloadCultureAttachment,
   getCultureItem,
   getCultureOverview,
+  getCultureQuality,
   getCultureTrace,
   listCultureBranches,
   listCultureClans,
@@ -59,6 +62,11 @@ export function CultureProductPage() {
   const [overview, setOverview] = useState<CultureOverviewResponse | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState('');
+  const [quality, setQuality] = useState<CultureQualityResponse | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityError, setQualityError] = useState('');
+  const [qualityForbidden, setQualityForbidden] = useState(false);
+  const [qualityRefreshVersion, setQualityRefreshVersion] = useState(0);
   const [items, setItems] = useState<CultureItemSummaryResponse[]>([]);
   const [page, setPage] = useState<CultureItemPage['page']>({ pageNo: 1, pageSize: 10, totalElements: 0, totalPages: 0 });
   const [listLoading, setListLoading] = useState(false);
@@ -79,6 +87,7 @@ export function CultureProductPage() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const listRequest = useRef(0);
   const overviewRequest = useRef(0);
+  const qualityRequest = useRef(0);
   const detailRequest = useRef(0);
 
   const clanId = workspace.clanId;
@@ -139,6 +148,27 @@ export function CultureProductPage() {
       .catch(error => { if (requestId === overviewRequest.current) setOverviewError(errorText(error, '文化总览加载失败')); })
       .finally(() => { if (requestId === overviewRequest.current) setOverviewLoading(false); });
   }, [clanId, refreshVersion]);
+
+  useEffect(() => {
+    if (!clanId) {
+      setQuality(null);
+      setQualityError('');
+      setQualityForbidden(false);
+      return;
+    }
+    const requestId = ++qualityRequest.current;
+    setQualityLoading(true);
+    setQualityError('');
+    setQualityForbidden(false);
+    getCultureQuality(clanId)
+      .then(data => { if (requestId === qualityRequest.current) setQuality(data); })
+      .catch(error => {
+        if (requestId !== qualityRequest.current) return;
+        setQualityError(errorText(error, '文化质量数据加载失败'));
+        setQualityForbidden(forbidden(error));
+      })
+      .finally(() => { if (requestId === qualityRequest.current) setQualityLoading(false); });
+  }, [clanId, refreshVersion, qualityRefreshVersion]);
 
   useEffect(() => {
     if (!clanId) {
@@ -361,6 +391,15 @@ export function CultureProductPage() {
       />
 
       <CultureOverviewPanel overview={overview} loading={overviewLoading} error={overviewError} onOpenItem={openItem} />
+
+      <CultureQualityPanel
+        quality={quality}
+        loading={qualityLoading}
+        error={qualityError}
+        forbidden={qualityForbidden}
+        onRetry={() => setQualityRefreshVersion(value => value + 1)}
+        onOpenCultureItem={openItem}
+      />
 
       <Card title="文化资料列表">
         {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}
