@@ -25,12 +25,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Apply implementation to clean branch
+      - name: Apply implementation to final branch
         shell: bash
         run: |
           cp .github/issue-277-patch.py /tmp/issue-277-patch.py
-          git fetch origin agent/issue-277-search-multiselect
-          git switch -C agent/issue-277-search-multiselect origin/agent/issue-277-search-multiselect
+          git fetch origin agent/issue-277-final
+          git switch -C agent/issue-277-final origin/agent/issue-277-final
           python /tmp/issue-277-patch.py
           python - <<'PY'
           from pathlib import Path
@@ -63,7 +63,7 @@ jobs:
             find target/surefire-reports -maxdepth 1 -type f -name '*.txt' -print -exec cat {} \;
             exit 1
           }
-      - name: Publish one clean implementation commit
+      - name: Publish one final implementation commit
         shell: bash
         run: |
           test ! -e .github/workflows/issue-277-build-clean.yml
@@ -73,4 +73,4 @@ jobs:
           git config user.email "openai-agent@users.noreply.github.com"
           git add -A
           git commit -m "feat(culture): sync multi-select filters across tabs"
-          git push --force origin HEAD:agent/issue-277-search-multiselect
+          git push --force origin HEAD:agent/issue-277-final
