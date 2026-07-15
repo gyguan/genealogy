@@ -11,6 +11,8 @@
 
 执行任务看板、任务状态、活跃耗时和耗时汇总的唯一权威口径为：`docs/ai/task-duration-standard.md`。
 
+Issue 类型、流程强度、契约强度、验证强度、拆分信号、活跃耗时 / 外部等待分离和轻量 / 重型流程取舍，必须同时遵循 `docs/ai/issue-delivery-cost-experience.md`。实现或继续 Issue 时，不得把轻量 UI 任务强行套成重型 Review，也不得把数据库、权限、隐私、审核、Contract First、Tree 核心链路或跨模块状态机降级为轻量流程；确需偏离时必须在任务看板和 PR 中说明原因、风险和补偿验证。
+
 当本规范与其他 AI 协作文档存在冲突时，Issue 实现和恢复流程以本文档为准；但不得覆盖根 `AGENTS.md` 的 P0/P1 规则。
 
 ---
@@ -41,9 +43,10 @@
 
 1. 从 `main` 重新读取最新 `AGENTS.md`；
 2. 读取本文档和 `docs/ai/task-duration-standard.md`；
-3. 按任务范围读取目录级 `AGENTS.md` 和专项规范；
-4. 不得继续沿用会话早期缓存的仓库规则；
-5. 如果 `main` 在当前会话期间发生过合入，执行下一阶段前必须再次刷新相关规则。
+3. 读取 `docs/ai/issue-delivery-cost-experience.md`，确认本 Issue 的类型、流程强度、契约强度、验证强度和拆分信号；
+4. 按任务范围读取目录级 `AGENTS.md` 和专项规范；
+5. 不得继续沿用会话早期缓存的仓库规则；
+6. 如果 `main` 在当前会话期间发生过合入，执行下一阶段前必须再次刷新相关规则。
 
 ### Gate 2：读取需求和已有现场
 
@@ -65,7 +68,11 @@ tasks/issue-<N>-execution.md
 
 - Issue 链接与目标；
 - 本次实现范围和非目标；
+- Issue 类型、流程强度、契约强度、验证强度；
+- 是否命中 `docs/ai/issue-delivery-cost-experience.md` 的拆分信号，以及实际拆分 / 不拆分结论；
 - 遵循 `docs/ai/task-duration-standard.md` 的任务看板；
+- 活跃耗时与外部等待分离口径；
+- 复用的测试 fixture、helper、模板或无法复用的原因；
 - 影响模块；
 - 验证方案；
 - 已知风险；
@@ -102,10 +109,12 @@ Draft PR 必须包含：
 
 - Issue 关联：`Refs #N`、`Closes #N`、`Fixes #N` 或 `Resolves #N`；
 - 遵循 `docs/ai/task-duration-standard.md` 的当前任务看板；
+- 遵循 `docs/ai/issue-delivery-cost-experience.md` 的 Issue 类型、流程强度、契约强度、验证强度和拆分结论；
 - 当前进行中任务及其累计耗时；
 - 验证方案和当前验证结果；
 - 已知风险；
 - 耗时汇总；
+- 外部等待说明；
 - 恢复检查点；
 - 当前分支；
 - 下一步最小任务。
@@ -178,6 +187,7 @@ Draft PR 创建成功后，立即在 Issue 评论中写入：
 - 任务状态；
 - 实际修改文件或模块；
 - 活跃耗时；
+- 外部等待或未可验证耗时说明；
 - Commit；
 - 验证结果；
 - 新发现的风险；
