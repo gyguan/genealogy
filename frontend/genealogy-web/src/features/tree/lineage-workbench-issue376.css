@@ -30,57 +30,65 @@
 }
 
 .lineage-scope-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
 .lineage-query-toolbar--standardized {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(150px, .8fr) auto auto;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(150px, .8fr) minmax(220px, 1.2fr) minmax(150px, .8fr) auto;
   align-items: end;
   gap: 12px;
   margin-bottom: 16px;
 }
 
-/* Ant Design Form.Item 默认保留底部间距，会让 Select 高于同排按钮。 */
 .lineage-query-toolbar--standardized > .ant-form-item {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .lineage-query-toolbar--standardized .ant-select,
-.lineage-query-toolbar--standardized .ant-btn {
+.lineage-query-toolbar--standardized .ant-select-selector,
+.lineage-query-toolbar--standardized .ant-btn,
+.lineage-switch-field--toolbar {
   min-height: 32px;
 }
 
-.lineage-query-secondary-action,
+.lineage-query-toolbar--standardized .ant-select {
+  width: 100%;
+}
+
+.lineage-switch-field--toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
 .lineage-query-action {
   min-height: 32px;
   display: flex;
   align-items: center;
   align-self: end;
+  justify-content: flex-end;
   gap: 8px;
+  white-space: nowrap;
 }
 
-.lineage-query-secondary-action .ant-btn,
 .lineage-query-action .ant-btn {
   height: 32px;
 }
 
-.lineage-query-action {
-  justify-content: flex-end;
-}
-
-/* 常态不展示“条件已应用”，仅在存在未生效修改时提示。 */
-.lineage-query-action > .ant-tag:not(.ant-tag-processing) {
-  display: none;
-}
-
-.lineage-more-settings {
-  width: min(360px, calc(100vw - 48px));
-  display: grid;
-  gap: 12px;
-}
-
 .lineage-canvas-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 12px 0;
   border-top: 1px solid #f0f0f0;
 }
@@ -126,9 +134,9 @@
   position: relative;
 }
 
-@media (max-width: 991px) {
+@media (max-width: 1199px) {
   .lineage-query-toolbar--standardized {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .lineage-query-action {
@@ -141,9 +149,7 @@
     grid-template-columns: 1fr;
   }
 
-  .lineage-query-secondary-action,
   .lineage-query-action,
-  .lineage-query-secondary-action .ant-btn,
   .lineage-query-action .ant-btn {
     width: 100%;
   }

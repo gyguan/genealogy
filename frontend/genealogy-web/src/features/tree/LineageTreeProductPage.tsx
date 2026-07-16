@@ -12,7 +12,6 @@ import {
   Input,
   List,
   Pagination,
-  Popover,
   Segmented,
   Select,
   Space,
@@ -442,13 +441,6 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const drawerTitle = selectedNode ? `人物 · ${selectedNode.displayName || '隐私保护'}` : selectedEdge ? `关系 · ${relationshipDisplayLabel(selectedEdge)}` : '';
   const endpointLabels = selectedEdge ? relationshipEndpointLabels(selectedEdge) : ['起点人物', '终点人物'] as const;
   const drawerWidth = screens.md ? 560 : '100%';
-  const moreSettings = (
-    <div className="lineage-more-settings">
-      {mode === 'person' ? <Field label="查看方向"><Select aria-label="人物图查看方向" value={direction} options={DIRECTION_OPTIONS} onChange={value => setDirection(value as TreeDirection)} /></Field> : null}
-      <Field label="关系范围"><Select aria-label="关系范围" mode="multiple" value={relationScopes} maxTagCount="responsive" options={RELATION_OPTIONS} onChange={values => { if (values.length) setRelationScopes(values as TreeRelationScope[]); }} /></Field>
-      {mode === 'branch' ? <Field label="包含下级支派"><div className="lineage-switch-field"><Switch checked={includeSubBranches} onChange={setIncludeSubBranches} /><span>{includeSubBranches ? '包含' : '仅当前支派'}</span></div></Field> : null}
-    </div>
-  );
 
   return (
     <div className="lineage-page lineage-tree-page lineage-tree-page--standardized">
@@ -470,11 +462,13 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
       <Card className="lineage-workbench-card" title={canvasTitle} extra={<Segmented aria-label="图谱视角" value={mode} options={[{ value: 'person', label: <Space size={6}><UserOutlined />人物中心</Space> }, { value: 'branch', label: <Space size={6}><BranchesOutlined />支派全局</Space> }]} onChange={value => void handleModeChange(value as LineageMode)} />}>
         <div className="lineage-scope-summary"><Typography.Text type="secondary">{currentClanName} · {currentScopeText}</Typography.Text><Space size={[4, 4]} wrap>{appliedDepthText ? <Tag>{appliedDepthText}</Tag> : null}{activeRelationScopes.map(value => <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>)}{mode === 'branch' ? <Tag>{appliedIncludeSubBranches ? '包含下级支派' : '仅当前支派'}</Tag> : null}</Space></div>
-        <div className="lineage-query-toolbar lineage-query-toolbar--standardized">
+        <div className={`lineage-query-toolbar lineage-query-toolbar--standardized lineage-query-toolbar--${mode}`}>
           <Field label="图内定位"><Select aria-label="图内定位人物" showSearch allowClear value={locatedNodeId || undefined} placeholder="搜索当前图人物" optionFilterProp="label" options={graphOptions} suffixIcon={<AimOutlined />} onChange={value => locateNode(value || '')} /></Field>
+          {mode === 'person' ? <Field label="查看方向"><Select aria-label="人物图查看方向" value={direction} options={DIRECTION_OPTIONS} onChange={value => setDirection(value as TreeDirection)} /></Field> : null}
+          <Field label="关系范围"><Select aria-label="关系范围" mode="multiple" value={relationScopes} maxTagCount="responsive" options={RELATION_OPTIONS} onChange={values => { if (values.length) setRelationScopes(values as TreeRelationScope[]); }} /></Field>
           <Field label="展开深度"><Select aria-label={mode === 'person' ? '人物中心展开深度' : '支派全局展开深度'} value={mode === 'person' ? personDepth : branchDepth} options={mode === 'person' ? PERSON_DEPTH_OPTIONS : BRANCH_DEPTH_OPTIONS} onChange={value => mode === 'person' ? setPersonDepth(value) : setBranchDepth(value)} /></Field>
-          <div className="lineage-query-secondary-action"><Popover placement="bottomRight" trigger="click" title="更多设置" content={moreSettings}><Button icon={<MoreOutlined />}>更多设置</Button></Popover></div>
-          <div className="lineage-query-action">{queryDirty ? <Tag color="processing">条件待应用</Tag> : <Tag>条件已应用</Tag>}<Button type="primary" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={mode === 'person' ? !workspace.personId : !selectedBranchId} onClick={() => void applyGraphQuery()}>更新图谱</Button></div>
+          {mode === 'branch' ? <Field label="包含下级支派"><div className="lineage-switch-field lineage-switch-field--toolbar"><Switch checked={includeSubBranches} onChange={setIncludeSubBranches} /><span>{includeSubBranches ? '包含' : '仅当前支派'}</span></div></Field> : null}
+          <div className="lineage-query-action">{queryDirty ? <Tag color="processing">条件待应用</Tag> : null}<Button type="primary" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={mode === 'person' ? !workspace.personId : !selectedBranchId} onClick={() => void applyGraphQuery()}>更新图谱</Button></div>
         </div>
         <div className="lineage-canvas-view-bar"><Segmented aria-label="图谱展示方式" value={canvasView} options={[{ value: 'graph', label: <Space size={6}><ApartmentOutlined />图谱</Space> }, { value: 'list', label: <Space size={6}><UnorderedListOutlined />列表</Space> }]} onChange={value => setCanvasView(value as CanvasView)} /><Typography.Text type="secondary">图谱用于浏览关系，列表用于键盘访问、故障降级和移动端阅读。</Typography.Text></div>
         {activeLoadState.error ? <Alert type="error" showIcon message={`${mode === 'person' ? '人物图' : '支派图'}加载失败：${activeLoadState.error}`} action={<Space><Button type="link" onClick={() => setCanvasView('list')}>查看列表</Button><Button type="link" onClick={() => mode === 'person' ? void loadPersonGraph(workspace.personId) : void loadBranchGraph(selectedBranchId, workspace.clanId)}>重试</Button></Space>} /> : null}
