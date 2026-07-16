@@ -3,7 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/302
 - 工作分支：`agent/issue-302-migration-crud`
 - 所属总控：#291
-- 堆叠基线：#301 / `agent/issue-301-culture-item-crud`
+- 当前基线：`main` 已包含 #301 的共享治理弹窗与文化资料整改；本 PR 仅保留迁徙增量。
 - 前置说明：#300 尚未实现，本 Issue 不关闭或代替 #300。
 
 ## 实现范围
