@@ -26,6 +26,7 @@ for (const file of files) {
     source = source.replace(panelImport, `${panelImport}\nimport { ResultListCard } from '../../../../shared/ui/ResultListCard';`);
   }
 
-  source = source.replace(/<Table</g, '<ResultListCard');
+  source = source.replace(/<Table</g, '<ResultListCard<');
+  source = source.replace(/<ResultListCard([A-Z][A-Za-z0-9_]*)>/g, '<ResultListCard<$1>');
   fs.writeFileSync(file, source);
 }
