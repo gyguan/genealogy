@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
-import { Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import {
+  Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input,
+  List, Modal, Result, Row, Select, Space, Table, Tabs, Tag, Timeline, Typography
+} from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
@@ -20,6 +23,23 @@ type ReviewFilters = {
   submittedRange: DateRange;
   processedRange: DateRange;
 };
+type BatchDecision = {
+  type: DecisionType;
+  tasks: ReviewTaskListItemResponse[];
+  retry: boolean;
+};
+type BatchFailure = {
+  task: ReviewTaskListItemResponse;
+  reason: string;
+};
+type BatchResult = {
+  type: DecisionType;
+  total: number;
+  successCount: number;
+  failures: BatchFailure[];
+  comment?: string;
+};
+type BatchFormValues = { comment?: string };
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -96,10 +116,8 @@ function writeUrlState(activeTab: ReviewTabKey, filters: ReviewFilters, pageNo: 
   setOrDelete('submittedTo', filters.submittedRange?.[1].format('YYYY-MM-DD'));
   setOrDelete('processedFrom', filters.processedRange?.[0].format('YYYY-MM-DD'));
   setOrDelete('processedTo', filters.processedRange?.[1].format('YYYY-MM-DD'));
-
   if (pageNo > 1) params.set('pageNo', String(pageNo)); else params.delete('pageNo');
   if (pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(pageSize)); else params.delete('pageSize');
-
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
@@ -159,10 +177,31 @@ function reviewRoundText(row: ReviewTaskListItemResponse) {
   return round ? `第 ${round} 轮` : '审核记录';
 }
 
+function errorMessage(reason: unknown) {
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (typeof reason === 'string' && reason.trim()) return reason;
+  if (reason && typeof reason === 'object') {
+    const record = reason as Record<string, unknown>;
+    const message = record.message || record.errorMessage || record.detail;
+    if (typeof message === 'string' && message.trim()) return message;
+  }
+  return '处理失败，请稍后重试';
+}
+
+function taskTypeSummary(tasks: ReviewTaskListItemResponse[]) {
+  const counts = new Map<string, number>();
+  tasks.forEach(task => {
+    const label = targetTypeText(task.targetType);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  });
+  return [...counts.entries()].map(([label, count]) => ({ label, count }));
+}
+
 export function ReviewCenterPage({ notify }: Props) {
   const workspace = useWorkspace();
   const initialState = useMemo(readUrlState, []);
   const [form] = Form.useForm<ReviewFilters>();
+  const [batchForm] = Form.useForm<BatchFormValues>();
   const [activeTab, setActiveTab] = useState<ReviewTabKey>(initialState.activeTab);
   const [appliedFilters, setAppliedFilters] = useState<ReviewFilters>(initialState.filters);
   const [tasks, setTasks] = useState<ReviewTaskListItemResponse[]>([]);
@@ -179,11 +218,18 @@ export function ReviewCenterPage({ notify }: Props) {
   const [decisionType, setDecisionType] = useState<DecisionType>('approve');
   const [decisionComment, setDecisionComment] = useState('');
   const [decisionLoading, setDecisionLoading] = useState(false);
+  const [batchDecision, setBatchDecision] = useState<BatchDecision | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
   const requestSequence = useRef(0);
 
   const selectedTasks = useMemo(
     () => tasks.filter(task => selectedRowKeys.includes(rowKey(task))),
     [tasks, selectedRowKeys]
+  );
+  const batchTypeSummary = useMemo(
+    () => taskTypeSummary(batchDecision?.tasks || []),
+    [batchDecision]
   );
 
   async function loadBranches() {
@@ -322,22 +368,59 @@ export function ReviewCenterPage({ notify }: Props) {
     }
   }
 
-  async function batchDecision(type: DecisionType) {
-    if (!selectedTasks.length) return;
-    setLoading(true);
+  function openBatchDecision(type: DecisionType, targetTasks = selectedTasks, retry = false, comment?: string) {
+    if (!targetTasks.length) return;
+    batchForm.setFieldsValue({ comment: comment || undefined });
+    setBatchDecision({ type, tasks: targetTasks, retry });
+  }
+
+  async function executeBatch(type: DecisionType, targetTasks: ReviewTaskListItemResponse[], comment?: string) {
+    const results = await Promise.allSettled(
+      targetTasks.map(task => apiClient.post(`/review-tasks/${task.id}/${type}`, {
+        comment: comment?.trim() || undefined
+      }))
+    );
+    const failures: BatchFailure[] = [];
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        failures.push({ task: targetTasks[index], reason: errorMessage(result.reason) });
+      }
+    });
+    return {
+      type,
+      total: targetTasks.length,
+      successCount: targetTasks.length - failures.length,
+      failures,
+      comment: comment?.trim() || undefined
+    } satisfies BatchResult;
+  }
+
+  async function submitBatchDecision() {
+    if (!batchDecision) return;
+    const values = await batchForm.validateFields();
+    setBatchLoading(true);
     try {
-      const comment = type === 'approve' ? '批量审核通过' : '批量驳回，请补充资料后重新提交';
-      const results = await Promise.allSettled(
-        selectedTasks.map(task => apiClient.post(`/review-tasks/${task.id}/${type}`, { comment }))
-      );
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failureCount = results.length - successCount;
-      if (successCount) notify({ message: `已处理 ${successCount} 条审核任务` });
-      if (failureCount) notify({ message: `${failureCount} 条审核任务处理失败` }, true);
+      const result = await executeBatch(batchDecision.type, batchDecision.tasks, values.comment);
+      setBatchDecision(null);
+      batchForm.resetFields();
       await loadTasks();
+      setSelectedRowKeys(result.failures.map(item => rowKey(item.task)));
+      if (result.failures.length) {
+        setBatchResult(result);
+      } else {
+        notify({ message: `已成功处理 ${result.successCount} 条审核任务` });
+      }
     } finally {
-      setLoading(false);
+      setBatchLoading(false);
     }
+  }
+
+  function retryBatchFailures() {
+    if (!batchResult?.failures.length) return;
+    const failedTasks = batchResult.failures.map(item => item.task);
+    const { type, comment } = batchResult;
+    setBatchResult(null);
+    openBatchDecision(type, failedTasks, true, comment);
   }
 
   const columns = [
@@ -448,12 +531,13 @@ export function ReviewCenterPage({ notify }: Props) {
               { key: 'processed', label: activeTab === 'processed' ? `已处理（${total}）` : '已处理' }
             ]}
           />
-          {activeTab === 'pending' ? (
+          {activeTab === 'pending' && selectedTasks.length > 0 ? (
             <div className="batch-review-actions table-review-actions">
-              <Typography.Text type="secondary">当前筛选共 {total} 条待审核任务</Typography.Text>
+              <Typography.Text strong>已选择 {selectedTasks.length} 条（仅当前页）</Typography.Text>
               <Space wrap>
-                <Button type="primary" disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('approve')}>批量通过（{selectedTasks.length}）</Button>
-                <Button danger disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('reject')}>批量驳回（{selectedTasks.length}）</Button>
+                <Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button>
+                <Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button>
+                <Button type="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button>
               </Space>
             </div>
           ) : null}
@@ -478,6 +562,7 @@ export function ReviewCenterPage({ notify }: Props) {
               pageSizeOptions: PAGE_SIZE_OPTIONS,
               showTotal: value => `共 ${value} 条`,
               onChange: (nextPage, nextPageSize) => {
+                setSelectedRowKeys([]);
                 setPageNo(nextPageSize === pageSize ? nextPage : 1);
                 setPageSize(nextPageSize);
               }
@@ -559,6 +644,93 @@ export function ReviewCenterPage({ notify }: Props) {
             onChange={event => setDecisionComment(event.target.value)}
           />
         </Space>
+      </Modal>
+
+      <Modal
+        title={`${batchDecision?.retry ? '重试' : '批量'}${batchDecision?.type === 'reject' ? '驳回' : '通过'}审核`}
+        open={Boolean(batchDecision)}
+        confirmLoading={batchLoading}
+        okText={batchDecision?.type === 'reject' ? '确认驳回' : '确认通过'}
+        okButtonProps={{ danger: batchDecision?.type === 'reject' }}
+        cancelButtonProps={{ disabled: batchLoading }}
+        closable={!batchLoading}
+        maskClosable={!batchLoading}
+        onCancel={() => { if (!batchLoading) { setBatchDecision(null); batchForm.resetFields(); } }}
+        onOk={() => void submitBatchDecision()}
+        destroyOnHidden
+      >
+        {batchDecision ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Alert
+              type={batchDecision.type === 'reject' ? 'warning' : 'info'}
+              showIcon
+              message={`本次操作仅影响当前页选中的 ${batchDecision.tasks.length} 条任务`}
+              description={batchDecision.type === 'reject'
+                ? '驳回后任务将退回提交人处理，请填写明确、可执行的驳回原因。'
+                : '通过后相关变更将按服务端审核流程生效，请确认已完成必要核验。'}
+            />
+            <Descriptions size="small" column={1} bordered>
+              <Descriptions.Item label="选中数量">{batchDecision.tasks.length} 条</Descriptions.Item>
+              <Descriptions.Item label="对象类型">
+                <Space wrap>{batchTypeSummary.map(item => <Tag key={item.label}>{item.label} {item.count}</Tag>)}</Space>
+              </Descriptions.Item>
+            </Descriptions>
+            <Form form={batchForm} layout="vertical">
+              <Form.Item
+                name="comment"
+                label={batchDecision.type === 'reject' ? '驳回原因' : '审核意见'}
+                rules={batchDecision.type === 'reject' ? [
+                  { required: true, whitespace: true, message: '请填写驳回原因' },
+                  { max: 500, message: '最多输入 500 个字符' }
+                ] : [{ max: 500, message: '最多输入 500 个字符' }]}
+              >
+                <Input.TextArea
+                  rows={4}
+                  maxLength={500}
+                  showCount
+                  placeholder={batchDecision.type === 'reject' ? '说明需要补充或修正的内容' : '填写统一审核意见（可选）'}
+                />
+              </Form.Item>
+            </Form>
+          </Space>
+        ) : null}
+      </Modal>
+
+      <Modal
+        title="批量审核结果"
+        open={Boolean(batchResult)}
+        footer={batchResult?.failures.length ? (
+          <Space>
+            <Button onClick={() => setBatchResult(null)}>关闭</Button>
+            <Button type="primary" onClick={retryBatchFailures}>仅重试失败项</Button>
+          </Space>
+        ) : null}
+        onCancel={() => setBatchResult(null)}
+        width={720}
+        destroyOnHidden
+      >
+        {batchResult ? (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Result
+              status="warning"
+              title={`成功 ${batchResult.successCount} 条，失败 ${batchResult.failures.length} 条`}
+              subTitle={`本次共处理 ${batchResult.total} 条任务；当前筛选和分页保持不变。`}
+            />
+            <List
+              bordered
+              header={<Typography.Text strong>失败任务</Typography.Text>}
+              dataSource={batchResult.failures}
+              renderItem={item => (
+                <List.Item>
+                  <List.Item.Meta
+                    title={item.task.title}
+                    description={`${targetTypeText(item.task.targetType)} · ${item.reason}`}
+                  />
+                </List.Item>
+              )}
+            />
+          </Space>
+        ) : null}
       </Modal>
     </div>
   );
