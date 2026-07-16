@@ -329,7 +329,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
           </Space>
         </div>
         <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
-        <ResultListCardGenerationSchemeLike>
+        <ResultListCard<GenerationSchemeLike>
           size="small"
           bordered
           loading={loadingSchemes}
@@ -397,7 +397,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
             <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadGenerationItems()}>刷新</Button>
           </div>
           <Typography.Paragraph type="secondary">字辈明细会随字辈方案整体提交审批；正式方案不可在此直接维护。</Typography.Paragraph>
-          <ResultListCardGenerationItemLike>
+          <ResultListCard<GenerationItemLike>
             size="small"
             bordered
             loading={loadingItems}

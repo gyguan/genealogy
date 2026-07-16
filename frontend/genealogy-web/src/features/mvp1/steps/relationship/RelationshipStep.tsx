@@ -331,7 +331,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             </Space>
           </div>
           {!centerPersonId ? <Alert type="info" showIcon message="关系按当前中心人物加载，请先选择中心人物。" /> : null}
-          <ResultListCardRelationshipLike>
+          <ResultListCard<RelationshipLike>
             size="small"
             bordered
             loading={loadingRelationships}

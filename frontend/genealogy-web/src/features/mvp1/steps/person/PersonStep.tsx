@@ -578,7 +578,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
             </Space>
           </div>
           {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
-          <ResultListCardPersonLike>
+          <ResultListCard<PersonLike>
             size="small"
             bordered
             loading={loadingPersons}

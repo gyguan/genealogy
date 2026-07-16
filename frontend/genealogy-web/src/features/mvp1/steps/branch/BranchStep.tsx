@@ -233,7 +233,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
           </Space>
         </div>
         {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族后查看支派" /> : null}
-        <ResultListCardBranchLike>
+        <ResultListCard<BranchLike>
           size="small"
           bordered
           rowKey={row => String(row.id || '')}
