@@ -136,3 +136,14 @@ test('completion step remains locked until business dependencies are complete', 
   assert.equal(getWizardStepGate(steps, 'source').allowed, true);
   assert.equal(getWizardStepGate(steps, 'review').allowed, false);
 });
+
+
+test('completion step remains locked until business dependencies are complete', () => {
+  const steps = deriveWizardStepStates(emptyWizardStateSnapshot());
+  assert.equal(getWizardStepGate(steps, 'branch').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'person').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'source').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'review').allowed, false);
+});
