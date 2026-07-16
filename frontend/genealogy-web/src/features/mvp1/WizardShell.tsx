@@ -75,9 +75,12 @@ function stepStatus(state: WizardBusinessState, active: boolean): 'wait' | 'proc
   return 'wait';
 }
 
+function showActiveReason(state: WizardBusinessState) {
+  return state === 'reviewing' || state === 'rejected' || state === 'invalid' || state === 'error';
+}
+
 export function WizardShell<TKey extends string = string>({
   title,
-  description,
   contextLabel,
   saveStatus,
   steps,
@@ -97,7 +100,7 @@ export function WizardShell<TKey extends string = string>({
   const [completionRequestVersion, setCompletionRequestVersion] = useState(0);
   const isCompletionStep = String(activeStep) === 'review';
   const normalizedSteps = useMemo(() => steps.map(step => String(step.key) === 'review'
-    ? { ...step, title: '完成', desc: '汇总建谱结果、处理阻塞项并确认完成建谱。' }
+    ? { ...step, title: '完成', desc: '检查建谱结果并确认完成。' }
     : step), [steps]);
   const activeIndex = Math.max(0, normalizedSteps.findIndex(step => step.key === activeStep));
   const activeStepMeta = normalizedSteps[activeIndex];
@@ -131,9 +134,9 @@ export function WizardShell<TKey extends string = string>({
     navigation.onNext();
   }
 
-  const pageDescription = description.replace('来源和审核顺序', '来源和完成顺序').replace('和审核顺序', '和完成顺序');
   const nextLabel = isCompletionStep ? completionControl.label : navigation.nextLabel;
   const nextDisabled = navigation.nextDisabled || (isCompletionStep && completionControl.disabled);
+  const hasClanContext = contextLabel && contextLabel !== '尚未选择宗族';
 
   return (
     <WizardCompletionContext.Provider value={{ requestVersion: completionRequestVersion, status: completionStatus, reportStatus: setCompletionStatus }}>
@@ -141,13 +144,12 @@ export function WizardShell<TKey extends string = string>({
         <header className="wizard-page-header">
           <div className="wizard-page-heading">
             <Typography.Title level={3}>{title}</Typography.Title>
-            <Typography.Paragraph type="secondary">{pageDescription}</Typography.Paragraph>
-            <Space size={[8, 8]} wrap>
-              <Tag color="blue">当前宗族：{contextLabel}</Tag>
-              <Tag color={saveStatus.color} aria-live="polite">{saveStatus.label}</Tag>
+            <Space size={10} wrap>
+              {hasClanContext ? <Typography.Text type="secondary">宗族：{contextLabel}</Typography.Text> : null}
+              <Typography.Text type="secondary" aria-live="polite">{saveStatus.label}</Typography.Text>
             </Space>
           </div>
-          <Button size={buttonSize} onClick={onExit}>退出向导</Button>
+          <Button size={buttonSize} onClick={onExit}>退出</Button>
         </header>
 
         <Card className="wizard-progress-card" size="small" aria-label="建谱进度">
@@ -160,27 +162,22 @@ export function WizardShell<TKey extends string = string>({
             onChange={handleStepChange}
             items={normalizedSteps.map(step => ({
               title: (
-                <Tooltip title={`${step.reason} ${step.action}`}>
-                  <span className="wizard-step-title" aria-label={`${step.title}：${step.stateLabel}`}>
-                    <span>{step.title}</span>
-                    <Tag color={stateColor(step.state)}>{step.stateLabel}</Tag>
-                  </span>
+                <Tooltip title={`${step.desc} ${step.reason}`}>
+                  <span aria-label={`${step.title}：${step.stateLabel}`}>{step.title}</span>
                 </Tooltip>
               ),
-              description: screens.md === false ? step.reason : undefined,
               status: stepStatus(step.state, step.key === activeStep)
             }))}
           />
           {activeStepMeta ? (
             <div className="wizard-progress-summary">
               <div className="wizard-progress-summary__heading">
-                <Typography.Text strong>步骤 {activeIndex + 1}/{normalizedSteps.length} · {activeStepMeta.title}</Typography.Text>
+                <Typography.Text strong>{activeIndex + 1}/{normalizedSteps.length} · {activeStepMeta.title}</Typography.Text>
                 <Tag color={stateColor(activeStepMeta.state)}>{activeStepMeta.stateLabel}</Tag>
               </div>
-              <div className="wizard-progress-summary__detail">
-                <Typography.Text type="secondary">{activeStepMeta.desc}</Typography.Text>
-                <Typography.Text>{activeStepMeta.reason}</Typography.Text>
-              </div>
+              {showActiveReason(activeStepMeta.state) ? (
+                <Typography.Text type="secondary">{activeStepMeta.reason}</Typography.Text>
+              ) : null}
             </div>
           ) : null}
         </Card>
@@ -191,9 +188,9 @@ export function WizardShell<TKey extends string = string>({
             type="warning"
             showIcon
             message={gateNotice.title}
-            description={`${gateNotice.reason} 建议：${gateNotice.action}`}
+            description={gateNotice.reason}
             action={gateNotice.blockingStep && onGateAction
-              ? <Button size="small" onClick={() => onGateAction(gateNotice.blockingStep as TKey)}>前往处理</Button>
+              ? <Button size="small" onClick={() => onGateAction(gateNotice.blockingStep as TKey)}>去处理</Button>
               : undefined}
           />
         ) : null}
@@ -220,7 +217,7 @@ export function WizardShell<TKey extends string = string>({
                 loading={navigation.saveLoading}
                 onClick={navigation.onSaveDraft}
               >
-                {navigation.saveLabel || '保存草稿'}
+                {navigation.saveLabel || '保存'}
               </Button>
             </Space>
             <Space className="wizard-fixed-actions__primary" size={8} wrap>
