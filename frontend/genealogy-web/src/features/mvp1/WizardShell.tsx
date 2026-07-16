@@ -198,17 +198,16 @@ export function WizardShell<TKey extends string = string>({
           />
         ) : null}
 
-        {!loaded ? <div className="wizard-step-hint">正在加载当前步骤状态…</div> : null}
-        {loaded ? (
-          <section
-            className="wizard-step-content"
-            aria-label={activeStepMeta ? `${activeStepMeta.title}步骤内容` : '当前步骤内容'}
-            onInputCapture={onContentChange}
-            onChangeCapture={onContentChange}
-          >
-            {children}
-          </section>
-        ) : null}
+        <section
+          className="wizard-step-content"
+          aria-label={activeStepMeta ? `${activeStepMeta.title}步骤内容` : '当前步骤内容'}
+          aria-busy={!loaded}
+          data-step-state={loaded ? 'ready' : 'restoring'}
+          onInputCapture={onContentChange}
+          onChangeCapture={onContentChange}
+        >
+          {children}
+        </section>
         {result ? <ResultNotice result={result} /> : null}
 
         <Card className="wizard-fixed-action-card" size="small" aria-label="建谱向导操作">
