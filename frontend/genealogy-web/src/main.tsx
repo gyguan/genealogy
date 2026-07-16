@@ -26,6 +26,29 @@ import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
 import './member-permission-page.css';
 
+function installSourceRouteHistorySync() {
+  const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
+  if (historyWithMarker.__sourceRouteSyncInstalled) return;
+  historyWithMarker.__sourceRouteSyncInstalled = true;
+
+  const wrapHistoryMethod = (method: 'pushState' | 'replaceState') => {
+    const original = window.history[method].bind(window.history);
+    window.history[method] = ((data: unknown, unused: string, url?: string | URL | null) => {
+      const previousSourceId = new URL(window.location.href).searchParams.get('sourceId');
+      original(data, unused, url);
+      const nextSourceId = new URL(window.location.href).searchParams.get('sourceId');
+      if (previousSourceId !== nextSourceId) {
+        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+      }
+    }) as History[typeof method];
+  };
+
+  wrapHistoryMethod('pushState');
+  wrapHistoryMethod('replaceState');
+}
+
+installSourceRouteHistorySync();
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
     RuntimeErrorBoundary,
