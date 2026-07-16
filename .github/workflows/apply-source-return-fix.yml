@@ -1,21 +1,21 @@
 name: Apply source return fix
 
 on:
-  pull_request:
-    types: [reopened]
+  push:
+    branches: [main]
+    paths:
+      - .source-return-fix-trigger
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   patch:
-    if: github.event.pull_request.number == 457
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/source-library-return-list
+          ref: main
       - name: Apply fix
         shell: bash
         run: |
@@ -61,6 +61,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx
-          git rm .github/workflows/fix-source-return-list.yml
+          git rm .github/workflows/apply-source-return-fix.yml .source-return-fix-trigger
           git commit -m "fix source detail return to list"
-          git push origin HEAD:fix/source-library-return-list
+          git push origin HEAD:main
