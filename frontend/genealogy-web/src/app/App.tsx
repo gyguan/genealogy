@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
@@ -16,6 +16,9 @@ import { MemberInvitationAction } from '../features/members/MemberInvitationActi
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
+import { PersonEditPage } from '../features/persons/PersonEditPage';
+import { navigateBackFromPersonEdit, readPersonEditRoute } from '../features/persons/personEditNavigation';
+import type { PersonEditRoute } from '../features/persons/personEditNavigation';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryPage } from '../features/sources/SourceLibraryPage';
@@ -42,15 +45,18 @@ type ViewKey = typeof navItems[number][0];
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
 
 function readViewFromUrl(): ViewKey {
+  if (readPersonEditRoute()) return 'personArchive';
   const requested = new URLSearchParams(window.location.search).get('view');
   return navItems.some(([key]) => key === requested) ? requested as ViewKey : 'home';
 }
 
 function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
   const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
   if (key === 'home') url.searchParams.delete('view');
   else url.searchParams.set('view', key);
-  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}`);
 }
 
 function getMessage(data: unknown, fallback: string) {
@@ -104,9 +110,12 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>(readViewFromUrl);
+  const [personEditRoute, setPersonEditRoute] = useState<PersonEditRoute | null>(readPersonEditRoute);
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
+  const navigationLockedRef = useRef(false);
+  const lockedUrlRef = useRef('');
 
   function closeToast(id: number) {
     setToasts(prev => prev.filter(item => item.id !== id));
@@ -123,6 +132,12 @@ function AppShell() {
     window.setTimeout(() => closeToast(id), 3200);
   }
 
+  function syncRouteFromUrl() {
+    setPersonEditRoute(readPersonEditRoute());
+    setActive(readViewFromUrl());
+    setPageEntryVersion(prev => prev + 1);
+  }
+
   function onLoginChanged() {
     setAuthStatus('authenticated');
   }
@@ -133,6 +148,13 @@ function AppShell() {
       setAuthStatus('anonymous');
       notify({ message: '已退出登录' });
     });
+  }
+
+  function setNavigationLocked(locked: boolean) {
+    navigationLockedRef.current = locked;
+    if (locked) {
+      lockedUrlRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    }
   }
 
   useEffect(() => {
@@ -167,20 +189,40 @@ function AppShell() {
 
   useEffect(() => {
     const onPopState = () => {
-      setActive(readViewFromUrl());
-      setPageEntryVersion(prev => prev + 1);
+      if (navigationLockedRef.current) {
+        window.history.pushState(window.history.state, '', lockedUrlRef.current);
+        notify({ message: '人物档案正在保存，请稍后再离开。' }, true);
+        return;
+      }
+      syncRouteFromUrl();
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   function enterPage(key: ViewKey) {
+    if (navigationLockedRef.current) {
+      notify({ message: '人物档案正在保存，请稍后再离开。' }, true);
+      return;
+    }
+    setPersonEditRoute(null);
     setActive(key);
     setPageEntryVersion(prev => prev + 1);
     writeViewToUrl(key);
   }
 
   function renderPage() {
+    if (personEditRoute) {
+      return (
+        <PersonEditPage
+          personId={personEditRoute.personId}
+          notify={notify}
+          onCancel={navigateBackFromPersonEdit}
+          onSavingChange={setNavigationLocked}
+        />
+      );
+    }
+
     switch (active) {
       case 'home': return <StatisticsHomePage />;
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
@@ -198,6 +240,7 @@ function AppShell() {
   }
 
   function renderModuleActions() {
+    if (personEditRoute) return null;
     if (active === 'personArchive') return <PersonDataExportActions notify={notify} />;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
     if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
@@ -248,7 +291,7 @@ function AppShell() {
           </Space>
         </Header>
         <Content className="content content--compact antd-content">
-          <div key={`${active}-${pageEntryVersion}`}>{renderPage()}</div>
+          <div key={`${active}-${personEditRoute?.personId || 'list'}-${pageEntryVersion}`}>{renderPage()}</div>
         </Content>
       </Layout>
       <ToastStack items={toasts} onClose={closeToast} />
