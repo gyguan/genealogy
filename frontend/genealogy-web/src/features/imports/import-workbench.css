@@ -1,0 +1,77 @@
+.import-center-page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.import-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.import-page-header .ant-typography {
+  margin-bottom: 4px;
+}
+
+.import-workbench-stack {
+  width: 100%;
+}
+
+.import-progress-card .ant-card-body {
+  padding-block: 20px;
+}
+
+.import-type-selector {
+  max-width: 640px;
+  margin-top: 8px;
+}
+
+.import-target-field {
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+}
+
+.import-guide-text {
+  margin-bottom: 0;
+}
+
+.import-upload-dragger .ant-upload-drag {
+  min-height: 156px;
+}
+
+.person-import-workspace,
+.relationship-import-workspace,
+.source-import-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 767px) {
+  .import-page-header {
+    flex-direction: column;
+  }
+
+  .import-workbench-steps.ant-steps-horizontal {
+    flex-direction: column;
+  }
+
+  .import-workbench-steps.ant-steps-horizontal .ant-steps-item {
+    padding-inline-start: 0;
+  }
+
+  .import-type-selector {
+    max-width: none;
+  }
+
+  .import-target-field {
+    max-width: none;
+  }
+
+  .import-center-page .ant-btn {
+    min-height: 40px;
+  }
+}
