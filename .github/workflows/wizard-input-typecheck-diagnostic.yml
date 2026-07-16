@@ -22,17 +22,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install
+      - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Capture typecheck
+      - name: Capture typecheck output
         working-directory: frontend/genealogy-web
         shell: bash
         run: |
           set +e
           npm run typecheck > ../../../wizard-input-typecheck.log 2>&1
           exit 0
-      - name: Commit diagnostic
+      - name: Commit diagnostic output
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
