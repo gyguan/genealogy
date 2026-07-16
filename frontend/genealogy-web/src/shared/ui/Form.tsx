@@ -5,7 +5,6 @@ import { validateWizardStep, wizardFieldName } from '../../features/mvp1/domain/
 import { useWizardFormContext } from '../../features/mvp1/WizardFormContext';
 
 type AnyProps = Record<string, any>;
-type InjectedControlProps = AnyProps & { child: ReactNode };
 
 const REVIEW_SUBMIT_LABEL = '保存并提交审核';
 const REVIEW_DRAFT_LABEL = '保存草稿继续录入';
@@ -83,25 +82,11 @@ function normalizeReviewActions(children: ReactNode) {
   return [cloneButtonLabel(draft, REVIEW_DRAFT_LABEL, true), submit];
 }
 
-function WizardFieldControl({ child, value, checked, onChange }: InjectedControlProps) {
+function toAntdControl(child: ReactNode): ReactNode {
   const element = asElement(child);
   if (!element || typeof element.type !== 'string') return child;
-
-  const { children, onChange: originalOnChange, value: _originalValue, checked: _originalChecked, ...props } = element.props;
-
-  if (element.type === 'textarea') {
-    return (
-      <Input.TextArea
-        {...props}
-        value={String(value ?? '')}
-        onChange={event => {
-          onChange?.(event);
-          originalOnChange?.(event);
-        }}
-      />
-    );
-  }
-
+  const { children, ...props } = element.props;
+  if (element.type === 'textarea') return <Input.TextArea {...props} value={props.value} onChange={props.onChange} />;
   if (element.type === 'select') {
     const options = Children.toArray(children)
       .map(asElement)
@@ -115,42 +100,15 @@ function WizardFieldControl({ child, value, checked, onChange }: InjectedControl
       <Select
         showSearch
         optionFilterProp="searchText"
-        filterOption={(input, option) => String((option as AnyProps)?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
+        filterOption={(input, option) => String(option?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
         {...props}
-        value={value === undefined || value === null ? undefined : String(value)}
+        value={props.value}
         options={options}
-        onChange={(nextValue, option) => {
-          onChange?.(nextValue, option);
-          emitValue(originalOnChange, nextValue);
-        }}
+        onChange={value => emitValue(props.onChange, value)}
       />
     );
   }
-
-  if (element.type === 'input') {
-    const inputType = String(props.type || 'text');
-    if (inputType === 'checkbox' || inputType === 'radio') {
-      return cloneElement(element, {
-        ...props,
-        checked: Boolean(checked),
-        onChange: (event: unknown) => {
-          onChange?.(event);
-          originalOnChange?.(event);
-        }
-      });
-    }
-    return (
-      <Input
-        {...props}
-        value={String(value ?? '')}
-        onChange={event => {
-          onChange?.(event);
-          originalOnChange?.(event);
-        }}
-      />
-    );
-  }
-
+  if (element.type === 'input') return <Input {...props} value={props.value} onChange={props.onChange} />;
   return child;
 }
 
@@ -174,9 +132,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
   const context = useWizardFormContext();
   const element = asElement(props.children);
   const name = props.name || wizardFieldName(props.label);
-  const currentValue = element?.props.type === 'checkbox' || element?.props.type === 'radio'
-    ? element?.props.checked
-    : element?.props.value;
+  const currentValue = element?.props.value;
 
   useEffect(() => {
     if (!context.form || !name || currentValue === undefined) return;
@@ -193,7 +149,6 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
     }
   }] : undefined;
 
-  const booleanControl = element?.props.type === 'checkbox' || element?.props.type === 'radio';
   return (
     <Form.Item
       className="field antd-field"
@@ -203,11 +158,12 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
       name={context.form ? name : undefined}
       dependencies={CROSS_FIELD_DEPENDENCIES[name]}
       rules={rules}
-      validateTrigger={['onChange', 'onBlur']}
+      trigger="onBlur"
+      validateTrigger="onBlur"
+      getValueProps={() => ({})}
       initialValue={currentValue}
-      valuePropName={booleanControl ? 'checked' : 'value'}
     >
-      <WizardFieldControl child={props.children} />
+      {toAntdControl(props.children)}
     </Form.Item>
   );
 }
