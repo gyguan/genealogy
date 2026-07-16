@@ -88,4 +88,5 @@
 
 .culture-create-drawer .ant-drawer-body { padding-bottom: 24px; }
 .culture-create-drawer .culture-editor-page { padding-bottom: 0; }
+.culture-create-drawer .culture-editor-header { display: none; }
 .culture-create-drawer .culture-editor-actions { margin-inline: -24px; margin-bottom: -24px; border-radius: 0; border-inline: 0; }
