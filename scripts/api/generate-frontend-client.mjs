@@ -129,6 +129,10 @@ function isRiskOperation(operation) {
   return (operation.tags || []).includes('OperationRisk');
 }
 
+function isHomeDashboardOperation(operation) {
+  return (operation.tags || []).includes('HomeDashboard');
+}
+
 function collectOperations(openapi, predicate = () => true) {
   const result = {};
   const allPaths = openapi.paths || {};
@@ -242,7 +246,7 @@ function writeGeneratedFile(file, content) {
 }
 
 const { openapi, overlayFiles } = loadEffectiveOpenApi();
-writeGeneratedFile(operationOutput, renderOperations(collectOperations(openapi, operation => !isCultureOperation(operation) && !isRiskOperation(operation))));
+writeGeneratedFile(operationOutput, renderOperations(collectOperations(openapi, operation => !isCultureOperation(operation) && !isRiskOperation(operation) && !isHomeDashboardOperation(operation))));
 writeGeneratedFile(cultureOperationOutput, renderOperations(collectOperations(openapi, isCultureOperation), 'docs/api/openapi.culture.json'));
 writeGeneratedFile(riskOperationOutput, renderOperations(collectOperations(openapi, isRiskOperation), 'docs/api/openapi.operation-risk-audit.json'));
 writeGeneratedFile(trackingTypesOutput, renderSchemaTypes(openapi, trackingSchemaNames, 'tracking-center'));
