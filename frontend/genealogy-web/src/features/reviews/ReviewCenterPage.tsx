@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import {
-  Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input,
-  List, Modal, Result, Row, Select, Space, Table, Tabs, Tag, Timeline, Typography
+  Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Grid, Input,
+  List, Modal, Pagination, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Timeline, Typography
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { PageResponse } from '../../shared/api/client';
@@ -38,6 +38,7 @@ type BatchResult = {
   comment?: string;
 };
 type BatchFormValues = { comment?: string };
+type ListFailure = { message: string; forbidden: boolean };
 
 const DEFAULT_PAGE_SIZE = 20;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -165,6 +166,12 @@ function formatDuration(seconds?: number | null) {
   return remainHours ? `${days} 天 ${remainHours} 小时` : `${days} 天`;
 }
 
+function waitingDuration(submitTime?: string | null) {
+  if (!submitTime) return '-';
+  const startedAt = new Date(submitTime).getTime();
+  return Number.isNaN(startedAt) ? '-' : formatDuration(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+}
+
 function isPending(row?: ReviewTaskListItemResponse | null) {
   return String(row?.status || '').toLowerCase() === 'pending';
 }
@@ -182,17 +189,31 @@ function errorMessage(reason: unknown) {
   if (reason instanceof Error && reason.message) return reason.message;
   if (typeof reason === 'string' && reason.trim()) return reason;
   const record = errorRecord(reason);
-  const message = record.message || record.errorMessage || record.detail;
+  const response = errorRecord(record.response);
+  const message = record.message || record.errorMessage || record.detail || response.message;
   return typeof message === 'string' && message.trim() ? message : '处理失败，请稍后重试';
+}
+
+function errorStatus(reason: unknown) {
+  const record = errorRecord(reason);
+  const response = errorRecord(record.response);
+  return Number(record.status || record.statusCode || response.status);
+}
+
+function isForbiddenError(reason: unknown) {
+  const record = errorRecord(reason);
+  const response = errorRecord(record.response);
+  const code = String(record.code || record.errorCode || response.code || '').toUpperCase();
+  const message = errorMessage(reason).toLowerCase();
+  return errorStatus(reason) === 403 || ['FORBIDDEN', 'ACCESS_DENIED'].includes(code) || /forbidden|无权限|拒绝访问/.test(message);
 }
 
 function isConflictError(reason: unknown) {
   const record = errorRecord(reason);
   const response = errorRecord(record.response);
-  const status = Number(record.status || record.statusCode || response.status);
   const code = String(record.code || record.errorCode || response.code || '').toUpperCase();
   const message = errorMessage(reason).toLowerCase();
-  return status === 409
+  return errorStatus(reason) === 409
     || ['CONFLICT', 'REVIEW_TASK_CONFLICT', 'REVIEW_TASK_ALREADY_PROCESSED', 'STATE_CONFLICT'].includes(code)
     || /already processed|state conflict|已处理|状态冲突|重复审核/.test(message);
 }
@@ -206,8 +227,14 @@ function taskTypeSummary(tasks: ReviewTaskListItemResponse[]) {
   return [...counts.entries()].map(([label, count]) => ({ label, count }));
 }
 
+function hasFilters(filters: ReviewFilters) {
+  return Boolean(filters.targetType || filters.status || filters.branchId || filters.submittedRange || filters.processedRange);
+}
+
 export function ReviewCenterPage({ notify }: Props) {
   const workspace = useWorkspace();
+  const screens = Grid.useBreakpoint();
+  const mobile = !screens.md;
   const initialState = useMemo(readUrlState, []);
   const [form] = Form.useForm<ReviewFilters>();
   const [decisionForm] = Form.useForm<DecisionFormValues>();
@@ -219,6 +246,10 @@ export function ReviewCenterPage({ notify }: Props) {
   const [pageNo, setPageNo] = useState(initialState.pageNo);
   const [pageSize, setPageSize] = useState(initialState.pageSize);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [listFailure, setListFailure] = useState<ListFailure>();
+  const [staleFailure, setStaleFailure] = useState<string>();
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [processingKeys, setProcessingKeys] = useState<Key[]>([]);
   const [detail, setDetail] = useState<ReviewTaskViewDetailResponse | null>(null);
@@ -257,10 +288,16 @@ export function ReviewCenterPage({ notify }: Props) {
       setTasks([]);
       setTotal(0);
       setSelectedRowKeys([]);
+      setListFailure(undefined);
+      setStaleFailure(undefined);
+      setHasLoaded(false);
       return;
     }
     const requestId = ++requestSequence.current;
+    const hadSuccessfulData = hasLoaded;
     setLoading(true);
+    setListFailure(undefined);
+    setStaleFailure(undefined);
     try {
       const params = new URLSearchParams({ view: tab, scope: 'mine', pageNo: String(nextPage), pageSize: String(nextPageSize) });
       if (filters.targetType) params.set('targetType', filters.targetType);
@@ -281,11 +318,25 @@ export function ReviewCenterPage({ notify }: Props) {
       setTasks(page.records || []);
       setTotal(page.total || 0);
       setSelectedRowKeys([]);
+      setHasLoaded(true);
+      setLastUpdatedAt(new Date());
     } catch (error) {
       if (requestId !== requestSequence.current) return;
-      setTasks([]);
-      setTotal(0);
-      notify({ message: errorMessage(error) || '查询审核任务失败' }, true);
+      const forbidden = isForbiddenError(error);
+      const message = forbidden ? '你没有权限查看当前审核队列' : errorMessage(error);
+      if (forbidden) {
+        setTasks([]);
+        setTotal(0);
+        setSelectedRowKeys([]);
+        setListFailure({ message, forbidden: true });
+        setHasLoaded(false);
+      } else if (hadSuccessfulData) {
+        setStaleFailure(message);
+      } else {
+        setTasks([]);
+        setTotal(0);
+        setListFailure({ message, forbidden: false });
+      }
     } finally {
       if (requestId === requestSequence.current) setLoading(false);
     }
@@ -327,6 +378,7 @@ export function ReviewCenterPage({ notify }: Props) {
     setDetail(null);
     setReviewDiff(null);
     setDetailNotice(undefined);
+    setHasLoaded(false);
   }
 
   async function applyFilters() {
@@ -339,6 +391,7 @@ export function ReviewCenterPage({ notify }: Props) {
       processedRange: values.processedRange || null
     });
     setPageNo(1);
+    setHasLoaded(false);
   }
 
   function resetFilters() {
@@ -347,6 +400,7 @@ export function ReviewCenterPage({ notify }: Props) {
     form.setFieldsValue(next);
     setAppliedFilters(next);
     setPageNo(1);
+    setHasLoaded(false);
   }
 
   function openDecision(row: ReviewTaskListItemResponse) {
@@ -444,28 +498,51 @@ export function ReviewCenterPage({ notify }: Props) {
     openBatchDecision(type, failedTasks, true, comment);
   }
 
-  const columns = [
-    { key: 'title', title: '审核事项', width: 220, ellipsis: true, render: (_: unknown, row: ReviewTaskListItemResponse) => row.title },
-    { key: 'targetType', title: '审核对象', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => targetTypeText(row.targetType) },
+  const commonTitleColumn = {
+    key: 'title', title: '审核事项', width: 240,
+    render: (_: unknown, row: ReviewTaskListItemResponse) => (
+      <Button type="link" style={{ paddingInline: 0, height: 'auto', textAlign: 'left' }} onClick={() => void openDetail(row.id)}>{row.title}</Button>
+    )
+  };
+  const targetColumn = { key: 'targetType', title: '审核对象', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => targetTypeText(row.targetType) };
+  const statusColumn = { key: 'status', title: activeTab === 'processed' ? '处理结果' : '状态', width: 100, render: (_: unknown, row: ReviewTaskListItemResponse) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> };
+  const actionColumn = {
+    key: 'actions', title: '操作', width: activeTab === 'pending' ? 130 : 80, fixed: 'right' as const,
+    render: (_: unknown, row: ReviewTaskListItemResponse) => (
+      <Space size="small">
+        <Button type="link" onClick={() => void openDetail(row.id)}>详情</Button>
+        {activeTab === 'pending' && isPending(row) ? (
+          <Button type="link" loading={processingKeys.includes(rowKey(row))} onClick={() => openDecision(row)}>审核</Button>
+        ) : null}
+      </Space>
+    )
+  };
+
+  const columns = activeTab === 'pending' ? [
+    commonTitleColumn,
+    targetColumn,
     { key: 'branch', title: '目标支派', width: 140, render: (_: unknown, row: ReviewTaskListItemResponse) => row.branchName || '全宗族' },
-    { key: 'diffSummary', title: '变更摘要', dataIndex: 'diffSummary', width: 260, ellipsis: true },
-    { key: 'status', title: '状态', width: 100, render: (_: unknown, row: ReviewTaskListItemResponse) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
+    { key: 'risk', title: '风险/状态', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => <Space size={4}><Tag>未评估</Tag><Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag></Space> },
     { key: 'submitter', title: '提交人', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => row.submitterName || '-' },
-    { key: 'reviewer', title: '审核人', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => row.reviewerName || '-' },
     { key: 'submitTime', title: '提交时间', width: 175, render: (_: unknown, row: ReviewTaskListItemResponse) => formatDateTime(row.submitTime) },
+    { key: 'waiting', title: '等待时长', width: 130, render: (_: unknown, row: ReviewTaskListItemResponse) => waitingDuration(row.submitTime) },
+    actionColumn
+  ] : activeTab === 'submitted' ? [
+    commonTitleColumn,
+    targetColumn,
+    statusColumn,
+    { key: 'reviewer', title: '当前审核人', width: 130, render: (_: unknown, row: ReviewTaskListItemResponse) => row.reviewerName || '待分配' },
+    { key: 'submitTime', title: '提交时间', width: 175, render: (_: unknown, row: ReviewTaskListItemResponse) => formatDateTime(row.submitTime) },
+    { key: 'progress', title: '最近进展', width: 240, ellipsis: true, render: (_: unknown, row: ReviewTaskListItemResponse) => row.reviewComment || row.diffSummary || statusText(row.status) },
+    actionColumn
+  ] : [
+    commonTitleColumn,
+    targetColumn,
+    statusColumn,
+    { key: 'submitter', title: '提交人', width: 120, render: (_: unknown, row: ReviewTaskListItemResponse) => row.submitterName || '-' },
     { key: 'processedAt', title: '处理时间', width: 175, render: (_: unknown, row: ReviewTaskListItemResponse) => formatDateTime(row.processedAt) },
     { key: 'duration', title: '流程耗时', width: 135, render: (_: unknown, row: ReviewTaskListItemResponse) => formatDuration(row.processingDurationSeconds) },
-    {
-      key: 'actions', title: '操作', width: activeTab === 'pending' ? 130 : 80, fixed: 'right' as const,
-      render: (_: unknown, row: ReviewTaskListItemResponse) => (
-        <Space size="small" onClick={event => event.stopPropagation()}>
-          <Button type="link" size="small" onClick={() => void openDetail(row.id)}>详情</Button>
-          {activeTab === 'pending' && isPending(row) ? (
-            <Button type="primary" size="small" loading={processingKeys.includes(rowKey(row))} onClick={() => openDecision(row)}>审核</Button>
-          ) : null}
-        </Space>
-      )
-    }
+    actionColumn
   ];
 
   const currentDetail = detail?.task;
@@ -485,6 +562,89 @@ export function ReviewCenterPage({ notify }: Props) {
     )
   }));
 
+  function renderMobileMeta(row: ReviewTaskListItemResponse) {
+    if (activeTab === 'pending') return `提交人：${row.submitterName || '-'} · ${formatDateTime(row.submitTime)} · 等待 ${waitingDuration(row.submitTime)}`;
+    if (activeTab === 'submitted') return `审核人：${row.reviewerName || '待分配'} · ${row.reviewComment || row.diffSummary || statusText(row.status)}`;
+    return `提交人：${row.submitterName || '-'} · ${formatDateTime(row.processedAt)} · 耗时 ${formatDuration(row.processingDurationSeconds)}`;
+  }
+
+  function renderResultContent() {
+    if (!workspace.clanId) {
+      return <Result status="info" title="请先选择宗族" subTitle="审核任务按宗族隔离，选择宗族后才能查看对应审核队列。" />;
+    }
+    if (listFailure) {
+      return <Result status={listFailure.forbidden ? '403' : 'error'} title={listFailure.forbidden ? '无权访问审核队列' : '审核任务加载失败'} subTitle={listFailure.message} extra={listFailure.forbidden ? undefined : <Button type="primary" onClick={() => void loadTasks()}>重新加载</Button>} />;
+    }
+    if (!hasLoaded && loading) {
+      return <div style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}><Spin size="large" tip="正在加载审核任务" /></div>;
+    }
+    if (hasLoaded && tasks.length === 0) {
+      const filtered = hasFilters(appliedFilters);
+      return <Empty description={filtered ? '当前筛选条件下暂无审核任务' : '当前队列暂无审核任务'}>{filtered ? <Button type="primary" onClick={resetFilters}>清除筛选</Button> : null}</Empty>;
+    }
+    return (
+      <>
+        {mobile ? (
+          <List
+            dataSource={tasks}
+            renderItem={row => (
+              <List.Item style={{ paddingInline: 0 }}>
+                <Card size="small" style={{ width: '100%' }}>
+                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                    <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+                      <Button type="link" style={{ padding: 0, height: 'auto', fontWeight: 600, textAlign: 'left' }} onClick={() => void openDetail(row.id)}>{row.title}</Button>
+                      <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag>
+                    </Space>
+                    <Typography.Text type="secondary">{targetTypeText(row.targetType)} · {row.branchName || '全宗族'}</Typography.Text>
+                    <Typography.Text>{row.diffSummary || renderMobileMeta(row)}</Typography.Text>
+                    <Typography.Text type="secondary">{renderMobileMeta(row)}</Typography.Text>
+                    <Space wrap>
+                      {activeTab === 'pending' ? (
+                        <Button
+                          aria-pressed={selectedRowKeys.includes(rowKey(row))}
+                          onClick={() => setSelectedRowKeys(previous => previous.includes(rowKey(row)) ? previous.filter(key => key !== rowKey(row)) : [...previous, rowKey(row)])}
+                          style={{ minHeight: 44 }}
+                        >{selectedRowKeys.includes(rowKey(row)) ? '取消选择' : '选择'}</Button>
+                      ) : null}
+                      <Button style={{ minHeight: 44 }} onClick={() => void openDetail(row.id)}>查看详情</Button>
+                      {activeTab === 'pending' && isPending(row) ? <Button type="primary" style={{ minHeight: 44 }} onClick={() => openDecision(row)}>审核</Button> : null}
+                    </Space>
+                  </Space>
+                </Card>
+              </List.Item>
+            )}
+          />
+        ) : (
+          <Table<ReviewTaskListItemResponse>
+            size="middle"
+            loading={hasLoaded && loading}
+            rowKey={rowKey}
+            dataSource={tasks}
+            rowSelection={activeTab === 'pending' ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys), preserveSelectedRowKeys: false } : undefined}
+            pagination={false}
+            columns={columns}
+            scroll={{ x: 'max-content' }}
+          />
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <Pagination
+            current={pageNo}
+            pageSize={pageSize}
+            total={total}
+            showSizeChanger
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showTotal={value => `共 ${value} 条`}
+            onChange={(nextPage, nextPageSize) => {
+              setSelectedRowKeys([]);
+              setPageNo(nextPageSize === pageSize ? nextPage : 1);
+              setPageSize(nextPageSize);
+            }}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="review-center-page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -498,11 +658,7 @@ export function ReviewCenterPage({ notify }: Props) {
             <Row gutter={16}>
               <Col xs={24} sm={12} lg={6}><Form.Item name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></Form.Item></Col>
               <Col xs={24} sm={12} lg={6}><Form.Item name="status" label="审核状态"><Select allowClear placeholder="全部状态" options={statusOptions} /></Form.Item></Col>
-              <Col xs={24} sm={12} lg={6}>
-                <Form.Item name="branchId" label="目标支派">
-                  <Select allowClear showSearch optionFilterProp="label" placeholder="全部支派" options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))} />
-                </Form.Item>
-              </Col>
+              <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="目标支派"><Select allowClear showSearch optionFilterProp="label" placeholder="全部支派" options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))} /></Form.Item></Col>
               <Col xs={24} sm={12} lg={6}><Form.Item name="submittedRange" label="提交时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col>
               {activeTab === 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="processedRange" label="处理时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
             </Row>
@@ -511,192 +667,73 @@ export function ReviewCenterPage({ notify }: Props) {
         </Card>
 
         <Card>
-          <Tabs activeKey={activeTab} onChange={switchTab} items={[
-            { key: 'pending', label: activeTab === 'pending' ? `待我审核（${total}）` : '待我审核' },
-            { key: 'submitted', label: activeTab === 'submitted' ? `我提交的（${total}）` : '我提交的' },
-            { key: 'processed', label: activeTab === 'processed' ? `已处理（${total}）` : '已处理' }
-          ]} />
-          {activeTab === 'pending' && selectedTasks.length > 0 ? (
-            <div className="batch-review-actions table-review-actions">
-              <Typography.Text strong>已选择 {selectedTasks.length} 条（仅当前页）</Typography.Text>
-              <Space wrap><Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button><Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button><Button type="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button></Space>
-            </div>
-          ) : null}
-          <Table<ReviewTaskListItemResponse>
-            size="small" bordered loading={loading} rowKey={rowKey} dataSource={tasks}
-            rowSelection={activeTab === 'pending' ? { selectedRowKeys, onChange: keys => setSelectedRowKeys(keys), preserveSelectedRowKeys: false } : undefined}
-            onRow={row => ({ onClick: () => void openDetail(row.id), style: { cursor: 'pointer' } })}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前筛选条件下暂无审核记录' : '请先选择宗族'} /> }}
-            pagination={{
-              current: pageNo, pageSize, total, showSizeChanger: true, pageSizeOptions: PAGE_SIZE_OPTIONS,
-              showTotal: value => `共 ${value} 条`,
-              onChange: (nextPage, nextPageSize) => { setSelectedRowKeys([]); setPageNo(nextPageSize === pageSize ? nextPage : 1); setPageSize(nextPageSize); }
-            }}
-            columns={columns}
-            scroll={{ x: 'max-content' }}
-          />
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
+              <Tabs activeKey={activeTab} onChange={switchTab} items={[
+                { key: 'pending', label: activeTab === 'pending' && hasLoaded ? `待我审核（${total}）` : '待我审核' },
+                { key: 'submitted', label: activeTab === 'submitted' && hasLoaded ? `我提交的（${total}）` : '我提交的' },
+                { key: 'processed', label: activeTab === 'processed' && hasLoaded ? `已处理（${total}）` : '已处理' }
+              ]} />
+              <Space wrap>
+                {lastUpdatedAt && !listFailure?.forbidden ? <Typography.Text type="secondary">最近更新：{formatDateTime(lastUpdatedAt.toISOString())}</Typography.Text> : null}
+                {workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
+              </Space>
+            </Space>
+            {staleFailure ? <Alert type="warning" showIcon message="刷新失败，当前展示的是上次成功数据" description={staleFailure} action={<Button size="small" onClick={() => void loadTasks()}>重试</Button>} /> : null}
+            {activeTab === 'pending' && selectedTasks.length > 0 ? (
+              <Alert
+                type="info"
+                showIcon
+                message={`已选择 ${selectedTasks.length} 条（仅当前页）`}
+                action={<Space wrap><Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button><Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button><Button type="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button></Space>}
+              />
+            ) : null}
+            {renderResultContent()}
+          </Space>
         </Card>
       </Space>
 
       <Drawer
         title={currentDetail ? `${currentDetail.title} · ${targetTypeText(currentDetail.targetType)}` : '审核详情'}
-        width={680}
+        width={mobile ? '100vw' : 680}
         open={Boolean(detail) || detailLoading}
         loading={detailLoading}
         onClose={() => { setDetail(null); setReviewDiff(null); setDetailNotice(undefined); workspace.setReviewTaskId(''); }}
-        extra={currentDetail ? (
-          <Space>
-            <TrackingLinkButton clanId={workspace.clanId} targetType={currentDetail.targetType} targetId={currentDetail.targetId} reviewTaskId={currentDetail.id} />
-            {isPending(currentDetail) && activeTab === 'pending' ? <Button type="primary" onClick={() => openDecision(currentDetail)}>审核</Button> : null}
-          </Space>
-        ) : null}
+        extra={currentDetail ? <Space><TrackingLinkButton clanId={workspace.clanId} targetType={currentDetail.targetType} targetId={currentDetail.targetId} reviewTaskId={currentDetail.id} />{isPending(currentDetail) && activeTab === 'pending' ? <Button type="primary" style={{ minHeight: mobile ? 44 : undefined }} onClick={() => openDecision(currentDetail)}>审核</Button> : null}</Space> : null}
       >
         {currentDetail ? (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {detailNotice ? <Alert type="warning" showIcon message={detailNotice} /> : null}
-            <div>
-              <Typography.Title level={5}>审核摘要</Typography.Title>
-              <Descriptions column={1} size="small" bordered>
-                <Descriptions.Item label="审核事项">{currentDetail.title}</Descriptions.Item>
-                <Descriptions.Item label="审核对象">{targetTypeText(currentDetail.targetType)}</Descriptions.Item>
-                <Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item>
-                <Descriptions.Item label="审核状态"><Tag color={statusColor(currentDetail.status)}>{statusText(currentDetail.status)}</Tag></Descriptions.Item>
-                <Descriptions.Item label="提交人">{currentDetail.submitterName || '-'}</Descriptions.Item>
-                <Descriptions.Item label="审核人">{currentDetail.reviewerName || '-'}</Descriptions.Item>
-                <Descriptions.Item label="提交时间">{formatDateTime(currentDetail.submitTime)}</Descriptions.Item>
-                <Descriptions.Item label="处理时间">{formatDateTime(currentDetail.processedAt)}</Descriptions.Item>
-                <Descriptions.Item label="变更摘要">{currentDetail.diffSummary || '暂无摘要'}</Descriptions.Item>
-              </Descriptions>
-            </div>
-
-            <div>
-              <Typography.Title level={5}>字段变更</Typography.Title>
-              {reviewDiff?.fields?.length ? (
-                <Table
-                  size="small"
-                  pagination={false}
-                  rowKey={(row) => `${row.fieldName}-${row.changeType}`}
-                  dataSource={reviewDiff.fields}
-                  columns={[
-                    { title: '字段', dataIndex: 'fieldName', width: 140 },
-                    { title: '变更前', dataIndex: 'beforeValue', render: value => value || '-' },
-                    { title: '变更后', dataIndex: 'afterValue', render: value => value || '-' }
-                  ]}
-                  scroll={{ x: 520 }}
-                />
-              ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前详情接口未返回字段级变更" />}
-            </div>
-
-            <div>
-              <Typography.Title level={5}>来源与证据</Typography.Title>
-              {currentDetail.targetSummary?.fileName ? (
-                <Alert type="info" showIcon message={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" />
-              ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}
-            </div>
-
-            <div>
-              <Typography.Title level={5}>风险与冲突</Typography.Title>
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回风险或冲突项；最终校验以服务端提交结果为准" />
-            </div>
-
-            <div>
-              <Typography.Title level={5}>影响范围</Typography.Title>
-              {(currentDetail.targetSummary?.draftCount !== undefined && currentDetail.targetSummary?.draftCount !== null)
-                || (currentDetail.targetSummary?.excludedCount !== undefined && currentDetail.targetSummary?.excludedCount !== null) ? (
-                <Descriptions column={1} size="small" bordered>
-                  <Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item>
-                  <Descriptions.Item label="涉及草稿">{currentDetail.targetSummary?.draftCount ?? 0} 条</Descriptions.Item>
-                  <Descriptions.Item label="排除记录">{currentDetail.targetSummary?.excludedCount ?? 0} 条</Descriptions.Item>
-                </Descriptions>
-              ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回可量化的影响范围" />}
-            </div>
-
+            <div><Typography.Title level={5}>审核摘要</Typography.Title><Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="审核事项">{currentDetail.title}</Descriptions.Item>
+              <Descriptions.Item label="审核对象">{targetTypeText(currentDetail.targetType)}</Descriptions.Item>
+              <Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item>
+              <Descriptions.Item label="审核状态"><Tag color={statusColor(currentDetail.status)}>{statusText(currentDetail.status)}</Tag></Descriptions.Item>
+              <Descriptions.Item label="提交人">{currentDetail.submitterName || '-'}</Descriptions.Item>
+              <Descriptions.Item label="审核人">{currentDetail.reviewerName || '-'}</Descriptions.Item>
+              <Descriptions.Item label="提交时间">{formatDateTime(currentDetail.submitTime)}</Descriptions.Item>
+              <Descriptions.Item label="处理时间">{formatDateTime(currentDetail.processedAt)}</Descriptions.Item>
+              <Descriptions.Item label="变更摘要">{currentDetail.diffSummary || '暂无摘要'}</Descriptions.Item>
+            </Descriptions></div>
+            <div><Typography.Title level={5}>字段变更</Typography.Title>{reviewDiff?.fields?.length ? <Table size="small" pagination={false} rowKey={row => `${row.fieldName}-${row.changeType}`} dataSource={reviewDiff.fields} columns={[{ title: '字段', dataIndex: 'fieldName', width: 140 }, { title: '变更前', dataIndex: 'beforeValue', render: value => value || '-' }, { title: '变更后', dataIndex: 'afterValue', render: value => value || '-' }]} scroll={{ x: 520 }} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前详情接口未返回字段级变更" />}</div>
+            <div><Typography.Title level={5}>来源与证据</Typography.Title>{currentDetail.targetSummary?.fileName ? <Alert type="info" showIcon message={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}</div>
+            <div><Typography.Title level={5}>风险与冲突</Typography.Title><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回风险或冲突项；最终校验以服务端提交结果为准" /></div>
+            <div><Typography.Title level={5}>影响范围</Typography.Title>{currentDetail.targetSummary?.draftCount !== undefined || currentDetail.targetSummary?.excludedCount !== undefined ? <Descriptions column={1} size="small" bordered><Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item><Descriptions.Item label="涉及草稿">{currentDetail.targetSummary?.draftCount ?? 0} 条</Descriptions.Item><Descriptions.Item label="排除记录">{currentDetail.targetSummary?.excludedCount ?? 0} 条</Descriptions.Item></Descriptions> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回可量化的影响范围" />}</div>
             <div><Typography.Title level={5}>历史审核轮次</Typography.Title><Timeline items={historyItems} /></div>
           </Space>
         ) : null}
       </Drawer>
 
-      <Modal
-        title="审核决策"
-        open={Boolean(decisionTask)}
-        confirmLoading={decisionLoading}
-        okText="确认提交"
-        cancelButtonProps={{ disabled: decisionLoading }}
-        closable={!decisionLoading}
-        maskClosable={!decisionLoading}
-        onOk={() => void submitDecision()}
-        onCancel={() => { if (!decisionLoading) { setDecisionTask(null); decisionForm.resetFields(); } }}
-        destroyOnHidden
-      >
-        {decisionTask ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Alert type="info" showIcon message={decisionTask.title} description={`${targetTypeText(decisionTask.targetType)} · ${decisionTask.branchName || '全宗族'}`} />
-            <Form form={decisionForm} layout="vertical">
-              <Form.Item name="decisionType" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}>
-                <Select options={[{ value: 'approve', label: '通过' }, { value: 'reject', label: '驳回' }]} />
-              </Form.Item>
-              <Form.Item noStyle shouldUpdate={(previous, current) => previous.decisionType !== current.decisionType}>
-                {({ getFieldValue }) => {
-                  const type = getFieldValue('decisionType') as DecisionType;
-                  return (
-                    <Form.Item
-                      name="comment"
-                      label={type === 'reject' ? '驳回原因' : '审核意见'}
-                      rules={type === 'reject' ? [
-                        { required: true, whitespace: true, message: '请填写驳回原因' },
-                        { max: 500, message: '最多输入 500 个字符' }
-                      ] : [{ max: 500, message: '最多输入 500 个字符' }]}
-                    >
-                      <Input.TextArea rows={4} maxLength={500} showCount placeholder={type === 'reject' ? '说明需要补充或修正的内容' : '填写审核意见（可选）'} />
-                    </Form.Item>
-                  );
-                }}
-              </Form.Item>
-            </Form>
-          </Space>
-        ) : null}
+      <Modal title="审核决策" open={Boolean(decisionTask)} confirmLoading={decisionLoading} okText="确认提交" cancelButtonProps={{ disabled: decisionLoading }} closable={!decisionLoading} maskClosable={!decisionLoading} onOk={() => void submitDecision()} onCancel={() => { if (!decisionLoading) { setDecisionTask(null); decisionForm.resetFields(); } }} destroyOnHidden>
+        {decisionTask ? <Space direction="vertical" size={16} style={{ width: '100%' }}><Alert type="info" showIcon message={decisionTask.title} description={`${targetTypeText(decisionTask.targetType)} · ${decisionTask.branchName || '全宗族'}`} /><Form form={decisionForm} layout="vertical"><Form.Item name="decisionType" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}><Select options={[{ value: 'approve', label: '通过' }, { value: 'reject', label: '驳回' }]} /></Form.Item><Form.Item noStyle shouldUpdate={(previous, current) => previous.decisionType !== current.decisionType}>{({ getFieldValue }) => { const type = getFieldValue('decisionType') as DecisionType; return <Form.Item name="comment" label={type === 'reject' ? '驳回原因' : '审核意见'} rules={type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={type === 'reject' ? '说明需要补充或修正的内容' : '填写审核意见（可选）'} /></Form.Item>; }}</Form.Item></Form></Space> : null}
       </Modal>
 
-      <Modal
-        title={`${batchDecision?.retry ? '重试' : '批量'}${batchDecision?.type === 'reject' ? '驳回' : '通过'}审核`}
-        open={Boolean(batchDecision)} confirmLoading={batchLoading}
-        okText={batchDecision?.type === 'reject' ? '确认驳回' : '确认通过'}
-        okButtonProps={{ danger: batchDecision?.type === 'reject' }} cancelButtonProps={{ disabled: batchLoading }}
-        closable={!batchLoading} maskClosable={!batchLoading}
-        onCancel={() => { if (!batchLoading) { setBatchDecision(null); batchForm.resetFields(); } }}
-        onOk={() => void submitBatchDecision()} destroyOnHidden
-      >
-        {batchDecision ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Alert type={batchDecision.type === 'reject' ? 'warning' : 'info'} showIcon message={`本次操作仅影响当前页选中的 ${batchDecision.tasks.length} 条任务`} description={batchDecision.type === 'reject' ? '驳回后任务将退回提交人处理，请填写明确、可执行的驳回原因。' : '通过后相关变更将按服务端审核流程生效，请确认已完成必要核验。'} />
-            <Descriptions size="small" column={1} bordered>
-              <Descriptions.Item label="选中数量">{batchDecision.tasks.length} 条</Descriptions.Item>
-              <Descriptions.Item label="对象类型"><Space wrap>{batchTypeSummary.map(item => <Tag key={item.label}>{item.label} {item.count}</Tag>)}</Space></Descriptions.Item>
-            </Descriptions>
-            <Form form={batchForm} layout="vertical">
-              <Form.Item name="comment" label={batchDecision.type === 'reject' ? '驳回原因' : '审核意见'} rules={batchDecision.type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}>
-                <Input.TextArea rows={4} maxLength={500} showCount placeholder={batchDecision.type === 'reject' ? '说明需要补充或修正的内容' : '填写统一审核意见（可选）'} />
-              </Form.Item>
-            </Form>
-          </Space>
-        ) : null}
+      <Modal title={`${batchDecision?.retry ? '重试' : '批量'}${batchDecision?.type === 'reject' ? '驳回' : '通过'}审核`} open={Boolean(batchDecision)} confirmLoading={batchLoading} okText={batchDecision?.type === 'reject' ? '确认驳回' : '确认通过'} okButtonProps={{ danger: batchDecision?.type === 'reject' }} cancelButtonProps={{ disabled: batchLoading }} closable={!batchLoading} maskClosable={!batchLoading} onCancel={() => { if (!batchLoading) { setBatchDecision(null); batchForm.resetFields(); } }} onOk={() => void submitBatchDecision()} destroyOnHidden>
+        {batchDecision ? <Space direction="vertical" size={16} style={{ width: '100%' }}><Alert type={batchDecision.type === 'reject' ? 'warning' : 'info'} showIcon message={`本次操作仅影响当前页选中的 ${batchDecision.tasks.length} 条任务`} description={batchDecision.type === 'reject' ? '驳回后任务将退回提交人处理，请填写明确、可执行的驳回原因。' : '通过后相关变更将按服务端审核流程生效，请确认已完成必要核验。'} /><Descriptions size="small" column={1} bordered><Descriptions.Item label="选中数量">{batchDecision.tasks.length} 条</Descriptions.Item><Descriptions.Item label="对象类型"><Space wrap>{batchTypeSummary.map(item => <Tag key={item.label}>{item.label} {item.count}</Tag>)}</Space></Descriptions.Item></Descriptions><Form form={batchForm} layout="vertical"><Form.Item name="comment" label={batchDecision.type === 'reject' ? '驳回原因' : '审核意见'} rules={batchDecision.type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={batchDecision.type === 'reject' ? '说明需要补充或修正的内容' : '填写统一审核意见（可选）'} /></Form.Item></Form></Space> : null}
       </Modal>
 
-      <Modal
-        title="批量审核结果" open={Boolean(batchResult)} width={720} destroyOnHidden
-        footer={batchResult?.failures.length ? <Space><Button onClick={() => setBatchResult(null)}>关闭</Button><Button type="primary" onClick={retryBatchFailures}>仅重试失败项</Button></Space> : null}
-        onCancel={() => setBatchResult(null)}
-      >
-        {batchResult ? (
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Result status="warning" title={`成功 ${batchResult.successCount} 条，失败 ${batchResult.failures.length} 条`} subTitle={`本次共处理 ${batchResult.total} 条任务；当前筛选和分页保持不变。`} />
-            <List bordered header={<Typography.Text strong>失败任务</Typography.Text>} dataSource={batchResult.failures} renderItem={item => (
-              <List.Item>
-                <List.Item.Meta title={<Space>{item.task.title}{item.conflict ? <Tag color="warning">状态冲突</Tag> : null}</Space>} description={`${targetTypeText(item.task.targetType)} · ${item.reason}`} />
-              </List.Item>
-            )} />
-          </Space>
-        ) : null}
+      <Modal title="批量审核结果" open={Boolean(batchResult)} width={720} destroyOnHidden footer={batchResult?.failures.length ? <Space><Button onClick={() => setBatchResult(null)}>关闭</Button><Button type="primary" onClick={retryBatchFailures}>仅重试失败项</Button></Space> : null} onCancel={() => setBatchResult(null)}>
+        {batchResult ? <Space direction="vertical" size={16} style={{ width: '100%' }}><Result status="warning" title={`成功 ${batchResult.successCount} 条，失败 ${batchResult.failures.length} 条`} subTitle={`本次共处理 ${batchResult.total} 条任务；当前筛选和分页保持不变。`} /><List bordered header={<Typography.Text strong>失败任务</Typography.Text>} dataSource={batchResult.failures} renderItem={item => <List.Item><List.Item.Meta title={<Space>{item.task.title}{item.conflict ? <Tag color="warning">状态冲突</Tag> : null}</Space>} description={`${targetTypeText(item.task.targetType)} · ${item.reason}`} /></List.Item>} /></Space> : null}
       </Modal>
     </div>
   );
