@@ -10,21 +10,23 @@ export type WizardCompletionControl = {
   label: string;
   disabled: boolean;
   hidden: boolean;
+  completed: boolean;
   reason: string;
 };
 
 export function deriveWizardCompletionControl(input: WizardCompletionControlInput): WizardCompletionControl {
   if (input.activeStep !== 'review') {
-    return { label: '下一步', disabled: false, hidden: false, reason: '' };
+    return { label: '下一步', disabled: false, hidden: false, completed: false, reason: '' };
   }
   if (input.completed) {
-    return { label: '完成建谱', disabled: true, hidden: true, reason: '本次建谱已完成。' };
+    return { label: '完成建谱', disabled: true, hidden: true, completed: true, reason: '本次建谱已完成。' };
   }
   if (!input.ready) {
     return {
       label: '完成建谱',
       disabled: true,
       hidden: false,
+      completed: false,
       reason: input.reason || '正在检查建谱完成条件。'
     };
   }
@@ -33,8 +35,9 @@ export function deriveWizardCompletionControl(input: WizardCompletionControlInpu
       label: '完成建谱',
       disabled: true,
       hidden: false,
+      completed: false,
       reason: input.reason || `请先处理 ${input.blockerCount} 项阻塞。`
     };
   }
-  return { label: '完成建谱', disabled: false, hidden: false, reason: '' };
+  return { label: '完成建谱', disabled: false, hidden: false, completed: false, reason: '' };
 }
