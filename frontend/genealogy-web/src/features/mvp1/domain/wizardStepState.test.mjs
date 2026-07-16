@@ -46,7 +46,7 @@ test('normal progression marks all seven steps completed', () => {
   assert.equal(getWizardStepGate(steps, 'review').allowed, true);
 });
 
-test('illegal jump is blocked by the nearest incomplete prerequisite', () => {
+test('business steps remain enterable when earlier steps are incomplete', () => {
   const snapshot = emptyWizardStateSnapshot();
   snapshot.clanId = 'c1';
   snapshot.clans = [{ id: 'c1', status: 'approved' }];
@@ -54,10 +54,9 @@ test('illegal jump is blocked by the nearest incomplete prerequisite', () => {
 
   assert.equal(byKey(steps, 'branch').state, 'editing');
   assert.equal(byKey(steps, 'generation').state, 'waiting');
+  assert.equal(byKey(steps, 'generation').stateLabel, '可进入');
   const gate = getWizardStepGate(steps, 'generation');
-  assert.equal(gate.allowed, false);
-  assert.equal(gate.blockingStep, 'branch');
-  assert.match(gate.reason || '', /支派步骤尚未完成/);
+  assert.equal(gate.allowed, true);
 });
 
 test('pending review task is not treated as completed', () => {
@@ -72,9 +71,10 @@ test('pending review task is not treated as completed', () => {
   assert.equal(byKey(steps, 'branch').state, 'reviewing');
   assert.equal(byKey(steps, 'branch').complete, false);
   assert.equal(byKey(steps, 'generation').state, 'waiting');
+  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
 });
 
-test('rejected step remains enterable for correction and blocks downstream steps', () => {
+test('rejected step remains enterable and downstream business steps can still be opened', () => {
   const snapshot = completedSnapshot();
   snapshot.persons = [{ id: 'p1', status: 'rejected' }];
   snapshot.relationships = [];
@@ -84,7 +84,7 @@ test('rejected step remains enterable for correction and blocks downstream steps
   assert.equal(byKey(steps, 'person').state, 'rejected');
   assert.equal(getWizardStepGate(steps, 'person').allowed, true);
   assert.equal(byKey(steps, 'relationship').state, 'waiting');
-  assert.equal(getWizardStepGate(steps, 'relationship').blockingStep, 'person');
+  assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);
 });
 
 test('one step load error does not close other already available steps', () => {
@@ -108,6 +108,7 @@ test('stale selected object is marked invalid instead of completed', () => {
   assert.equal(byKey(steps, 'branch').state, 'invalid');
   assert.equal(byKey(steps, 'branch').complete, false);
   assert.equal(byKey(steps, 'generation').state, 'waiting');
+  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
 });
 
 test('explicit relationship and source skips satisfy completion rules', () => {
@@ -123,4 +124,15 @@ test('explicit relationship and source skips satisfy completion rules', () => {
   assert.equal(byKey(steps, 'relationship').stateLabel, '已跳过');
   assert.equal(byKey(steps, 'source').stateLabel, '已跳过');
   assert.equal(byKey(steps, 'review').state, 'completed');
+});
+
+
+test('completion step remains locked until business dependencies are complete', () => {
+  const steps = deriveWizardStepStates(emptyWizardStateSnapshot());
+  assert.equal(getWizardStepGate(steps, 'branch').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'person').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'source').allowed, true);
+  assert.equal(getWizardStepGate(steps, 'review').allowed, false);
 });
