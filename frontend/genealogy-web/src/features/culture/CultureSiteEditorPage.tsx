@@ -272,12 +272,12 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="latitude" label="纬度" rules={[{ type: 'number', min: -90, max: 90, message: '纬度必须在 -90 到 90 之间' }]}>
-                  <InputNumber min={-90} max={90} style={{ width: '100%' }} placeholder="-90 ～ 90" />
+                  <InputNumber style={{ width: '100%' }} placeholder="-90 ～ 90" />
                 </Form.Item>
               </Col>
               <Col xs={24} md={12}>
                 <Form.Item name="longitude" label="经度" rules={[{ type: 'number', min: -180, max: 180, message: '经度必须在 -180 到 180 之间' }]}>
-                  <InputNumber min={-180} max={180} style={{ width: '100%' }} placeholder="-180 ～ 180" />
+                  <InputNumber style={{ width: '100%' }} placeholder="-180 ～ 180" />
                 </Form.Item>
               </Col>
             </Row>
