@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Empty, Form, Input, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Card, DatePicker, Empty, Form, Input, Select, Space, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { nullableBoolean, nullableNumber, nullableString } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
@@ -577,7 +578,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
             </Space>
           </div>
           {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
-          <Table<PersonLike>
+          <ResultListCardPersonLike>
             size="small"
             bordered
             loading={loadingPersons}

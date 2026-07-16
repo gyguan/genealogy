@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Card, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Select, Space, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { deriveSourceStageState, resetSourceBindingSelection } from '../../domain/sourceStageModel';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
@@ -167,7 +168,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
           </div>
           <Space className="source-stage-actions" wrap><Button type="primary" loading={saving} onClick={() => void createSource(false)}>保存来源草稿</Button><Button loading={saving} onClick={() => void createSource(true)}>保存并提交审核</Button><Button loading={loading} onClick={() => void refreshSources()}>刷新来源</Button></Space>
           {selectedReviewable.length ? <Alert className="source-stage-batch" type="info" showIcon message={`已选择 ${selectedReviewable.length} 条可提交来源`} action={<Button loading={submitting} onClick={() => void submitBatch()}>批量提交审核</Button>} /> : null}
-          <Table<SourceLike> size="small" rowKey={row => String(row.id || '')} loading={loading} dataSource={sources} pagination={{ pageSize: 8, hideOnSinglePage: true }} rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows, getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id }) }} columns={[
+          <ResultListCardSourceLike> size="small" rowKey={row => String(row.id || '')} loading={loading} dataSource={sources} pagination={{ pageSize: 8, hideOnSinglePage: true }} rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows, getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id }) }} columns={[
             { title: `来源名称（${sources.length}）`, key: 'name', render: (_, row) => <Button type="link" onClick={() => chooseSource(row)}>{sourceName(row)}{String(row.id) === workspace.sourceId ? ' · 已选择' : ''}</Button> },
             { title: '状态', key: 'status', width: 120, render: (_, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
             { title: '操作', key: 'action', width: 130, render: (_, row) => isReviewable(row) ? <Button size="small" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : <Button size="small" onClick={() => chooseSource(row)} disabled={!isOfficial(row)}>选择</Button> }
