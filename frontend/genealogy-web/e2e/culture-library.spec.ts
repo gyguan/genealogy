@@ -99,7 +99,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(page.getByText('正式资料不会被直接覆盖')).toBeVisible();
   await expect(page.getByRole('dialog', { name: '申请变更正式文化资料' })).toHaveCount(0);
   await expect(page).toHaveURL(/cultureEditor=item/);
-  await page.getByRole('button', { name: '取消' }).click();
+  await page.getByRole('button', { name: /取\s*消/ }).click();
 
   await page.getByLabel('关键词').fill('家训');
   await page.getByRole('button', { name: /查\s*询/ }).click();
@@ -126,7 +126,7 @@ test('culture item editor supports direct URL, refresh and submit', async ({ pag
   await expect(page).toHaveURL(/cultureEditorId=11/);
 
   await page.getByLabel('资料标题').fill('敦本堂堂号源流修订');
-  await page.getByRole('button', { name: '提交变更申请' }).click();
+  await page.getByRole('button', { name: /提\s*交\s*变\s*更\s*申\s*请/ }).click();
   await expect.poll(() => submittedBodies.length).toBe(1);
   expect(submittedBodies[0]).toMatchObject({ title: '敦本堂堂号源流修订', version: 3 });
   await expect(page).not.toHaveURL(/cultureEditor=/);
