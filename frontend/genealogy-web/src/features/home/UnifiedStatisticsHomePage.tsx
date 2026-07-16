@@ -18,6 +18,7 @@ import {
 } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
+import type { HomeDashboardResponse } from '../../shared/api/generated/home-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
 import './UnifiedStatisticsHomePage.css';
@@ -56,7 +57,7 @@ type HomeSnapshot = {
   sources: any[];
   pendingReviews: any[];
   logStats: any;
-  peopleTotal: number;
+  dashboard: HomeDashboardResponse | null;
   culture: HomeCultureOverview | null;
 };
 
@@ -67,7 +68,7 @@ const emptySnapshot: HomeSnapshot = {
   sources: [],
   pendingReviews: [],
   logStats: null,
-  peopleTotal: 0,
+  dashboard: null,
   culture: null
 };
 
@@ -177,20 +178,13 @@ function hasText(value: unknown) {
   return Boolean(String(value ?? '').trim());
 }
 
-function countBy(rows: any[], getter: (row: any) => string | number | undefined | null): ChartItem[] {
-  const counts = new Map<string, number>();
-  rows.forEach(row => {
-    const key = String(getter(row) ?? '').trim() || '未维护';
-    counts.set(key, (counts.get(key) || 0) + 1);
-  });
-  return Array.from(counts.entries())
-    .map(([label, value]) => ({ key: label as DrillKey, label, value }))
-    .sort((left, right) => right.value - left.value);
-}
-
 function parentBranchName(row: any, branches: any[]) {
   const parent = branches.find(branch => String(branch.id) === String(row.parentId || ''));
   return parent ? branchName(parent) : '父支派待维护';
+}
+
+function bucketValue(dashboard: HomeDashboardResponse | null, dimension: 'genderDistribution' | 'livingDistribution', key: string) {
+  return dashboard?.[dimension]?.find(item => item.key === key)?.count || 0;
 }
 
 function MiniBarChart({ title, items, activeKey, onSelect }: { title: string; items: ChartItem[]; activeKey: DrillKey; onSelect: (key: DrillKey) => void }) {
@@ -259,7 +253,8 @@ export function UnifiedStatisticsHomePage() {
         return;
       }
 
-      const [branchResult, peopleResult, sourceResult, reviewResult, logResult, cultureResult] = await Promise.allSettled([
+      const [dashboardResult, branchResult, peopleResult, sourceResult, reviewResult, logResult, cultureResult] = await Promise.allSettled([
+        apiClient.get<HomeDashboardResponse>(`/clans/${clanId}/dashboard`),
         apiClient.get(`/clans/${clanId}/branches`),
         apiClient.get(`/persons/search?clanId=${clanId}&pageNo=1&pageSize=200`),
         apiClient.get(`/clans/${clanId}/sources`),
@@ -270,6 +265,7 @@ export function UnifiedStatisticsHomePage() {
 
       const peopleResponse = peopleResult.status === 'fulfilled' ? peopleResult.value as any : { total: 0, records: [] };
       const people = toRecordList(peopleResponse);
+      const dashboard = dashboardResult.status === 'fulfilled' ? dashboardResult.value : null;
       const culture = cultureResult.status === 'fulfilled' ? cultureResult.value : null;
       if (cultureResult.status === 'rejected') {
         setCultureError(cultureResult.reason instanceof Error ? cultureResult.reason.message : '宗族文化摘要加载失败');
@@ -282,10 +278,10 @@ export function UnifiedStatisticsHomePage() {
         sources: sourceResult.status === 'fulfilled' ? toRecordList(sourceResult.value) : [],
         pendingReviews: reviewResult.status === 'fulfilled' ? toRecordList(reviewResult.value) : [],
         logStats: logResult.status === 'fulfilled' ? logResult.value : null,
-        peopleTotal: Number(peopleResponse?.total ?? people.length),
+        dashboard,
         culture
       });
-      setLastLoadedAt(new Date());
+      setLastLoadedAt(dashboard?.asOf ? new Date(dashboard.asOf) : new Date());
     } finally {
       setLoading(false);
     }
@@ -310,32 +306,39 @@ export function UnifiedStatisticsHomePage() {
   }, [snapshot.people]);
 
   const generationItems = useMemo(
-    () => countBy(snapshot.people, row => row.generationNo ? `${row.generationNo}世` : '未维护')
+    () => (snapshot.dashboard?.generationDistribution || [])
       .slice(0, 8)
-      .map(item => ({ ...item, key: `generation:${item.label}` as DrillKey })),
-    [snapshot.people]
+      .map(item => ({
+        key: `generation:${item.label}` as DrillKey,
+        label: item.label,
+        value: item.count
+      })),
+    [snapshot.dashboard]
   );
 
-  const livingCount = snapshot.people.filter(row => livingText(row.isLiving) === '在世').length;
-  const deceasedCount = snapshot.people.filter(row => livingText(row.isLiving) === '已故').length;
-  const generationReadyCount = snapshot.people.filter(row => row.generationNo || row.generationWord).length;
-  const vitalReadyCount = snapshot.people.filter(row => row.birthDate || row.deathDate).length;
-  const biographyReadyCount = snapshot.people.filter(row => hasText(row.biography) || hasText(row.epitaph) || hasText(row.titleOrHonor)).length;
-  const coveredBranchCount = snapshot.branches.filter(row => branchPersonCounts.get(String(row.id))).length;
+  const dashboard = snapshot.dashboard;
+  const branchCoverage = dashboard?.branchCoverage;
+  const completeness = dashboard?.completeness;
+  const livingCount = bucketValue(dashboard, 'livingDistribution', 'living');
+  const deceasedCount = bucketValue(dashboard, 'livingDistribution', 'deceased');
+  const generationReadyCount = completeness?.generationMaintainedCount || 0;
+  const vitalReadyCount = completeness?.vitalDatesMaintainedCount || 0;
+  const biographyReadyCount = completeness?.biographyMaintainedCount || 0;
+  const branchCoveredText = branchCoverage ? `${branchCoverage.coveredBranchCount}/${branchCoverage.totalBranchCount}` : '0/0';
 
   const cards: { key: DrillKey; label: string; value: number | string; hint: string }[] = [
-    { key: 'people', label: '族人总数', value: snapshot.peopleTotal, hint: '查看人物明细' },
-    { key: 'branches', label: '支派数量', value: snapshot.branches.length, hint: '查看支派' },
-    { key: 'sources', label: '来源资料', value: snapshot.sources.length, hint: '查看来源' },
-    { key: 'pendingReviews', label: '待审核', value: snapshot.pendingReviews.length, hint: '查看审核事项' },
-    { key: 'gender:男', label: '男性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '男').length, hint: '查看男性族人' },
-    { key: 'gender:女', label: '女性族人', value: snapshot.people.filter(row => genderText(row.gender || row.sex) === '女').length, hint: '查看女性族人' },
+    { key: 'people', label: '族人总数', value: dashboard?.peopleTotal || 0, hint: '查看人物明细' },
+    { key: 'branches', label: '支派数量', value: dashboard?.branchCount || 0, hint: '查看支派' },
+    { key: 'sources', label: '来源资料', value: dashboard?.sourceCount || 0, hint: '查看来源' },
+    { key: 'pendingReviews', label: '待审核', value: dashboard?.pendingReviewCount || 0, hint: '查看审核事项' },
+    { key: 'gender:男', label: '男性族人', value: bucketValue(dashboard, 'genderDistribution', 'male'), hint: '查看男性族人' },
+    { key: 'gender:女', label: '女性族人', value: bucketValue(dashboard, 'genderDistribution', 'female'), hint: '查看女性族人' },
     { key: 'living:在世', label: '在世人员', value: livingCount, hint: '查看在世人员' },
     { key: 'living:已故', label: '已故人员', value: deceasedCount, hint: '查看已故人员' },
     { key: 'generationReady', label: '已维护字辈', value: generationReadyCount, hint: '查看已维护字辈人物' },
     { key: 'vitalReady', label: '已维护生卒', value: vitalReadyCount, hint: '查看有生卒信息人物' },
     { key: 'biographyReady', label: '有传记人物', value: biographyReadyCount, hint: '查看已维护传记人物' },
-    { key: 'branchCovered', label: '已覆盖支派', value: `${coveredBranchCount}/${snapshot.branches.length}`, hint: '查看已有族人的支派' }
+    { key: 'branchCovered', label: '已覆盖支派', value: branchCoveredText, hint: '查看已有族人的支派' }
   ];
 
   const entries = snapshot.culture?.entries || [];

@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.List;
 import java.util.UUID;
 
 public interface ReviewTaskRepository extends JpaRepository<ReviewTaskEntity, Long> {
@@ -18,6 +17,8 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTaskEntity, Lo
     Optional<ReviewTaskEntity> findFirstByRevisionIdOrderByReviewLevelAsc(Long revisionId);
 
     List<ReviewTaskEntity> findByTraceIdOrderByCreatedAtAscIdAsc(UUID traceId);
+
+    long countByClanIdAndStatusIn(Long clanId, Collection<String> statuses);
 
     @Query("""
             select task

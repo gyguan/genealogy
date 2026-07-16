@@ -4,6 +4,40 @@ function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
 }
 
+function dashboardFor(clanId: number) {
+  const isFirstClan = clanId === 1;
+  return {
+    clanId,
+    asOf: '2026-07-16T10:00:00',
+    peopleTotal: isFirstClan ? 201 : 2,
+    branchCount: isFirstClan ? 8 : 2,
+    sourceCount: isFirstClan ? 12 : 1,
+    pendingReviewCount: isFirstClan ? 4 : 0,
+    genderDistribution: isFirstClan
+      ? [{ key: 'male', label: '男', count: 100 }, { key: 'female', label: '女', count: 100 }, { key: 'unknown', label: '未知', count: 1 }]
+      : [{ key: 'male', label: '男', count: 1 }, { key: 'female', label: '女', count: 1 }, { key: 'unknown', label: '未知', count: 0 }],
+    livingDistribution: isFirstClan
+      ? [{ key: 'living', label: '在世', count: 180 }, { key: 'deceased', label: '已故', count: 20 }, { key: 'unknown', label: '未维护', count: 1 }]
+      : [{ key: 'living', label: '在世', count: 2 }, { key: 'deceased', label: '已故', count: 0 }, { key: 'unknown', label: '未维护', count: 0 }],
+    generationDistribution: isFirstClan
+      ? [{ key: '1', label: '1世', count: 100 }, { key: '2', label: '2世', count: 100 }, { key: 'unmaintained', label: '未维护', count: 1 }]
+      : [{ key: '1', label: '1世', count: 2 }],
+    completeness: {
+      generationMaintainedCount: isFirstClan ? 200 : 2,
+      generationMaintainedRate: isFirstClan ? 99.5 : 100,
+      vitalDatesMaintainedCount: isFirstClan ? 121 : 1,
+      vitalDatesMaintainedRate: isFirstClan ? 60.2 : 50,
+      biographyMaintainedCount: isFirstClan ? 91 : 0,
+      biographyMaintainedRate: isFirstClan ? 45.27 : 0
+    },
+    branchCoverage: {
+      coveredBranchCount: isFirstClan ? 7 : 2,
+      totalBranchCount: isFirstClan ? 8 : 2,
+      coverageRate: isFirstClan ? 87.5 : 100
+    }
+  };
+}
+
 async function mockHomeApi(page: Page, requestedPaths: string[]) {
   await page.route('**/api/v1/**', async (route: Route) => {
     const request = route.request();
@@ -30,6 +64,10 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
     }
 
     const clanId = path.startsWith('/clans/2/') || url.searchParams.get('clanId') === '2' ? 2 : 1;
+    if (path === `/clans/${clanId}/dashboard`) {
+      await route.fulfill(ok(dashboardFor(clanId)));
+      return;
+    }
     if (path === `/clans/${clanId}/branches`) {
       await route.fulfill(ok(clanId === 1
         ? [{ id: 11, branchName: '长沙支', status: 'active' }]
@@ -38,7 +76,7 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
     }
     if (path === '/persons/search') {
       await route.fulfill(ok(clanId === 1
-        ? { records: [{ id: 101, name: '黄一', gender: 'male', branchId: 11 }], total: 1 }
+        ? { records: Array.from({ length: 200 }, (_item, index) => ({ id: 1000 + index, name: `黄氏第${index + 1}人`, gender: 'male', branchId: 11 })), total: 201 }
         : { records: [{ id: 201, name: '林一', gender: 'female', branchId: 21 }, { id: 202, name: '林二', gender: 'male', branchId: 22 }], total: 2 }));
       return;
     }
@@ -83,10 +121,12 @@ test('home dashboard uses a compact page header and switches clan context', asyn
   const clanSelect = header.getByRole('combobox', { name: '当前宗族' });
   await expect(clanSelect).toBeVisible();
   await expect(page.locator('.ant-card-head').getByRole('combobox', { name: '当前宗族' })).toHaveCount(0);
-  await expect(header.getByText(/数据更新于 \d{4}-\d{2}-\d{2} \d{2}:\d{2}/)).toBeVisible();
+  await expect(header.getByText('数据更新于 2026-07-16 10:00')).toBeVisible();
   await expect(page.getByRole('heading', { name: '黄氏宗族', level: 4 })).toBeVisible();
   await expect(page.getByText('黄氏宗族简介')).toBeVisible();
   await expect(page.getByText(/clanId|宗族\s*#\d+/i)).toHaveCount(0);
+  await expect(page.getByText('201')).toBeVisible();
+  await expect.poll(() => requestedPaths.some(path => path === '/clans/1/dashboard')).toBe(true);
 
   await clanSelect.click();
   await page.getByRole('option', { name: '林氏宗族' }).click();
@@ -94,6 +134,7 @@ test('home dashboard uses a compact page header and switches clan context', asyn
   await expect(page.getByRole('heading', { name: '林氏宗族', level: 4 })).toBeVisible();
   await expect(page.getByText('林氏宗族简介')).toBeVisible();
   await expect(page.getByText('黄氏宗族简介')).toHaveCount(0);
+  await expect.poll(() => requestedPaths.some(path => path.startsWith('/clans/2/dashboard'))).toBe(true);
   await expect.poll(() => requestedPaths.some(path => path.startsWith('/clans/2/branches'))).toBe(true);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('genealogy.workspace.clanId'))).toBe('2');
 });

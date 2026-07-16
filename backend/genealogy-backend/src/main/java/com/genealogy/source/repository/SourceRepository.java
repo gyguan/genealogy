@@ -15,6 +15,8 @@ public interface SourceRepository extends JpaRepository<SourceEntity, Long>, Jpa
 
     Page<SourceEntity> findByClanId(Long clanId, Pageable pageable);
 
+    long countByClanId(Long clanId);
+
     @Query("""
             select source
             from SourceEntity source

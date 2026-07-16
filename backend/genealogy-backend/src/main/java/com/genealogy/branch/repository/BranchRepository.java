@@ -19,6 +19,8 @@ public interface BranchRepository extends JpaRepository<BranchEntity, Long> {
 
     boolean existsByClanId(Long clanId);
 
+    long countByClanId(Long clanId);
+
     boolean existsByParentId(Long parentId);
 
     Optional<BranchEntity> findByIdAndClanId(Long id, Long clanId);

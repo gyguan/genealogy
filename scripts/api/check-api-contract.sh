@@ -17,6 +17,7 @@ git diff --exit-code -- \
   frontend/genealogy-web/src/shared/api/generated/culture-api-contract.ts \
   frontend/genealogy-web/src/shared/api/generated/tracking-types.ts \
   frontend/genealogy-web/src/shared/api/generated/culture-types.ts \
+  frontend/genealogy-web/src/shared/api/generated/home-types.ts \
   frontend/genealogy-web/src/shared/api/generated/tree-api-contract.ts \
   frontend/genealogy-web/src/shared/api/generated/tree-types.ts \
   frontend/genealogy-web/src/shared/api/generated/import-execution-types.ts \
