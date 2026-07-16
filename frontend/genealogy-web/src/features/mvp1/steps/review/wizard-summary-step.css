@@ -1,0 +1,16 @@
+.wizard-summary-header-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+.wizard-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.wizard-summary-statuses { margin-top: 12px; }
+.wizard-summary-blockers { margin-bottom: 16px; }
+.wizard-summary-completion .ant-card-body { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.wizard-summary-completion .ant-typography { margin-bottom: 4px; }
+.wizard-summary-loading { min-height: 180px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+@media (max-width: 767px) {
+  .wizard-summary-grid { grid-template-columns: 1fr; }
+  .wizard-summary-header-actions { justify-content: stretch; }
+  .wizard-summary-header-actions .ant-btn { flex: 1; min-height: 44px; }
+  .wizard-summary-completion .ant-card-body { align-items: stretch; flex-direction: column; }
+  .wizard-summary-completion .ant-btn { width: 100%; min-height: 44px; }
+  .wizard-summary-blockers .ant-alert-action { margin-inline-start: 0; padding-top: 10px; }
+  .wizard-summary-blockers .ant-btn { min-height: 44px; }
+}
