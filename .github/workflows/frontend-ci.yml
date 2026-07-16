@@ -1,23 +1,20 @@
 name: Frontend CI
 
 on:
-  pull_request:
-    branches: ["main"]
-    paths:
-      - "frontend/genealogy-web/**"
-      - ".github/workflows/frontend-ci.yml"
+  push:
+    branches:
+      - agent/source-search-url-413
 
 permissions:
   contents: write
 
 jobs:
   apply-source-query-state:
-    if: github.head_ref == 'agent/source-search-url-413'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: agent/source-search-url-413
           fetch-depth: 0
       - name: Apply URL state persistence
         shell: bash
@@ -101,6 +98,20 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
     setDetailSourceId(row.id);
   }
 """, 1)
+          s = s.replace("""  function closeDetail(mode: 'push' | 'replace' = 'push') {
+    writeSourceIdToUrl(undefined, mode);
+    setDetailSourceId(undefined);
+    setDetail(null);
+    setDetailError(null);
+  }
+""", """  function closeDetail(mode: 'push' | 'replace' = 'push') {
+    writeSearchToUrl(search, mode);
+    setDetailSourceId(undefined);
+    setDetail(null);
+    setDetailError(null);
+    window.setTimeout(() => window.scrollTo({ top: listScrollRef.current }), 0);
+  }
+""", 1)
           s = s.replace("""    setSearch(next);
     void loadSources(next);
   }
@@ -151,9 +162,10 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
           p.write_text(s)
           PY
           git show origin/main:.github/workflows/frontend-ci.yml > .github/workflows/frontend-ci.yml
-          git rm .github/workflows/source-issue-413-patch.yml
+          rm -f frontend/genealogy-web/.source-413-trigger
+          git rm -f .github/workflows/source-issue-413-patch.yml || true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx .github/workflows/frontend-ci.yml
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx .github/workflows/frontend-ci.yml frontend/genealogy-web/.source-413-trigger
           git commit -m "persist source search state in URL"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin HEAD:agent/source-search-url-413
