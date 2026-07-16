@@ -5,7 +5,7 @@ import { ClanStep } from './steps/clan/ClanStep';
 import { GenerationStep } from './steps/generation/GenerationStep';
 import { PersonStep } from './steps/person/PersonStep';
 import { RelationshipStep } from './steps/relationship/RelationshipStep';
-import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
+import { WizardSummaryStep } from './steps/review/WizardSummaryStep';
 import { SourceStageStep } from './steps/source/SourceStageStep';
 import { WizardResultListBoundary } from './WizardResultListBoundary';
 import { WizardValidationBoundary } from './WizardValidationBoundary';
@@ -29,7 +29,7 @@ export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedRevi
     case 'person': content = <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
     case 'relationship': content = <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
     case 'source': content = <SourceStageStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
-    case 'review': content = <ReviewProgressStep notify={notify} />; break;
+    case 'review': content = <WizardSummaryStep notify={notify} onStepChange={onStepChange} />; break;
     default: content = null;
   }
   return (

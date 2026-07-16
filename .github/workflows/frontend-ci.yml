@@ -21,12 +21,10 @@ jobs:
   frontend-build:
     name: Frontend Typecheck and Build
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -75,6 +73,9 @@ jobs:
       - name: Test wizard result lists
         working-directory: frontend/genealogy-web
         run: npm run test:wizard-result-lists
+      - name: Test wizard completion summary
+        working-directory: frontend/genealogy-web
+        run: npm run test:wizard-summary
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
         run: npm run typecheck
