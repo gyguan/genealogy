@@ -1,0 +1,17 @@
+.wizard-standard-result-list { overflow-x: auto; }
+.wizard-standard-result-list .ant-table { min-width: 680px; }
+.wizard-standard-result-list td[role="button"] { cursor: pointer; outline-offset: -2px; }
+.wizard-standard-result-list td[role="button"]:focus-visible { outline: 2px solid #1677ff; }
+[data-wizard-batch-visible="false"] { display: none !important; }
+.wizard-result-pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding-top: 12px; }
+.wizard-result-pagination button { min-height: 32px; padding: 4px 12px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; cursor: pointer; }
+.wizard-result-pagination button:disabled { cursor: not-allowed; opacity: .45; }
+.wizard-result-pagination__summary { color: rgba(0,0,0,.65); }
+@media (max-width: 767px) {
+  .wizard-standard-result-list { margin-inline: -4px; padding-bottom: 4px; }
+  .wizard-standard-result-list .ant-table { min-width: 760px; }
+  .wizard-standard-result-list .ant-btn,
+  .wizard-result-pagination button,
+  .wizard-result-list-boundary button { min-height: 44px; }
+  .wizard-result-pagination { justify-content: space-between; position: sticky; left: 0; min-width: min(100%, 360px); }
+}
