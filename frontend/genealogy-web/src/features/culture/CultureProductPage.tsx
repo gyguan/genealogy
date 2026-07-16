@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Card, Select, Space, Tabs, Typography, message } from 'antd';
+import { Button, Card, Select, Space, Tabs, Typography, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
 import { CultureSiteStandardTab } from './CultureSiteStandardTab';
+import { buildCultureEditorLocation } from './cultureEditorState';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
@@ -15,8 +16,14 @@ const { Paragraph, Text, Title } = Typography;
 const tabItems = [
   { key: 'items', label: '文化资料' },
   { key: 'migrations', label: '迁徙脉络' },
-  { key: 'sites', label: '祠堂与文化场所' }
+  { key: 'sites', label: '文化场所' }
 ] satisfies Array<{ key: CultureTabKey; label: string }>;
+
+const primaryActionText: Record<CultureTabKey, string> = {
+  items: '新增资料',
+  migrations: '新增迁徙事件',
+  sites: '新增场所'
+};
 
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -80,14 +87,26 @@ export function CultureProductPage() {
     window.history.pushState(window.history.state, '', href);
   }
 
+  function openPrimaryAction() {
+    if (!workspace.clanId) return;
+    if (activeTab === 'items') {
+      window.dispatchEvent(new CustomEvent('culture:item:create'));
+      return;
+    }
+    const target = activeTab === 'migrations' ? 'migration' : 'site';
+    const href = buildCultureEditorLocation(window.location.href, { target, mode: 'create' });
+    window.history.pushState(window.history.state, '', href);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
   function renderActiveTab() {
     const mounts = resolveCultureTabMounts(activeTab);
     return (
-      <>
+      <div className="culture-managed-tab">
         {mounts.items ? <CultureItemMaintenanceTab clanId={workspace.clanId} /> : null}
         {mounts.migrations ? <MigrationEventStandardTab /> : null}
         {mounts.sites ? <CultureSiteStandardTab /> : null}
-      </>
+      </div>
     );
   }
 
@@ -96,22 +115,27 @@ export function CultureProductPage() {
       {messageContext}
       <Card className="culture-page-header">
         <div className="culture-page-header-main">
-          <div>
+          <div className="culture-page-heading">
             <Title level={3}>宗族文化</Title>
-            <Paragraph type="secondary">查询和维护宗族文化资料、迁徙脉络及祠堂文化场所。</Paragraph>
+            <Paragraph type="secondary">查询和维护宗族文化资料、迁徙脉络及文化场所。</Paragraph>
           </div>
-          <div className="culture-clan-scope">
-            <Text type="secondary">当前宗族</Text>
-            <Select
-              aria-label="当前宗族"
-              value={workspace.clanId || undefined}
-              placeholder="请选择宗族"
-              loading={clansLoading}
-              showSearch
-              optionFilterProp="label"
-              onChange={value => workspace.setClanId(String(value))}
-              options={clans.filter(clan => clan.id).map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
-            />
+          <div className="culture-page-context-actions">
+            <div className="culture-clan-scope">
+              <Text type="secondary">当前宗族</Text>
+              <Select
+                aria-label="当前宗族"
+                value={workspace.clanId || undefined}
+                placeholder="请选择宗族"
+                loading={clansLoading}
+                showSearch
+                optionFilterProp="label"
+                onChange={value => workspace.setClanId(String(value))}
+                options={clans.filter(clan => clan.id).map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
+              />
+            </div>
+            <Button type="primary" className="culture-page-primary-action" disabled={!workspace.clanId} onClick={openPrimaryAction}>
+              {primaryActionText[activeTab]}
+            </Button>
           </div>
         </div>
         <Tabs activeKey={activeTab} items={tabItems} onChange={changeTab} />
