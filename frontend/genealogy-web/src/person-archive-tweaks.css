@@ -1,18 +1,61 @@
-/* Person archive search query actions.
-   Filter options are loaded automatically on page load and clan switch, so hide the manual refresh action
-   and keep search/reset on a dedicated second row. */
-.person-archive-search .archive-search-form .actions {
-  grid-column: 1 / -1;
-  width: 100%;
-  justify-content: flex-end;
-  align-self: end;
-  margin-top: 0;
-  order: 99;
+.person-archive-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.person-archive-search .archive-search-form .actions .ant-space-item:nth-child(3),
-.person-archive-search .archive-search-form .actions > button:nth-of-type(3) {
-  display: none !important;
+.person-archive-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 4px 0 2px;
+}
+
+.person-archive-page-header .ant-typography {
+  margin-bottom: 4px;
+}
+
+.person-archive-page-header h3.ant-typography {
+  margin-top: 8px;
+}
+
+.person-archive-page-context {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(320px, 36vw);
+}
+
+.person-archive-query-card .ant-card-body,
+.person-archive-result-card .ant-card-body {
+  padding: 16px;
+}
+
+.person-archive-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.person-archive-more-filter {
+  height: auto;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.person-archive-query-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.person-archive-result-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 12px;
 }
 
 .person-archive-relationship-table-wrap {
@@ -45,4 +88,32 @@
   color: #555;
   text-align: center;
   background: #fafafa;
+}
+
+@media (max-width: 1199px) {
+  .person-archive-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .person-archive-page-header {
+    flex-direction: column;
+  }
+
+  .person-archive-page-context {
+    width: 100%;
+  }
+
+  .person-archive-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .person-archive-query-actions .ant-space {
+    width: 100%;
+  }
+
+  .person-archive-query-actions .ant-btn {
+    flex: 1;
+  }
 }
