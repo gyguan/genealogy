@@ -24,7 +24,17 @@ type Props = {
   onSavingChange?: (saving: boolean) => void;
 };
 
+type PersonEditFieldName = keyof PersonEditForm;
+type PersonEditFieldError = { name: PersonEditFieldName; errors: string[] };
+
 const LEAVE_MESSAGE = '当前有未保存的修改，确定放弃修改并离开吗？';
+const PERSON_EDIT_FIELD_NAMES: PersonEditFieldName[] = [
+  'branchId', 'name', 'genealogyName', 'courtesyName', 'aliasName', 'gender',
+  'generationNo', 'generationWord', 'rankInFamily', 'birthDate', 'birthDatePrecision',
+  'deathDate', 'deathDatePrecision', 'isLiving', 'birthPlace', 'residencePlace',
+  'occupation', 'education', 'titleOrHonor', 'biography', 'tombPlace', 'epitaph',
+  'hasDescendant', 'lineageStatus', 'privacyLevel', 'dataStatus'
+];
 
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
@@ -43,13 +53,20 @@ function normalizeDate(value: Dayjs | null) {
   return value ? value.format('YYYY-MM-DD') : '';
 }
 
-function serverFieldErrors(error: unknown) {
+function isPersonEditFieldName(name: string): name is PersonEditFieldName {
+  return PERSON_EDIT_FIELD_NAMES.includes(name as PersonEditFieldName);
+}
+
+function serverFieldErrors(error: unknown): PersonEditFieldError[] {
   const record = error && typeof error === 'object' ? error as Record<string, any> : {};
   const source = record.fieldErrors || record.errors || record.validationErrors || record.response?.data?.fieldErrors;
   if (!source || typeof source !== 'object' || Array.isArray(source)) return [];
   return Object.entries(source)
-    .filter(([, message]) => message !== undefined && message !== null)
-    .map(([name, message]) => ({ name, errors: [Array.isArray(message) ? String(message[0] || '字段校验失败') : String(message)] }));
+    .filter(([name, message]) => isPersonEditFieldName(name) && message !== undefined && message !== null)
+    .map(([name, message]) => ({
+      name: name as PersonEditFieldName,
+      errors: [Array.isArray(message) ? String(message[0] || '字段校验失败') : String(message)]
+    }));
 }
 
 function serverErrorMessage(error: unknown) {
@@ -179,7 +196,7 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     if (saving) return;
     setSaveError('');
     setSaved(false);
-    form.setFields(Object.keys(form.getFieldsValue(true)).map(name => ({ name, errors: [] })));
+    form.setFields(PERSON_EDIT_FIELD_NAMES.map(name => ({ name, errors: [] })));
 
     let values: PersonEditForm;
     try {
