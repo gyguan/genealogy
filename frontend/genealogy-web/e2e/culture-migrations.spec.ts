@@ -98,7 +98,7 @@ test('migration editor uses an independent URL page and business person selectio
 
   const founder = page.locator('.ant-form-item').filter({ hasText: '始迁祖' }).locator('input');
   await founder.fill('德昌');
-  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈')).toBeVisible();
+  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈').last()).toBeVisible();
 
   await page.getByRole('button', { name: '提交变更申请' }).click();
   await expect.poll(() => submittedBodies.length).toBe(1);
