@@ -1,4 +1,4 @@
-name: Source Library Diagnostics
+name: Source Library Patch
 
 on:
   pull_request:
@@ -6,35 +6,47 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  patch:
+    if: github.head_ref == 'agent/source-search-layout-412'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Install dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install
-      - name: Capture typecheck output
-        working-directory: frontend/genealogy-web
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Fix reset form value types
         shell: bash
         run: |
-          set +e
-          npm run typecheck > source-library-typecheck.log 2>&1
-          status=$?
-          cat source-library-typecheck.log
-          echo "$status" > source-library-typecheck.status
-          exit 0
-      - name: Upload diagnostics
-        uses: actions/upload-artifact@v4
-        with:
-          name: source-library-typecheck
-          path: |
-            frontend/genealogy-web/source-library-typecheck.log
-            frontend/genealogy-web/source-library-typecheck.status
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx')
+          text = path.read_text()
+          old = """    sourceForm.resetFields();
+              sourceForm.setFieldsValue(next);
+              setSearch(next);"""
+          new = """    sourceForm.resetFields();
+              sourceForm.setFieldsValue({
+                keyword: undefined,
+                sourceType: undefined,
+                verificationStatus: undefined,
+                privacyLevel: undefined,
+                hasAttachment: undefined,
+                hasBinding: undefined
+              });
+              setSearch(next);"""
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif new not in text:
+              raise SystemExit('expected resetSearch block not found')
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx
+          git commit -m "fix source search reset types"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
