@@ -1,8 +1,11 @@
+import { ExportOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { saveDownloadedBlob } from '../../shared/utils/download';
+import './booklet-actions-issue473.css';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
@@ -11,6 +14,18 @@ type BookletScope = 'clan' | 'branch';
 export function BookletActions({ notify }: Props) {
   const workspace = useWorkspace();
   const [loading, setLoading] = useState(false);
+  const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    function locateToolbar() {
+      setToolbar(document.querySelector<HTMLElement>('.lineage-canvas-view-bar'));
+    }
+
+    locateToolbar();
+    const observer = new MutationObserver(locateToolbar);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   async function generateBooklet(scope: BookletScope) {
     if (loading) return;
@@ -40,18 +55,20 @@ export function BookletActions({ notify }: Props) {
     }
   }
 
-  return (
+  const action = (
     <Dropdown
       disabled={!workspace.clanId || loading}
       menu={{
         items: [
-          { key: 'clan', label: '生成全宗族谱册' },
-          { key: 'branch', label: '生成当前支派谱册', disabled: !workspace.branchId }
+          { key: 'clan', label: '导出全宗族谱册' },
+          { key: 'branch', label: '导出当前支派谱册', disabled: !workspace.branchId }
         ],
         onClick: info => void generateBooklet(info.key as BookletScope)
       }}
     >
-      <Button loading={loading}>生成谱册</Button>
+      <Button icon={<ExportOutlined />} loading={loading}>导出族谱</Button>
     </Dropdown>
   );
+
+  return toolbar ? createPortal(<span className="lineage-result-export-action">{action}</span>, toolbar) : null;
 }
