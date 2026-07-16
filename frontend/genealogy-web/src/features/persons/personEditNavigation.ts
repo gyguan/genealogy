@@ -1,3 +1,5 @@
+import { buildViewUrl } from '../../shared/navigation/urlState';
+
 export type PersonEditRoute = {
   personId: string;
 };
@@ -27,14 +29,13 @@ export function navigateToPersonEdit(personId: string | number) {
   if (!normalizedId) return;
 
   const returnUrl = currentAppUrl();
-  const url = new URL(window.location.href);
-  url.pathname = `/persons/${encodeURIComponent(normalizedId)}/edit`;
-  url.searchParams.set('view', 'personArchive');
-  url.hash = '';
+  const next = buildViewUrl('personArchive', window.location.href, {
+    pathname: `/persons/${encodeURIComponent(normalizedId)}/edit`
+  });
   window.history.pushState(
     { ...(window.history.state || {}), genealogyPersonEditReturnUrl: returnUrl },
     '',
-    `${url.pathname}${url.search}`
+    next
   );
   emitRouteChange();
 }
@@ -46,10 +47,7 @@ export function navigateBackFromPersonEdit() {
     return;
   }
 
-  const url = new URL(window.location.href);
-  url.pathname = '/';
-  url.searchParams.set('view', 'personArchive');
-  url.hash = '';
-  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
+  const next = buildViewUrl('personArchive', window.location.href);
+  window.history.replaceState(window.history.state, '', next);
   emitRouteChange();
 }
