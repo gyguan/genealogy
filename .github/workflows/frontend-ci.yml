@@ -74,6 +74,10 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm run test:wizard
 
+      - name: Test wizard session model
+        working-directory: frontend/genealogy-web
+        run: npm run test:wizard-session
+
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
         run: npm run typecheck
