@@ -4,7 +4,7 @@
 .culture-page-context-actions { display: flex; align-items: flex-end; justify-content: flex-end; gap: 12px; }
 .culture-clan-scope { width: min(320px, 100%); display: flex; flex-direction: column; gap: 6px; }
 .culture-clan-scope .ant-select { width: 100%; }
-.culture-page-primary-action { min-height: 40px; white-space: nowrap; }
+.culture-page-primary-action { min-width: 88px; height: 32px; min-height: 32px; white-space: nowrap; }
 .culture-page-header .ant-tabs { margin-top: 16px; }
 .culture-page-header .ant-tabs-nav { margin-bottom: 0; }
 .culture-search-actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 12px; }
@@ -23,7 +23,7 @@
   .culture-page-header-main { flex-direction: column; gap: 12px; }
   .culture-page-context-actions { width: 100%; align-items: flex-end; }
   .culture-clan-scope { flex: 1; width: auto; min-width: 0; }
-  .culture-page-primary-action { min-width: 112px; min-height: 44px; }
+  .culture-page-primary-action { min-width: 88px; height: 40px; min-height: 40px; }
   .culture-page-header .ant-tabs-nav { margin-inline: -4px; }
   .culture-page-header .ant-tabs-nav-wrap { overflow-x: auto; scrollbar-width: none; }
   .culture-page-header .ant-tabs-nav-wrap::-webkit-scrollbar { display: none; }
