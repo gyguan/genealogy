@@ -1,14 +1,29 @@
-import type { SourceLike, SourceLinkLike } from '../services/sourceService';
 import { isOfficial, isReviewable } from './status';
 
+export type SourceStageSource = {
+  id?: number | string;
+  sourceName?: string;
+  name?: string;
+  dataStatus?: string;
+  status?: string;
+  verificationStatus?: string;
+};
+
+export type SourceStageLink = {
+  id?: number | string;
+  sourceId?: number | string;
+  targetType?: string;
+  targetId?: number | string;
+};
+
 export type SourceStageState = {
-  selectedSource?: SourceLike;
+  selectedSource?: SourceStageSource;
   bindingOpen: boolean;
   stageOneStatus: 'empty' | 'draft' | 'reviewing' | 'official' | 'rejected';
   stageTwoReason: string;
 };
 
-export function deriveSourceStageState(sources: SourceLike[], selectedSourceId?: string): SourceStageState {
+export function deriveSourceStageState(sources: SourceStageSource[], selectedSourceId?: string): SourceStageState {
   const selectedSource = sources.find(source => String(source.id || '') === String(selectedSourceId || ''));
   if (!selectedSource) {
     return {
@@ -40,7 +55,7 @@ export function resetSourceBindingSelection(previousSourceId: string, nextSource
   return previousSourceId === nextSourceId ? undefined : { targetType: 'person' as const, targetId: '' };
 }
 
-export function appendSourceBinding(links: SourceLinkLike[], created: SourceLinkLike) {
-  const key = (link: SourceLinkLike) => String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`);
+export function appendSourceBinding(links: SourceStageLink[], created: SourceStageLink) {
+  const key = (link: SourceStageLink) => String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`);
   return [created, ...links.filter(link => key(link) !== key(created))];
 }
