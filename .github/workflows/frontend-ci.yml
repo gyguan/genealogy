@@ -87,10 +87,19 @@ jobs:
         run: npm run test:imports
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
-        run: npm run typecheck
+        shell: bash
+        run: set -o pipefail; npm run typecheck 2>&1 | tee typecheck-output.log
       - name: Build production frontend
         working-directory: frontend/genealogy-web
         run: npm run build
+      - name: Upload typecheck diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wizard-input-typecheck-diagnostics
+          path: frontend/genealogy-web/typecheck-output.log
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Upload failed Tree diagnostics
         if: failure() && steps.tree-changes.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
