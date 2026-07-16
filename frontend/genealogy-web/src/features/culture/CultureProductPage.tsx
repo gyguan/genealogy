@@ -102,7 +102,7 @@ export function CultureProductPage() {
   function renderActiveTab() {
     const mounts = resolveCultureTabMounts(activeTab);
     return (
-      <div className="culture-managed-tab">
+      <div className={`culture-managed-tab culture-tab-${activeTab}`}>
         {mounts.items ? <CultureItemMaintenanceTab clanId={workspace.clanId} /> : null}
         {mounts.migrations ? <MigrationEventStandardTab /> : null}
         {mounts.sites ? <CultureSiteStandardTab /> : null}
