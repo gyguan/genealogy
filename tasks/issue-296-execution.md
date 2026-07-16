@@ -3,6 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/296
 - 目标：将迁徙事件新增和编辑迁移为可恢复的独立编辑页面，并使用人物业务搜索选择器替代始迁祖技术 ID 输入和展示。
 - 工作分支：`agent/issue-296-migration-editor`
+- Draft PR：#330
 - 所属总控：#291
 - 前置依赖：#293 尚未实现；本 Issue 仅补齐 #296/#297 必需的最小共享编辑页基础，不迁移文化资料编辑，不代替 #293 的完整验收。
 
@@ -34,18 +35,19 @@
 | 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
 | 1 | 刷新规则、Issue 和现有迁徙/人物检索实现 | ✅ 已完成 | 约 18 分钟 | 确认无既有分支/PR；主干仍使用 Modal 和人物 ID |
-| 2 | 建立分支、任务看板和 Draft PR | 🔄 进行中 | 已累计 <1 分钟 | 当前检查点提交 |
-| 3 | 建立共享复杂编辑页壳与编辑 URL 状态 | ⏳ 待处理 | — | 仅抽取 #296/#297 确定复用的能力 |
-| 4 | 实现迁徙事件独立编辑页和保存闭环 | ⏳ 待处理 | — | 新增、草稿编辑、正式变更申请、错误保留 |
-| 5 | 接入人物业务搜索选择器并移除技术 ID 展示 | ⏳ 待处理 | — | 复用 `/persons/search`，遵循后端权限投影 |
-| 6 | 补充聚焦测试和最简验证 | ⏳ 待处理 | — | TypeScript、build、api:check:culture；E2E 记录执行条件 |
-| 7 | 更新看板、快速 Review、合入并回写 Issue | ⏳ 待处理 | — | 满足门禁后合入 main |
+| 2 | 建立分支、任务看板和 Draft PR | ✅ 已完成 | 约 2 分钟 | 分支 `agent/issue-296-migration-editor`，PR #330 |
+| 3 | 建立共享复杂编辑页壳与编辑 URL 状态 | ✅ 已完成 | 约 6 分钟 | `CultureEditorShell`、`cultureEditorState`、固定操作区和离开保护 |
+| 4 | 实现迁徙事件独立编辑页和保存闭环 | ✅ 已完成 | 约 9 分钟 | 五组业务表单；草稿/正式变更语义；失败保留输入 |
+| 5 | 接入人物业务搜索选择器并移除技术 ID 展示 | ✅ 已完成 | 约 5 分钟 | 复用 `/persons/search`；显示姓名、支派和代次；无 ID 回退 |
+| 6 | 补充聚焦测试和最简验证 | ✅ 已完成 | 约 5 分钟活跃；约 3 分钟外部等待 | URL 状态测试通过；API Contract、TypeScript、生产构建通过；E2E 用例已补充但未在本环境实际执行 |
+| 7 | 更新看板、快速 Review、合入并回写 Issue | 🔄 进行中 | 已累计约 3 分钟 | 无未解决 Review 线程；等待最终合入 |
 
 ## 复用资产
 
 - 人物检索：`GET /persons/search`；
 - 记录归一化：`shared/utils/records.ts`；
 - 支派与治理字典：`cultureLibraryService.ts`、`cultureOptions.ts`；
+- 编辑页共享能力：`CultureEditorShell.tsx`、`cultureEditorState.ts`、`CulturePersonSelect.tsx`；
 - 迁徙 URL 查询状态：`migrationEventUrlState.ts`。
 
 ## 影响模块
@@ -54,22 +56,25 @@
 - `frontend/genealogy-web/e2e/culture-migrations.spec.ts`
 - 不涉及后端、数据库与 OpenAPI 生成文件。
 
-## 验证方案
+## 验证结果
 
-- 自动/最简：前端 TypeScript、构建、Culture API Check；
-- 聚焦：编辑 URL 模型与人物选择模型测试；
-- 手工专项：新建、草稿编辑、正式变更、无权编辑、人物搜索无结果、未保存离开、刷新恢复。
+- ✅ API Contract run `29466710207`：通过；
+- ✅ Frontend CI run `29466710259`：TypeScript 与生产构建通过；
+- ✅ `cultureEditorState` 聚焦编译与 Node 测试：通过；
+- ✅ PR #330 无未解决 Review 线程；
+- 📝 Playwright 已补充独立编辑、人物选择、保存回跳和刷新恢复用例；本执行环境未运行浏览器 E2E，不能描述为已通过。
 
-## 已知风险
+## 风险与约束
 
-- #293 未实现，本分支包含最小共享编辑页基础；后续 #297 将以本分支为基线创建堆叠 PR；
-- `/persons/search` 返回结构存在历史兼容形态，选择器必须通过统一归一化处理，不能猜测不可见人物；
-- 当前无法在聊天环境直接运行浏览器和 npm 依赖，最终以 GitHub Actions 为自动验证证据。
+- #293 未实现，本分支只包含 #296/#297 必需的最小共享基础；
+- `/persons/search` 通过统一适配器消费后端已授权、已脱敏结果，人物姓名不可见时只显示安全业务文案；
+- 浏览器 E2E 未在本执行环境实际运行，后续 #305 最终准出仍需执行完整 Culture E2E；
+- `main` 在实现期间合入了首页、建谱向导和人物编辑页面变更，本 PR 未修改这些文件，合入时仍需由 GitHub 做最终冲突判定。
 
 ## 恢复检查点
 
-- 最后完成：规则、需求和代码影响面确认；远程分支已建立；
-- 当前进行中：创建 Draft PR 并回写 Issue；
-- 下一步最小任务：创建 Draft PR 后，提交共享编辑 URL 状态和页面壳；
+- 最后完成：实现、聚焦测试、自动门禁和快速 Review；
+- 当前进行中：将 PR 转为 Ready 并合入 `main`；
+- 下一步最小任务：合入后回写 Issue #296，并将 PR #335 Base 调整为 `main`；
 - 外部等待：无；
-- 最后更新时间：2026-07-16 10:13（北京时间）。
+- 最后更新时间：2026-07-16 10:36（北京时间）。
