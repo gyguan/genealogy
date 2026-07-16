@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
-import dayjs from 'dayjs';
+import { Button, Card, Descriptions, Drawer, Empty, Form, Input, Progress, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
+import { navigateToPersonEdit } from './personEditNavigation';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
-type DrawerMode = 'view' | 'edit';
 
 type SearchForm = {
   keyword: string;
@@ -16,35 +15,6 @@ type SearchForm = {
   generationWord: string;
   generationNo: string;
   branchId: string;
-  dataStatus: string;
-};
-
-type EditForm = {
-  branchId: string;
-  name: string;
-  genealogyName: string;
-  courtesyName: string;
-  aliasName: string;
-  gender: string;
-  generationNo: string;
-  generationWord: string;
-  rankInFamily: string;
-  birthDate: string;
-  birthDatePrecision: string;
-  deathDate: string;
-  deathDatePrecision: string;
-  isLiving: string;
-  birthPlace: string;
-  residencePlace: string;
-  occupation: string;
-  education: string;
-  titleOrHonor: string;
-  biography: string;
-  tombPlace: string;
-  epitaph: string;
-  hasDescendant: string;
-  lineageStatus: string;
-  privacyLevel: string;
   dataStatus: string;
 };
 
@@ -170,20 +140,8 @@ function livingText(value: unknown) {
   return '未知';
 }
 
-function asString(value: unknown) {
-  return value === null || value === undefined ? '' : String(value);
-}
-
 function asDate(value: unknown) {
-  return asString(value).slice(0, 10);
-}
-
-function toDateValue(value: string) {
-  return value ? dayjs(value) : null;
-}
-
-function dateString(value: string | string[]) {
-  return Array.isArray(value) ? value[0] || '' : value || '';
+  return value === null || value === undefined ? '' : String(value).slice(0, 10);
 }
 
 function lifeText(row: any) {
@@ -228,7 +186,7 @@ function eventDateText(event: PersonEvent) {
   const date = display(event.eventDate, '时间未详');
   const precision = event.eventDatePrecision;
   if (precision === 'year') return `${date.slice(0, 4)}年`;
-  if (precision === 'month') return `${date.slice(0, 7)}`;
+  if (precision === 'month') return date.slice(0, 7);
   return date;
 }
 
@@ -270,82 +228,6 @@ function sourceTypeText(value: unknown) {
     file: '附件资料'
   };
   return dict[type] || display(value, '来源类型待维护');
-}
-
-function toEditForm(person: any): EditForm {
-  return {
-    branchId: asString(person.branchId),
-    name: asString(person.name || person.personName),
-    genealogyName: asString(person.genealogyName),
-    courtesyName: asString(person.courtesyName),
-    aliasName: asString(person.aliasName),
-    gender: asString(person.gender || 'unknown'),
-    generationNo: asString(person.generationNo),
-    generationWord: asString(person.generationWord),
-    rankInFamily: asString(person.rankInFamily),
-    birthDate: asDate(person.birthDate),
-    birthDatePrecision: asString(person.birthDatePrecision || 'day'),
-    deathDate: asDate(person.deathDate),
-    deathDatePrecision: asString(person.deathDatePrecision || 'day'),
-    isLiving: person.isLiving === false ? 'false' : 'true',
-    birthPlace: asString(person.birthPlace),
-    residencePlace: asString(person.residencePlace),
-    occupation: asString(person.occupation),
-    education: asString(person.education),
-    titleOrHonor: asString(person.titleOrHonor),
-    biography: asString(person.biography),
-    tombPlace: asString(person.tombPlace),
-    epitaph: asString(person.epitaph),
-    hasDescendant: person.hasDescendant === false ? 'false' : person.hasDescendant === true ? 'true' : '',
-    lineageStatus: asString(person.lineageStatus || 'normal'),
-    privacyLevel: asString(person.privacyLevel || 'clan_only'),
-    dataStatus: asString(person.dataStatus || 'draft')
-  };
-}
-
-function nullableString(value: string) {
-  return value.trim() ? value.trim() : null;
-}
-
-function nullableNumber(value: string) {
-  return value.trim() ? Number(value) : null;
-}
-
-function nullableBoolean(value: string) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return null;
-}
-
-function toUpdatePayload(form: EditForm) {
-  return {
-    branchId: nullableNumber(form.branchId),
-    name: form.name.trim(),
-    genealogyName: nullableString(form.genealogyName),
-    courtesyName: nullableString(form.courtesyName),
-    aliasName: nullableString(form.aliasName),
-    gender: nullableString(form.gender) || 'unknown',
-    generationNo: nullableNumber(form.generationNo),
-    generationWord: nullableString(form.generationWord),
-    rankInFamily: nullableString(form.rankInFamily),
-    birthDate: nullableString(form.birthDate),
-    birthDatePrecision: nullableString(form.birthDatePrecision),
-    deathDate: nullableString(form.deathDate),
-    deathDatePrecision: nullableString(form.deathDatePrecision),
-    isLiving: nullableBoolean(form.isLiving),
-    birthPlace: nullableString(form.birthPlace),
-    residencePlace: nullableString(form.residencePlace),
-    occupation: nullableString(form.occupation),
-    education: nullableString(form.education),
-    titleOrHonor: nullableString(form.titleOrHonor),
-    biography: nullableString(form.biography),
-    tombPlace: nullableString(form.tombPlace),
-    epitaph: nullableString(form.epitaph),
-    hasDescendant: nullableBoolean(form.hasDescendant),
-    lineageStatus: nullableString(form.lineageStatus),
-    privacyLevel: nullableString(form.privacyLevel),
-    dataStatus: nullableString(form.dataStatus)
-  };
 }
 
 function uniqueTexts(values: unknown[]) {
@@ -405,11 +287,9 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const [pageNo, setPageNo] = useState(1);
   const [rawData, setRawData] = useState<unknown>();
   const [selected, setSelected] = useState<any>();
-  const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [relationships, setRelationships] = useState<unknown>();
   const [sources, setSources] = useState<unknown>();
   const [events, setEvents] = useState<unknown>();
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [loading, setLoading] = useState(false);
   const [querying, setQuerying] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
@@ -426,11 +306,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   useEffect(() => { void loadClanFilterOptions(workspace.clanId); }, [workspace.clanId]);
 
   function patch(key: keyof SearchForm, value: string) {
-    setForm(prev => ({ ...prev, [key]: value }));
-  }
-
-  function patchEdit(key: keyof EditForm, value: string) {
-    setEditForm(prev => prev ? { ...prev, [key]: value } : prev);
+    setForm(previous => ({ ...previous, [key]: value }));
   }
 
   async function run(action: () => Promise<void>) {
@@ -521,13 +397,11 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     setRawData(undefined);
   }
 
-  async function openDetail(row: any, mode: DrawerMode = 'view') {
+  async function openDetail(row: any) {
     await run(async () => {
       const id = row.id || row.personId;
       const detail = await apiClient.get(`/persons/${id}`);
       setSelected(detail);
-      setEditForm(toEditForm(detail));
-      setDrawerMode(mode);
       workspace.setPersonId(String(id));
       const [relationshipData, sourceData, eventData] = await Promise.all([
         apiClient.get(`/persons/${id}/relationships`).catch(() => []),
@@ -540,37 +414,18 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     });
   }
 
+  function openEditor(row: any) {
+    const id = row.id || row.personId;
+    if (!id) return;
+    workspace.setPersonId(String(id));
+    navigateToPersonEdit(id);
+  }
+
   function closeDetail() {
     setSelected(undefined);
-    setEditForm(null);
     setRelationships(undefined);
     setSources(undefined);
     setEvents(undefined);
-    setDrawerMode('view');
-  }
-
-  async function saveDetail() {
-    if (!selected || !editForm) return;
-    await run(async () => {
-      if (!editForm.name.trim()) throw new Error('姓名不能为空');
-      const data = await apiClient.put(`/persons/${selected.id}`, toUpdatePayload(editForm));
-      setSelected(data);
-      setEditForm(toEditForm(data));
-      setDrawerMode('view');
-      notify({ message: '人物档案已保存；如果当前筛选条件不再匹配，列表中可能不再显示该人物。' });
-      void search(currentPage);
-    });
-  }
-
-  function startEdit() {
-    if (!selected) return;
-    setEditForm(toEditForm(selected));
-    setDrawerMode('edit');
-  }
-
-  function cancelEdit() {
-    if (selected) setEditForm(toEditForm(selected));
-    setDrawerMode('view');
   }
 
   function branchText(row: any) {
@@ -617,16 +472,12 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             />
           </Form.Item>
           <Form.Item label="关键词">
-            <Input value={form.keyword} onChange={e => patch('keyword', e.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" />
+            <Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" />
           </Form.Item>
           {advancedOpen ? (
             <>
-              <Form.Item label="姓名">
-                <Input value={form.name} onChange={e => patch('name', e.target.value)} placeholder="姓名" />
-              </Form.Item>
-              <Form.Item label="性别">
-                <Select value={form.gender} onChange={value => patch('gender', value)} options={genderOptions} />
-              </Form.Item>
+              <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="姓名" /></Form.Item>
+              <Form.Item label="性别"><Select value={form.gender} onChange={value => patch('gender', value)} options={genderOptions} /></Form.Item>
               <Form.Item label="字辈">
                 <Select
                   value={form.generationWord}
@@ -653,16 +504,14 @@ export function PersonArchiveSearchPage({ notify }: Props) {
                   options={[{ value: '', label: '全部' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]}
                 />
               </Form.Item>
-              <Form.Item label="档案状态">
-                <Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} />
-              </Form.Item>
+              <Form.Item label="档案状态"><Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} /></Form.Item>
             </>
           ) : null}
           <Form.Item className="archive-search-actions-item">
             <Space wrap>
               <Button type="primary" htmlType="submit" disabled={loading || !workspace.clanId}>搜索</Button>
               <Button onClick={reset}>重置</Button>
-              <Button onClick={() => setAdvancedOpen(prev => !prev)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
+              <Button onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
             </Space>
           </Form.Item>
         </Form>
@@ -689,7 +538,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
           }}
           loading={querying}
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无人物记录，请先选择宗族并搜索，或调整筛选条件。" /> }}
-          onRow={row => ({ onClick: () => void openDetail(row, 'view'), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
+          onRow={row => ({ onClick: () => void openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
           columns={[
             { key: 'name', title: '姓名', render: (_value, row) => display(personName(row), '未命名人物') },
             { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) },
@@ -707,7 +556,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
               width: 90,
               render: (_value, row) => (
                 <Space size="small" onClick={event => event.stopPropagation()}>
-                  <Button size="small" type="link" onClick={() => void openDetail(row, 'edit')}>编辑</Button>
+                  <Button size="small" type="link" onClick={() => openEditor(row)}>编辑</Button>
                 </Space>
               )
             }
@@ -719,161 +568,114 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       <Drawer
         title={selected ? display(selected.name || selected.personName, '未命名人物') : '人物档案'}
         width={720}
-        open={Boolean(selected && editForm)}
+        open={Boolean(selected)}
         onClose={closeDetail}
         extra={selected ? (
           <Space>
-            {drawerMode === 'view' ? (
-              <TrackingLinkButton
-                clanId={workspace.clanId}
-                targetType="person"
-                targetId={selected.id || selected.personId}
-              />
-            ) : null}
-            {drawerMode === 'view' ? <Button onClick={startEdit}>编辑档案</Button> : <Button onClick={cancelEdit}>取消编辑</Button>}
+            <TrackingLinkButton
+              clanId={workspace.clanId}
+              targetType="person"
+              targetId={selected.id || selected.personId}
+            />
+            <Button onClick={() => openEditor(selected)}>编辑档案</Button>
             <Button onClick={closeDetail}>关闭</Button>
           </Space>
         ) : null}
       >
-        {selected && editForm ? (
-          drawerMode === 'view' ? (
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div>
-                <Typography.Text type="secondary">资料完整度</Typography.Text>
-                <Progress percent={completeness} size="small" />
-              </div>
-              <Tabs
-                items={[
-                  {
-                    key: 'summary',
-                    label: '基础信息',
-                    children: (
-                      <Descriptions column={2} size="small" bordered>
-                        <Descriptions.Item label="姓名">{display(selected.name || selected.personName, '未命名人物')}</Descriptions.Item>
-                        <Descriptions.Item label="谱名">{display(selected.genealogyName)}</Descriptions.Item>
-                        <Descriptions.Item label="字号">{display(selected.courtesyName)}</Descriptions.Item>
-                        <Descriptions.Item label="别名">{display(selected.aliasName)}</Descriptions.Item>
-                        <Descriptions.Item label="性别">{genderText(selected.gender)}</Descriptions.Item>
-                        <Descriptions.Item label="支派">{branchText(selected)}</Descriptions.Item>
-                        <Descriptions.Item label="字辈">{display(selected.generationWord)}</Descriptions.Item>
-                        <Descriptions.Item label="代次">{generationText(selected)}</Descriptions.Item>
-                        <Descriptions.Item label="排行">{display(selected.rankInFamily)}</Descriptions.Item>
-                        <Descriptions.Item label="生卒">{lifeText(selected)}</Descriptions.Item>
-                        <Descriptions.Item label="是否在世">{livingText(selected.isLiving)}</Descriptions.Item>
-                        <Descriptions.Item label="隐私级别">{privacyText(selected.privacyLevel)}</Descriptions.Item>
-                        <Descriptions.Item label="档案状态"><Tag color={statusColor(selected)}>{statusText(selected)}</Tag></Descriptions.Item>
-                      </Descriptions>
-                    )
-                  },
-                  {
-                    key: 'detail',
-                    label: '扩展信息',
-                    children: (
-                      <Descriptions column={1} size="small" bordered>
-                        <Descriptions.Item label="出生地">{display(selected.birthPlace)}</Descriptions.Item>
-                        <Descriptions.Item label="居住地">{display(selected.residencePlace)}</Descriptions.Item>
-                        <Descriptions.Item label="职业">{display(selected.occupation)}</Descriptions.Item>
-                        <Descriptions.Item label="教育程度">{display(selected.education)}</Descriptions.Item>
-                        <Descriptions.Item label="称号荣誉">{display(selected.titleOrHonor)}</Descriptions.Item>
-                        <Descriptions.Item label="墓葬地">{display(selected.tombPlace)}</Descriptions.Item>
-                        <Descriptions.Item label="世系状态">{display(selected.lineageStatus)}</Descriptions.Item>
-                        <Descriptions.Item label="是否有后裔">{boolText(selected.hasDescendant)}</Descriptions.Item>
-                      </Descriptions>
-                    )
-                  },
-                  {
-                    key: 'events',
-                    label: '事件与传记',
-                    children: (
-                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        {timelineItems.length ? <Timeline items={timelineItems} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键事件记录。" />}
-                        <Card size="small" title="人物传记"><Typography.Paragraph>{display(selected.biography, '暂无人物传记。')}</Typography.Paragraph></Card>
-                        <Card size="small" title="墓志铭"><Typography.Paragraph>{display(selected.epitaph, '暂无墓志铭。')}</Typography.Paragraph></Card>
-                      </Space>
-                    )
-                  },
-                  {
-                    key: 'relations',
-                    label: '关系与来源',
-                    children: (
-                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Table<any>
-                          size="small"
-                          bordered
-                          rowKey={(row, index) => String(row.id || `${relationshipName(row, 'from')}-${relationshipName(row, 'to')}-${index}`)}
-                          dataSource={relationshipRows}
-                          pagination={false}
-                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关系记录" /> }}
-                          columns={[
-                            { key: 'from', title: '起点人物', render: (_value, row) => relationshipName(row, 'from') },
-                            { key: 'to', title: '关联人物', render: (_value, row) => relationshipName(row, 'to') },
-                            { key: 'type', title: '关系', render: (_value, row) => relationshipTypeText(row.relationType || row.relationLabel) },
-                            { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
-                          ]}
-                        />
-                        <Table<any>
-                          size="small"
-                          bordered
-                          rowKey={(row, index) => String(row.id || row.sourceId || index)}
-                          dataSource={sourceRows}
-                          pagination={false}
-                          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源绑定" /> }}
-                          columns={[
-                            { key: 'sourceName', title: '来源名称', render: (_value, row) => sourceTitle(row) },
-                            { key: 'sourceType', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType) },
-                            { key: 'evidence', title: '证据说明', render: (_value, row) => display(row.evidenceText || row.description, '暂无说明') }
-                          ]}
-                        />
-                      </Space>
-                    )
-                  }
-                ]}
-              />
-            </Space>
-          ) : (
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Card size="small" title="基础信息">
-                <Form layout="vertical">
-                  <Form.Item label="姓名" required><Input value={editForm.name} onChange={e => patchEdit('name', e.target.value)} /></Form.Item>
-                  <Form.Item label="谱名"><Input value={editForm.genealogyName} onChange={e => patchEdit('genealogyName', e.target.value)} /></Form.Item>
-                  <Form.Item label="字号"><Input value={editForm.courtesyName} onChange={e => patchEdit('courtesyName', e.target.value)} /></Form.Item>
-                  <Form.Item label="别名"><Input value={editForm.aliasName} onChange={e => patchEdit('aliasName', e.target.value)} /></Form.Item>
-                  <Form.Item label="性别"><Select value={editForm.gender} onChange={value => patchEdit('gender', value)} options={genderOptions.filter(option => option.value)} /></Form.Item>
-                  <Form.Item label="支派"><Select value={editForm.branchId} onChange={value => patchEdit('branchId', value)} options={[{ value: '', label: '请选择支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
-                  <Form.Item label="代次"><Input value={editForm.generationNo} onChange={e => patchEdit('generationNo', e.target.value)} /></Form.Item>
-                  <Form.Item label="字辈"><Input value={editForm.generationWord} onChange={e => patchEdit('generationWord', e.target.value)} /></Form.Item>
-                  <Form.Item label="排行"><Input value={editForm.rankInFamily} onChange={e => patchEdit('rankInFamily', e.target.value)} /></Form.Item>
-                </Form>
-              </Card>
-              <Card size="small" title="生卒与传记">
-                <Form layout="vertical">
-                  <Form.Item label="出生日期"><DatePicker value={toDateValue(editForm.birthDate)} onChange={(_date, value) => patchEdit('birthDate', dateString(value))} style={{ width: '100%' }} /></Form.Item>
-                  <Form.Item label="逝世日期"><DatePicker value={toDateValue(editForm.deathDate)} onChange={(_date, value) => patchEdit('deathDate', dateString(value))} style={{ width: '100%' }} /></Form.Item>
-                  <Form.Item label="是否在世"><Select value={editForm.isLiving} onChange={value => patchEdit('isLiving', value)} options={[{ value: 'true', label: '在世' }, { value: 'false', label: '已故' }]} /></Form.Item>
-                  <Form.Item label="出生地"><Input value={editForm.birthPlace} onChange={e => patchEdit('birthPlace', e.target.value)} /></Form.Item>
-                  <Form.Item label="居住地"><Input value={editForm.residencePlace} onChange={e => patchEdit('residencePlace', e.target.value)} /></Form.Item>
-                  <Form.Item label="人物传记"><Input.TextArea value={editForm.biography} onChange={e => patchEdit('biography', e.target.value)} rows={4} /></Form.Item>
-                  <Form.Item label="墓葬地"><Input value={editForm.tombPlace} onChange={e => patchEdit('tombPlace', e.target.value)} /></Form.Item>
-                  <Form.Item label="墓志铭"><Input.TextArea value={editForm.epitaph} onChange={e => patchEdit('epitaph', e.target.value)} rows={3} /></Form.Item>
-                </Form>
-              </Card>
-              <Card size="small" title="状态与隐私">
-                <Form layout="vertical">
-                  <Form.Item label="职业"><Input value={editForm.occupation} onChange={e => patchEdit('occupation', e.target.value)} /></Form.Item>
-                  <Form.Item label="教育程度"><Input value={editForm.education} onChange={e => patchEdit('education', e.target.value)} /></Form.Item>
-                  <Form.Item label="称号荣誉"><Input value={editForm.titleOrHonor} onChange={e => patchEdit('titleOrHonor', e.target.value)} /></Form.Item>
-                  <Form.Item label="是否有后裔"><Select value={editForm.hasDescendant} onChange={value => patchEdit('hasDescendant', value)} options={[{ value: '', label: '未知' }, { value: 'true', label: '是' }, { value: 'false', label: '否' }]} /></Form.Item>
-                  <Form.Item label="世系状态"><Select value={editForm.lineageStatus} onChange={value => patchEdit('lineageStatus', value)} options={[{ value: 'normal', label: '正常' }, { value: 'adopted_in', label: '继入' }, { value: 'adopted_out', label: '出嗣' }, { value: 'unknown', label: '待考' }]} /></Form.Item>
-                  <Form.Item label="隐私级别"><Select value={editForm.privacyLevel} onChange={value => patchEdit('privacyLevel', value)} options={privacyOptions.map(([value, label]) => ({ value, label }))} /></Form.Item>
-                  <Form.Item label="档案状态"><Select value={editForm.dataStatus} onChange={value => patchEdit('dataStatus', value)} options={statusOptions.filter(option => option.value)} /></Form.Item>
-                </Form>
-              </Card>
-              <Space>
-                <Button type="primary" loading={loading} onClick={() => void saveDetail()}>保存档案</Button>
-                <Button onClick={cancelEdit}>取消</Button>
-              </Space>
-            </Space>
-          )
+        {selected ? (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <div>
+              <Typography.Text type="secondary">资料完整度</Typography.Text>
+              <Progress percent={completeness} size="small" />
+            </div>
+            <Tabs
+              items={[
+                {
+                  key: 'summary',
+                  label: '基础信息',
+                  children: (
+                    <Descriptions column={2} size="small" bordered>
+                      <Descriptions.Item label="姓名">{display(selected.name || selected.personName, '未命名人物')}</Descriptions.Item>
+                      <Descriptions.Item label="谱名">{display(selected.genealogyName)}</Descriptions.Item>
+                      <Descriptions.Item label="字号">{display(selected.courtesyName)}</Descriptions.Item>
+                      <Descriptions.Item label="别名">{display(selected.aliasName)}</Descriptions.Item>
+                      <Descriptions.Item label="性别">{genderText(selected.gender)}</Descriptions.Item>
+                      <Descriptions.Item label="支派">{branchText(selected)}</Descriptions.Item>
+                      <Descriptions.Item label="字辈">{display(selected.generationWord)}</Descriptions.Item>
+                      <Descriptions.Item label="代次">{generationText(selected)}</Descriptions.Item>
+                      <Descriptions.Item label="排行">{display(selected.rankInFamily)}</Descriptions.Item>
+                      <Descriptions.Item label="生卒">{lifeText(selected)}</Descriptions.Item>
+                      <Descriptions.Item label="是否在世">{livingText(selected.isLiving)}</Descriptions.Item>
+                      <Descriptions.Item label="隐私级别">{privacyText(selected.privacyLevel)}</Descriptions.Item>
+                      <Descriptions.Item label="档案状态"><Tag color={statusColor(selected)}>{statusText(selected)}</Tag></Descriptions.Item>
+                    </Descriptions>
+                  )
+                },
+                {
+                  key: 'detail',
+                  label: '扩展信息',
+                  children: (
+                    <Descriptions column={1} size="small" bordered>
+                      <Descriptions.Item label="出生地">{display(selected.birthPlace)}</Descriptions.Item>
+                      <Descriptions.Item label="居住地">{display(selected.residencePlace)}</Descriptions.Item>
+                      <Descriptions.Item label="职业">{display(selected.occupation)}</Descriptions.Item>
+                      <Descriptions.Item label="教育程度">{display(selected.education)}</Descriptions.Item>
+                      <Descriptions.Item label="称号荣誉">{display(selected.titleOrHonor)}</Descriptions.Item>
+                      <Descriptions.Item label="墓葬地">{display(selected.tombPlace)}</Descriptions.Item>
+                      <Descriptions.Item label="世系状态">{display(selected.lineageStatus)}</Descriptions.Item>
+                      <Descriptions.Item label="是否有后裔">{boolText(selected.hasDescendant)}</Descriptions.Item>
+                    </Descriptions>
+                  )
+                },
+                {
+                  key: 'events',
+                  label: '事件与传记',
+                  children: (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                      {timelineItems.length ? <Timeline items={timelineItems} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关键事件记录。" />}
+                      <Card size="small" title="人物传记"><Typography.Paragraph>{display(selected.biography, '暂无人物传记。')}</Typography.Paragraph></Card>
+                      <Card size="small" title="墓志铭"><Typography.Paragraph>{display(selected.epitaph, '暂无墓志铭。')}</Typography.Paragraph></Card>
+                    </Space>
+                  )
+                },
+                {
+                  key: 'relations',
+                  label: '关系与来源',
+                  children: (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                      <Table<any>
+                        size="small"
+                        bordered
+                        rowKey={(row, index) => String(row.id || `${relationshipName(row, 'from')}-${relationshipName(row, 'to')}-${index}`)}
+                        dataSource={relationshipRows}
+                        pagination={false}
+                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关系记录" /> }}
+                        columns={[
+                          { key: 'from', title: '起点人物', render: (_value, row) => relationshipName(row, 'from') },
+                          { key: 'to', title: '关联人物', render: (_value, row) => relationshipName(row, 'to') },
+                          { key: 'type', title: '关系', render: (_value, row) => relationshipTypeText(row.relationType || row.relationLabel) },
+                          { key: 'status', title: '状态', render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
+                        ]}
+                      />
+                      <Table<any>
+                        size="small"
+                        bordered
+                        rowKey={(row, index) => String(row.id || row.sourceId || index)}
+                        dataSource={sourceRows}
+                        pagination={false}
+                        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源绑定" /> }}
+                        columns={[
+                          { key: 'sourceName', title: '来源名称', render: (_value, row) => sourceTitle(row) },
+                          { key: 'sourceType', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType) },
+                          { key: 'evidence', title: '证据说明', render: (_value, row) => display(row.evidenceText || row.description, '暂无说明') }
+                        ]}
+                      />
+                    </Space>
+                  )
+                }
+              ]}
+            />
+          </Space>
         ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请选择人物档案" />}
       </Drawer>
     </div>
