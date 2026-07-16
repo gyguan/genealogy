@@ -18,6 +18,15 @@ type MockOptions = {
 
 function dashboardFor(clanId: number) {
   const isFirstClan = clanId === 1;
+  const trendPoints = Array.from({ length: 30 }, (_item, index) => {
+    const day = String(index + 1).padStart(2, '0');
+    return {
+      date: `2026-06-${day}`,
+      peopleCreatedCount: index % 7 === 0 ? 2 : 0,
+      sourceCreatedCount: index % 5 === 0 ? 1 : 0,
+      reviewCompletedCount: index % 6 === 0 ? 1 : 0
+    };
+  });
   return {
     clanId,
     asOf: '2026-07-16T10:00:00',
@@ -34,6 +43,12 @@ function dashboardFor(clanId: number) {
     generationDistribution: isFirstClan
       ? [{ key: '1', label: '1世', count: 100 }, { key: '2', label: '2世', count: 100 }, { key: 'unmaintained', label: '未维护', count: 1 }]
       : [{ key: '1', label: '1世', count: 2 }],
+    branchDistribution: isFirstClan
+      ? [{ key: '11', label: '长沙支', count: 150 }, { key: '12', label: '未维护支派', count: 51 }]
+      : [{ key: '21', label: '福州支', count: 1 }, { key: '22', label: '泉州支', count: 1 }],
+    sourceTypeDistribution: isFirstClan
+      ? [{ key: 'genealogy_book', label: '族谱原文', count: 8 }, { key: 'oral_record', label: '口述记录', count: 4 }]
+      : [{ key: 'genealogy_book', label: '族谱原文', count: 1 }],
     completeness: {
       generationMaintainedCount: isFirstClan ? 200 : 2,
       generationMaintainedRate: isFirstClan ? 99.5 : 100,
@@ -42,11 +57,19 @@ function dashboardFor(clanId: number) {
       biographyMaintainedCount: isFirstClan ? 91 : 0,
       biographyMaintainedRate: isFirstClan ? 45.27 : 0
     },
-    branchCoverage: {
-      coveredBranchCount: isFirstClan ? 7 : 2,
-      totalBranchCount: isFirstClan ? 8 : 2,
-      coverageRate: isFirstClan ? 87.5 : 100
-    }
+    branchCoverage: { coveredBranchCount: isFirstClan ? 7 : 2, totalBranchCount: isFirstClan ? 8 : 2, coverageRate: isFirstClan ? 87.5 : 100 },
+    trendPoints,
+    risks: [
+      { key: 'pending_review', label: '待审核事项', count: isFirstClan ? 4 : 0, severity: isFirstClan ? 'medium' : 'ok', reason: '仍有变更等待审核处理', targetView: 'reviewCenter', targetQuery: 'status=pending' },
+      { key: 'overdue_review', label: '超时待审核', count: isFirstClan ? 1 : 0, severity: isFirstClan ? 'high' : 'ok', reason: '创建超过 7 天仍未完成审核', targetView: 'reviewCenter', targetQuery: 'overdue=true' },
+      { key: 'missing_key_info', label: '关键信息缺失', count: isFirstClan ? 80 : 0, severity: isFirstClan ? 'medium' : 'ok', reason: '字辈或生卒等关键字段尚未维护', targetView: 'personArchive', targetQuery: 'quality=missing_key_info' },
+      { key: 'empty_branch', label: '无族人支派', count: isFirstClan ? 1 : 0, severity: isFirstClan ? 'low' : 'ok', reason: '支派下暂无正式族人', targetView: 'personArchive', targetQuery: 'quality=empty_branch' }
+    ],
+    recentActivities: [
+      { type: 'person', action: '人物档案更新', objectName: '黄一', actorName: '修谱成员', occurredAt: '2026-07-16T09:30:00', status: '已完成', targetView: 'personArchive', targetQuery: 'person=101' },
+      { type: 'source', action: '来源资料更新', objectName: '黄氏谱卷一', actorName: '修谱成员', occurredAt: '2026-07-16T09:00:00', status: '已完成', targetView: 'sourceLibrary', targetQuery: 'source=31' },
+      { type: 'review', action: '审核任务流转', objectName: '审核事项', actorName: '审核成员', occurredAt: '2026-07-16T08:00:00', status: '待处理', targetView: 'reviewCenter', targetQuery: 'task=1' }
+    ]
   };
 }
 
@@ -57,85 +80,26 @@ async function mockHomeApi(page: Page, requestedPaths: string[], options: MockOp
     const path = url.pathname.replace('/api/v1', '');
     requestedPaths.push(`${path}${url.search}`);
 
-    if (path === '/auth/me') {
-      await route.fulfill(ok({ id: 7, username: 'home_admin', displayName: '修谱管理员', status: 'active' }));
-      return;
-    }
+    if (path === '/auth/me') { await route.fulfill(ok({ id: 7, username: 'home_admin', displayName: '修谱管理员', status: 'active' })); return; }
     if (path === '/clans') {
-      if (options.clansStatus) {
-        await route.fulfill(fail(options.clansStatus, options.clansStatus === 403 ? '您暂无权限查看宗族列表' : '宗族列表加载失败'));
-        return;
-      }
-      if (options.emptyClans) {
-        await route.fulfill(ok({ records: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 0 }));
-        return;
-      }
-      await route.fulfill(ok({
-        records: [
-          { id: 1, clanName: '黄氏宗族', surname: '黄', description: '黄氏宗族简介' },
-          { id: 2, clanName: '林氏宗族', surname: '林', description: '林氏宗族简介' }
-        ],
-        total: 2,
-        pageNo: 1,
-        pageSize: 20,
-        totalPages: 1
-      }));
-      return;
+      if (options.clansStatus) { await route.fulfill(fail(options.clansStatus, options.clansStatus === 403 ? '您暂无权限查看宗族列表' : '宗族列表加载失败')); return; }
+      if (options.emptyClans) { await route.fulfill(ok({ records: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 0 })); return; }
+      await route.fulfill(ok({ records: [{ id: 1, clanName: '黄氏宗族', surname: '黄', description: '黄氏宗族简介' }, { id: 2, clanName: '林氏宗族', surname: '林', description: '林氏宗族简介' }], total: 2, pageNo: 1, pageSize: 20, totalPages: 1 })); return;
     }
 
     const clanId = path.startsWith('/clans/2/') || url.searchParams.get('clanId') === '2' ? 2 : 1;
     if (path === `/clans/${clanId}/dashboard`) {
-      if (options.dashboardStatus) {
-        await route.fulfill(fail(options.dashboardStatus, options.dashboardStatus === 403 ? '您暂无权限查看核心指标' : '核心指标服务异常'));
-        return;
-      }
-      await route.fulfill(ok(dashboardFor(clanId)));
-      return;
+      if (options.dashboardStatus) { await route.fulfill(fail(options.dashboardStatus, options.dashboardStatus === 403 ? '您暂无权限查看核心指标' : '核心指标服务异常')); return; }
+      await route.fulfill(ok(dashboardFor(clanId))); return;
     }
-    if (path === `/clans/${clanId}/branches`) {
-      await route.fulfill(ok(clanId === 1
-        ? [{ id: 11, branchName: '长沙支', status: 'active' }]
-        : [{ id: 21, branchName: '福州支', status: 'active' }, { id: 22, branchName: '泉州支', status: 'active' }]));
-      return;
-    }
-    if (path === '/persons/search') {
-      await route.fulfill(ok(clanId === 1
-        ? { records: Array.from({ length: 200 }, (_item, index) => ({ id: 1000 + index, name: `黄氏第${index + 1}人`, gender: 'male', branchId: 11 })), total: 201 }
-        : { records: [{ id: 201, name: '林一', gender: 'female', branchId: 21 }, { id: 202, name: '林二', gender: 'male', branchId: 22 }], total: 2 }));
-      return;
-    }
-    if (path === `/clans/${clanId}/sources`) {
-      if (options.sourceStatus) {
-        await route.fulfill(fail(options.sourceStatus, '来源资料加载失败'));
-        return;
-      }
-      await route.fulfill(ok(clanId === 1 ? [{ id: 31, sourceName: '黄氏谱卷一' }] : [{ id: 41, sourceName: '林氏谱卷一' }]));
-      return;
-    }
-    if (path === `/clans/${clanId}/review-tasks/pending`) {
-      await route.fulfill(ok([]));
-      return;
-    }
-    if (path === '/logs/operations/stats') {
-      await route.fulfill(ok({ totalCount: clanId, todayCount: 0, successCount: clanId, failureCount: 0 }));
-      return;
-    }
+    if (path === `/clans/${clanId}/branches`) { await route.fulfill(ok(clanId === 1 ? [{ id: 11, branchName: '长沙支', status: 'active' }] : [{ id: 21, branchName: '福州支', status: 'active' }, { id: 22, branchName: '泉州支', status: 'active' }])); return; }
+    if (path === '/persons/search') { await route.fulfill(ok(clanId === 1 ? { records: Array.from({ length: 200 }, (_item, index) => ({ id: 1000 + index, name: `黄氏第${index + 1}人`, gender: 'male', branchId: 11 })), total: 201 } : { records: [{ id: 201, name: '林一', gender: 'female', branchId: 21 }, { id: 202, name: '林二', gender: 'male', branchId: 22 }], total: 2 })); return; }
+    if (path === `/clans/${clanId}/sources`) { if (options.sourceStatus) { await route.fulfill(fail(options.sourceStatus, '来源资料加载失败')); return; } await route.fulfill(ok(clanId === 1 ? [{ id: 31, sourceName: '黄氏谱卷一' }] : [{ id: 41, sourceName: '林氏谱卷一' }])); return; }
+    if (path === `/clans/${clanId}/review-tasks/pending`) { await route.fulfill(ok([])); return; }
+    if (path === '/logs/operations/stats') { await route.fulfill(ok({ totalCount: clanId, todayCount: 0, successCount: clanId, failureCount: 0 })); return; }
     if (path === `/clans/${clanId}/culture-overview`) {
-      if (options.cultureStatus) {
-        await route.fulfill(fail(options.cultureStatus, options.cultureStatus === 403 ? '您暂无权限查看宗族文化摘要' : '宗族文化摘要服务异常'));
-        return;
-      }
-      await route.fulfill(ok({
-        clanId,
-        clanName: clanId === 1 ? '黄氏宗族' : '林氏宗族',
-        statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 },
-        featuredItems: [],
-        migrationHighlights: [],
-        siteHighlights: [],
-        missingHints: [],
-        entries: []
-      }));
-      return;
+      if (options.cultureStatus) { await route.fulfill(fail(options.cultureStatus, options.cultureStatus === 403 ? '您暂无权限查看宗族文化摘要' : '宗族文化摘要服务异常')); return; }
+      await route.fulfill(ok({ clanId, clanName: clanId === 1 ? '黄氏宗族' : '林氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 }, featuredItems: [], migrationHighlights: [], siteHighlights: [], missingHints: [], entries: [] })); return;
     }
 
     await route.fulfill(ok({}));
@@ -156,8 +120,18 @@ test('home dashboard uses a compact page header and switches clan context', asyn
   await expect(header.getByText('数据更新于 2026-07-16 10:00')).toBeVisible();
   await expect(page.getByRole('heading', { name: '黄氏宗族', level: 4 })).toBeVisible();
   await expect(page.getByText('黄氏宗族简介')).toBeVisible();
-  await expect(page.getByText(/clanId|宗族\s*#\d+/i)).toHaveCount(0);
+  await expect(page.getByText(/clanId|宗族\s*#\d+|fromPersonId|toPersonId/i)).toHaveCount(0);
   await expect(page.getByText('201')).toBeVisible();
+  await expect(page.locator('.statistics-home-page__metric-card')).toHaveCount(6);
+  await expect(page.getByText('男性族人')).toHaveCount(0);
+  await expect(page.getByText('结构分布')).toBeVisible();
+  await expect(page.getByText('性别结构')).toBeVisible();
+  await expect(page.getByLabel('性别结构未知 1，占比 0.5%')).toBeVisible();
+  await expect(page.getByText('趋势分析')).toBeVisible();
+  await expect(page.getByText('待办与风险')).toBeVisible();
+  await expect(page.getByText('超时待审核')).toBeVisible();
+  await expect(page.getByText('最近活动')).toBeVisible();
+  await expect(page.getByText('人物档案更新')).toBeVisible();
   await expect.poll(() => requestedPaths.some(path => path === '/clans/1/dashboard')).toBe(true);
 
   await clanSelect.click();
@@ -196,7 +170,7 @@ test('home dashboard shows actionable first-use empty state for accounts without
   await expect(page.getByText('未命名宗族')).toHaveCount(0);
   await expect(page.getByText('族人总数')).toHaveCount(0);
   await expect(page.getByText('宗族文化摘要')).toHaveCount(0);
-  await expect(page.getByText('代次分布 TOP 8')).toHaveCount(0);
+  await expect(page.getByText('结构分布')).toHaveCount(0);
   await expect.poll(() => requestedPaths.some(path => path.startsWith('/clans/1/dashboard'))).toBe(false);
 
   await page.getByRole('button', { name: '开始建谱' }).click();
@@ -231,7 +205,7 @@ test('home dashboard isolates culture and source failures without blocking core 
   await expect(page.getByText('201')).toBeVisible();
   await expect(page.getByText('宗族文化摘要加载失败')).toBeVisible();
   await expect(page.getByText('宗族文化摘要服务异常')).toBeVisible();
-  await page.getByText('来源资料').click();
+  await page.getByText('来源资料').first().click();
   await expect(page.getByText('资料明细加载失败')).toBeVisible();
   await expect(page.getByText('共 0 条记录')).toBeVisible();
 });
