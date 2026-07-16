@@ -29,13 +29,13 @@ type SkipState = { relationship: boolean; source: boolean };
 type DraftState = Partial<Record<Mvp1StepKey, WizardStepDraft>>;
 
 const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
-  { key: 'clan', title: '宗族', desc: '创建宗族基础信息，完成后进入支派维护。' },
-  { key: 'branch', title: '支派', desc: '建立支派并提交审核，通过后可用于字辈和人物。' },
-  { key: 'generation', title: '字辈', desc: '维护字辈方案和明细，通过审核后可用于人物。' },
-  { key: 'person', title: '人物', desc: '录入人物档案，通过审核后可建立亲属关系。' },
-  { key: 'relationship', title: '关系', desc: '在已通过审核的人物之间建立亲属关系。' },
-  { key: 'source', title: '来源', desc: '为已通过审核的对象绑定可追溯来源。' },
-  { key: 'review', title: '审核', desc: '查看待审任务并补充提交草稿对象。' }
+  { key: 'clan', title: '宗族', desc: '创建或选择宗族。' },
+  { key: 'branch', title: '支派', desc: '维护宗族支派。' },
+  { key: 'generation', title: '字辈', desc: '维护字辈方案与明细。' },
+  { key: 'person', title: '人物', desc: '录入人物档案。' },
+  { key: 'relationship', title: '关系', desc: '建立人物关系。' },
+  { key: 'source', title: '来源', desc: '绑定资料来源。' },
+  { key: 'review', title: '完成', desc: '检查并完成建谱。' }
 ];
 
 function clanLabel(clan?: { clanName?: unknown; surname?: unknown }) {
@@ -112,7 +112,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     setDrafts({});
     setActive('clan');
     setSaveState({ status: 'unsaved' });
-    setResult({ message: '已开始新的建谱会话；之前创建的业务数据不会被删除。' });
+    setResult({ message: '已开始新的建谱会话。' });
     window.history.replaceState(window.history.state, '', writeWizardStepToUrl(new URL(window.location.href), 'clan'));
     setSessionReady(true);
   }
@@ -122,9 +122,9 @@ export function Mvp1WizardPage({ notify }: Props) {
     promptShown.current = true;
     Modal.confirm({
       title: '继续上次建谱？',
-      content: `上次保存于 ${new Date(storedSession.savedAt).toLocaleString('zh-CN')}，停留在“${stepOrder.find(step => step.key === storedSession.activeStep)?.title || '建谱'}”步骤。`,
-      okText: '继续上次建谱',
-      cancelText: '开始新的建谱',
+      content: `上次保存于 ${new Date(storedSession.savedAt).toLocaleString('zh-CN')}，停留在“${stepOrder.find(step => step.key === storedSession.activeStep)?.title || '建谱'}”。`,
+      okText: '继续',
+      cancelText: '新建',
       closable: false,
       maskClosable: false,
       onOk: () => {
@@ -216,10 +216,10 @@ export function Mvp1WizardPage({ notify }: Props) {
   const selectedClan = wizardSnapshot.clans.find(clan => String(clan.id || '') === String(workspace.clanId || ''));
   const currentClanLabel = workspace.clanId ? clanLabel(selectedClan as { clanName?: unknown; surname?: unknown } | undefined) : '尚未选择宗族';
   const saveStatus = saveState.status === 'saved'
-    ? { label: saveState.savedAt ? `草稿已保存 · ${saveState.savedAt}` : '草稿已保存', color: 'success' }
+    ? { label: saveState.savedAt ? `已保存 ${saveState.savedAt}` : '已保存', color: 'success' }
     : saveState.status === 'error'
-      ? { label: '草稿保存失败，输入仍保留', color: 'error' }
-      : { label: '存在未保存进度', color: 'warning' };
+      ? { label: '保存失败', color: 'error' }
+      : { label: '未保存', color: 'warning' };
 
   function persistSession(nextDrafts = drafts, showNotice = false) {
     try {
@@ -240,13 +240,13 @@ export function Mvp1WizardPage({ notify }: Props) {
       const savedAt = displaySavedAt(session.savedAt);
       setSaveState({ status: 'saved', savedAt });
       if (showNotice) {
-        setResult({ message: '当前步骤、选择上下文和未提交表单已保存到本机。' });
+        setResult({ message: '草稿已保存。' });
         notify({ message: '建谱草稿已保存' });
       }
     } catch (error) {
       setSaveState({ status: 'error' });
-      setResult({ message: (error as Error).message || '草稿保存失败；当前输入仍保留在页面中。' });
-      if (showNotice) notify({ message: '草稿保存失败，当前输入仍保留' }, true);
+      setResult({ message: (error as Error).message || '草稿保存失败。' });
+      if (showNotice) notify({ message: '草稿保存失败' }, true);
     }
   }
 
@@ -289,7 +289,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     const gate = getWizardStepGate(stepDecisions, step);
     if (!gate.allowed) {
       setGateNotice({
-        title: gate.title || '该步骤暂未开放',
+        title: gate.title || '暂不能进入',
         reason: gate.reason || '前置条件尚未满足。',
         action: gate.action || '请先完成前置步骤',
         blockingStep: gate.blockingStep
@@ -311,8 +311,8 @@ export function Mvp1WizardPage({ notify }: Props) {
     }
     const fallback = nearestEnterableStep(requested);
     setGateNotice({
-      title: `无法恢复到“${stepOrder.find(step => step.key === requested)?.title || requested}”步骤`,
-      reason: gate.reason || '当前会话不满足该步骤前置条件，已安全回退。',
+      title: `无法进入“${stepOrder.find(step => step.key === requested)?.title || requested}”`,
+      reason: gate.reason || '当前条件不满足，已回退。',
       action: gate.action || '请先完成前置步骤',
       blockingStep: gate.blockingStep
     });
@@ -343,8 +343,8 @@ export function Mvp1WizardPage({ notify }: Props) {
         const fallback = nearestEnterableStep(requested);
         setActive(fallback);
         setGateNotice({
-          title: '历史步骤当前不可进入',
-          reason: gate.reason || '前置条件已变化，已回退到最近可进入步骤。',
+          title: '该步骤当前不可进入',
+          reason: gate.reason || '条件已变化，已回退。',
           action: gate.action || '请重新完成前置步骤',
           blockingStep: gate.blockingStep
         });
@@ -357,7 +357,7 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   function handleSubmittedReview(taskId: string) {
     if (taskId) workspace.setReviewTaskId(taskId);
-    setResult({ message: '审核任务已提交；当前步骤将在审核通过后标记为完成。', id: taskId });
+    setResult({ message: '已提交审核。', id: taskId });
     setGateNotice(undefined);
     window.setTimeout(() => persistSession(), 0);
   }
@@ -380,94 +380,77 @@ export function Mvp1WizardPage({ notify }: Props) {
     navigateToView('reviewCenter');
   }
 
-  function confirmExit() {
+  function handleExit() {
+    const hasProgress = saveState.status === 'unsaved'
+      || Boolean(workspace.clanId || workspace.branchId || workspace.personId || workspace.relationshipId || workspace.sourceId)
+      || Object.keys(drafts).length > 0;
+    if (!hasProgress) {
+      navigateToView('home');
+      return;
+    }
     Modal.confirm({
-      title: '退出建谱向导？',
-      content: '当前会话会自动保存在本机；已创建并保存的业务数据不会删除。',
-      okText: '保存并退出',
+      title: '退出建谱？',
+      content: saveState.status === 'saved' ? '当前进度已保存。' : '是否先保存当前进度？',
+      okText: saveState.status === 'saved' ? '退出' : '保存并退出',
       cancelText: '继续建谱',
       onOk: () => {
-        persistSession(captureCurrentDraft());
+        if (saveState.status !== 'saved') persistSession(captureCurrentDraft());
         navigateToView('home');
       }
     });
   }
 
-  function toggleSkip(step: 'relationship' | 'source') {
-    if (skipState[step]) {
-      setSkipState(current => ({ ...current, [step]: false }));
-      setResult({ message: step === 'relationship' ? '已恢复人物关系维护要求。' : '已恢复来源绑定要求。' });
-      return;
-    }
-    const relationship = step === 'relationship';
-    Modal.confirm({
-      title: relationship ? '确认本次暂不维护人物关系？' : '确认本次暂不绑定来源？',
-      content: relationship
-        ? '确认后，关系步骤将按“已跳过”完成，并随本地建谱会话保存。'
-        : '确认后，来源步骤将按“已跳过”完成，并随本地建谱会话保存。',
-      okText: relationship ? '确认暂不维护' : '确认暂不绑定',
-      cancelText: '取消',
-      onOk: () => {
-        setSkipState(current => ({ ...current, [step]: true }));
-        setGateNotice(undefined);
-        setResult({ message: relationship ? '已确认本次暂不维护人物关系。' : '已确认本次暂不绑定来源。' });
-      }
-    });
-  }
+  const gateActionStep = (step: Mvp1StepKey) => {
+    changeStepUnchecked(step);
+  };
 
-  useEffect(() => {
-    if (sessionReady) persistSession();
-  }, [
-    sessionReady,
-    active,
-    workspace.clanId,
-    workspace.branchId,
-    workspace.personId,
-    workspace.relationshipId,
-    workspace.sourceId,
-    workspace.reviewTaskId,
-    skipState.relationship,
-    skipState.source
-  ]);
-
-  const skipAction = active === 'relationship' && (skipState.relationship || activeDecision?.state !== 'completed')
-    ? <Button onClick={() => toggleSkip('relationship')}>{skipState.relationship ? '恢复维护关系' : '暂不维护关系'}</Button>
-    : active === 'source' && (skipState.source || activeDecision?.state !== 'completed')
-      ? <Button onClick={() => toggleSkip('source')}>{skipState.source ? '恢复绑定来源' : '暂不绑定来源'}</Button>
-      : undefined;
+  const skipActiveStep = active === 'relationship' || active === 'source'
+    ? (
+      <Button
+        onClick={() => {
+          const nextSkipState = { ...skipState, [active]: true };
+          setSkipState(nextSkipState);
+          setResult({ message: active === 'relationship' ? '已跳过关系。' : '已跳过来源。' });
+          setSaveState({ status: 'unsaved' });
+        }}
+      >
+        暂不维护
+      </Button>
+    )
+    : undefined;
 
   return (
     <WizardShell
       title="建谱向导"
-      description="按宗族、支派、字辈、人物、关系、来源和审核顺序完成建谱。"
+      description="按宗族、支派、字辈、人物、关系、来源和完成顺序完成建谱。"
       contextLabel={currentClanLabel}
       saveStatus={saveStatus}
       steps={steps}
       activeStep={active}
-      loaded={sessionReady}
+      loaded={sessionReady && !stateLoading}
       result={result}
       gateNotice={gateNotice}
-      onExit={confirmExit}
+      onExit={handleExit}
       onStepChange={requestStepChange}
-      onGateAction={requestStepChange}
+      onGateAction={gateActionStep}
       onContentChange={markUnsaved}
       navigation={{
-        previousDisabled: activeIndex === 0 || !sessionReady,
+        previousDisabled: !sessionReady || activeIndex === 0,
         saveDisabled: !sessionReady,
-        nextDisabled: stateLoading || !sessionReady,
-        nextLoading: stateLoading,
+        nextDisabled: !sessionReady || Boolean(activeDecision && !activeDecision.canEnter),
+        saveLabel: '保存',
+        nextLabel: active === 'review' ? '完成建谱' : '下一步',
+        extra: skipActiveStep,
         onPrevious: goPrevious,
         onSaveDraft: saveWizardProgress,
-        onNext: goNext,
-        nextLabel: activeIndex === stepOrder.length - 1 ? '进入审核中心' : '下一步',
-        extra: skipAction
+        onNext: goNext
       }}
     >
       <StepRenderer
-        activeStep={active}
+        step={active}
         notify={notify}
-        onStepChange={step => changeStepUnchecked(step)}
         onSubmittedReview={handleSubmittedReview}
+        onStepChange={requestStepChange}
       />
     </WizardShell>
   );
