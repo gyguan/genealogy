@@ -11,10 +11,10 @@ export type PersonStatusAction = {
 };
 
 const actionAliases: Record<PersonStatusActionKey, string[]> = {
-  submit_review: ['submit_review', 'submit-review', 'SUBMIT_REVIEW', 'person.submit_review'],
-  withdraw_review: ['withdraw_review', 'withdraw-review', 'WITHDRAW_REVIEW', 'person.withdraw_review'],
-  archive: ['archive', 'ARCHIVE', 'person.archive'],
-  restore: ['restore', 'RESTORE', 'person.restore']
+  submit_review: ['submit_review', 'submit-review', 'person.submit_review'],
+  withdraw_review: ['withdraw_review', 'withdraw-review', 'person.withdraw_review'],
+  archive: ['archive', 'person.archive'],
+  restore: ['restore', 'person.restore']
 };
 
 export const personStatusActionContract: Record<PersonStatusActionKey, PersonStatusAction> = {
@@ -63,7 +63,7 @@ function normalizedStatus(value: unknown) {
 
 function allowedSet(value: unknown) {
   if (!Array.isArray(value)) return null;
-  return new Set(value.map(item => String(item || '').trim()).filter(Boolean));
+  return new Set(value.map(item => String(item || '').trim().toLowerCase()).filter(Boolean));
 }
 
 export function legalPersonStatusActions(statusValue: unknown): PersonStatusActionKey[] {
