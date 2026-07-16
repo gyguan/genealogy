@@ -119,7 +119,7 @@ test('culture site editor uses an independent URL page and business person selec
 
   const relatedPerson = page.locator('.ant-form-item').filter({ hasText: '关联人物' }).locator('input');
   await relatedPerson.fill('德昌');
-  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈')).toBeVisible();
+  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈').last()).toBeVisible();
 
   await page.getByLabel('纬度').fill('91');
   await page.getByRole('button', { name: '提交变更申请' }).click();
