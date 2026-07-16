@@ -136,14 +136,14 @@ function decision(
   state: WizardBusinessState,
   reason: string,
   action: string,
-  options?: { stateLabel?: string; blockingStep?: Mvp1StepKey }
+  options?: { stateLabel?: string; blockingStep?: Mvp1StepKey; canEnter?: boolean }
 ): WizardStepDecision {
   return {
     key,
     state,
     stateLabel: options?.stateLabel || STATE_LABELS[state],
     complete: state === 'completed',
-    canEnter: state !== 'waiting',
+    canEnter: options?.canEnter ?? state !== 'waiting',
     reason,
     action,
     blockingStep: options?.blockingStep
@@ -152,12 +152,21 @@ function decision(
 
 function waitingDecision(key: Mvp1StepKey, prerequisite: WizardStepDecision) {
   const prerequisiteTitle = WIZARD_STEP_TITLES[prerequisite.key];
+  const isCompletionStep = key === 'review';
   return decision(
     key,
     'waiting',
-    `${prerequisiteTitle}步骤尚未完成（${prerequisite.stateLabel}）：${prerequisite.reason}`,
-    `返回${prerequisiteTitle}步骤，${prerequisite.action}`,
-    { blockingStep: prerequisite.key }
+    isCompletionStep
+      ? `${prerequisiteTitle}步骤尚未完成（${prerequisite.stateLabel}）：${prerequisite.reason}`
+      : `${prerequisiteTitle}步骤尚未完成，但可进入本步骤选择或维护已有数据。`,
+    isCompletionStep
+      ? `返回${prerequisiteTitle}步骤，${prerequisite.action}`
+      : `在本步骤选择所需业务对象，提交时再校验依赖条件`,
+    {
+      blockingStep: prerequisite.key,
+      canEnter: !isCompletionStep,
+      stateLabel: isCompletionStep ? undefined : '可进入'
+    }
   );
 }
 
