@@ -21,8 +21,7 @@ import type {
   OperationLogPage,
   OperationLogResponse,
   TrackingObjectPage,
-  TrackingObjectResponse,
-  TrackingTraceDetailResponse
+  TrackingObjectResponse
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import {
@@ -49,7 +48,8 @@ import {
   statusText,
   targetTypeText
 } from './trackingCenterLabels';
-import { OperationLogDrawer, TrackingTraceDrawer } from './TrackingDetailDrawers';
+import { OperationLogDrawer } from './TrackingDetailDrawers';
+import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import { RiskAuditPanel } from './RiskAuditPanel';
 
 const { Paragraph, Text, Title } = Typography;
@@ -69,10 +69,7 @@ function rangeStrings(values: any) {
 
 function errorState(error: unknown, fallback: string) {
   const requestError = error as ApiRequestError;
-  return {
-    message: (error as Error)?.message || fallback,
-    forbidden: requestError?.status === 403
-  };
+  return { message: (error as Error)?.message || fallback, forbidden: requestError?.status === 403 };
 }
 
 function technicalFieldsReturned(row: OperationLogResponse) {
@@ -84,36 +81,26 @@ function technicalFieldsReturned(row: OperationLogResponse) {
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const initial = useRef(readTrackingCenterState(window.location.search)).current;
-
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
   const [objectFilters, setObjectFilters] = useState<ObjectFilters>(initial.objectFilters);
   const [auditFilters, setAuditFilters] = useState<AuditFilters>(initial.auditFilters);
   const [riskFilters, setRiskFilters] = useState<RiskFilters>(initial.riskFilters);
-
   const [objectPage, setObjectPage] = useState<TrackingObjectPage | null>(null);
   const [objectLoading, setObjectLoading] = useState(false);
   const [objectError, setObjectError] = useState('');
   const [objectForbidden, setObjectForbidden] = useState(false);
-
   const [auditPage, setAuditPage] = useState<OperationLogPage | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState('');
   const [auditForbidden, setAuditForbidden] = useState(false);
   const [auditExporting, setAuditExporting] = useState(false);
-
   const [selectedTrace, setSelectedTrace] = useState(initial.selectedTrace);
   const [selectedObject, setSelectedObject] = useState<TrackingObjectResponse | null>(null);
-  const [traceDetail, setTraceDetail] = useState<TrackingTraceDetailResponse | null>(null);
-  const [traceLoading, setTraceLoading] = useState(false);
-  const [traceError, setTraceError] = useState('');
-
   const [selectedAuditLogId, setSelectedAuditLogId] = useState(initial.selectedAuditLogId);
   const [selectedAuditLog, setSelectedAuditLog] = useState<OperationLogResponse | null>(null);
   const [selectedRiskLogId, setSelectedRiskLogId] = useState(initial.selectedRiskLogId);
-
   const objectRequestVersion = useRef(0);
   const auditRequestVersion = useRef(0);
-  const traceRequestVersion = useRef(0);
   const initializedClan = useRef('');
   const pendingClanRestore = useRef(initial.clanId);
 
@@ -138,9 +125,8 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       selectedAuditLogId,
       selectedRiskLogId
     }, window.location.search);
-    const nextUrl = `${window.location.pathname}${search}${window.location.hash}`;
-    window.history.replaceState(window.history.state, '', nextUrl);
-  }, [activeTab, objectFilters, auditFilters, riskFilters, selectedTrace, selectedAuditLogId, selectedRiskLogId]);
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${search}${window.location.hash}`);
+  }, [workspace.clanId, activeTab, objectFilters, auditFilters, riskFilters, selectedTrace, selectedAuditLogId, selectedRiskLogId]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -153,23 +139,16 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setSelectedAuditLogId(restored.selectedAuditLogId);
       setSelectedRiskLogId(restored.selectedRiskLogId);
       setSelectedAuditLog(null);
+      setSelectedObject(null);
       if (restored.clanId && restored.clanId !== workspace.clanId) {
         pendingClanRestore.current = restored.clanId;
         initializedClan.current = '';
         workspace.patch({ clanId: restored.clanId, branchId: '' });
         return;
       }
-      if (!workspace.clanId) return;
+      if (!workspace.clanId || restored.selectedTrace.targetId) return;
       void loadObjects(restored.objectFilters);
       if (restored.activeTab === TRACKING_TABS.AUDIT) void loadAudit(restored.auditFilters, restored.selectedAuditLogId);
-      if (restored.selectedTrace.targetType && restored.selectedTrace.targetId) {
-        void loadTrace(
-          restored.selectedTrace.targetType,
-          restored.selectedTrace.targetId,
-          null,
-          restored.selectedTrace.reviewTaskId
-        );
-      }
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -180,10 +159,9 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     if (!workspace.clanId || initializedClan.current === workspace.clanId) return;
     pendingClanRestore.current = '';
     initializedClan.current = workspace.clanId;
-    void loadObjects(objectFilters);
-    if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
-    if (selectedTrace.targetType && selectedTrace.targetId) {
-      void loadTrace(selectedTrace.targetType, selectedTrace.targetId, null, selectedTrace.reviewTaskId);
+    if (!selectedTrace.targetId) {
+      void loadObjects(objectFilters);
+      if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
     }
   }, [workspace.clanId]);
 
@@ -220,9 +198,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       const page = await apiClient.get<OperationLogPage>(`/logs/operations?${query}`);
       if (requestVersion !== auditRequestVersion.current) return;
       setAuditPage(page);
-      if (auditLogId) {
-        setSelectedAuditLog(page.records.find(row => String(row.id) === auditLogId) || null);
-      }
+      if (auditLogId) setSelectedAuditLog(page.records.find(row => String(row.id) === auditLogId) || null);
     } catch (error) {
       if (requestVersion !== auditRequestVersion.current) return;
       const state = errorState(error, '操作审计查询失败');
@@ -234,47 +210,15 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     }
   }
 
-  async function loadTrace(
-    targetType: string,
-    targetId: string,
-    row: TrackingObjectResponse | null,
-    reviewTaskId = ''
-  ) {
-    if (!workspace.clanId || !targetType || !targetId) return;
-    const requestVersion = ++traceRequestVersion.current;
-    setSelectedTrace({ targetType, targetId, reviewTaskId });
+  function openTrace(row: TrackingObjectResponse, reviewTaskId = '') {
     setSelectedObject(row);
-    setTraceDetail(null);
-    setTraceError('');
-    setTraceLoading(true);
-    try {
-      const params = new URLSearchParams({ clanId: workspace.clanId });
-      const detail = await apiClient.get<TrackingTraceDetailResponse>(
-        `/tracking/objects/${encodeURIComponent(targetType)}/${encodeURIComponent(targetId)}/trace?${params}`
-      );
-      if (requestVersion !== traceRequestVersion.current) return;
-      setTraceDetail(detail);
-      setSelectedObject(detail.objectSummary);
-    } catch (error) {
-      if (requestVersion !== traceRequestVersion.current) return;
-      const requestError = error as ApiRequestError;
-      if (requestError.status === 403 || requestError.status === 404) {
-        setSelectedObject(null);
-        setTraceError('当前账号无权查看该对象，或对象已不可用。');
-      } else {
-        setTraceError((error as Error)?.message || '追踪详情加载失败');
-      }
-    } finally {
-      if (requestVersion === traceRequestVersion.current) setTraceLoading(false);
-    }
+    setSelectedTrace({ targetType: row.objectType, targetId: String(row.objectId), reviewTaskId });
   }
 
-  function updateObjectFilter<K extends keyof ObjectFilters>(key: K, value: ObjectFilters[K]) {
-    setObjectFilters(prev => ({ ...prev, [key]: value }));
-  }
-
-  function updateAuditFilter<K extends keyof AuditFilters>(key: K, value: AuditFilters[K]) {
-    setAuditFilters(prev => ({ ...prev, [key]: value }));
+  function closeTrace() {
+    setSelectedTrace({ targetType: '', targetId: '', reviewTaskId: '' });
+    setSelectedObject(null);
+    window.setTimeout(() => void loadObjects(objectFilters), 0);
   }
 
   function searchObjects() {
@@ -310,11 +254,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   }
 
   function changeTab(key: string) {
-    const next = key === TRACKING_TABS.RISK
-      ? TRACKING_TABS.RISK
-      : key === TRACKING_TABS.AUDIT
-        ? TRACKING_TABS.AUDIT
-        : TRACKING_TABS.OBJECT;
+    const next = key === TRACKING_TABS.RISK ? TRACKING_TABS.RISK : key === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT;
     setActiveTab(next);
     if (next === TRACKING_TABS.OBJECT && !objectPage && !objectLoading) void loadObjects(objectFilters);
     if (next === TRACKING_TABS.AUDIT && !auditPage && !auditLoading) void loadAudit(auditFilters);
@@ -355,93 +295,49 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     return Array.from(names.entries()).map(([value, label]) => ({ value, label }));
   }, [auditPage, auditFilters.actorId]);
 
-  const canExportAudit = Boolean(auditPage?.records.some(technicalFieldsReturned));
+  if (selectedTrace.targetType && selectedTrace.targetId) {
+    return (
+      <TrackingTraceDetailPage
+        clanId={workspace.clanId}
+        targetType={selectedTrace.targetType}
+        targetId={selectedTrace.targetId}
+        reviewTaskId={selectedTrace.reviewTaskId}
+        selectedObject={selectedObject}
+        onBack={closeTrace}
+      />
+    );
+  }
+
   const objectRows = objectPage?.records || [];
   const auditRows = auditPage?.records || [];
+  const canExportAudit = Boolean(auditPage?.records.some(technicalFieldsReturned));
 
   const objectTab = (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Card className="tracking-filter-card">
         <Form layout="vertical">
           <div className="tracking-filter-grid tracking-filter-grid--object">
-            <Form.Item label="对象类型">
-              <Select
-                value={objectFilters.objectType}
-                options={OBJECT_TYPE_OPTIONS}
-                onChange={value => updateObjectFilter('objectType', value)}
-              />
-            </Form.Item>
-            <Form.Item label="业务关键词">
-              <Input
-                value={objectFilters.keyword}
-                placeholder="姓名、谱名、来源名称、支派名称或审核摘要"
-                allowClear
-                maxLength={100}
-                onChange={event => updateObjectFilter('keyword', event.target.value)}
-                onPressEnter={searchObjects}
-              />
-            </Form.Item>
-            <Form.Item label="所属支派">
-              <Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled />
-            </Form.Item>
-            <Form.Item label="业务状态">
-              <Select
-                value={objectFilters.status}
-                options={OBJECT_STATUS_OPTIONS}
-                onChange={value => updateObjectFilter('status', value)}
-              />
-            </Form.Item>
-            <Form.Item label="最近变更时间">
-              <RangePicker
-                value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)}
-                showTime
-                format="YYYY-MM-DD HH:mm"
-                allowClear
-                onChange={values => {
-                  const [changedFrom, changedTo] = rangeStrings(values);
-                  setObjectFilters(prev => ({ ...prev, changedFrom, changedTo }));
-                }}
-              />
-            </Form.Item>
+            <Form.Item label="对象类型"><Select value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></Form.Item>
+            <Form.Item label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={searchObjects} /></Form.Item>
+            <Form.Item label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></Form.Item>
+            <Form.Item label="业务状态"><Select value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></Form.Item>
+            <Form.Item label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></Form.Item>
           </div>
         </Form>
-        <div className="tracking-filter-actions">
-          <Space wrap>
-            <Button type="primary" loading={objectLoading} onClick={searchObjects}>查询对象</Button>
-            <Button disabled={objectLoading} onClick={resetObjects}>重置</Button>
-          </Space>
-          <Text type="secondary">仅查询当前宗族、授权支派和隐私规则允许查看的对象。</Text>
-        </div>
+        <div className="tracking-filter-actions"><Space wrap><Button type="primary" loading={objectLoading} onClick={searchObjects}>查询对象</Button><Button disabled={objectLoading} onClick={resetObjects}>重置</Button></Space><Text type="secondary">仅查询当前宗族、授权支派和隐私规则允许查看的对象。</Text></div>
       </Card>
-
-      {objectForbidden ? (
-        <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" />
-      ) : objectError ? (
-        <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button size="small" onClick={() => void loadObjects(objectFilters)}>重试</Button>} />
-      ) : (
-        <Card title="可追踪业务对象" extra={<Text type="secondary">点击整行直接查看追踪详情</Text>}>
+      {objectForbidden ? <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" /> : objectError ? <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button onClick={() => void loadObjects(objectFilters)}>重试</Button>} /> : (
+        <Card title="可追踪业务对象" extra={<Text type="secondary">点击整行直接进入追踪详情</Text>}>
           <Table<TrackingObjectResponse>
             size="small"
             rowKey={row => `${row.objectType}-${row.objectId}`}
             dataSource={objectRows}
             loading={objectLoading}
             scroll={{ x: 900 }}
-            onRow={row => ({ onClick: () => void loadTrace(row.objectType, String(row.objectId), row) })}
+            onRow={row => ({ onClick: () => openTrace(row) })}
             rowClassName="tracking-clickable-row"
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }}
-            pagination={{
-              current: objectPage?.pageNo || objectFilters.pageNo,
-              pageSize: objectPage?.pageSize || objectFilters.pageSize,
-              total: objectPage?.total || 0,
-              showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50'],
-              showTotal: total => `共 ${total} 个对象`,
-              onChange: (pageNo, pageSize) => {
-                const next = { ...objectFilters, pageNo, pageSize };
-                setObjectFilters(next);
-                void loadObjects(next);
-              }
-            }}
+            pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: objectPage?.pageSize || objectFilters.pageSize, total: objectPage?.total || 0, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'], showTotal: total => `共 ${total} 个对象`, onChange: (pageNo, pageSize) => { const next = { ...objectFilters, pageNo, pageSize }; setObjectFilters(next); void loadObjects(next); } }}
             columns={[
               { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
               { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
@@ -449,7 +345,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
               { key: 'summary', title: '业务摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
               { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
               { key: 'changedAt', title: '最近变更', width: 180, render: (_value, row) => formatDateTime(row.changedAt) },
-              { key: 'open', title: '操作', width: 100, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); void loadTrace(row.objectType, String(row.objectId), row); }}>查看追踪</Button> }
+              { key: 'open', title: '操作', width: 100, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); openTrace(row); }}>查看追踪</Button> }
             ]}
           />
         </Card>
@@ -460,77 +356,18 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   const auditTab = (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Card className="tracking-filter-card">
-        <Form layout="vertical">
-          <div className="tracking-filter-grid tracking-filter-grid--audit">
-            <Form.Item label="时间范围">
-              <RangePicker
-                value={rangeValue(auditFilters.startTime, auditFilters.endTime)}
-                showTime
-                format="YYYY-MM-DD HH:mm"
-                allowClear
-                onChange={values => {
-                  const [startTime, endTime] = rangeStrings(values);
-                  setAuditFilters(prev => ({ ...prev, startTime, endTime }));
-                }}
-              />
-            </Form.Item>
-            <Form.Item label="操作者">
-              <Select
-                value={auditFilters.actorId || undefined}
-                options={actorOptions}
-                placeholder="全部操作者"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                notFoundContent="先查询日志后可按当前结果中的操作者筛选"
-                onChange={value => updateAuditFilter('actorId', value || '')}
-              />
-            </Form.Item>
-            <Form.Item label="动作分类">
-              <Select
-                value={auditFilters.actionType || undefined}
-                options={ACTION_OPTIONS}
-                placeholder="全部动作"
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                onChange={value => updateAuditFilter('actionType', value || '')}
-              />
-            </Form.Item>
-            <Form.Item label="对象类型">
-              <Select value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} onChange={value => updateAuditFilter('targetType', value)} />
-            </Form.Item>
-            <Form.Item label="执行结果">
-              <Select value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} onChange={value => updateAuditFilter('resultStatus', value)} />
-            </Form.Item>
-            <Form.Item label="业务关键词">
-              <Input
-                value={auditFilters.keyword}
-                placeholder="业务名称、摘要或动作说明"
-                allowClear
-                maxLength={100}
-                onChange={event => updateAuditFilter('keyword', event.target.value)}
-                onPressEnter={searchAudit}
-              />
-            </Form.Item>
-          </div>
-        </Form>
-        <div className="tracking-filter-actions">
-          <Space wrap>
-            <Button type="primary" loading={auditLoading} onClick={searchAudit}>查询审计记录</Button>
-            <Button disabled={auditLoading} onClick={resetAudit}>重置</Button>
-            {canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-          </Space>
-          <Text type="secondary">按操作时间倒序展示；导出入口仅在服务端返回真实导出权限信息时显示。</Text>
-        </div>
+        <Form layout="vertical"><div className="tracking-filter-grid tracking-filter-grid--audit">
+          <Form.Item label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
+          <Form.Item label="操作者"><Select value={auditFilters.actorId || undefined} options={actorOptions} placeholder="全部操作者" allowClear showSearch optionFilterProp="label" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value || '' }))} /></Form.Item>
+          <Form.Item label="动作分类"><Select value={auditFilters.actionType || undefined} options={ACTION_OPTIONS} placeholder="全部动作" allowClear showSearch optionFilterProp="label" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value || '' }))} /></Form.Item>
+          <Form.Item label="对象类型"><Select value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></Form.Item>
+          <Form.Item label="执行结果"><Select value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></Form.Item>
+          <Form.Item label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={searchAudit} /></Form.Item>
+        </div></Form>
+        <div className="tracking-filter-actions"><Space wrap><Button type="primary" loading={auditLoading} onClick={searchAudit}>查询审计记录</Button><Button disabled={auditLoading} onClick={resetAudit}>重置</Button>{canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}</Space><Text type="secondary">按操作时间倒序展示；技术信息默认折叠。</Text></div>
       </Card>
-
-      {auditForbidden ? (
-        <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" />
-      ) : auditError ? (
-        <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button size="small" onClick={() => void loadAudit(auditFilters)}>重试</Button>} />
-      ) : (
-        <Card title="操作审计记录" extra={<Text type="secondary">点击整行查看详情，技术信息默认折叠</Text>}>
+      {auditForbidden ? <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" /> : auditError ? <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button onClick={() => void loadAudit(auditFilters)}>重试</Button>} /> : (
+        <Card title="操作审计记录" extra={<Text type="secondary">点击整行查看详情</Text>}>
           <Table<OperationLogResponse>
             size="small"
             rowKey={row => String(row.id)}
@@ -540,19 +377,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             onRow={row => ({ onClick: () => openAuditLog(row) })}
             rowClassName="tracking-clickable-row"
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }}
-            pagination={{
-              current: auditPage?.pageNo || auditFilters.pageNo,
-              pageSize: auditPage?.pageSize || auditFilters.pageSize,
-              total: auditPage?.total || 0,
-              showSizeChanger: true,
-              pageSizeOptions: ['20', '50', '100'],
-              showTotal: total => `共 ${total} 条记录`,
-              onChange: (pageNo, pageSize) => {
-                const next = { ...auditFilters, pageNo, pageSize };
-                setAuditFilters(next);
-                void loadAudit(next, '');
-              }
-            }}
+            pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: auditPage?.pageSize || auditFilters.pageSize, total: auditPage?.total || 0, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: total => `共 ${total} 条记录`, onChange: (pageNo, pageSize) => { const next = { ...auditFilters, pageNo, pageSize }; setAuditFilters(next); void loadAudit(next, ''); } }}
             columns={[
               { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
               { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
@@ -568,67 +393,19 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     </Space>
   );
 
-  const riskTab = (
-    <RiskAuditPanel
-      active={activeTab === TRACKING_TABS.RISK}
-      clanId={workspace.clanId}
-      workspaceBranchId={workspace.branchId}
-      filters={riskFilters}
-      setFilters={setRiskFilters}
-      selectedRiskLogId={selectedRiskLogId}
-      setSelectedRiskLogId={setSelectedRiskLogId}
-      onOpenTrace={(targetType, targetId, reviewTaskId = '') => void loadTrace(targetType, targetId, null, reviewTaskId)}
-    />
-  );
-
   return (
     <div className="audit-trace-page">
-      <Card className="tracking-center-intro">
-        <Title level={3}>变更与审计追踪</Title>
-        <Paragraph type="secondary">
-          对象追踪用于回看业务对象的变更、审核和来源链路；操作审计用于检索与取证；风险审计聚合权限变更、敏感访问、批量导出和异常操作。本页面只读。
-        </Paragraph>
-      </Card>
-
-      {!workspace.clanId ? (
-        <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" />
-      ) : (
+      <Card className="tracking-center-intro"><Title level={3}>变更与审计追踪</Title><Paragraph type="secondary">对象追踪用于回看业务对象的变更、审核和来源链路；操作审计用于检索与取证；风险审计聚合权限变更、敏感访问、批量导出和异常操作。本页面只读。</Paragraph></Card>
+      {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : (
         <Card className="tracking-center-tabs-card">
-          <Tabs
-            activeKey={activeTab}
-            onChange={changeTab}
-            items={[
-              { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
-              { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab },
-              { key: TRACKING_TABS.RISK, label: '风险审计', children: riskTab }
-            ]}
-          />
+          <Tabs activeKey={activeTab} onChange={changeTab} items={[
+            { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
+            { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab },
+            { key: TRACKING_TABS.RISK, label: '风险审计', children: <RiskAuditPanel active={activeTab === TRACKING_TABS.RISK} clanId={workspace.clanId} workspaceBranchId={workspace.branchId} filters={riskFilters} setFilters={setRiskFilters} selectedRiskLogId={selectedRiskLogId} setSelectedRiskLogId={setSelectedRiskLogId} onOpenTrace={(targetType, targetId, reviewTaskId = '') => setSelectedTrace({ targetType, targetId, reviewTaskId })} /> }
+          ]} />
         </Card>
       )}
-
-      <TrackingTraceDrawer
-        open={Boolean(selectedTrace.targetType && selectedTrace.targetId)}
-        loading={traceLoading}
-        error={traceError}
-        detail={traceDetail}
-        selectedObject={selectedObject}
-        onClose={() => {
-          traceRequestVersion.current += 1;
-          setTraceLoading(false);
-          setSelectedTrace({ targetType: '', targetId: '', reviewTaskId: '' });
-          setSelectedObject(null);
-          setTraceDetail(null);
-          setTraceError('');
-        }}
-      />
-
-      <OperationLogDrawer
-        log={selectedAuditLog}
-        onClose={() => {
-          setSelectedAuditLog(null);
-          setSelectedAuditLogId('');
-        }}
-      />
+      <OperationLogDrawer log={selectedAuditLog} onClose={() => { setSelectedAuditLog(null); setSelectedAuditLogId(''); }} />
     </div>
   );
 }
