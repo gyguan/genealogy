@@ -1,12 +1,17 @@
 import type { ReactNode } from 'react';
-import { Button, Card, Grid, Space, Steps, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Grid, Space, Steps, Tag, Tooltip, Typography } from 'antd';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
+import type { WizardBusinessState } from './domain/wizardStepState';
 
 export type WizardStepMeta<TKey extends string = string> = {
   key: TKey;
   title: string;
   desc: string;
-  ready?: boolean;
+  state: WizardBusinessState;
+  stateLabel: string;
+  canEnter: boolean;
+  reason: string;
+  action: string;
 };
 
 export type WizardNavigationActions = {
@@ -23,6 +28,13 @@ export type WizardNavigationActions = {
   onNext: () => void;
 };
 
+export type WizardGateNotice<TKey extends string = string> = {
+  title: string;
+  reason: string;
+  action: string;
+  blockingStep?: TKey;
+};
+
 type WizardShellProps<TKey extends string = string> = {
   title: string;
   description: string;
@@ -33,11 +45,32 @@ type WizardShellProps<TKey extends string = string> = {
   loaded: boolean;
   result?: unknown;
   navigation: WizardNavigationActions;
+  gateNotice?: WizardGateNotice<TKey>;
   onExit: () => void;
   onStepChange: (step: TKey) => void;
+  onGateAction?: (step: TKey) => void;
   onContentChange?: () => void;
   children: ReactNode;
 };
+
+function stateColor(state: WizardBusinessState) {
+  switch (state) {
+    case 'completed': return 'success';
+    case 'reviewing': return 'processing';
+    case 'rejected':
+    case 'error': return 'error';
+    case 'invalid': return 'warning';
+    case 'editing': return 'blue';
+    default: return 'default';
+  }
+}
+
+function stepStatus(state: WizardBusinessState, active: boolean): 'wait' | 'process' | 'finish' | 'error' {
+  if (state === 'completed') return 'finish';
+  if (state === 'rejected' || state === 'invalid' || state === 'error') return 'error';
+  if (state === 'reviewing' || active) return 'process';
+  return 'wait';
+}
 
 export function WizardShell<TKey extends string = string>({
   title,
@@ -49,8 +82,10 @@ export function WizardShell<TKey extends string = string>({
   loaded,
   result,
   navigation,
+  gateNotice,
   onExit,
   onStepChange,
+  onGateAction,
   onContentChange,
   children
 }: WizardShellProps<TKey>) {
@@ -88,19 +123,46 @@ export function WizardShell<TKey extends string = string>({
           current={activeIndex}
           onChange={handleStepChange}
           items={steps.map(step => ({
-            title: <Tooltip title={step.desc}><span>{step.title}</span></Tooltip>,
-            status: step.key === activeStep ? 'process' : step.ready ? 'finish' : 'wait'
+            title: (
+              <Tooltip title={`${step.reason} ${step.action}`}>
+                <span className="wizard-step-title" aria-label={`${step.title}：${step.stateLabel}`}>
+                  <span>{step.title}</span>
+                  <Tag color={stateColor(step.state)}>{step.stateLabel}</Tag>
+                </span>
+              </Tooltip>
+            ),
+            description: screens.md === false ? step.reason : undefined,
+            status: stepStatus(step.state, step.key === activeStep)
           }))}
         />
         {activeStepMeta ? (
           <div className="wizard-progress-summary">
-            <Typography.Text strong>步骤 {activeIndex + 1}/{steps.length} · {activeStepMeta.title}</Typography.Text>
-            <Typography.Text type="secondary">{activeStepMeta.desc}</Typography.Text>
+            <div className="wizard-progress-summary__heading">
+              <Typography.Text strong>步骤 {activeIndex + 1}/{steps.length} · {activeStepMeta.title}</Typography.Text>
+              <Tag color={stateColor(activeStepMeta.state)}>{activeStepMeta.stateLabel}</Tag>
+            </div>
+            <div className="wizard-progress-summary__detail">
+              <Typography.Text type="secondary">{activeStepMeta.desc}</Typography.Text>
+              <Typography.Text>{activeStepMeta.reason}</Typography.Text>
+            </div>
           </div>
         ) : null}
       </Card>
 
-      {!loaded ? <div className="wizard-step-hint">请选择步骤。</div> : null}
+      {gateNotice ? (
+        <Alert
+          className="wizard-gate-alert"
+          type="warning"
+          showIcon
+          message={gateNotice.title}
+          description={`${gateNotice.reason} 建议：${gateNotice.action}`}
+          action={gateNotice.blockingStep && onGateAction
+            ? <Button size="small" onClick={() => onGateAction(gateNotice.blockingStep as TKey)}>前往处理</Button>
+            : undefined}
+        />
+      ) : null}
+
+      {!loaded ? <div className="wizard-step-hint">正在加载当前步骤状态…</div> : null}
       {loaded ? (
         <section
           className="wizard-step-content"
