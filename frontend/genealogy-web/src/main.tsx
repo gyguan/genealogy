@@ -26,6 +26,35 @@ import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
 import './member-permission-page.css';
 
+function installSourceRouteHistorySync() {
+  const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
+  if (historyWithMarker.__sourceRouteSyncInstalled) return;
+  historyWithMarker.__sourceRouteSyncInstalled = true;
+
+  const notifyWhenSourceRouteChanges = (previousSourceId: string | null) => {
+    const nextSourceId = new URL(window.location.href).searchParams.get('sourceId');
+    if (previousSourceId !== nextSourceId) {
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    }
+  };
+
+  const originalPushState = window.history.pushState.bind(window.history);
+  window.history.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
+    const previousSourceId = new URL(window.location.href).searchParams.get('sourceId');
+    originalPushState(data, unused, url);
+    notifyWhenSourceRouteChanges(previousSourceId);
+  };
+
+  const originalReplaceState = window.history.replaceState.bind(window.history);
+  window.history.replaceState = (data: unknown, unused: string, url?: string | URL | null) => {
+    const previousSourceId = new URL(window.location.href).searchParams.get('sourceId');
+    originalReplaceState(data, unused, url);
+    notifyWhenSourceRouteChanges(previousSourceId);
+  };
+}
+
+installSourceRouteHistorySync();
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
     RuntimeErrorBoundary,
