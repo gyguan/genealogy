@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,16 @@ public interface ReviewTaskRepository extends JpaRepository<ReviewTaskEntity, Lo
     List<ReviewTaskEntity> findByTraceIdOrderByCreatedAtAscIdAsc(UUID traceId);
 
     long countByClanIdAndStatusIn(Long clanId, Collection<String> statuses);
+
+    long countByClanIdAndStatusInAndCreatedAtBefore(Long clanId, Collection<String> statuses, LocalDateTime before);
+
+    @Query("""
+            select task
+            from ReviewTaskEntity task
+            where task.clanId = :clanId
+            order by task.createdAt desc nulls last, task.id desc
+            """)
+    List<ReviewTaskEntity> findRecentDashboardTasks(@Param("clanId") Long clanId, Pageable pageable);
 
     @Query("""
             select task

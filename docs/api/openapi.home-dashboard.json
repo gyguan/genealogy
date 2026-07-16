@@ -5,24 +5,10 @@
         "operationId": "getHomeDashboard",
         "tags": ["HomeDashboard"],
         "summary": "获取族谱首页聚合统计看板",
-        "description": "基于当前用户可见范围聚合完整宗族数据集，供族谱首页核心 KPI、结构分布和完整度指标使用；不返回完整人物明细。",
-        "parameters": [
-          {
-            "name": "clanId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
-          }
-        ],
+        "description": "基于当前用户可见范围聚合完整宗族数据集，供族谱首页核心 KPI、结构分布、趋势、待办风险和最近活动使用；不返回完整人物明细。",
+        "parameters": [{ "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64", "minimum": 1 } }],
         "responses": {
-          "200": {
-            "description": "族谱首页聚合统计",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseHomeDashboardResponse" }
-              }
-            }
-          },
+          "200": { "description": "族谱首页聚合统计", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseHomeDashboardResponse" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "403": { "$ref": "#/components/responses/Forbidden" }
         }
@@ -31,80 +17,14 @@
   },
   "components": {
     "schemas": {
-      "HomeDashboardBucketResponse": {
-        "type": "object",
-        "required": ["key", "label", "count"],
-        "properties": {
-          "key": { "type": "string" },
-          "label": { "type": "string" },
-          "count": { "type": "integer", "format": "int64", "minimum": 0 }
-        }
-      },
-      "HomeDashboardCompletenessResponse": {
-        "type": "object",
-        "required": [
-          "generationMaintainedCount",
-          "generationMaintainedRate",
-          "vitalDatesMaintainedCount",
-          "vitalDatesMaintainedRate",
-          "biographyMaintainedCount",
-          "biographyMaintainedRate"
-        ],
-        "properties": {
-          "generationMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "generationMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 },
-          "vitalDatesMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "vitalDatesMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 },
-          "biographyMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "biographyMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 }
-        }
-      },
-      "HomeDashboardBranchCoverageResponse": {
-        "type": "object",
-        "required": ["coveredBranchCount", "totalBranchCount", "coverageRate"],
-        "properties": {
-          "coveredBranchCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "totalBranchCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "coverageRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 }
-        }
-      },
-      "HomeDashboardResponse": {
-        "type": "object",
-        "required": [
-          "clanId",
-          "asOf",
-          "peopleTotal",
-          "branchCount",
-          "sourceCount",
-          "pendingReviewCount",
-          "genderDistribution",
-          "livingDistribution",
-          "generationDistribution",
-          "completeness",
-          "branchCoverage"
-        ],
-        "properties": {
-          "clanId": { "type": "integer", "format": "int64" },
-          "asOf": { "type": "string", "format": "date-time" },
-          "peopleTotal": { "type": "integer", "format": "int64", "minimum": 0 },
-          "branchCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "sourceCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "pendingReviewCount": { "type": "integer", "format": "int64", "minimum": 0 },
-          "genderDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } },
-          "livingDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } },
-          "generationDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } },
-          "completeness": { "$ref": "#/components/schemas/HomeDashboardCompletenessResponse" },
-          "branchCoverage": { "$ref": "#/components/schemas/HomeDashboardBranchCoverageResponse" }
-        }
-      },
-      "ApiResponseHomeDashboardResponse": {
-        "type": "object",
-        "properties": {
-          "code": { "type": "string" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/HomeDashboardResponse" }
-        }
-      }
+      "HomeDashboardBucketResponse": { "type": "object", "required": ["key", "label", "count"], "properties": { "key": { "type": "string" }, "label": { "type": "string" }, "count": { "type": "integer", "format": "int64", "minimum": 0 } } },
+      "HomeDashboardCompletenessResponse": { "type": "object", "required": ["generationMaintainedCount", "generationMaintainedRate", "vitalDatesMaintainedCount", "vitalDatesMaintainedRate", "biographyMaintainedCount", "biographyMaintainedRate"], "properties": { "generationMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 }, "generationMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 }, "vitalDatesMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 }, "vitalDatesMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 }, "biographyMaintainedCount": { "type": "integer", "format": "int64", "minimum": 0 }, "biographyMaintainedRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 } } },
+      "HomeDashboardBranchCoverageResponse": { "type": "object", "required": ["coveredBranchCount", "totalBranchCount", "coverageRate"], "properties": { "coveredBranchCount": { "type": "integer", "format": "int64", "minimum": 0 }, "totalBranchCount": { "type": "integer", "format": "int64", "minimum": 0 }, "coverageRate": { "type": "number", "format": "double", "minimum": 0, "maximum": 100 } } },
+      "HomeDashboardTrendPointResponse": { "type": "object", "required": ["date", "peopleCreatedCount", "sourceCreatedCount", "reviewCompletedCount"], "properties": { "date": { "type": "string", "format": "date" }, "peopleCreatedCount": { "type": "integer", "format": "int64", "minimum": 0 }, "sourceCreatedCount": { "type": "integer", "format": "int64", "minimum": 0 }, "reviewCompletedCount": { "type": "integer", "format": "int64", "minimum": 0 } } },
+      "HomeDashboardRiskResponse": { "type": "object", "required": ["key", "label", "count", "severity", "reason", "targetView", "targetQuery"], "properties": { "key": { "type": "string" }, "label": { "type": "string" }, "count": { "type": "integer", "format": "int64", "minimum": 0 }, "severity": { "type": "string" }, "reason": { "type": "string" }, "targetView": { "type": "string" }, "targetQuery": { "type": "string" } } },
+      "HomeDashboardActivityResponse": { "type": "object", "required": ["type", "action", "objectName", "actorName", "occurredAt", "status", "targetView", "targetQuery"], "properties": { "type": { "type": "string" }, "action": { "type": "string" }, "objectName": { "type": "string" }, "actorName": { "type": "string" }, "occurredAt": { "type": "string", "format": "date-time" }, "status": { "type": "string" }, "targetView": { "type": "string" }, "targetQuery": { "type": "string" } } },
+      "HomeDashboardResponse": { "type": "object", "required": ["clanId", "asOf", "peopleTotal", "branchCount", "sourceCount", "pendingReviewCount", "genderDistribution", "livingDistribution", "generationDistribution", "branchDistribution", "sourceTypeDistribution", "completeness", "branchCoverage", "trendPoints", "risks", "recentActivities"], "properties": { "clanId": { "type": "integer", "format": "int64" }, "asOf": { "type": "string", "format": "date-time" }, "peopleTotal": { "type": "integer", "format": "int64", "minimum": 0 }, "branchCount": { "type": "integer", "format": "int64", "minimum": 0 }, "sourceCount": { "type": "integer", "format": "int64", "minimum": 0 }, "pendingReviewCount": { "type": "integer", "format": "int64", "minimum": 0 }, "genderDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } }, "livingDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } }, "generationDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } }, "branchDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } }, "sourceTypeDistribution": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardBucketResponse" } }, "completeness": { "$ref": "#/components/schemas/HomeDashboardCompletenessResponse" }, "branchCoverage": { "$ref": "#/components/schemas/HomeDashboardBranchCoverageResponse" }, "trendPoints": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardTrendPointResponse" } }, "risks": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardRiskResponse" } }, "recentActivities": { "type": "array", "items": { "$ref": "#/components/schemas/HomeDashboardActivityResponse" } } } },
+      "ApiResponseHomeDashboardResponse": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "data": { "$ref": "#/components/schemas/HomeDashboardResponse" } } }
     }
   }
 }

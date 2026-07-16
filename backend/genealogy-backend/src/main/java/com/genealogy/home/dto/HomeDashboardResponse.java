@@ -13,7 +13,12 @@ public record HomeDashboardResponse(
         List<HomeDashboardBucketResponse> genderDistribution,
         List<HomeDashboardBucketResponse> livingDistribution,
         List<HomeDashboardBucketResponse> generationDistribution,
+        List<HomeDashboardBucketResponse> branchDistribution,
+        List<HomeDashboardBucketResponse> sourceTypeDistribution,
         HomeDashboardCompletenessResponse completeness,
-        HomeDashboardBranchCoverageResponse branchCoverage
+        HomeDashboardBranchCoverageResponse branchCoverage,
+        List<HomeDashboardTrendPointResponse> trendPoints,
+        List<HomeDashboardRiskResponse> risks,
+        List<HomeDashboardActivityResponse> recentActivities
 ) {
 }

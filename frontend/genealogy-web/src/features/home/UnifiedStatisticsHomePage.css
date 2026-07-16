@@ -67,6 +67,96 @@
   margin-bottom: 12px;
 }
 
+.statistics-home-page__section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statistics-home-page__section-header .ant-typography {
+  margin: 0;
+}
+
+.statistics-home-page__metric-card .ant-card-body {
+  height: 100%;
+  padding: 0;
+}
+
+.statistics-home-page__metric-button {
+  width: 100%;
+  min-height: 156px;
+  padding: 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.statistics-home-page__metric-button:focus-visible,
+.statistics-home-page__distribution-button:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+.statistics-home-page__metric-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.statistics-home-page__metric-unit {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.statistics-home-page__metric-card--warning {
+  border-color: #faad14;
+}
+
+.statistics-home-page__metric-card--success {
+  border-color: #b7eb8f;
+}
+
+.statistics-home-page__distribution-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.statistics-home-page__distribution-button > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.statistics-home-page__trend-bars {
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+
+.statistics-home-page__trend-bar {
+  width: 10px;
+  min-width: 10px;
+  border-radius: 4px 4px 0 0;
+  background: currentColor;
+  opacity: 0.64;
+}
+
 .statistics-home-page__empty-onboarding .ant-card-body {
   min-height: 320px;
   display: grid;
@@ -101,6 +191,15 @@
   .statistics-home-page__updated-at {
     min-height: auto;
     white-space: normal;
+  }
+
+  .statistics-home-page__metric-button {
+    min-height: 132px;
+  }
+
+  .statistics-home-page__distribution-button > span {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .statistics-home-page__empty-onboarding .ant-card-body {
