@@ -1,7 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
 import { RuntimeErrorBoundary } from './shared/ui/RuntimeErrorBoundary';
@@ -27,35 +25,6 @@ import './runtime-error.css';
 import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
 import './member-permission-page.css';
-
-const SOURCE_LIST_QUERY_KEYS = [
-  'clanId',
-  'keyword',
-  'sourceType',
-  'verificationStatus',
-  'privacyLevel',
-  'hasAttachment',
-  'hasBinding',
-  'pageNo',
-  'pageSize',
-  'sort'
-] as const;
-
-function isSourceDetailRoute() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('view') === 'sourceLibrary' && Boolean(params.get('sourceId'));
-}
-
-function buildSourceListUrl() {
-  const current = new URL(window.location.href);
-  const next = new URL('/', current.origin);
-  next.searchParams.set('view', 'sourceLibrary');
-  for (const key of SOURCE_LIST_QUERY_KEYS) {
-    const value = current.searchParams.get(key);
-    if (value !== null && value !== '') next.searchParams.set(key, value);
-  }
-  return `${next.pathname}${next.search}`;
-}
 
 function installSourceRouteHistorySync() {
   const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
@@ -84,48 +53,12 @@ function installSourceRouteHistorySync() {
   };
 }
 
-function SourceDetailBackAction() {
-  const [visible, setVisible] = React.useState(isSourceDetailRoute);
-
-  React.useEffect(() => {
-    const sync = () => setVisible(isSourceDetailRoute());
-    window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
-  }, []);
-
-  if (!visible) return null;
-
-  const backToSourceList = () => {
-    window.history.pushState(
-      { ...(window.history.state || {}), sourceLibraryScrollY: window.history.state?.sourceLibraryScrollY || 0 },
-      '',
-      buildSourceListUrl()
-    );
-    setVisible(false);
-  };
-
-  return (
-    <Button
-      icon={<ArrowLeftOutlined />}
-      onClick={backToSourceList}
-      style={{ position: 'fixed', top: 72, right: 24, zIndex: 1200, boxShadow: '0 4px 16px rgba(0, 0, 0, 0.16)' }}
-    >
-      返回来源资料列表
-    </Button>
-  );
-}
-
 installSourceRouteHistorySync();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
     RuntimeErrorBoundary,
     null,
-    React.createElement(
-      React.Fragment,
-      null,
-      React.createElement(App),
-      React.createElement(SourceDetailBackAction)
-    )
+    React.createElement(App)
   )
 );
