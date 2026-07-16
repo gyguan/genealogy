@@ -17,18 +17,22 @@ const actionAliases: Record<PersonStatusActionKey, string[]> = {
   restore: ['restore', 'person.restore']
 };
 
+function actionPath(personId: string | number, action: string) {
+  return `/persons/${encodeURIComponent(String(personId))}/${action}`;
+}
+
 export const personStatusActionContract: Record<PersonStatusActionKey, PersonStatusAction> = {
   submit_review: {
     key: 'submit_review',
     label: '提交审核',
-    endpoint: personId => `/persons/${personId}/submit-review`,
+    endpoint: personId => actionPath(personId, 'submit-review'),
     primary: true,
     dangerous: false
   },
   withdraw_review: {
     key: 'withdraw_review',
     label: '撤回审核',
-    endpoint: personId => `/persons/${personId}/withdraw-review`,
+    endpoint: personId => actionPath(personId, 'withdraw-review'),
     primary: false,
     dangerous: true,
     confirmTitle: '确认撤回审核？',
@@ -37,7 +41,7 @@ export const personStatusActionContract: Record<PersonStatusActionKey, PersonSta
   archive: {
     key: 'archive',
     label: '归档档案',
-    endpoint: personId => `/persons/${personId}/archive`,
+    endpoint: personId => actionPath(personId, 'archive'),
     primary: false,
     dangerous: true,
     confirmTitle: '确认归档人物档案？',
@@ -46,7 +50,7 @@ export const personStatusActionContract: Record<PersonStatusActionKey, PersonSta
   restore: {
     key: 'restore',
     label: '恢复档案',
-    endpoint: personId => `/persons/${personId}/restore`,
+    endpoint: personId => actionPath(personId, 'restore'),
     primary: false,
     dangerous: true,
     confirmTitle: '确认恢复人物档案？',
