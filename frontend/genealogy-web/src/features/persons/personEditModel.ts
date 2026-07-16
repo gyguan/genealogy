@@ -26,7 +26,6 @@ export type PersonEditForm = {
   hasDescendant: '' | 'true' | 'false';
   lineageStatus: string;
   privacyLevel: string;
-  dataStatus: string;
 };
 
 export const personDatePrecisionOptions = [
@@ -61,14 +60,6 @@ export const personPrivacyOptions = [
   { value: 'relatives_only', label: '亲属可见' },
   { value: 'private', label: '私密' },
   { value: 'sealed', label: '封存' }
-];
-
-export const personDataStatusOptions = [
-  { value: 'draft', label: '草稿' },
-  { value: 'pending_review', label: '待审核' },
-  { value: 'official', label: '正式' },
-  { value: 'rejected', label: '已驳回' },
-  { value: 'archived', label: '已归档' }
 ];
 
 export const personLineageStatusOptions = [
@@ -152,8 +143,7 @@ export function toPersonEditForm(person: any): PersonEditForm {
     epitaph: asString(person.epitaph),
     hasDescendant: toTriStateFormValue(person.hasDescendant),
     lineageStatus: asString(person.lineageStatus || 'normal'),
-    privacyLevel: asString(person.privacyLevel || 'clan_only'),
-    dataStatus: asString(person.dataStatus || 'draft')
+    privacyLevel: asString(person.privacyLevel || 'clan_only')
   };
 }
 
@@ -183,8 +173,7 @@ export function toPersonUpdatePayload(form: PersonEditForm) {
     epitaph: nullableString(form.epitaph),
     hasDescendant: toNullableBoolean(form.hasDescendant),
     lineageStatus: nullableString(form.lineageStatus),
-    privacyLevel: nullableString(form.privacyLevel),
-    dataStatus: nullableString(form.dataStatus)
+    privacyLevel: nullableString(form.privacyLevel)
   };
 }
 
