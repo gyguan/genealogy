@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -130,14 +131,14 @@ class HomeDashboardApplicationServiceTest {
     }
 
     private void stubExpandedDefaults() {
-        when(personRepository.countDashboardByBranch(CLAN_ID, OFFICIAL)).thenReturn(List.of());
-        when(personRepository.countDashboardKeyInfoMissing(CLAN_ID, OFFICIAL)).thenReturn(0L);
-        when(branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(CLAN_ID)).thenReturn(List.of());
-        when(sourceRepository.countDashboardBySourceType(CLAN_ID)).thenReturn(List.of());
-        when(reviewTaskRepository.countByClanIdAndStatusInAndCreatedAtBefore(eq(CLAN_ID), anyCollection(), any(LocalDateTime.class))).thenReturn(0L);
-        when(personRepository.findByClanIdAndDeletedAtIsNull(CLAN_ID)).thenReturn(List.of());
-        when(sourceRepository.findRecentDashboardSources(eq(CLAN_ID), any(Pageable.class))).thenReturn(List.of());
-        when(reviewTaskRepository.findRecentDashboardTasks(eq(CLAN_ID), any(Pageable.class))).thenReturn(List.of());
+        lenient().when(personRepository.countDashboardByBranch(CLAN_ID, OFFICIAL)).thenReturn(List.of());
+        lenient().when(personRepository.countDashboardKeyInfoMissing(CLAN_ID, OFFICIAL)).thenReturn(0L);
+        lenient().when(branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(CLAN_ID)).thenReturn(List.of());
+        lenient().when(sourceRepository.countDashboardBySourceType(CLAN_ID)).thenReturn(List.of());
+        lenient().when(reviewTaskRepository.countByClanIdAndStatusInAndCreatedAtBefore(eq(CLAN_ID), anyCollection(), any(LocalDateTime.class))).thenReturn(0L);
+        lenient().when(personRepository.findByClanIdAndDeletedAtIsNull(CLAN_ID)).thenReturn(List.of());
+        lenient().when(sourceRepository.findRecentDashboardSources(eq(CLAN_ID), any(Pageable.class))).thenReturn(List.of());
+        lenient().when(reviewTaskRepository.findRecentDashboardTasks(eq(CLAN_ID), any(Pageable.class))).thenReturn(List.of());
     }
 
     private void stubCommonCounts(long peopleTotal, long branchCount, long sourceCount, long pendingReviewCount, long generationMaintainedCount, long vitalDatesMaintainedCount, long biographyMaintainedCount, long coveredBranchCount, long keyInfoMissingCount) {
@@ -155,37 +156,8 @@ class HomeDashboardApplicationServiceTest {
     private Object[] row(Object key, long count) { return new Object[]{key, count}; }
     private LocalDateTime now() { return LocalDateTime.now(); }
 
-    private BranchEntity branch(Long id, String name) {
-        BranchEntity branch = new BranchEntity();
-        branch.setId(id);
-        branch.setBranchName(name);
-        return branch;
-    }
-
-    private PersonEntity person(String name, LocalDateTime createdAt, LocalDateTime updatedAt) {
-        PersonEntity person = new PersonEntity();
-        person.setName(name);
-        person.setDataStatus(OFFICIAL);
-        person.setCreatedAt(createdAt);
-        person.setUpdatedAt(updatedAt);
-        return person;
-    }
-
-    private SourceEntity source(String name, LocalDateTime createdAt) {
-        SourceEntity source = new SourceEntity();
-        source.setSourceName(name);
-        source.setSourceType("genealogy_book");
-        source.setVerificationStatus("approved");
-        source.setCreatedAt(createdAt);
-        source.setUpdatedAt(createdAt);
-        return source;
-    }
-
-    private ReviewTaskEntity reviewTask(String status, LocalDateTime createdAt, LocalDateTime reviewedAt) {
-        ReviewTaskEntity task = new ReviewTaskEntity();
-        task.setStatus(status);
-        task.setCreatedAt(createdAt);
-        task.setReviewedAt(reviewedAt);
-        return task;
-    }
+    private BranchEntity branch(Long id, String name) { BranchEntity branch = new BranchEntity(); branch.setId(id); branch.setBranchName(name); return branch; }
+    private PersonEntity person(String name, LocalDateTime createdAt, LocalDateTime updatedAt) { PersonEntity person = new PersonEntity(); person.setName(name); person.setDataStatus(OFFICIAL); person.setCreatedAt(createdAt); person.setUpdatedAt(updatedAt); return person; }
+    private SourceEntity source(String name, LocalDateTime createdAt) { SourceEntity source = new SourceEntity(); source.setSourceName(name); source.setSourceType("genealogy_book"); source.setVerificationStatus("approved"); source.setCreatedAt(createdAt); source.setUpdatedAt(createdAt); return source; }
+    private ReviewTaskEntity reviewTask(String status, LocalDateTime createdAt, LocalDateTime reviewedAt) { ReviewTaskEntity task = new ReviewTaskEntity(); task.setStatus(status); task.setCreatedAt(createdAt); task.setReviewedAt(reviewedAt); return task; }
 }
