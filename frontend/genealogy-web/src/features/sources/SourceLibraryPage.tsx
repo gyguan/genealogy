@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -58,6 +58,11 @@ import type {
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
 const OFFICIAL_GENERATION_SCHEME_STATUSES = new Set(['official', 'active', 'approved']);
+const SOURCE_PAGE_SIZES = new Set([10, 20, 50]);
+
+const typeValues = new Set(['genealogy_book', 'local_chronicle', 'tombstone', 'photo', 'oral_history', 'archive', 'other']);
+const statusValues = new Set(['draft', 'pending_review', 'official', 'rejected', 'archived']);
+const privacyValues = new Set(['public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed']);
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type BindingMode = 'create' | 'replace';
@@ -228,6 +233,63 @@ function readSourceIdFromUrl() {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+function readSearchFromUrl(): SourceSearchParams {
+  const params = new URLSearchParams(window.location.search);
+  const positiveInt = (name: string, fallback: number) => {
+    const parsed = Number(params.get(name));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  };
+  const optionValue = (name: string, values: Set<string>) => {
+    const value = params.get(name);
+    return value && values.has(value) ? value : undefined;
+  };
+  const boolValue = (name: string) => {
+    const value = params.get(name);
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+  };
+  const rawPageSize = positiveInt('pageSize', 10);
+  const rawSort = params.get('sort') || '';
+  return {
+    pageNo: positiveInt('pageNo', 1),
+    pageSize: SOURCE_PAGE_SIZES.has(rawPageSize) ? rawPageSize : 10,
+    sort: /^[A-Za-z][A-Za-z0-9_]*,(asc|desc)$/.test(rawSort) ? rawSort : 'updatedAt,desc',
+    keyword: params.get('keyword') || undefined,
+    sourceType: optionValue('sourceType', typeValues),
+    verificationStatus: optionValue('verificationStatus', statusValues),
+    privacyLevel: optionValue('privacyLevel', privacyValues),
+    hasAttachment: boolValue('hasAttachment'),
+    hasBinding: boolValue('hasBinding')
+  };
+}
+
+function searchFormValues(value: SourceSearchParams): SourceSearchFormValues {
+  return {
+    ...value,
+    hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),
+    hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)
+  };
+}
+
+function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
+  url.searchParams.set('view', 'sourceLibrary');
+  url.searchParams.delete('sourceId');
+  ['keyword', 'sourceType', 'verificationStatus', 'privacyLevel', 'hasAttachment', 'hasBinding', 'pageNo', 'pageSize', 'sort'].forEach(key => url.searchParams.delete(key));
+  Object.entries(value).forEach(([key, item]) => {
+    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
+  });
+  const sourceLibraryScrollY = Number(window.history.state?.sourceLibraryScrollY ?? window.scrollY);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](
+    { ...window.history.state, sourceLibraryScrollY },
+    '',
+    `${url.pathname}${url.search}`
+  );
+}
+
 function writeSourceIdToUrl(sourceId?: number, mode: 'push' | 'replace' = 'push') {
   const url = new URL(window.location.href);
   url.pathname = '/';
@@ -255,7 +317,7 @@ export function SourceLibraryPage({ notify }: Props) {
   const [clans, setClans] = useState<Array<{ id?: number; clanName?: string; surname?: string }>>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [sourceTotal, setSourceTotal] = useState(0);
-  const [search, setSearch] = useState<SourceSearchParams>({ pageNo: 1, pageSize: 10, sort: 'updatedAt,desc' });
+  const [search, setSearch] = useState<SourceSearchParams>(readSearchFromUrl);
   const [loading, setLoading] = useState(false);
   const [detailSourceId, setDetailSourceId] = useState<number | undefined>(readSourceIdFromUrl);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -280,6 +342,7 @@ export function SourceLibraryPage({ notify }: Props) {
   const [lastRevision, setLastRevision] = useState<BindingRevisionResponse | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sourceForm] = Form.useForm<SourceSearchFormValues>();
+  const listScrollRef = useRef<number>(Number(window.history.state?.sourceLibraryScrollY || 0));
   const [bindingForm] = Form.useForm<BindingFormValues>();
   const [attachmentForm] = Form.useForm<AttachmentFormValues>();
 
@@ -397,15 +460,18 @@ export function SourceLibraryPage({ notify }: Props) {
 
   function openDetail(row: SourceRecord) {
     if (!row.id) return;
+    listScrollRef.current = window.scrollY;
+    window.history.replaceState({ ...window.history.state, sourceLibraryScrollY: window.scrollY }, '', window.location.href);
     writeSourceIdToUrl(row.id);
     setDetailSourceId(row.id);
   }
 
   function closeDetail(mode: 'push' | 'replace' = 'push') {
-    writeSourceIdToUrl(undefined, mode);
+    writeSearchToUrl(search, mode);
     setDetailSourceId(undefined);
     setDetail(null);
     setDetailError(null);
+    window.setTimeout(() => window.scrollTo({ top: listScrollRef.current }), 0);
   }
 
   function submitSearch(values: SourceSearchFormValues) {
@@ -418,6 +484,7 @@ export function SourceLibraryPage({ notify }: Props) {
       sort: search.sort || 'updatedAt,desc'
     };
     setSearch(next);
+    writeSearchToUrl(next);
     void loadSources(next);
   }
 
@@ -433,6 +500,7 @@ export function SourceLibraryPage({ notify }: Props) {
       hasBinding: undefined
     });
     setSearch(next);
+    writeSearchToUrl(next);
     void loadSources(next);
   }
 
@@ -560,10 +628,19 @@ export function SourceLibraryPage({ notify }: Props) {
   useEffect(() => { if (detailSourceId) void loadDetail(detailSourceId); }, [detailSourceId]);
 
   useEffect(() => {
-    const onPopState = () => setDetailSourceId(readSourceIdFromUrl());
+    const onPopState = (event: PopStateEvent) => {
+      const nextSourceId = readSourceIdFromUrl();
+      const nextSearch = readSearchFromUrl();
+      setDetailSourceId(nextSourceId);
+      setSearch(nextSearch);
+      sourceForm.setFieldsValue(searchFormValues(nextSearch));
+      listScrollRef.current = Number(event.state?.sourceLibraryScrollY || 0);
+      if (!nextSourceId && clanId) void loadSources(nextSearch);
+      window.setTimeout(() => window.scrollTo({ top: listScrollRef.current }), 0);
+    };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [clanId, sourceForm]);
 
   const targetOptions = useMemo(() => {
     if (bindingTargetType === 'branch') return branches.map(row => ({ value: row.id, label: branchOptionLabel(row) }));
@@ -748,7 +825,7 @@ export function SourceLibraryPage({ notify }: Props) {
         </Card>
 
         <Card title="来源检索">
-          <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={search}>
+          <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search)}>
             <Row gutter={[16, 0]}>
               <Col xs={24} sm={12} lg={8} xl={6}>
                 <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名、提供者、摘录" /></Form.Item>
@@ -794,6 +871,7 @@ export function SourceLibraryPage({ notify }: Props) {
               onChange: (pageNo, pageSize) => {
                 const next = { ...search, pageNo, pageSize };
                 setSearch(next);
+                writeSearchToUrl(next);
                 void loadSources(next);
               }
             }}
