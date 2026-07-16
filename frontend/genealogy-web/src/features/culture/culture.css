@@ -85,3 +85,5 @@
   .culture-editor-actions .ant-space-item { flex: 1 1 calc(50% - 8px); }
   .culture-editor-actions .ant-btn { width: 100%; min-height: 44px; }
 }
+.culture-create-drawer .culture-editor-page { padding-bottom: 0; }
+.culture-create-drawer .culture-editor-actions { margin-inline: -24px; margin-bottom: -24px; border-radius: 0; border-inline: 0; }

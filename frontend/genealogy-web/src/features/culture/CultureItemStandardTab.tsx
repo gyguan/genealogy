@@ -464,7 +464,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor) {
+  if (editor?.mode === 'edit') {
     return <>{messageContext}<CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
   }
 
@@ -527,6 +527,11 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
         ]} /> : null}
       </Drawer>
 
+      {editor?.mode === 'create' ? (
+        <Drawer open width={720} title="新增文化资料" className="culture-create-drawer" onClose={closeEditor} destroyOnHidden>
+          <CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} />
+        </Drawer>
+      ) : null}
       <CultureGovernanceModal target={governanceTarget} reason={governanceReason} loading={actionLoading} error={governanceError} onReasonChange={setGovernanceReason} onCancel={() => { if (!actionLoading) setGovernanceTarget(null); }} onConfirm={() => void confirmGovernance()} />
     </Space>
   );
