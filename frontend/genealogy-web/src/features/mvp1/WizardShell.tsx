@@ -137,6 +137,7 @@ export function WizardShell<TKey extends string = string>({
   const nextLabel = isCompletionStep ? completionControl.label : navigation.nextLabel;
   const nextDisabled = navigation.nextDisabled || (isCompletionStep && completionControl.disabled);
   const hasClanContext = contextLabel && contextLabel !== '尚未选择宗族';
+  void onExit;
 
   return (
     <WizardCompletionContext.Provider value={{ requestVersion: completionRequestVersion, status: completionStatus, reportStatus: setCompletionStatus }}>
@@ -149,7 +150,6 @@ export function WizardShell<TKey extends string = string>({
               <Typography.Text type="secondary" aria-live="polite">{saveStatus.label}</Typography.Text>
             </Space>
           </div>
-          <Button size={buttonSize} onClick={onExit}>退出</Button>
         </header>
 
         <Card className="wizard-progress-card" size="small" aria-label="建谱进度">
