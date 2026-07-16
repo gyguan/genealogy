@@ -31,22 +31,16 @@ function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
 }
 
-function emptyPage(pageSize = 10) {
-  return { items: [], page: { pageNo: 1, pageSize, totalElements: 0, totalPages: 0 } };
-}
-
-async function mockSiteApi(page: Page) {
+async function mockSiteApi(page: Page, requestedPaths: string[]) {
   await page.route('**/api/v1/**', async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace('/api/v1', '');
+    requestedPaths.push(path);
     if (path === '/auth/me') return route.fulfill(ok({ id: 7, username: 'site_admin', displayName: '场所管理员', status: 'active' }));
     if (path === '/clans') return route.fulfill(ok({ records: [{ id: 1, clanName: '黄氏宗族', surname: '黄' }], total: 1, pageNo: 1, pageSize: 20, totalPages: 1 }));
     if (path === '/clans/1/branches') return route.fulfill(ok([{ id: 2, branchName: '长沙支', branchPath: '黄氏宗族/长沙支' }]));
-    if (path === '/clans/1/culture-overview') return route.fulfill(ok({ clanId: 1, clanName: '黄氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 1 }, featuredItems: [], migrationHighlights: [], siteHighlights: [site], missingHints: [] }));
-    if (path === '/clans/1/culture-items') return route.fulfill(ok(emptyPage()));
-    if (path === '/clans/1/migration-events') return route.fulfill(ok(emptyPage()));
-    if (path === '/clans/1/culture-sites' && request.method() === 'GET') return route.fulfill(ok({ items: [site], page: { pageNo: 1, pageSize: 12, totalElements: 1, totalPages: 1 } }));
+    if (path === '/clans/1/culture-sites' && request.method() === 'GET') return route.fulfill(ok({ items: [site], page: { pageNo: 1, pageSize: 10, totalElements: 1, totalPages: 1 } }));
     if (path === '/culture-sites/61' && request.method() === 'GET') return route.fulfill(ok({
       ...site,
       description: '宗祠保留清代木构与历次修缮碑记。',
@@ -66,14 +60,23 @@ async function mockSiteApi(page: Page) {
   });
 }
 
-test('culture site cards, detail, sources, governance and mobile layout use real data', async ({ page }) => {
-  await mockSiteApi(page);
-  await page.goto('/?view=culture');
-  await expect(page.getByText('祠堂与文化场所')).toBeVisible();
+function expectOnlySiteTabRequests(requestedPaths: string[]) {
+  expect(requestedPaths.filter(path => path.includes('culture-overview'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('culture-quality'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('culture-items'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('migration-events'))).toHaveLength(0);
+}
+
+test('culture site tab supports direct URL, detail, governance and mobile layout', async ({ page }) => {
+  const requestedPaths: string[] = [];
+  await mockSiteApi(page, requestedPaths);
+  await page.goto('/?view=culture&tab=sites&siteItem=61');
+
+  await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '祠堂与文化场所' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   await expect(page.getByText('湖南省长沙市某村').first()).toBeVisible();
 
-  await page.getByRole('button', { name: /详\s*情/ }).last().click();
   const drawer = page.getByRole('dialog', { name: '文化场所详情' });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText('黄公讳德昌')).toBeVisible();
@@ -88,24 +91,27 @@ test('culture site cards, detail, sources, governance and mobile layout use real
   await expect(dialog.getByLabel('场所名称')).toHaveValue('敦本堂宗祠');
   await dialog.getByRole('button', { name: /取\s*消/ }).click();
 
+  expectOnlySiteTabRequests(requestedPaths);
+
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: /新\s*增\s*场\s*所/ })).toBeVisible();
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
 });
 
 test('forbidden culture site list never discloses sealed site identity', async ({ page }) => {
+  const requestedPaths: string[] = [];
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
+    requestedPaths.push(path);
     if (path === '/auth/me') return route.fulfill(ok({ id: 8, username: 'viewer', displayName: '受限成员', status: 'active' }));
     if (path === '/clans') return route.fulfill(ok({ records: [{ id: 1, clanName: '黄氏宗族' }], total: 1, pageNo: 1, pageSize: 20, totalPages: 1 }));
     if (path === '/clans/1/branches') return route.fulfill(ok([]));
-    if (path === '/clans/1/culture-overview') return route.fulfill(ok({ clanId: 1, clanName: '黄氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 }, featuredItems: [], migrationHighlights: [], siteHighlights: [], missingHints: [] }));
-    if (path === '/clans/1/culture-items' || path === '/clans/1/migration-events') return route.fulfill(ok(emptyPage()));
     if (path === '/clans/1/culture-sites') return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ success: false, error: { code: 'FORBIDDEN', message: '当前账号无权查看文化场所' } }) });
     return route.fulfill(ok({}));
   });
-  await page.goto('/?view=culture');
+  await page.goto('/?view=culture&tab=sites');
   await expect(page.getByText('当前账号无权查看文化场所')).toBeVisible();
   await expect(page.getByText('封存祖墓精确地址')).toHaveCount(0);
+  expectOnlySiteTabRequests(requestedPaths);
 });
