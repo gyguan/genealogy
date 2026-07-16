@@ -5,6 +5,10 @@ import { validateWizardStep, wizardFieldName } from '../../features/mvp1/domain/
 import { useWizardFormContext } from '../../features/mvp1/WizardFormContext';
 
 type AnyProps = Record<string, any>;
+type InjectedControlProps = {
+  value?: unknown;
+  onChange?: (value: unknown, ...args: unknown[]) => void;
+};
 
 const REVIEW_SUBMIT_LABEL = '保存并提交审核';
 const REVIEW_DRAFT_LABEL = '保存草稿继续录入';
@@ -82,11 +86,25 @@ function normalizeReviewActions(children: ReactNode) {
   return [cloneButtonLabel(draft, REVIEW_DRAFT_LABEL, true), submit];
 }
 
-function toAntdControl(child: ReactNode): ReactNode {
+function WizardFieldControl({ child, value, onChange }: InjectedControlProps & { child: ReactNode }) {
   const element = asElement(child);
   if (!element || typeof element.type !== 'string') return child;
-  const { children, ...props } = element.props;
-  if (element.type === 'textarea') return <Input.TextArea {...props} value={props.value} onChange={props.onChange} />;
+
+  const { children, onChange: originalOnChange, value: _originalValue, ...props } = element.props;
+
+  if (element.type === 'textarea') {
+    return (
+      <Input.TextArea
+        {...props}
+        value={String(value ?? '')}
+        onChange={event => {
+          onChange?.(event);
+          originalOnChange?.(event);
+        }}
+      />
+    );
+  }
+
   if (element.type === 'select') {
     const options = Children.toArray(children)
       .map(asElement)
@@ -102,23 +120,41 @@ function toAntdControl(child: ReactNode): ReactNode {
         optionFilterProp="searchText"
         filterOption={(input, option) => String(option?.searchText ?? '').toLowerCase().includes(input.toLowerCase())}
         {...props}
-        value={props.value}
+        value={value === undefined || value === null ? undefined : String(value)}
         options={options}
-        onChange={value => emitValue(props.onChange, value)}
+        onChange={(nextValue, option) => {
+          onChange?.(nextValue, option);
+          emitValue(originalOnChange, nextValue);
+        }}
       />
     );
   }
-  if (element.type === 'input') return <Input {...props} value={props.value} onChange={props.onChange} />;
-  return child;
-}
 
-function eventValue(value: unknown) {
-  if (value && typeof value === 'object' && 'target' in value) {
-    const target = (value as { target?: { value?: unknown; checked?: boolean; type?: string } }).target;
-    if (target?.type === 'checkbox' || target?.type === 'radio') return target.checked;
-    return target?.value;
+  if (element.type === 'input') {
+    const inputType = String(props.type || 'text');
+    if (inputType === 'checkbox' || inputType === 'radio') {
+      return cloneElement(element, {
+        ...props,
+        checked: Boolean(value),
+        onChange: (event: unknown) => {
+          onChange?.(event);
+          originalOnChange?.(event);
+        }
+      });
+    }
+    return (
+      <Input
+        {...props}
+        value={String(value ?? '')}
+        onChange={event => {
+          onChange?.(event);
+          originalOnChange?.(event);
+        }}
+      />
+    );
   }
-  return value;
+
+  return child;
 }
 
 function toAntdAction(child: ReactNode, validateBeforeAction: () => Promise<boolean>): ReactNode {
@@ -145,7 +181,9 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
 
   useEffect(() => {
     if (!context.form || !name || currentValue === undefined) return;
-    context.form.setFieldValue(name, currentValue);
+    if (context.form.getFieldValue(name) !== currentValue) {
+      context.form.setFieldValue(name, currentValue);
+    }
   }, [context.form, name, currentValue]);
 
   if (isTechnicalLabel(props.label)) return null;
@@ -166,11 +204,10 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
       dependencies={CROSS_FIELD_DEPENDENCIES[name]}
       rules={rules}
       validateTrigger={['onChange', 'onBlur']}
-      getValueProps={() => ({})}
-      getValueFromEvent={eventValue}
       initialValue={currentValue}
+      valuePropName={element?.props.type === 'checkbox' || element?.props.type === 'radio' ? 'checked' : 'value'}
     >
-      {toAntdControl(props.children)}
+      <WizardFieldControl child={props.children} />
     </Form.Item>
   );
 }
