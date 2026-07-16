@@ -1,0 +1,7 @@
+.member-role-page > .ant-card:first-child .ant-row > .ant-col:last-child > .ant-space {
+  align-items: flex-end;
+}
+
+.member-role-page > .ant-alert {
+  display: none;
+}
