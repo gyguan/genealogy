@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Result, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import type { Mvp1StepKey } from '../../domain/wizardStepState';
 import type { SummarySection } from '../../domain/wizardSummaryModel';
 import { loadWizardSummary } from '../../services/wizardSummaryService';
+import { useWizardCompletion } from '../../WizardCompletionContext';
 import './wizard-summary-step.css';
 
 type Props = {
@@ -48,23 +49,36 @@ function SectionCard({ section, onRetry }: { section: SummarySection; onRetry: (
 
 export function WizardSummaryStep({ notify, onStepChange }: Props) {
   const workspace = useWorkspace();
+  const completion = useWizardCompletion();
   const [summary, setSummary] = useState<SummaryData>();
   const [loading, setLoading] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const handledRequestVersion = useRef(0);
 
   async function load() {
     if (!workspace.clanId) {
       setSummary(undefined);
       setLoadError('请先选择宗族，再生成建谱结果汇总。');
+      completion.reportStatus({ ready: false, completed: false, blockerCount: 1, reason: '请先选择宗族，再完成建谱。' });
       return;
     }
     setLoading(true);
     setLoadError('');
+    completion.reportStatus({ ready: false, completed: false, blockerCount: 0, reason: '正在检查建谱完成条件。' });
     try {
-      setSummary(await loadWizardSummary(workspace.clanId, workspace.personId));
+      const nextSummary = await loadWizardSummary(workspace.clanId, workspace.personId);
+      setSummary(nextSummary);
+      completion.reportStatus({
+        ready: true,
+        completed: false,
+        blockerCount: nextSummary.blockers.length,
+        reason: nextSummary.complete ? '' : `请先处理 ${nextSummary.blockers.length} 项阻塞。`
+      });
     } catch (error) {
-      setLoadError((error as Error).message || '加载建谱汇总失败');
+      const message = (error as Error).message || '加载建谱汇总失败';
+      setLoadError(message);
+      completion.reportStatus({ ready: false, completed: false, blockerCount: 1, reason: message });
     } finally {
       setLoading(false);
     }
@@ -72,11 +86,14 @@ export function WizardSummaryStep({ notify, onStepChange }: Props) {
 
   useEffect(() => { void load(); }, [workspace.clanId, workspace.personId, workspace.relationshipId, workspace.sourceId]);
 
-  function completeWizard() {
-    if (!summary?.complete) return;
+  useEffect(() => {
+    if (!completion.requestVersion || completion.requestVersion === handledRequestVersion.current) return;
+    handledRequestVersion.current = completion.requestVersion;
+    if (!summary?.complete || completed) return;
     setCompleted(true);
+    completion.reportStatus({ ready: true, completed: true, blockerCount: 0, reason: '本次建谱已完成。' });
     notify?.({ message: '本次建谱已完成' });
-  }
+  }, [completion.requestVersion, summary, completed]);
 
   if (completed) {
     return (
@@ -128,10 +145,11 @@ export function WizardSummaryStep({ notify, onStepChange }: Props) {
             <div>
               <Typography.Title level={4}>{summary.complete ? '所有完成条件均已满足' : '建谱尚未完成'}</Typography.Title>
               <Typography.Paragraph type="secondary">
-                {summary.complete ? '确认后将进入建谱完成结果页。' : `请先处理上方 ${summary.blockers.length} 项阻塞；审核中的对象不会被计为完成。`}
+                {summary.complete
+                  ? '请使用页面底部固定操作栏中的“完成建谱”确认完成。'
+                  : `请先处理上方 ${summary.blockers.length} 项阻塞；审核中的对象不会被计为完成。`}
               </Typography.Paragraph>
             </div>
-            <Button type="primary" size="large" disabled={!summary.complete} onClick={completeWizard}>完成建谱</Button>
           </Card>
         </>
       ) : null}
