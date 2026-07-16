@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Alert, Space } from 'antd';
 import { CultureItemStandardTab } from './CultureItemStandardTab';
+import type { CultureClanOption } from './cultureLibraryService';
 import { subscribeCultureItemRefresh } from './cultureLibraryService';
 
-export function CultureItemMaintenanceTab({ clanId }: { clanId: string }) {
+type Props = {
+  clanId?: string;
+  clans: CultureClanOption[];
+  clansLoading: boolean;
+  onClanChange: (clanId: string) => void;
+};
+
+export function CultureItemMaintenanceTab({ clanId, clans, clansLoading, onClanChange }: Props) {
   const [refreshError, setRefreshError] = useState('');
 
   useEffect(() => subscribeCultureItemRefresh(message => setRefreshError(message || '')), []);
@@ -24,7 +32,7 @@ export function CultureItemMaintenanceTab({ clanId }: { clanId: string }) {
           onClose={() => setRefreshError('')}
         />
       ) : null}
-      <CultureItemStandardTab clanId={clanId} />
+      <CultureItemStandardTab clanId={clanId} clans={clans} clansLoading={clansLoading} onClanChange={onClanChange} />
     </Space>
   );
 }
