@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Breadcrumb, Button, Card, Empty, Form, Input, Result, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Card, Dropdown, Empty, Form, Input, Pagination, Result, Select, Space, Table, Tag, Typography } from 'antd';
+import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
@@ -12,8 +13,10 @@ import type { PersonArchiveSearchState } from './personArchiveUrlState';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
+type NavigationAction = 'name' | 'view' | 'edit';
 
 const PAGE_SIZE = 20;
+const FOCUS_STORAGE_KEY = 'genealogyPersonArchiveFocusId';
 const emptySearch = emptyPersonArchiveSearch();
 const statusOptions = [
   { value: '', label: '全部' }, { value: 'draft', label: '草稿' }, { value: 'pending_review', label: '待审核' },
@@ -24,6 +27,7 @@ const genderOptions = [
 ];
 
 function display(value: unknown, fallback = '-') { const text = String(value ?? '').trim(); return text || fallback; }
+function personId(row: any) { return row.id || row.personId || ''; }
 function personName(row: any) { return row.name || row.personName || row.displayName || row.fullName || ''; }
 function personGender(row: any) { return row.gender || row.sex || ''; }
 function genderText(value: unknown) { const text = String(value || '').toLowerCase(); return text === 'male' ? '男' : text === 'female' ? '女' : text === 'unknown' ? '未知' : display(value); }
@@ -50,6 +54,7 @@ function sortGenerationNos(values: string[]) { return [...values].sort((left, ri
 function errorText(error: unknown, fallback: string) { return error instanceof Error && error.message ? error.message : fallback; }
 function errorStatus(error: unknown) { return error instanceof ApiRequestError ? error.status : undefined; }
 function formOf(state: PersonArchiveSearchState): SearchForm { const { pageNo: _pageNo, ...form } = state; return form; }
+function focusId(row: any, action: NavigationAction) { return `person-archive-${action}-${String(personId(row)).replace(/[^a-zA-Z0-9_-]/g, '-')}`; }
 
 export function PersonArchiveSearchPage({ notify }: Props) {
   const workspace = useWorkspace();
@@ -107,9 +112,19 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     return () => window.removeEventListener('popstate', onPopState);
   }, [workspace]);
   useEffect(() => {
-    if (rawData === undefined || restoreScroll.current === null) return;
-    const scrollY = restoreScroll.current; restoreScroll.current = null;
-    window.requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'auto' }));
+    if (rawData === undefined) return;
+    const scrollY = restoreScroll.current;
+    restoreScroll.current = null;
+    const targetId = sessionStorage.getItem(FOCUS_STORAGE_KEY);
+    window.requestAnimationFrame(() => {
+      if (scrollY !== null) window.scrollTo({ top: scrollY, behavior: 'auto' });
+      if (!targetId) return;
+      const target = document.getElementById(targetId);
+      if (target instanceof HTMLElement) {
+        target.focus({ preventScroll: true });
+        sessionStorage.removeItem(FOCUS_STORAGE_KEY);
+      }
+    });
   }, [rawData]);
 
   function patch(key: keyof SearchForm, value: string) { setForm(previous => ({ ...previous, [key]: value })); }
@@ -174,9 +189,37 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     queryRequest.current += 1; workspace.setBranchId(''); setForm(formOf(emptySearch)); setPageNo(1); setRawData(undefined);
     setQueryError(''); setRefreshError(''); setForbidden(false); writePersonArchiveUrl(emptySearch, 'replace');
   }
-  function rememberScroll() { window.history.replaceState({ ...(window.history.state || {}), genealogyPersonArchiveScrollY: window.scrollY }, '', window.location.href); }
-  function openDetail(row: any) { const id = row.id || row.personId; if (!id) return; rememberScroll(); workspace.setPersonId(String(id)); navigateToPersonDetail(id); }
-  function openEditor(row: any) { const id = row.id || row.personId; if (!id) return; rememberScroll(); workspace.setPersonId(String(id)); navigateToPersonEdit(id); }
+  function rememberNavigation(triggerId?: string) {
+    window.history.replaceState({ ...(window.history.state || {}), genealogyPersonArchiveScrollY: window.scrollY }, '', window.location.href);
+    if (triggerId) sessionStorage.setItem(FOCUS_STORAGE_KEY, triggerId);
+  }
+  function openDetail(row: any, triggerId?: string) {
+    const id = personId(row); if (!id) return;
+    rememberNavigation(triggerId); workspace.setPersonId(String(id)); navigateToPersonDetail(id);
+  }
+  function openEditor(row: any, triggerId?: string) {
+    const id = personId(row); if (!id) return;
+    rememberNavigation(triggerId); workspace.setPersonId(String(id)); navigateToPersonEdit(id);
+  }
+  async function copyPersonId(row: any) {
+    const id = personId(row);
+    if (!id) { notify({ message: '该人物暂无可复制编号' }, true); return; }
+    try {
+      await navigator.clipboard.writeText(String(id));
+      notify({ message: '人物编号已复制' });
+    } catch {
+      notify({ message: `人物编号：${id}` });
+    }
+  }
+  function moreMenu(row: any): MenuProps {
+    return {
+      items: [{ key: 'copy-id', label: '复制人物编号' }],
+      onClick: info => {
+        info.domEvent.stopPropagation();
+        if (info.key === 'copy-id') void copyPersonId(row);
+      }
+    };
+  }
   function branchText(row: any) { const branchId = String(personBranchId(row) || ''); const branch = branchOptions.find(item => String(item.id) === branchId); return row.branchName || row.branch?.branchName || branch?.branchName || '支派待维护'; }
 
   const rows = useMemo(() => toRecordList(rawData) as any[], [rawData]);
@@ -199,13 +242,56 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     </Card>
     <Card className="person-archive-result-card" title={`人物档案（${hasQueried ? total : 0}）`}>
       {refreshError ? <Alert type="warning" showIcon message="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
-      {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <><div className="person-archive-result-toolbar"><Typography.Text type="secondary">{hasQueried ? `已按当前条件查询，共 ${total} 条记录` : '请设置查询条件后开始查询'}</Typography.Text></div><Table<any>
-        size="small" bordered rowKey={(row, index) => String(row.id || row.personId || index)} dataSource={rows}
-        pagination={hasQueried ? { current: currentPage, pageSize: PAGE_SIZE, total, showSizeChanger: false, showTotal: value => `共 ${value} 条`, onChange: nextPage => void search(nextPage) } : false}
-        loading={querying} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '尚未查询，请先选择宗族并设置查询条件。'} /> }}
-        onRow={row => ({ onClick: () => openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
-        columns={[{ key: 'name', title: '姓名', render: (_value, row) => <Button type="link" className="archive-person-name-link" onClick={event => { event.stopPropagation(); openDetail(row); }}>{display(personName(row), '未命名人物')}</Button> }, { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) }, { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(personGender(row)) }, { key: 'generationWord', title: '字辈', width: 90, render: (_value, row) => display(personGenerationWord(row)) }, { key: 'generationNo', title: '代次', width: 90, render: (_value, row) => generationText(row) }, { key: 'branchName', title: '支派', render: (_value, row) => branchText(row) }, { key: 'life', title: '生卒', render: (_value, row) => lifeText(row) }, { key: 'isLiving', title: '是否在世', width: 110, render: (_value, row) => livingText(row.isLiving) }, { key: 'spouseName', title: '配偶', render: (_value, row) => spouseText(row) }, { key: 'dataStatus', title: '档案状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }, { key: 'actions', title: '操作', width: 130, fixed: 'right', render: (_value, row) => <Space size="small" onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openDetail(row)}>查看</Button><Button type="link" onClick={() => openEditor(row)}>编辑</Button></Space> }]} scroll={{ x: 'max-content' }}
-      /></>}
+      {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>
+        <div className="person-archive-result-toolbar"><Typography.Text type="secondary">{hasQueried ? `已按当前条件查询，共 ${total} 条记录` : '请设置查询条件后开始查询'}</Typography.Text></div>
+        <div className="person-archive-desktop-list">
+          <Table<any>
+            size="small" bordered rowKey={(row, index) => String(personId(row) || index)} dataSource={rows}
+            pagination={hasQueried ? { current: currentPage, pageSize: PAGE_SIZE, total, showSizeChanger: false, showTotal: value => `共 ${value} 条`, onChange: nextPage => void search(nextPage) } : false}
+            loading={querying} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '尚未查询，请先选择宗族并设置查询条件。'} /> }}
+            onRow={row => ({ onClick: () => openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
+            columns={[
+              { key: 'name', title: '姓名', render: (_value, row) => <Button id={focusId(row, 'name')} type="link" className="archive-person-name-link person-archive-text-action" onClick={event => { event.stopPropagation(); openDetail(row, focusId(row, 'name')); }}>{display(personName(row), '未命名人物')}</Button> },
+              { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) },
+              { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(personGender(row)) },
+              { key: 'generationWord', title: '字辈', width: 90, render: (_value, row) => display(personGenerationWord(row)) },
+              { key: 'generationNo', title: '代次', width: 90, render: (_value, row) => generationText(row) },
+              { key: 'branchName', title: '支派', render: (_value, row) => branchText(row) },
+              { key: 'life', title: '生卒', render: (_value, row) => lifeText(row) },
+              { key: 'isLiving', title: '是否在世', width: 110, render: (_value, row) => livingText(row.isLiving) },
+              { key: 'spouseName', title: '配偶', render: (_value, row) => spouseText(row) },
+              { key: 'dataStatus', title: '档案状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+              { key: 'actions', title: '操作', width: 210, fixed: 'right', render: (_value, row) => <Space size={4} onClick={event => event.stopPropagation()}>
+                <Button id={focusId(row, 'view')} type="link" className="person-archive-text-action" onClick={() => openDetail(row, focusId(row, 'view'))}>查看</Button>
+                <Button id={focusId(row, 'edit')} type="link" className="person-archive-text-action" onClick={() => openEditor(row, focusId(row, 'edit'))}>编辑</Button>
+                <Dropdown menu={moreMenu(row)} trigger={['click']}><Button type="link" className="person-archive-text-action" aria-label={`更多操作：${display(personName(row), '未命名人物')}`}>更多</Button></Dropdown>
+              </Space> }
+            ]} scroll={{ x: 'max-content' }}
+          />
+        </div>
+        <div className="person-archive-mobile-list" aria-label="人物档案卡片列表">
+          {querying ? <Card loading /> : rows.length ? rows.map(row => <Card
+            key={String(personId(row))}
+            className="person-archive-mobile-card"
+            title={<Button id={focusId(row, 'name')} type="link" className="person-archive-mobile-name" onClick={() => openDetail(row, focusId(row, 'name'))}>{display(personName(row), '未命名人物')}</Button>}
+            extra={<Tag color={statusColor(row)}>{statusText(row)}</Tag>}
+          >
+            <div className="person-archive-mobile-subtitle">{display(row.genealogyName || row.aliasName, '谱名或别名待维护')}</div>
+            <dl className="person-archive-mobile-meta">
+              <div><dt>字辈</dt><dd>{display(personGenerationWord(row))}</dd></div>
+              <div><dt>代次</dt><dd>{generationText(row)}</dd></div>
+              <div><dt>支派</dt><dd>{branchText(row)}</dd></div>
+              <div><dt>生卒</dt><dd>{lifeText(row)}</dd></div>
+            </dl>
+            <div className="person-archive-mobile-actions">
+              <Button id={focusId(row, 'view')} onClick={() => openDetail(row, focusId(row, 'view'))}>查看</Button>
+              <Button id={focusId(row, 'edit')} onClick={() => openEditor(row, focusId(row, 'edit'))}>编辑</Button>
+              <Dropdown menu={moreMenu(row)} trigger={['click']}><Button aria-label={`更多操作：${display(personName(row), '未命名人物')}`}>更多</Button></Dropdown>
+            </div>
+          </Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '尚未查询，请先选择宗族并设置查询条件。'} />}
+          {hasQueried && total > PAGE_SIZE ? <Pagination current={currentPage} pageSize={PAGE_SIZE} total={total} showSizeChanger={false} onChange={nextPage => void search(nextPage)} showTotal={value => `共 ${value} 条`} /> : null}
+        </div>
+      </>}
     </Card>
   </div>;
 }
