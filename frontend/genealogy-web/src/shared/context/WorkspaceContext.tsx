@@ -102,7 +102,7 @@ function restoreControlSnapshot(snapshot: ControlSnapshot) {
 }
 
 function hasUnsavedWizardInput() {
-  const tags = Array.from(document.querySelectorAll('.wizard-page-header .ant-tag'));
+  const tags = Array.from(document.querySelectorAll('.wizard-progress-card .ant-tag'));
   return tags.some(tag => /未保存|保存失败/.test(tag.textContent || ''));
 }
 
