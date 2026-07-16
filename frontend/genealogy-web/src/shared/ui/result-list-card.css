@@ -1,0 +1,37 @@
+.result-list-card {
+  margin-top: 12px;
+}
+
+.result-list-card__selection {
+  height: auto;
+  min-width: 0;
+  padding-inline: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.result-list-card__refresh-error {
+  margin-bottom: 12px;
+}
+
+.result-list-card .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+.result-list-card .ant-pagination {
+  margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .result-list-card .ant-table {
+    min-width: 760px;
+  }
+
+  .result-list-card .ant-btn,
+  .result-list-card .ant-pagination-item,
+  .result-list-card .ant-pagination-prev,
+  .result-list-card .ant-pagination-next {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
 import { createBranchApi, deleteBranchApi, loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
@@ -232,7 +233,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
           </Space>
         </div>
         {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族后查看支派" /> : null}
-        <Table<BranchLike>
+        <ResultListCard<BranchLike>
           size="small"
           bordered
           rowKey={row => String(row.id || '')}

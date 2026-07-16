@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Select, Space, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import {
   RELATIONSHIP_MODE_LABEL,
   buildRelationshipBody,
@@ -330,7 +331,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             </Space>
           </div>
           {!centerPersonId ? <Alert type="info" showIcon message="关系按当前中心人物加载，请先选择中心人物。" /> : null}
-          <Table<RelationshipLike>
+          <ResultListCard<RelationshipLike>
             size="small"
             bordered
             loading={loadingRelationships}
