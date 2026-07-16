@@ -28,9 +28,11 @@ jobs:
       - name: Capture typecheck
         run: |
           set +e
-          npm run typecheck > ../../../tasks/issue-293-typecheck.log 2>&1
+          cd frontend/genealogy-web
+          npm run typecheck > ../../tasks/issue-293-typecheck.log 2>&1
           status=$?
-          echo "exit=$status" >> ../../../tasks/issue-293-typecheck.log
+          echo "exit=$status" >> ../../tasks/issue-293-typecheck.log
+          cd ../..
           rm .github/workflows/issue-293-typecheck-diagnostic.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
