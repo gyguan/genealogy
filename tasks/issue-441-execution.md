@@ -1,6 +1,7 @@
 # Issue #441 执行看板
 
 - Issue：[#441 完成“数据导入”页面规范收尾整改](https://github.com/gyguan/genealogy/issues/441)
+- Draft PR：[#443 完成数据导入规范收尾整改](https://github.com/gyguan/genealogy/pull/443)
 - 工作分支：`agent/issue-441-import-compliance`
 - 目标：完成数据导入页面剩余的预检语义、重复确认、页面状态恢复、模板版本、Steps 和移动端适配。
 - 最后更新时间：2026-07-16（北京时间）
@@ -24,48 +25,63 @@
 
 - Issue 类型：导入页面前端治理，含轻量契约确认。
 - 流程强度：标准流程。
-- 契约强度：优先复用现有接口；只有确认 OpenAPI 缺少明确预检状态时才进行 Contract First 扩展。
+- 契约强度：复用现有接口，并以可选 `validationStatus`、`warningCount`、`templateVersion` 字段兼容明确语义；本次未修改公共 OpenAPI。
 - 验证强度：最简门禁，执行导入聚焦测试、TypeScript、生产构建和 API 契约检查。
-- 拆分结论：改动集中于导入特性目录和既有契约，采用单 PR 三个垂直任务推进；不扩大到审核或数据库治理。
+- 拆分结论：改动集中于导入特性目录和既有契约，采用单 PR 三个垂直任务推进；未扩大到审核或数据库治理。
 
 ## 原子任务
 
 | 任务 | 状态 | 产物 | 验证 | 活跃耗时 |
 |---|---|---|---|---|
-| T1 预检状态、模板信息与重复确认 | 进行中 | 三类导入工作区、状态 helper/契约 | 聚焦测试、类型检查 | 未形成可验证累计值 |
-| T2 URL 恢复与 Steps 状态 | 待开始 | ImportPage、导入记录 URL 状态、测试 | URL/状态测试、类型检查 | 未形成可验证累计值 |
-| T3 移动端与任务详情适配 | 待开始 | 执行任务、导入记录、CSS | 构建、响应式代码复核 | 未形成可验证累计值 |
-| T4 验证、Review 与收尾 | 待开始 | diff、CI、PR/Issue 回写 | 最简门禁 | 未形成可验证累计值 |
+| T1 预检状态、模板信息与重复确认 | 已完成 | 统一导入工作区、显式预检状态模型 | 聚焦测试、类型检查通过 | 未形成可验证累计值 |
+| T2 URL 恢复与 Steps 状态 | 已完成 | Tab/类型/支派/记录筛选分页 URL 状态、Steps 重置 | URL 状态测试、类型检查通过 | 未形成可验证累计值 |
+| T3 移动端与任务详情适配 | 已完成 | 预检/执行/记录 Card List、移动端全屏 Drawer | 生产构建通过 | 未形成可验证累计值 |
+| T4 验证、Review 与收尾 | 已完成 | CI、diff、PR/Issue 回写 | 最简门禁通过 | 未形成可验证累计值 |
 
 ## 测试复用
 
-复用 `src/features/imports/import-workbench-state.ts` 及其 Node 测试模式；新增状态、URL 和预检分类 helper 时保持纯函数，避免引入新的测试框架。
+复用 `import-workspace-progress.ts` 的纯函数测试模式，新增：
 
-## 已知风险
+- `import-preview-model.test.mjs`
+- `import-page-state.test.mjs`
+- `import-history-state.test.mjs`
 
-- 现有后端预检 DTO 可能没有 warning 行级字段；不得继续使用推算逻辑，需确认契约后决定 Contract First 扩展或明确降级。
-- 导入记录现有状态较多，URL 同步必须避免与工作区宗族/支派切换产生循环更新。
-- 移动端 Card List 应复用同一数据与动作，不复制权限或操作判断。
+未引入新的测试框架。
 
-## 验证方案
+## 完成内容
 
-```bash
-cd frontend/genealogy-web
-npm run test:import-workbench
-npm run typecheck
-npm run build
-npm run api:check
-```
+- 三类导入统一复用 `StandardImportWorkspace`，错误阻断和重复确认规则一致。
+- 预检不再通过总数差额或 `rawData` 推算警告；仅使用明确状态，兼容旧字段时只映射重复和错误。
+- 人物、关系、来源均支持显式重复确认，文件、宗族、支派、类型和重新预检会清空确认状态。
+- 页面显示模板版本 `2026.07`、更新时间、格式、编码和大小限制；预检响应包含版本时执行不兼容阻断。
+- 主 Tab、导入类型和支派写入 URL，并支持刷新与浏览器前进/后退恢复。
+- 导入记录概览的状态、类型、格式、分页和页大小写入 URL。
+- 批次创建后重置新建导入流程并跳转执行任务，不再出现 Steps 完成态与上传步骤矛盾。
+- 移动端预检、执行任务和导入记录使用 Card List，任务 Drawer 占满视口。
+- 原失败修正、重试和提交审核能力保留在高级批次处理区。
 
-涉及 OpenAPI 时增加 `npm run api:generate` 并检查生成 diff。
+## 验证结果
+
+- `npm run test:imports`：通过。
+- `npm run typecheck`：通过。
+- `npm run build`：通过。
+- `npm run api:check`：通过。
+- Frontend CI：通过。
+- API Contract Check：通过。
+- diff 范围：仅导入特性目录、前端测试脚本和本任务看板，无数据库、审核生效或无关页面变更。
+
+## 已知风险与降级
+
+- 当前公共契约未声明 `validationStatus`、`warningCount` 和 `templateVersion`；前端支持这些可选字段，但后端未返回时警告显示为 0，不再通过不可靠规则推算。
+- 模板版本不兼容的前端阻断依赖预检响应返回 `templateVersion`；现有接口未返回时仍通过服务端原有表头/字段校验兜底。
+- 未执行真实移动设备和真实导入文件联调；已完成响应式代码适配、状态测试、类型检查和生产构建。
 
 ## 恢复检查点
 
-- 当前阶段：启动门禁完成，准备创建 Draft PR。
-- 已完成：刷新规则、读取 Issue 与评论、确认无关联 PR/分支、创建工作分支和执行看板。
-- 当前任务：T1 预检状态、模板信息与重复确认。
-- 最新提交：执行看板检查点。
-- CI：尚未运行。
-- Review：无。
+- 当前阶段：实现、验证和 Review 完成，准备合入。
+- 已完成：T1～T4。
+- 最新业务提交：`0910666098083d909fd7ae81fb47535ac1562921`。
+- CI：Frontend CI 与 API Contract Check 通过。
+- Review：无已知未解决评论。
 - 阻塞：无。
-- 下一步最小任务：创建 Draft PR 并回写 Issue，然后检查预检 OpenAPI 与三类导入实现。
+- 下一步最小任务：更新 PR 描述、转为 Ready 并合入 `main`。
