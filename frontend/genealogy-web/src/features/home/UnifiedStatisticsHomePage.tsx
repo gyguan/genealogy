@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -275,7 +275,7 @@ export function UnifiedStatisticsHomePage() {
   }
 
   async function loadArea<T>(
-    setter: React.Dispatch<React.SetStateAction<ResourceState<T>>>,
+    setter: Dispatch<SetStateAction<ResourceState<T>>>,
     request: () => Promise<T>,
     onSuccess?: (data: T) => void
   ) {
@@ -320,6 +320,7 @@ export function UnifiedStatisticsHomePage() {
   }
 
   async function load(clanIdOverride?: string) {
+    const hadLoadedClans = clansState.loaded;
     setClansState(previous => startResource(previous));
     try {
       const clans = toRecordList(await apiClient.get('/clans'));
@@ -340,7 +341,7 @@ export function UnifiedStatisticsHomePage() {
       await loadClanAreas(clanId);
     } catch (error) {
       setClansState(previous => failureResource(previous, error));
-      if (!clansState.loaded) clearClanAreaStates();
+      if (!hadLoadedClans) clearClanAreaStates();
     }
   }
 
