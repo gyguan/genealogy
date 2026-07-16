@@ -8,6 +8,7 @@ import './styles.css';
 import './experience.css';
 import './mvp1-wizard.css';
 import './mvp1-wizard-simplified.css';
+import './mvp1-wizard-enhancements.css';
 import './mvp1-source-step.css';
 import './mvp1-tree-step.css';
 import './mvp1-person-step.css';
@@ -21,7 +22,6 @@ import './person-archive-source.css';
 import './person-edit-page.css';
 import './person-detail-page.css';
 import './runtime-error.css';
-import './home-dashboard-overrides.css';
 import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
 
