@@ -43,11 +43,30 @@
   min-height: 156px;
 }
 
+.standard-import-workspace,
 .person-import-workspace,
 .relationship-import-workspace,
 .source-import-workspace {
   display: grid;
   gap: 16px;
+}
+
+.import-preview-card-list,
+.import-execution-card-list,
+.import-history-card-list {
+  display: none;
+}
+
+.import-mobile-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.import-mobile-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 @media (max-width: 767px) {
@@ -63,15 +82,30 @@
     padding-inline-start: 0;
   }
 
-  .import-type-selector {
-    max-width: none;
-  }
-
+  .import-type-selector,
   .import-target-field {
     max-width: none;
   }
 
   .import-center-page .ant-btn {
     min-height: 40px;
+  }
+
+  .import-preview-table,
+  .import-execution-table,
+  .import-history-table {
+    display: none;
+  }
+
+  .import-preview-card-list,
+  .import-execution-card-list,
+  .import-history-card-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .import-center-page .ant-drawer-content-wrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
   }
 }
