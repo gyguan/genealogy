@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 
+// One-time migration: decouple business-step navigation from completion order.
 const statePath = 'frontend/genealogy-web/src/features/mvp1/domain/wizardStepState.ts';
 let state = fs.readFileSync(statePath, 'utf8');
 
