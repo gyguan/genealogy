@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Empty, Form, Input, Select, Space, Table, Tag } from 'antd';
+import { Breadcrumb, Button, Card, Empty, Form, Input, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
@@ -82,14 +82,7 @@ function personStatus(row: any) {
 function statusText(row: any) {
   const status = String(personStatus(row)).trim().toLowerCase();
   const labels: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '正式',
-    active: '正式',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
+    draft: '草稿', pending: '待审核', pending_review: '待审核', official: '正式', active: '正式', approved: '已通过', rejected: '已驳回', archived: '已归档'
   };
   return labels[status] || (status ? '未知状态' : '-');
 }
@@ -165,6 +158,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const branchOptions = useMemo(() => toRecordList<any>(branches), [branches]);
   const generationWordOptions = useMemo(() => uniqueTexts(generationItems.map(item => item.word || item.generationWord)), [generationItems]);
   const generationNoOptions = useMemo(() => sortGenerationNos(uniqueTexts(generationItems.map(item => item.generationNo))), [generationItems]);
+  const currentClanName = clanOptions.find(item => String(item.id) === workspace.clanId);
 
   useEffect(() => { void loadClans(); }, []);
   useEffect(() => { void loadClanFilterOptions(workspace.clanId); }, [workspace.clanId]);
@@ -211,8 +205,9 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     workspace.setClanId(nextClanId);
     workspace.setBranchId('');
     setForm({ ...emptySearch });
+    setPageNo(1);
     setRawData(undefined);
-    if (changed) notify({ message: '已切换宗族，搜索条件和结果已清空，请重新搜索。' });
+    if (changed) notify({ message: '已切换宗族，查询条件和结果已清空。' });
     await loadClanFilterOptions(nextClanId);
   }
 
@@ -244,6 +239,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   }
 
   function reset() {
+    workspace.setBranchId('');
     setForm({ ...emptySearch });
     setPageNo(1);
     setRawData(undefined);
@@ -272,98 +268,101 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const rows = useMemo(() => toRecordList(rawData) as any[], [rawData]);
   const total = (rawData as any)?.total ?? rows.length;
   const currentPage = Number((rawData as any)?.pageNo ?? pageNo ?? 1);
-  const totalPages = Number((rawData as any)?.totalPages ?? Math.max(1, Math.ceil(total / PAGE_SIZE)));
+  const hasQueried = rawData !== undefined;
 
   return (
-    <div className="person-archive-search">
-      <Card className="archive-search-panel archive-search-panel--compact" title="人物档案检索" loading={filterLoading}>
-        <Form layout="vertical" className="archive-search-form" onFinish={() => void search(1)}>
-          <Form.Item label="宗族名称">
-            <Select
-              showSearch
-              optionFilterProp="label"
-              value={workspace.clanId}
-              onChange={value => void changeClan(value)}
-              options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
-            />
-          </Form.Item>
-          <Form.Item label="关键词">
-            <Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" />
-          </Form.Item>
+    <div className="person-archive-search person-archive-list-page">
+      <section className="person-archive-page-header" aria-labelledby="person-archive-title">
+        <div>
+          <Breadcrumb items={[{ title: '人物档案' }, { title: '档案查询' }]} />
+          <Typography.Title id="person-archive-title" level={3}>人物档案</Typography.Title>
+          <Typography.Paragraph type="secondary">按人物身份、世系和档案状态查询宗族人物资料。</Typography.Paragraph>
+          <Space wrap size={8}>
+            <Typography.Text type="secondary">当前宗族范围</Typography.Text>
+            <Tag color={workspace.clanId ? 'processing' : 'default'}>{currentClanName ? clanLabel(currentClanName) : '未选择宗族'}</Tag>
+          </Space>
+        </div>
+        <div className="person-archive-page-context">
+          <Typography.Text type="secondary">切换宗族</Typography.Text>
+          <Select
+            aria-label="切换宗族"
+            showSearch
+            optionFilterProp="label"
+            value={workspace.clanId}
+            loading={filterLoading}
+            onChange={value => void changeClan(value)}
+            options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
+          />
+        </div>
+      </section>
+
+      <Card className="person-archive-query-card" title="查询条件" loading={filterLoading}>
+        <Form layout="vertical" onFinish={() => void search(1)}>
+          <div className="person-archive-filter-grid">
+            <Form.Item label="关键词">
+              <Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名 / 谱名 / 字号 / 籍贯 / 墓葬" allowClear />
+            </Form.Item>
+            <Form.Item label="支派">
+              <Select showSearch optionFilterProp="label" value={form.branchId} disabled={!workspace.clanId} onChange={changeBranch} options={[{ value: '', label: '全部' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} />
+            </Form.Item>
+            <Form.Item label="档案状态">
+              <Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} />
+            </Form.Item>
+          </div>
+
+          <Button type="link" className="person-archive-more-filter" onClick={() => setAdvancedOpen(previous => !previous)}>
+            {advancedOpen ? '收起更多筛选' : '更多筛选'}
+          </Button>
+
           {advancedOpen ? (
-            <>
-              <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="姓名" /></Form.Item>
+            <div className="person-archive-filter-grid person-archive-filter-grid--advanced">
+              <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="精确或模糊姓名" allowClear /></Form.Item>
               <Form.Item label="性别"><Select value={form.gender} onChange={value => patch('gender', value)} options={genderOptions} /></Form.Item>
-              <Form.Item label="字辈">
-                <Select
-                  value={form.generationWord}
-                  disabled={!workspace.clanId || filterLoading}
-                  onChange={value => patch('generationWord', value)}
-                  options={[{ value: '', label: '全部' }, ...generationWordOptions.map(word => ({ value: word, label: word }))]}
-                />
-              </Form.Item>
-              <Form.Item label="代次">
-                <Select
-                  value={form.generationNo}
-                  disabled={!workspace.clanId || filterLoading}
-                  onChange={value => patch('generationNo', value)}
-                  options={[{ value: '', label: '全部' }, ...generationNoOptions.map(no => ({ value: no, label: generationNoLabel(no) }))]}
-                />
-              </Form.Item>
-              <Form.Item label="支派">
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  value={form.branchId}
-                  disabled={!workspace.clanId || filterLoading}
-                  onChange={changeBranch}
-                  options={[{ value: '', label: '全部' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]}
-                />
-              </Form.Item>
-              <Form.Item label="档案状态"><Select value={form.dataStatus} onChange={value => patch('dataStatus', value)} options={statusOptions} /></Form.Item>
-            </>
+              <Form.Item label="字辈"><Select value={form.generationWord} disabled={!workspace.clanId} onChange={value => patch('generationWord', value)} options={[{ value: '', label: '全部' }, ...generationWordOptions.map(word => ({ value: word, label: word }))]} /></Form.Item>
+              <Form.Item label="代次"><Select value={form.generationNo} disabled={!workspace.clanId} onChange={value => patch('generationNo', value)} options={[{ value: '', label: '全部' }, ...generationNoOptions.map(no => ({ value: no, label: generationNoLabel(no) }))]} /></Form.Item>
+            </div>
           ) : null}
-          <Form.Item className="archive-search-actions-item">
-            <Space wrap>
-              <Button type="primary" htmlType="submit" disabled={querying || !workspace.clanId}>搜索</Button>
+
+          <div className="person-archive-query-actions">
+            <Space>
               <Button onClick={reset}>重置</Button>
-              <Button onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起高级筛选' : '高级筛选'}</Button>
+              <Button type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
             </Space>
-          </Form.Item>
+          </div>
         </Form>
+      </Card>
 
-        <Space className="archive-search-summary archive-search-summary--compact" wrap>
-          <Tag>第 {currentPage} / {totalPages} 页</Tag>
-          <Tag>本页 {rows.length} 条</Tag>
-          <Tag>共 {total} 条</Tag>
-        </Space>
-
+      <Card className="person-archive-result-card" title={`人物档案（${hasQueried ? total : 0}）`}>
+        <div className="person-archive-result-toolbar">
+          <Typography.Text type="secondary">
+            {hasQueried ? `已按当前条件查询，共 ${total} 条记录` : '请设置查询条件后开始查询'}
+          </Typography.Text>
+        </div>
         <Table<any>
           size="small"
           bordered
           rowKey={(row, index) => String(row.id || row.personId || index)}
           dataSource={rows}
-          pagination={{
+          pagination={hasQueried ? {
             current: currentPage,
             pageSize: PAGE_SIZE,
             total,
             showSizeChanger: false,
             showTotal: value => `共 ${value} 条`,
             onChange: nextPage => void search(nextPage)
-          }}
+          } : false}
           loading={querying}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无人物记录，请先选择宗族并搜索，或调整筛选条件。" /> }}
+          locale={{
+            emptyText: (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '尚未查询，请先选择宗族并设置查询条件。'}
+              />
+            )
+          }}
           onRow={row => ({ onClick: () => openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })}
           columns={[
-            {
-              key: 'name',
-              title: '姓名',
-              render: (_value, row) => (
-                <Button type="link" className="archive-person-name-link" onClick={event => { event.stopPropagation(); openDetail(row); }}>
-                  {display(personName(row), '未命名人物')}
-                </Button>
-              )
-            },
+            { key: 'name', title: '姓名', render: (_value, row) => <Button type="link" className="archive-person-name-link" onClick={event => { event.stopPropagation(); openDetail(row); }}>{display(personName(row), '未命名人物')}</Button> },
             { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) },
             { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(personGender(row)) },
             { key: 'generationWord', title: '字辈', width: 90, render: (_value, row) => display(personGenerationWord(row)) },
@@ -373,18 +372,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
             { key: 'isLiving', title: '是否在世', width: 110, render: (_value, row) => livingText(row.isLiving) },
             { key: 'spouseName', title: '配偶', render: (_value, row) => spouseText(row) },
             { key: 'dataStatus', title: '档案状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-            {
-              key: 'actions',
-              title: '操作',
-              width: 130,
-              fixed: 'right',
-              render: (_value, row) => (
-                <Space size="small" onClick={event => event.stopPropagation()}>
-                  <Button type="link" onClick={() => openDetail(row)}>查看</Button>
-                  <Button type="link" onClick={() => openEditor(row)}>编辑</Button>
-                </Space>
-              )
-            }
+            { key: 'actions', title: '操作', width: 130, fixed: 'right', render: (_value, row) => <Space size="small" onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openDetail(row)}>查看</Button><Button type="link" onClick={() => openEditor(row)}>编辑</Button></Space> }
           ]}
           scroll={{ x: 'max-content' }}
         />
