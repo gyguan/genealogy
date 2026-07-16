@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal } from 'antd';
+import { Button, Modal } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { StepRenderer, type Mvp1StepKey } from './StepRenderer';
-import { loadClans, type ClanLike } from './services/clanService';
-import { WizardShell } from './WizardShell';
+import {
+  deriveWizardStepStates,
+  emptyWizardStateSnapshot,
+  getWizardStepGate,
+  type Mvp1StepKey,
+  type WizardStateSnapshot
+} from './domain/wizardStepState';
+import { StepRenderer } from './StepRenderer';
+import { loadWizardStateSnapshot } from './services/wizardStepStateService';
+import { WizardShell, type WizardGateNotice } from './WizardShell';
 
 type Notice = { message: string; id?: string | number };
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type SaveState = { status: 'unsaved' | 'saved'; savedAt?: string };
+type SkipState = { relationship: boolean; source: boolean };
 
 const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
   { key: 'clan', title: '宗族', desc: '创建宗族基础信息，完成后进入支派维护。' },
@@ -19,8 +27,8 @@ const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
   { key: 'review', title: '审核', desc: '查看待审任务并补充提交草稿对象。' }
 ];
 
-function clanLabel(clan?: ClanLike) {
-  return clan?.clanName || clan?.surname || '已选择宗族';
+function clanLabel(clan?: { clanName?: unknown; surname?: unknown }) {
+  return String(clan?.clanName || clan?.surname || '已选择宗族');
 }
 
 function navigateToView(view: 'home' | 'reviewCenter') {
@@ -31,43 +39,99 @@ function navigateToView(view: 'home' | 'reviewCenter') {
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
+function loadFailureSnapshot(active: Mvp1StepKey, message: string): WizardStateSnapshot {
+  const snapshot = emptyWizardStateSnapshot();
+  snapshot.errors[active] = message;
+  return snapshot;
+}
+
 export function Mvp1WizardPage({ notify }: Props) {
   const workspace = useWorkspace();
   const [active, setActive] = useState<Mvp1StepKey>('clan');
   const [result, setResult] = useState<Notice | undefined>();
-  const [clans, setClans] = useState<ClanLike[]>([]);
   const [saveState, setSaveState] = useState<SaveState>({ status: 'unsaved' });
+  const [skipState, setSkipState] = useState<SkipState>({ relationship: false, source: false });
+  const [wizardSnapshot, setWizardSnapshot] = useState<WizardStateSnapshot>(emptyWizardStateSnapshot);
+  const [stateLoading, setStateLoading] = useState(true);
+  const [gateNotice, setGateNotice] = useState<WizardGateNotice<Mvp1StepKey> | undefined>();
 
   useEffect(() => {
-    let mounted = true;
-    void loadClans().then(rows => {
-      if (mounted) setClans(rows);
+    setSkipState({ relationship: false, source: false });
+  }, [workspace.clanId, workspace.branchId, workspace.personId]);
+
+  useEffect(() => {
+    setSkipState(current => current.source ? { ...current, source: false } : current);
+  }, [workspace.relationshipId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setStateLoading(true);
+    void loadWizardStateSnapshot({
+      clanId: workspace.clanId,
+      branchId: workspace.branchId,
+      personId: workspace.personId,
+      relationshipId: workspace.relationshipId,
+      sourceId: workspace.sourceId,
+      skipped: skipState
+    }).then(snapshot => {
+      if (!cancelled) setWizardSnapshot(snapshot);
+    }).catch(error => {
+      if (!cancelled) {
+        const message = error instanceof Error && error.message ? error.message : '加载向导状态失败';
+        setWizardSnapshot(loadFailureSnapshot(active, message));
+      }
+    }).finally(() => {
+      if (!cancelled) setStateLoading(false);
     });
     return () => {
-      mounted = false;
+      cancelled = true;
     };
-  }, []);
-
-  const steps = useMemo(() => [
-    { ...stepOrder[0], ready: Boolean(workspace.clanId) },
-    { ...stepOrder[1], ready: Boolean(workspace.branchId) },
-    { ...stepOrder[2], ready: Boolean(workspace.branchId) },
-    { ...stepOrder[3], ready: Boolean(workspace.personId) },
-    { ...stepOrder[4], ready: Boolean(workspace.relationshipId) },
-    { ...stepOrder[5], ready: Boolean(workspace.sourceId) },
-    { ...stepOrder[6], ready: Boolean(workspace.reviewTaskId) }
-  ], [
+  }, [
+    active,
     workspace.clanId,
     workspace.branchId,
     workspace.personId,
     workspace.relationshipId,
     workspace.sourceId,
-    workspace.reviewTaskId
+    workspace.reviewTaskId,
+    skipState.relationship,
+    skipState.source
   ]);
 
+  const stepDecisions = useMemo(() => deriveWizardStepStates({
+    ...wizardSnapshot,
+    clanId: workspace.clanId,
+    branchId: workspace.branchId,
+    personId: workspace.personId,
+    relationshipId: workspace.relationshipId,
+    sourceId: workspace.sourceId,
+    skipped: skipState
+  }), [
+    wizardSnapshot,
+    workspace.clanId,
+    workspace.branchId,
+    workspace.personId,
+    workspace.relationshipId,
+    workspace.sourceId,
+    skipState
+  ]);
+
+  const steps = useMemo(() => stepOrder.map(meta => {
+    const decision = stepDecisions.find(item => item.key === meta.key);
+    return {
+      ...meta,
+      state: decision?.state || 'waiting',
+      stateLabel: decision?.stateLabel || '待开放',
+      canEnter: decision?.canEnter || false,
+      reason: decision?.reason || '正在计算步骤状态。',
+      action: decision?.action || '请稍后重试'
+    };
+  }), [stepDecisions]);
+
   const activeIndex = Math.max(0, stepOrder.findIndex(step => step.key === active));
-  const selectedClan = clans.find(clan => String(clan.id || '') === String(workspace.clanId || ''));
-  const currentClanLabel = workspace.clanId ? clanLabel(selectedClan) : '尚未选择宗族';
+  const activeDecision = stepDecisions.find(step => step.key === active);
+  const selectedClan = wizardSnapshot.clans.find(clan => String(clan.id || '') === String(workspace.clanId || ''));
+  const currentClanLabel = workspace.clanId ? clanLabel(selectedClan as { clanName?: unknown; surname?: unknown } | undefined) : '尚未选择宗族';
   const saveStatus = saveState.status === 'saved'
     ? { label: saveState.savedAt ? `本次会话已保存 · ${saveState.savedAt}` : '本次会话已保存', color: 'success' }
     : { label: '存在未保存进度', color: 'warning' };
@@ -76,17 +140,33 @@ export function Mvp1WizardPage({ notify }: Props) {
     setSaveState(current => current.status === 'unsaved' ? current : { status: 'unsaved' });
   }
 
-  function changeStep(step: Mvp1StepKey) {
+  function changeStepUnchecked(step: Mvp1StepKey) {
     setActive(step);
     setResult(undefined);
+    setGateNotice(undefined);
     setSaveState({ status: 'unsaved' });
+  }
+
+  function requestStepChange(step: Mvp1StepKey) {
+    const gate = getWizardStepGate(stepDecisions, step);
+    if (!gate.allowed) {
+      setGateNotice({
+        title: gate.title || '该步骤暂未开放',
+        reason: gate.reason || '前置条件尚未满足。',
+        action: gate.action || '请先完成前置步骤',
+        blockingStep: gate.blockingStep
+      });
+      return false;
+    }
+    changeStepUnchecked(step);
+    return true;
   }
 
   function handleSubmittedReview(taskId: string) {
     if (taskId) workspace.setReviewTaskId(taskId);
-    setResult({ message: '审核任务已提交', id: taskId });
+    setResult({ message: '审核任务已提交；当前步骤将在审核通过后标记为完成。', id: taskId });
     setSaveState({ status: 'saved', savedAt: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) });
-    setActive('review');
+    setGateNotice(undefined);
   }
 
   function saveWizardProgress() {
@@ -98,13 +178,13 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   function goPrevious() {
     const previous = stepOrder[activeIndex - 1];
-    if (previous) changeStep(previous.key);
+    if (previous) requestStepChange(previous.key);
   }
 
   function goNext() {
     const next = stepOrder[activeIndex + 1];
     if (next) {
-      changeStep(next.key);
+      requestStepChange(next.key);
       return;
     }
     navigateToView('reviewCenter');
@@ -120,6 +200,34 @@ export function Mvp1WizardPage({ notify }: Props) {
     });
   }
 
+  function toggleSkip(step: 'relationship' | 'source') {
+    if (skipState[step]) {
+      setSkipState(current => ({ ...current, [step]: false }));
+      setResult({ message: step === 'relationship' ? '已恢复人物关系维护要求。' : '已恢复来源绑定要求。' });
+      return;
+    }
+    const relationship = step === 'relationship';
+    Modal.confirm({
+      title: relationship ? '确认本次暂不维护人物关系？' : '确认本次暂不绑定来源？',
+      content: relationship
+        ? '确认后，关系步骤将按“已跳过”完成。本次确认仅在当前建谱会话中有效。'
+        : '确认后，来源步骤将按“已跳过”完成。本次确认仅在当前建谱会话中有效。',
+      okText: relationship ? '确认暂不维护' : '确认暂不绑定',
+      cancelText: '取消',
+      onOk: () => {
+        setSkipState(current => ({ ...current, [step]: true }));
+        setGateNotice(undefined);
+        setResult({ message: relationship ? '已确认本次暂不维护人物关系。' : '已确认本次暂不绑定来源。' });
+      }
+    });
+  }
+
+  const skipAction = active === 'relationship' && (skipState.relationship || activeDecision?.state !== 'completed')
+    ? <Button onClick={() => toggleSkip('relationship')}>{skipState.relationship ? '恢复维护关系' : '暂不维护关系'}</Button>
+    : active === 'source' && (skipState.source || activeDecision?.state !== 'completed')
+      ? <Button onClick={() => toggleSkip('source')}>{skipState.source ? '恢复绑定来源' : '暂不绑定来源'}</Button>
+      : undefined;
+
   return (
     <WizardShell
       title="建谱向导"
@@ -130,21 +238,26 @@ export function Mvp1WizardPage({ notify }: Props) {
       activeStep={active}
       loaded
       result={result}
+      gateNotice={gateNotice}
       onExit={confirmExit}
-      onStepChange={changeStep}
+      onStepChange={requestStepChange}
+      onGateAction={requestStepChange}
       onContentChange={markUnsaved}
       navigation={{
         previousDisabled: activeIndex === 0,
+        nextDisabled: stateLoading,
+        nextLoading: stateLoading,
         onPrevious: goPrevious,
         onSaveDraft: saveWizardProgress,
         onNext: goNext,
-        nextLabel: activeIndex === stepOrder.length - 1 ? '进入审核中心' : '下一步'
+        nextLabel: activeIndex === stepOrder.length - 1 ? '进入审核中心' : '下一步',
+        extra: skipAction
       }}
     >
       <StepRenderer
         activeStep={active}
         notify={notify}
-        onStepChange={changeStep}
+        onStepChange={changeStepUnchecked}
         onSubmittedReview={handleSubmittedReview}
       />
     </WizardShell>

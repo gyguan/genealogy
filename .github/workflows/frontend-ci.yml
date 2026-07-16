@@ -70,6 +70,10 @@ jobs:
         shell: bash
         run: set -o pipefail; npm run test:tree 2>&1 | tee tree-test-output.log
 
+      - name: Test wizard state model
+        working-directory: frontend/genealogy-web
+        run: npm run test:wizard
+
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
         run: npm run typecheck
