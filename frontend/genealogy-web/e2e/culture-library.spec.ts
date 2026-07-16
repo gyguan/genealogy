@@ -129,7 +129,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   expectOnlyItemTabRequests(requestedPaths);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByText('文化资料检索')).toBeVisible();
+  await expect(page.getByText('文化资料查询')).toBeVisible();
   await expect(page.getByRole('button', { name: /新\s*增\s*资\s*料/ })).toBeVisible();
 });
 
