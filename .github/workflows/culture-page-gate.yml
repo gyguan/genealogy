@@ -41,7 +41,10 @@ jobs:
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
-        run: npm run typecheck
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee /tmp/culture-typecheck.log
 
       - name: Build production frontend
         working-directory: frontend/genealogy-web
@@ -79,5 +82,6 @@ jobs:
             frontend/genealogy-web/playwright-report
             frontend/genealogy-web/test-results
             /tmp/culture-vite.log
+            /tmp/culture-typecheck.log
           if-no-files-found: ignore
           retention-days: 5
