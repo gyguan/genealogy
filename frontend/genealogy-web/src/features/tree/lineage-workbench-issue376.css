@@ -41,16 +41,37 @@
   margin-bottom: 16px;
 }
 
+/* Ant Design Form.Item 默认保留底部间距，会让 Select 高于同排按钮。 */
+.lineage-query-toolbar--standardized > .ant-form-item {
+  margin-bottom: 0;
+}
+
+.lineage-query-toolbar--standardized .ant-select,
+.lineage-query-toolbar--standardized .ant-btn {
+  min-height: 32px;
+}
+
 .lineage-query-secondary-action,
 .lineage-query-action {
   min-height: 32px;
   display: flex;
   align-items: center;
+  align-self: end;
   gap: 8px;
+}
+
+.lineage-query-secondary-action .ant-btn,
+.lineage-query-action .ant-btn {
+  height: 32px;
 }
 
 .lineage-query-action {
   justify-content: flex-end;
+}
+
+/* 常态不展示“条件已应用”，仅在存在未生效修改时提示。 */
+.lineage-query-action > .ant-tag:not(.ant-tag-processing) {
+  display: none;
 }
 
 .lineage-more-settings {
