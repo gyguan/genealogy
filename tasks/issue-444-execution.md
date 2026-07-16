@@ -2,14 +2,23 @@
 
 - Issue：[#444 展开全部筛选条件并统一工具栏对齐](https://github.com/gyguan/genealogy/issues/444)
 - 分支：`agent/issue-444-expand-lineage-filters`
+- PR：[#446](https://github.com/gyguan/genealogy/pull/446)
 - 目标：移除“更多设置”，将全部筛选条件直接展开并统一对齐。
 - 范围：`LineageTreeProductPage.tsx`、`lineage-workbench-issue376.css`。
 - 非目标：不修改 Tree API、URL 状态、查询逻辑和数据模型。
 
 ## 任务
 
-| 任务 | 状态 |
-|---|---|
-| 建立 Issue、分支、看板和 Draft PR | ✅ |
-| 展开全部筛选条件并重构工具栏栅格 | 🔄 |
-| 执行 CI、检查差异并合入 | ⏳ |
+| 任务 | 状态 | 结果 |
+|---|---|---|
+| 建立 Issue、分支、看板和 Draft PR | ✅ | 完成 |
+| 展开全部筛选条件并重构工具栏栅格 | ✅ | 人物/支派模式条件全部直接展示 |
+| 清理旧工具栏覆盖样式 | ✅ | 删除旧 grid、Popover 和 more-settings 规则 |
+| 执行 CI、检查差异并合入 | ✅ | Frontend CI run 29477242038 成功 |
+
+## 验证结果
+
+- Tree graph model：通过
+- TypeScript typecheck：通过
+- Production build：通过
+- 临时自动修改 workflow：已从分支删除
