@@ -5,6 +5,7 @@ import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.culture.application.CultureItemApplicationService;
+import com.genealogy.culture.application.CultureOverviewApplicationService;
 import com.genealogy.culture.domain.CultureItemDomainService;
 import com.genealogy.culture.dto.CultureCommandResponse;
 import com.genealogy.culture.dto.CultureItemCreateRequest;
@@ -36,13 +37,16 @@ import java.util.List;
 public class CultureItemController {
 
     private final CultureItemApplicationService cultureItemApplicationService;
+    private final CultureOverviewApplicationService cultureOverviewApplicationService;
     private final RequestContextApplicationService requestContextApplicationService;
 
     public CultureItemController(
             CultureItemApplicationService cultureItemApplicationService,
+            CultureOverviewApplicationService cultureOverviewApplicationService,
             RequestContextApplicationService requestContextApplicationService
     ) {
         this.cultureItemApplicationService = cultureItemApplicationService;
+        this.cultureOverviewApplicationService = cultureOverviewApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
     }
 
@@ -52,7 +56,7 @@ public class CultureItemController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(cultureItemApplicationService.getOverview(clanId, context.userId()));
+        return ApiResponse.success(cultureOverviewApplicationService.getOverview(clanId, context.userId()));
     }
 
     @GetMapping("/clans/{clanId}/culture-items")

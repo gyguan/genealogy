@@ -9,6 +9,18 @@ public record CultureOverviewResponse(
         List<CultureItemSummaryResponse> featuredItems,
         List<MigrationEventSummaryResponse> migrationHighlights,
         List<CultureSiteSummaryResponse> siteHighlights,
+        List<CultureOverviewEntryResponse> entries,
         List<String> missingHints
 ) {
+    public CultureOverviewResponse(
+            Long clanId,
+            String clanName,
+            CultureOverviewStatisticsResponse statistics,
+            List<CultureItemSummaryResponse> featuredItems,
+            List<MigrationEventSummaryResponse> migrationHighlights,
+            List<CultureSiteSummaryResponse> siteHighlights,
+            List<String> missingHints
+    ) {
+        this(clanId, clanName, statistics, featuredItems, migrationHighlights, siteHighlights, List.of(), missingHints);
+    }
 }
