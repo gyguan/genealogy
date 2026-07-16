@@ -36,7 +36,7 @@ export type HomeDashboardRiskResponse = {
   key: string;
   label: string;
   count: number;
-  severity: string;
+  severity: 'ok' | 'low' | 'medium' | 'high';
   reason: string;
   targetView: string;
   targetQuery: string;
