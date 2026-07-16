@@ -1,0 +1,160 @@
+.lineage-tree-page--standardized {
+  display: grid;
+  gap: 16px;
+}
+
+.lineage-tree-page--standardized .lineage-person-search {
+  width: 100%;
+}
+
+.lineage-tree-page--standardized .lineage-search-result-item {
+  cursor: pointer;
+}
+
+.lineage-tree-page--standardized .lineage-search-result-item.is-previewing {
+  background: #f5faff;
+  box-shadow: inset 3px 0 0 #1677ff;
+}
+
+.lineage-workbench-card .ant-card-head {
+  min-height: 56px;
+}
+
+.lineage-scope-summary,
+.lineage-canvas-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lineage-scope-summary {
+  margin-bottom: 16px;
+}
+
+.lineage-query-toolbar--standardized {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) minmax(150px, .8fr) auto auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lineage-query-secondary-action,
+.lineage-query-action {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineage-query-action {
+  justify-content: flex-end;
+}
+
+.lineage-more-settings {
+  width: min(360px, calc(100vw - 48px));
+  display: grid;
+  gap: 12px;
+}
+
+.lineage-canvas-view-bar {
+  padding: 12px 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.lineage-accessible-list {
+  max-height: 680px;
+  overflow: auto;
+  padding: 8px 4px;
+}
+
+.lineage-accessible-list section + section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.lineage-accessible-list .ant-list-item.is-selected {
+  background: #f5faff;
+}
+
+.lineage-inspector-actions {
+  width: 100%;
+}
+
+.lineage-tree-page--standardized .lineage-graph-toolbar .ant-btn {
+  min-height: 32px;
+}
+
+.lineage-tree-page--standardized .lineage-graph-legend {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  max-width: min(520px, calc(100% - 32px));
+  padding: 8px 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+
+.lineage-tree-page--standardized .lineage-graph-shell {
+  position: relative;
+}
+
+@media (max-width: 991px) {
+  .lineage-query-toolbar--standardized {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lineage-query-action {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 767px) {
+  .lineage-query-toolbar--standardized {
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-query-secondary-action,
+  .lineage-query-action,
+  .lineage-query-secondary-action .ant-btn,
+  .lineage-query-action .ant-btn {
+    width: 100%;
+  }
+
+  .lineage-query-action {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-canvas-view-bar .ant-typography {
+    width: 100%;
+  }
+
+  .lineage-tree-page--standardized .lineage-graph-toolbar .ant-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .lineage-tree-page--standardized .lineage-graph-legend {
+    position: static;
+    max-width: none;
+    margin: 8px 12px 12px;
+  }
+
+  .lineage-inspector-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-inspector-actions .ant-btn,
+  .lineage-inspector-actions .ant-dropdown-trigger {
+    width: 100%;
+    min-height: 40px;
+  }
+}
