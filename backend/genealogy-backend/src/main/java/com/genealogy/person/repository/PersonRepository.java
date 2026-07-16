@@ -30,6 +30,104 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long>, Jpa
 
     boolean existsByClanIdAndPersonCodeAndIdNotAndDeletedAtIsNull(Long clanId, String personCode, Long id);
 
+    long countByClanIdAndDeletedAtIsNullAndDataStatus(Long clanId, String dataStatus);
+
+    @Query("""
+            select p.gender, count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+            group by p.gender
+            """)
+    List<Object[]> countDashboardByGender(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select p.isLiving, count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+            group by p.isLiving
+            """)
+    List<Object[]> countDashboardByLivingStatus(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select p.generationNo, count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+            group by p.generationNo
+            order by p.generationNo
+            """)
+    List<Object[]> countDashboardByGenerationNo(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+              and (p.generationNo is not null or (p.generationWord is not null and p.generationWord <> ''))
+            """)
+    long countDashboardGenerationMaintained(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+              and (p.birthDate is not null or p.deathDate is not null)
+            """)
+    long countDashboardVitalDatesMaintained(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+              and (
+                  (p.biography is not null and p.biography <> '')
+                  or (p.epitaph is not null and p.epitaph <> '')
+                  or (p.titleOrHonor is not null and p.titleOrHonor <> '')
+              )
+            """)
+    long countDashboardBiographyMaintained(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select count(distinct p.branchId)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+              and p.branchId is not null
+            """)
+    long countDashboardCoveredBranches(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
     @Query("""
             select p
             from PersonEntity p
