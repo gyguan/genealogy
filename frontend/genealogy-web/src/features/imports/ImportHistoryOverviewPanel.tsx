@@ -3,6 +3,7 @@ import { Alert, Button, Card, Empty, Select, Space, Table, Tag, Typography } fro
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { readImportHistoryUrl, writeImportHistoryUrl } from './import-history-state';
 import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
 
 type Props = { refreshKey: number };
@@ -21,51 +22,25 @@ type ImportJobSummary = {
   createdAt?: string;
 };
 
-type HistoryUrlState = {
-  status?: string;
-  type?: string;
-  format?: string;
-  page: number;
-  pageSize: number;
-};
-
 const statusOptions = [
   { value: 'running', label: '处理中' },
   { value: 'completed', label: '已完成' },
   { value: 'partial_completed', label: '部分完成' },
   { value: 'failed', label: '失败' }
 ];
-
-function readHistoryUrl(): HistoryUrlState {
-  const params = new URLSearchParams(window.location.search);
-  const page = Number(params.get('historyPage') || 1);
-  const pageSize = Number(params.get('historyPageSize') || 10);
-  return {
-    status: params.get('historyStatus') || undefined,
-    type: params.get('historyType') || undefined,
-    format: params.get('historyFormat') || undefined,
-    page: Number.isInteger(page) && page > 0 ? page : 1,
-    pageSize: [10, 20, 50].includes(pageSize) ? pageSize : 10
-  };
-}
-
-function writeHistoryUrl(state: HistoryUrlState) {
-  const params = new URLSearchParams(window.location.search);
-  const setOptional = (key: string, value?: string) => value ? params.set(key, value) : params.delete(key);
-  setOptional('historyStatus', state.status);
-  setOptional('historyType', state.type);
-  setOptional('historyFormat', state.format);
-  params.set('historyPage', String(state.page));
-  params.set('historyPageSize', String(state.pageSize));
-  window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
-}
+const processingLabels: Record<string, string> = {
+  processing: '处理中',
+  running: '处理中',
+  correction_required: '待修正',
+  ready_for_review: '可提交审核',
+  completed: '已完成',
+  partial_completed: '部分完成',
+  failed: '失败'
+};
 
 function processingText(row: ImportJobSummary) {
   const status = String(row.processingStatus || row.status || '').toLowerCase();
-  return {
-    processing: '处理中', running: '处理中', correction_required: '待修正',
-    ready_for_review: '可提交审核', completed: '已完成', partial_completed: '部分完成', failed: '失败'
-  }[status] || row.status || '待维护';
+  return processingLabels[status] || row.status || '待维护';
 }
 
 function processingColor(row: ImportJobSummary) {
@@ -84,7 +59,7 @@ function formatDateTime(value?: string) {
 
 export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
   const workspace = useWorkspace();
-  const initial = useMemo(readHistoryUrl, []);
+  const initial = useMemo(() => readImportHistoryUrl(window.location.search), []);
   const [status, setStatus] = useState(initial.status);
   const [importType, setImportType] = useState(initial.type);
   const [fileFormat, setFileFormat] = useState(initial.format);
@@ -94,6 +69,20 @@ export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  function applyUrlState() {
+    const next = readImportHistoryUrl(window.location.search);
+    setStatus(next.status);
+    setImportType(next.type);
+    setFileFormat(next.format);
+    setPageNo(next.page);
+    setPageSize(next.pageSize);
+  }
+
+  useEffect(() => {
+    window.addEventListener('popstate', applyUrlState);
+    return () => window.removeEventListener('popstate', applyUrlState);
+  }, []);
 
   async function load() {
     if (!workspace.clanId) { setJobs([]); setTotal(0); return; }
@@ -118,7 +107,7 @@ export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
   }
 
   useEffect(() => {
-    writeHistoryUrl({ status, type: importType, format: fileFormat, page: pageNo, pageSize });
+    writeImportHistoryUrl({ status, type: importType, format: fileFormat, page: pageNo, pageSize });
     void load();
   }, [workspace.clanId, workspace.branchId, status, importType, fileFormat, pageNo, pageSize, refreshKey]);
 
