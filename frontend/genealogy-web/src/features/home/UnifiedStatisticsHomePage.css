@@ -35,15 +35,6 @@
   min-width: 220px;
 }
 
-.statistics-home-page__clan-select.ant-select-single {
-  min-height: 44px;
-}
-
-.statistics-home-page__clan-select.ant-select-single .ant-select-selector {
-  min-height: 44px !important;
-  align-items: center;
-}
-
 .statistics-home-page__updated-at {
   min-height: 44px;
   display: inline-flex;
