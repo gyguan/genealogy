@@ -1,5 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Empty, Form, Input, Modal, Popconfirm, Result, Select, Space, Spin, Table, Tabs, Tag, Typography, Upload } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Descriptions,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Result,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tabs,
+  Tag,
+  Typography,
+  Upload
+} from 'antd';
 import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
@@ -41,7 +62,7 @@ const OFFICIAL_GENERATION_SCHEME_STATUSES = new Set(['official', 'active', 'appr
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type BindingMode = 'create' | 'replace';
 type BindingTargetType = 'person' | 'branch' | 'clan' | 'generation_word';
-type DetailLoadState = 'idle' | 'loading' | 'ready' | 'not-found' | 'forbidden' | 'error';
+type DetailErrorKind = 'not_found' | 'forbidden' | 'service';
 
 type BindingFormValues = {
   targetType: BindingTargetType;
@@ -54,6 +75,7 @@ type BindingFormValues = {
 };
 
 type AttachmentFormValues = { privacyLevel?: string; sensitiveLevel?: string };
+
 type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {
   hasAttachment?: string;
   hasBinding?: string;
@@ -124,13 +146,27 @@ function statusColor(value?: string) {
   const status = String(value || '').toLowerCase();
   if (status === 'official' || status === 'uploaded' || status === 'approved') return 'success';
   if (status === 'pending_review' || status === 'pending') return 'processing';
-  if (status === 'rejected' || status === 'failed') return 'error';
+  if (status === 'rejected') return 'error';
   return 'default';
 }
 
 function uploadStatusText(value?: string) {
   const status = String(value || '').toLowerCase();
-  return ({ uploaded: '已上传', success: '已上传', failed: '上传失败', processing: '处理中' } as Record<string, string>)[status] || value || '待维护';
+  const dict: Record<string, string> = {
+    uploaded: '已上传',
+    success: '已上传',
+    failed: '上传失败',
+    processing: '处理中'
+  };
+  return dict[status] || value || '待维护';
+}
+
+function uploadStatusColor(value?: string) {
+  const status = String(value || '').toLowerCase();
+  if (status === 'uploaded' || status === 'success') return 'success';
+  if (status === 'failed') return 'error';
+  if (status === 'processing') return 'processing';
+  return 'default';
 }
 
 function fileSizeText(value?: number) {
@@ -150,28 +186,6 @@ function boolFilter(value?: string) {
   return undefined;
 }
 
-function readSourceIdFromUrl() {
-  const value = new URLSearchParams(window.location.search).get('sourceId');
-  if (!value || !/^\d+$/.test(value)) return null;
-  const id = Number(value);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-function writeSourceRoute(sourceId: number | null, mode: 'push' | 'replace' = 'push') {
-  const url = new URL(window.location.href);
-  url.pathname = '/';
-  url.hash = '';
-  url.searchParams.set('view', 'sourceLibrary');
-  if (sourceId) url.searchParams.set('sourceId', String(sourceId));
-  else url.searchParams.delete('sourceId');
-  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}`);
-}
-
-function errorStatus(error: unknown) {
-  const record = error as any;
-  return Number(record?.status || record?.statusCode || record?.response?.status || 0);
-}
-
 function personOptionLabel(row: PersonOption) {
   const name = row.genealogyName || row.name || '未命名人物';
   const code = row.personCode ? `（${row.personCode}）` : '';
@@ -180,20 +194,72 @@ function personOptionLabel(row: PersonOption) {
   return `${name}${code}${branch}${word}`;
 }
 
+function branchOptionLabel(row: BranchOption) {
+  return row.branchName || row.branchPath || '未命名支派';
+}
+
+function generationSchemeOptionLabel(row: GenerationSchemeOption) {
+  return row.schemeName || '未命名字辈方案';
+}
+
 function generationWordOptionLabel(row: GenerationWordOption) {
-  return `${row.generationNo ? `第${row.generationNo}世 · ` : ''}${row.word || '未命名字辈'}`;
+  const generation = row.generationNo ? `第${row.generationNo}世 · ` : '';
+  return `${generation}${row.word || '未命名字辈'}`;
+}
+
+function isOfficialGenerationScheme(row: GenerationSchemeOption) {
+  return OFFICIAL_GENERATION_SCHEME_STATUSES.has(String(row.status || '').toLowerCase());
+}
+
+function normalizeBindingTargetType(value?: string): BindingTargetType {
+  if (value === 'branch' || value === 'clan' || value === 'generation_word') return value;
+  return 'person';
+}
+
+function currentGenerationWord(row: SourceBindingSummary): GenerationWordOption[] {
+  if (!row.targetId) return [];
+  const displayName = String(row.targetDisplayName || '').replace(/^字辈[：:]/, '').trim();
+  return [{ id: row.targetId, word: displayName || '当前字辈', description: row.targetSummary }];
+}
+
+function readSourceIdFromUrl() {
+  const value = new URLSearchParams(window.location.search).get('sourceId');
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function writeSourceIdToUrl(sourceId?: number, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
+  url.searchParams.set('view', 'sourceLibrary');
+  if (sourceId) url.searchParams.set('sourceId', String(sourceId));
+  else url.searchParams.delete('sourceId');
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](
+    window.history.state,
+    '',
+    `${url.pathname}${url.search}`
+  );
+}
+
+function detailErrorKind(error: unknown): DetailErrorKind {
+  const record = error as { status?: number; response?: { status?: number }; message?: string };
+  const status = record?.status || record?.response?.status;
+  if (status === 404) return 'not_found';
+  if (status === 403) return 'forbidden';
+  return 'service';
 }
 
 export function SourceLibraryPage({ notify }: Props) {
   const workspace = useWorkspace();
-  const [routeSourceId, setRouteSourceId] = useState<number | null>(readSourceIdFromUrl);
   const [clans, setClans] = useState<Array<{ id?: number; clanName?: string; surname?: string }>>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
   const [sourceTotal, setSourceTotal] = useState(0);
   const [search, setSearch] = useState<SourceSearchParams>({ pageNo: 1, pageSize: 10, sort: 'updatedAt,desc' });
   const [loading, setLoading] = useState(false);
-  const [detailState, setDetailState] = useState<DetailLoadState>('idle');
-  const [detailError, setDetailError] = useState('');
+  const [detailSourceId, setDetailSourceId] = useState<number | undefined>(readSourceIdFromUrl);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<DetailErrorKind | null>(null);
   const [detail, setDetail] = useState<SourceDetail | null>(null);
   const [bindings, setBindings] = useState<SourceBindingSummary[]>([]);
   const [bindingTotal, setBindingTotal] = useState(0);
@@ -205,6 +271,8 @@ export function SourceLibraryPage({ notify }: Props) {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [generationSchemes, setGenerationSchemes] = useState<GenerationSchemeOption[]>([]);
   const [generationWords, setGenerationWords] = useState<GenerationWordOption[]>([]);
+  const [generationSchemeLoading, setGenerationSchemeLoading] = useState(false);
+  const [generationWordLoading, setGenerationWordLoading] = useState(false);
   const [bindingModalOpen, setBindingModalOpen] = useState(false);
   const [bindingMode, setBindingMode] = useState<BindingMode>('create');
   const [bindingTargetType, setBindingTargetType] = useState<BindingTargetType>('person');
@@ -240,53 +308,6 @@ export function SourceLibraryPage({ notify }: Props) {
     }
   }
 
-  async function loadDetail(sourceId: number) {
-    setDetailState('loading');
-    setDetailError('');
-    setDetail(null);
-    setBindings([]);
-    setAttachments([]);
-    setLastRevision(null);
-    try {
-      const [nextDetail, nextBindings, nextAttachments] = await Promise.all([
-        getSourceDetail(sourceId),
-        listSourceBindings(sourceId, 1, 100),
-        listSourceAttachments(sourceId, 1, ATTACHMENT_PAGE_SIZE)
-      ]);
-      setDetail(nextDetail);
-      setBindings(nextBindings.records || nextDetail.bindingSummaries || []);
-      setBindingTotal(nextBindings.total || nextDetail.bindingSummaries?.length || 0);
-      setAttachments(nextAttachments.records || nextDetail.attachmentSummaries || []);
-      setAttachmentTotal(nextAttachments.total || nextDetail.attachmentSummaries?.length || 0);
-      setAttachmentPage({ pageNo: 1, pageSize: ATTACHMENT_PAGE_SIZE });
-      workspace.setSourceId(String(sourceId));
-      setDetailState('ready');
-    } catch (error) {
-      const status = errorStatus(error);
-      setDetailError((error as Error).message || '来源详情加载失败');
-      if (status === 404) setDetailState('not-found');
-      else if (status === 403) setDetailState('forbidden');
-      else setDetailState('error');
-    }
-  }
-
-  async function reloadDetail() {
-    if (routeSourceId) await loadDetail(routeSourceId);
-  }
-
-  function openDetail(row: SourceRecord) {
-    if (!row.id) return;
-    writeSourceRoute(row.id);
-    setRouteSourceId(row.id);
-  }
-
-  function backToList() {
-    writeSourceRoute(null);
-    setRouteSourceId(null);
-    setDetail(null);
-    setDetailState('idle');
-  }
-
   async function loadTargetOptions() {
     if (!clanId) return;
     const [nextPeople, nextBranches] = await Promise.all([
@@ -297,17 +318,40 @@ export function SourceLibraryPage({ notify }: Props) {
     setBranches(nextBranches);
   }
 
-  async function loadGenerationSchemeOptions() {
+  async function loadOfficialGenerationSchemes() {
     if (!clanId) return;
-    const rows = await listGenerationSchemes(clanId).catch(() => []);
-    setGenerationSchemes(rows.filter(row => OFFICIAL_GENERATION_SCHEME_STATUSES.has(String(row.status || '').toLowerCase())));
+    setGenerationSchemeLoading(true);
+    try {
+      const rows = await listGenerationSchemes(clanId);
+      setGenerationSchemes(rows.filter(isOfficialGenerationScheme));
+    } catch (error) {
+      setGenerationSchemes([]);
+      notify({ message: (error as Error).message || '字辈方案加载失败' }, true);
+    } finally {
+      setGenerationSchemeLoading(false);
+    }
   }
 
-  async function loadAttachmentPage(pageNo: number, pageSize: number) {
-    if (!selectedSource?.id) return;
+  async function loadGenerationWordOptions(schemeId?: number) {
+    if (!schemeId) {
+      setGenerationWords([]);
+      return;
+    }
+    setGenerationWordLoading(true);
+    try {
+      setGenerationWords(await listGenerationWords(schemeId));
+    } catch (error) {
+      setGenerationWords([]);
+      notify({ message: (error as Error).message || '字辈明细加载失败' }, true);
+    } finally {
+      setGenerationWordLoading(false);
+    }
+  }
+
+  async function loadAttachments(sourceId: number, pageNo = 1, pageSize = ATTACHMENT_PAGE_SIZE) {
     setAttachmentLoading(true);
     try {
-      const data = await listSourceAttachments(selectedSource.id, pageNo, pageSize);
+      const data = await listSourceAttachments(sourceId, pageNo, pageSize);
       setAttachments(data.records || []);
       setAttachmentTotal(data.total || 0);
       setAttachmentPage({ pageNo, pageSize });
@@ -318,31 +362,159 @@ export function SourceLibraryPage({ notify }: Props) {
     }
   }
 
+  async function loadDetail(sourceId: number) {
+    workspace.setSourceId(String(sourceId));
+    setDetailLoading(true);
+    setDetailError(null);
+    setLastRevision(null);
+    setAttachmentPage({ pageNo: 1, pageSize: ATTACHMENT_PAGE_SIZE });
+    try {
+      const [nextDetail, nextBindings, nextAttachments] = await Promise.all([
+        getSourceDetail(sourceId),
+        listSourceBindings(sourceId, 1, 50),
+        listSourceAttachments(sourceId, 1, ATTACHMENT_PAGE_SIZE)
+      ]);
+      setDetail(nextDetail);
+      setBindings(nextBindings.records || []);
+      setBindingTotal(nextBindings.total || 0);
+      setAttachments(nextAttachments.records || []);
+      setAttachmentTotal(nextAttachments.total || 0);
+      setAttachmentPage({ pageNo: 1, pageSize: ATTACHMENT_PAGE_SIZE });
+      void loadTargetOptions();
+    } catch (error) {
+      setDetail(null);
+      setBindings([]);
+      setAttachments([]);
+      setDetailError(detailErrorKind(error));
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  async function reloadDetail() {
+    if (detailSourceId) await loadDetail(detailSourceId);
+  }
+
+  function openDetail(row: SourceRecord) {
+    if (!row.id) return;
+    writeSourceIdToUrl(row.id);
+    setDetailSourceId(row.id);
+  }
+
+  function closeDetail(mode: 'push' | 'replace' = 'push') {
+    writeSourceIdToUrl(undefined, mode);
+    setDetailSourceId(undefined);
+    setDetail(null);
+    setDetailError(null);
+  }
+
+  function submitSearch(values: SourceSearchFormValues) {
+    const next: SourceSearchParams = {
+      ...values,
+      hasAttachment: boolFilter(values.hasAttachment),
+      hasBinding: boolFilter(values.hasBinding),
+      pageNo: 1,
+      pageSize: search.pageSize || 10,
+      sort: search.sort || 'updatedAt,desc'
+    };
+    setSearch(next);
+    void loadSources(next);
+  }
+
+  function resetSearch() {
+    const next: SourceSearchParams = { pageNo: 1, pageSize: search.pageSize || 10, sort: 'updatedAt,desc' };
+    sourceForm.resetFields();
+    sourceForm.setFieldsValue({
+      keyword: undefined,
+      sourceType: undefined,
+      verificationStatus: undefined,
+      privacyLevel: undefined,
+      hasAttachment: undefined,
+      hasBinding: undefined
+    });
+    setSearch(next);
+    void loadSources(next);
+  }
+
   function openCreateBinding() {
     setBindingMode('create');
     setBindingTarget(null);
     setBindingTargetType('person');
+    setGenerationWords([]);
     bindingForm.resetFields();
     bindingForm.setFieldsValue({ targetType: 'person', confidenceLevel: selectedSource?.confidenceLevel || 'unknown' });
     setBindingModalOpen(true);
-    void loadTargetOptions();
   }
 
   function openReplaceBinding(row: SourceBindingSummary) {
-    const targetType = (['branch', 'clan', 'generation_word'].includes(String(row.targetType)) ? row.targetType : 'person') as BindingTargetType;
+    const targetType = normalizeBindingTargetType(row.targetType);
     setBindingMode('replace');
     setBindingTarget(row);
     setBindingTargetType(targetType);
+    if (targetType === 'generation_word') {
+      setGenerationWords(currentGenerationWord(row));
+      void loadOfficialGenerationSchemes();
+    } else {
+      setGenerationWords([]);
+    }
     bindingForm.setFieldsValue({
       targetType,
       targetId: row.targetId,
       bindingReason: row.bindingReason,
       excerpt: row.excerpt,
-      confidenceLevel: row.confidenceLevel || selectedSource?.confidenceLevel || 'unknown'
+      confidenceLevel: row.confidenceLevel || selectedSource?.confidenceLevel || 'unknown',
+      changeReason: ''
     });
     setBindingModalOpen(true);
-    void loadTargetOptions();
-    if (targetType === 'generation_word') void loadGenerationSchemeOptions();
+  }
+
+  function changeBindingTargetType(value: BindingTargetType) {
+    setBindingTargetType(value);
+    bindingForm.setFieldsValue({ targetType: value, targetId: undefined, generationSchemeId: undefined });
+    setGenerationWords([]);
+    if (value === 'generation_word') void loadOfficialGenerationSchemes();
+  }
+
+  function changeGenerationScheme(value?: number) {
+    bindingForm.setFieldValue('targetId', undefined);
+    void loadGenerationWordOptions(value);
+  }
+
+  async function uploadAttachment() {
+    if (!selectedSource?.id || !file) return;
+    try {
+      const values = attachmentForm.getFieldsValue();
+      await uploadSourceAttachment(selectedSource.id, file, values.privacyLevel || 'clan_only', values.sensitiveLevel || 'normal');
+      setFile(null);
+      await loadAttachments(selectedSource.id, 1, attachmentPage.pageSize);
+      notify({ message: '附件上传成功' });
+    } catch (error) {
+      notify({ message: (error as Error).message || '附件上传失败' }, true);
+    }
+  }
+
+  async function preview(row: SourceAttachmentRecord) {
+    if (!row.id) return;
+    const blob = await previewAttachment(row.id);
+    window.open(URL.createObjectURL(blob), '_blank', 'noopener,noreferrer');
+  }
+
+  async function download(row: SourceAttachmentRecord) {
+    if (!row.id) return;
+    const blob = await downloadAttachment(row.id);
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = row.fileName || '附件';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function removeAttachment(row: SourceAttachmentRecord) {
+    if (!row.id || !selectedSource?.id) return;
+    await deleteSourceAttachment(row.id);
+    await loadAttachments(selectedSource.id, attachmentPage.pageNo, attachmentPage.pageSize);
+    notify({ message: '附件已删除' });
   }
 
   async function submitBindingRevision(values: BindingFormValues) {
@@ -374,7 +546,8 @@ export function SourceLibraryPage({ notify }: Props) {
   async function submitDeleteRevision(row: SourceBindingSummary) {
     if (!row.id) return;
     try {
-      setLastRevision(await submitDeleteBindingRevision(row.id, '来源绑定解除申请'));
+      const response = await submitDeleteBindingRevision(row.id, '来源绑定解除申请');
+      setLastRevision(response);
       await reloadDetail();
       notify({ message: '解除绑定申请已提交审核' });
     } catch (error) {
@@ -382,80 +555,29 @@ export function SourceLibraryPage({ notify }: Props) {
     }
   }
 
-  async function uploadAttachment() {
-    if (!selectedSource?.id || !file) return;
-    const values = attachmentForm.getFieldsValue();
-    setAttachmentLoading(true);
-    try {
-      await uploadSourceAttachment(selectedSource.id, file, values.privacyLevel || 'clan_only', values.sensitiveLevel || 'normal');
-      setFile(null);
-      await loadAttachmentPage(1, attachmentPage.pageSize);
-      notify({ message: '附件上传成功' });
-    } catch (error) {
-      notify({ message: (error as Error).message || '附件上传失败' }, true);
-    } finally {
-      setAttachmentLoading(false);
-    }
-  }
-
-  async function removeAttachment(row: SourceAttachmentRecord) {
-    if (!row.id) return;
-    try {
-      await deleteSourceAttachment(row.id);
-      await loadAttachmentPage(attachmentPage.pageNo, attachmentPage.pageSize);
-      notify({ message: '附件已删除' });
-    } catch (error) {
-      notify({ message: (error as Error).message || '附件删除失败' }, true);
-    }
-  }
-
-  async function openAttachment(row: SourceAttachmentRecord, mode: 'preview' | 'download') {
-    if (!row.id) return;
-    try {
-      const response = mode === 'preview' ? await previewAttachment(row.id) : await downloadAttachment(row.id);
-      const blob = response instanceof Blob ? response : new Blob([response as any]);
-      const url = URL.createObjectURL(blob);
-      if (mode === 'preview') window.open(url, '_blank', 'noopener,noreferrer');
-      else {
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = row.fileName || '附件';
-        link.click();
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (error) {
-      notify({ message: (error as Error).message || `${mode === 'preview' ? '预览' : '下载'}失败` }, true);
-    }
-  }
-
-  function submitSearch(values: SourceSearchFormValues) {
-    const next: SourceSearchParams = {
-      ...values,
-      hasAttachment: boolFilter(values.hasAttachment),
-      hasBinding: boolFilter(values.hasBinding),
-      pageNo: 1,
-      pageSize: search.pageSize || 10,
-      sort: search.sort || 'updatedAt,desc'
-    };
-    setSearch(next);
-    void loadSources(next);
-  }
-
   useEffect(() => { void loadClans(); }, []);
-  useEffect(() => { if (clanId && !routeSourceId) void loadSources(search); }, [clanId]);
-  useEffect(() => { if (routeSourceId) void loadDetail(routeSourceId); }, [routeSourceId]);
+  useEffect(() => { if (clanId && !detailSourceId) void loadSources(search); }, [clanId, detailSourceId]);
+  useEffect(() => { if (detailSourceId) void loadDetail(detailSourceId); }, [detailSourceId]);
+
   useEffect(() => {
-    const onPopState = () => setRouteSourceId(readSourceIdFromUrl());
+    const onPopState = () => setDetailSourceId(readSourceIdFromUrl());
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   const targetOptions = useMemo(() => {
-    if (bindingTargetType === 'branch') return branches.map(row => ({ value: row.id, label: row.branchName || row.branchPath || '未命名支派' }));
-    if (bindingTargetType === 'clan') return clans.filter(row => String(row.id) === clanId).map(row => ({ value: row.id, label: row.clanName || `${row.surname || ''}宗族` }));
+    if (bindingTargetType === 'branch') return branches.map(row => ({ value: row.id, label: branchOptionLabel(row) }));
+    if (bindingTargetType === 'clan') {
+      return clans.filter(row => String(row.id) === clanId).map(row => ({ value: row.id, label: row.clanName || `${row.surname || ''}宗族` }));
+    }
     if (bindingTargetType === 'generation_word') return generationWords.map(row => ({ value: row.id, label: generationWordOptionLabel(row) }));
     return people.map(row => ({ value: row.id, label: personOptionLabel(row) }));
   }, [bindingTargetType, people, branches, clans, clanId, generationWords]);
+
+  const generationSchemeOptions = useMemo(
+    () => generationSchemes.map(row => ({ value: row.id, label: generationSchemeOptionLabel(row) })),
+    [generationSchemes]
+  );
 
   const uploadProps: UploadProps = {
     maxCount: 1,
@@ -464,40 +586,46 @@ export function SourceLibraryPage({ notify }: Props) {
     fileList: file ? [{ uid: file.name, name: file.name, status: 'done' }] : []
   };
 
-  if (routeSourceId) {
-    if (detailState === 'loading' || detailState === 'idle') {
-      return <Card><Space direction="vertical" align="center" size="middle" style={{ width: '100%', padding: 48 }}><Spin size="large" /><Text type="secondary">正在加载来源详情…</Text></Space></Card>;
+  const targetPlaceholder = bindingTargetType === 'generation_word' ? '请选择具体字辈' : '请选择人物、支派或宗族';
+
+  if (detailSourceId) {
+    if (detailLoading) {
+      return <Card><Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin size="large" /><Text type="secondary">正在加载来源资料…</Text></Space></Card>;
     }
-    if (detailState === 'not-found') {
-      return <Result status="404" title="来源资料不存在" subTitle="该来源可能已被删除，或当前链接已经失效。" extra={<Button type="primary" onClick={backToList}>返回来源资料库</Button>} />;
+    if (detailError === 'not_found') {
+      return <Result status="404" title="来源资料不存在" subTitle="该来源可能已被删除或链接已经失效。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     }
-    if (detailState === 'forbidden') {
-      return <Result status="403" title="无权查看该来源资料" subTitle="当前账号没有访问该来源资料的权限。" extra={<Button type="primary" onClick={backToList}>返回来源资料库</Button>} />;
+    if (detailError === 'forbidden') {
+      return <Result status="403" title="无权查看该来源资料" subTitle="当前账号没有访问该来源的权限。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     }
-    if (detailState === 'error' || !selectedSource) {
-      return <Result status="error" title="来源详情加载失败" subTitle={detailError || '服务暂时不可用，请稍后重试。'} extra={<Space><Button onClick={backToList}>返回列表</Button><Button type="primary" onClick={() => void reloadDetail()}>重新加载</Button></Space>} />;
+    if (detailError === 'service' || !selectedSource) {
+      return <Result status="500" title="来源资料加载失败" subTitle="服务暂时不可用，请稍后重试。" extra={<Space><Button onClick={() => closeDetail()}>返回列表</Button><Button type="primary" onClick={() => void reloadDetail()}>重新加载</Button></Space>} />;
     }
 
     return (
-      <div className="source-library-page source-detail-page">
+      <div className="source-library-page">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Card>
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              <Button type="link" style={{ paddingInline: 0, alignSelf: 'flex-start' }} onClick={backToList}>← 返回来源资料库</Button>
-              <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-                <Space direction="vertical" size={4}>
-                  <Text type="secondary">来源资料库 / 来源详情</Text>
-                  <Space wrap>
-                    <Title level={3} style={{ margin: 0 }}>{sourceTitle(selectedSource)}</Title>
-                    <Tag color={statusColor(selectedSource.verificationStatus)}>{optionText(statusOptions, selectedSource.verificationStatus)}</Tag>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Button type="link" style={{ padding: 0, alignSelf: 'flex-start' }} onClick={() => closeDetail()}>← 返回来源资料库</Button>
+              <Row justify="space-between" align="middle" gutter={[16, 12]}>
+                <Col flex="auto">
+                  <Space direction="vertical" size={4}>
+                    <Space wrap>
+                      <Title level={3} style={{ margin: 0 }}>{sourceTitle(selectedSource)}</Title>
+                      <Tag color={statusColor(selectedSource.verificationStatus)}>{optionText(statusOptions, selectedSource.verificationStatus)}</Tag>
+                    </Space>
+                    <Text type="secondary">来源资料库 / 来源详情</Text>
                   </Space>
-                </Space>
-                <Space wrap>
-                  <TrackingLinkButton clanId={clanId} targetType="source" targetId={selectedSource.id} />
-                  <Button onClick={() => void reloadDetail()}>刷新</Button>
-                  {canBind ? <Button type="primary" onClick={openCreateBinding}>新建绑定关系</Button> : null}
-                </Space>
-              </Space>
+                </Col>
+                <Col>
+                  <Space wrap>
+                    <TrackingLinkButton clanId={clanId} targetType="source" targetId={selectedSource.id} />
+                    <Button onClick={() => void reloadDetail()}>刷新</Button>
+                    {canBind ? <Button type="primary" onClick={openCreateBinding}>新建绑定关系</Button> : null}
+                  </Space>
+                </Col>
+              </Row>
             </Space>
           </Card>
 
@@ -519,28 +647,90 @@ export function SourceLibraryPage({ notify }: Props) {
           </Card>
 
           <Card>
-            <Tabs items={[
-              { key: 'bindings', label: `引用情况（${bindingTotal || bindings.length}）`, children: <BindingTable clanId={clanId} rows={bindings} canBind={canBind} onReplace={openReplaceBinding} onDelete={submitDeleteRevision} /> },
-              { key: 'attachments', label: `附件（${attachmentTotal}）`, children: (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                  {canUploadAttachment ? <Card size="small" title="上传附件"><Form form={attachmentForm} layout="inline" initialValues={{ privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}><Form.Item label="附件"><Upload {...uploadProps}><Button>选择文件</Button></Upload></Form.Item><Form.Item name="privacyLevel" label="可见范围"><Select options={privacyOptions} style={{ width: 150 }} /></Form.Item><Form.Item name="sensitiveLevel" label="敏感级别"><Select options={sensitiveOptions} style={{ width: 120 }} /></Form.Item><Form.Item><Button type="primary" disabled={!file || attachmentLoading} loading={attachmentLoading} onClick={() => void uploadAttachment()}>上传</Button></Form.Item></Form></Card> : <Alert type="info" showIcon message="当前账号暂无附件上传权限" />}
-                  <AttachmentTable rows={attachments} total={attachmentTotal} pageNo={attachmentPage.pageNo} pageSize={attachmentPage.pageSize} loading={attachmentLoading} onPageChange={loadAttachmentPage} onPreview={row => void openAttachment(row, 'preview')} onDownload={row => void openAttachment(row, 'download')} onDelete={removeAttachment} />
-                </Space>
-              ) }
-            ]} />
+            <Tabs
+              items={[
+                {
+                  key: 'bindings',
+                  label: `引用情况（${bindingTotal || bindings.length}）`,
+                  children: <BindingTable clanId={clanId} rows={bindings} canBind={canBind} onReplace={openReplaceBinding} onDelete={submitDeleteRevision} />
+                },
+                {
+                  key: 'attachments',
+                  label: `附件（${attachmentTotal}）`,
+                  children: (
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                      {canUploadAttachment ? (
+                        <Card size="small" title="上传附件">
+                          <Form form={attachmentForm} layout="inline" initialValues={{ privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
+                            <Form.Item label="附件"><Upload {...uploadProps}><Button>选择文件</Button></Upload></Form.Item>
+                            <Form.Item name="privacyLevel" label="可见范围"><Select options={privacyOptions} style={{ width: 150 }} /></Form.Item>
+                            <Form.Item name="sensitiveLevel" label="敏感级别"><Select options={sensitiveOptions} style={{ width: 120 }} /></Form.Item>
+                            <Form.Item><Button type="primary" disabled={!file || attachmentLoading} loading={attachmentLoading} onClick={() => void uploadAttachment()}>上传</Button></Form.Item>
+                          </Form>
+                        </Card>
+                      ) : <Alert type="info" showIcon message="当前账号暂无附件上传权限" />}
+                      <AttachmentTable
+                        rows={attachments}
+                        total={attachmentTotal}
+                        pageNo={attachmentPage.pageNo}
+                        pageSize={attachmentPage.pageSize}
+                        loading={attachmentLoading}
+                        onPageChange={(pageNo, pageSize) => {
+                          if (selectedSource.id) void loadAttachments(selectedSource.id, pageNo, pageSize);
+                        }}
+                        onPreview={preview}
+                        onDownload={download}
+                        onDelete={removeAttachment}
+                      />
+                    </Space>
+                  )
+                }
+              ]}
+            />
           </Card>
         </Space>
 
         <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '变更绑定关系' : '新建绑定关系'} onCancel={() => setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
           <Form form={bindingForm} layout="vertical" onFinish={submitBindingRevision}>
-            <Alert type="info" showIcon style={{ marginBottom: 12 }} message={bindingMode === 'replace' ? '变更绑定提交后需审核通过才会生效，审核期间原绑定继续有效。' : '新建绑定关系提交后需审核通过才会正式生效。'} />
-            <Form.Item name="targetType" label="绑定对象类型" rules={[{ required: true, message: '请选择绑定对象类型' }]}><Select options={bindingTargetTypeOptions} onChange={(value: BindingTargetType) => { setBindingTargetType(value); bindingForm.setFieldValue('targetId', undefined); if (value === 'generation_word') void loadGenerationSchemeOptions(); }} /></Form.Item>
-            {bindingTargetType === 'generation_word' ? <Form.Item name="generationSchemeId" label="字辈方案"><Select allowClear showSearch optionFilterProp="label" options={generationSchemes.map(row => ({ value: row.id, label: row.schemeName || '未命名字辈方案' })).filter(item => item.value)} onChange={async value => { bindingForm.setFieldValue('targetId', undefined); setGenerationWords(value ? await listGenerationWords(value).catch(() => []) : []); }} /></Form.Item> : null}
-            <Form.Item name="targetId" label="绑定对象" rules={[{ required: true, message: '请选择绑定对象' }]}><Select showSearch optionFilterProp="label" options={targetOptions.filter(item => item.value)} placeholder="请选择绑定对象" /></Form.Item>
-            <Form.Item name="bindingReason" label="绑定理由"><Input.TextArea rows={2} /></Form.Item>
-            <Form.Item name="excerpt" label="来源摘录"><Input.TextArea rows={2} /></Form.Item>
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={bindingMode === 'replace'
+                ? '变更绑定提交后需审核通过才会生效，审核期间原绑定继续有效。'
+                : '新建绑定关系提交后需审核通过才会正式生效。'}
+            />
+            <Form.Item name="targetType" label="绑定对象类型" rules={[{ required: true, message: '请选择绑定对象类型' }]}>
+              <Select options={bindingTargetTypeOptions} onChange={changeBindingTargetType} />
+            </Form.Item>
+            {bindingTargetType === 'generation_word' ? (
+              <Form.Item name="generationSchemeId" label="字辈方案">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  loading={generationSchemeLoading}
+                  options={generationSchemeOptions.filter(item => item.value)}
+                  placeholder={generationSchemes.length ? '请选择已生效字辈方案' : '暂无已生效字辈方案'}
+                  onChange={changeGenerationScheme}
+                />
+              </Form.Item>
+            ) : null}
+            <Form.Item name="targetId" label="绑定对象" rules={[{ required: true, message: '请选择绑定对象' }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                loading={bindingTargetType === 'generation_word' && generationWordLoading}
+                options={targetOptions.filter(item => item.value)}
+                placeholder={targetPlaceholder}
+                disabled={bindingTargetType === 'generation_word' && !generationWordLoading && !generationWords.length}
+                notFoundContent={bindingTargetType === 'generation_word' ? '请选择字辈方案后加载字辈明细' : '暂无可选对象'}
+              />
+            </Form.Item>
+            <Form.Item name="bindingReason" label="绑定理由"><Input.TextArea rows={2} placeholder="说明该来源为何能证明该对象" /></Form.Item>
+            <Form.Item name="excerpt" label="来源摘录"><Input.TextArea rows={2} placeholder="摘录来源中与绑定对象相关的内容" /></Form.Item>
             <Form.Item name="confidenceLevel" label="可信度"><Select options={confidenceOptions} /></Form.Item>
-            <Form.Item name="changeReason" label="变更原因"><Input.TextArea rows={2} /></Form.Item>
+            <Form.Item name="changeReason" label="变更原因"><Input.TextArea rows={2} placeholder="说明为什么提交这次绑定变更" /></Form.Item>
           </Form>
         </Modal>
       </div>
@@ -550,18 +740,46 @@ export function SourceLibraryPage({ notify }: Props) {
   return (
     <div className="source-library-page">
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Card><Space direction="vertical" size={4}><Title level={4} style={{ margin: 0 }}>来源资料库</Title><Text type="secondary">统一管理族谱原文、地方志、照片、口述记录等来源证据，并串联引用、附件和绑定审核。</Text></Space></Card>
+        <Card>
+          <Space direction="vertical" size={4}>
+            <Title level={4} style={{ margin: 0 }}>来源资料库</Title>
+            <Text type="secondary">统一管理族谱原文、地方志、照片、口述记录等来源证据，并串联引用、附件和绑定审核。</Text>
+          </Space>
+        </Card>
+
         <Card title="来源检索">
-          <Form form={sourceForm} layout="inline" onFinish={submitSearch} initialValues={search} style={{ rowGap: 12 }}>
-            <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名、提供者、摘录" style={{ width: 220 }} /></Form.Item>
-            <Form.Item name="sourceType" label="类型"><Select allowClear options={sourceTypeOptions} style={{ width: 150 }} /></Form.Item>
-            <Form.Item name="verificationStatus" label="状态"><Select allowClear options={statusOptions} style={{ width: 130 }} /></Form.Item>
-            <Form.Item name="privacyLevel" label="可见范围"><Select allowClear options={privacyOptions} style={{ width: 150 }} /></Form.Item>
-            <Form.Item name="hasAttachment" label="附件"><Select allowClear options={[{ value: 'true', label: '有附件' }, { value: 'false', label: '无附件' }]} style={{ width: 120 }} /></Form.Item>
-            <Form.Item name="hasBinding" label="引用"><Select allowClear options={[{ value: 'true', label: '有引用' }, { value: 'false', label: '无引用' }]} style={{ width: 120 }} /></Form.Item>
-            <Form.Item><Button type="primary" htmlType="submit" loading={loading}>查询</Button></Form.Item>
+          <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={search}>
+            <Row gutter={[16, 0]}>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名、提供者、摘录" /></Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="sourceType" label="类型"><Select allowClear options={sourceTypeOptions} /></Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="verificationStatus" label="状态"><Select allowClear options={statusOptions} /></Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="privacyLevel" label="可见范围"><Select allowClear options={privacyOptions} /></Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="hasAttachment" label="附件"><Select allowClear options={[{ value: 'true', label: '有附件' }, { value: 'false', label: '无附件' }]} /></Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={8} xl={6}>
+                <Form.Item name="hasBinding" label="引用"><Select allowClear options={[{ value: 'true', label: '有引用' }, { value: 'false', label: '无引用' }]} /></Form.Item>
+              </Col>
+            </Row>
+            <Row justify="end">
+              <Col>
+                <Space>
+                  <Button onClick={resetSearch} disabled={loading}>重置</Button>
+                  <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
+                </Space>
+              </Col>
+            </Row>
           </Form>
         </Card>
+
         <Card title="来源列表" extra={<Button onClick={() => void loadSources(search)}>刷新</Button>}>
           <Table<SourceRecord>
             rowKey={(row, index) => String(row.id || index)}
@@ -569,7 +787,16 @@ export function SourceLibraryPage({ notify }: Props) {
             loading={loading}
             dataSource={sources}
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源资料" /> }}
-            pagination={{ current: search.pageNo || 1, pageSize: search.pageSize || 10, total: sourceTotal, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); void loadSources(next); } }}
+            pagination={{
+              current: search.pageNo || 1,
+              pageSize: search.pageSize || 10,
+              total: sourceTotal,
+              onChange: (pageNo, pageSize) => {
+                const next = { ...search, pageNo, pageSize };
+                setSearch(next);
+                void loadSources(next);
+              }
+            }}
             columns={[
               { title: '来源资料', render: (_value, row) => <Button type="link" onClick={() => openDetail(row)}>{sourceTitle(row)}</Button> },
               { title: '类型', width: 120, render: (_value, row) => <Tag>{optionText(sourceTypeOptions, row.sourceType)}</Tag> },
@@ -587,26 +814,112 @@ export function SourceLibraryPage({ notify }: Props) {
   );
 }
 
-function BindingTable({ clanId, rows, canBind, onReplace, onDelete }: { clanId: string; rows: SourceBindingSummary[]; canBind: boolean; onReplace: (row: SourceBindingSummary) => void; onDelete: (row: SourceBindingSummary) => void }) {
-  return <Table<SourceBindingSummary> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} pagination={false} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }} columns={[
-    { title: '引用对象类型', width: 120, render: (_value, row) => <Tag>{bindingTargetTypeText(row.targetType)}</Tag> },
-    { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
-    { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
-    { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
-    { title: '状态', width: 130, render: (_value, row) => <Space direction="vertical" size={0}><Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag>{row.hasPendingRevision ? <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag> : null}</Space> },
-    { title: '追踪', width: 96, render: (_value, row) => <TrackingLinkButton size="small" type="link" clanId={clanId} targetType={row.targetType} targetId={row.targetId} /> },
-    { title: '操作', width: 180, render: (_value, row) => !canBind ? <Text type="secondary">暂无权限</Text> : String(row.bindingStatus || '').toLowerCase() !== 'official' || row.hasPendingRevision ? <Text type="secondary">不可变更</Text> : <Space><Button size="small" type="link" onClick={() => onReplace(row)}>变更绑定</Button><Popconfirm title="提交解除绑定审核" description="审核通过后该绑定将归档。" onConfirm={() => onDelete(row)}><Button size="small" type="link" danger>解除绑定</Button></Popconfirm></Space> }
-  ]} />;
+function BindingTable({ clanId, rows, canBind, onReplace, onDelete }: {
+  clanId: string;
+  rows: SourceBindingSummary[];
+  canBind: boolean;
+  onReplace: (row: SourceBindingSummary) => void;
+  onDelete: (row: SourceBindingSummary) => void;
+}) {
+  return (
+    <Table<SourceBindingSummary>
+      size="small"
+      rowKey={(row, index) => String(row.id || index)}
+      dataSource={rows}
+      pagination={false}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }}
+      columns={[
+        { title: '引用对象类型', width: 120, render: (_value, row) => <Tag>{bindingTargetTypeText(row.targetType)}</Tag> },
+        { title: '引用对象', render: (_value, row) => <Space direction="vertical" size={0}><Text strong>{row.targetDisplayName || '待维护对象名称'}</Text><Text type="secondary">{row.targetBranchName || row.targetSummary || '暂无对象摘要'}</Text></Space> },
+        { title: '绑定理由', render: (_value, row) => row.bindingReason || '待维护' },
+        { title: '可信度', width: 90, render: (_value, row) => optionText(confidenceOptions, row.confidenceLevel) },
+        {
+          title: '状态',
+          width: 130,
+          render: (_value, row) => (
+            <Space direction="vertical" size={0}>
+              <Tag color={statusColor(row.bindingStatus)}>{optionText(statusOptions, row.bindingStatus) || '正式'}</Tag>
+              {row.hasPendingRevision ? <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag> : null}
+            </Space>
+          )
+        },
+        { title: '创建时间', width: 170, render: (_value, row) => row.createdAt || '待维护' },
+        {
+          title: '追踪',
+          width: 96,
+          render: (_value, row) => <TrackingLinkButton size="small" type="link" clanId={clanId} targetType={row.targetType} targetId={row.targetId} />
+        },
+        {
+          title: '操作',
+          width: 180,
+          render: (_value, row) => {
+            if (!canBind) return <Text type="secondary">暂无权限</Text>;
+            const bindingStatus = String(row.bindingStatus || '').toLowerCase();
+            if (bindingStatus !== 'official') return <Text type="secondary">{bindingStatus === 'archived' ? '已归档' : '不可变更'}</Text>;
+            if (row.hasPendingRevision) return <Tag color="processing">{pendingBindingChangeText(row.pendingChangeType)}</Tag>;
+            return (
+              <Space>
+                <Button size="small" type="link" onClick={() => onReplace(row)}>变更绑定</Button>
+                <Popconfirm title="提交解除绑定审核" description="解除绑定不会立即生效，审核通过后该绑定将归档。" onConfirm={() => onDelete(row)}>
+                  <Button size="small" type="link" danger>解除绑定</Button>
+                </Popconfirm>
+              </Space>
+            );
+          }
+        }
+      ]}
+    />
+  );
 }
 
-function AttachmentTable({ rows, total, pageNo, pageSize, loading, onPageChange, onPreview, onDownload, onDelete }: { rows: SourceAttachmentRecord[]; total: number; pageNo: number; pageSize: number; loading: boolean; onPageChange: (pageNo: number, pageSize: number) => void; onPreview: (row: SourceAttachmentRecord) => void; onDownload: (row: SourceAttachmentRecord) => void; onDelete: (row: SourceAttachmentRecord) => void }) {
-  return <Table<SourceAttachmentRecord> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} loading={loading} pagination={{ current: pageNo, pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 个附件`, onChange: onPageChange }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }} columns={[
-    { title: '文件名', render: (_value, row) => row.fileName || '未命名附件' },
-    { title: '类型', width: 120, render: (_value, row) => row.fileType || '待维护' },
-    { title: '大小', width: 90, render: (_value, row) => fileSizeText(row.fileSize) },
-    { title: '敏感级别', width: 100, render: (_value, row) => <Tag>{optionText(sensitiveOptions, row.sensitiveLevel)}</Tag> },
-    { title: '上传状态', width: 100, render: (_value, row) => <Tag color={statusColor(row.uploadStatus)}>{uploadStatusText(row.uploadStatus)}</Tag> },
-    { title: '上传时间', width: 170, render: (_value, row) => row.uploadedAt || '待维护' },
-    { title: '操作', width: 190, render: (_value, row) => <Space size="small"><Button size="small" type="link" disabled={!row.previewAllowed} onClick={() => onPreview(row)}>预览</Button><Button size="small" type="link" disabled={!row.downloadAllowed} onClick={() => onDownload(row)}>下载</Button><Popconfirm title="删除附件" description={`确认删除附件“${row.fileName || '当前附件'}”吗？`} onConfirm={() => onDelete(row)}><Button size="small" type="link" danger>删除</Button></Popconfirm></Space> }
-  ]} />;
+function AttachmentTable({ rows, total, pageNo, pageSize, loading, onPageChange, onPreview, onDownload, onDelete }: {
+  rows: SourceAttachmentRecord[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
+  loading: boolean;
+  onPageChange: (pageNo: number, pageSize: number) => void;
+  onPreview: (row: SourceAttachmentRecord) => void;
+  onDownload: (row: SourceAttachmentRecord) => void;
+  onDelete: (row: SourceAttachmentRecord) => void;
+}) {
+  return (
+    <Table<SourceAttachmentRecord>
+      size="small"
+      rowKey={(row, index) => String(row.id || index)}
+      dataSource={rows}
+      loading={loading}
+      pagination={{
+        current: pageNo,
+        pageSize,
+        total,
+        showSizeChanger: true,
+        pageSizeOptions: [10, 20, 50],
+        showTotal: value => `共 ${value} 个附件`,
+        onChange: onPageChange
+      }}
+      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }}
+      columns={[
+        { title: '文件名', render: (_value, row) => row.fileName || '未命名附件' },
+        { title: '类型', width: 120, render: (_value, row) => row.fileType || '待维护' },
+        { title: '大小', width: 90, render: (_value, row) => fileSizeText(row.fileSize) },
+        { title: '敏感级别', width: 100, render: (_value, row) => <Tag>{optionText(sensitiveOptions, row.sensitiveLevel)}</Tag> },
+        { title: '上传状态', width: 100, render: (_value, row) => <Tag color={uploadStatusColor(row.uploadStatus)}>{uploadStatusText(row.uploadStatus)}</Tag> },
+        { title: '上传时间', width: 170, render: (_value, row) => row.uploadedAt || '待维护' },
+        {
+          title: '操作',
+          width: 190,
+          render: (_value, row) => (
+            <Space size="small">
+              <Button size="small" type="link" disabled={!row.previewAllowed} onClick={() => onPreview(row)}>预览</Button>
+              <Button size="small" type="link" disabled={!row.downloadAllowed} onClick={() => onDownload(row)}>下载</Button>
+              <Popconfirm title="删除附件" description={`确认删除附件“${row.fileName || '当前附件'}”吗？`} onConfirm={() => onDelete(row)}>
+                <Button size="small" type="link" danger>删除</Button>
+              </Popconfirm>
+            </Space>
+          )
+        }
+      ]}
+    />
+  );
 }
