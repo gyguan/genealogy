@@ -18,6 +18,22 @@ public interface SourceRepository extends JpaRepository<SourceEntity, Long>, Jpa
     long countByClanId(Long clanId);
 
     @Query("""
+            select source.sourceType, count(source)
+            from SourceEntity source
+            where source.clanId = :clanId
+            group by source.sourceType
+            """)
+    List<Object[]> countDashboardBySourceType(@Param("clanId") Long clanId);
+
+    @Query("""
+            select source
+            from SourceEntity source
+            where source.clanId = :clanId
+            order by source.updatedAt desc nulls last, source.createdAt desc nulls last, source.id desc
+            """)
+    List<SourceEntity> findRecentDashboardSources(@Param("clanId") Long clanId, Pageable pageable);
+
+    @Query("""
             select source
             from SourceEntity source
             where source.clanId = :clanId
