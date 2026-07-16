@@ -22,7 +22,8 @@ type PersonPreviewRow = ImportPreviewRowBase & {
   duplicateCount?: number;
 };
 
-const genderText = (value?: string) => ({ male: '男', female: '女', unknown: '未知' }[value || ''] || value || '-');
+const genderLabels: Record<string, string> = { male: '男', female: '女', unknown: '未知' };
+const genderText = (value?: string) => genderLabels[value || ''] || value || '-';
 
 const columns: ColumnsType<PersonPreviewRow> = [
   { key: 'rowNo', title: '行号', dataIndex: 'rowNo', width: 72 },
