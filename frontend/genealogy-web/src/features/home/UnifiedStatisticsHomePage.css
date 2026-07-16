@@ -95,7 +95,8 @@
 }
 
 .statistics-home-page__metric-button:focus-visible,
-.statistics-home-page__distribution-button:focus-visible {
+.statistics-home-page__distribution-button:focus-visible,
+.statistics-home-page__detail-title:focus-visible {
   outline: 2px solid #1677ff;
   outline-offset: 2px;
 }
@@ -112,6 +113,10 @@
 .statistics-home-page__metric-unit {
   font-size: 13px;
   font-weight: 400;
+}
+
+.statistics-home-page__drill-hint {
+  font-size: 12px;
 }
 
 .statistics-home-page__metric-card--warning {
@@ -157,6 +162,25 @@
   opacity: 0.64;
 }
 
+.statistics-home-page__detail-drawer .ant-drawer-content-wrapper {
+  max-width: 100vw;
+}
+
+.statistics-home-page__detail-drawer .ant-drawer-body {
+  overflow-x: hidden;
+}
+
+.statistics-home-page__detail-title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.statistics-home-page__detail-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .statistics-home-page__empty-onboarding .ant-card-body {
   min-height: 320px;
   display: grid;
@@ -200,6 +224,16 @@
   .statistics-home-page__distribution-button > span {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .statistics-home-page__detail-drawer .ant-drawer-content-wrapper {
+    width: 100vw !important;
+    max-width: 100vw;
+  }
+
+  .statistics-home-page__detail-drawer .ant-drawer-header,
+  .statistics-home-page__detail-drawer .ant-drawer-body {
+    padding-inline: 16px;
   }
 
   .statistics-home-page__empty-onboarding .ant-card-body {
