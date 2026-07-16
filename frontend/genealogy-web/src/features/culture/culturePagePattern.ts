@@ -1,10 +1,11 @@
+import type { CultureEditorTarget } from './cultureEditorState';
 import type { CultureTabKey } from './cultureTabState';
 
 export type CulturePagePattern = {
   tab: CultureTabKey;
   label: string;
   primaryAction: string;
-  editorTarget?: 'migration' | 'site';
+  editorTarget: CultureEditorTarget;
   mobileClass: string;
 };
 
@@ -13,6 +14,7 @@ export const culturePagePatterns: Record<CultureTabKey, CulturePagePattern> = {
     tab: 'items',
     label: '文化资料',
     primaryAction: '新增资料',
+    editorTarget: 'item',
     mobileClass: 'culture-tab-items'
   },
   migrations: {

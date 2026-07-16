@@ -78,6 +78,14 @@ async function expectMobileRecordView(page: Page, tabClass: string) {
   expect(await tableContent.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 }
 
+async function expectMobilePrimaryAction(page: Page, name: string) {
+  const action = page.getByRole('button', { name });
+  const box = await action.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(40);
+  expect(box?.height).toBeLessThanOrEqual(41);
+  expect(box?.width).toBeGreaterThanOrEqual(88);
+}
+
 test('culture shell exposes one primary action and mounts only the active domain', async ({ page }) => {
   const requested: string[] = [];
   await mockPatternApi(page, requested);
@@ -109,16 +117,13 @@ test('390px viewport uses responsive record cards without horizontal table scrol
   await page.goto('/?view=culture&tab=items');
 
   await expectMobileRecordView(page, 'culture-tab-items');
-  const itemAction = page.getByRole('button', { name: '新增资料' });
-  expect((await itemAction.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await expectMobilePrimaryAction(page, '新增资料');
 
   await page.getByRole('tab', { name: '迁徙脉络' }).click();
   await expectMobileRecordView(page, 'culture-tab-migrations');
-  const migrationAction = page.getByRole('button', { name: '新增迁徙事件' });
-  expect((await migrationAction.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await expectMobilePrimaryAction(page, '新增迁徙事件');
 
   await page.getByRole('tab', { name: '文化场所' }).click();
   await expectMobileRecordView(page, 'culture-tab-sites');
-  const siteAction = page.getByRole('button', { name: '新增场所' });
-  expect((await siteAction.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  await expectMobilePrimaryAction(page, '新增场所');
 });

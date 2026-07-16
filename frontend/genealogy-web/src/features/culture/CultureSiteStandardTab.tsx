@@ -217,7 +217,7 @@ export function CultureSiteStandardTab() {
   function openDetail(item: CultureSiteSummaryResponse) { setSelectedId(item.id); writeLocation(search, item.id); }
   function closeDetail() { setSelectedId(undefined); setDetail(null); setTrace(null); writeLocation(search, undefined, 'replace'); }
   function openEditor(nextEditor: CultureEditorState) { editorDirtyRef.current = false; editorRef.current = nextEditor; setEditor(nextEditor); writeLocation(search, selectedId, 'push', nextEditor); }
-  function closeEditor() { editorDirtyRef.current = false; editorRef.current = null; setEditor(null); writeLocation(search, selectedId, 'replace', null); }
+  function closeEditor() { if (!confirmCultureEditorLeave(editorDirtyRef.current)) return; editorDirtyRef.current = false; editorRef.current = null; setEditor(null); writeLocation(search, selectedId, 'replace', null); }
   function editorSaved(id: number) { editorDirtyRef.current = false; editorRef.current = null; setEditor(null); setSelectedId(id); writeLocation(search, id, 'replace', null); refresh(); }
 
   function openGovernance(item: CultureSiteSummaryResponse | CultureSiteDetailResponse, kind: CultureGovernanceTarget['kind']) {
@@ -284,14 +284,14 @@ export function CultureSiteStandardTab() {
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor) return <>{messageContext}<CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+  if (editor?.mode === 'edit') return <>{messageContext}<CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <Text type="danger">删除</Text> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     {messageContext}
-    <Card size="small" title="文化场所查询" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>新增场所</Button>}>
+    <Card size="small" title="文化场所查询">
       <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="siteType" label="场所类型"><Select {...multiSelectProps} placeholder="可多选" options={siteTypeOptions} /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="sort" label="排序"><Select options={siteSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button></Space></Col></Row></Form>
     </Card>
     <Card title={`文化场所（${total}）`}>
@@ -310,6 +310,7 @@ export function CultureSiteStandardTab() {
         { key: 'history', label: '审核与追踪', children: <Space direction="vertical" size="middle" style={{ width: '100%' }}><Descriptions bordered size="small" column={1}><Descriptions.Item label="审核状态">{detail.review.status || '尚未提交'}</Descriptions.Item><Descriptions.Item label="驳回原因">{detail.review.rejectedReason || '-'}</Descriptions.Item></Descriptions>{traceError ? <Alert type="warning" showIcon message="追踪局部加载失败" description={traceError} /> : null}{trace ? <Timeline items={trace.timeline.slice(0, 8).map(event => ({ children: `${event.title} · ${formatDateTime(event.occurredAt)}` }))} /> : !traceError ? <Skeleton active paragraph={{ rows: 4 }} /> : null}<Button onClick={openTracking}>打开完整追踪</Button></Space> }
       ]} /> : null}
     </Drawer>
+    {editor?.mode === 'create' ? <Drawer open width={720} title="新增文化场所" className="culture-create-drawer" onClose={closeEditor} destroyOnHidden><CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></Drawer> : null}
     <CultureGovernanceModal target={governanceTarget} reason={governanceReason} loading={actionLoading} error={governanceError} onReasonChange={setGovernanceReason} onCancel={() => { if (!actionLoading) setGovernanceTarget(null); }} onConfirm={() => void confirmGovernance()} />
   </Space>;
 }

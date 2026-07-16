@@ -1,4 +1,4 @@
-export type CultureEditorTarget = 'migration' | 'site';
+export type CultureEditorTarget = 'item' | 'migration' | 'site';
 export type CultureEditorMode = 'create' | 'edit';
 
 export type CultureEditorState = {
@@ -8,7 +8,7 @@ export type CultureEditorState = {
 };
 
 const editorKeys = ['cultureEditor', 'cultureEditorMode', 'cultureEditorId'];
-const editorTargets: CultureEditorTarget[] = ['migration', 'site'];
+const editorTargets: CultureEditorTarget[] = ['item', 'migration', 'site'];
 const editorModes: CultureEditorMode[] = ['create', 'edit'];
 
 function valid<T extends string>(values: readonly T[], value: string | null): T | undefined {
