@@ -21,13 +21,13 @@ test('reads applied lineage state and ignores legacy view controls', () => {
   });
 });
 
-test('writes applied state and removes legacy dataView and searchScope parameters', () => {
-  const next = withLineageUrlState('https://example.test/?view=treeProduct&dataView=editing&searchScope=branch', {
+test('writes only non-default lineage state and removes unrelated parameters', () => {
+  const next = withLineageUrlState('https://example.test/?view=reviewCenter&reviewTab=submitted&status=pending', {
     clanId: '11',
     branchId: '22',
     personId: '33',
     mode: 'person',
-    personDepth: '5',
+    personDepth: '3',
     branchDepth: '8',
     direction: 'both',
     relationScopes: ['blood', 'ritual', 'marriage'],
@@ -36,7 +36,33 @@ test('writes applied state and removes legacy dataView and searchScope parameter
   const url = new URL(next, 'https://example.test');
   assert.equal(url.searchParams.get('view'), 'treeProduct');
   assert.equal(url.searchParams.get('personId'), '33');
-  assert.equal(url.searchParams.get('relations'), 'blood,ritual,marriage');
-  assert.equal(url.searchParams.has('dataView'), false);
-  assert.equal(url.searchParams.has('searchScope'), false);
+  assert.equal(url.searchParams.has('mode'), false);
+  assert.equal(url.searchParams.has('personDepth'), false);
+  assert.equal(url.searchParams.has('branchDepth'), false);
+  assert.equal(url.searchParams.has('direction'), false);
+  assert.equal(url.searchParams.has('relations'), false);
+  assert.equal(url.searchParams.has('includeSubBranches'), false);
+  assert.equal(url.searchParams.has('reviewTab'), false);
+  assert.equal(url.searchParams.has('status'), false);
+});
+
+test('writes non-default lineage options', () => {
+  const next = withLineageUrlState('https://example.test/', {
+    clanId: '11',
+    branchId: '22',
+    personId: '',
+    mode: 'branch',
+    personDepth: '5',
+    branchDepth: '12',
+    direction: 'ancestors',
+    relationScopes: ['blood', 'status'],
+    includeSubBranches: false
+  });
+  const url = new URL(next, 'https://example.test');
+  assert.equal(url.searchParams.get('mode'), 'branch');
+  assert.equal(url.searchParams.get('personDepth'), '5');
+  assert.equal(url.searchParams.get('branchDepth'), '12');
+  assert.equal(url.searchParams.get('direction'), 'ancestors');
+  assert.equal(url.searchParams.get('relations'), 'blood,status');
+  assert.equal(url.searchParams.get('includeSubBranches'), 'false');
 });
