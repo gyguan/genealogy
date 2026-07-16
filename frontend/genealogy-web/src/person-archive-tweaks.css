@@ -34,7 +34,7 @@
 
 .person-archive-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 16px;
 }
 
@@ -176,6 +176,16 @@
   color: #555;
   text-align: center;
   background: #fafafa;
+}
+
+/* The clan selector now belongs to the query card; undo the former joined-header styling. */
+.business-page--personArchive .person-archive-query-card {
+  border-top: 1px solid var(--query-page-border) !important;
+  border-radius: var(--query-page-radius) !important;
+}
+
+.business-page--personArchive .person-archive-query-card > .ant-card-head {
+  display: flex !important;
 }
 
 @media (max-width: 1199px) {
