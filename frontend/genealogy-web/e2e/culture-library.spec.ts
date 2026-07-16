@@ -28,15 +28,12 @@ function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
 }
 
-function emptyPage(pageSize = 10) {
-  return { items: [], page: { pageNo: 1, pageSize, totalElements: 0, totalPages: 0 } };
-}
-
-async function mockCultureApi(page: Page) {
+async function mockCultureItemApi(page: Page, requestedPaths: string[]) {
   await page.route('**/api/v1/**', async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace('/api/v1', '');
+    requestedPaths.push(path);
 
     if (path === '/auth/me') {
       await route.fulfill(ok({ id: 7, username: 'culture_admin', displayName: '文化管理员', status: 'active' }));
@@ -48,26 +45,6 @@ async function mockCultureApi(page: Page) {
     }
     if (path === '/clans/1/branches') {
       await route.fulfill(ok([{ id: 2, branchName: '长沙支', branchPath: '黄氏宗族/长沙支' }]));
-      return;
-    }
-    if (path === '/clans/1/culture-overview') {
-      await route.fulfill(ok({
-        clanId: 1,
-        clanName: '黄氏宗族',
-        statistics: { officialItemCount: 8, pendingReviewCount: 2, sourceCoverageRate: 0.75 },
-        featuredItems: [item],
-        migrationHighlights: [],
-        siteHighlights: [],
-        missingHints: ['家训资料尚未形成正式记录']
-      }));
-      return;
-    }
-    if (path === '/clans/1/migration-events' && request.method() === 'GET') {
-      await route.fulfill(ok(emptyPage()));
-      return;
-    }
-    if (path === '/clans/1/culture-sites' && request.method() === 'GET') {
-      await route.fulfill(ok(emptyPage(12)));
       return;
     }
     if (path === '/clans/1/culture-items' && request.method() === 'GET') {
@@ -107,11 +84,20 @@ async function mockCultureApi(page: Page) {
   });
 }
 
-test('culture library restores URL state and uses real detail, governance and responsive layout', async ({ page }) => {
-  await mockCultureApi(page);
-  await page.goto('/?view=culture&cultureKeyword=%E5%A0%82%E5%8F%B7&cultureItem=11');
+function expectOnlyItemTabRequests(requestedPaths: string[]) {
+  expect(requestedPaths.filter(path => path.includes('culture-overview'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('culture-quality'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('migration-events'))).toHaveLength(0);
+  expect(requestedPaths.filter(path => path.includes('culture-sites'))).toHaveLength(0);
+}
 
-  await expect(page.getByRole('heading', { name: '宗族文化资料库' })).toBeVisible();
+test('culture item tab restores URL state and keeps inactive tabs unmounted', async ({ page }) => {
+  const requestedPaths: string[] = [];
+  await mockCultureItemApi(page, requestedPaths);
+  await page.goto('/?view=culture&tab=items&cultureKeyword=%E5%A0%82%E5%8F%B7&cultureItem=11');
+
+  await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('关键词')).toHaveValue('堂号');
   await expect(page.getByText('正式资料').first()).toBeVisible();
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
@@ -136,18 +122,23 @@ test('culture library restores URL state and uses real detail, governance and re
   await drawer.getByRole('button', { name: 'Close' }).click();
   await page.getByLabel('关键词').fill('家训');
   await page.getByRole('button', { name: /查\s*询/ }).click();
+  await expect(page).toHaveURL(/tab=items/);
   await expect(page).toHaveURL(/cultureKeyword=%E5%AE%B6%E8%AE%AD/);
   await expect(page.getByText('黄氏家训')).toBeVisible();
+
+  expectOnlyItemTabRequests(requestedPaths);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText('文化资料检索')).toBeVisible();
   await expect(page.getByRole('button', { name: /新\s*增\s*资\s*料/ })).toBeVisible();
 });
 
-test('forbidden culture list does not disclose restricted object identity', async ({ page }) => {
+test('forbidden culture item list does not disclose restricted object identity', async ({ page }) => {
+  const requestedPaths: string[] = [];
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
+    requestedPaths.push(path);
     if (path === '/auth/me') {
       await route.fulfill(ok({ id: 8, username: 'viewer', displayName: '受限成员', status: 'active' }));
       return;
@@ -158,18 +149,6 @@ test('forbidden culture list does not disclose restricted object identity', asyn
     }
     if (path === '/clans/1/branches') {
       await route.fulfill(ok([]));
-      return;
-    }
-    if (path === '/clans/1/culture-overview') {
-      await route.fulfill(ok({ clanId: 1, clanName: '黄氏宗族', statistics: { officialItemCount: 0, pendingReviewCount: 0, sourceCoverageRate: 0 }, featuredItems: [], migrationHighlights: [], siteHighlights: [], missingHints: [] }));
-      return;
-    }
-    if (path === '/clans/1/migration-events') {
-      await route.fulfill(ok(emptyPage()));
-      return;
-    }
-    if (path === '/clans/1/culture-sites') {
-      await route.fulfill(ok(emptyPage(12)));
       return;
     }
     if (path === '/clans/1/culture-items') {
@@ -183,8 +162,9 @@ test('forbidden culture list does not disclose restricted object identity', asyn
     await route.fulfill(ok({}));
   });
 
-  await page.goto('/?view=culture');
+  await page.goto('/?view=culture&tab=items');
   await expect(page.getByText('暂无权限')).toBeVisible();
   await expect(page.getByText('当前账号无权查看该宗族文化资料')).toBeVisible();
   await expect(page.getByText('封存祖源秘密')).toHaveCount(0);
+  expectOnlyItemTabRequests(requestedPaths);
 });
