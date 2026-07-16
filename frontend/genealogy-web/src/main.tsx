@@ -24,6 +24,7 @@ import './person-detail-page.css';
 import './runtime-error.css';
 import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
+import './member-permission-page.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
