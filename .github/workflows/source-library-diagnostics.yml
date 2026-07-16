@@ -1,9 +1,9 @@
 name: Source Library Diagnostics
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/source-search-layout-412
+      - main
 
 permissions:
   contents: read
