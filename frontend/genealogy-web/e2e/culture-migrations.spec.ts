@@ -68,10 +68,12 @@ test('migration tab supports direct URL and does not mount other culture domains
   await expect(page.getByRole('tab', { name: '迁徙脉络' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('关键词')).toHaveValue('湖广');
   await expect(page.getByText('江西吉安 → 湖南长沙').first()).toBeVisible();
-  const drawer = page.getByRole('dialog', { name: '迁徙事件详情' });
+  const drawer = page.getByRole('dialog', { name: /江西吉安.*湖南长沙/ });
   await expect(drawer).toBeVisible();
+  await drawer.getByRole('tab', { name: '来源证据' }).click();
   await expect(drawer.getByText('黄氏族谱迁徙记')).toBeVisible();
-  await expect(drawer.getByText('迁徙事件审核已处理')).toBeVisible();
+  await drawer.getByRole('tab', { name: '审核与追踪' }).click();
+  await expect(drawer.getByText(/迁徙事件审核已处理/)).toBeVisible();
   await expect(drawer.getByText(/人物\s*#?\s*91/)).toHaveCount(0);
 
   expect(requestedPaths.filter(path => path.includes('culture-overview'))).toHaveLength(0);
@@ -94,15 +96,15 @@ test('migration editor uses an independent URL page and business person selectio
   await expect(page.getByText('黄公讳德昌').first()).toBeVisible();
   await expect(page.getByText(/人物\s*ID|人物\s*#?\s*91/)).toHaveCount(0);
 
-  const founder = page.getByRole('combobox', { name: '始迁祖' });
+  const founder = page.locator('.ant-form-item').filter({ hasText: '始迁祖' }).locator('input');
   await founder.fill('德昌');
-  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈')).toBeVisible();
+  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈').last()).toBeVisible();
 
   await page.getByRole('button', { name: '提交变更申请' }).click();
   await expect.poll(() => submittedBodies.length).toBe(1);
   expect(submittedBodies[0]).toMatchObject({ founderPersonId: 91, branchId: 2, version: 2 });
   await expect(page).not.toHaveURL(/cultureEditor=/);
-  await expect(page.getByRole('dialog', { name: '迁徙事件详情' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /江西吉安.*湖南长沙/ })).toBeVisible();
 });
 
 test('migration editor restores after browser refresh', async ({ page }) => {

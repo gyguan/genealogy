@@ -79,16 +79,18 @@ test('culture site tab supports direct URL, detail and mobile layout', async ({ 
   await page.goto('/?view=culture&tab=sites&siteItem=61');
 
   await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: '祠堂与文化场所' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: '文化场所' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   await expect(page.getByText('湖南省长沙市某村').first()).toBeVisible();
 
-  const drawer = page.getByRole('dialog', { name: '文化场所详情' });
+  const drawer = page.getByRole('dialog', { name: '敦本堂宗祠' });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText('黄公讳德昌')).toBeVisible();
+  await drawer.getByRole('tab', { name: '来源与附件' }).click();
   await expect(drawer.getByText('敦本堂重修碑记')).toBeVisible();
   await expect(drawer.getByText('敦本堂正门.jpg')).toBeVisible();
-  await expect(drawer.getByText('文化场所审核已处理')).toBeVisible();
+  await drawer.getByRole('tab', { name: '审核与追踪' }).click();
+  await expect(drawer.getByText(/文化场所审核已处理/)).toBeVisible();
   await expect(drawer.getByText(/人物\s*#?\s*91/)).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: /打\s*开\s*完\s*整\s*追\s*踪/ })).toBeVisible();
 
@@ -97,6 +99,8 @@ test('culture site tab supports direct URL, detail and mobile layout', async ({ 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('button', { name: /新\s*增\s*场\s*所/ })).toBeVisible();
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
+  const box = await drawer.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(389);
 });
 
 test('culture site editor uses an independent URL page and business person selection', async ({ page }) => {
@@ -113,20 +117,20 @@ test('culture site editor uses an independent URL page and business person selec
   await expect(page.getByText('黄公讳德昌').first()).toBeVisible();
   await expect(page.getByText(/人物\s*ID|人物\s*#?\s*91/)).toHaveCount(0);
 
-  const relatedPerson = page.getByRole('combobox', { name: '关联人物' });
+  const relatedPerson = page.locator('.ant-form-item').filter({ hasText: '关联人物' }).locator('input');
   await relatedPerson.fill('德昌');
-  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈')).toBeVisible();
+  await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈').last()).toBeVisible();
 
   await page.getByLabel('纬度').fill('91');
   await page.getByRole('button', { name: '提交变更申请' }).click();
-  await expect(page.getByText('纬度必须在 -90 到 90 之间')).toBeVisible();
+  await expect(page.getByText('纬度必须在 -90 到 90 之间').first()).toBeVisible();
   await page.getByLabel('纬度').fill('28.2282');
   await page.getByRole('button', { name: '提交变更申请' }).click();
 
   await expect.poll(() => submittedBodies.length).toBe(1);
   expect(submittedBodies[0]).toMatchObject({ relatedPersonId: 91, branchId: 2, latitude: 28.2282, longitude: 112.9388, version: 2 });
   await expect(page).not.toHaveURL(/cultureEditor=/);
-  await expect(page.getByRole('dialog', { name: '文化场所详情' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '敦本堂宗祠' })).toBeVisible();
 });
 
 test('culture site editor restores after browser refresh', async ({ page }) => {

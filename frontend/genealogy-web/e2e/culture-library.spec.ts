@@ -99,7 +99,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
   await expect(page.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('关键词')).toHaveValue('堂号');
-  await expect(page.getByText('正式资料').first()).toBeVisible();
+  await expect(page.getByText('正式', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
   const drawer = page.getByRole('dialog', { name: '敦本堂堂号源流' });
   await expect(drawer).toBeVisible();
@@ -110,8 +110,8 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(drawer.getByText('敦本堂谱页.jpg')).toBeVisible();
 
   await drawer.getByRole('tab', { name: /审核与追踪/ }).click();
-  await expect(drawer.getByText('文化资料发布为正式内容')).toBeVisible();
-  await expect(drawer.getByRole('button', { name: '完整追踪' })).toBeVisible();
+  await expect(drawer.getByText('审核通过')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '打开完整追踪' })).toBeVisible();
 
   await drawer.getByRole('button', { name: /编\s*辑/ }).click();
   const editDialog = page.getByRole('dialog', { name: '申请变更正式文化资料' });
@@ -129,7 +129,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   expectOnlyItemTabRequests(requestedPaths);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByText('文化资料检索')).toBeVisible();
+  await expect(page.getByText('文化资料查询')).toBeVisible();
   await expect(page.getByRole('button', { name: /新\s*增\s*资\s*料/ })).toBeVisible();
 });
 
