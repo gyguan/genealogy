@@ -1,17 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
-import { Button, Descriptions, Drawer, Empty, Input, Modal, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import { Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Input, Modal, Row, Select, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import type { ReviewTaskListItemResponse, ReviewTaskViewDetailResponse } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
-import { Panel } from '../../shared/ui/Panel';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
 type DecisionType = 'approve' | 'reject';
 type BranchOption = { id: number | string; branchName?: string };
+type DateRange = [Dayjs, Dayjs] | null;
+type ReviewFilters = {
+  targetType?: string;
+  status?: string;
+  branchId?: string;
+  submittedRange: DateRange;
+  processedRange: DateRange;
+};
+
+const DEFAULT_PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const targetTypeOptions = [
   { value: 'import_job', label: '导入批次' },
@@ -31,9 +42,65 @@ const statusOptions = [
   { value: 'cancelled', label: '已取消' }
 ];
 
-function readInitialTab(): ReviewTabKey {
-  const value = new URLSearchParams(window.location.search).get('reviewTab');
-  return value === 'submitted' || value === 'processed' || value === 'pending' ? value : 'pending';
+function emptyFilters(): ReviewFilters {
+  return { submittedRange: null, processedRange: null };
+}
+
+function validTab(value: string | null): ReviewTabKey {
+  return value === 'submitted' || value === 'processed' ? value : 'pending';
+}
+
+function validOption(value: string | null, options: Array<{ value: string }>) {
+  return value && options.some(option => option.value === value) ? value : undefined;
+}
+
+function validPositiveInt(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseDateRange(from: string | null, to: string | null): DateRange {
+  if (!from || !to) return null;
+  const start = dayjs(from, 'YYYY-MM-DD', true);
+  const end = dayjs(to, 'YYYY-MM-DD', true);
+  return start.isValid() && end.isValid() && !start.isAfter(end) ? [start, end] : null;
+}
+
+function readUrlState() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedPageSize = validPositiveInt(params.get('pageSize'), DEFAULT_PAGE_SIZE);
+  return {
+    activeTab: validTab(params.get('reviewTab')),
+    pageNo: validPositiveInt(params.get('pageNo'), 1),
+    pageSize: PAGE_SIZE_OPTIONS.includes(requestedPageSize) ? requestedPageSize : DEFAULT_PAGE_SIZE,
+    filters: {
+      targetType: validOption(params.get('targetType'), targetTypeOptions),
+      status: validOption(params.get('status'), statusOptions),
+      branchId: params.get('branchId') || undefined,
+      submittedRange: parseDateRange(params.get('submittedFrom'), params.get('submittedTo')),
+      processedRange: parseDateRange(params.get('processedFrom'), params.get('processedTo'))
+    } satisfies ReviewFilters
+  };
+}
+
+function writeUrlState(activeTab: ReviewTabKey, filters: ReviewFilters, pageNo: number, pageSize: number) {
+  const url = new URL(window.location.href);
+  const params = url.searchParams;
+  const setOrDelete = (key: string, value?: string) => value ? params.set(key, value) : params.delete(key);
+
+  params.set('reviewTab', activeTab);
+  setOrDelete('targetType', filters.targetType);
+  setOrDelete('status', filters.status);
+  setOrDelete('branchId', filters.branchId);
+  setOrDelete('submittedFrom', filters.submittedRange?.[0].format('YYYY-MM-DD'));
+  setOrDelete('submittedTo', filters.submittedRange?.[1].format('YYYY-MM-DD'));
+  setOrDelete('processedFrom', filters.processedRange?.[0].format('YYYY-MM-DD'));
+  setOrDelete('processedTo', filters.processedRange?.[1].format('YYYY-MM-DD'));
+
+  if (pageNo > 1) params.set('pageNo', String(pageNo)); else params.delete('pageNo');
+  if (pageSize !== DEFAULT_PAGE_SIZE) params.set('pageSize', String(pageSize)); else params.delete('pageSize');
+
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
 function rowKey(row: ReviewTaskListItemResponse) {
@@ -83,14 +150,6 @@ function formatDuration(seconds?: number | null) {
   return remainHours ? `${days} 天 ${remainHours} 小时` : `${days} 天`;
 }
 
-function dateStart(value: string) {
-  return value ? `${value}T00:00:00` : '';
-}
-
-function dateEnd(value: string) {
-  return value ? `${value}T23:59:59` : '';
-}
-
 function isPending(row?: ReviewTaskListItemResponse | null) {
   return String(row?.status || '').toLowerCase() === 'pending';
 }
@@ -102,28 +161,25 @@ function reviewRoundText(row: ReviewTaskListItemResponse) {
 
 export function ReviewCenterPage({ notify }: Props) {
   const workspace = useWorkspace();
-  const [activeTab, setActiveTab] = useState<ReviewTabKey>(readInitialTab);
+  const initialState = useMemo(readUrlState, []);
+  const [form] = Form.useForm<ReviewFilters>();
+  const [activeTab, setActiveTab] = useState<ReviewTabKey>(initialState.activeTab);
+  const [appliedFilters, setAppliedFilters] = useState<ReviewFilters>(initialState.filters);
   const [tasks, setTasks] = useState<ReviewTaskListItemResponse[]>([]);
   const [total, setTotal] = useState(0);
-  const [pageNo, setPageNo] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageNo, setPageNo] = useState(initialState.pageNo);
+  const [pageSize, setPageSize] = useState(initialState.pageSize);
   const [loading, setLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [processingKeys, setProcessingKeys] = useState<Key[]>([]);
   const [detail, setDetail] = useState<ReviewTaskViewDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [targetType, setTargetType] = useState<string>();
-  const [status, setStatus] = useState<string>();
-  const [branchId, setBranchId] = useState<string>();
-  const [submittedFrom, setSubmittedFrom] = useState('');
-  const [submittedTo, setSubmittedTo] = useState('');
-  const [processedFrom, setProcessedFrom] = useState('');
-  const [processedTo, setProcessedTo] = useState('');
   const [decisionTask, setDecisionTask] = useState<ReviewTaskListItemResponse | null>(null);
   const [decisionType, setDecisionType] = useState<DecisionType>('approve');
   const [decisionComment, setDecisionComment] = useState('');
   const [decisionLoading, setDecisionLoading] = useState(false);
+  const requestSequence = useRef(0);
 
   const selectedTasks = useMemo(
     () => tasks.filter(task => selectedRowKeys.includes(rowKey(task))),
@@ -143,40 +199,47 @@ export function ReviewCenterPage({ notify }: Props) {
     }
   }
 
-  async function loadTasks(nextPage = pageNo, nextPageSize = pageSize) {
+  async function loadTasks(nextPage = pageNo, nextPageSize = pageSize, filters = appliedFilters, tab = activeTab) {
     if (!workspace.clanId) {
       setTasks([]);
       setTotal(0);
       setSelectedRowKeys([]);
       return;
     }
+    const requestId = ++requestSequence.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        view: activeTab,
+        view: tab,
         scope: 'mine',
         pageNo: String(nextPage),
         pageSize: String(nextPageSize)
       });
-      if (targetType) params.set('targetType', targetType);
-      if (status) params.set('status', status);
-      if (branchId) params.set('branchId', branchId);
-      if (submittedFrom) params.set('submittedFrom', dateStart(submittedFrom));
-      if (submittedTo) params.set('submittedTo', dateEnd(submittedTo));
-      if (processedFrom) params.set('processedFrom', dateStart(processedFrom));
-      if (processedTo) params.set('processedTo', dateEnd(processedTo));
+      if (filters.targetType) params.set('targetType', filters.targetType);
+      if (filters.status) params.set('status', filters.status);
+      if (filters.branchId) params.set('branchId', filters.branchId);
+      if (filters.submittedRange) {
+        params.set('submittedFrom', `${filters.submittedRange[0].format('YYYY-MM-DD')}T00:00:00`);
+        params.set('submittedTo', `${filters.submittedRange[1].format('YYYY-MM-DD')}T23:59:59`);
+      }
+      if (filters.processedRange) {
+        params.set('processedFrom', `${filters.processedRange[0].format('YYYY-MM-DD')}T00:00:00`);
+        params.set('processedTo', `${filters.processedRange[1].format('YYYY-MM-DD')}T23:59:59`);
+      }
       const page = await apiClient.get<PageResponse<ReviewTaskListItemResponse>>(
         `/clans/${workspace.clanId}/review-tasks/search?${params.toString()}`
       );
+      if (requestId !== requestSequence.current) return;
       setTasks(page.records || []);
       setTotal(page.total || 0);
       setSelectedRowKeys([]);
     } catch (error) {
+      if (requestId !== requestSequence.current) return;
       setTasks([]);
       setTotal(0);
       notify({ message: (error as Error).message || '查询审核任务失败' }, true);
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   }
 
@@ -196,35 +259,39 @@ export function ReviewCenterPage({ notify }: Props) {
   }
 
   useEffect(() => { void loadBranches(); }, [workspace.clanId]);
-  useEffect(() => { void loadTasks(); }, [
-    workspace.clanId, activeTab, pageNo, pageSize, targetType, status, branchId,
-    submittedFrom, submittedTo, processedFrom, processedTo
-  ]);
+  useEffect(() => {
+    writeUrlState(activeTab, appliedFilters, pageNo, pageSize);
+    void loadTasks();
+  }, [workspace.clanId, activeTab, appliedFilters, pageNo, pageSize]);
   useEffect(() => {
     const taskId = Number(workspace.reviewTaskId);
     if (workspace.clanId && Number.isFinite(taskId) && taskId > 0) void openDetail(taskId);
   }, [workspace.clanId, workspace.reviewTaskId]);
 
   function switchTab(key: string) {
-    const next = key as ReviewTabKey;
-    setActiveTab(next);
+    setActiveTab(key as ReviewTabKey);
     setPageNo(1);
     setSelectedRowKeys([]);
     setDetail(null);
-    setStatus(undefined);
-    const url = new URL(window.location.href);
-    url.searchParams.set('reviewTab', next);
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function applyFilters() {
+    const values = await form.validateFields();
+    setAppliedFilters({
+      targetType: values.targetType,
+      status: values.status,
+      branchId: values.branchId,
+      submittedRange: values.submittedRange || null,
+      processedRange: values.processedRange || null
+    });
+    setPageNo(1);
   }
 
   function resetFilters() {
-    setTargetType(undefined);
-    setStatus(undefined);
-    setBranchId(undefined);
-    setSubmittedFrom('');
-    setSubmittedTo('');
-    setProcessedFrom('');
-    setProcessedTo('');
+    const next = emptyFilters();
+    form.resetFields();
+    form.setFieldsValue(next);
+    setAppliedFilters(next);
     setPageNo(1);
   }
 
@@ -300,64 +367,6 @@ export function ReviewCenterPage({ notify }: Props) {
     }
   ];
 
-  const filterBar = (
-    <Space wrap style={{ marginBottom: 16 }}>
-      <Select allowClear placeholder="对象类型" value={targetType} options={targetTypeOptions} style={{ width: 150 }} onChange={value => { setTargetType(value); setPageNo(1); }} />
-      <Select allowClear placeholder="审核状态" value={status} options={statusOptions} style={{ width: 130 }} onChange={value => { setStatus(value); setPageNo(1); }} />
-      <Select
-        allowClear showSearch optionFilterProp="label" placeholder="目标支派" value={branchId}
-        options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))}
-        style={{ width: 170 }} onChange={value => { setBranchId(value); setPageNo(1); }}
-      />
-      <Input type="date" aria-label="提交开始日期" value={submittedFrom} style={{ width: 145 }} onChange={event => { setSubmittedFrom(event.target.value); setPageNo(1); }} />
-      <Typography.Text type="secondary">至</Typography.Text>
-      <Input type="date" aria-label="提交结束日期" value={submittedTo} style={{ width: 145 }} onChange={event => { setSubmittedTo(event.target.value); setPageNo(1); }} />
-      {activeTab === 'processed' ? (
-        <>
-          <Input type="date" aria-label="处理开始日期" value={processedFrom} style={{ width: 145 }} onChange={event => { setProcessedFrom(event.target.value); setPageNo(1); }} />
-          <Typography.Text type="secondary">至</Typography.Text>
-          <Input type="date" aria-label="处理结束日期" value={processedTo} style={{ width: 145 }} onChange={event => { setProcessedTo(event.target.value); setPageNo(1); }} />
-        </>
-      ) : null}
-      <Button onClick={resetFilters}>重置筛选</Button>
-    </Space>
-  );
-
-  function renderTable() {
-    return (
-      <>
-        {filterBar}
-        {activeTab === 'pending' ? (
-          <div className="batch-review-actions table-review-actions">
-            <Typography.Text type="secondary">当前筛选共 {total} 条待审核任务</Typography.Text>
-            <Space wrap>
-              <Button type="primary" disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('approve')}>批量通过（{selectedTasks.length}）</Button>
-              <Button danger disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('reject')}>批量驳回（{selectedTasks.length}）</Button>
-            </Space>
-          </div>
-        ) : null}
-        <Table<ReviewTaskListItemResponse>
-          size="small" bordered loading={loading} rowKey={rowKey} dataSource={tasks}
-          rowSelection={activeTab === 'pending' ? {
-            selectedRowKeys, onChange: keys => setSelectedRowKeys(keys), preserveSelectedRowKeys: false
-          } : undefined}
-          onRow={row => ({ onClick: () => void openDetail(row.id), style: { cursor: 'pointer' } })}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前筛选条件下暂无审核记录' : '请先选择宗族'} /> }}
-          pagination={{
-            current: pageNo, pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100],
-            showTotal: value => `共 ${value} 条`,
-            onChange: (nextPage, nextPageSize) => {
-              setPageNo(nextPageSize === pageSize ? nextPage : 1);
-              setPageSize(nextPageSize);
-            }
-          }}
-          columns={columns}
-          scroll={{ x: 'max-content' }}
-        />
-      </>
-    );
-  }
-
   const currentDetail = detail?.task;
   const historyItems = [...(detail?.history || [])].reverse().map(item => ({
     color: isPending(item) ? 'blue' : statusColor(item.status) === 'success' ? 'green' : 'red',
@@ -377,20 +386,113 @@ export function ReviewCenterPage({ notify }: Props) {
 
   return (
     <div className="review-center-page">
-      <Panel title="审核中心" help="分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。">
-        <Tabs
-          activeKey={activeTab}
-          onChange={switchTab}
-          items={[
-            { key: 'pending', label: activeTab === 'pending' ? `待我审核（${total}）` : '待我审核', children: renderTable() },
-            { key: 'submitted', label: activeTab === 'submitted' ? `我提交的（${total}）` : '我提交的', children: renderTable() },
-            { key: 'processed', label: activeTab === 'processed' ? `已处理（${total}）` : '已处理', children: renderTable() }
-          ]}
-        />
-      </Panel>
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <div>
+          <Typography.Title level={3} style={{ marginBottom: 4 }}>审核中心</Typography.Title>
+          <Typography.Text type="secondary">分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。</Typography.Text>
+        </div>
+
+        <Card title="筛选条件">
+          <Form form={form} layout="vertical" initialValues={initialState.filters}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} lg={6}>
+                <Form.Item name="targetType" label="审核对象">
+                  <Select allowClear placeholder="全部对象" options={targetTypeOptions} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Form.Item name="status" label="审核状态">
+                  <Select allowClear placeholder="全部状态" options={statusOptions} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Form.Item name="branchId" label="目标支派">
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="全部支派"
+                    options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Form.Item name="submittedRange" label="提交时间">
+                  <DatePicker.RangePicker style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              {activeTab === 'processed' ? (
+                <Col xs={24} sm={12} lg={6}>
+                  <Form.Item name="processedRange" label="处理时间">
+                    <DatePicker.RangePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+              ) : null}
+            </Row>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Space>
+                <Button onClick={resetFilters}>重置</Button>
+                <Button type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button>
+              </Space>
+            </div>
+          </Form>
+        </Card>
+
+        <Card>
+          <Tabs
+            activeKey={activeTab}
+            onChange={switchTab}
+            items={[
+              { key: 'pending', label: activeTab === 'pending' ? `待我审核（${total}）` : '待我审核' },
+              { key: 'submitted', label: activeTab === 'submitted' ? `我提交的（${total}）` : '我提交的' },
+              { key: 'processed', label: activeTab === 'processed' ? `已处理（${total}）` : '已处理' }
+            ]}
+          />
+          {activeTab === 'pending' ? (
+            <div className="batch-review-actions table-review-actions">
+              <Typography.Text type="secondary">当前筛选共 {total} 条待审核任务</Typography.Text>
+              <Space wrap>
+                <Button type="primary" disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('approve')}>批量通过（{selectedTasks.length}）</Button>
+                <Button danger disabled={!selectedTasks.length || loading} onClick={() => void batchDecision('reject')}>批量驳回（{selectedTasks.length}）</Button>
+              </Space>
+            </div>
+          ) : null}
+          <Table<ReviewTaskListItemResponse>
+            size="small"
+            bordered
+            loading={loading}
+            rowKey={rowKey}
+            dataSource={tasks}
+            rowSelection={activeTab === 'pending' ? {
+              selectedRowKeys,
+              onChange: keys => setSelectedRowKeys(keys),
+              preserveSelectedRowKeys: false
+            } : undefined}
+            onRow={row => ({ onClick: () => void openDetail(row.id), style: { cursor: 'pointer' } })}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '当前筛选条件下暂无审核记录' : '请先选择宗族'} /> }}
+            pagination={{
+              current: pageNo,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+              showTotal: value => `共 ${value} 条`,
+              onChange: (nextPage, nextPageSize) => {
+                setPageNo(nextPageSize === pageSize ? nextPage : 1);
+                setPageSize(nextPageSize);
+              }
+            }}
+            columns={columns}
+            scroll={{ x: 'max-content' }}
+          />
+        </Card>
+      </Space>
 
       <Drawer
-        title="审核详情与流转记录" width={680} open={Boolean(detail) || detailLoading} loading={detailLoading}
+        title="审核详情与流转记录"
+        width={680}
+        open={Boolean(detail) || detailLoading}
+        loading={detailLoading}
         onClose={() => { setDetail(null); workspace.setReviewTaskId(''); }}
         extra={currentDetail ? (
           <Space>
@@ -437,15 +539,22 @@ export function ReviewCenterPage({ notify }: Props) {
       </Drawer>
 
       <Modal
-        title={decisionType === 'approve' ? '通过审核' : '驳回审核'} open={Boolean(decisionTask)}
-        confirmLoading={decisionLoading} okText={decisionType === 'approve' ? '确认通过' : '确认驳回'}
-        okButtonProps={{ danger: decisionType === 'reject' }} onOk={() => void submitDecision()}
-        onCancel={() => setDecisionTask(null)} destroyOnHidden
+        title={decisionType === 'approve' ? '通过审核' : '驳回审核'}
+        open={Boolean(decisionTask)}
+        confirmLoading={decisionLoading}
+        okText={decisionType === 'approve' ? '确认通过' : '确认驳回'}
+        okButtonProps={{ danger: decisionType === 'reject' }}
+        onOk={() => void submitDecision()}
+        onCancel={() => setDecisionTask(null)}
+        destroyOnHidden
       >
         <Space direction="vertical" style={{ width: '100%' }}>
           <Typography.Text>{decisionTask?.title}</Typography.Text>
           <Input.TextArea
-            rows={4} maxLength={500} showCount value={decisionComment}
+            rows={4}
+            maxLength={500}
+            showCount
+            value={decisionComment}
             placeholder={decisionType === 'approve' ? '填写审核意见（可选）' : '请填写驳回原因'}
             onChange={event => setDecisionComment(event.target.value)}
           />
