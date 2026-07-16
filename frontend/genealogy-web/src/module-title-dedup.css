@@ -1,0 +1,48 @@
+/* The global header is the single module title. Business pages keep context,
+   descriptions, filters and actions, but suppress only the repeated module name. */
+
+.business-page--home .statistics-home-page__heading > h3,
+.business-page--mvp1Wizard .wizard-page-heading > h3,
+.business-page--personArchive #person-archive-title,
+.business-page--culture .culture-page-heading > h3,
+.business-page--imports .import-page-header h3,
+.business-page--editingWorkspace > .ant-space > .ant-card:first-child h3,
+.business-page--reviewCenter .review-center-page > .ant-space > div:first-child h3,
+.business-page--memberManage .member-role-page > .ant-card:first-child h3 {
+  display: none;
+}
+
+/* Remove redundant breadcrumb-like module labels where the left navigation and
+   global header already provide the same location context. */
+.business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography-secondary:first-child,
+.business-page--personArchive .person-archive-page-header .ant-breadcrumb {
+  display: none;
+}
+
+/* Keep each page header compact after removing its duplicate title. */
+.business-page--home .statistics-home-page__heading,
+.business-page--mvp1Wizard .wizard-page-heading,
+.business-page--culture .culture-page-heading,
+.business-page--imports .import-page-header > div:first-child,
+.business-page--reviewCenter .review-center-page > .ant-space > div:first-child {
+  min-width: 0;
+}
+
+.business-page--home .statistics-home-page__heading > .ant-typography,
+.business-page--mvp1Wizard .wizard-page-heading > .ant-typography,
+.business-page--culture .culture-page-heading > .ant-typography,
+.business-page--imports .import-page-header .ant-typography,
+.business-page--reviewCenter .review-center-page > .ant-space > div:first-child > .ant-typography,
+.business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography {
+  margin-top: 0;
+}
+
+/* The first tree card is a scope/query panel, not a second module title. */
+.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child {
+  font-size: 0;
+}
+
+.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child::after {
+  content: '图谱范围';
+  font-size: 14px;
+}
