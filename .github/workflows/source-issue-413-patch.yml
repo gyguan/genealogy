@@ -80,8 +80,9 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
   );
 }
 """
-          if anchor not in s: raise SystemExit('source id anchor missing')
-          s = s.replace(anchor, helpers, 1)
+          if 'function readSearchFromUrl()' not in s:
+              if anchor not in s: raise SystemExit('source id anchor missing')
+              s = s.replace(anchor, helpers, 1)
           s = s.replace("const [search, setSearch] = useState<SourceSearchParams>({ pageNo: 1, pageSize: 10, sort: 'updatedAt,desc' });", "const [search, setSearch] = useState<SourceSearchParams>(readSearchFromUrl);")
           s = s.replace("const [sourceForm] = Form.useForm<SourceSearchFormValues>();", "const [sourceForm] = Form.useForm<SourceSearchFormValues>();\n  const listScrollRef = useRef<number>(Number(window.history.state?.sourceLibraryScrollY || 0));")
           s = s.replace("""  function openDetail(row: SourceRecord) {
@@ -112,21 +113,25 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
     window.setTimeout(() => window.scrollTo({ top: listScrollRef.current }), 0);
   }
 """, 1)
-          s = s.replace("""    setSearch(next);
+          first = """    setSearch(next);
     void loadSources(next);
   }
 
-  function resetSearch()""", """    setSearch(next);
+  function resetSearch()"""
+          if first in s:
+              s = s.replace(first, """    setSearch(next);
     writeSearchToUrl(next);
     void loadSources(next);
   }
 
   function resetSearch()""", 1)
-          s = s.replace("""    setSearch(next);
+          second = """    setSearch(next);
     void loadSources(next);
   }
 
-  function openCreateBinding()""", """    setSearch(next);
+  function openCreateBinding()"""
+          if second in s:
+              s = s.replace(second, """    setSearch(next);
     writeSearchToUrl(next);
     void loadSources(next);
   }
@@ -153,12 +158,13 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
     return () => window.removeEventListener('popstate', onPopState);
   }, [clanId, sourceForm]);
 """
-          if old_pop not in s: raise SystemExit('popstate block missing')
-          s = s.replace(old_pop, new_pop, 1)
+          if old_pop in s: s = s.replace(old_pop, new_pop, 1)
           s = s.replace("<Form form={sourceForm} layout=\"vertical\" onFinish={submitSearch} initialValues={search}>", "<Form form={sourceForm} layout=\"vertical\" onFinish={submitSearch} initialValues={searchFormValues(search)}>")
-          s = s.replace("""                setSearch(next);
+          page = """                setSearch(next);
                 void loadSources(next);
-""", """                setSearch(next);
+"""
+          if page in s:
+              s = s.replace(page, """                setSearch(next);
                 writeSearchToUrl(next);
                 void loadSources(next);
 """, 1)
