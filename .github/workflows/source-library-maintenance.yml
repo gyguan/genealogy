@@ -1,8 +1,8 @@
 name: Source Library Maintenance
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+    types: [reopened]
 
 permissions:
   contents: write
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply-issue-413:
-    if: github.event.issue.pull_request && github.event.issue.number == 452 && github.event.comment.body == '/apply-source-413'
+    if: github.event.pull_request.number == 452
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
