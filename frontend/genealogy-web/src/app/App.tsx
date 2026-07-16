@@ -16,6 +16,9 @@ import { MemberInvitationAction } from '../features/members/MemberInvitationActi
 import { MemberPage } from '../features/members/MemberPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
+import { PersonDetailPage } from '../features/persons/PersonDetailPage';
+import { navigateBackFromPersonDetail, readPersonDetailRoute } from '../features/persons/personDetailNavigation';
+import type { PersonDetailRoute } from '../features/persons/personDetailNavigation';
 import { PersonEditPage } from '../features/persons/PersonEditPage';
 import { navigateBackFromPersonEdit, readPersonEditRoute } from '../features/persons/personEditNavigation';
 import type { PersonEditRoute } from '../features/persons/personEditNavigation';
@@ -45,7 +48,7 @@ type ViewKey = typeof navItems[number][0];
 type AuthStatus = 'checking' | 'authenticated' | 'anonymous';
 
 function readViewFromUrl(): ViewKey {
-  if (readPersonEditRoute()) return 'personArchive';
+  if (readPersonEditRoute() || readPersonDetailRoute()) return 'personArchive';
   const requested = new URLSearchParams(window.location.search).get('view');
   return navItems.some(([key]) => key === requested) ? requested as ViewKey : 'home';
 }
@@ -110,6 +113,7 @@ export function App() {
 
 function AppShell() {
   const [active, setActive] = useState<ViewKey>(readViewFromUrl);
+  const [personDetailRoute, setPersonDetailRoute] = useState<PersonDetailRoute | null>(readPersonDetailRoute);
   const [personEditRoute, setPersonEditRoute] = useState<PersonEditRoute | null>(readPersonEditRoute);
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -133,6 +137,7 @@ function AppShell() {
   }
 
   function syncRouteFromUrl() {
+    setPersonDetailRoute(readPersonDetailRoute());
     setPersonEditRoute(readPersonEditRoute());
     setActive(readViewFromUrl());
     setPageEntryVersion(prev => prev + 1);
@@ -205,6 +210,7 @@ function AppShell() {
       notify({ message: '人物档案正在保存，请稍后再离开。' }, true);
       return;
     }
+    setPersonDetailRoute(null);
     setPersonEditRoute(null);
     setActive(key);
     setPageEntryVersion(prev => prev + 1);
@@ -221,6 +227,10 @@ function AppShell() {
           onSavingChange={setNavigationLocked}
         />
       );
+    }
+
+    if (personDetailRoute) {
+      return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
     }
 
     switch (active) {
@@ -240,7 +250,7 @@ function AppShell() {
   }
 
   function renderModuleActions() {
-    if (personEditRoute) return null;
+    if (personDetailRoute || personEditRoute) return null;
     if (active === 'personArchive') return <PersonDataExportActions notify={notify} />;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
     if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
@@ -267,6 +277,12 @@ function AppShell() {
     );
   }
 
+  const routeKey = personEditRoute?.personId
+    ? `edit-${personEditRoute.personId}`
+    : personDetailRoute?.personId
+      ? `detail-${personDetailRoute.personId}`
+      : 'list';
+
   return (
     <Layout className="admin-layout antd-admin-layout">
       <Sider className="sidebar antd-sidebar" width={248} breakpoint="lg" collapsedWidth={0}>
@@ -291,7 +307,7 @@ function AppShell() {
           </Space>
         </Header>
         <Content className="content content--compact antd-content">
-          <div key={`${active}-${personEditRoute?.personId || 'list'}-${pageEntryVersion}`}>{renderPage()}</div>
+          <div key={`${active}-${routeKey}-${pageEntryVersion}`}>{renderPage()}</div>
         </Content>
       </Layout>
       <ToastStack items={toasts} onClose={closeToast} />

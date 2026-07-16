@@ -19,6 +19,7 @@ import './antd-bridge.css';
 import './person-archive-tweaks.css';
 import './person-archive-source.css';
 import './person-edit-page.css';
+import './person-detail-page.css';
 import './runtime-error.css';
 import './home-dashboard-overrides.css';
 import './guidance-cleanup.css';
