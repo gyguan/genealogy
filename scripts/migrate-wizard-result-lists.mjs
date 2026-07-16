@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 
+// One-time source migration for issue #372. This file is deleted after the branch is transformed.
 const files = [
   'frontend/genealogy-web/src/features/mvp1/steps/branch/BranchStep.tsx',
   'frontend/genealogy-web/src/features/mvp1/steps/generation/GenerationStep.tsx',
