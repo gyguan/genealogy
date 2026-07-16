@@ -5,9 +5,3 @@
 .business-page--home .statistics-home-page__heading > .ant-typography {
   display: none;
 }
-
-/* When both clan context and save status are present, remove only the duplicated
-   clan status item and keep the save status visible. */
-.business-page--mvp1Wizard .wizard-page-heading > .ant-space:has(> .ant-space-item:nth-child(2)) > .ant-space-item:first-child {
-  display: none;
-}

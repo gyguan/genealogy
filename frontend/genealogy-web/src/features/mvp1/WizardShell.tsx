@@ -80,7 +80,6 @@ function showActiveReason(state: WizardBusinessState) {
 }
 
 export function WizardShell<TKey extends string = string>({
-  title,
   contextLabel,
   saveStatus,
   steps,
@@ -142,16 +141,6 @@ export function WizardShell<TKey extends string = string>({
   return (
     <WizardCompletionContext.Provider value={{ requestVersion: completionRequestVersion, status: completionStatus, reportStatus: setCompletionStatus }}>
       <div className="mvp1-wizard-page">
-        <header className="wizard-page-header">
-          <div className="wizard-page-heading">
-            <Typography.Title level={3}>{title}</Typography.Title>
-            <Space size={10} wrap>
-              {hasClanContext ? <Typography.Text type="secondary">宗族：{contextLabel}</Typography.Text> : null}
-              <Typography.Text type="secondary" aria-live="polite">{saveStatus.label}</Typography.Text>
-            </Space>
-          </div>
-        </header>
-
         <Card className="wizard-progress-card" size="small" aria-label="建谱进度">
           <Steps
             className="wizard-ant-steps"
@@ -173,7 +162,11 @@ export function WizardShell<TKey extends string = string>({
             <div className="wizard-progress-summary">
               <div className="wizard-progress-summary__heading">
                 <Typography.Text strong>{activeIndex + 1}/{normalizedSteps.length} · {activeStepMeta.title}</Typography.Text>
-                <Tag color={stateColor(activeStepMeta.state)}>{activeStepMeta.stateLabel}</Tag>
+                <Space size={8} wrap>
+                  {hasClanContext ? <Typography.Text type="secondary">宗族：{contextLabel}</Typography.Text> : null}
+                  <Tag color={stateColor(activeStepMeta.state)}>{activeStepMeta.stateLabel}</Tag>
+                  <Tag color={saveStatus.color} aria-live="polite">{saveStatus.label}</Tag>
+                </Space>
               </div>
               {showActiveReason(activeStepMeta.state) ? (
                 <Typography.Text type="secondary">{activeStepMeta.reason}</Typography.Text>
