@@ -25,6 +25,34 @@ export type HomeDashboardBranchCoverageResponse = {
   coverageRate: number;
 };
 
+export type HomeDashboardTrendPointResponse = {
+  date: string;
+  peopleCreatedCount: number;
+  sourceCreatedCount: number;
+  reviewCompletedCount: number;
+};
+
+export type HomeDashboardRiskResponse = {
+  key: string;
+  label: string;
+  count: number;
+  severity: string;
+  reason: string;
+  targetView: string;
+  targetQuery: string;
+};
+
+export type HomeDashboardActivityResponse = {
+  type: string;
+  action: string;
+  objectName: string;
+  actorName: string;
+  occurredAt: string;
+  status: string;
+  targetView: string;
+  targetQuery: string;
+};
+
 export type HomeDashboardResponse = {
   clanId: number;
   asOf: string;
@@ -35,6 +63,11 @@ export type HomeDashboardResponse = {
   genderDistribution: HomeDashboardBucketResponse[];
   livingDistribution: HomeDashboardBucketResponse[];
   generationDistribution: HomeDashboardBucketResponse[];
+  branchDistribution: HomeDashboardBucketResponse[];
+  sourceTypeDistribution: HomeDashboardBucketResponse[];
   completeness: HomeDashboardCompletenessResponse;
   branchCoverage: HomeDashboardBranchCoverageResponse;
+  trendPoints: HomeDashboardTrendPointResponse[];
+  risks: HomeDashboardRiskResponse[];
+  recentActivities: HomeDashboardActivityResponse[];
 };
