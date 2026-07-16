@@ -1,0 +1,69 @@
+.wizard-step-title {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wizard-step-title .ant-tag {
+  margin-inline-end: 0;
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.wizard-progress-summary {
+  align-items: flex-start;
+}
+
+.wizard-progress-summary__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.wizard-progress-summary__heading .ant-tag {
+  margin-inline-end: 0;
+}
+
+.wizard-progress-summary__detail {
+  display: grid;
+  gap: 4px;
+  max-width: 720px;
+  text-align: right;
+}
+
+.wizard-gate-alert .ant-alert-description {
+  line-height: 1.6;
+}
+
+.wizard-ant-steps .ant-steps-item-description {
+  max-width: 240px;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+@media (max-width: 767px) {
+  .wizard-step-title {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .wizard-progress-summary__detail {
+    max-width: none;
+    text-align: left;
+  }
+
+  .wizard-gate-alert .ant-alert-action {
+    margin-inline-start: 0;
+    padding-top: 10px;
+  }
+
+  .wizard-gate-alert .ant-btn {
+    min-height: 44px;
+  }
+}
