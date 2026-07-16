@@ -354,7 +354,7 @@ export function UnifiedStatisticsHomePage() {
     return peopleState.data;
   }
 
-  function drillState(): ResourceState<unknown> {
+  function drillState(): ResourceState<any> {
     if (activeDrill === 'branches' || activeDrill === 'branchCovered') return branchesState;
     if (activeDrill === 'sources' || activeDrill.startsWith('sourceType:')) return sourcesState;
     if (activeDrill === 'pendingReviews') return reviewsState;
@@ -389,6 +389,12 @@ export function UnifiedStatisticsHomePage() {
     ];
   }
 
+  function openDrill(key: DrillKey) {
+    if (!dashboardState.loaded) return;
+    setActiveDrill(key);
+    setDrillOpen(true);
+  }
+
   function renderDashboardSection() {
     if ((dashboardState.status === 'error' || dashboardState.status === 'forbidden') && !dashboardState.loaded) {
       return renderAreaAlert('dashboard', '核心指标', dashboardState);
@@ -399,7 +405,7 @@ export function UnifiedStatisticsHomePage() {
         <Row gutter={[16, 16]}>
           {cards.map(card => (
             <Col key={`${card.label}-${card.key}`} xs={24} sm={12} lg={8} xl={6}>
-              <Card hoverable={dashboardState.loaded} onClick={() => dashboardState.loaded && setDrillOpen(true) || setActiveDrill(card.key)}>
+              <Card hoverable={dashboardState.loaded} onClick={() => openDrill(card.key)}>
                 <Statistic title={card.label} value={card.value} />
                 <Text type="secondary">{card.hint}</Text>
               </Card>
@@ -481,7 +487,7 @@ export function UnifiedStatisticsHomePage() {
       <Card className="statistics-home-page__clan-summary"><Title level={4}>{clanLabel(currentClan)}</Title><Paragraph type="secondary">{display(currentClan?.description, '暂未维护宗族简介')}</Paragraph></Card>
       {renderDashboardSection()}
       {renderCultureSection()}
-      {dashboardState.loaded ? <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={key => { setActiveDrill(key); setDrillOpen(true); }} /> : null}
+      {dashboardState.loaded ? <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={openDrill} /> : null}
       <Drawer title={detailTitle()} open={drillOpen} onClose={() => setDrillOpen(false)} width={980}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           {renderAreaAlert(drillArea(), detailTitle(), activeState)}
