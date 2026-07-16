@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Card, Select, Space, Tabs, Typography, message } from 'antd';
+import { Button, Card, Select, Space, Spin, Tabs, Typography, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
@@ -89,6 +89,14 @@ export function CultureProductPage() {
   }
 
   function renderActiveTab() {
+    if (!workspace.clanId) {
+      return (
+        <Card className="culture-context-loading">
+          <Spin size="small" />
+          <Text type="secondary">正在初始化宗族上下文…</Text>
+        </Card>
+      );
+    }
     const mounts = resolveCultureTabMounts(activeTab);
     return (
       <div className={`culture-managed-tab ${cultureMobileClass(activeTab)}`}>
