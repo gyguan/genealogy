@@ -128,6 +128,14 @@ export function WizardValidationBoundary({ step, children }: Props) {
     if (!ACTION_PATTERN.test(text) || PASS_THROUGH_PATTERN.test(text)) return;
     const root = rootRef.current;
     if (!root) return;
+
+    if (step === 'generation' && text.includes('保存并提交审核')) {
+      event.preventDefault();
+      event.stopPropagation();
+      applyErrors({}, '新建字辈方案只能先保存为草稿。请从方案列表进入“维护字辈”，至少添加一条有效明细后再提交审核。');
+      return;
+    }
+
     const errors = validateWizardStep(step, collectValues(root));
     if (!Object.keys(errors).length) {
       applyErrors({});
