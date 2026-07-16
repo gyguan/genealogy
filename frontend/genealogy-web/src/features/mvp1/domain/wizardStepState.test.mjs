@@ -55,8 +55,7 @@ test('business steps remain enterable when earlier steps are incomplete', () => 
   assert.equal(byKey(steps, 'branch').state, 'editing');
   assert.equal(byKey(steps, 'generation').state, 'waiting');
   assert.equal(byKey(steps, 'generation').stateLabel, '可进入');
-  const gate = getWizardStepGate(steps, 'generation');
-  assert.equal(gate.allowed, true);
+  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
 });
 
 test('pending review task is not treated as completed', () => {
@@ -125,18 +124,6 @@ test('explicit relationship and source skips satisfy completion rules', () => {
   assert.equal(byKey(steps, 'source').stateLabel, '已跳过');
   assert.equal(byKey(steps, 'review').state, 'completed');
 });
-
-
-test('completion step remains locked until business dependencies are complete', () => {
-  const steps = deriveWizardStepStates(emptyWizardStateSnapshot());
-  assert.equal(getWizardStepGate(steps, 'branch').allowed, true);
-  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
-  assert.equal(getWizardStepGate(steps, 'person').allowed, true);
-  assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);
-  assert.equal(getWizardStepGate(steps, 'source').allowed, true);
-  assert.equal(getWizardStepGate(steps, 'review').allowed, false);
-});
-
 
 test('completion step remains locked until business dependencies are complete', () => {
   const steps = deriveWizardStepStates(emptyWizardStateSnapshot());
