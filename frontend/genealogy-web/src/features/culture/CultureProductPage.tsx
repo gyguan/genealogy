@@ -5,6 +5,7 @@ import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
 import { CultureSiteStandardTab } from './CultureSiteStandardTab';
 import { buildCultureEditorLocation } from './cultureEditorState';
+import { cultureEditorTarget, cultureMobileClass, culturePrimaryAction, cultureTabItems } from './culturePagePattern';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
@@ -12,18 +13,6 @@ import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
 
 const { Paragraph, Text, Title } = Typography;
-
-const tabItems = [
-  { key: 'items', label: '文化资料' },
-  { key: 'migrations', label: '迁徙脉络' },
-  { key: 'sites', label: '文化场所' }
-] satisfies Array<{ key: CultureTabKey; label: string }>;
-
-const primaryActionText: Record<CultureTabKey, string> = {
-  items: '新增资料',
-  migrations: '新增迁徙事件',
-  sites: '新增场所'
-};
 
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -89,11 +78,11 @@ export function CultureProductPage() {
 
   function openPrimaryAction() {
     if (!workspace.clanId) return;
-    if (activeTab === 'items') {
+    const target = cultureEditorTarget(activeTab);
+    if (!target) {
       window.dispatchEvent(new CustomEvent('culture:item:create'));
       return;
     }
-    const target = activeTab === 'migrations' ? 'migration' : 'site';
     const href = buildCultureEditorLocation(window.location.href, { target, mode: 'create' });
     window.history.pushState(window.history.state, '', href);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -102,7 +91,7 @@ export function CultureProductPage() {
   function renderActiveTab() {
     const mounts = resolveCultureTabMounts(activeTab);
     return (
-      <div className={`culture-managed-tab culture-tab-${activeTab}`}>
+      <div className={`culture-managed-tab ${cultureMobileClass(activeTab)}`}>
         {mounts.items ? <CultureItemMaintenanceTab clanId={workspace.clanId} /> : null}
         {mounts.migrations ? <MigrationEventStandardTab /> : null}
         {mounts.sites ? <CultureSiteStandardTab /> : null}
@@ -134,11 +123,11 @@ export function CultureProductPage() {
               />
             </div>
             <Button type="primary" className="culture-page-primary-action" disabled={!workspace.clanId} onClick={openPrimaryAction}>
-              {primaryActionText[activeTab]}
+              {culturePrimaryAction(activeTab)}
             </Button>
           </div>
         </div>
-        <Tabs activeKey={activeTab} items={tabItems} onChange={changeTab} />
+        <Tabs activeKey={activeTab} items={cultureTabItems} onChange={changeTab} />
       </Card>
 
       {renderActiveTab()}
