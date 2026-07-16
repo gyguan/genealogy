@@ -115,7 +115,7 @@ export function createLocalWizardSessionStore(storage: Pick<Storage, 'getItem' |
 function draftControls(root: ParentNode) {
   return Array.from(root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
     'input:not([type="hidden"]):not([type="button"]):not([type="submit"]), select, textarea'
-  )).filter(control => !control.disabled && !control.readOnly);
+  )).filter(control => !control.disabled && (control instanceof HTMLSelectElement || !control.readOnly));
 }
 
 function draftKey(control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, index: number) {
