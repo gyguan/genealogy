@@ -4,6 +4,18 @@ function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
 }
 
+function fail(status = 500, message = '接口暂时不可用') {
+  return { status, contentType: 'application/json', body: JSON.stringify({ success: false, message }) };
+}
+
+type MockOptions = {
+  emptyClans?: boolean;
+  clansStatus?: number;
+  dashboardStatus?: number;
+  cultureStatus?: number;
+  sourceStatus?: number;
+};
+
 function dashboardFor(clanId: number) {
   const isFirstClan = clanId === 1;
   return {
@@ -38,7 +50,7 @@ function dashboardFor(clanId: number) {
   };
 }
 
-async function mockHomeApi(page: Page, requestedPaths: string[]) {
+async function mockHomeApi(page: Page, requestedPaths: string[], options: MockOptions = {}) {
   await page.route('**/api/v1/**', async (route: Route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -50,6 +62,14 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
       return;
     }
     if (path === '/clans') {
+      if (options.clansStatus) {
+        await route.fulfill(fail(options.clansStatus, options.clansStatus === 403 ? '您暂无权限查看宗族列表' : '宗族列表加载失败'));
+        return;
+      }
+      if (options.emptyClans) {
+        await route.fulfill(ok({ records: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 0 }));
+        return;
+      }
       await route.fulfill(ok({
         records: [
           { id: 1, clanName: '黄氏宗族', surname: '黄', description: '黄氏宗族简介' },
@@ -65,6 +85,10 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
 
     const clanId = path.startsWith('/clans/2/') || url.searchParams.get('clanId') === '2' ? 2 : 1;
     if (path === `/clans/${clanId}/dashboard`) {
+      if (options.dashboardStatus) {
+        await route.fulfill(fail(options.dashboardStatus, options.dashboardStatus === 403 ? '您暂无权限查看核心指标' : '核心指标服务异常'));
+        return;
+      }
       await route.fulfill(ok(dashboardFor(clanId)));
       return;
     }
@@ -81,6 +105,10 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
       return;
     }
     if (path === `/clans/${clanId}/sources`) {
+      if (options.sourceStatus) {
+        await route.fulfill(fail(options.sourceStatus, '来源资料加载失败'));
+        return;
+      }
       await route.fulfill(ok(clanId === 1 ? [{ id: 31, sourceName: '黄氏谱卷一' }] : [{ id: 41, sourceName: '林氏谱卷一' }]));
       return;
     }
@@ -93,6 +121,10 @@ async function mockHomeApi(page: Page, requestedPaths: string[]) {
       return;
     }
     if (path === `/clans/${clanId}/culture-overview`) {
+      if (options.cultureStatus) {
+        await route.fulfill(fail(options.cultureStatus, options.cultureStatus === 403 ? '您暂无权限查看宗族文化摘要' : '宗族文化摘要服务异常'));
+        return;
+      }
       await route.fulfill(ok({
         clanId,
         clanName: clanId === 1 ? '黄氏宗族' : '林氏宗族',
@@ -153,4 +185,62 @@ test('home dashboard header keeps the clan selector touch-friendly on mobile', a
   expect(box!.height).toBeGreaterThanOrEqual(44);
   expect(box!.width).toBeGreaterThan(300);
   await expect(page.locator('.statistics-home-page__updated-at')).toBeVisible();
+});
+
+test('home dashboard shows actionable first-use empty state for accounts without clans', async ({ page }) => {
+  const requestedPaths: string[] = [];
+  await mockHomeApi(page, requestedPaths, { emptyClans: true });
+  await page.goto('/');
+
+  await expect(page.getByText('当前账号尚未创建或加入可见宗族')).toBeVisible();
+  await expect(page.getByText('未命名宗族')).toHaveCount(0);
+  await expect(page.getByText('族人总数')).toHaveCount(0);
+  await expect(page.getByText('宗族文化摘要')).toHaveCount(0);
+  await expect(page.getByText('代次分布 TOP 8')).toHaveCount(0);
+  await expect.poll(() => requestedPaths.some(path => path.startsWith('/clans/1/dashboard'))).toBe(false);
+
+  await page.getByRole('button', { name: '开始建谱' }).click();
+  await expect(page).toHaveURL(/view=mvp1Wizard/);
+});
+
+test('home dashboard distinguishes clan list failures from first-use empty state', async ({ page }) => {
+  await mockHomeApi(page, [], { clansStatus: 500 });
+  await page.goto('/');
+
+  await expect(page.getByText('宗族列表加载失败')).toBeVisible();
+  await expect(page.getByText('当前账号尚未创建或加入可见宗族')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '开始建谱' })).toHaveCount(0);
+});
+
+test('home dashboard keeps successful regions when dashboard aggregate fails', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('genealogy.workspace.clanId', '1'));
+  await mockHomeApi(page, [], { dashboardStatus: 500 });
+  await page.goto('/');
+
+  await expect(page.getByText('核心指标加载失败')).toBeVisible();
+  await expect(page.getByText('族人总数')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '黄氏宗族', level: 4 })).toBeVisible();
+  await expect(page.getByText('宗族文化摘要')).toBeVisible();
+});
+
+test('home dashboard isolates culture and source failures without blocking core metrics', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('genealogy.workspace.clanId', '1'));
+  await mockHomeApi(page, [], { cultureStatus: 500, sourceStatus: 500 });
+  await page.goto('/');
+
+  await expect(page.getByText('201')).toBeVisible();
+  await expect(page.getByText('宗族文化摘要加载失败')).toBeVisible();
+  await expect(page.getByText('宗族文化摘要服务异常')).toBeVisible();
+  await page.getByText('来源资料').click();
+  await expect(page.getByText('资料明细加载失败')).toBeVisible();
+  await expect(page.getByText('共 0 条记录')).toBeVisible();
+});
+
+test('home dashboard handles forbidden clan list without exposing onboarding action', async ({ page }) => {
+  await mockHomeApi(page, [], { clansStatus: 403 });
+  await page.goto('/');
+
+  await expect(page.getByText('暂无权限查看宗族列表')).toBeVisible();
+  await expect(page.getByText('当前账号尚未创建或加入可见宗族')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '开始建谱' })).toHaveCount(0);
 });
