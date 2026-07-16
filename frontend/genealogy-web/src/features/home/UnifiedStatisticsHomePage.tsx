@@ -388,18 +388,18 @@ export function UnifiedStatisticsHomePage() {
   const branchCoveredText = branchCoverage ? `${branchCoverage.coveredBranchCount}/${branchCoverage.totalBranchCount}` : '-';
 
   const cards: { key: DrillKey; label: string; value: number | string; hint: string }[] = [
-    { key: 'people', label: '族人总数', value: dashboardReady ? dashboard.peopleTotal : '-', hint: '查看人物明细' },
-    { key: 'branches', label: '支派数量', value: dashboardReady ? dashboard.branchCount : '-', hint: '查看支派' },
-    { key: 'sources', label: '来源资料', value: dashboardReady ? dashboard.sourceCount : '-', hint: '查看来源' },
-    { key: 'pendingReviews', label: '待审核', value: dashboardReady ? dashboard.pendingReviewCount : '-', hint: '查看审核事项' },
-    { key: 'gender:男', label: '男性族人', value: dashboardReady ? bucketValue(dashboard, 'genderDistribution', 'male') : '-', hint: '查看男性族人' },
-    { key: 'gender:女', label: '女性族人', value: dashboardReady ? bucketValue(dashboard, 'genderDistribution', 'female') : '-', hint: '查看女性族人' },
-    { key: 'living:在世', label: '在世人员', value: dashboardReady ? livingCount : '-', hint: '查看在世人员' },
-    { key: 'living:已故', label: '已故人员', value: dashboardReady ? deceasedCount : '-', hint: '查看已故人员' },
-    { key: 'generationReady', label: '已维护字辈', value: dashboardReady ? generationReadyCount : '-', hint: '查看已维护字辈人物' },
-    { key: 'vitalReady', label: '已维护生卒', value: dashboardReady ? vitalReadyCount : '-', hint: '查看有生卒信息人物' },
-    { key: 'biographyReady', label: '有传记人物', value: dashboardReady ? biographyReadyCount : '-', hint: '查看已维护传记人物' },
-    { key: 'branchCovered', label: '已覆盖支派', value: dashboardReady ? branchCoveredText : '-', hint: '查看已有族人的支派' }
+    { key: 'people', label: '族人总数', value: dashboard ? dashboard.peopleTotal : '-', hint: '查看人物明细' },
+    { key: 'branches', label: '支派数量', value: dashboard ? dashboard.branchCount : '-', hint: '查看支派' },
+    { key: 'sources', label: '来源资料', value: dashboard ? dashboard.sourceCount : '-', hint: '查看来源' },
+    { key: 'pendingReviews', label: '待审核', value: dashboard ? dashboard.pendingReviewCount : '-', hint: '查看审核事项' },
+    { key: 'gender:男', label: '男性族人', value: dashboard ? bucketValue(dashboard, 'genderDistribution', 'male') : '-', hint: '查看男性族人' },
+    { key: 'gender:女', label: '女性族人', value: dashboard ? bucketValue(dashboard, 'genderDistribution', 'female') : '-', hint: '查看女性族人' },
+    { key: 'living:在世', label: '在世人员', value: dashboard ? livingCount : '-', hint: '查看在世人员' },
+    { key: 'living:已故', label: '已故人员', value: dashboard ? deceasedCount : '-', hint: '查看已故人员' },
+    { key: 'generationReady', label: '已维护字辈', value: dashboard ? generationReadyCount : '-', hint: '查看已维护字辈人物' },
+    { key: 'vitalReady', label: '已维护生卒', value: dashboard ? vitalReadyCount : '-', hint: '查看有生卒信息人物' },
+    { key: 'biographyReady', label: '有传记人物', value: dashboard ? biographyReadyCount : '-', hint: '查看已维护传记人物' },
+    { key: 'branchCovered', label: '已覆盖支派', value: dashboard ? branchCoveredText : '-', hint: '查看已有族人的支派' }
   ];
 
   const entries = cultureState.data?.entries || [];
@@ -413,7 +413,7 @@ export function UnifiedStatisticsHomePage() {
     if (!nextClanId || nextClanId === workspace.clanId) return;
     resetWorkspaceForClan(nextClanId);
     setActiveDrill('people');
-    setDrillOpen(false);
+    clearClanAreaStates();
     await loadClanAreas(nextClanId);
   }
 
@@ -719,7 +719,7 @@ export function UnifiedStatisticsHomePage() {
       {renderDashboardSection()}
       {renderCultureSection()}
 
-      {dashboardState.loaded ? (
+      {dashboardReady ? (
         <MiniBarChart title="代次分布 TOP 8" items={generationItems} activeKey={activeDrill} onSelect={openDrill} />
       ) : null}
 
