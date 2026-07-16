@@ -189,9 +189,8 @@ function AppShell() {
         <Menu mode="inline" theme="light" selectedKeys={[active]} onClick={info => enterPage(info.key as ViewKey)} items={navItems.map(([key, label]) => ({ key, label }))} />
       </Sider>
       <Layout className="antd-main-layout">
-        <Header className="github-like-header">
-          <div className="github-like-header-title"><Typography.Text type="secondary">当前模块</Typography.Text><Typography.Text strong>{navItems.find(([key]) => key === active)?.[1] || '族谱管理'}</Typography.Text></div>
-          <Space>{renderModuleActions()}<CurrentUserMenu onLogout={logout} /></Space>
+        <Header className="github-like-header github-like-header--actions-only" aria-label="全局操作栏">
+          <Space style={{ marginLeft: 'auto' }}>{renderModuleActions()}<CurrentUserMenu onLogout={logout} /></Space>
         </Header>
         <Content className="content content--compact antd-content"><div key={`${active}-${routeKey}-${pageEntryVersion}`}>{renderPage()}</div></Content>
       </Layout>
