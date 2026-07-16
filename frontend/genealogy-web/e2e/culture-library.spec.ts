@@ -99,7 +99,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
   await expect(page.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByLabel('关键词')).toHaveValue('堂号');
-  await expect(page.getByText('正式资料').first()).toBeVisible();
+  await expect(page.getByText('正式', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
   const drawer = page.getByRole('dialog', { name: '敦本堂堂号源流' });
   await expect(drawer).toBeVisible();
