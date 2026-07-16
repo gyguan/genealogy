@@ -25,6 +25,7 @@ import './runtime-error.css';
 import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
 import './member-permission-page.css';
+import './module-title-dedup.css';
 
 function installSourceRouteHistorySync() {
   const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
