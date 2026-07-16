@@ -1,5 +1,14 @@
-/* The global header is the single module title. Business pages keep context,
-   descriptions, filters and actions, but suppress only the repeated module name. */
+/*
+ * Query-management page standard
+ *
+ * The global header owns the module title. Business pages use the same visual
+ * hierarchy: query conditions first, query results second. Existing request,
+ * URL, permission, drawer and table logic remains owned by each feature.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Keep the global header as the single module title                           */
+/* -------------------------------------------------------------------------- */
 
 .business-page--home .statistics-home-page__heading > h3,
 .business-page--mvp1Wizard .wizard-page-heading > h3,
@@ -7,42 +16,464 @@
 .business-page--culture .culture-page-heading > h3,
 .business-page--imports .import-page-header h3,
 .business-page--editingWorkspace > .ant-space > .ant-card:first-child h3,
+.business-page--editingWorkspace > .ant-space > .ant-space-item:first-child h3,
 .business-page--reviewCenter .review-center-page > .ant-space > div:first-child h3,
 .business-page--memberManage .member-role-page > .ant-card:first-child h3 {
   display: none;
 }
 
-/* Remove redundant breadcrumb-like module labels where the left navigation and
-   global header already provide the same location context. */
 .business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography-secondary:first-child,
 .business-page--personArchive .person-archive-page-header .ant-breadcrumb {
   display: none;
 }
 
-/* Keep each page header compact after removing its duplicate title. */
-.business-page--home .statistics-home-page__heading,
-.business-page--mvp1Wizard .wizard-page-heading,
-.business-page--culture .culture-page-heading,
-.business-page--imports .import-page-header > div:first-child,
-.business-page--reviewCenter .review-center-page > .ant-space > div:first-child {
-  min-width: 0;
+/* -------------------------------------------------------------------------- */
+/* Shared page tokens and card rhythm                                          */
+/* -------------------------------------------------------------------------- */
+
+.business-page--personArchive,
+.business-page--treeProduct,
+.business-page--sourceLibrary,
+.business-page--editingWorkspace,
+.business-page--reviewCenter,
+.business-page--memberManage {
+  --query-page-gap: 16px;
+  --query-page-radius: 12px;
+  --query-page-border: #d9d9d9;
+  --query-page-muted: rgba(0, 0, 0, 0.65);
+  --query-page-soft-bg: #fafafa;
 }
 
-.business-page--home .statistics-home-page__heading > .ant-typography,
-.business-page--mvp1Wizard .wizard-page-heading > .ant-typography,
-.business-page--culture .culture-page-heading > .ant-typography,
-.business-page--imports .import-page-header .ant-typography,
-.business-page--reviewCenter .review-center-page > .ant-space > div:first-child > .ant-typography,
-.business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography {
+.business-page--personArchive .ant-card,
+.business-page--treeProduct .ant-card,
+.business-page--sourceLibrary .ant-card,
+.business-page--editingWorkspace .ant-card,
+.business-page--reviewCenter .ant-card,
+.business-page--memberManage .ant-card {
+  border-radius: var(--query-page-radius);
+}
+
+.business-page--personArchive .ant-card-head,
+.business-page--treeProduct .ant-card-head,
+.business-page--sourceLibrary .ant-card-head,
+.business-page--editingWorkspace .ant-card-head,
+.business-page--reviewCenter .ant-card-head,
+.business-page--memberManage .ant-card-head {
+  min-height: 48px;
+  padding-inline: 16px;
+}
+
+.business-page--personArchive .ant-card-body,
+.business-page--treeProduct .ant-card-body,
+.business-page--sourceLibrary .ant-card-body,
+.business-page--editingWorkspace .ant-card-body,
+.business-page--reviewCenter .ant-card-body,
+.business-page--memberManage .ant-card-body {
+  padding: 16px;
+}
+
+/* Unified query action alignment. */
+.business-page--personArchive .person-archive-query-actions,
+.business-page--sourceLibrary .source-library-page form > .ant-row:last-child,
+.business-page--editingWorkspace .ant-card[title='筛选条件'] > .ant-card-body > .ant-row:last-child,
+.business-page--reviewCenter .ant-card[title='筛选条件'] form > div:last-child,
+.business-page--memberManage .ant-card[title='查询条件'] > .ant-card-body > div:last-child {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Consistent field density across query areas. */
+.business-page--personArchive .person-archive-query-card .ant-form-item,
+.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-form-item,
+.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-form-item,
+.business-page--editingWorkspace .ant-card[title='筛选条件'] .ant-space-vertical,
+.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-form-item,
+.business-page--memberManage .ant-card[title='查询条件'] .ant-col > .ant-typography {
+  margin-bottom: 12px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Person archive: context + filters form one query block                      */
+/* -------------------------------------------------------------------------- */
+
+.business-page--personArchive .person-archive-page-header {
+  position: relative;
+  margin: 0;
+  padding: 48px 16px 12px;
+  background: #fff;
+  border: 1px solid var(--query-page-border);
+  border-bottom: 0;
+  border-radius: var(--query-page-radius) var(--query-page-radius) 0 0;
+}
+
+.business-page--personArchive .person-archive-page-header::before {
+  content: '查询条件';
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.business-page--personArchive .person-archive-page-header .ant-typography-paragraph {
+  margin: 0 0 8px;
+}
+
+.business-page--personArchive .person-archive-query-card {
   margin-top: 0;
+  border-top: 0;
+  border-radius: 0 0 var(--query-page-radius) var(--query-page-radius);
 }
 
-/* The first tree card is a scope/query panel, not a second module title. */
+.business-page--personArchive .person-archive-query-card > .ant-card-head {
+  display: none;
+}
+
+.business-page--personArchive .person-archive-result-card {
+  margin-top: var(--query-page-gap);
+}
+
+.business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title::before {
+  content: '查询结果';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lineage: query panel above, graph/list result below                         */
+/* -------------------------------------------------------------------------- */
+
+.business-page--treeProduct .lineage-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--query-page-gap);
+}
+
+.business-page--treeProduct .lineage-page > .antd-panel:first-child {
+  margin: 0;
+}
+
 .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child {
   font-size: 0;
 }
 
 .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child::after {
-  content: '图谱范围';
+  content: '查询条件';
   font-size: 14px;
+}
+
+.business-page--treeProduct .lineage-search-grid--workbench,
+.business-page--treeProduct .lineage-query-toolbar--standardized {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.business-page--treeProduct .lineage-query-toolbar--standardized {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--query-page-soft-bg);
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.business-page--treeProduct .lineage-query-action {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title::before {
+  content: '查询结果';
+  display: block;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title {
+  font-size: 12px;
+  color: var(--query-page-muted);
+  font-weight: 400;
+}
+
+.business-page--treeProduct .lineage-scope-summary {
+  padding: 0 0 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Source library: remove intro card, standardize filters/results              */
+/* -------------------------------------------------------------------------- */
+
+.business-page--sourceLibrary .source-library-page > .ant-space > .ant-space-item:first-child > .ant-card,
+.business-page--sourceLibrary .source-library-page > .ant-space > .ant-card:first-child {
+  display: none;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-card-head-title::before {
+  content: '查询条件';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card-head-title {
+  white-space: normal;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::before {
+  content: '查询结果';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::after {
+  content: ' · 来源资料列表';
+  font-size: 12px;
+  color: var(--query-page-muted);
+  font-weight: 400;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Editing workbench: scope and filters read as one query section              */
+/* -------------------------------------------------------------------------- */
+
+.business-page--editingWorkspace > .ant-space,
+.business-page--editingWorkspace > .ant-space-vertical {
+  width: 100%;
+}
+
+.business-page--editingWorkspace > .ant-space > .ant-space-item:first-child > .ant-card,
+.business-page--editingWorkspace > .ant-space > .ant-card:first-child {
+  position: relative;
+  padding-top: 32px;
+  border-bottom: 0;
+  border-radius: var(--query-page-radius) var(--query-page-radius) 0 0;
+}
+
+.business-page--editingWorkspace > .ant-space > .ant-space-item:first-child > .ant-card::before,
+.business-page--editingWorkspace > .ant-space > .ant-card:first-child::before {
+  content: '查询条件';
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  font-weight: 600;
+}
+
+.business-page--editingWorkspace .ant-card[title='筛选条件'] {
+  margin-top: -16px;
+  border-top: 0;
+  border-radius: 0 0 var(--query-page-radius) var(--query-page-radius);
+}
+
+.business-page--editingWorkspace .ant-card[title='筛选条件'] > .ant-card-head {
+  display: none;
+}
+
+.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::before {
+  content: '查询结果';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::after {
+  content: ' · 修谱问题任务池';
+  font-size: 12px;
+  color: var(--query-page-muted);
+  font-weight: 400;
+}
+
+.business-page--editingWorkspace .ant-row:has(> .ant-col .ant-card[role='button']) {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--query-page-border);
+  border-radius: var(--query-page-radius);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Review center: segmented queue stays in the result header, cards align      */
+/* -------------------------------------------------------------------------- */
+
+.business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:first-child,
+.business-page--reviewCenter .review-center-page > .ant-space > div:first-child {
+  display: none;
+}
+
+.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-card-head-title::before {
+  content: '查询条件';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:nth-child(3) > .ant-card > .ant-card-body::before,
+.business-page--reviewCenter .review-center-page > .ant-space > .ant-card:nth-of-type(2) > .ant-card-body::before {
+  content: '查询结果';
+  display: block;
+  margin-bottom: 12px;
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+}
+
+.business-page--reviewCenter .review-center-page .ant-tabs-nav {
+  margin-bottom: 8px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Members and permissions: context + filters form one query block             */
+/* -------------------------------------------------------------------------- */
+
+.business-page--memberManage .member-role-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.business-page--memberManage .member-role-page > .ant-card:first-child {
+  position: relative;
+  order: 1;
+  padding-top: 32px;
+  border-bottom: 0;
+  border-radius: var(--query-page-radius) var(--query-page-radius) 0 0;
+}
+
+.business-page--memberManage .member-role-page > .ant-card:first-child::before {
+  content: '查询条件';
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  font-weight: 600;
+}
+
+.business-page--memberManage .member-role-page > .ant-alert {
+  order: 4;
+  margin-top: var(--query-page-gap) !important;
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='查询条件'] {
+  order: 2;
+  margin-top: 0 !important;
+  border-top: 0;
+  border-radius: 0 0 var(--query-page-radius) var(--query-page-radius);
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='查询条件'] > .ant-card-head {
+  display: none;
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] {
+  order: 3;
+  margin-top: var(--query-page-gap) !important;
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title {
+  font-size: 0;
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::before {
+  content: '查询结果';
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::after {
+  content: ' · 成员授权列表';
+  font-size: 12px;
+  color: var(--query-page-muted);
+  font-weight: 400;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Result toolbars and batch bars                                               */
+/* -------------------------------------------------------------------------- */
+
+.business-page--personArchive .person-archive-result-toolbar,
+.business-page--treeProduct .lineage-scope-summary,
+.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] > .ant-card-body > .ant-alert,
+.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-body > .ant-alert,
+.business-page--reviewCenter .review-center-page .ant-card > .ant-card-body > .ant-space > .ant-alert,
+.business-page--memberManage .ant-card[title='成员列表'] > .ant-card-body > .ant-alert {
+  margin-bottom: 12px;
+}
+
+/* Secondary/help content should not dominate the main query-result hierarchy. */
+.business-page--memberManage .member-role-page > .ant-alert {
+  border-style: dashed;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive grid and mobile behavior                                         */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1199px) {
+  .business-page--treeProduct .lineage-search-grid--workbench,
+  .business-page--treeProduct .lineage-query-toolbar--standardized {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .business-page--personArchive,
+  .business-page--treeProduct,
+  .business-page--sourceLibrary,
+  .business-page--editingWorkspace,
+  .business-page--reviewCenter,
+  .business-page--memberManage {
+    --query-page-gap: 12px;
+    --query-page-radius: 8px;
+  }
+
+  .business-page--personArchive .person-archive-page-header,
+  .business-page--personArchive .ant-card-body,
+  .business-page--treeProduct .ant-card-body,
+  .business-page--sourceLibrary .ant-card-body,
+  .business-page--editingWorkspace .ant-card-body,
+  .business-page--reviewCenter .ant-card-body,
+  .business-page--memberManage .ant-card-body {
+    padding-inline: 12px;
+  }
+
+  .business-page--treeProduct .lineage-search-grid--workbench,
+  .business-page--treeProduct .lineage-query-toolbar--standardized {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-page--treeProduct .lineage-query-action,
+  .business-page--personArchive .person-archive-query-actions {
+    width: 100%;
+  }
+
+  .business-page--treeProduct .lineage-query-action .ant-btn-primary,
+  .business-page--personArchive .person-archive-query-actions .ant-btn-primary,
+  .business-page--sourceLibrary form .ant-btn-primary,
+  .business-page--reviewCenter form .ant-btn-primary,
+  .business-page--memberManage .ant-card[title='查询条件'] .ant-btn-primary {
+    min-width: 96px;
+  }
+
+  .business-page--memberManage .member-role-page > .ant-card:first-child .ant-row,
+  .business-page--personArchive .person-archive-page-header {
+    align-items: stretch;
+  }
 }
