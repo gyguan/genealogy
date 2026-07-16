@@ -67,15 +67,8 @@ test = test.replace(
   assert.equal(gate.allowed, true);`
 );
 test = test.replace(
-`  assert.equal(byKey(steps, 'generation').state, 'waiting');
-});`,
-`  assert.equal(byKey(steps, 'generation').state, 'waiting');
-  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
-});`
-);
-test = test.replace(
-`test('rejected step remains enterable for correction and blocks downstream steps', () => {`,
-`test('rejected step remains enterable and downstream business steps can still be opened', () => {`
+  "test('rejected step remains enterable for correction and blocks downstream steps', () => {",
+  "test('rejected step remains enterable and downstream business steps can still be opened', () => {"
 );
 test = test.replace(
 `  assert.equal(byKey(steps, 'relationship').state, 'waiting');
@@ -83,20 +76,8 @@ test = test.replace(
 `  assert.equal(byKey(steps, 'relationship').state, 'waiting');
   assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);`
 );
-test = test.replace(
-`  assert.equal(byKey(steps, 'generation').state, 'waiting');
-});
 
-test('explicit relationship`,
-`  assert.equal(byKey(steps, 'generation').state, 'waiting');
-  assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
-});
-
-test('explicit relationship`
-);
-test += `
-
-test('completion step remains locked until business dependencies are complete', () => {
+const completionTest = `test('completion step remains locked until business dependencies are complete', () => {
   const steps = deriveWizardStepStates(emptyWizardStateSnapshot());
   assert.equal(getWizardStepGate(steps, 'branch').allowed, true);
   assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
@@ -104,6 +85,13 @@ test('completion step remains locked until business dependencies are complete', 
   assert.equal(getWizardStepGate(steps, 'relationship').allowed, true);
   assert.equal(getWizardStepGate(steps, 'source').allowed, true);
   assert.equal(getWizardStepGate(steps, 'review').allowed, false);
-});
-`;
+});`;
+const firstIndex = test.indexOf(completionTest);
+if (firstIndex >= 0) {
+  const before = test.slice(0, firstIndex + completionTest.length);
+  const after = test.slice(firstIndex + completionTest.length).replace(new RegExp(`\\n\\s*${completionTest.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}`, 'g'), '');
+  test = `${before}${after}`;
+} else {
+  test = `${test.trimEnd()}\n\n${completionTest}\n`;
+}
 fs.writeFileSync(testPath, test);
