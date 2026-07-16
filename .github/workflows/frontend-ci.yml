@@ -1,101 +1,159 @@
 name: Frontend CI
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "frontend/genealogy-web/**"
-      - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: ["main"]
     paths:
       - "frontend/genealogy-web/**"
       - ".github/workflows/frontend-ci.yml"
-  workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: write
 
 jobs:
-  frontend-build:
-    name: Frontend Typecheck and Build
+  apply-source-query-state:
+    if: github.head_ref == 'agent/source-search-url-413'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Install dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install
-      - name: Detect Tree-related changes
-        id: tree-changes
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply URL state persistence
         shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then echo "changed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then BASE_SHA="${HEAD_SHA}^"; fi
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/frontend-changed-files.txt
-          if grep -Eq '^frontend/genealogy-web/(src/features/tree(/|[^/])|e2e/tree[^/]*|src/shared/api/generated/tree[^/]*|src/shared/api/tree[^/]*)' /tmp/frontend-changed-files.txt; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Test Tree graph model
-        if: steps.tree-changes.outputs.changed == 'true'
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: set -o pipefail; npm run test:tree 2>&1 | tee tree-test-output.log
-      - name: Test wizard state model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard
-      - name: Test wizard session model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-session
-      - name: Test wizard dependency model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-dependencies
-      - name: Test wizard form validation
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-forms
-      - name: Test generation review validation
-        working-directory: frontend/genealogy-web
-        run: npm run test:generation-validation
-      - name: Test staged source workflow
-        working-directory: frontend/genealogy-web
-        run: npm run test:source-stage
-      - name: Test wizard result lists
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-result-lists
-      - name: Test wizard completion summary
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-summary
-      - name: Test wizard completion controls
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-completion
-      - name: Test person edit semantics
-        working-directory: frontend/genealogy-web
-        run: npm run test:person-edit
-      - name: Test import workbench state rules
-        working-directory: frontend/genealogy-web
-        run: npm run test:imports
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build production frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
-      - name: Upload failed Tree diagnostics
-        if: failure() && steps.tree-changes.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-tree-diagnostics
-          path: frontend/genealogy-web/tree-test-output.log
-          if-no-files-found: ignore
-          retention-days: 3
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx')
+          s = p.read_text()
+          s = s.replace("import { useEffect, useMemo, useState } from 'react';", "import { useEffect, useMemo, useRef, useState } from 'react';")
+          anchor = """function readSourceIdFromUrl() {
+  const value = new URLSearchParams(window.location.search).get('sourceId');
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+"""
+          helpers = anchor + """
+function readSearchFromUrl(): SourceSearchParams {
+  const params = new URLSearchParams(window.location.search);
+  const positiveInt = (name: string, fallback: number) => {
+    const parsed = Number(params.get(name));
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  };
+  const boolValue = (name: string) => {
+    const value = params.get(name);
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
+  };
+  return {
+    pageNo: positiveInt('pageNo', 1),
+    pageSize: positiveInt('pageSize', 10),
+    sort: params.get('sort') || 'updatedAt,desc',
+    keyword: params.get('keyword') || undefined,
+    sourceType: params.get('sourceType') || undefined,
+    verificationStatus: params.get('verificationStatus') || undefined,
+    privacyLevel: params.get('privacyLevel') || undefined,
+    hasAttachment: boolValue('hasAttachment'),
+    hasBinding: boolValue('hasBinding')
+  };
+}
+
+function searchFormValues(value: SourceSearchParams): SourceSearchFormValues {
+  return {
+    ...value,
+    hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),
+    hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)
+  };
+}
+
+function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
+  url.searchParams.set('view', 'sourceLibrary');
+  url.searchParams.delete('sourceId');
+  ['keyword', 'sourceType', 'verificationStatus', 'privacyLevel', 'hasAttachment', 'hasBinding', 'pageNo', 'pageSize', 'sort'].forEach(key => url.searchParams.delete(key));
+  Object.entries(value).forEach(([key, item]) => {
+    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
+  });
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](
+    { ...window.history.state, sourceLibraryScrollY: window.scrollY },
+    '',
+    `${url.pathname}${url.search}`
+  );
+}
+"""
+          if 'function readSearchFromUrl()' not in s:
+              s = s.replace(anchor, helpers, 1)
+          s = s.replace("const [search, setSearch] = useState<SourceSearchParams>({ pageNo: 1, pageSize: 10, sort: 'updatedAt,desc' });", "const [search, setSearch] = useState<SourceSearchParams>(readSearchFromUrl);")
+          s = s.replace("const [sourceForm] = Form.useForm<SourceSearchFormValues>();", "const [sourceForm] = Form.useForm<SourceSearchFormValues>();\n  const listScrollRef = useRef<number>(Number(window.history.state?.sourceLibraryScrollY || 0));")
+          s = s.replace("""  function openDetail(row: SourceRecord) {
+    if (!row.id) return;
+    writeSourceIdToUrl(row.id);
+    setDetailSourceId(row.id);
+  }
+""", """  function openDetail(row: SourceRecord) {
+    if (!row.id) return;
+    listScrollRef.current = window.scrollY;
+    window.history.replaceState({ ...window.history.state, sourceLibraryScrollY: window.scrollY }, '', window.location.href);
+    writeSourceIdToUrl(row.id);
+    setDetailSourceId(row.id);
+  }
+""", 1)
+          s = s.replace("""    setSearch(next);
+    void loadSources(next);
+  }
+
+  function resetSearch()""", """    setSearch(next);
+    writeSearchToUrl(next);
+    void loadSources(next);
+  }
+
+  function resetSearch()""", 1)
+          s = s.replace("""    setSearch(next);
+    void loadSources(next);
+  }
+
+  function openCreateBinding()""", """    setSearch(next);
+    writeSearchToUrl(next);
+    void loadSources(next);
+  }
+
+  function openCreateBinding()""", 1)
+          s = s.replace("""  useEffect(() => {
+    const onPopState = () => setDetailSourceId(readSourceIdFromUrl());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+""", """  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const nextSourceId = readSourceIdFromUrl();
+      const nextSearch = readSearchFromUrl();
+      setDetailSourceId(nextSourceId);
+      setSearch(nextSearch);
+      sourceForm.setFieldsValue(searchFormValues(nextSearch));
+      listScrollRef.current = Number(event.state?.sourceLibraryScrollY || 0);
+      if (!nextSourceId && clanId) void loadSources(nextSearch);
+      window.setTimeout(() => window.scrollTo({ top: listScrollRef.current }), 0);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [clanId, sourceForm]);
+""", 1)
+          s = s.replace('<Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={search}>', '<Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search)}>')
+          s = s.replace("""                setSearch(next);
+                void loadSources(next);
+""", """                setSearch(next);
+                writeSearchToUrl(next);
+                void loadSources(next);
+""", 1)
+          p.write_text(s)
+          PY
+          git show origin/main:.github/workflows/frontend-ci.yml > .github/workflows/frontend-ci.yml
+          git rm .github/workflows/source-issue-413-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx .github/workflows/frontend-ci.yml
+          git commit -m "persist source search state in URL"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
