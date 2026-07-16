@@ -1,0 +1,105 @@
+.person-edit-page {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.person-edit-header {
+  display: grid;
+  gap: 12px;
+  padding: 20px 24px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+
+.person-edit-header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.person-edit-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.person-edit-header .ant-typography + .ant-typography {
+  margin-top: 6px;
+}
+
+.person-edit-form,
+.person-edit-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.person-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.person-edit-field--wide {
+  grid-column: 1 / -1;
+}
+
+.person-edit-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .06);
+  backdrop-filter: blur(8px);
+}
+
+.person-edit-loading {
+  min-height: 320px;
+}
+
+.person-edit-loading .ant-card-body {
+  display: grid;
+  place-items: center;
+  min-height: 286px;
+}
+
+@media (max-width: 1199px) {
+  .person-edit-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .person-edit-header {
+    padding: 16px;
+  }
+
+  .person-edit-header-main {
+    display: grid;
+  }
+
+  .person-edit-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .person-edit-field--wide {
+    grid-column: auto;
+  }
+
+  .person-edit-actions {
+    padding: 12px;
+  }
+
+  .person-edit-actions .ant-space,
+  .person-edit-actions .ant-space-item,
+  .person-edit-actions button,
+  .person-edit-actions span {
+    width: 100%;
+  }
+}
