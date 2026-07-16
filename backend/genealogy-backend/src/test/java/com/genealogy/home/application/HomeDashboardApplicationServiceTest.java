@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +57,7 @@ class HomeDashboardApplicationServiceTest {
         when(personRepository.countByClanIdAndDeletedAtIsNullAndDataStatus(CLAN_ID, OFFICIAL)).thenReturn(0L);
         when(branchRepository.countByClanId(CLAN_ID)).thenReturn(0L);
         when(sourceRepository.countByClanId(CLAN_ID)).thenReturn(0L);
-        when(reviewTaskRepository.countByClanIdAndStatusIn(CLAN_ID, List.of("pending", "pending_review"))).thenReturn(0L);
+        when(reviewTaskRepository.countByClanIdAndStatusIn(eq(CLAN_ID), anyCollection())).thenReturn(0L);
         when(personRepository.countDashboardByGender(CLAN_ID, OFFICIAL)).thenReturn(List.of());
         when(personRepository.countDashboardByLivingStatus(CLAN_ID, OFFICIAL)).thenReturn(List.of());
         when(personRepository.countDashboardByGenerationNo(CLAN_ID, OFFICIAL)).thenReturn(List.of());
@@ -158,7 +160,7 @@ class HomeDashboardApplicationServiceTest {
         when(personRepository.countByClanIdAndDeletedAtIsNullAndDataStatus(CLAN_ID, OFFICIAL)).thenReturn(peopleTotal);
         when(branchRepository.countByClanId(CLAN_ID)).thenReturn(branchCount);
         when(sourceRepository.countByClanId(CLAN_ID)).thenReturn(sourceCount);
-        when(reviewTaskRepository.countByClanIdAndStatusIn(CLAN_ID, List.of("pending", "pending_review"))).thenReturn(pendingReviewCount);
+        when(reviewTaskRepository.countByClanIdAndStatusIn(eq(CLAN_ID), anyCollection())).thenReturn(pendingReviewCount);
         when(personRepository.countDashboardGenerationMaintained(CLAN_ID, OFFICIAL)).thenReturn(generationMaintainedCount);
         when(personRepository.countDashboardVitalDatesMaintained(CLAN_ID, OFFICIAL)).thenReturn(vitalDatesMaintainedCount);
         when(personRepository.countDashboardBiographyMaintained(CLAN_ID, OFFICIAL)).thenReturn(biographyMaintainedCount);
