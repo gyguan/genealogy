@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import { navigateToView } from '../shared/navigation/urlState';
+import type { AppViewKey } from '../shared/navigation/urlState';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
@@ -54,12 +56,7 @@ function readViewFromUrl(): ViewKey {
 }
 
 function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
-  const url = new URL(window.location.href);
-  url.pathname = '/';
-  url.hash = '';
-  if (key === 'home') url.searchParams.delete('view');
-  else url.searchParams.set('view', key);
-  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}`);
+  navigateToView(key as AppViewKey, window.location.href, { mode });
 }
 
 function getMessage(data: unknown, fallback: string) {
@@ -77,22 +74,10 @@ export function App() {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#1677ff',
-          colorInfo: '#1677ff',
-          colorSuccess: '#52c41a',
-          colorWarning: '#faad14',
-          colorError: '#ff4d4f',
-          colorBgLayout: '#f5f5f5',
-          colorBgContainer: '#ffffff',
-          colorBorder: '#d9d9d9',
-          colorText: 'rgba(0, 0, 0, 0.88)',
-          colorTextSecondary: 'rgba(0, 0, 0, 0.65)',
-          borderRadius: 8,
-          borderRadiusLG: 12,
-          controlHeight: 32,
-          controlHeightLG: 40,
-          fontSize: 14,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif',
+          colorPrimary: '#1677ff', colorInfo: '#1677ff', colorSuccess: '#52c41a', colorWarning: '#faad14', colorError: '#ff4d4f',
+          colorBgLayout: '#f5f5f5', colorBgContainer: '#ffffff', colorBorder: '#d9d9d9', colorText: 'rgba(0, 0, 0, 0.88)',
+          colorTextSecondary: 'rgba(0, 0, 0, 0.65)', borderRadius: 8, borderRadiusLG: 12, controlHeight: 32, controlHeightLG: 40,
+          fontSize: 14, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif',
           boxShadowTertiary: '0 1px 2px rgba(0, 0, 0, 0.03)'
         },
         components: {
@@ -104,9 +89,7 @@ export function App() {
         }
       }}
     >
-      <WorkspaceProvider>
-        <AppShell />
-      </WorkspaceProvider>
+      <WorkspaceProvider><AppShell /></WorkspaceProvider>
     </ConfigProvider>
   );
 }
@@ -121,84 +104,42 @@ function AppShell() {
   const navigationLockedRef = useRef(false);
   const lockedUrlRef = useRef('');
 
-  function closeToast(id: number) {
-    setToasts(prev => prev.filter(item => item.id !== id));
-  }
-
+  function closeToast(id: number) { setToasts(prev => prev.filter(item => item.id !== id)); }
   function notify(data?: unknown, error = false) {
     const id = Date.now() + Math.floor(Math.random() * 1000);
-    const item: ToastItem = {
-      id,
-      message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'),
-      type: error ? 'error' : 'success'
-    };
+    const item: ToastItem = { id, message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'), type: error ? 'error' : 'success' };
     setToasts(prev => [...prev.slice(-3), item]);
     window.setTimeout(() => closeToast(id), 3200);
   }
-
   function syncRouteFromUrl() {
-    setPersonDetailRoute(readPersonDetailRoute());
-    setPersonEditRoute(readPersonEditRoute());
-    setActive(readViewFromUrl());
-    setPageEntryVersion(prev => prev + 1);
+    setPersonDetailRoute(readPersonDetailRoute()); setPersonEditRoute(readPersonEditRoute()); setActive(readViewFromUrl()); setPageEntryVersion(prev => prev + 1);
   }
-
-  function onLoginChanged() {
-    setAuthStatus('authenticated');
-  }
-
+  function onLoginChanged() { setAuthStatus('authenticated'); }
   function logout() {
-    apiClient.post('/auth/logout').catch(() => undefined).finally(() => {
-      apiClient.clearToken();
-      setAuthStatus('anonymous');
-      notify({ message: '已退出登录' });
-    });
+    apiClient.post('/auth/logout').catch(() => undefined).finally(() => { apiClient.clearToken(); setAuthStatus('anonymous'); notify({ message: '已退出登录' }); });
   }
-
   function setNavigationLocked(locked: boolean) {
     navigationLockedRef.current = locked;
-    if (locked) {
-      lockedUrlRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    }
+    if (locked) lockedUrlRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
   }
 
   useEffect(() => {
     let activeRequest = true;
-    apiClient.get('/auth/me')
-      .then(() => {
-        if (activeRequest) setAuthStatus('authenticated');
-      })
-      .catch(() => {
-        if (activeRequest) setAuthStatus('anonymous');
-      });
-
-    const onUnauthorized = () => {
-      apiClient.clearToken();
-      setAuthStatus('anonymous');
-    };
+    apiClient.get('/auth/me').then(() => { if (activeRequest) setAuthStatus('authenticated'); }).catch(() => { if (activeRequest) setAuthStatus('anonymous'); });
+    const onUnauthorized = () => { apiClient.clearToken(); setAuthStatus('anonymous'); };
     window.addEventListener('genealogy:unauthorized', onUnauthorized);
-    return () => {
-      activeRequest = false;
-      window.removeEventListener('genealogy:unauthorized', onUnauthorized);
-    };
+    return () => { activeRequest = false; window.removeEventListener('genealogy:unauthorized', onUnauthorized); };
   }, []);
 
   useEffect(() => {
-    const onUnhandled = (event: PromiseRejectionEvent) => {
-      event.preventDefault();
-      notify({ message: event.reason?.message || '操作失败，请检查输入后重试' }, true);
-    };
+    const onUnhandled = (event: PromiseRejectionEvent) => { event.preventDefault(); notify({ message: event.reason?.message || '操作失败，请检查输入后重试' }, true); };
     window.addEventListener('unhandledrejection', onUnhandled);
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
   useEffect(() => {
     const onPopState = () => {
-      if (navigationLockedRef.current) {
-        window.history.pushState(window.history.state, '', lockedUrlRef.current);
-        notify({ message: '人物档案正在保存，请稍后再离开。' }, true);
-        return;
-      }
+      if (navigationLockedRef.current) { window.history.pushState(window.history.state, '', lockedUrlRef.current); notify({ message: '人物档案正在保存，请稍后再离开。' }, true); return; }
       syncRouteFromUrl();
     };
     window.addEventListener('popstate', onPopState);
@@ -206,33 +147,13 @@ function AppShell() {
   }, []);
 
   function enterPage(key: ViewKey) {
-    if (navigationLockedRef.current) {
-      notify({ message: '人物档案正在保存，请稍后再离开。' }, true);
-      return;
-    }
-    setPersonDetailRoute(null);
-    setPersonEditRoute(null);
-    setActive(key);
-    setPageEntryVersion(prev => prev + 1);
-    writeViewToUrl(key);
+    if (navigationLockedRef.current) { notify({ message: '人物档案正在保存，请稍后再离开。' }, true); return; }
+    setPersonDetailRoute(null); setPersonEditRoute(null); setActive(key); setPageEntryVersion(prev => prev + 1); writeViewToUrl(key);
   }
 
   function renderPage() {
-    if (personEditRoute) {
-      return (
-        <PersonEditPage
-          personId={personEditRoute.personId}
-          notify={notify}
-          onCancel={navigateBackFromPersonEdit}
-          onSavingChange={setNavigationLocked}
-        />
-      );
-    }
-
-    if (personDetailRoute) {
-      return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
-    }
-
+    if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} notify={notify} onCancel={navigateBackFromPersonEdit} onSavingChange={setNavigationLocked} />;
+    if (personDetailRoute) return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
     switch (active) {
       case 'home': return <StatisticsHomePage />;
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
@@ -257,58 +178,22 @@ function AppShell() {
     return null;
   }
 
-  if (authStatus === 'checking') {
-    return (
-      <div className="commercial-auth-shell" aria-label="正在检查登录状态">
-        <Space direction="vertical" align="center" size={16}>
-          <Spin size="large" />
-          <Typography.Text type="secondary">正在安全验证登录状态…</Typography.Text>
-        </Space>
-      </div>
-    );
-  }
+  if (authStatus === 'checking') return <div className="commercial-auth-shell" aria-label="正在检查登录状态"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在安全验证登录状态…</Typography.Text></Space></div>;
+  if (authStatus === 'anonymous') return <><AuthPage notify={notify} onChanged={onLoginChanged} standalone /><ToastStack items={toasts} onClose={closeToast} /></>;
 
-  if (authStatus === 'anonymous') {
-    return (
-      <>
-        <AuthPage notify={notify} onChanged={onLoginChanged} standalone />
-        <ToastStack items={toasts} onClose={closeToast} />
-      </>
-    );
-  }
-
-  const routeKey = personEditRoute?.personId
-    ? `edit-${personEditRoute.personId}`
-    : personDetailRoute?.personId
-      ? `detail-${personDetailRoute.personId}`
-      : 'list';
-
+  const routeKey = personEditRoute?.personId ? `edit-${personEditRoute.personId}` : personDetailRoute?.personId ? `detail-${personDetailRoute.personId}` : 'list';
   return (
     <Layout className="admin-layout antd-admin-layout">
       <Sider className="sidebar antd-sidebar" width={248} breakpoint="lg" collapsedWidth={0}>
         <div className="brand antd-brand"><Typography.Title level={4}>Genealogy</Typography.Title><Typography.Text type="secondary">族谱管理平台</Typography.Text></div>
-        <Menu
-          mode="inline"
-          theme="light"
-          selectedKeys={[active]}
-          onClick={info => enterPage(info.key as ViewKey)}
-          items={navItems.map(([key, label]) => ({ key, label }))}
-        />
+        <Menu mode="inline" theme="light" selectedKeys={[active]} onClick={info => enterPage(info.key as ViewKey)} items={navItems.map(([key, label]) => ({ key, label }))} />
       </Sider>
       <Layout className="antd-main-layout">
         <Header className="github-like-header">
-          <div className="github-like-header-title">
-            <Typography.Text type="secondary">当前模块</Typography.Text>
-            <Typography.Text strong>{navItems.find(([key]) => key === active)?.[1] || '族谱管理'}</Typography.Text>
-          </div>
-          <Space>
-            {renderModuleActions()}
-            <CurrentUserMenu onLogout={logout} />
-          </Space>
+          <div className="github-like-header-title"><Typography.Text type="secondary">当前模块</Typography.Text><Typography.Text strong>{navItems.find(([key]) => key === active)?.[1] || '族谱管理'}</Typography.Text></div>
+          <Space>{renderModuleActions()}<CurrentUserMenu onLogout={logout} /></Space>
         </Header>
-        <Content className="content content--compact antd-content">
-          <div key={`${active}-${routeKey}-${pageEntryVersion}`}>{renderPage()}</div>
-        </Content>
+        <Content className="content content--compact antd-content"><div key={`${active}-${routeKey}-${pageEntryVersion}`}>{renderPage()}</div></Content>
       </Layout>
       <ToastStack items={toasts} onClose={closeToast} />
     </Layout>
