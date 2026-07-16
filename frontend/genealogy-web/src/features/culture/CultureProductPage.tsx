@@ -12,7 +12,7 @@ import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMount
 import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text } = Typography;
 
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -110,32 +110,29 @@ export function CultureProductPage() {
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card className="culture-page-header">
-        <div className="culture-page-header-main">
-          <div className="culture-page-heading">
-            <Title level={3}>宗族文化</Title>
-            <Paragraph type="secondary">查询和维护宗族文化资料、迁徙脉络及文化场所。</Paragraph>
-          </div>
-          <div className="culture-page-context-actions">
-            <div className="culture-clan-scope">
-              <Text type="secondary">当前宗族</Text>
-              <Select
-                aria-label="当前宗族"
-                value={workspace.clanId || undefined}
-                placeholder="请选择宗族"
-                loading={clansLoading}
-                showSearch
-                optionFilterProp="label"
-                onChange={value => workspace.setClanId(String(value))}
-                options={clans.filter(clan => clan.id).map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
-              />
-            </div>
-            <Button type="primary" className="culture-page-primary-action" disabled={!workspace.clanId} onClick={openPrimaryAction}>
-              {culturePrimaryAction(activeTab)}
-            </Button>
-          </div>
-        </div>
+      <Card className="culture-page-tabs" styles={{ body: { paddingBottom: 0 } }}>
         <Tabs activeKey={activeTab} items={cultureTabItems} onChange={changeTab} />
+      </Card>
+
+      <Card size="small" className="culture-page-context">
+        <div className="culture-page-context-actions">
+          <div className="culture-clan-scope">
+            <Text type="secondary">宗族</Text>
+            <Select
+              aria-label="宗族"
+              value={workspace.clanId || undefined}
+              placeholder="请选择宗族"
+              loading={clansLoading}
+              showSearch
+              optionFilterProp="label"
+              onChange={value => workspace.setClanId(String(value))}
+              options={clans.filter(clan => clan.id).map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
+            />
+          </div>
+          <Button type="primary" disabled={!workspace.clanId} onClick={openPrimaryAction}>
+            {culturePrimaryAction(activeTab)}
+          </Button>
+        </div>
       </Card>
 
       {renderActiveTab()}
