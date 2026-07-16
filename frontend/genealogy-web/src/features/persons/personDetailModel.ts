@@ -27,14 +27,8 @@ export function personStatus(person: any) {
 export function personStatusText(value: unknown) {
   const status = String(value || '').trim().toLowerCase();
   const labels: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '正式',
-    active: '正式',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
+    draft: '草稿', pending: '待审核', pending_review: '待审核', official: '正式', active: '正式',
+    approved: '已通过', rejected: '已驳回', archived: '已归档'
   };
   return labels[status] || (status ? '未知状态' : '未设置状态');
 }
@@ -49,12 +43,7 @@ export function personStatusColor(value: unknown) {
 
 export function privacyText(value: unknown) {
   const labels: Record<string, string> = {
-    public: '公开',
-    clan_only: '宗族内可见',
-    branch_only: '支派内可见',
-    relatives_only: '亲属可见',
-    private: '私密',
-    sealed: '封存'
+    public: '公开', clan_only: '宗族内可见', branch_only: '支派内可见', relatives_only: '亲属可见', private: '私密', sealed: '封存'
   };
   return labels[String(value || '')] || display(value);
 }
@@ -79,16 +68,22 @@ export function boolText(value: unknown) {
   return '未知';
 }
 
-function asDate(value: unknown) {
-  return value === null || value === undefined ? '' : String(value).slice(0, 10);
-}
-
-function dateByPrecision(value: unknown, precision: unknown) {
-  const date = asDate(value);
-  if (!date) return '';
-  if (precision === 'year') return `${date.slice(0, 4)}年`;
-  if (precision === 'month') return date.slice(0, 7);
-  return date;
+export function dateByPrecision(value: unknown, precision: unknown) {
+  const text = String(value ?? '').trim();
+  const declared = String(precision || '').toLowerCase();
+  if (!text || declared === 'unknown') return '';
+  const matched = text.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?/);
+  if (!matched) return '';
+  if (declared === 'year') return `${matched[1]}年`;
+  if (declared === 'month') return matched[2] ? `${matched[1]}年${matched[2]}月` : `${matched[1]}年`;
+  if (declared === 'day') {
+    if (matched[2] && matched[3]) return `${matched[1]}年${matched[2]}月${matched[3]}日`;
+    if (matched[2]) return `${matched[1]}年${matched[2]}月`;
+    return `${matched[1]}年`;
+  }
+  if (matched[2] && matched[3]) return `${matched[1]}年${matched[2]}月${matched[3]}日`;
+  if (matched[2]) return `${matched[1]}年${matched[2]}月`;
+  return `${matched[1]}年`;
 }
 
 export function lifeText(person: any) {
@@ -116,14 +111,7 @@ export function updatedText(person: any) {
 
 export function eventTypeText(type?: string) {
   const labels: Record<string, string> = {
-    birth: '出生',
-    education: '教育',
-    career: '职业',
-    migration: '迁徙',
-    marriage: '婚配',
-    child_birth: '子女',
-    death: '逝世',
-    burial: '墓葬'
+    birth: '出生', education: '教育', career: '职业', migration: '迁徙', marriage: '婚配', child_birth: '子女', death: '逝世', burial: '墓葬'
   };
   return labels[type || ''] || type || '事件';
 }
@@ -140,17 +128,7 @@ export function relationshipName(row: any, side: 'from' | 'to') {
 export function relationshipTypeText(value: unknown) {
   const type = String(value || '').trim().toLowerCase();
   const labels: Record<string, string> = {
-    father: '父亲',
-    mother: '母亲',
-    parent: '父母',
-    son: '儿子',
-    daughter: '女儿',
-    child: '子女',
-    spouse: '配偶',
-    husband: '丈夫',
-    wife: '妻子',
-    adopted_in: '继入',
-    adopted_out: '出嗣'
+    father: '父亲', mother: '母亲', parent: '父母', son: '儿子', daughter: '女儿', child: '子女', spouse: '配偶', husband: '丈夫', wife: '妻子', adopted_in: '继入', adopted_out: '出嗣'
   };
   return labels[type] || display(value, '关系待维护');
 }
@@ -162,12 +140,7 @@ export function sourceTitle(row: any) {
 export function sourceTypeText(value: unknown) {
   const type = String(value || '').trim().toLowerCase();
   const labels: Record<string, string> = {
-    genealogy_book: '族谱文献',
-    oral: '口述材料',
-    archive: '档案材料',
-    tombstone: '碑刻墓志',
-    image: '图片资料',
-    file: '附件资料'
+    genealogy_book: '族谱文献', oral: '口述材料', archive: '档案材料', tombstone: '碑刻墓志', image: '图片资料', file: '附件资料'
   };
   return labels[type] || display(value, '来源类型待维护');
 }
@@ -184,27 +157,11 @@ export function completenessOf(person: any, relationshipCount: number, sourceCou
     ?? numericPercent(person?.profileCompleteness)
     ?? numericPercent(person?.dataCompleteness);
   if (backendValue !== null) return backendValue;
-
   const fields = [
-    person?.name,
-    person?.genealogyName,
-    person?.courtesyName,
-    person?.gender,
-    person?.branchId,
-    person?.generationNo,
-    person?.generationWord,
-    person?.rankInFamily,
-    person?.birthDate,
-    person?.deathDate,
-    person?.birthPlace,
-    person?.residencePlace,
-    person?.biography,
-    person?.tombPlace,
-    person?.epitaph,
-    person?.privacyLevel,
-    relationshipCount,
-    sourceCount,
-    eventCount
+    person?.name, person?.genealogyName, person?.courtesyName, person?.gender, person?.branchId, person?.generationNo,
+    person?.generationWord, person?.rankInFamily, person?.birthDate, person?.deathDate, person?.birthPlace,
+    person?.residencePlace, person?.biography, person?.tombPlace, person?.epitaph, person?.privacyLevel,
+    relationshipCount, sourceCount, eventCount
   ];
   return Math.round((fields.filter(Boolean).length / fields.length) * 100);
 }

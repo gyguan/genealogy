@@ -1,3 +1,5 @@
+export type PersonDatePrecision = 'unknown' | 'year' | 'month' | 'day';
+
 export type PersonEditForm = {
   branchId: string;
   name: string;
@@ -9,10 +11,10 @@ export type PersonEditForm = {
   generationWord: string;
   rankInFamily: string;
   birthDate: string;
-  birthDatePrecision: string;
+  birthDatePrecision: PersonDatePrecision;
   deathDate: string;
-  deathDatePrecision: string;
-  isLiving: string;
+  deathDatePrecision: PersonDatePrecision;
+  isLiving: '' | 'true' | 'false';
   birthPlace: string;
   residencePlace: string;
   occupation: string;
@@ -21,11 +23,30 @@ export type PersonEditForm = {
   biography: string;
   tombPlace: string;
   epitaph: string;
-  hasDescendant: string;
+  hasDescendant: '' | 'true' | 'false';
   lineageStatus: string;
   privacyLevel: string;
   dataStatus: string;
 };
+
+export const personDatePrecisionOptions = [
+  { value: 'unknown', label: '不详' },
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' }
+];
+
+export const personTriStateOptions = [
+  { value: '', label: '未知' },
+  { value: 'true', label: '是' },
+  { value: 'false', label: '否' }
+];
+
+export const personLivingOptions = [
+  { value: '', label: '未知' },
+  { value: 'true', label: '在世' },
+  { value: 'false', label: '已故' }
+];
 
 export const personGenderOptions = [
   { value: 'male', label: '男' },
@@ -61,10 +82,6 @@ function asString(value: unknown) {
   return value === null || value === undefined ? '' : String(value);
 }
 
-function asDate(value: unknown) {
-  return asString(value).slice(0, 10);
-}
-
 function nullableString(value: unknown) {
   const text = String(value ?? '').trim();
   return text || null;
@@ -75,13 +92,41 @@ function nullableNumber(value: unknown) {
   return text ? Number(text) : null;
 }
 
-function nullableBoolean(value: unknown) {
+export function toTriStateFormValue(value: unknown): '' | 'true' | 'false' {
+  if (value === true || value === 'true') return 'true';
+  if (value === false || value === 'false') return 'false';
+  return '';
+}
+
+export function toNullableBoolean(value: unknown): boolean | null {
   if (value === true || value === 'true') return true;
   if (value === false || value === 'false') return false;
   return null;
 }
 
+export function normalizePersonDatePrecision(value: unknown, dateValue?: unknown): PersonDatePrecision {
+  const precision = String(value || '').toLowerCase();
+  if (precision === 'unknown' || precision === 'year' || precision === 'month' || precision === 'day') return precision;
+  const date = String(dateValue || '').trim();
+  if (/^\d{4}$/.test(date)) return 'year';
+  if (/^\d{4}-\d{2}$/.test(date)) return 'month';
+  if (/^\d{4}-\d{2}-\d{2}/.test(date)) return 'day';
+  return 'unknown';
+}
+
+export function normalizePersonDate(value: unknown, precision: PersonDatePrecision): string | null {
+  if (precision === 'unknown') return null;
+  const text = String(value ?? '').trim();
+  const matched = text.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?/);
+  if (!matched) return null;
+  if (precision === 'year') return matched[1];
+  if (precision === 'month') return matched[2] ? `${matched[1]}-${matched[2]}` : null;
+  return matched[2] && matched[3] ? `${matched[1]}-${matched[2]}-${matched[3]}` : null;
+}
+
 export function toPersonEditForm(person: any): PersonEditForm {
+  const birthDatePrecision = normalizePersonDatePrecision(person.birthDatePrecision, person.birthDate);
+  const deathDatePrecision = normalizePersonDatePrecision(person.deathDatePrecision, person.deathDate);
   return {
     branchId: asString(person.branchId || person.branch?.id),
     name: asString(person.name || person.personName),
@@ -92,11 +137,11 @@ export function toPersonEditForm(person: any): PersonEditForm {
     generationNo: asString(person.generationNo),
     generationWord: asString(person.generationWord),
     rankInFamily: asString(person.rankInFamily),
-    birthDate: asDate(person.birthDate),
-    birthDatePrecision: asString(person.birthDatePrecision || 'day'),
-    deathDate: asDate(person.deathDate),
-    deathDatePrecision: asString(person.deathDatePrecision || 'day'),
-    isLiving: person.isLiving === false ? 'false' : 'true',
+    birthDate: normalizePersonDate(person.birthDate, birthDatePrecision) || '',
+    birthDatePrecision,
+    deathDate: normalizePersonDate(person.deathDate, deathDatePrecision) || '',
+    deathDatePrecision,
+    isLiving: toTriStateFormValue(person.isLiving),
     birthPlace: asString(person.birthPlace),
     residencePlace: asString(person.residencePlace),
     occupation: asString(person.occupation),
@@ -105,7 +150,7 @@ export function toPersonEditForm(person: any): PersonEditForm {
     biography: asString(person.biography),
     tombPlace: asString(person.tombPlace),
     epitaph: asString(person.epitaph),
-    hasDescendant: person.hasDescendant === false ? 'false' : person.hasDescendant === true ? 'true' : '',
+    hasDescendant: toTriStateFormValue(person.hasDescendant),
     lineageStatus: asString(person.lineageStatus || 'normal'),
     privacyLevel: asString(person.privacyLevel || 'clan_only'),
     dataStatus: asString(person.dataStatus || 'draft')
@@ -123,11 +168,11 @@ export function toPersonUpdatePayload(form: PersonEditForm) {
     generationNo: nullableNumber(form.generationNo),
     generationWord: nullableString(form.generationWord),
     rankInFamily: nullableString(form.rankInFamily),
-    birthDate: nullableString(form.birthDate),
-    birthDatePrecision: nullableString(form.birthDatePrecision),
-    deathDate: nullableString(form.deathDate),
-    deathDatePrecision: nullableString(form.deathDatePrecision),
-    isLiving: nullableBoolean(form.isLiving),
+    birthDate: normalizePersonDate(form.birthDate, form.birthDatePrecision),
+    birthDatePrecision: form.birthDatePrecision,
+    deathDate: normalizePersonDate(form.deathDate, form.deathDatePrecision),
+    deathDatePrecision: form.deathDatePrecision,
+    isLiving: toNullableBoolean(form.isLiving),
     birthPlace: nullableString(form.birthPlace),
     residencePlace: nullableString(form.residencePlace),
     occupation: nullableString(form.occupation),
@@ -136,7 +181,7 @@ export function toPersonUpdatePayload(form: PersonEditForm) {
     biography: nullableString(form.biography),
     tombPlace: nullableString(form.tombPlace),
     epitaph: nullableString(form.epitaph),
-    hasDescendant: nullableBoolean(form.hasDescendant),
+    hasDescendant: toNullableBoolean(form.hasDescendant),
     lineageStatus: nullableString(form.lineageStatus),
     privacyLevel: nullableString(form.privacyLevel),
     dataStatus: nullableString(form.dataStatus)
@@ -146,14 +191,8 @@ export function toPersonUpdatePayload(form: PersonEditForm) {
 export function personStatusText(value: unknown) {
   const status = String(value || '').trim().toLowerCase();
   const labels: Record<string, string> = {
-    draft: '草稿',
-    pending: '待审核',
-    pending_review: '待审核',
-    official: '正式',
-    active: '正式',
-    approved: '已通过',
-    rejected: '已驳回',
-    archived: '已归档'
+    draft: '草稿', pending: '待审核', pending_review: '待审核', official: '正式', active: '正式',
+    approved: '已通过', rejected: '已驳回', archived: '已归档'
   };
   return labels[status] || (status ? '未知状态' : '未设置状态');
 }
