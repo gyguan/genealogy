@@ -424,7 +424,14 @@ export function SourceLibraryPage({ notify }: Props) {
   function resetSearch() {
     const next: SourceSearchParams = { pageNo: 1, pageSize: search.pageSize || 10, sort: 'updatedAt,desc' };
     sourceForm.resetFields();
-    sourceForm.setFieldsValue(next);
+    sourceForm.setFieldsValue({
+      keyword: undefined,
+      sourceType: undefined,
+      verificationStatus: undefined,
+      privacyLevel: undefined,
+      hasAttachment: undefined,
+      hasBinding: undefined
+    });
     setSearch(next);
     void loadSources(next);
   }
