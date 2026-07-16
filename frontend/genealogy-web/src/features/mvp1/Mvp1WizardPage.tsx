@@ -447,7 +447,7 @@ export function Mvp1WizardPage({ notify }: Props) {
       }}
     >
       <StepRenderer
-        step={active}
+        activeStep={active}
         notify={notify}
         onSubmittedReview={handleSubmittedReview}
         onStepChange={requestStepChange}
