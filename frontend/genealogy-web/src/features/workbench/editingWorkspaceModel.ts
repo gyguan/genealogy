@@ -11,6 +11,7 @@ export type WorkbenchUrlState = WorkbenchFilters & {
 };
 
 export type WorkbenchKpiKey = 'pending' | 'high' | 'source' | 'generation';
+export type WorkbenchEmptyState = { description: string; action: '' | 'clear' | 'retry' };
 
 export const EMPTY_FILTERS: WorkbenchFilters = { taskType: '', risk: '', status: '' };
 
@@ -77,4 +78,29 @@ export function filterLabels(filters: WorkbenchFilters) {
   if (filters.risk) labels.push({ key: 'risk', label: `风险：${riskLabels[filters.risk] || filters.risk}` });
   if (filters.status) labels.push({ key: 'status', label: `状态：${statusLabels[filters.status] || filters.status}` });
   return labels;
+}
+
+export function summarizeBulkResults(results: Array<PromiseSettledResult<unknown>>) {
+  return results.reduce(
+    (summary, result) => {
+      if (result.status === 'fulfilled') summary.succeeded += 1;
+      else summary.failed += 1;
+      return summary;
+    },
+    { succeeded: 0, failed: 0 }
+  );
+}
+
+export function workbenchEmptyState(input: {
+  hasClan: boolean;
+  loading: boolean;
+  error: boolean;
+  hasFilters: boolean;
+  count: number;
+}): WorkbenchEmptyState {
+  if (input.loading || input.count > 0) return { description: '', action: '' };
+  if (input.error) return { description: '任务列表加载失败', action: 'retry' };
+  if (!input.hasClan) return { description: '请选择宗族后查看修谱任务', action: '' };
+  if (input.hasFilters) return { description: '当前筛选条件下暂无修谱问题', action: 'clear' };
+  return { description: '当前宗族暂无待处理修谱任务', action: '' };
 }
