@@ -20,6 +20,7 @@ import { apiClient } from '../../shared/api/client';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
+import './UnifiedStatisticsHomePage.css';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -82,6 +83,12 @@ const cultureQueryKeys = [
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
   return text || fallback;
+}
+
+function formatLoadedAt(value: Date | null) {
+  if (!value) return '数据加载中…';
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `数据更新于 ${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}`;
 }
 
 function clanLabel(clan: any) {
@@ -208,9 +215,23 @@ export function UnifiedStatisticsHomePage() {
   const workspace = useWorkspace();
   const [snapshot, setSnapshot] = useState<HomeSnapshot>(emptySnapshot);
   const [loading, setLoading] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [cultureError, setCultureError] = useState('');
   const [activeDrill, setActiveDrill] = useState<DrillKey>('people');
   const [drillOpen, setDrillOpen] = useState(false);
+
+  function resetWorkspaceForClan(clanId: string) {
+    workspace.patch({
+      clanId,
+      branchId: '',
+      personId: '',
+      relationshipId: '',
+      sourceId: '',
+      sourceFocusReason: '',
+      attachmentId: '',
+      reviewTaskId: ''
+    });
+  }
 
   async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     try {
@@ -231,9 +252,10 @@ export function UnifiedStatisticsHomePage() {
         ? requestedClanId
         : fallbackClanId;
 
-      if (clanId && workspace.clanId !== clanId) workspace.setClanId(clanId);
+      if (clanId && workspace.clanId !== clanId) resetWorkspaceForClan(clanId);
       if (!clanId) {
         setSnapshot({ ...emptySnapshot, clans });
+        setLastLoadedAt(new Date());
         return;
       }
 
@@ -263,6 +285,7 @@ export function UnifiedStatisticsHomePage() {
         peopleTotal: Number(peopleResponse?.total ?? people.length),
         culture
       });
+      setLastLoadedAt(new Date());
     } finally {
       setLoading(false);
     }
@@ -324,15 +347,7 @@ export function UnifiedStatisticsHomePage() {
 
   async function switchClan(nextClanId: string) {
     if (!nextClanId || nextClanId === workspace.clanId) return;
-    workspace.patch({
-      clanId: nextClanId,
-      branchId: '',
-      personId: '',
-      relationshipId: '',
-      sourceId: '',
-      attachmentId: '',
-      reviewTaskId: ''
-    });
+    resetWorkspaceForClan(nextClanId);
     setActiveDrill('people');
     setDrillOpen(false);
     await load(nextClanId);
@@ -357,7 +372,7 @@ export function UnifiedStatisticsHomePage() {
         size="small"
         dataSource={items}
         renderItem={entry => (
-          <List.Item actions={[<Button key="open" type="link" onClick={() => openCulture(entry.targetTab, entry)}>查看</Button>]}>
+          <List.Item actions={[<Button key="open" type="link" onClick={() => openCulture(entry.targetTab, entry)}>查看</Button>]}> 
             <List.Item.Meta
               title={(
                 <Space wrap size={6}>
@@ -455,29 +470,36 @@ export function UnifiedStatisticsHomePage() {
   }
 
   const rows = detailRows();
+  const loadedAtText = `${formatLoadedAt(lastLoadedAt)}${loading && lastLoadedAt ? ' · 正在更新…' : ''}`;
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Card
-        loading={loading}
-        title="族谱概览"
-        extra={(
-          <Space wrap>
-            <Text type="secondary">当前宗族</Text>
+    <Space className="statistics-home-page" direction="vertical" size="middle" style={{ width: '100%' }}>
+      <header className="statistics-home-page__header">
+        <div className="statistics-home-page__heading">
+          <Title level={3}>族谱首页</Title>
+          <Text type="secondary">查看当前宗族的成员、支派、来源与审核概览</Text>
+        </div>
+        <div className="statistics-home-page__context">
+          <div className="statistics-home-page__scope">
+            <Text id="statistics-home-current-clan-label" type="secondary">当前宗族</Text>
             <Select
-              aria-label="当前宗族"
-              style={{ minWidth: 220 }}
+              aria-labelledby="statistics-home-current-clan-label"
+              className="statistics-home-page__clan-select"
+              size="large"
               value={String(currentClan?.id || workspace.clanId || '') || undefined}
               loading={loading}
               onChange={value => void switchClan(String(value))}
               options={snapshot.clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))}
             />
-          </Space>
-        )}
-      >
-        <Title level={3} style={{ marginTop: 0 }}>{clanLabel(currentClan)}</Title>
+          </div>
+          <Text className="statistics-home-page__updated-at" type="secondary" aria-live="polite">{loadedAtText}</Text>
+        </div>
+      </header>
+
+      <Card className="statistics-home-page__clan-summary" loading={loading}>
+        <Title level={4}>{clanLabel(currentClan)}</Title>
         <Paragraph type="secondary">
-          {display(currentClan?.description, `${display(currentClan?.surname, '本')}氏族谱空间，统一沉淀成员、支派、来源、审核与正式宗族文化。`)}
+          {display(currentClan?.description, '暂未维护宗族简介')}
         </Paragraph>
       </Card>
 
