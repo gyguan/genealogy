@@ -86,6 +86,10 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm run test:wizard-forms
 
+      - name: Test generation review validation
+        working-directory: frontend/genealogy-web
+        run: npm run test:generation-validation
+
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
         run: npm run typecheck
