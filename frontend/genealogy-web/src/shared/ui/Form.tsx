@@ -1,6 +1,8 @@
-import { Children, cloneElement, isValidElement } from 'react';
+import { Children, cloneElement, isValidElement, useEffect } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Button, Form, Input, Select, Space } from 'antd';
+import { validateWizardStep, wizardFieldName } from '../../features/mvp1/domain/wizardFormValidation';
+import { useWizardFormContext } from '../../features/mvp1/WizardFormContext';
 
 type AnyProps = Record<string, any>;
 
@@ -17,6 +19,14 @@ const REVIEW_DRAFT_ALIASES = [
 ];
 
 const TECHNICAL_LABEL_PATTERN = /(^|[\s（(])(ID|Id|id)([\s）)]|$)|编码|主键|技术标识|系统标识|校验值|SHA|checksum|storagePath|targetType|targetId|dataStatus|verificationStatus/i;
+const CROSS_FIELD_DEPENDENCIES: Record<string, string[]> = {
+  birthDate: ['deathDate', 'isLiving'],
+  deathDate: ['birthDate', 'isLiving'],
+  isLiving: ['birthDate', 'deathDate'],
+  centerPersonId: ['relativePersonId', 'selectionRule'],
+  relativePersonId: ['centerPersonId', 'selectionRule'],
+  selectionRule: ['centerPersonId', 'relativePersonId']
+};
 
 function markDraftSaveGuard() {
   (window as any).__genealogyDraftSaveGuardUntil = Date.now() + DRAFT_SAVE_GUARD_MS;
@@ -67,23 +77,16 @@ function normalizeReviewActions(children: ReactNode) {
   const items = Children.toArray(children);
   const submit = items.find(item => buttonText(item) === REVIEW_SUBMIT_LABEL);
   if (!submit) return items;
-
-  const draft = REVIEW_DRAFT_ALIASES
-    .map(label => items.find(item => buttonText(item) === label))
-    .find(Boolean);
+  const draft = REVIEW_DRAFT_ALIASES.map(label => items.find(item => buttonText(item) === label)).find(Boolean);
   if (!draft) return items;
-
   return [cloneButtonLabel(draft, REVIEW_DRAFT_LABEL, true), submit];
 }
 
 function toAntdControl(child: ReactNode): ReactNode {
   const element = asElement(child);
   if (!element || typeof element.type !== 'string') return child;
-
   const { children, ...props } = element.props;
-  if (element.type === 'textarea') {
-    return <Input.TextArea {...props} value={props.value} onChange={props.onChange} />;
-  }
+  if (element.type === 'textarea') return <Input.TextArea {...props} value={props.value} onChange={props.onChange} />;
   if (element.type === 'select') {
     const options = Children.toArray(children)
       .map(asElement)
@@ -105,13 +108,20 @@ function toAntdControl(child: ReactNode): ReactNode {
       />
     );
   }
-  if (element.type === 'input') {
-    return <Input {...props} value={props.value} onChange={props.onChange} />;
-  }
+  if (element.type === 'input') return <Input {...props} value={props.value} onChange={props.onChange} />;
   return child;
 }
 
-function toAntdAction(child: ReactNode): ReactNode {
+function eventValue(value: unknown) {
+  if (value && typeof value === 'object' && 'target' in value) {
+    const target = (value as { target?: { value?: unknown; checked?: boolean; type?: string } }).target;
+    if (target?.type === 'checkbox' || target?.type === 'radio') return target.checked;
+    return target?.value;
+  }
+  return value;
+}
+
+function toAntdAction(child: ReactNode, validateBeforeAction: () => Promise<boolean>): ReactNode {
   const element = asElement(child);
   if (!element || element.type !== 'button') return child;
   const { className = '', children, onClick, ...rest } = element.props;
@@ -119,24 +129,70 @@ function toAntdAction(child: ReactNode): ReactNode {
   const isDanger = String(className).includes('danger');
   const text = nodeText(children);
   const isDraftSave = REVIEW_DRAFT_ALIASES.includes(text);
-  const nextOnClick = isDraftSave
-    ? (event: unknown) => {
-        markDraftSaveGuard();
-        if (typeof onClick === 'function') onClick(event);
-      }
-    : onClick;
+  const nextOnClick = async (event: unknown) => {
+    if (element.props['data-skip-validation'] !== true && !await validateBeforeAction()) return;
+    if (isDraftSave) markDraftSaveGuard();
+    if (typeof onClick === 'function') onClick(event);
+  };
   return <Button {...rest} onClick={nextOnClick} danger={isDanger} type={isSecondary || isDanger ? 'default' : 'primary'}>{children}</Button>;
 }
 
-export function Field(props: { label: string; children: ReactNode; hint?: string }) {
+export function Field(props: { label: string; children: ReactNode; hint?: string; name?: string }) {
+  const context = useWizardFormContext();
+  const element = asElement(props.children);
+  const name = props.name || wizardFieldName(props.label);
+  const currentValue = element?.props.value;
+
+  useEffect(() => {
+    if (!context.form || !name || currentValue === undefined) return;
+    context.form.setFieldValue(name, currentValue);
+  }, [context.form, name, currentValue]);
+
   if (isTechnicalLabel(props.label)) return null;
+  const rules = context.step ? [{
+    validator: async () => {
+      const errors = validateWizardStep(context.step!, context.form?.getFieldsValue(true) || {});
+      if (errors[name]) throw new Error(errors[name]);
+    }
+  }] : undefined;
+
   return (
-    <Form.Item className="field antd-field" label={props.label} extra={props.hint} colon={false}>
+    <Form.Item
+      className="field antd-field"
+      label={props.label}
+      extra={props.hint}
+      colon={false}
+      name={context.form ? name : undefined}
+      dependencies={CROSS_FIELD_DEPENDENCIES[name]}
+      rules={rules}
+      validateTrigger={['onChange', 'onBlur']}
+      getValueProps={() => ({})}
+      getValueFromEvent={eventValue}
+      initialValue={currentValue}
+    >
       {toAntdControl(props.children)}
     </Form.Item>
   );
 }
 
 export function Actions({ children }: { children: ReactNode }) {
-  return <Space className="actions antd-actions" wrap>{normalizeReviewActions(children).map(toAntdAction)}</Space>;
+  const context = useWizardFormContext();
+  const validateBeforeAction = async () => {
+    if (!context.form) return true;
+    try {
+      await context.form.validateFields();
+      context.setBusinessError('');
+      return true;
+    } catch {
+      context.setBusinessError('请先修正标记字段，再执行当前操作。');
+      const first = context.form.getFieldsError().find(item => item.errors.length)?.name;
+      if (first) {
+        context.form.scrollToField(first, { behavior: 'smooth', block: 'center' });
+        const field = context.form.getFieldInstance(first) as { focus?: () => void } | undefined;
+        field?.focus?.();
+      }
+      return false;
+    }
+  };
+  return <Space className="actions antd-actions" wrap>{normalizeReviewActions(children).map(child => toAntdAction(child, validateBeforeAction))}</Space>;
 }
