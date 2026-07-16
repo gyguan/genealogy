@@ -1,0 +1,52 @@
+.tracking-detail-page {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.tracking-detail-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tracking-detail-page__header .ant-btn-link {
+  height: auto;
+  padding: 0 0 8px;
+}
+
+.tracking-detail-page__header h3.ant-typography {
+  margin: 0 0 4px;
+}
+
+.tracking-detail-page__content > .ant-card-body {
+  padding-top: 8px;
+}
+
+.tracking-detail-page .ant-table-wrapper {
+  min-width: 0;
+}
+
+.tracking-detail-page .ant-timeline p {
+  margin: 6px 0;
+  color: rgba(0, 0, 0, .65);
+  line-height: 1.6;
+}
+
+@media (max-width: 767px) {
+  .tracking-detail-page__header {
+    flex-direction: column;
+  }
+
+  .tracking-detail-page__header .ant-btn,
+  .tracking-detail-page .ant-alert-action .ant-btn {
+    min-height: 44px;
+  }
+
+  .tracking-detail-page__content > .ant-card-body {
+    padding-inline: 12px;
+  }
+}
