@@ -19,15 +19,11 @@ const { Dragger } = Upload;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const TEMPLATE_VERSION = '2026.07';
 const TEMPLATE_UPDATED_AT = '2026-07-16';
+const hiddenMobileFields = new Set(['validationStatus', 'warningMessages', 'duplicated', 'errorMessage', 'rawData']);
 
 type TemplateFormat = 'csv' | 'xlsx';
 type PreviewFilter = 'all' | ImportValidationStatus;
-type ImportJobResult = {
-  successCount?: number;
-  failureCount?: number;
-  executionMode?: string;
-  executionStatus?: string;
-};
+type ImportJobResult = { successCount?: number; failureCount?: number; executionMode?: string; executionStatus?: string };
 
 export type StandardImportWorkspaceProps<Row extends ImportPreviewRowBase> = {
   notify: (data: unknown, error?: boolean) => void;
@@ -47,25 +43,37 @@ export type StandardImportWorkspaceProps<Row extends ImportPreviewRowBase> = {
 };
 
 function statusTag(status: ImportValidationStatus) {
-  const config = {
+  const config: Record<ImportValidationStatus, { color: string; text: string }> = {
     valid: { color: 'success', text: '有效' },
     warning: { color: 'warning', text: '警告' },
     duplicate: { color: 'warning', text: '疑似重复' },
     error: { color: 'error', text: '错误' }
-  }[status];
-  return <Tag color={config.color}>{config.text}</Tag>;
+  };
+  return <Tag color={config[status].color}>{config[status].text}</Tag>;
 }
 
-function columnValue<Row extends ImportPreviewRowBase>(row: Row, dataIndex: unknown) {
-  const key = Array.isArray(dataIndex) ? dataIndex.join('.') : String(dataIndex || '');
-  return key ? (row as unknown as Record<string, unknown>)[key] : undefined;
+function mobileEntries<Row extends ImportPreviewRowBase>(row: Row) {
+  return Object.entries(row as unknown as Record<string, unknown>)
+    .filter(([key, value]) => !hiddenMobileFields.has(key) && value !== undefined && value !== null && value !== '')
+    .slice(0, 4);
 }
 
-export function StandardImportWorkspace<Row extends ImportPreviewRowBase>(props: StandardImportWorkspaceProps<Row>) {
-  const {
-    notify, clanId, branchId, branchName, onBatchCreated, onProgressChange,
-    title, objectName, targetLabel, templateSlug, previewPath, createPath, guide, columns
-  } = props;
+export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({
+  notify,
+  clanId,
+  branchId,
+  branchName,
+  onBatchCreated,
+  onProgressChange,
+  title,
+  objectName,
+  targetLabel,
+  templateSlug,
+  previewPath,
+  createPath,
+  guide,
+  columns
+}: StandardImportWorkspaceProps<Row>) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportPreviewResult<Row> | null>(null);
   const [duplicatesConfirmed, setDuplicatesConfirmed] = useState(false);
@@ -177,13 +185,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>(props:
       const result = await apiClient.upload<ImportJobResult>(`${createPath(clanId)}?${query(true)}`, formData);
       const asyncQueued = result.executionMode === 'async'
         || ['queued', 'running', 'retry_wait'].includes(String(result.executionStatus || '').toLowerCase());
-      notify({
-        message: asyncQueued
-          ? '导入批次已创建，可在“执行任务”中查看后台进度。'
-          : (result.failureCount || 0) > 0
-            ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${result.failureCount || 0} 行`
-            : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核`
-      });
+      notify({ message: asyncQueued ? '导入批次已创建，可在“执行任务”中查看后台进度。' : (result.failureCount || 0) > 0 ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${result.failureCount || 0} 行` : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核` });
       resetSelection();
       onBatchCreated();
     } catch (error) {
@@ -245,7 +247,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>(props:
           {counts.error > 0 ? <Alert type="error" showIcon message={`存在 ${counts.error} 条阻断错误，修正并重新预检后才能创建批次。`} /> : null}
           {counts.duplicate > 0 ? <Checkbox checked={duplicatesConfirmed} onChange={event => { setDuplicatesConfirmed(event.target.checked); setValidationMessage(''); }}>我已核对疑似重复{objectName}，确认仍继续创建导入批次</Checkbox> : null}
           <div className="import-preview-table"><Table<Row> size="middle" rowKey={(row, index) => String(row.rowNo || index)} dataSource={filteredRows} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: total => `共 ${total} 条` }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前分类暂无数据" /> }} columns={previewColumns} scroll={{ x: 900 }} /></div>
-          <div className="import-preview-card-list">{filteredRows.map((row, index) => <Card key={String(row.rowNo || index)} size="small" title={`第 ${row.rowNo || index + 1} 行`} extra={statusTag(importValidationStatus(row))}><Space direction="vertical" size={4}>{columns.slice(0, 4).map(column => { const value = columnValue(row, column.dataIndex); const key = String(column.key || column.dataIndex || 'field'); return value === undefined ? null : <Typography.Text key={key}><strong>{String(column.title)}：</strong>{String(value || '-')}</Typography.Text>; })}{importPreviewMessage(row) ? <Typography.Text type="danger">{importPreviewMessage(row)}</Typography.Text> : null}</Space></Card>)}</div>
+          <div className="import-preview-card-list">{filteredRows.map((row, index) => <Card key={String(row.rowNo || index)} size="small" title={`第 ${row.rowNo || index + 1} 行`} extra={statusTag(importValidationStatus(row))}><Space direction="vertical" size={4}>{mobileEntries(row).map(([key, value]) => <Typography.Text key={key}><strong>{key}：</strong>{String(value)}</Typography.Text>)}{importPreviewMessage(row) ? <Typography.Text type="danger">{importPreviewMessage(row)}</Typography.Text> : null}</Space></Card>)}</div>
         </Space>
       </Card> : null}
     </div>
