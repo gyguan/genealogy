@@ -112,15 +112,6 @@ function toAntdControl(child: ReactNode): ReactNode {
   return child;
 }
 
-function eventValue(value: unknown) {
-  if (value && typeof value === 'object' && 'target' in value) {
-    const target = (value as { target?: { value?: unknown; checked?: boolean; type?: string } }).target;
-    if (target?.type === 'checkbox' || target?.type === 'radio') return target.checked;
-    return target?.value;
-  }
-  return value;
-}
-
 function toAntdAction(child: ReactNode, validateBeforeAction: () => Promise<boolean>): ReactNode {
   const element = asElement(child);
   if (!element || element.type !== 'button') return child;
@@ -145,7 +136,9 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
 
   useEffect(() => {
     if (!context.form || !name || currentValue === undefined) return;
-    context.form.setFieldValue(name, currentValue);
+    if (context.form.getFieldValue(name) !== currentValue) {
+      context.form.setFieldValue(name, currentValue);
+    }
   }, [context.form, name, currentValue]);
 
   if (isTechnicalLabel(props.label)) return null;
@@ -165,9 +158,9 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
       name={context.form ? name : undefined}
       dependencies={CROSS_FIELD_DEPENDENCIES[name]}
       rules={rules}
-      validateTrigger={['onChange', 'onBlur']}
+      trigger="onBlur"
+      validateTrigger="onBlur"
       getValueProps={() => ({})}
-      getValueFromEvent={eventValue}
       initialValue={currentValue}
     >
       {toAntdControl(props.children)}
