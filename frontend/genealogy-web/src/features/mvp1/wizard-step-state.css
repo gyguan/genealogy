@@ -46,6 +46,31 @@
   line-height: 1.45;
 }
 
+.wizard-validation-boundary {
+  display: grid;
+  gap: 12px;
+}
+
+.wizard-step-local-error {
+  margin-bottom: 4px;
+}
+
+[data-wizard-field-error="true"] input,
+[data-wizard-field-error="true"] textarea,
+[data-wizard-field-error="true"] select,
+[data-wizard-field-error="true"] .ant-select-selector,
+[data-wizard-field-error="true"] .ant-picker {
+  border-color: #ff4d4f !important;
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
+}
+
+.wizard-field-error-help {
+  margin-top: 4px;
+  color: #ff4d4f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 @media (max-width: 767px) {
   .wizard-step-title {
     flex-direction: row;
