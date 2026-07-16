@@ -65,17 +65,19 @@ function asDate(value: unknown) {
   return asString(value).slice(0, 10);
 }
 
-function nullableString(value: string) {
-  return value.trim() ? value.trim() : null;
+function nullableString(value: unknown) {
+  const text = String(value ?? '').trim();
+  return text || null;
 }
 
-function nullableNumber(value: string) {
-  return value.trim() ? Number(value) : null;
+function nullableNumber(value: unknown) {
+  const text = String(value ?? '').trim();
+  return text ? Number(text) : null;
 }
 
-function nullableBoolean(value: string) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+function nullableBoolean(value: unknown) {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
   return null;
 }
 
@@ -113,7 +115,7 @@ export function toPersonEditForm(person: any): PersonEditForm {
 export function toPersonUpdatePayload(form: PersonEditForm) {
   return {
     branchId: nullableNumber(form.branchId),
-    name: form.name.trim(),
+    name: String(form.name ?? '').trim(),
     genealogyName: nullableString(form.genealogyName),
     courtesyName: nullableString(form.courtesyName),
     aliasName: nullableString(form.aliasName),
