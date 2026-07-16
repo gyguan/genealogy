@@ -3,7 +3,7 @@ import { Card, Select, Space, Tabs, Typography, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
-import { CultureSiteMaintenanceTab } from './CultureSiteMaintenanceTab';
+import { CultureSiteStandardTab } from './CultureSiteStandardTab';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
@@ -86,7 +86,7 @@ export function CultureProductPage() {
       <>
         {mounts.items ? <CultureItemMaintenanceTab clanId={workspace.clanId} /> : null}
         {mounts.migrations ? <MigrationEventStandardTab /> : null}
-        {mounts.sites ? <CultureSiteMaintenanceTab /> : null}
+        {mounts.sites ? <CultureSiteStandardTab /> : null}
       </>
     );
   }
