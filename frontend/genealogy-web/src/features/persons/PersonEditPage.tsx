@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Breadcrumb, Button, Card, DatePicker, Empty, Form, Input, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Card, DatePicker, Dropdown, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { apiClient } from '../../shared/api/client';
@@ -7,7 +8,6 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
 import {
   normalizePersonDate,
-  personDataStatusOptions,
   personDatePrecisionOptions,
   personGenderOptions,
   personLineageStatusOptions,
@@ -20,6 +20,8 @@ import {
   toPersonUpdatePayload
 } from './personEditModel';
 import type { PersonDatePrecision, PersonEditForm } from './personEditModel';
+import { visiblePersonStatusActions } from './personStatusActions';
+import type { PersonStatusAction, PersonStatusActionKey } from './personStatusActions';
 
 type Props = {
   personId: string;
@@ -64,12 +66,14 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState<PersonStatusActionKey | null>(null);
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [saved, setSaved] = useState(false);
   const birthPrecision = Form.useWatch('birthDatePrecision', form) || 'unknown';
   const deathPrecision = Form.useWatch('deathDatePrecision', form) || 'unknown';
-  const isLiving = Form.useWatch('isLiving', form);
+  const busy = saving || actionLoading !== null;
 
   const branchOptions = useMemo(
     () => branches.map(branch => ({ value: String(branch.id), label: branchLabel(branch) })),
@@ -79,9 +83,9 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   useEffect(() => { void loadPerson(); }, [personId]);
 
   useEffect(() => {
-    onSavingChange?.(saving);
+    onSavingChange?.(busy);
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!saving) return;
+      if (!busy) return;
       event.preventDefault();
       event.returnValue = '';
     };
@@ -90,12 +94,13 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
       window.removeEventListener('beforeunload', onBeforeUnload);
       onSavingChange?.(false);
     };
-  }, [saving, onSavingChange]);
+  }, [busy, onSavingChange]);
 
   async function loadPerson() {
     setLoading(true);
     setLoadError('');
     setSaveError('');
+    setActionError('');
     setSaved(false);
     try {
       const detail = await apiClient.get<any>(`/persons/${personId}`);
@@ -134,8 +139,9 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   }
 
   async function saveDraft() {
-    if (saving) return;
+    if (busy) return;
     setSaveError('');
+    setActionError('');
     setSaved(false);
     let values: PersonEditForm;
     try {
@@ -149,12 +155,43 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
       setPerson(updated);
       form.setFieldsValue(toPersonEditForm(updated));
       setSaved(true);
-      notify({ message: '人物档案已保存' });
+      notify({ message: '人物资料已保存' });
     } catch (error) {
-      setSaveError((error as Error).message || '人物档案保存失败');
+      setSaveError((error as Error).message || '人物资料保存失败');
     } finally {
       setSaving(false);
     }
+  }
+
+  async function runStatusAction(action: PersonStatusAction) {
+    if (busy) return;
+    setActionError('');
+    setSaved(false);
+    setActionLoading(action.key);
+    try {
+      await apiClient.post(action.endpoint(personId));
+      notify({ message: `${action.label}成功` });
+      await loadPerson();
+    } catch (error) {
+      setActionError((error as Error).message || `${action.label}失败`);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function confirmStatusAction(action: PersonStatusAction) {
+    if (!action.dangerous) {
+      void runStatusAction(action);
+      return;
+    }
+    Modal.confirm({
+      title: action.confirmTitle || `确认${action.label}？`,
+      content: action.confirmDescription,
+      okText: action.label,
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: () => runStatusAction(action)
+    });
   }
 
   if (loading) return <Card className="person-edit-loading"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在加载人物档案…</Typography.Text></Space></Card>;
@@ -165,6 +202,16 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
 
   const personName = display(person.name || person.personName, '未命名人物');
   const personStatus = person.dataStatus || person.status;
+  const statusActions = visiblePersonStatusActions(personStatus, person.allowedActions);
+  const primaryStatusAction = statusActions.find(item => item.action.primary);
+  const secondaryStatusActions = statusActions.filter(item => !item.action.primary);
+  const moreItems: MenuProps['items'] = secondaryStatusActions.map(item => ({
+    key: item.action.key,
+    label: item.action.label,
+    danger: item.action.dangerous,
+    disabled: !item.enabled,
+    title: item.reason
+  }));
 
   return (
     <div className="person-edit-page">
@@ -175,15 +222,16 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
             <Space align="center" wrap><Typography.Title level={3}>编辑人物档案</Typography.Title><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag></Space>
             <Typography.Paragraph type="secondary">{personName} · {display(person.generationWord, '字辈待维护')} · {person.generationNo ? `第${person.generationNo}世` : '代次待维护'}</Typography.Paragraph>
           </div>
-          <Button disabled={saving} onClick={onCancel}>返回</Button>
+          <Button disabled={busy} onClick={onCancel}>返回</Button>
         </div>
       </div>
 
-      <Alert type="info" showIcon message="日期与三态字段按原始语义保存" description="仅知年份或月份时无需补齐日期；未知、否、是会分别保存为 null、false、true。" />
+      <Alert type="info" showIcon message="档案状态由领域动作管理" description="普通资料保存不会修改档案状态。提交审核、撤回、归档和恢复仅在当前状态与权限允许时执行。" />
       {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
-      {saved ? <Alert type="success" showIcon message="人物档案已保存" description="可以继续修改，或返回人物档案列表查看最新数据。" action={<Button size="small" onClick={onCancel}>返回人物档案</Button>} /> : null}
+      {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
+      {saved ? <Alert type="success" showIcon message="人物资料已保存" description="档案状态未发生变化，可以继续修改或执行合法状态动作。" action={<Button size="small" onClick={onCancel}>返回人物档案</Button>} /> : null}
 
-      <Form<PersonEditForm> form={form} layout="vertical" requiredMark="optional" disabled={saving} className="person-edit-form">
+      <Form<PersonEditForm> form={form} layout="vertical" requiredMark="optional" disabled={busy} className="person-edit-form">
         <div className="person-edit-sections">
           <Card title="基本身份"><div className="person-edit-fields">
             <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item>
@@ -239,12 +287,45 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
             <Form.Item name="hasDescendant" label="是否有后裔"><Select options={personTriStateOptions} /></Form.Item>
             <Form.Item name="lineageStatus" label="世系状态"><Select options={personLineageStatusOptions} /></Form.Item>
             <Form.Item name="privacyLevel" label="隐私级别"><Select options={personPrivacyOptions} /></Form.Item>
-            <Form.Item name="dataStatus" label="档案状态"><Select options={personDataStatusOptions} /></Form.Item>
+            <div><Typography.Text type="secondary">档案状态</Typography.Text><div style={{ marginTop: 8 }}><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag><Typography.Text type="secondary">状态不可通过普通资料保存直接修改</Typography.Text></div></div>
           </div></Card>
         </div>
       </Form>
 
-      <div className="person-edit-actions" aria-label="人物档案编辑操作"><Space wrap><Button disabled={saving} onClick={onCancel}>取消</Button><Button loading={saving} onClick={() => void saveDraft()}>保存草稿</Button><Tooltip title="提交审核能力尚未接入"><span><Button type="primary" disabled>提交审核</Button></span></Tooltip></Space></div>
+      <div className="person-edit-actions" aria-label="人物档案编辑操作">
+        <Space wrap>
+          <Button disabled={busy} onClick={onCancel}>取消</Button>
+          <Button loading={saving} disabled={actionLoading !== null} onClick={() => void saveDraft()}>保存草稿</Button>
+          {primaryStatusAction ? (
+            <Tooltip title={primaryStatusAction.enabled ? '' : primaryStatusAction.reason}>
+              <span>
+                <Button
+                  type="primary"
+                  disabled={!primaryStatusAction.enabled || busy}
+                  loading={actionLoading === primaryStatusAction.action.key}
+                  onClick={() => confirmStatusAction(primaryStatusAction.action)}
+                >
+                  {primaryStatusAction.action.label}
+                </Button>
+              </span>
+            </Tooltip>
+          ) : null}
+          {secondaryStatusActions.length ? (
+            <Dropdown
+              menu={{
+                items: moreItems,
+                onClick: info => {
+                  const selected = secondaryStatusActions.find(item => item.action.key === info.key);
+                  if (selected?.enabled) confirmStatusAction(selected.action);
+                }
+              }}
+              disabled={busy}
+            >
+              <Button>更多</Button>
+            </Dropdown>
+          ) : null}
+        </Space>
+      </div>
     </div>
   );
 }
