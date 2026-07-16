@@ -4,6 +4,8 @@ import {
   filterLabels,
   filtersForKpi,
   readWorkbenchUrlState,
+  summarizeBulkResults,
+  workbenchEmptyState,
   writeWorkbenchUrlState
 } from './editingWorkspaceModel.js';
 
@@ -39,4 +41,19 @@ test('builds visible filter labels', () => {
     { key: 'risk', label: '风险：高风险' },
     { key: 'status', label: '状态：待处理' }
   ]);
+});
+
+test('summarizes partial bulk operation results', () => {
+  assert.deepEqual(summarizeBulkResults([
+    { status: 'fulfilled', value: {} },
+    { status: 'rejected', reason: new Error('conflict') },
+    { status: 'fulfilled', value: {} }
+  ]), { succeeded: 2, failed: 1 });
+});
+
+test('distinguishes workbench empty states', () => {
+  assert.deepEqual(workbenchEmptyState({ hasClan: false, loading: false, error: false, hasFilters: false, count: 0 }), { description: '请选择宗族后查看修谱任务', action: '' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: true, count: 0 }), { description: '当前筛选条件下暂无修谱问题', action: 'clear' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: true, hasFilters: false, count: 0 }), { description: '任务列表加载失败', action: 'retry' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: false, count: 0 }), { description: '当前宗族暂无待处理修谱任务', action: '' });
 });
