@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Space } from 'antd';
-import { CultureItemTab } from './CultureItemTab';
+import { CultureItemStandardTab } from './CultureItemStandardTab';
 import { subscribeCultureItemRefresh } from './cultureLibraryService';
 
 export function CultureItemMaintenanceTab({ clanId }: { clanId: string }) {
@@ -24,7 +24,7 @@ export function CultureItemMaintenanceTab({ clanId }: { clanId: string }) {
           onClose={() => setRefreshError('')}
         />
       ) : null}
-      <CultureItemTab clanId={clanId} />
+      <CultureItemStandardTab clanId={clanId} />
     </Space>
   );
 }
