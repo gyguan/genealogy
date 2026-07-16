@@ -123,7 +123,7 @@ test('culture site editor uses an independent URL page and business person selec
 
   await page.getByLabel('纬度').fill('91');
   await page.getByRole('button', { name: '提交变更申请' }).click();
-  await expect(page.getByText('纬度必须在 -90 到 90 之间')).toBeVisible();
+  await expect(page.getByText('纬度必须在 -90 到 90 之间').first()).toBeVisible();
   await page.getByLabel('纬度').fill('28.2282');
   await page.getByRole('button', { name: '提交变更申请' }).click();
 
