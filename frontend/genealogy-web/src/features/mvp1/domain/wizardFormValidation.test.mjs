@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateWizardStep } from '../../../.wizard-form-test/features/mvp1/domain/wizardFormValidation.js';
+import { validateWizardStep } from '../../../../.wizard-form-test/features/mvp1/domain/wizardFormValidation.js';
 
 test('clan requires clan name and surname', () => {
   assert.deepEqual(validateWizardStep('clan', { '宗族名称': '', '姓氏': '' }), {
