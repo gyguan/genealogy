@@ -73,6 +73,19 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long>, Jpa
     );
 
     @Query("""
+            select p.branchId, count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+            group by p.branchId
+            """)
+    List<Object[]> countDashboardByBranch(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
             select count(p)
             from PersonEntity p
             where p.clanId = :clanId
@@ -116,6 +129,22 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long>, Jpa
     );
 
     @Query("""
+            select count(p)
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+              and (
+                  (p.generationNo is null and (p.generationWord is null or p.generationWord = ''))
+                  or (p.birthDate is null and p.deathDate is null)
+              )
+            """)
+    long countDashboardKeyInfoMissing(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
             select count(distinct p.branchId)
             from PersonEntity p
             where p.clanId = :clanId
@@ -126,6 +155,20 @@ public interface PersonRepository extends JpaRepository<PersonEntity, Long>, Jpa
     long countDashboardCoveredBranches(
             @Param("clanId") Long clanId,
             @Param("dataStatus") String dataStatus
+    );
+
+    @Query("""
+            select p
+            from PersonEntity p
+            where p.clanId = :clanId
+              and p.dataStatus = :dataStatus
+              and p.deletedAt is null
+            order by p.updatedAt desc nulls last, p.createdAt desc nulls last, p.id desc
+            """)
+    List<PersonEntity> findRecentDashboardPeople(
+            @Param("clanId") Long clanId,
+            @Param("dataStatus") String dataStatus,
+            Pageable pageable
     );
 
     @Query("""
