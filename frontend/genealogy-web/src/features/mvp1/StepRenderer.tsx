@@ -7,6 +7,7 @@ import { PersonStep } from './steps/person/PersonStep';
 import { RelationshipStep } from './steps/relationship/RelationshipStep';
 import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
 import { SourceStageStep } from './steps/source/SourceStageStep';
+import { WizardResultListBoundary } from './WizardResultListBoundary';
 import { WizardValidationBoundary } from './WizardValidationBoundary';
 import './wizard-step-state.css';
 
@@ -31,5 +32,9 @@ export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedRevi
     case 'review': content = <ReviewProgressStep notify={notify} />; break;
     default: content = null;
   }
-  return <WizardValidationBoundary step={activeStep}>{content}</WizardValidationBoundary>;
+  return (
+    <WizardValidationBoundary step={activeStep}>
+      <WizardResultListBoundary>{content}</WizardResultListBoundary>
+    </WizardValidationBoundary>
+  );
 }
