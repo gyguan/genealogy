@@ -29,7 +29,7 @@ export function CulturePersonSelect({
   onChange
 }: Props) {
   const requestVersion = useRef(0);
-  const timer = useRef<number>();
+  const timer = useRef<number | undefined>(undefined);
   const initial = useMemo(() => initialOption(value, initialName), [value, initialName]);
   const [options, setOptions] = useState<CulturePersonOption[]>(initial ? [initial] : []);
   const [loading, setLoading] = useState(false);
@@ -85,7 +85,6 @@ export function CulturePersonSelect({
       options={options.map(option => ({ value: option.value, label: option.label }))}
       onSearch={search}
       onChange={next => onChange?.(next)}
-      onClear={() => onChange?.(undefined)}
     />
   );
 }
