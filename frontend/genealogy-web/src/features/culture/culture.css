@@ -7,9 +7,22 @@
 .culture-search-actions { display: flex; align-items: flex-end; padding-bottom: 12px; }
 .culture-title-button { height: auto; padding: 0; text-align: left; white-space: normal; }
 .culture-detail-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; }
+.culture-editor-page { display: flex; flex-direction: column; gap: 16px; padding-bottom: 72px; }
+.culture-editor-header .ant-card-body { padding: 20px 24px; }
+.culture-editor-header .ant-typography { margin-bottom: 0; }
+.culture-editor-back { height: 32px; padding: 0; }
+.culture-editor-content { display: flex; flex-direction: column; gap: 16px; }
+.culture-editor-content > .ant-card { width: 100%; }
+.culture-editor-actions { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 12px 16px; background: rgba(255, 255, 255, 0.96); border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06); backdrop-filter: blur(8px); }
 @media (max-width: 767px) {
   .culture-search-actions { padding-bottom: 0; }
   .culture-page-header .ant-card-body { padding: 16px; }
   .culture-page-header-main { flex-direction: column; gap: 12px; }
   .culture-clan-scope { width: 100%; }
+  .culture-editor-page { gap: 12px; padding-bottom: 84px; }
+  .culture-editor-header .ant-card-body { padding: 16px; }
+  .culture-editor-actions { margin-inline: -4px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .culture-editor-actions .ant-space { width: 100%; }
+  .culture-editor-actions .ant-space-item { flex: 1; }
+  .culture-editor-actions .ant-btn { width: 100%; min-height: 40px; }
 }

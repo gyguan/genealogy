@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Card, Select, Space, Tabs, Typography, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
-import { MigrationEventTab } from './MigrationEventTab';
+import { MigrationEventMaintenanceTab } from './MigrationEventMaintenanceTab';
 import { CultureSiteTab } from './CultureSiteTab';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
@@ -85,7 +85,7 @@ export function CultureProductPage() {
     return (
       <>
         {mounts.items ? <CultureItemMaintenanceTab clanId={workspace.clanId} /> : null}
-        {mounts.migrations ? <MigrationEventTab /> : null}
+        {mounts.migrations ? <MigrationEventMaintenanceTab /> : null}
         {mounts.sites ? <CultureSiteTab /> : null}
       </>
     );
