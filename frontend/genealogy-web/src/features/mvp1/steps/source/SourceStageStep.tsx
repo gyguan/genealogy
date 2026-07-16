@@ -1,0 +1,192 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { Key } from 'react';
+import { Alert, Button, Card, Empty, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
+import { Field } from '../../../../shared/ui/Form';
+import { Panel } from '../../../../shared/ui/Panel';
+import { relationshipName, relationTypeText } from '../../domain/relationship';
+import { deriveSourceStageState, resetSourceBindingSelection } from '../../domain/sourceStageModel';
+import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
+import { loadBranches, type BranchLike } from '../../services/branchService';
+import { loadClans, type ClanLike } from '../../services/clanService';
+import { loadPersons, type PersonLike } from '../../services/personService';
+import { loadRelationships, type RelationshipLike } from '../../services/relationshipService';
+import { submitReviewTask, submitReviewTasks, countSettledResults } from '../../services/reviewTaskService';
+import { bindSourceApi, createSourceApi, loadSourceLinks, loadSources, type SourceLike, type SourceLinkLike } from '../../services/sourceService';
+import './source-stage-step.css';
+
+type TargetType = 'person' | 'relationship' | 'branch' | 'clan';
+type Props = { notify?: (data: unknown, error?: boolean) => void; onSubmittedReview?: (taskId: string) => void };
+const sourceTypes = [
+  ['genealogy_book', '族谱'], ['local_chronicle', '地方志'], ['oral_history', '口述'], ['tombstone', '墓碑'], ['photo', '照片'], ['archive', '档案'], ['other', '其他']
+].map(([value, label]) => ({ value, label }));
+
+function sourceName(row?: SourceLike) { return row?.sourceName || row?.name || `来源#${row?.id || '-'}`; }
+function clanName(row?: ClanLike) { return row?.clanName || row?.surname || `宗族#${row?.id || '-'}`; }
+function targetTypeText(value?: string) { return ({ person: '人物', relationship: '关系', branch: '支派', clan: '宗族' } as Record<string, string>)[String(value)] || '对象'; }
+
+export function SourceStageStep({ notify, onSubmittedReview }: Props) {
+  const workspace = useWorkspace();
+  const [clans, setClans] = useState<ClanLike[]>([]);
+  const [sources, setSources] = useState<SourceLike[]>([]);
+  const [branches, setBranches] = useState<BranchLike[]>([]);
+  const [persons, setPersons] = useState<PersonLike[]>([]);
+  const [relationships, setRelationships] = useState<RelationshipLike[]>([]);
+  const [links, setLinks] = useState<SourceLinkLike[]>([]);
+  const [sourceNameValue, setSourceNameValue] = useState('');
+  const [sourceType, setSourceType] = useState('genealogy_book');
+  const [targetType, setTargetType] = useState<TargetType>('person');
+  const [targetId, setTargetId] = useState('');
+  const [selectedRows, setSelectedRows] = useState<Key[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [linksLoading, setLinksLoading] = useState(false);
+  const [linksError, setLinksError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [binding, setBinding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const stage = useMemo(() => deriveSourceStageState(sources, workspace.sourceId), [sources, workspace.sourceId]);
+  const selectedSource = stage.selectedSource;
+  const officialSources = useMemo(() => sources.filter(isOfficial), [sources]);
+  const selectedReviewable = useMemo(() => sources.filter(row => selectedRows.includes(String(row.id)) && isReviewable(row)), [sources, selectedRows]);
+
+  function toast(text: string, error = false) {
+    notify?.({ message: text }, error);
+    if (error) message.error(text); else message.success(text);
+  }
+
+  async function refreshSources(keep = true) {
+    if (!workspace.clanId) return;
+    setLoading(true);
+    try {
+      const rows = await loadSources(workspace.clanId);
+      setSources(rows);
+      setSelectedRows([]);
+      if (keep && workspace.sourceId && !rows.some(row => String(row.id) === workspace.sourceId)) workspace.setSourceId('');
+    } catch (error) {
+      toast((error as Error).message || '查询来源失败，已保留上次成功结果', true);
+    } finally { setLoading(false); }
+  }
+
+  async function refreshCandidates() {
+    if (!workspace.clanId) return;
+    const [branchRows, personRows] = await Promise.all([loadBranches(workspace.clanId).catch(() => []), loadPersons(workspace.clanId).catch(() => [])]);
+    setBranches(branchRows.filter(isOfficial));
+    setPersons(personRows.filter(isOfficial));
+    const settled = await Promise.allSettled(personRows.filter(isOfficial).map(row => loadRelationships(row.id)));
+    const all = settled.filter((item): item is PromiseFulfilledResult<RelationshipLike[]> => item.status === 'fulfilled').flatMap(item => item.value).filter(isOfficial);
+    setRelationships(Array.from(new Map(all.map(row => [String(row.id), row])).values()));
+  }
+
+  async function refreshLinks(sourceId = workspace.sourceId) {
+    if (!sourceId) { setLinks([]); setLinksError(''); return; }
+    setLinksLoading(true); setLinksError('');
+    try { setLinks(await loadSourceLinks(sourceId)); }
+    catch (error) { setLinksError((error as Error).message || '查询已绑定对象失败'); }
+    finally { setLinksLoading(false); }
+  }
+
+  useEffect(() => { void loadClans().then(rows => { setClans(rows); if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id)); }); }, []);
+  useEffect(() => { setTargetType('person'); setTargetId(''); setLinks([]); void Promise.all([refreshSources(false), refreshCandidates()]); }, [workspace.clanId]);
+  useEffect(() => { setTargetType('person'); setTargetId(''); void refreshLinks(); }, [workspace.sourceId]);
+
+  async function createSource(submit: boolean) {
+    if (!workspace.clanId || !sourceNameValue.trim()) { toast(!workspace.clanId ? '请选择宗族' : '请填写来源名称', true); return; }
+    setSaving(true);
+    try {
+      const created = await createSourceApi(workspace.clanId, { sourceName: sourceNameValue.trim(), sourceType, description: null });
+      setSourceNameValue('');
+      if (created.id) workspace.setSourceId(String(created.id));
+      if (submit && created.id) {
+        const task: any = await submitReviewTask({ clanId: workspace.clanId, targetType: 'source', targetId: created.id, comment: '提交来源审核' });
+        if (task?.id) onSubmittedReview?.(String(task.id));
+        toast('来源已保存并提交审核，审核通过后绑定阶段会自动开放。');
+      } else toast('来源已保存为草稿，需审核通过后才能绑定对象。');
+      await refreshSources(false);
+    } catch (error) { toast((error as Error).message || '保存来源失败', true); }
+    finally { setSaving(false); }
+  }
+
+  function chooseSource(row: SourceLike) {
+    const next = String(row.id || '');
+    const reset = resetSourceBindingSelection(workspace.sourceId, next);
+    workspace.setSourceId(next);
+    if (reset) { setTargetType(reset.targetType); setTargetId(reset.targetId); }
+  }
+
+  const targetOptions = useMemo(() => {
+    if (targetType === 'person') return persons.map(row => ({ value: String(row.id), label: row.name || `人物#${row.id}` }));
+    if (targetType === 'relationship') return relationships.map(row => ({ value: String(row.id), label: `${relationshipName(row)} · ${relationTypeText(row)}` }));
+    if (targetType === 'branch') return branches.map(row => ({ value: String(row.id), label: row.branchName || `支派#${row.id}` }));
+    const clan = clans.find(row => String(row.id) === workspace.clanId);
+    return workspace.clanId ? [{ value: workspace.clanId, label: clanName(clan) }] : [];
+  }, [targetType, persons, relationships, branches, clans, workspace.clanId]);
+
+  async function bind() {
+    const actualTarget = targetId || (targetType === 'clan' ? workspace.clanId : '');
+    if (!stage.bindingOpen || !workspace.sourceId || !actualTarget) { toast(stage.stageTwoReason || `请选择具体${targetTypeText(targetType)}`, true); return; }
+    setBinding(true);
+    try {
+      await bindSourceApi(workspace.clanId, { sourceId: Number(workspace.sourceId), targetType, targetId: Number(actualTarget) });
+      toast('来源绑定成功，已刷新当前来源的绑定记录。');
+      setTargetId('');
+      await refreshLinks();
+    } catch (error) { toast((error as Error).message || '绑定来源失败', true); }
+    finally { setBinding(false); }
+  }
+
+  async function submitOne(row: SourceLike) {
+    if (!workspace.clanId || !row.id) return;
+    setSubmitting(true);
+    try { await submitReviewTask({ clanId: workspace.clanId, targetType: 'source', targetId: row.id, comment: '提交来源审核' }); toast('来源已提交审核'); await refreshSources(); }
+    catch (error) { toast((error as Error).message || '提交来源审核失败', true); }
+    finally { setSubmitting(false); }
+  }
+
+  async function submitBatch() {
+    if (!selectedReviewable.length) return;
+    setSubmitting(true);
+    try {
+      const results = await submitReviewTasks(selectedReviewable.map(row => ({ clanId: workspace.clanId, targetType: 'source', targetId: row.id || '', comment: '提交来源审核' })));
+      const count = countSettledResults(results);
+      if (count.successCount) toast(`已提交 ${count.successCount} 个来源审核`);
+      if (count.failedCount) toast(`${count.failedCount} 个来源提交失败`, true);
+      await refreshSources();
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <Panel title="来源证据" description="先创建或选择来源；仅审核通过的来源可以进入对象绑定阶段。">
+      <div className="source-stage-layout">
+        <Card title={<Space><span>阶段一：创建或选择来源</span><Tag color={stage.bindingOpen ? 'success' : 'processing'}>{stage.bindingOpen ? '已完成' : '处理中'}</Tag></Space>}>
+          <div className="wizard-form-grid">
+            <Field label="适用宗族 *"><select value={workspace.clanId} onChange={event => workspace.patch({ clanId: event.target.value, sourceId: '' })}><option value="">请选择宗族</option>{clans.map(row => <option key={row.id} value={String(row.id)}>{clanName(row)}</option>)}</select></Field>
+            <Field label="已有正式来源"><select value={workspace.sourceId} onChange={event => { const row = officialSources.find(item => String(item.id) === event.target.value); if (row) chooseSource(row); else workspace.setSourceId(''); }}><option value="">请选择已通过来源</option>{officialSources.map(row => <option key={row.id} value={String(row.id)}>{sourceName(row)}</option>)}</select></Field>
+            <Field label="来源名称 *"><input value={sourceNameValue} onChange={event => setSourceNameValue(event.target.value)} placeholder="例如：民国二十年族谱" /></Field>
+            <Field label="来源类型"><Select value={sourceType} onChange={setSourceType} options={sourceTypes} /></Field>
+          </div>
+          <Space className="source-stage-actions" wrap><Button type="primary" loading={saving} onClick={() => void createSource(false)}>保存来源草稿</Button><Button loading={saving} onClick={() => void createSource(true)}>保存并提交审核</Button><Button loading={loading} onClick={() => void refreshSources()}>刷新来源</Button></Space>
+          {selectedReviewable.length ? <Alert className="source-stage-batch" type="info" showIcon message={`已选择 ${selectedReviewable.length} 条可提交来源`} action={<Button loading={submitting} onClick={() => void submitBatch()}>批量提交审核</Button>} /> : null}
+          <Table<SourceLike> size="small" rowKey={row => String(row.id || '')} loading={loading} dataSource={sources} pagination={{ pageSize: 8, hideOnSinglePage: true }} rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows, getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id }) }} columns={[
+            { title: `来源名称（${sources.length}）`, key: 'name', render: (_, row) => <Button type="link" onClick={() => chooseSource(row)}>{sourceName(row)}{String(row.id) === workspace.sourceId ? ' · 已选择' : ''}</Button> },
+            { title: '状态', key: 'status', width: 120, render: (_, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+            { title: '操作', key: 'action', width: 130, render: (_, row) => isReviewable(row) ? <Button size="small" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : <Button size="small" onClick={() => chooseSource(row)} disabled={!isOfficial(row)}>选择</Button> }
+          ]} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源，先创建来源草稿" /> }} />
+        </Card>
+
+        <Card title={<Space><span>阶段二：绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '未开放'}</Tag></Space>}>
+          {!stage.bindingOpen ? <Alert type="warning" showIcon message="绑定阶段暂未开放" description={stage.stageTwoReason} /> : <>
+            <Typography.Paragraph>当前正式来源：<strong>{sourceName(selectedSource)}</strong></Typography.Paragraph>
+            <div className="wizard-form-grid source-stage-bind-grid">
+              <Field label="绑定对象类型"><Select value={targetType} onChange={value => { setTargetType(value); setTargetId(''); }} options={[['person','人物'],['relationship','关系'],['branch','支派'],['clan','宗族']].map(([value,label]) => ({ value, label }))} /></Field>
+              <Field label="绑定对象"><Select value={targetId || (targetType === 'clan' ? workspace.clanId : '')} onChange={setTargetId} options={targetOptions} placeholder={`请选择${targetTypeText(targetType)}`} /></Field>
+            </div>
+            <Space className="source-stage-actions" wrap><Button type="primary" loading={binding} disabled={!targetOptions.length} onClick={() => void bind()}>绑定来源</Button><Button loading={linksLoading} onClick={() => void refreshLinks()}>刷新已绑定对象</Button></Space>
+          </>}
+          {linksError ? <Alert type="error" showIcon message={linksError} action={<Button size="small" onClick={() => void refreshLinks()}>重试</Button>} /> : null}
+          <div className="source-stage-links"><h4>已绑定对象（{links.length}）</h4>{links.length ? links.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '绑定阶段开放后显示记录'} />}</div>
+        </Card>
+      </div>
+    </Panel>
+  );
+}

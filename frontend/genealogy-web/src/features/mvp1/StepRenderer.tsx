@@ -6,7 +6,7 @@ import { GenerationStep } from './steps/generation/GenerationStep';
 import { PersonStep } from './steps/person/PersonStep';
 import { RelationshipStep } from './steps/relationship/RelationshipStep';
 import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
-import { SourceStep } from './steps/source/SourceStep';
+import { SourceStageStep } from './steps/source/SourceStageStep';
 import { WizardValidationBoundary } from './WizardValidationBoundary';
 import './wizard-step-state.css';
 
@@ -22,29 +22,14 @@ type StepRendererProps = {
 export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedReview }: StepRendererProps) {
   let content: ReactNode;
   switch (activeStep) {
-    case 'clan':
-      content = <ClanStep notify={notify} onCreated={() => onStepChange('branch')} />;
-      break;
-    case 'branch':
-      content = <BranchStep notify={notify} onSubmittedReview={onSubmittedReview} />;
-      break;
-    case 'generation':
-      content = <GenerationStep notify={notify} onSubmittedReview={onSubmittedReview} />;
-      break;
-    case 'person':
-      content = <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />;
-      break;
-    case 'relationship':
-      content = <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />;
-      break;
-    case 'source':
-      content = <SourceStep notify={notify} onSubmittedReview={onSubmittedReview} />;
-      break;
-    case 'review':
-      content = <ReviewProgressStep notify={notify} />;
-      break;
-    default:
-      content = null;
+    case 'clan': content = <ClanStep notify={notify} onCreated={() => onStepChange('branch')} />; break;
+    case 'branch': content = <BranchStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'generation': content = <GenerationStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'person': content = <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'relationship': content = <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'source': content = <SourceStageStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'review': content = <ReviewProgressStep notify={notify} />; break;
+    default: content = null;
   }
   return <WizardValidationBoundary step={activeStep}>{content}</WizardValidationBoundary>;
 }
