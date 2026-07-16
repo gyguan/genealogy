@@ -24,8 +24,8 @@ test('defines one stable short label and one page primary action for every cultu
   assert.ok(cultureTabItems.every(item => item.label.length >= 2 && item.label.length <= 6));
 });
 
-test('only standalone editor domains expose editor targets', () => {
-  assert.equal(cultureEditorTarget('items'), undefined);
+test('all culture domains expose standalone editor targets', () => {
+  assert.equal(cultureEditorTarget('items'), 'item');
   assert.equal(cultureEditorTarget('migrations'), 'migration');
   assert.equal(cultureEditorTarget('sites'), 'site');
 });
