@@ -1,0 +1,232 @@
+/* MVP 建谱向导：维护字辈步骤增强。 */
+.wizard-generation-section,
+.wizard-generation-section h4,
+.wizard-generation-section label,
+.wizard-generation-section .ant-form-item-label > label,
+.wizard-generation-section--items,
+.wizard-generation-section--items h4,
+.wizard-generation-section--items label,
+.wizard-generation-section--items .ant-form-item-label > label {
+  color: #111 !important;
+}
+
+.wizard-generation-section--scheme-enhanced,
+.wizard-generation-section--items-enhanced {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: transparent !important;
+}
+
+.wizard-generation-section--scheme-enhanced h4,
+.wizard-generation-section--items-enhanced h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wizard-generation-section--scheme-enhanced .wizard-form-grid,
+.wizard-generation-section--items-enhanced .wizard-form-grid {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff !important;
+  box-shadow: none;
+}
+
+.wizard-generation-section--scheme-enhanced .actions,
+.wizard-generation-section--items-enhanced .actions {
+  justify-content: flex-end;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fafafa !important;
+  box-shadow: none;
+}
+
+.wizard-generation-scheme-field--moved {
+  order: -1;
+}
+
+.wizard-relationship-list-enhanced,
+.wizard-person-list-enhanced {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(120, 90, 48, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.76);
+  color: #111;
+}
+
+.wizard-generation-items-list-enhanced {
+  margin-top: 16px;
+  padding: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff !important;
+  color: #111;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.wizard-generation-list-header,
+.wizard-relationship-list-header,
+.wizard-person-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: #111;
+}
+
+.wizard-generation-list-header {
+  margin: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa !important;
+}
+
+.wizard-generation-list-header h4,
+.wizard-relationship-list-header h4,
+.wizard-person-list-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #111 !important;
+}
+
+.wizard-generation-list-header span,
+.wizard-relationship-list-header span,
+.wizard-person-list-header span {
+  color: #333;
+  font-size: 13px;
+}
+
+.wizard-generation-list-table-wrap,
+.wizard-relationship-list-table-wrap,
+.wizard-person-list-table-wrap {
+  overflow-x: auto;
+  background: #fff !important;
+}
+
+.wizard-generation-list-table,
+.wizard-relationship-list-table,
+.wizard-person-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #111;
+  background: #fff !important;
+}
+
+.wizard-generation-list-table th,
+.wizard-generation-list-table td,
+.wizard-relationship-list-table th,
+.wizard-relationship-list-table td,
+.wizard-person-list-table th,
+.wizard-person-list-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+  color: #111;
+}
+
+.wizard-generation-list-table th,
+.wizard-relationship-list-table th,
+.wizard-person-list-table th {
+  color: rgba(0, 0, 0, 0.65);
+  font-weight: 600;
+  background: #fafafa !important;
+}
+
+.wizard-generation-list-table td.empty,
+.wizard-relationship-list-table td.empty,
+.wizard-person-list-table td.empty {
+  color: #333;
+  text-align: center;
+}
+
+/* MVP 建谱向导：绑定来源步骤增强。 */
+.wizard-source-panel-enhanced .wizard-source-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wizard-source-section-head h4 {
+  margin: 0;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wizard-source-section-head p {
+  margin: 4px 0 0;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.wizard-source-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.wizard-source-section-grid .field,
+.wizard-source-section-grid .ant-form-item {
+  margin-bottom: 4px;
+}
+
+.wizard-source-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.wizard-source-section-actions .ant-space-item {
+  display: inline-flex;
+}
+
+/* MVP 建谱向导：录入人物日期输入增强。 */
+.wizard-direct-date-input {
+  letter-spacing: 0.02em;
+}
+
+.wizard-date-input-hint {
+  display: block;
+  margin-top: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* MVP 建谱向导：录入人物教育程度下拉增强。 */
+.wizard-person-education-origin-input {
+  display: none !important;
+}
+
+.wizard-person-education-select {
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 4px 11px;
+  color: rgba(0, 0, 0, 0.88);
+}
