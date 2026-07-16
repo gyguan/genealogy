@@ -1,0 +1,93 @@
+.person-detail-page {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.person-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.person-detail-header-main {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.person-detail-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.person-detail-summary-card .ant-card-body {
+  display: grid;
+  gap: 16px;
+}
+
+.person-detail-completeness {
+  display: grid;
+  grid-template-columns: 96px minmax(220px, 480px);
+  align-items: center;
+  gap: 12px;
+}
+
+.person-detail-content-card > .ant-card-body {
+  padding-top: 4px;
+}
+
+.person-detail-section-stack {
+  width: 100%;
+}
+
+.person-detail-event {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.person-detail-event .ant-typography {
+  margin-bottom: 0;
+}
+
+.archive-person-name-link.ant-btn-link {
+  height: 32px;
+  padding-inline: 0;
+  font-weight: 600;
+}
+
+@media (max-width: 767px) {
+  .person-detail-page {
+    gap: 12px;
+  }
+
+  .person-detail-header {
+    flex-direction: column;
+  }
+
+  .person-detail-header-main {
+    width: 100%;
+  }
+
+  .person-detail-header > .ant-space {
+    width: 100%;
+  }
+
+  .person-detail-header > .ant-space .ant-btn {
+    min-height: 40px;
+  }
+
+  .person-detail-completeness {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .person-detail-content-card .ant-tabs-nav-wrap {
+    overflow-x: auto;
+  }
+}
