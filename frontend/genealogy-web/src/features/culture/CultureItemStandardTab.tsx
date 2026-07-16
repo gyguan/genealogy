@@ -36,6 +36,7 @@ import type {
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { ApiRequestError } from '../../shared/api/client';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
+import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { CultureItemEditorPage } from './CultureItemEditorPage';
@@ -57,7 +58,7 @@ import {
   previewCultureAttachment,
   submitCultureItemReview
 } from './cultureLibraryService';
-import type { CultureBranchOption } from './cultureLibraryService';
+import type { CultureBranchOption, CultureClanOption } from './cultureLibraryService';
 import {
   booleanOptions,
   categoryOptions,
@@ -124,7 +125,14 @@ function relativeHref() {
 
 const multiSelectProps = { mode: 'multiple' as const, allowClear: true, maxTagCount: 'responsive' as const };
 
-export function CultureItemStandardTab({ clanId }: { clanId: string }) {
+type Props = {
+  clanId?: string;
+  clans: CultureClanOption[];
+  clansLoading: boolean;
+  onClanChange: (clanId: string) => void;
+};
+
+export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChange }: Props) {
   const initialLocation = useRef(readCultureLocation()).current;
   const initialEditor = useRef(itemEditor(readCultureEditorLocation().editor)).current;
   const previousClanId = useRef(clanId);
@@ -464,7 +472,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor?.mode === 'edit') {
+  if (editor?.mode === 'edit' && clanId) {
     return <>{messageContext}<CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
   }
 
@@ -480,13 +488,14 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
       <Card size="small" title="文化资料查询">
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>
+            <Col xs={24} sm={12} lg={5}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
             <Col xs={24} sm={12} lg={7}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={5}><Form.Item name="category" label="分类"><Select {...multiSelectProps} placeholder="可多选" options={categoryOptions} /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={5}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={5}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={4}><Form.Item name="category" label="分类"><Select {...multiSelectProps} placeholder="可多选" options={categoryOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={4}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           </Row>
           <Collapse ghost items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[12, 0]}><Col xs={24} sm={12} lg={5}><Form.Item name="privacyLevel" label="可见范围"><Select {...multiSelectProps} placeholder="可多选" options={privacyOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="hasSource" label="已有来源"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col></Row> }]} />
-          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>新增资料</Button></Space></div>
         </Form>
       </Card>
 
@@ -527,7 +536,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
         ]} /> : null}
       </Drawer>
 
-      {editor?.mode === 'create' ? (
+      {editor?.mode === 'create' && clanId ? (
         <Drawer open width={720} title="新增文化资料" className="culture-create-drawer" onClose={closeEditor} destroyOnHidden>
           <CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} />
         </Drawer>
