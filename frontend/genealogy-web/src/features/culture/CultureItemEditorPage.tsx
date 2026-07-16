@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Card, Checkbox, Col, Form, Input, InputNumber, Result, Row, Select, Space, message } from 'antd';
+import { Alert, Button, Card, Checkbox, Col, Form, Input, InputNumber, Result, Row, Select, Space, message } from 'antd';
 import type {
   CultureItemCreateRequest,
   CultureItemDetailResponse,
@@ -139,11 +139,11 @@ export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSa
   if (loading) return <Card loading title={editor.mode === 'create' ? '新增文化资料' : '正在加载文化资料'} />;
 
   if (forbidden) {
-    return <Result status="403" title="暂无编辑权限" subTitle="当前账号不能修改该文化资料，请返回列表查看允许的操作。" extra={<button onClick={onCancel}>返回文化资料列表</button>} />;
+    return <Result status="403" title="暂无编辑权限" subTitle="当前账号不能修改该文化资料，请返回列表查看允许的操作。" extra={<Button onClick={onCancel}>返回文化资料列表</Button>} />;
   }
 
   if (loadError) {
-    return <Result status="error" title="文化资料加载失败" subTitle={loadError} extra={<Space><button onClick={onCancel}>返回列表</button><button onClick={() => setReloadVersion(value => value + 1)}>重新加载</button></Space>} />;
+    return <Result status="error" title="文化资料加载失败" subTitle={loadError} extra={<Space><Button onClick={onCancel}>返回列表</Button><Button type="primary" onClick={() => setReloadVersion(value => value + 1)}>重新加载</Button></Space>} />;
   }
 
   const official = detail?.dataStatus === 'official';

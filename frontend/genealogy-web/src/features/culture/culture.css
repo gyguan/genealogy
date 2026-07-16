@@ -7,7 +7,6 @@
 .culture-page-primary-action { min-height: 40px; white-space: nowrap; }
 .culture-page-header .ant-tabs { margin-top: 16px; }
 .culture-page-header .ant-tabs-nav { margin-bottom: 0; }
-.culture-managed-tab > .ant-space .ant-card-extra { display: none; }
 .culture-search-actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 12px; }
 .culture-title-button { height: auto; padding: 0; text-align: left; white-space: normal; }
 .culture-detail-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; }
