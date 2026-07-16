@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -28,11 +28,9 @@ import type { MenuProps, TableProps } from 'antd';
 import type {
   CultureCategory,
   CultureDataStatus,
-  CultureItemCreateRequest,
   CultureItemDetailResponse,
   CultureItemPage,
   CultureItemSummaryResponse,
-  CultureItemUpdateRequest,
   CulturePrivacyLevel
 } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
@@ -40,10 +38,16 @@ import { ApiRequestError } from '../../shared/api/client';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
-import { CultureItemFormModal } from './CultureItemFormModal';
+import { CultureItemEditorPage } from './CultureItemEditorPage';
+import {
+  buildCultureEditorLocation,
+  confirmCultureEditorLeave,
+  isSameCultureEditor,
+  readCultureEditorLocation
+} from './cultureEditorState';
+import type { CultureEditorState } from './cultureEditorState';
 import {
   archiveCultureItem,
-  createCultureItem,
   deleteCultureItem,
   downloadCultureAttachment,
   getCultureItem,
@@ -51,8 +55,7 @@ import {
   listCultureBranches,
   listCultureItems,
   previewCultureAttachment,
-  submitCultureItemReview,
-  updateCultureItem
+  submitCultureItemReview
 } from './cultureLibraryService';
 import type { CultureBranchOption } from './cultureLibraryService';
 import {
@@ -111,14 +114,26 @@ function boolValues(values?: BooleanText[]): boolean[] | undefined {
   return values?.map(value => value === 'true');
 }
 
+function itemEditor(editor: CultureEditorState | null) {
+  return editor?.target === 'item' ? editor : null;
+}
+
+function relativeHref() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
 const multiSelectProps = { mode: 'multiple' as const, allowClear: true, maxTagCount: 'responsive' as const };
 
 export function CultureItemStandardTab({ clanId }: { clanId: string }) {
   const initialLocation = useRef(readCultureLocation()).current;
+  const initialEditor = useRef(itemEditor(readCultureEditorLocation().editor)).current;
   const previousClanId = useRef(clanId);
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const visibleItems = useRef<CultureItemSummaryResponse[]>([]);
+  const editorRef = useRef<CultureEditorState | null>(initialEditor);
+  const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
+  const editorDirtyRef = useRef(false);
   const [messageApi, messageContext] = message.useMessage();
   const [searchForm] = Form.useForm<SearchValues>();
   const [search, setSearch] = useState<CultureSearchState>(initialLocation.search);
@@ -136,9 +151,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
   const [detailError, setDetailError] = useState('');
   const [detailStatus, setDetailStatus] = useState<number | undefined>();
   const [traceError, setTraceError] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
-  const [formItem, setFormItem] = useState<CultureItemDetailResponse | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [editor, setEditor] = useState<CultureEditorState | null>(initialEditor);
   const [governanceTarget, setGovernanceTarget] = useState<CultureGovernanceTarget | null>(null);
   const [governanceItem, setGovernanceItem] = useState<CultureItemSummaryResponse | CultureItemDetailResponse | null>(null);
   const [governanceReason, setGovernanceReason] = useState('');
@@ -146,14 +159,51 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
 
-  function writeLocation(nextSearch: CultureSearchState, nextSelected?: number, mode: 'push' | 'replace' = 'push') {
-    const href = buildCultureLocation(window.location.href, nextSearch, nextSelected);
+  const handleEditorDirtyChange = useCallback((dirty: boolean) => {
+    editorDirtyRef.current = dirty;
+  }, []);
+
+  function buildLocation(nextSearch: CultureSearchState, nextSelected?: number, nextEditor: CultureEditorState | null = editorRef.current) {
+    return buildCultureEditorLocation(buildCultureLocation(window.location.href, nextSearch, nextSelected), nextEditor);
+  }
+
+  function writeLocation(nextSearch: CultureSearchState, nextSelected?: number, mode: 'push' | 'replace' = 'push', nextEditor: CultureEditorState | null = editorRef.current) {
+    const href = buildLocation(nextSearch, nextSelected, nextEditor);
     window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', href);
+    if (nextEditor) editorHrefRef.current = href;
   }
 
   function refresh() {
     setRefreshVersion(value => value + 1);
   }
+
+  function openEditor(next: CultureEditorState) {
+    editorDirtyRef.current = false;
+    editorRef.current = next;
+    setEditor(next);
+    writeLocation(search, selectedId, 'push', next);
+  }
+
+  function closeEditor() {
+    if (!confirmCultureEditorLeave(editorDirtyRef.current)) return;
+    editorDirtyRef.current = false;
+    editorRef.current = null;
+    setEditor(null);
+    writeLocation(search, selectedId, 'replace', null);
+  }
+
+  function editorSaved(id: number) {
+    editorDirtyRef.current = false;
+    editorRef.current = null;
+    setEditor(null);
+    setSelectedId(id);
+    writeLocation(search, id, 'replace', null);
+    refresh();
+  }
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
 
   useEffect(() => {
     searchForm.setFieldsValue({
@@ -170,9 +220,18 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
 
   useEffect(() => {
     const onPopState = () => {
-      const next = readCultureLocation();
-      setSearch(next.search);
-      setSelectedId(next.selectedItemId);
+      const nextLocation = readCultureLocation();
+      const nextEditor = itemEditor(readCultureEditorLocation().editor);
+      if (editorRef.current && editorDirtyRef.current && !isSameCultureEditor(editorRef.current, nextEditor) && !confirmCultureEditorLeave(true)) {
+        window.history.pushState(window.history.state, '', editorHrefRef.current || relativeHref());
+        return;
+      }
+      editorDirtyRef.current = false;
+      editorRef.current = nextEditor;
+      setSearch(nextLocation.search);
+      setSelectedId(nextLocation.selectedItemId);
+      setEditor(nextEditor);
+      if (nextEditor) editorHrefRef.current = relativeHref();
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -182,12 +241,15 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     if (previousClanId.current === clanId) return;
     previousClanId.current = clanId;
     visibleItems.current = [];
+    editorDirtyRef.current = false;
+    editorRef.current = null;
+    setEditor(null);
     setItems([]);
     setSelectedId(undefined);
     setDetail(null);
     const nextSearch = { ...search, branchId: undefined, pageNo: 1 };
     setSearch(nextSearch);
-    writeLocation(nextSearch, undefined, 'replace');
+    writeLocation(nextSearch, undefined, 'replace', null);
   }, [clanId]);
 
   useEffect(() => {
@@ -310,41 +372,6 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     writeLocation(search, undefined, 'replace');
   }
 
-  async function openEdit(item: CultureItemSummaryResponse | CultureItemDetailResponse) {
-    try {
-      setActionLoading(true);
-      const nextDetail = detail?.id === item.id ? detail : await getCultureItem(item.id);
-      setFormItem(nextDetail);
-      setFormOpen(true);
-    } catch (error) {
-      messageApi.error(errorText(error, '文化资料加载失败，无法编辑'));
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  async function saveItem(values: CultureItemCreateRequest | CultureItemUpdateRequest) {
-    if (!clanId) return;
-    setSaving(true);
-    try {
-      const officialChange = formItem?.dataStatus === 'official';
-      const saved = formItem
-        ? await updateCultureItem(formItem.id, values as CultureItemUpdateRequest)
-        : await createCultureItem(clanId, values as CultureItemCreateRequest);
-      setFormOpen(false);
-      setFormItem(null);
-      setSelectedId(saved.id);
-      writeLocation(search, saved.id, 'replace');
-      messageApi.success(officialChange ? '正式资料变更申请已提交审核' : '文化资料已保存为草稿');
-      refresh();
-    } catch (error) {
-      messageApi.error(errorText(error, '文化资料保存失败'));
-      throw error;
-    } finally {
-      setSaving(false);
-    }
-  }
-
   function openGovernance(item: CultureItemSummaryResponse | CultureItemDetailResponse, kind: CultureGovernanceTarget['kind']) {
     setGovernanceItem(item);
     setGovernanceTarget({
@@ -419,12 +446,8 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     return (
       <Space size={2} onClick={event => event.stopPropagation()}>
         <Button type="link" onClick={() => openDetail(item)}>查看</Button>
-        {can(item, 'update', 'request_update') ? <Button type="link" loading={actionLoading} onClick={() => void openEdit(item)}>编辑</Button> : null}
-        {more.length ? (
-          <Dropdown menu={{ items: more, onClick: ({ key }) => openGovernance(item, key as CultureGovernanceTarget['kind']) }} trigger={['click']}>
-            <Button type="link">更多</Button>
-          </Dropdown>
-        ) : null}
+        {can(item, 'update', 'request_update') ? <Button type="link" onClick={() => openEditor({ target: 'item', mode: 'edit', id: item.id })}>编辑</Button> : null}
+        {more.length ? <Dropdown menu={{ items: more, onClick: ({ key }) => openGovernance(item, key as CultureGovernanceTarget['kind']) }}><Button type="link">更多</Button></Dropdown> : null}
       </Space>
     );
   }
@@ -441,6 +464,10 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
+  if (editor) {
+    return <>{messageContext}<CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+  }
+
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [
     can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null,
@@ -450,7 +477,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card size="small" title="文化资料查询" extra={<Button type="primary" disabled={!clanId} onClick={() => { setFormItem(null); setFormOpen(true); }}>新增资料</Button>}>
+      <Card size="small" title="文化资料查询">
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>
             <Col xs={24} sm={12} lg={7}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
@@ -476,9 +503,9 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
             columns={columns}
             dataSource={items}
             scroll={{ x: 1300 }}
-            onRow={item => ({ onClick: () => openDetail(item) })}
+            onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })}
             pagination={{ current: page.pageNo, pageSize: page.pageSize, total: page.totalElements, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: total => `共 ${total} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }}
-            locale={{ emptyText: <Empty description="没有符合当前条件的文化资料"><Space><Button onClick={resetSearch}>重置筛选</Button><Button type="primary" disabled={!clanId} onClick={() => { setFormItem(null); setFormOpen(true); }}>新增资料</Button></Space></Empty> }}
+            locale={{ emptyText: <Empty description="没有符合当前条件的文化资料"><Button onClick={resetSearch}>重置筛选</Button></Empty> }}
           />
         ) : null}
       </Card>
@@ -487,7 +514,7 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
         open={Boolean(selectedId)}
         width={720}
         title={<Space><Title level={4} style={{ margin: 0 }}>{detail?.title || selectedSummary?.title || '文化资料详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>}
-        extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => void openEdit(selectedSummary)}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" loading={actionLoading} onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null}
+        extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'item', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" loading={actionLoading} onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null}
         onClose={closeDetail}
         destroyOnHidden
       >
@@ -500,7 +527,6 @@ export function CultureItemStandardTab({ clanId }: { clanId: string }) {
         ]} /> : null}
       </Drawer>
 
-      <CultureItemFormModal open={formOpen} item={formItem} branches={branches} saving={saving} onCancel={() => { if (!saving) { setFormOpen(false); setFormItem(null); } }} onSubmit={saveItem} />
       <CultureGovernanceModal target={governanceTarget} reason={governanceReason} loading={actionLoading} error={governanceError} onReasonChange={setGovernanceReason} onCancel={() => { if (!actionLoading) setGovernanceTarget(null); }} onConfirm={() => void confirmGovernance()} />
     </Space>
   );
