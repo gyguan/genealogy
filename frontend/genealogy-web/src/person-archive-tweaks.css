@@ -58,6 +58,94 @@
   margin-bottom: 12px;
 }
 
+.person-archive-text-action {
+  min-height: 32px;
+  min-width: 44px;
+  padding-inline: 8px;
+}
+
+.person-archive-text-action:focus-visible,
+.person-archive-mobile-name:focus-visible,
+.person-archive-mobile-actions .ant-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.person-archive-mobile-list {
+  display: none;
+}
+
+.person-archive-mobile-card + .person-archive-mobile-card {
+  margin-top: 12px;
+}
+
+.person-archive-mobile-card .ant-card-head {
+  min-height: 52px;
+  padding-inline: 14px;
+}
+
+.person-archive-mobile-card .ant-card-head-title {
+  padding-block: 4px;
+}
+
+.person-archive-mobile-card .ant-card-body {
+  padding: 14px;
+}
+
+.person-archive-mobile-name {
+  min-height: 44px;
+  padding: 0;
+  font-size: 17px;
+  font-weight: 600;
+  white-space: normal;
+  text-align: left;
+}
+
+.person-archive-mobile-subtitle {
+  margin-bottom: 12px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.person-archive-mobile-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.person-archive-mobile-meta div {
+  min-width: 0;
+}
+
+.person-archive-mobile-meta dt {
+  margin-bottom: 2px;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.person-archive-mobile-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.person-archive-mobile-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.person-archive-mobile-actions .ant-btn {
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.person-archive-mobile-list > .ant-pagination {
+  justify-content: center;
+  margin-top: 16px;
+}
+
 .person-archive-relationship-table-wrap {
   overflow-x: auto;
 }
@@ -115,5 +203,14 @@
 
   .person-archive-query-actions .ant-btn {
     flex: 1;
+    min-height: 44px;
+  }
+
+  .person-archive-desktop-list {
+    display: none;
+  }
+
+  .person-archive-mobile-list {
+    display: block;
   }
 }
