@@ -1,0 +1,89 @@
+.statistics-home-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+.statistics-home-page__heading {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.statistics-home-page__heading .ant-typography {
+  margin: 0;
+}
+
+.statistics-home-page__context {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.statistics-home-page__scope {
+  display: grid;
+  gap: 4px;
+}
+
+.statistics-home-page__clan-select {
+  min-width: 220px;
+}
+
+.statistics-home-page__clan-select.ant-select-single {
+  min-height: 44px;
+}
+
+.statistics-home-page__clan-select.ant-select-single .ant-select-selector {
+  min-height: 44px !important;
+  align-items: center;
+}
+
+.statistics-home-page__updated-at {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.statistics-home-page__clan-summary .ant-card-body {
+  padding-block: 16px;
+}
+
+.statistics-home-page__clan-summary .ant-typography {
+  margin-top: 0;
+}
+
+.statistics-home-page__clan-summary .ant-typography:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 767px) {
+  .statistics-home-page__header,
+  .statistics-home-page__context {
+    width: 100%;
+  }
+
+  .statistics-home-page__context {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .statistics-home-page__scope,
+  .statistics-home-page__clan-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .statistics-home-page__updated-at {
+    min-height: auto;
+    white-space: normal;
+  }
+}
