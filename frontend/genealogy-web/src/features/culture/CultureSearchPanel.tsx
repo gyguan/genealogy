@@ -62,6 +62,14 @@ export function CultureSearchPanel(props: Props) {
     });
   }, [form, props.search]);
 
+  useEffect(() => {
+    const onCreate = () => {
+      if (props.clanId) props.onCreate();
+    };
+    window.addEventListener('culture:item:create', onCreate);
+    return () => window.removeEventListener('culture:item:create', onCreate);
+  }, [props.clanId, props.onCreate]);
+
   function submit(values: FormValues) {
     props.onSearch({
       ...props.search,
@@ -83,7 +91,7 @@ export function CultureSearchPanel(props: Props) {
   }
 
   return (
-    <Card size="small" title="文化资料检索" extra={<Button type="primary" onClick={props.onCreate} disabled={!props.clanId}>新增资料</Button>}>
+    <Card size="small" title="文化资料检索">
       <Form form={form} layout="vertical" onFinish={submit}>
         <Row gutter={[12, 0]}>
           <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
@@ -95,7 +103,7 @@ export function CultureSearchPanel(props: Props) {
           <Col xs={24} sm={12} lg={4}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={4}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
           <Col xs={24} lg={8} className="culture-search-actions">
-            <Space><Button type="primary" htmlType="submit" loading={props.loading}>查询</Button><Button onClick={reset}>重置</Button></Space>
+            <Space><Button onClick={reset}>重置</Button><Button type="primary" htmlType="submit" loading={props.loading}>查询</Button></Space>
           </Col>
         </Row>
       </Form>
