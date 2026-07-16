@@ -86,9 +86,11 @@ test('culture site tab supports direct URL, detail and mobile layout', async ({ 
   const drawer = page.getByRole('dialog', { name: '敦本堂宗祠' });
   await expect(drawer).toBeVisible();
   await expect(drawer.getByText('黄公讳德昌')).toBeVisible();
+  await drawer.getByRole('tab', { name: '来源与附件' }).click();
   await expect(drawer.getByText('敦本堂重修碑记')).toBeVisible();
   await expect(drawer.getByText('敦本堂正门.jpg')).toBeVisible();
-  await expect(drawer.getByText('文化场所审核已处理')).toBeVisible();
+  await drawer.getByRole('tab', { name: '审核与追踪' }).click();
+  await expect(drawer.getByText(/文化场所审核已处理/)).toBeVisible();
   await expect(drawer.getByText(/人物\s*#?\s*91/)).toHaveCount(0);
   await expect(drawer.getByRole('button', { name: /打\s*开\s*完\s*整\s*追\s*踪/ })).toBeVisible();
 
@@ -115,7 +117,7 @@ test('culture site editor uses an independent URL page and business person selec
   await expect(page.getByText('黄公讳德昌').first()).toBeVisible();
   await expect(page.getByText(/人物\s*ID|人物\s*#?\s*91/)).toHaveCount(0);
 
-  const relatedPerson = page.getByRole('combobox', { name: '关联人物' });
+  const relatedPerson = page.locator('.ant-form-item').filter({ hasText: '关联人物' }).locator('input');
   await relatedPerson.fill('德昌');
   await expect(page.getByText('黄公讳德昌 · 长沙支 · 第8世 · 德字辈')).toBeVisible();
 
