@@ -84,6 +84,9 @@ const homeSchemaNames = [
   'HomeDashboardBucketResponse',
   'HomeDashboardCompletenessResponse',
   'HomeDashboardBranchCoverageResponse',
+  'HomeDashboardTrendPointResponse',
+  'HomeDashboardRiskResponse',
+  'HomeDashboardActivityResponse',
   'HomeDashboardResponse'
 ];
 
