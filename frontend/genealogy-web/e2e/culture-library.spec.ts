@@ -100,6 +100,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(page.getByRole('dialog', { name: '申请变更正式文化资料' })).toHaveCount(0);
   await expect(page).toHaveURL(/cultureEditor=item/);
   await page.getByRole('button', { name: /取\s*消/ }).click();
+  await drawer.getByRole('button', { name: 'Close' }).click();
 
   await page.getByLabel('关键词').fill('家训');
   await page.getByRole('button', { name: /查\s*询/ }).click();
