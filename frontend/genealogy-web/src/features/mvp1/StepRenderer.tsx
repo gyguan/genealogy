@@ -6,6 +6,7 @@ import { PersonStep } from './steps/person/PersonStep';
 import { RelationshipStep } from './steps/relationship/RelationshipStep';
 import { ReviewProgressStep } from './steps/review/ReviewProgressStep';
 import { SourceStep } from './steps/source/SourceStep';
+import './wizard-step-state.css';
 
 export type { Mvp1StepKey } from './domain/wizardStepState';
 
