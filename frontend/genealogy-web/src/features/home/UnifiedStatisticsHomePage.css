@@ -63,6 +63,22 @@
   margin-bottom: 0;
 }
 
+.statistics-home-page__area-alert {
+  margin-bottom: 12px;
+}
+
+.statistics-home-page__empty-onboarding .ant-card-body {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+}
+
+.statistics-home-page__empty-onboarding .ant-empty-description {
+  max-width: 520px;
+  margin-inline: auto;
+}
+
 @media (max-width: 767px) {
   .statistics-home-page__header,
   .statistics-home-page__context {
@@ -85,5 +101,10 @@
   .statistics-home-page__updated-at {
     min-height: auto;
     white-space: normal;
+  }
+
+  .statistics-home-page__empty-onboarding .ant-card-body {
+    min-height: 280px;
+    padding: 32px 16px;
   }
 }
