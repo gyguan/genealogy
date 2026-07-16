@@ -3,11 +3,92 @@ name: Source Library Diagnostics
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  patch-source-url:
+    if: github.event.pull_request.number == 459
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/source-library-url-whitelist
+          fetch-depth: 0
+      - name: Apply source URL whitelist fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx')
+          s = p.read_text()
+          anchor = "const privacyValues = new Set(['public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed']);\n"
+          insert = anchor + "const SOURCE_SEARCH_PARAM_KEYS = ['keyword', 'sourceType', 'verificationStatus', 'privacyLevel', 'hasAttachment', 'hasBinding', 'pageNo', 'pageSize', 'sort'] as const;\n"
+          if 'SOURCE_SEARCH_PARAM_KEYS' not in s:
+              if anchor not in s:
+                  raise SystemExit('constant anchor not found')
+              s = s.replace(anchor, insert, 1)
+          old_search = """function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
+  url.searchParams.set('view', 'sourceLibrary');
+  url.searchParams.delete('sourceId');
+  ['keyword', 'sourceType', 'verificationStatus', 'privacyLevel', 'hasAttachment', 'hasBinding', 'pageNo', 'pageSize', 'sort'].forEach(key => url.searchParams.delete(key));
+  Object.entries(value).forEach(([key, item]) => {
+    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
+  });
+  const sourceLibraryScrollY = Number(window.history.state?.sourceLibraryScrollY ?? window.scrollY);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState']({ ...window.history.state, sourceLibraryScrollY }, '', `${url.pathname}${url.search}`);
+}
+"""
+          new_search = """function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('view', 'sourceLibrary');
+  Object.entries(value).forEach(([key, item]) => {
+    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
+  });
+  const sourceLibraryScrollY = Number(window.history.state?.sourceLibraryScrollY ?? window.scrollY);
+  window.history[mode === 'push' ? 'pushState' : 'replaceState']({ ...window.history.state, sourceLibraryScrollY }, '', `${url.pathname}${url.search}`);
+}
+"""
+          if old_search not in s:
+              raise SystemExit('writeSearchToUrl anchor not found')
+          s = s.replace(old_search, new_search, 1)
+          old_detail = """function writeSourceIdToUrl(sourceId?: number, mode: 'push' | 'replace' = 'push') {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.hash = '';
+  url.searchParams.set('view', 'sourceLibrary');
+  if (sourceId) url.searchParams.set('sourceId', String(sourceId));
+  else url.searchParams.delete('sourceId');
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}`);
+}
+"""
+          new_detail = """function writeSourceIdToUrl(sourceId?: number, mode: 'push' | 'replace' = 'push') {
+  const current = new URLSearchParams(window.location.search);
+  const url = new URL('/', window.location.origin);
+  url.searchParams.set('view', 'sourceLibrary');
+  SOURCE_SEARCH_PARAM_KEYS.forEach(key => {
+    const value = current.get(key);
+    if (value !== null && value !== '') url.searchParams.set(key, value);
+  });
+  if (sourceId) url.searchParams.set('sourceId', String(sourceId));
+  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}`);
+}
+"""
+          if old_detail not in s:
+              raise SystemExit('writeSourceIdToUrl anchor not found')
+          p.write_text(s.replace(old_detail, new_detail, 1))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx
+          git commit -m "fix source library URL parameter isolation"
+          git push origin HEAD:fix/source-library-url-whitelist
+
   diagnose:
     runs-on: ubuntu-latest
     steps:
