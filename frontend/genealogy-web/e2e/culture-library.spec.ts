@@ -110,8 +110,8 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
   await expect(drawer.getByText('敦本堂谱页.jpg')).toBeVisible();
 
   await drawer.getByRole('tab', { name: /审核与追踪/ }).click();
-  await expect(drawer.getByText('文化资料发布为正式内容')).toBeVisible();
-  await expect(drawer.getByRole('button', { name: '完整追踪' })).toBeVisible();
+  await expect(drawer.getByText('审核通过')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '打开完整追踪' })).toBeVisible();
 
   await drawer.getByRole('button', { name: /编\s*辑/ }).click();
   const editDialog = page.getByRole('dialog', { name: '申请变更正式文化资料' });
