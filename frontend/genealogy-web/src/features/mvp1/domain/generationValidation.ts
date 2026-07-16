@@ -24,6 +24,11 @@ export type GenerationValidationResult = {
   summary: string;
 };
 
+export type GenerationValidationEntry<TId extends string | number = string | number> = {
+  id: TId;
+  items: GenerationItemLike[];
+};
+
 function positiveInteger(value: unknown) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : undefined;
@@ -95,6 +100,16 @@ export function validateGenerationItems(items: GenerationItemLike[]): Generation
     issues,
     summary: issues.length ? issues.map(issue => issue.message).join('；') : `共 ${items.length} 条有效字辈明细，可提交审核`
   };
+}
+
+export function partitionGenerationValidation<TId extends string | number>(entries: GenerationValidationEntry<TId>[]) {
+  const eligible: Array<{ id: TId; result: GenerationValidationResult }> = [];
+  const blocked: Array<{ id: TId; result: GenerationValidationResult }> = [];
+  for (const entry of entries) {
+    const result = validateGenerationItems(entry.items);
+    (result.valid ? eligible : blocked).push({ id: entry.id, result });
+  }
+  return { eligible, blocked };
 }
 
 export class GenerationReviewBlockedError extends Error {
