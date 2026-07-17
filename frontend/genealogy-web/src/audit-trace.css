@@ -47,10 +47,20 @@
 .tracking-filter-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px 24px;
   padding-top: 4px;
   border-top: 1px solid #f0f0f0;
+}
+
+.tracking-filter-actions > .ant-space {
+  order: 2;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.tracking-filter-actions > .ant-typography {
+  order: 1;
 }
 
 .tracking-clickable-row {
@@ -84,8 +94,13 @@
 
 @media (max-width: 900px) {
   .tracking-filter-actions {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  .tracking-filter-actions > .ant-space {
+    align-self: flex-end;
+    margin-left: 0;
   }
 }
 
