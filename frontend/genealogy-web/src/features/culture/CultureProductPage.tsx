@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Card, Space, Tabs, Typography, message } from 'antd';
+import { Space, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
 import { CultureSiteStandardTab } from './CultureSiteStandardTab';
-import { cultureMobileClass, cultureTabItems } from './culturePagePattern';
+import { cultureMobileClass } from './culturePagePattern';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
 import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
-
-const { Title } = Typography;
 
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -81,9 +79,9 @@ export function CultureProductPage() {
     };
     return (
       <div className={`culture-managed-tab ${cultureMobileClass(activeTab)}`}>
-        {mounts.items ? <CultureItemMaintenanceTab {...clanProps} /> : null}
-        {mounts.migrations ? <MigrationEventStandardTab {...clanProps} /> : null}
-        {mounts.sites ? <CultureSiteStandardTab {...clanProps} /> : null}
+        {mounts.items ? <CultureItemMaintenanceTab {...clanProps} activeTab={activeTab} onTabChange={changeTab} /> : null}
+        {mounts.migrations ? <MigrationEventStandardTab {...clanProps} activeTab={activeTab} onTabChange={changeTab} /> : null}
+        {mounts.sites ? <CultureSiteStandardTab {...clanProps} activeTab={activeTab} onTabChange={changeTab} /> : null}
       </div>
     );
   }
@@ -91,15 +89,6 @@ export function CultureProductPage() {
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card className="culture-page-header">
-        <div className="culture-page-header-main">
-          <div className="culture-page-heading">
-            <Title level={3}>宗族文化</Title>
-          </div>
-        </div>
-        <Tabs activeKey={activeTab} items={cultureTabItems} onChange={changeTab} />
-      </Card>
-
       {renderActiveTab()}
     </Space>
   );
