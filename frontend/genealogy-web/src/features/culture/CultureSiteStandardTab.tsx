@@ -30,6 +30,7 @@ import { ApiRequestError } from '../../shared/api/client';
 import { buildTrackingDeepLink } from '../../shared/navigation/trackingDeepLink.js';
 import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
+import { CultureSearchHeader } from './CultureSearchHeader';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { CultureSiteEditorPage } from './CultureSiteEditorPage';
 import { buildCultureEditorLocation, confirmCultureEditorLeave, isSameCultureEditor, readCultureEditorLocation } from './cultureEditorState';
@@ -40,6 +41,7 @@ import type { CultureBranchOption, CultureClanOption } from './cultureLibrarySer
 import { archiveCultureSite, deleteCultureSite, downloadCultureSiteAttachment, getCultureSite, getCultureSiteTrace, listCultureSites, previewCultureSiteAttachment, submitCultureSiteReview } from './cultureSiteService';
 import { buildCultureSiteLocation, cultureSiteSearchKey, defaultCultureSiteSearch, readCultureSiteLocation } from './cultureSiteUrlState';
 import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
+import type { CultureTabKey } from './cultureTabState';
 
 const { Paragraph, Text, Title } = Typography;
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -89,9 +91,11 @@ type Props = {
   clans: CultureClanOption[];
   clansLoading: boolean;
   onClanChange: (clanId: string) => void;
+  activeTab: CultureTabKey;
+  onTabChange: (tab: string) => void;
 };
 
-export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChange }: Props) {
+export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChange, activeTab, onTabChange }: Props) {
   const initialLocation = useRef(readCultureSiteLocation()).current;
   const initialEditor = useRef(siteEditor(readCultureEditorLocation().editor)).current;
   const previousClanId = useRef(clanId);
@@ -296,8 +300,8 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     {messageContext}
-    <Card size="small" title="文化场所查询">
-      <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={4}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="siteType" label="场所类型"><Select {...multiSelectProps} placeholder="可多选" options={siteTypeOptions} /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="sort" label="排序"><Select options={siteSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>新增场所</Button></Space></Col></Row></Form>
+    <Card size="small" className="culture-page-header" title={<CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理祠堂、祖居、墓园、纪念设施等宗族文化空间。" primaryAction="新增场所" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'site', mode: 'create' })} />}>
+      <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={4}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="siteType" label="场所类型"><Select {...multiSelectProps} placeholder="可多选" options={siteTypeOptions} /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="sort" label="排序"><Select options={siteSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></Col></Row></Form>
     </Card>
     <Card title={`文化场所（${total}）`}>
       {refreshError ? <Alert type="warning" showIcon closable message="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
