@@ -3,6 +3,8 @@ package com.genealogy.workbench.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
@@ -15,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +32,11 @@ public class WorkbenchApplicationService {
     private static final int BUILD_TASK_LIMIT = 200;
     private static final String STATUS_PENDING = "pending";
     private static final String STATUS_PENDING_REVIEW = "pending_review";
+    private static final String CREATOR_SYSTEM_RULE = "系统规则";
+    private static final String CREATOR_REVIEW_FLOW = "审核流程";
 
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final ClanRepository clanRepository;
     private final PersonRepository personRepository;
     private final BranchRepository branchRepository;
     private final SourceRepository sourceRepository;
@@ -38,12 +44,14 @@ public class WorkbenchApplicationService {
 
     public WorkbenchApplicationService(
             AuthorizationApplicationService authorizationApplicationService,
+            ClanRepository clanRepository,
             PersonRepository personRepository,
             BranchRepository branchRepository,
             SourceRepository sourceRepository,
             CheckTaskRepository checkTaskRepository
     ) {
         this.authorizationApplicationService = authorizationApplicationService;
+        this.clanRepository = clanRepository;
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
         this.sourceRepository = sourceRepository;
@@ -66,21 +74,31 @@ public class WorkbenchApplicationService {
     public PageResponse<WorkbenchTaskResponse> tasks(
             Long clanId,
             Long branchId,
-            String type,
-            String status,
-            String risk,
+            String taskName,
+            String keyword,
+            List<String> types,
+            List<String> statuses,
+            List<String> risks,
+            String creator,
+            LocalDate createdFrom,
+            LocalDate createdTo,
             int pageNo,
             int pageSize,
             Long actorId
     ) {
         authorizationApplicationService.requireClanMember(clanId, actorId);
+        String creatorName = creatorNameOf(creator);
         List<WorkbenchTaskResponse> filtered = buildTasks(clanId, branchId).stream()
-                .filter(task -> isBlank(type) || Objects.equals(task.type(), type))
-                .filter(task -> isBlank(status) || Objects.equals(task.status(), status))
-                .filter(task -> isBlank(risk) || Objects.equals(task.risk(), risk))
+                .filter(task -> containsIgnoreCase(task.taskName(), taskName))
+                .filter(task -> matchesKeyword(task, keyword))
+                .filter(task -> matchesAny(types, task.type()))
+                .filter(task -> matchesAny(statuses, task.status()))
+                .filter(task -> matchesAny(risks, task.risk()))
+                .filter(task -> isBlank(creatorName) || Objects.equals(task.creatorName(), creatorName))
+                .filter(task -> withinCreatedDate(task.createdAt(), createdFrom, createdTo))
                 .toList();
         int normalizedPageNo = Math.max(1, pageNo);
-        int normalizedPageSize = Math.max(1, Math.min(pageSize, 200));
+        int normalizedPageSize = Math.max(1, Math.min(pageSize, BUILD_TASK_LIMIT));
         int fromIndex = Math.min((normalizedPageNo - 1) * normalizedPageSize, filtered.size());
         int toIndex = Math.min(fromIndex + normalizedPageSize, filtered.size());
         return PageResponse.of(filtered.subList(fromIndex, toIndex), filtered.size(), normalizedPageNo, normalizedPageSize);
@@ -97,27 +115,33 @@ public class WorkbenchApplicationService {
                 .filter(task -> branchId == null || Objects.equals(task.getBranchId(), branchId))
                 .limit(BUILD_TASK_LIMIT)
                 .toList();
+        String bookName = bookName(clanId);
 
         List<WorkbenchTaskResponse> tasks = new ArrayList<>();
-        reviewTasks.forEach(task -> tasks.add(reviewFollowUpTask(task)));
+        reviewTasks.forEach(task -> tasks.add(reviewFollowUpTask(task, bookName)));
         people.stream()
                 .filter(this::hasGenerationIssue)
                 .limit(BUILD_TASK_LIMIT)
-                .map(person -> generationMismatchTask(person, branchMap))
+                .map(person -> generationMismatchTask(person, branchMap, bookName))
                 .forEach(tasks::add);
         if (!people.isEmpty() && sourceCount == 0) {
-            tasks.add(missingSourceTask(branchId, branchMap, sourceCount));
+            LocalDateTime createdAt = people.stream().map(PersonEntity::getCreatedAt).filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null);
+            tasks.add(missingSourceTask(branchId, branchMap, sourceCount, bookName, createdAt));
         }
         if (people.size() >= 2) {
-            tasks.add(relationshipCheckTask(people.get(0), people.get(1), branchMap));
+            tasks.add(relationshipCheckTask(people.get(0), people.get(1), branchMap, bookName));
         }
         return tasks.stream().limit(BUILD_TASK_LIMIT).toList();
     }
 
-    private WorkbenchTaskResponse reviewFollowUpTask(CheckTaskEntity task) {
+    private WorkbenchTaskResponse reviewFollowUpTask(CheckTaskEntity task, String bookName) {
         String currentStatus = statusText(task.getStatus());
         return new WorkbenchTaskResponse(
                 "review-" + task.getId(),
+                "审核任务跟进",
+                bookName,
+                CREATOR_REVIEW_FLOW,
+                task.getCreatedAt(),
                 "review_follow_up",
                 "审核跟进",
                 "审核任务",
@@ -138,20 +162,25 @@ public class WorkbenchApplicationService {
         );
     }
 
-    private WorkbenchTaskResponse generationMismatchTask(PersonEntity person, Map<Long, BranchEntity> branchMap) {
+    private WorkbenchTaskResponse generationMismatchTask(PersonEntity person, Map<Long, BranchEntity> branchMap, String bookName) {
+        String name = personName(person);
         String missingFields = generationMissingFields(person);
         return new WorkbenchTaskResponse(
                 "generation-" + person.getId(),
+                "补充" + name + "字辈与代次",
+                bookName,
+                CREATOR_SYSTEM_RULE,
+                person.getCreatedAt(),
                 "generation_mismatch",
                 "字辈/代次待补",
-                personName(person),
+                name,
                 branchName(person.getBranchId(), branchMap),
                 "medium",
                 "pending",
                 "待补全",
                 "进入人物档案补充代次与字辈，提交审核前完成校验",
                 "该人物档案缺少代次或字辈信息，可能影响世系排序、字辈校验和谱牒展示。",
-                "人物档案：" + personName(person),
+                "人物档案：" + name,
                 "代次或字辈缺失会导致人物在世系中的位置不清晰，审核前建议补齐。",
                 false,
                 "personArchive",
@@ -162,9 +191,19 @@ public class WorkbenchApplicationService {
         );
     }
 
-    private WorkbenchTaskResponse missingSourceTask(Long branchId, Map<Long, BranchEntity> branchMap, long sourceCount) {
+    private WorkbenchTaskResponse missingSourceTask(
+            Long branchId,
+            Map<Long, BranchEntity> branchMap,
+            long sourceCount,
+            String bookName,
+            LocalDateTime createdAt
+    ) {
         return new WorkbenchTaskResponse(
                 "missing-source-" + (branchId == null ? "all" : branchId),
+                "补充族谱来源证据",
+                bookName,
+                CREATOR_SYSTEM_RULE,
+                createdAt,
                 "missing_source",
                 "来源证据缺失",
                 "当前宗族人物档案",
@@ -185,12 +224,22 @@ public class WorkbenchApplicationService {
         );
     }
 
-    private WorkbenchTaskResponse relationshipCheckTask(PersonEntity left, PersonEntity right, Map<Long, BranchEntity> branchMap) {
+    private WorkbenchTaskResponse relationshipCheckTask(
+            PersonEntity left,
+            PersonEntity right,
+            Map<Long, BranchEntity> branchMap,
+            String bookName
+    ) {
+        String objectName = personName(left) + " 与 " + personName(right);
         return new WorkbenchTaskResponse(
                 "relationship-check-candidate",
+                "复核" + objectName + "关系",
+                bookName,
+                CREATOR_SYSTEM_RULE,
+                left.getCreatedAt(),
                 "relationship_check",
                 "关系复核建议",
-                personName(left) + " 与 " + personName(right),
+                objectName,
                 branchName(left.getBranchId(), branchMap),
                 "low",
                 "pending",
@@ -206,6 +255,43 @@ public class WorkbenchApplicationService {
                 "当前为低风险复核建议。若世系图谱已确认关系完整，可继续关注更高风险任务。",
                 LocalDateTime.now()
         );
+    }
+
+    private boolean matchesKeyword(WorkbenchTaskResponse task, String keyword) {
+        if (isBlank(keyword)) return true;
+        return containsIgnoreCase(task.taskName(), keyword)
+                || containsIgnoreCase(task.bookName(), keyword)
+                || containsIgnoreCase(task.typeText(), keyword)
+                || containsIgnoreCase(task.objectName(), keyword)
+                || containsIgnoreCase(task.branchName(), keyword)
+                || containsIgnoreCase(task.suggestion(), keyword);
+    }
+
+    private boolean matchesAny(List<String> expected, String actual) {
+        return expected == null || expected.isEmpty() || expected.contains(actual);
+    }
+
+    private boolean containsIgnoreCase(String actual, String expected) {
+        return isBlank(expected) || (actual != null && actual.toLowerCase().contains(expected.trim().toLowerCase()));
+    }
+
+    private boolean withinCreatedDate(LocalDateTime createdAt, LocalDate from, LocalDate to) {
+        if (from == null && to == null) return true;
+        if (createdAt == null) return false;
+        LocalDate date = createdAt.toLocalDate();
+        return (from == null || !date.isBefore(from)) && (to == null || !date.isAfter(to));
+    }
+
+    private String creatorNameOf(String creator) {
+        if ("system_rule".equals(creator)) return CREATOR_SYSTEM_RULE;
+        if ("review_flow".equals(creator)) return CREATOR_REVIEW_FLOW;
+        return "";
+    }
+
+    private String bookName(Long clanId) {
+        ClanEntity clan = clanRepository.findById(clanId).orElse(null);
+        if (clan == null || isBlank(clan.getClanName())) return "未命名族谱";
+        return clan.getClanName().endsWith("族谱") ? clan.getClanName() : clan.getClanName() + "族谱";
     }
 
     private boolean hasGenerationIssue(PersonEntity person) {
