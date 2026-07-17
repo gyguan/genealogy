@@ -209,6 +209,10 @@
   white-space: normal;
 }
 
+.business-page--sourceLibrary .source-library-page .source-library-query-card > .ant-card-head {
+  display: flex;
+}
+
 .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title {
   font-size: 0;
 }

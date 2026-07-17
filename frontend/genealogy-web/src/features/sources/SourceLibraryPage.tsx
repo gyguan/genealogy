@@ -773,7 +773,7 @@ export function SourceLibraryPage({ notify }: Props) {
   return (
     <div className="source-library-page">
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Card className="source-library-query-card" title="来源资料查询" extra={<Text type="secondary">统一管理族谱原文、地方志、照片、口述记录等来源证据，并串联引用、附件和审核。</Text>}>
+        <Card className="source-library-query-card" title="来源资料查询">
           <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search)}>
             <Row gutter={[16, 0]}>
               <Col xs={24} sm={12} lg={8} xl={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名、提供者、摘录" /></Form.Item></Col>
