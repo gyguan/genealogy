@@ -84,7 +84,7 @@ function relatedViewOf(type?: string): WorkbenchNavigateKey | undefined {
   return undefined;
 }
 function display(value: unknown, fallback = '待维护') { const text = String(value ?? '').trim(); return text || fallback; }
-function taskTitle(task: WorkbenchTask) { return display(task.taskName, `${task.typeText}：${display(task.objectName)}`); }
+function taskTitle(task?: WorkbenchTask | null) { return task ? display(task.taskName, `${task.typeText}：${display(task.objectName)}`) : '修谱任务'; }
 function formatDateTime(value?: string) {
   if (!value) return '-';
   const date = new Date(value);
@@ -117,7 +117,9 @@ function downloadCsv(rows: WorkbenchTask[]) {
   const blob = new Blob([`\uFEFF${[headers.map(csvCell).join(','), ...lines].join('\n')}`], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = url; link.download = 'workbench-tasks.csv'; link.click();
+  link.href = url;
+  link.download = 'workbench-tasks.csv';
+  link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -190,7 +192,12 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     if (!taskId) return;
     const task = toRecordList<WorkbenchTask>(nextTaskPage.records || []).find(item => item.key === taskId);
     if (task) setSelectedTask(task);
-    else { desiredTaskIdRef.current = ''; setSelectedTask(null); replaceUrl({ taskId: '' }); message.info('原任务已处理完成、已移出当前筛选范围，或任务标识已失效。'); }
+    else {
+      desiredTaskIdRef.current = '';
+      setSelectedTask(null);
+      replaceUrl({ taskId: '' });
+      message.info('原任务已处理完成、已移出当前筛选范围，或任务标识已失效。');
+    }
   }
   async function loadClans() {
     try {
@@ -202,7 +209,10 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       if (nextClanId && nextClanId !== workspace.clanId) workspace.setClanId(nextClanId);
       replaceUrl({ clanId: nextClanId });
       return nextClanId;
-    } catch (error) { message.error(errorMessage(error, '加载宗族列表失败')); return ''; }
+    } catch (error) {
+      message.error(errorMessage(error, '加载宗族列表失败'));
+      return '';
+    }
   }
   function buildTaskQuery(clanId: string, pageNo: number, nextFilters: WorkbenchFilters, pageSize = PAGE_SIZE) {
     const query = new URLSearchParams({ clanId, pageNo: String(pageNo), pageSize: String(pageSize) });
@@ -220,12 +230,15 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     const version = ++requestVersionRef.current;
     const nextClanId = sourceClanId || await loadClans();
     if (!nextClanId) { setTaskPage(EMPTY_TASK_PAGE); setSelectedKeys([]); return undefined; }
-    setTaskLoading(true); setTaskError('');
+    setTaskLoading(true);
+    setTaskError('');
     try {
       const taskResult = await apiClient.get(`/workbench/tasks?${buildTaskQuery(nextClanId, nextPage, nextFilters).toString()}`);
       if (version !== requestVersionRef.current) return undefined;
       const nextTaskPage = unwrapData<WorkbenchTaskPage>(taskResult, { ...EMPTY_TASK_PAGE, pageNo: nextPage });
-      setTaskPage(nextTaskPage); setSelectedKeys([]); restoreTaskFromPage(nextTaskPage);
+      setTaskPage(nextTaskPage);
+      setSelectedKeys([]);
+      restoreTaskFromPage(nextTaskPage);
       return nextTaskPage;
     } catch (error) {
       if (version === requestVersionRef.current) setTaskError(errorMessage(error, '加载修谱任务失败'));
@@ -235,32 +248,51 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     }
   }
   async function loadHistory(taskKey: string) {
-    setHistoryLoading(true); setHistoryError('');
-    try { setHistory(toRecordList<WorkbenchHistoryItem>(unwrapData(await apiClient.get(`/workbench/tasks/${encodeURIComponent(taskKey)}/history`), []))); }
-    catch (error) { setHistory([]); setHistoryError(errorMessage(error, '加载处理记录失败')); }
-    finally { setHistoryLoading(false); }
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      setHistory(toRecordList<WorkbenchHistoryItem>(unwrapData(await apiClient.get(`/workbench/tasks/${encodeURIComponent(taskKey)}/history`), [])));
+    } catch (error) {
+      setHistory([]);
+      setHistoryError(errorMessage(error, '加载处理记录失败'));
+    } finally {
+      setHistoryLoading(false);
+    }
   }
 
   useEffect(() => { void loadClans().then(clanId => loadWorkbench(clanId, initialUrlState.page, initialFilters)); }, []);
   useEffect(() => { if (selectedTask?.key) void loadHistory(selectedTask.key); }, [selectedTask?.key]);
 
   function applyState(nextClanId: string, pageNo: number, nextFilters: WorkbenchFilters, taskId = '') {
-    setFilters(nextFilters); setSelectedKeys([]); desiredTaskIdRef.current = taskId; if (!taskId) setSelectedTask(null);
-    syncQueryUrl(nextClanId, pageNo, nextFilters, taskId); void loadWorkbench(nextClanId, pageNo, nextFilters);
+    setFilters(nextFilters);
+    setSelectedKeys([]);
+    desiredTaskIdRef.current = taskId;
+    if (!taskId) setSelectedTask(null);
+    syncQueryUrl(nextClanId, pageNo, nextFilters, taskId);
+    void loadWorkbench(nextClanId, pageNo, nextFilters);
   }
   function changeClan(nextClanId: string) {
-    workspace.setClanId(nextClanId); setTaskPage(EMPTY_TASK_PAGE); setAdvancedOpen(false);
+    workspace.setClanId(nextClanId);
+    setTaskPage(EMPTY_TASK_PAGE);
+    setAdvancedOpen(false);
     applyState(nextClanId, 1, { ...EMPTY_FILTERS });
   }
-  function searchWorkbench() { applyState(currentClanId, 1, { ...filters, taskName: filters.taskName.trim(), keyword: filters.keyword.trim() }); }
-  function resetFilters() { setAdvancedOpen(false); applyState(currentClanId, 1, { ...EMPTY_FILTERS }); }
+  function searchWorkbench() {
+    applyState(currentClanId, 1, { ...filters, taskName: filters.taskName.trim(), keyword: filters.keyword.trim() });
+  }
+  function resetFilters() {
+    setAdvancedOpen(false);
+    applyState(currentClanId, 1, { ...EMPTY_FILTERS });
+  }
   function changePage(page: number) {
-    syncQueryUrl(currentClanId, page, filters, ''); desiredTaskIdRef.current = ''; setSelectedTask(null); setSelectedKeys([]);
+    syncQueryUrl(currentClanId, page, filters, '');
+    desiredTaskIdRef.current = '';
+    setSelectedTask(null);
+    setSelectedKeys([]);
     void loadWorkbench(currentClanId, page, filters);
   }
   function startNewTask() {
-    if (!currentClanId || !onNavigate) return;
-    onNavigate('mvp1Wizard');
+    if (currentClanId && onNavigate) onNavigate('mvp1Wizard');
   }
   async function exportTasks() {
     if (!currentClanId || exporting || total === 0) return;
@@ -270,11 +302,15 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       const page = unwrapData<WorkbenchTaskPage>(payload, EMPTY_TASK_PAGE);
       const rows = toRecordList<WorkbenchTask>(page.records || []);
       downloadCsv(rows);
-      notify?.({ message: `已导出当前查询条件下的 ${rows.length} 条修谱任务。` });
+      if (notify) notify({ message: `已导出当前查询条件下的 ${rows.length} 条修谱任务。` });
+      else message.success(`已导出 ${rows.length} 条修谱任务`);
     } catch (error) {
       const text = errorMessage(error, '导出任务失败，请稍后重试。');
-      if (notify) notify({ message: text }, true); else message.error(text);
-    } finally { setExporting(false); }
+      if (notify) notify({ message: text }, true);
+      else message.error(text);
+    } finally {
+      setExporting(false);
+    }
   }
   async function refreshTaskStatus() {
     const task = selectedTask;
@@ -293,30 +329,51 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     if (!task || !onNavigate) return;
     const view = relatedViewOf(task.relatedEntryType);
     if (!view) { openTask(task); return; }
-    applyRelatedContext(task); replaceUrl({ taskId: task.key }); onNavigate(view);
+    applyRelatedContext(task);
+    replaceUrl({ taskId: task.key });
+    onNavigate(view);
   }
   async function submitTaskAction() {
-    const task = selectedTask; if (!task) return; setActionLoading(true);
+    const task = selectedTask;
+    if (!task) return;
+    setActionLoading(true);
     try {
-      const result = unwrapData<WorkbenchActionResponse>(await apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, { action: actionCode(task), comment: actionComment.trim(), expectedUpdatedAt: task.updatedAt || null }), {});
-      message.success(result.message || '任务处理完成'); setActionModalOpen(false); setActionComment('');
+      const result = unwrapData<WorkbenchActionResponse>(await apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, {
+        action: actionCode(task), comment: actionComment.trim(), expectedUpdatedAt: task.updatedAt || null
+      }), {});
+      message.success(result.message || '任务处理完成');
+      setActionModalOpen(false);
+      setActionComment('');
       const nextTaskPage = await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters);
       if (!nextTaskPage) return;
       const nextTask = toRecordList<WorkbenchTask>(nextTaskPage.records || []).find(item => item.key !== task.key) || result.task;
-      if (nextTask) openTask(nextTask); else closeTask();
+      if (nextTask) openTask(nextTask);
+      else closeTask();
     } catch (error) {
-      if (error instanceof ApiRequestError && error.status === 409) { message.warning('任务已被其他成员处理或状态已变化，已为你刷新最新状态。'); await refreshTaskStatus(); }
-      else message.error(errorMessage(error, '任务处理失败，请保留当前现场后重试'));
-    } finally { setActionLoading(false); }
+      if (error instanceof ApiRequestError && error.status === 409) {
+        message.warning('任务已被其他成员处理或状态已变化，已为你刷新最新状态。');
+        await refreshTaskStatus();
+      } else message.error(errorMessage(error, '任务处理失败，请保留当前现场后重试'));
+    } finally {
+      setActionLoading(false);
+    }
   }
   async function submitBulkCheck() {
     if (!selectedTasks.length || bulkLoading) return;
-    setBulkLoading(true); setBulkFailures([]);
-    const results = await Promise.allSettled(selectedTasks.map(task => apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, { action: 'mark_checked', comment: '批量标记已核查', expectedUpdatedAt: task.updatedAt || null })));
+    setBulkLoading(true);
+    setBulkFailures([]);
+    const results = await Promise.allSettled(selectedTasks.map(task => apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, {
+      action: 'mark_checked', comment: '批量标记已核查', expectedUpdatedAt: task.updatedAt || null
+    })));
     const resultSummary = summarizeBulkResults(results);
-    setBulkFailures(results.flatMap((result, index) => result.status === 'rejected' ? [{ key: selectedTasks[index].key, objectName: taskTitle(selectedTasks[index]), reason: errorMessage(result.reason, '处理失败') }] : []));
+    setBulkFailures(results.flatMap((result, index) => result.status === 'rejected'
+      ? [{ key: selectedTasks[index].key, objectName: taskTitle(selectedTasks[index]), reason: errorMessage(result.reason, '处理失败') }]
+      : []));
     message[resultSummary.failed ? 'warning' : 'success'](`批量处理完成：成功 ${resultSummary.succeeded} 项，失败 ${resultSummary.failed} 项`);
-    setBulkModalOpen(false); setSelectedKeys([]); await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters); setBulkLoading(false);
+    setBulkModalOpen(false);
+    setSelectedKeys([]);
+    await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters);
+    setBulkLoading(false);
   }
   async function copyTaskKey(task: WorkbenchTask) {
     try { await navigator.clipboard.writeText(task.key); message.success('任务编号已复制'); }
@@ -324,10 +381,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
   }
   function moreMenu(task: WorkbenchTask): MenuProps {
     return {
-      items: [
-        { key: 'handle', label: actionLabel(task) },
-        { key: 'copy', label: '复制任务编号' }
-      ],
+      items: [{ key: 'handle', label: actionLabel(task) }, { key: 'copy', label: '复制任务编号' }],
       onClick: info => {
         info.domEvent.stopPropagation();
         if (info.key === 'handle') { openTask(task); setActionModalOpen(true); }
@@ -338,7 +392,10 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
 
   const hasFilters = filterLabels(filters).length > 0;
   const emptyState = workbenchEmptyState({ hasClan: Boolean(currentClanId), loading: taskLoading, error: Boolean(taskError), hasFilters, count: tasks.length });
-  const emptyNode = <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>{emptyState.action === 'clear' ? <Button onClick={resetFilters}>清除筛选</Button> : emptyState.action === 'retry' ? <Button onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button> : null}</Empty>;
+  const emptyNode = <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>
+    {emptyState.action === 'clear' ? <Button onClick={resetFilters}>清除筛选</Button>
+      : emptyState.action === 'retry' ? <Button onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button> : null}
+  </Empty>;
   const resultActions = <Space wrap>
     <Button type="primary" icon={<PlusOutlined />} disabled={!currentClanId || !onNavigate} onClick={startNewTask}>新建任务</Button>
     <Button icon={<ExportOutlined />} loading={exporting} disabled={!currentClanId || total === 0 || taskLoading} onClick={() => void exportTasks()}>导出任务</Button>
@@ -366,7 +423,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     </Card>
 
     <Card title="查询结果" extra={resultActions}>
-      <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>{taskPage.records === undefined ? '请设置查询条件后开始查询。' : `共找到 ${total} 条修谱任务`}</Typography.Text>
+      <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>共找到 {total} 条修谱任务</Typography.Text>
       {selectedKeys.length ? <Alert type="info" showIcon message={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
       {bulkFailures.length ? <Alert type="warning" showIcon closable onClose={() => setBulkFailures([])} message={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
       {taskError ? <Alert type="error" showIcon message="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
@@ -420,7 +477,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     </Drawer>
 
     <Modal title={selectedTask ? actionLabel(selectedTask) : '完成任务处理'} open={actionModalOpen} onCancel={() => { if (!actionLoading) setActionModalOpen(false); }} onOk={() => void submitTaskAction()} okText="确认完成" cancelText="取消" confirmLoading={actionLoading} destroyOnHidden>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}><Alert type="warning" showIcon message={`将处理任务：${taskTitle(selectedTask as WorkbenchTask)}`} description="确认后将更新任务状态并刷新查询结果；若任务已被他人处理，系统会提示冲突并加载最新状态。" /><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text>处理说明（可选）</Typography.Text><Input.TextArea value={actionComment} onChange={event => setActionComment(event.target.value)} maxLength={500} showCount rows={4} placeholder="补充处理依据、核查结果或后续关注事项" /></Space></Space>
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}><Alert type="warning" showIcon message={`将处理任务：${taskTitle(selectedTask)}`} description="确认后将更新任务状态并刷新查询结果；若任务已被他人处理，系统会提示冲突并加载最新状态。" /><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text>处理说明（可选）</Typography.Text><Input.TextArea value={actionComment} onChange={event => setActionComment(event.target.value)} maxLength={500} showCount rows={4} placeholder="补充处理依据、核查结果或后续关注事项" /></Space></Space>
     </Modal>
     <Modal title="批量标记已核查" open={bulkModalOpen} onCancel={() => { if (!bulkLoading) setBulkModalOpen(false); }} onOk={() => void submitBulkCheck()} okText="确认处理" cancelText="取消" confirmLoading={bulkLoading}>
       <Alert type="warning" showIcon message={`将处理当前页选中的 ${selectedTasks.length} 项任务`} description="系统会逐项提交并汇总成功和失败结果，不会因单项失败中断其他任务。" />
