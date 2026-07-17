@@ -174,20 +174,23 @@ public class PersonApplicationService {
 
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> search(PersonSearchQuery query, int pageNo, int pageSize, Long viewerId) {
-        if (query.clanId() == null) {
-            throw new BusinessException("PERSON_SEARCH_CLAN_REQUIRED", "搜索人物必须指定宗族ID");
-        }
-        ensureClanExists(query.clanId());
-        ensureBranchBelongsToClan(query.clanId(), query.branchId());
-        if (query.branchId() == null) {
-            authorizationApplicationService.requirePermission(query.clanId(), viewerId, PERSON_VIEW);
-        } else {
-            authorizationApplicationService.requireBranchPermission(query.clanId(), viewerId, query.branchId(), PERSON_VIEW);
-        }
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findAll(and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId())), pageRequest)
+        validateSearchAccess(query, viewerId);
+        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, sortOf(query.sort()));
+        Page<PersonResponse> page = personRepository.findAll(
+                        and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId())),
+                        pageRequest
+                )
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PersonEntity> findForExport(PersonSearchQuery query, Long viewerId) {
+        validateSearchAccess(query, viewerId);
+        return personRepository.findAll(
+                and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId())),
+                sortOf(query.sort())
+        );
     }
 
     @Transactional
@@ -229,6 +232,19 @@ public class PersonApplicationService {
         operationLogApplicationService.record(entity.getClanId(), actorId, "person_delete", "person", entity.getId(), "删除人物：" + entity.getName(), null);
     }
 
+    private void validateSearchAccess(PersonSearchQuery query, Long viewerId) {
+        if (query.clanId() == null) {
+            throw new BusinessException("PERSON_SEARCH_CLAN_REQUIRED", "搜索人物必须指定宗族ID");
+        }
+        ensureClanExists(query.clanId());
+        ensureBranchBelongsToClan(query.clanId(), query.branchId());
+        if (query.branchId() == null) {
+            authorizationApplicationService.requirePermission(query.clanId(), viewerId, PERSON_VIEW);
+        } else {
+            authorizationApplicationService.requireBranchPermission(query.clanId(), viewerId, query.branchId(), PERSON_VIEW);
+        }
+    }
+
     private Specification<PersonEntity> buildSearchSpecification(PersonSearchQuery query) {
         return (root, criteriaQuery, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -241,17 +257,17 @@ public class PersonApplicationService {
             if (hasText(query.name())) {
                 predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern(query.name())));
             }
-            if (hasText(query.gender())) {
-                predicates.add(criteriaBuilder.equal(root.get("gender"), normalize(query.gender())));
+            if (!query.genders().isEmpty()) {
+                predicates.add(root.get("gender").in(query.genders().stream().map(this::normalize).toList()));
             }
-            if (query.generationNo() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("generationNo"), query.generationNo()));
+            if (!query.generationNos().isEmpty()) {
+                predicates.add(root.get("generationNo").in(query.generationNos()));
             }
-            if (hasText(query.generationWord())) {
-                predicates.add(criteriaBuilder.equal(root.get("generationWord"), query.generationWord().trim()));
+            if (!query.generationWords().isEmpty()) {
+                predicates.add(root.get("generationWord").in(query.generationWords()));
             }
-            if (hasText(query.dataStatus())) {
-                predicates.add(criteriaBuilder.equal(root.get("dataStatus"), normalize(query.dataStatus())));
+            if (!query.dataStatuses().isEmpty()) {
+                predicates.add(root.get("dataStatus").in(query.dataStatuses().stream().map(this::normalize).toList()));
             }
             if (hasText(query.keyword())) {
                 String pattern = likePattern(query.keyword());
@@ -268,6 +284,18 @@ public class PersonApplicationService {
                 ));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    private Sort sortOf(String value) {
+        return switch (value) {
+            case "name,asc" -> Sort.by(Sort.Order.asc("name").ignoreCase(), Sort.Order.desc("id"));
+            case "generationNo,asc" -> Sort.by(
+                    Sort.Order.asc("generationNo").nullsLast(),
+                    Sort.Order.asc("name").ignoreCase(),
+                    Sort.Order.desc("id")
+            );
+            default -> Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"));
         };
     }
 

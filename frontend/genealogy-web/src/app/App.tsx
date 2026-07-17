@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
-import { useWorkspace, WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
 import { ToastStack } from '../shared/ui/ToastStack';
@@ -11,7 +10,6 @@ import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
 import { BookletActions } from '../features/booklets/BookletActions';
 import { CultureProductPage } from '../features/culture/CultureProductPage';
-import { PersonDataExportActions } from '../features/exports/PersonDataExportActions';
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
@@ -96,7 +94,6 @@ export function App() {
 }
 
 function AppShell() {
-  const workspace = useWorkspace();
   const [active, setActive] = useState<ViewKey>(readViewFromUrl);
   const [personDetailRoute, setPersonDetailRoute] = useState<PersonDetailRoute | null>(readPersonDetailRoute);
   const [personEditRoute, setPersonEditRoute] = useState<PersonEditRoute | null>(readPersonEditRoute);
@@ -153,14 +150,6 @@ function AppShell() {
     setPersonDetailRoute(null); setPersonEditRoute(null); setActive(key); setPageEntryVersion(prev => prev + 1); writeViewToUrl(key);
   }
 
-  function openPersonCreate() {
-    if (!workspace.clanId) { notify({ message: '请先在人物档案中选择宗族，再创建人物。' }, true); return; }
-    if (!workspace.branchId) { notify({ message: '请先在人物档案中选择支派，再创建人物。' }, true); return; }
-    setPersonDetailRoute(null); setPersonEditRoute(null);
-    navigateToView('mvp1Wizard', window.location.href, { params: { clanId: workspace.clanId, step: 'person' } });
-    syncRouteFromUrl();
-  }
-
   function renderPage() {
     if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} notify={notify} onCancel={navigateBackFromPersonEdit} onSavingChange={setNavigationLocked} />;
     if (personDetailRoute) return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
@@ -182,7 +171,6 @@ function AppShell() {
 
   function renderModuleActions() {
     if (personDetailRoute || personEditRoute) return null;
-    if (active === 'personArchive') return <Space><Button type="primary" icon={<PlusOutlined />} onClick={openPersonCreate}>创建人物</Button><PersonDataExportActions notify={notify} /></Space>;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
     if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
     return null;

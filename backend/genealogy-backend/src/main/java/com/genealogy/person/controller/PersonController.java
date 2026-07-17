@@ -76,16 +76,29 @@ public class PersonController {
             @RequestParam(required = false) Long branchId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String gender,
-            @RequestParam(required = false) Integer generationNo,
-            @RequestParam(required = false) String generationWord,
-            @RequestParam(required = false) String dataStatus,
+            @RequestParam(name = "gender", required = false) List<String> genders,
+            @RequestParam(name = "generationNo", required = false) List<Integer> generationNos,
+            @RequestParam(name = "generationWord", required = false) List<String> generationWords,
+            @RequestParam(name = "dataStatus", required = false) List<String> dataStatuses,
+            @RequestParam(required = false) String sort,
             PageQuery pageQuery,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
-        String effectiveDataStatus = dataStatus == null || dataStatus.isBlank() ? "official" : dataStatus;
-        PersonSearchQuery query = new PersonSearchQuery(clanId, branchId, keyword, name, gender, generationNo, generationWord, effectiveDataStatus);
+        List<String> effectiveStatuses = dataStatuses == null || dataStatuses.isEmpty()
+                ? List.of("official")
+                : dataStatuses;
+        PersonSearchQuery query = new PersonSearchQuery(
+                clanId,
+                branchId,
+                keyword,
+                name,
+                genders,
+                generationNos,
+                generationWords,
+                effectiveStatuses,
+                sort
+        );
         return ApiResponse.success(personApplicationService.search(
                 query,
                 pageQuery.normalizedPageNo(),
