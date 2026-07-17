@@ -19,6 +19,27 @@
 .culture-editor-content > .ant-card { width: 100%; }
 .culture-editor-actions { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 12px 16px; background: rgba(255, 255, 255, 0.96); border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06); backdrop-filter: blur(8px); }
 
+
+.culture-product-page,
+.culture-product-page .tabbed-module-tabs-card,
+.culture-product-page .tabbed-module-tabs-card > .ant-card-body,
+.culture-managed-tab,
+.culture-managed-tab > .ant-space,
+.culture-managed-tab .ant-card,
+.culture-managed-tab .ant-card-body,
+.culture-managed-tab .ant-table-wrapper {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.culture-managed-tab > .ant-space {
+  display: flex;
+}
+
+.culture-managed-tab .ant-card-body {
+  overflow-x: hidden;
+}
+
 @media (max-width: 767px) {
   .culture-page-header .ant-card-body { padding: 16px; }
   .culture-page-header-main { flex-direction: column; gap: 12px; }
