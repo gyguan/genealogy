@@ -74,8 +74,8 @@
 /* Unified query action alignment. */
 .business-page--personArchive .person-archive-query-actions,
 .business-page--sourceLibrary .source-library-page form > .ant-row:last-child,
-.business-page--reviewCenter .ant-card[title='筛选条件'] form > div:last-child,
-.business-page--memberManage .ant-card[title='查询条件'] > .ant-card-body > div:last-child {
+.business-page--reviewCenter .ant-card[title='审核中心'] form > div:last-child,
+.business-page--memberManage .ant-card[title='成员与权限'] > .ant-card-body > div:last-child {
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
@@ -84,10 +84,10 @@
 /* Consistent field density across query areas. */
 .business-page--personArchive .person-archive-query-card .ant-form-item,
 .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-form-item,
-.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-form-item,
-.business-page--editingWorkspace .ant-card[title='查询条件'] .ant-space-vertical,
-.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-form-item,
-.business-page--memberManage .ant-card[title='查询条件'] .ant-col > .ant-typography {
+.business-page--sourceLibrary .source-library-page .ant-card[title='来源资料库'] .ant-form-item,
+.business-page--editingWorkspace .ant-card[title='修谱工作台'] .ant-space-vertical,
+.business-page--reviewCenter .ant-card[title='审核中心'] .ant-form-item,
+.business-page--memberManage .ant-card[title='成员与权限'] .ant-col > .ant-typography {
   margin-bottom: 12px;
 }
 
@@ -205,21 +205,6 @@
 /* Source library: remove intro card, standardize filters/results              */
 /* -------------------------------------------------------------------------- */
 
-.business-page--sourceLibrary .source-library-page > .ant-space > .ant-space-item:first-child > .ant-card,
-.business-page--sourceLibrary .source-library-page > .ant-space > .ant-card:first-child {
-  display: none;
-}
-
-.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-card-head-title {
-  font-size: 0;
-}
-
-.business-page--sourceLibrary .source-library-page .ant-card[title='来源检索'] .ant-card-head-title::before {
-  content: '查询条件';
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .business-page--sourceLibrary .source-library-page .ant-card-head-title {
   white-space: normal;
 }
@@ -271,21 +256,6 @@
 /* Review center: segmented queue stays in the result header, cards align      */
 /* -------------------------------------------------------------------------- */
 
-.business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:first-child,
-.business-page--reviewCenter .review-center-page > .ant-space > div:first-child {
-  display: none;
-}
-
-.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-card-head-title {
-  font-size: 0;
-}
-
-.business-page--reviewCenter .ant-card[title='筛选条件'] .ant-card-head-title::before {
-  content: '查询条件';
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:nth-child(3) > .ant-card > .ant-card-body::before,
 .business-page--reviewCenter .review-center-page > .ant-space > .ant-card:nth-of-type(2) > .ant-card-body::before {
   content: '查询结果';
@@ -303,46 +273,7 @@
 /* Members and permissions: context + filters form one query block             */
 /* -------------------------------------------------------------------------- */
 
-.business-page--memberManage .member-role-page {
-  display: flex;
-  flex-direction: column;
-}
-
-.business-page--memberManage .member-role-page > .ant-card:first-child {
-  position: relative;
-  order: 1;
-  padding-top: 32px;
-  border-bottom: 0;
-  border-radius: var(--query-page-radius) var(--query-page-radius) 0 0;
-}
-
-.business-page--memberManage .member-role-page > .ant-card:first-child::before {
-  content: '查询条件';
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  z-index: 1;
-  font-weight: 600;
-}
-
-.business-page--memberManage .member-role-page > .ant-alert {
-  order: 4;
-  margin-top: var(--query-page-gap) !important;
-}
-
-.business-page--memberManage .member-role-page > .ant-card[title='查询条件'] {
-  order: 2;
-  margin-top: 0 !important;
-  border-top: 0;
-  border-radius: 0 0 var(--query-page-radius) var(--query-page-radius);
-}
-
-.business-page--memberManage .member-role-page > .ant-card[title='查询条件'] > .ant-card-head {
-  display: none;
-}
-
 .business-page--memberManage .member-role-page > .ant-card[title='成员列表'] {
-  order: 3;
   margin-top: var(--query-page-gap) !important;
 }
 
@@ -427,7 +358,7 @@
   .business-page--personArchive .person-archive-query-actions .ant-btn-primary,
   .business-page--sourceLibrary form .ant-btn-primary,
   .business-page--reviewCenter form .ant-btn-primary,
-  .business-page--memberManage .ant-card[title='查询条件'] .ant-btn-primary {
+  .business-page--memberManage .ant-card[title='成员与权限'] .ant-btn-primary {
     min-width: 96px;
   }
 
