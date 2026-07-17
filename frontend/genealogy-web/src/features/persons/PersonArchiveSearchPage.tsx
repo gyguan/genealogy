@@ -15,7 +15,7 @@ type Props = { notify: (data: unknown, error?: boolean) => void };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
 type NavigationAction = 'name' | 'view' | 'edit';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const FOCUS_STORAGE_KEY = 'genealogyPersonArchiveFocusId';
 const emptySearch = emptyPersonArchiveSearch();
 const statusOptions = [
@@ -204,7 +204,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   const total = (rawData as any)?.total ?? rows.length; const currentPage = Number((rawData as any)?.pageNo ?? pageNo ?? 1); const hasQueried = rawData !== undefined;
 
   return <div className="person-archive-search person-archive-list-page">
-    <Card className="person-archive-query-card" title="查询条件" loading={filterLoading}>
+    <Card className="person-archive-query-card" title="人物档案查询" loading={filterLoading}>
       {clansError ? <Alert type="error" showIcon message="宗族列表加载失败" description={clansError} action={<Button size="small" onClick={() => void loadClans()}>重试</Button>} /> : null}
       {branchesError ? <Alert type="warning" showIcon message="支派选项加载失败" description={branchesError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
       {generationError ? <Alert type="warning" showIcon message="字辈与代次选项加载不完整" description={generationError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
