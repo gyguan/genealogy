@@ -38,6 +38,7 @@ import { ApiRequestError } from '../../shared/api/client';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
+import { CultureMultiSelect } from './CultureMultiSelect';
 import { CultureSearchHeader } from './CultureSearchHeader';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { CultureItemEditorPage } from './CultureItemEditorPage';
@@ -75,6 +76,7 @@ import {
   statusColor,
   statusOptions
 } from './cultureOptions';
+import { culturePrimaryAction } from './culturePagePattern';
 import { buildCultureLocation, cultureSearchKey, defaultCultureSearch, readCultureLocation } from './cultureUrlState';
 import type { CultureSearchState } from './cultureUrlState';
 import type { CultureTabKey } from './cultureTabState';
@@ -90,7 +92,6 @@ type SearchValues = {
   privacyLevel?: CulturePrivacyLevel[];
   hasSource?: BooleanText[];
   featuredOnHome?: BooleanText[];
-  sort?: string;
 };
 
 function errorText(error: unknown, fallback: string) {
@@ -124,8 +125,6 @@ function itemEditor(editor: CultureEditorState | null) {
 function relativeHref() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
-
-const multiSelectProps = { mode: 'multiple' as const, allowClear: true, maxTagCount: 'responsive' as const };
 
 type Props = {
   clanId?: string;
@@ -225,8 +224,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       dataStatus: search.dataStatus,
       privacyLevel: search.privacyLevel,
       hasSource: boolText(search.hasSource),
-      featuredOnHome: boolText(search.featuredOnHome),
-      sort: search.sort
+      featuredOnHome: boolText(search.featuredOnHome)
     });
   }, [search, searchForm]);
 
@@ -356,7 +354,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       privacyLevel: values.privacyLevel?.length ? values.privacyLevel : undefined,
       hasSource: values.hasSource?.length ? boolValues(values.hasSource) : undefined,
       featuredOnHome: values.featuredOnHome?.length ? boolValues(values.featuredOnHome) : undefined,
-      sort: values.sort || defaultCultureSearch.sort,
+      sort: search.sort || defaultCultureSearch.sort,
       pageNo: 1
     };
     setSearch(nextSearch);
@@ -367,6 +365,13 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   function resetSearch() {
     const nextSearch = { ...defaultCultureSearch, pageSize: search.pageSize };
     searchForm.resetFields();
+    setSearch(nextSearch);
+    setSelectedId(undefined);
+    writeLocation(nextSearch, undefined);
+  }
+
+  function changeSort(sort: string) {
+    const nextSearch = { ...search, sort, pageNo: 1 };
     setSearch(nextSearch);
     setSelectedId(undefined);
     writeLocation(nextSearch, undefined);
@@ -489,22 +494,45 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card size="small" className="culture-page-header">
-        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" primaryAction="新增资料" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'item', mode: 'create' })} />
+      <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
-          <Row gutter={[12, 0]}>
-            <Col xs={24} sm={12} lg={5}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={7}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={4}><Form.Item name="category" label="分类"><Select {...multiSelectProps} placeholder="可多选" options={categoryOptions} /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
-            <Col xs={24} sm={12} lg={4}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="category" label="分类"><CultureMultiSelect aria-label="分类" options={categoryOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branches.filter(branch => branch.id).map(branch => ({ value: Number(branch.id), label: branchLabel(branch) }))} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
           </Row>
-          <Collapse ghost items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[12, 0]}><Col xs={24} sm={12} lg={5}><Form.Item name="privacyLevel" label="可见范围"><Select {...multiSelectProps} placeholder="可多选" options={privacyOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="hasSource" label="已有来源"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col></Row> }]} />
+          <Collapse
+            ghost
+            className="culture-more-filters"
+            items={[{
+              key: 'more',
+              label: '更多筛选',
+              children: (
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col>
+                  <Col xs={24} sm={12} lg={6}><Form.Item name="privacyLevel" label="可见范围"><CultureMultiSelect aria-label="可见范围" options={privacyOptions} /></Form.Item></Col>
+                  <Col xs={24} sm={12} lg={6}><Form.Item name="hasSource" label="已有来源"><CultureMultiSelect aria-label="已有来源" options={booleanOptions} /></Form.Item></Col>
+                  <Col xs={24} sm={12} lg={6}><Form.Item name="featuredOnHome" label="首页精选"><CultureMultiSelect aria-label="首页精选" options={booleanOptions} /></Form.Item></Col>
+                </Row>
+              )
+            }]}
+          />
           <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
         </Form>
       </Card>
 
-      <Card title={`文化资料（${page.totalElements}）`}>
+      <Card
+        className="culture-result-card"
+        title={`文化资料（${page.totalElements}）`}
+        extra={(
+          <Space className="culture-result-actions">
+            <Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />
+            <Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>
+          </Space>
+        )}
+      >
         {refreshError ? <Alert type="warning" showIcon closable message="文化资料刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 12 }} /> : null}
         {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化资料'} /> : null}

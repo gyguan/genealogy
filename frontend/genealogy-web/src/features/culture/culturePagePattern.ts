@@ -13,7 +13,7 @@ export const culturePagePatterns: Record<CultureTabKey, CulturePagePattern> = {
   items: {
     tab: 'items',
     label: '文化资料',
-    primaryAction: '新增资料',
+    primaryAction: '新增文化资料',
     editorTarget: 'item',
     mobileClass: 'culture-tab-items'
   },
@@ -27,7 +27,7 @@ export const culturePagePatterns: Record<CultureTabKey, CulturePagePattern> = {
   sites: {
     tab: 'sites',
     label: '文化场所',
-    primaryAction: '新增场所',
+    primaryAction: '新增文化场所',
     editorTarget: 'site',
     mobileClass: 'culture-tab-sites'
   }

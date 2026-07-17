@@ -1,14 +1,20 @@
 .culture-page-header .ant-typography:last-child { margin-bottom: 0; }
-.culture-search-header { display: grid; gap: 12px; margin-bottom: 16px; }
-.culture-page-header-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-.culture-page-heading { min-width: 0; flex: 1; }
-.culture-page-context-actions { display: flex; align-items: flex-start; justify-content: flex-end; gap: 12px; }
-.culture-clan-scope { width: min(320px, 100%); display: flex; flex-direction: column; gap: 6px; }
-.culture-clan-scope .ant-select { width: 100%; }
-.culture-page-primary-action { min-width: 88px; height: 32px; min-height: 32px; white-space: nowrap; }
-.culture-page-header .ant-tabs-nav { margin-bottom: 0; }
-.culture-search-header + .ant-form { padding-top: 16px; border-top: 1px solid #f0f0f0; }
-.culture-search-actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 12px; }
+.culture-search-card > .ant-card-head { display: none; }
+.culture-search-header { display: grid; gap: 4px; margin-bottom: 12px; }
+.culture-page-title { margin: 0 !important; font-size: 20px !important; line-height: 28px !important; }
+.culture-search-header .ant-tabs-nav { margin-bottom: 8px; }
+.culture-search-description { margin: 0 !important; }
+.culture-search-card .ant-form { padding-top: 4px; }
+.culture-more-filters { margin-top: -4px; }
+.culture-more-filters > .ant-collapse-item > .ant-collapse-header { padding: 8px 0; }
+.culture-more-filters .ant-collapse-content-box { padding: 4px 0 0 !important; }
+.culture-search-actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-top: 4px; padding-bottom: 12px; }
+.culture-result-actions { display: flex; align-items: center; justify-content: flex-end; }
+.culture-result-sort { width: 136px; }
+.culture-result-card .ant-card-extra .ant-btn { min-width: 88px; }
+.culture-multi-select-dropdown { padding-top: 4px; }
+.culture-multi-select-actions { display: flex; justify-content: flex-end; width: 100%; padding: 0 8px 4px; background: #fafafa; }
+.culture-page-loading { min-height: 280px; display: flex; align-items: center; justify-content: center; }
 .culture-title-button { height: auto; padding: 0; text-align: left; white-space: normal; }
 .culture-detail-content { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; }
 .culture-editor-page { display: flex; flex-direction: column; gap: 16px; padding-bottom: 72px; }
@@ -19,10 +25,7 @@
 .culture-editor-content > .ant-card { width: 100%; }
 .culture-editor-actions { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 12px 16px; background: rgba(255, 255, 255, 0.96); border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.06); backdrop-filter: blur(8px); }
 
-
 .culture-product-page,
-.culture-product-page .tabbed-module-tabs-card,
-.culture-product-page .tabbed-module-tabs-card > .ant-card-body,
 .culture-managed-tab,
 .culture-managed-tab > .ant-space,
 .culture-managed-tab .ant-card,
@@ -42,10 +45,6 @@
 
 @media (max-width: 767px) {
   .culture-page-header .ant-card-body { padding: 16px; }
-  .culture-page-header-main { flex-direction: column; gap: 12px; }
-  .culture-page-context-actions { width: 100%; align-items: stretch; }
-  .culture-clan-scope { flex: 1; width: auto; min-width: 0; }
-  .culture-page-primary-action { width: 100%; min-width: 88px; height: 40px; min-height: 40px; }
   .culture-page-header .ant-tabs-nav { margin-inline: -4px; }
   .culture-page-header .ant-tabs-nav-wrap { overflow-x: auto; scrollbar-width: none; }
   .culture-page-header .ant-tabs-nav-wrap::-webkit-scrollbar { display: none; }
@@ -57,6 +56,14 @@
   .culture-search-actions .ant-space { width: 100%; }
   .culture-search-actions .ant-space-item { flex: 1; }
   .culture-search-actions .ant-btn { width: 100%; min-height: 44px; }
+
+  .culture-result-card .ant-card-head-wrapper { align-items: stretch; flex-direction: column; gap: 12px; padding-block: 12px; }
+  .culture-result-card .ant-card-head-title { padding: 0; }
+  .culture-result-card .ant-card-extra { width: 100%; margin-inline-start: 0; padding: 0; }
+  .culture-result-actions { width: 100%; }
+  .culture-result-actions .ant-space-item:first-child { flex: 1; min-width: 0; }
+  .culture-result-sort { width: 100%; }
+  .culture-result-actions .ant-btn { min-width: 112px; min-height: 40px; }
 
   .culture-managed-tab .ant-table-wrapper .ant-table-container { border: 0; }
   .culture-managed-tab .ant-table-wrapper .ant-table-content { overflow-x: visible !important; }

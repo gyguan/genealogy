@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Col,
+  Collapse,
   Descriptions,
   Drawer,
   Dropdown,
@@ -30,6 +31,7 @@ import { ApiRequestError } from '../../shared/api/client';
 import { buildTrackingDeepLink } from '../../shared/navigation/trackingDeepLink.js';
 import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
+import { CultureMultiSelect } from './CultureMultiSelect';
 import { CultureSearchHeader } from './CultureSearchHeader';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { MigrationEventEditorPage } from './MigrationEventEditorPage';
@@ -39,6 +41,7 @@ import { confidenceColor, confidenceOptions, formatDateTime, optionLabel, privac
 import { listCultureBranches } from './cultureLibraryService';
 import type { CultureBranchOption, CultureClanOption } from './cultureLibraryService';
 import { archiveMigrationEvent, deleteMigrationEvent, getMigrationEvent, getMigrationEventTrace, listMigrationEvents, submitMigrationEventReview } from './migrationEventService';
+import { culturePrimaryAction } from './culturePagePattern';
 import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, readMigrationLocation } from './migrationEventUrlState';
 import type { MigrationSearchState } from './migrationEventUrlState';
 import type { CultureTabKey } from './cultureTabState';
@@ -49,7 +52,6 @@ const migrationSortOptions = [
   { value: 'updatedAt,desc', label: '最近更新' },
   { value: 'migrationTimeText,asc', label: '历史时期' }
 ];
-const multiSelectProps = { mode: 'multiple' as const, allowClear: true, maxTagCount: 'responsive' as const };
 
 type SearchValues = {
   keyword?: string;
@@ -58,7 +60,6 @@ type SearchValues = {
   toLocation?: string;
   migrationTimeText?: string;
   dataStatus?: CultureDataStatus[];
-  sort?: string;
 };
 
 function errorText(error: unknown, fallback: string) {
@@ -139,7 +140,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
 
   useEffect(() => { editorRef.current = editor; }, [editor]);
   useEffect(() => {
-    searchForm.setFieldsValue({ keyword: search.keyword || undefined, branchId: search.branchId, fromLocation: search.fromLocation || undefined, toLocation: search.toLocation || undefined, migrationTimeText: search.migrationTimeText || undefined, dataStatus: search.dataStatus, sort: search.sort });
+    searchForm.setFieldsValue({ keyword: search.keyword || undefined, branchId: search.branchId, fromLocation: search.fromLocation || undefined, toLocation: search.toLocation || undefined, migrationTimeText: search.migrationTimeText || undefined, dataStatus: search.dataStatus });
   }, [search, searchForm]);
   useEffect(() => {
     const onPopState = () => {
@@ -213,10 +214,11 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   }, [clanId, selectedId, refreshVersion]);
 
   function applySearch(values: SearchValues) {
-    const next: MigrationSearchState = { ...search, keyword: values.keyword?.trim() || '', branchId: values.branchId, fromLocation: values.fromLocation?.trim() || '', toLocation: values.toLocation?.trim() || '', migrationTimeText: values.migrationTimeText?.trim() || '', dataStatus: values.dataStatus, sort: values.sort || defaultMigrationSearch.sort, pageNo: 1 };
+    const next: MigrationSearchState = { ...search, keyword: values.keyword?.trim() || '', branchId: values.branchId, fromLocation: values.fromLocation?.trim() || '', toLocation: values.toLocation?.trim() || '', migrationTimeText: values.migrationTimeText?.trim() || '', dataStatus: values.dataStatus, sort: search.sort || defaultMigrationSearch.sort, pageNo: 1 };
     setSearch(next); setSelectedId(undefined); writeLocation(next, undefined);
   }
   function resetSearch() { const next = { ...defaultMigrationSearch, pageSize: search.pageSize }; searchForm.resetFields(); setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
+  function changeSort(sort: string) { const next = { ...search, sort, pageNo: 1 }; setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
   function openDetail(item: MigrationEventSummaryResponse) { setSelectedId(item.id); writeLocation(search, item.id); }
   function closeDetail() { setSelectedId(undefined); setDetail(null); setTrace(null); writeLocation(search, undefined, 'replace'); }
   function openEditor(nextEditor: CultureEditorState) { editorDirtyRef.current = false; editorRef.current = nextEditor; setEditor(nextEditor); writeLocation(search, selectedId, 'push', nextEditor); }
@@ -278,16 +280,25 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     {messageContext}
-    <Card size="small" className="culture-page-header">
-      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="按时间、地点和支派梳理宗族迁徙事件，不拼接或推测缺失路线。" primaryAction="新增迁徙事件" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'migration', mode: 'create' })} />
-      <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={4}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={migrationSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></Col></Row></Form>
+    <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="按时间、地点和支派梳理宗族迁徙事件，不拼接或推测缺失路线。" />
+      <Form form={searchForm} layout="vertical" onFinish={applySearch}>
+        <Row gutter={[16, 0]}>
+          <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branchOptions} /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="migrationTimeText" label="历史时期"><Input allowClear placeholder="如明洪武年间" /></Form.Item></Col>
+        </Row>
+        <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
+        <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+      </Form>
     </Card>
-    <Card title={`迁徙事件（${total}）`}>
+    <Card className="culture-result-card" title={`迁徙脉络（${total}）`} extra={<Space className="culture-result-actions"><Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} /><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button></Space>}>
       {refreshError ? <Alert type="warning" showIcon closable message="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="迁徙事件首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
-      {clanId && !listForbidden && !listError ? <Table<MigrationEventSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <Empty description="没有符合当前条件的迁徙事件"><Space><Button onClick={resetSearch}>重置筛选</Button><Button type="primary" onClick={() => openEditor({ target: 'migration', mode: 'create' })}>新增迁徙事件</Button></Space></Empty> }} /> : null}
+      {clanId && !listForbidden && !listError ? <Table<MigrationEventSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <Empty description="没有符合当前条件的迁徙事件"><Button onClick={resetSearch}>重置筛选</Button></Empty> }} /> : null}
     </Card>
     <Drawer open={Boolean(selectedId)} width={720} title={<Space><Title level={4} style={{ margin: 0 }}>{detail ? routeText(detail) : selectedSummary ? routeText(selectedSummary) : '迁徙事件详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>} extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'migration', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null} onClose={closeDetail} destroyOnHidden>
       {detailLoading && !detail ? <Skeleton active paragraph={{ rows: 9 }} /> : null}

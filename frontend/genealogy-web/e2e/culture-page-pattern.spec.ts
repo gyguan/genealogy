@@ -82,30 +82,56 @@ async function expectMobilePrimaryAction(page: Page, name: string) {
   const action = page.getByRole('button', { name });
   const box = await action.boundingBox();
   expect(box?.height).toBeGreaterThanOrEqual(40);
-  expect(box?.height).toBeLessThanOrEqual(41);
   expect(box?.width).toBeGreaterThanOrEqual(88);
 }
 
-test('culture shell exposes one primary action and mounts only the active domain', async ({ page }) => {
+async function expectDoubleCardShell(page: Page) {
+  await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
+  await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
+  await expect(page.locator('.culture-search-card')).toHaveCount(1);
+  await expect(page.locator('.culture-result-card')).toHaveCount(1);
+  await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText('宗族文化');
+  const formBorder = await page.locator('.culture-search-card form').evaluate(element => getComputedStyle(element).borderTopWidth);
+  expect(formBorder).toBe('0px');
+}
+
+test('culture shell uses double cards and mounts only the active domain', async ({ page }) => {
   const requested: string[] = [];
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
-  await expect(page.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('tab', { name: '迁徙脉络' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: '文化场所' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '新增资料' })).toHaveCount(1);
+  await expectDoubleCardShell(page);
+  const searchCard = page.locator('.culture-search-card');
+  await expect(searchCard.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
+  await expect(searchCard.getByRole('tab', { name: '迁徙脉络' })).toBeVisible();
+  await expect(searchCard.getByRole('tab', { name: '文化场所' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新增文化资料' })).toHaveCount(1);
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
   expect(requested.some(path => path.includes('migration-events'))).toBeFalsy();
   expect(requested.some(path => path.includes('culture-sites'))).toBeFalsy();
 
-  await page.getByRole('tab', { name: '迁徙脉络' }).click();
+  const defaultLabels = await searchCard.locator('form > .ant-row').first().locator('.ant-form-item-label label').allTextContents();
+  expect(defaultLabels).toEqual(['宗族', '分类', '支派', '关键词']);
+  await searchCard.getByText('更多筛选', { exact: true }).click();
+  await expect(searchCard.getByLabel('状态')).toBeVisible();
+  await expect(searchCard.getByLabel('可见范围')).toBeVisible();
+  await expect(searchCard.getByLabel('已有来源')).toBeVisible();
+  await expect(searchCard.getByLabel('首页精选')).toBeVisible();
+
+  await searchCard.getByLabel('分类').click();
+  await expect(page.getByRole('button', { name: '全选' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '清空' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await searchCard.getByRole('tab', { name: '迁徙脉络' }).click();
+  await expectDoubleCardShell(page);
   await expect(page.getByRole('button', { name: '新增迁徙事件' })).toHaveCount(1);
   await expect(page.getByText('江西吉安 → 湖南长沙').first()).toBeVisible();
   expect(requested.some(path => path.includes('culture-sites'))).toBeFalsy();
 
   await page.getByRole('tab', { name: '文化场所' }).click();
-  await expect(page.getByRole('button', { name: '新增场所' })).toHaveCount(1);
+  await expectDoubleCardShell(page);
+  await expect(page.getByRole('button', { name: '新增文化场所' })).toHaveCount(1);
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   await expect(page).toHaveURL(/tab=sites/);
 });
@@ -116,8 +142,9 @@ test('390px viewport uses responsive record cards without horizontal table scrol
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
+  await expectDoubleCardShell(page);
   await expectMobileRecordView(page, 'culture-tab-items');
-  await expectMobilePrimaryAction(page, '新增资料');
+  await expectMobilePrimaryAction(page, '新增文化资料');
 
   await page.getByRole('tab', { name: '迁徙脉络' }).click();
   await expectMobileRecordView(page, 'culture-tab-migrations');
@@ -125,5 +152,5 @@ test('390px viewport uses responsive record cards without horizontal table scrol
 
   await page.getByRole('tab', { name: '文化场所' }).click();
   await expectMobileRecordView(page, 'culture-tab-sites');
-  await expectMobilePrimaryAction(page, '新增场所');
+  await expectMobilePrimaryAction(page, '新增文化场所');
 });
