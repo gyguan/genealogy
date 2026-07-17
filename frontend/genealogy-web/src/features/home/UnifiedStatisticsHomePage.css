@@ -1,239 +1,212 @@
-.statistics-home-page__header {
+.public-home-page {
+  width: 100%;
+}
+
+.public-home-page__hero {
+  overflow: hidden;
+  border-color: #d9e8ff;
+  background: linear-gradient(120deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.public-home-page__hero-layout {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 2px 0;
+  gap: 24px;
 }
 
-.statistics-home-page__heading {
-  display: grid;
-  gap: 4px;
+.public-home-page__hero-copy {
   min-width: 0;
+  flex: 1;
 }
 
-.statistics-home-page__heading .ant-typography {
-  margin: 0;
-}
-
-.statistics-home-page__scope {
-  display: grid;
-  gap: 4px;
-}
-
-.statistics-home-page__clan-select {
-  min-width: 220px;
-}
-
-.statistics-home-page__clan-select.ant-select-single,
-.statistics-home-page__clan-select.ant-select-single .ant-select-selector {
-  height: 32px;
-  min-height: 32px;
-}
-
-.statistics-home-page__clan-select.ant-select-single .ant-select-selector {
-  align-items: center;
-}
-
-.statistics-home-page__clan-summary .ant-card-body {
-  padding-block: 16px;
-}
-
-.statistics-home-page__clan-summary-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.statistics-home-page__clan-summary-copy {
-  min-width: 0;
-}
-
-.statistics-home-page__clan-summary .ant-typography {
-  margin-top: 0;
-}
-
-.statistics-home-page__clan-summary .ant-typography:last-child {
+.public-home-page__hero-copy .ant-typography {
   margin-bottom: 0;
 }
 
-.statistics-home-page__area-alert {
+.public-home-page__hero-copy h3.ant-typography {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.public-home-page__hero-copy .ant-typography-secondary {
+  max-width: 880px;
+  line-height: 1.7;
+}
+
+.public-home-page__scope {
+  display: flex;
+  min-width: 240px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.public-home-page__clan-select {
+  width: 260px;
+  max-width: 100%;
+}
+
+.public-home-page__section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 12px;
 }
 
-.statistics-home-page__section-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+.public-home-page__section-heading .ant-typography {
+  margin-bottom: 0;
 }
 
-.statistics-home-page__section-header .ant-typography {
-  margin: 0;
-}
-
-.statistics-home-page__metric-card .ant-card-body {
-  height: 100%;
-  padding: 0;
-}
-
-.statistics-home-page__metric-button {
-  width: 100%;
-  min-height: 156px;
-  padding: 16px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.statistics-home-page__metric-button:focus-visible,
-.statistics-home-page__distribution-button:focus-visible,
-.statistics-home-page__detail-title:focus-visible {
-  outline: 2px solid #1677ff;
-  outline-offset: 2px;
-}
-
-.statistics-home-page__metric-value {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.statistics-home-page__metric-unit {
-  font-size: 13px;
-  font-weight: 400;
-}
-
-.statistics-home-page__drill-hint {
-  font-size: 12px;
-}
-
-.statistics-home-page__metric-card--warning {
-  border-color: #faad14;
-}
-
-.statistics-home-page__metric-card--success {
-  border-color: #b7eb8f;
-}
-
-.statistics-home-page__distribution-button {
-  width: 100%;
-  min-height: 44px;
-  padding: 6px 0;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.statistics-home-page__distribution-button > span {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.public-home-page__section-heading h4.ant-typography {
   margin-bottom: 4px;
 }
 
-.statistics-home-page__trend-bars {
-  height: 56px;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  margin-bottom: 10px;
-  overflow-x: auto;
+.public-home-page__metric-card {
+  height: 100%;
 }
 
-.statistics-home-page__trend-bar {
-  width: 10px;
-  min-width: 10px;
-  border-radius: 4px 4px 0 0;
-  background: currentColor;
-  opacity: 0.64;
+.public-home-page__metric-card .ant-statistic {
+  margin-bottom: 8px;
 }
 
-.statistics-home-page__detail-drawer .ant-drawer-content-wrapper {
-  max-width: 100vw;
+.public-home-page__metric-card .ant-statistic-content {
+  font-size: 30px;
+  font-weight: 650;
 }
 
-.statistics-home-page__detail-drawer .ant-drawer-body {
-  overflow-x: hidden;
+.public-home-page__feature-card,
+.public-home-page__entry-card {
+  height: 100%;
 }
 
-.statistics-home-page__detail-title {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-.statistics-home-page__detail-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.statistics-home-page__empty-onboarding .ant-card-body {
-  min-height: 320px;
+.public-home-page__feature-list {
   display: grid;
+  gap: 10px;
+}
+
+.public-home-page__feature-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.public-home-page__feature-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
   place-items: center;
-  padding: 40px 24px;
+  border-radius: 10px;
+  background: #eaf3ff;
+  color: #1677ff;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.statistics-home-page__empty-onboarding .ant-empty-description {
-  max-width: 520px;
-  margin-inline: auto;
+.public-home-page__feature-copy {
+  min-width: 0;
 }
 
-@media (max-width: 767px) {
-  .statistics-home-page__header,
-  .statistics-home-page__clan-summary-header {
-    width: 100%;
-  }
+.public-home-page__feature-copy .ant-typography {
+  margin-bottom: 0;
+}
 
-  .statistics-home-page__clan-summary-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
+.public-home-page__feature-copy .ant-typography-secondary {
+  margin-top: 4px;
+  line-height: 1.6;
+}
 
-  .statistics-home-page__scope,
-  .statistics-home-page__clan-select {
-    width: 100%;
-    min-width: 0;
-  }
+.public-home-page__entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
 
-  .statistics-home-page__clan-select.ant-select-single,
-  .statistics-home-page__clan-select.ant-select-single .ant-select-selector {
-    height: 40px;
-    min-height: 40px;
-  }
+.public-home-page__entry-grid button {
+  display: flex;
+  min-height: 92px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
+}
 
-  .statistics-home-page__metric-button {
-    min-height: 132px;
-  }
+.public-home-page__entry-grid button:hover,
+.public-home-page__entry-grid button:focus-visible {
+  border-color: #91caff;
+  background: #f7faff;
+  outline: none;
+  transform: translateY(-1px);
+}
 
-  .statistics-home-page__distribution-button > span {
-    align-items: flex-start;
+.public-home-page__entry-grid button:focus-visible {
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.18);
+}
+
+.public-home-page__distribution-row {
+  display: grid;
+  gap: 7px;
+}
+
+.public-home-page__distribution-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.public-home-page__empty {
+  min-height: 320px;
+}
+
+.public-home-page__empty .ant-empty {
+  margin: 72px 0;
+}
+
+@media (max-width: 991px) {
+  .public-home-page__hero-layout {
     flex-direction: column;
   }
 
-  .statistics-home-page__detail-drawer .ant-drawer-content-wrapper {
-    width: 100vw !important;
-    max-width: 100vw;
+  .public-home-page__scope,
+  .public-home-page__clan-select {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-home-page__feature-item {
+    grid-template-columns: 40px minmax(0, 1fr);
   }
 
-  .statistics-home-page__detail-drawer .ant-drawer-header,
-  .statistics-home-page__detail-drawer .ant-drawer-body {
-    padding-inline: 16px;
+  .public-home-page__feature-item > .ant-btn {
+    grid-column: 2;
+    justify-self: start;
+    padding-inline: 0;
   }
 
-  .statistics-home-page__empty-onboarding .ant-card-body {
-    min-height: 280px;
-    padding: 32px 16px;
+  .public-home-page__entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-home-page__entry-grid button {
+    min-height: 76px;
+  }
+
+  .public-home-page__metric-card .ant-statistic-content {
+    font-size: 26px;
   }
 }
