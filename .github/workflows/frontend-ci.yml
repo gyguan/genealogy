@@ -82,6 +82,9 @@ jobs:
       - name: Test person edit semantics
         working-directory: frontend/genealogy-web
         run: npm run test:person-edit
+      - name: Test person archive query state
+        working-directory: frontend/genealogy-web
+        run: npm run test:person-archive
       - name: Test import workbench state rules
         working-directory: frontend/genealogy-web
         run: npm run test:imports
