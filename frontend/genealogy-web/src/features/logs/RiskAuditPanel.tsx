@@ -21,7 +21,7 @@ import type {
   RiskAuditEventResponse
 } from '../../shared/api/generated/tracking-types';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
-import { buildRiskQuery, DEFAULT_RISK_FILTERS } from './trackingCenterModel.js';
+import { buildRiskQuery, DEFAULT_RISK_FILTERS, TRACKING_PAGE_SIZE } from './trackingCenterModel.js';
 import type { RiskFilters } from './trackingCenterModel.js';
 import {
   RISK_DISPOSITION_OPTIONS,
@@ -251,12 +251,11 @@ export function RiskAuditPanel({
               locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }}
               pagination={{
                 current: page?.pageNo || filters.pageNo,
-                pageSize: page?.pageSize || filters.pageSize,
+                pageSize: TRACKING_PAGE_SIZE,
                 total: page?.total || 0,
-                showSizeChanger: true,
-                pageSizeOptions: ['20', '50', '100'],
+                showSizeChanger: false,
                 showTotal: total => `共 ${total} 条风险事件`,
-                onChange: (pageNo, pageSize) => setFilters(previous => ({ ...previous, pageNo, pageSize }))
+                onChange: pageNo => setFilters(previous => ({ ...previous, pageNo, pageSize: TRACKING_PAGE_SIZE }))
               }}
               columns={[
                 { key: 'time', title: '发生时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },

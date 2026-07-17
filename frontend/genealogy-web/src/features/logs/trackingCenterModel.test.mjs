@@ -23,8 +23,7 @@ assert.deepEqual(legacy.objectFilters, {
 assert.deepEqual(legacy.auditFilters, {
   ...DEFAULT_AUDIT_FILTERS,
   actorId: '9',
-  actionType: 'source_update',
-  pageSize: 50
+  actionType: 'source_update'
 });
 assert.deepEqual(legacy.riskFilters, DEFAULT_RISK_FILTERS);
 assert.deepEqual(legacy.selectedTrace, { targetType: 'source', targetId: '88', reviewTaskId: '' });
@@ -77,6 +76,7 @@ assert.equal(objectQuery.get('branchId'), '10');
 assert.equal(objectQuery.get('keyword'), '张三');
 assert.equal(objectQuery.get('status'), 'official');
 assert.equal(objectQuery.get('pageNo'), '2');
+assert.equal(objectQuery.get('pageSize'), '10');
 
 const auditQuery = new URLSearchParams(buildAuditQuery({
   ...DEFAULT_AUDIT_FILTERS,
@@ -93,6 +93,7 @@ assert.equal(auditQuery.get('targetType'), 'review_task');
 assert.equal(auditQuery.get('resultStatus'), 'success');
 assert.equal(auditQuery.get('keyword'), '审核');
 assert.equal(auditQuery.get('startTime'), '2026-07-01T00:00:00');
+assert.equal(auditQuery.get('pageSize'), '10');
 
 const riskQuery = new URLSearchParams(buildRiskQuery({
   ...DEFAULT_RISK_FILTERS,
@@ -113,6 +114,6 @@ assert.equal(riskQuery.get('branchId'), '12');
 assert.equal(riskQuery.get('dispositionStatus'), 'resolved');
 assert.equal(riskQuery.get('startTime'), '2026-07-01T00:00:00');
 assert.equal(riskQuery.get('pageNo'), '3');
-assert.equal(riskQuery.get('pageSize'), '50');
+assert.equal(riskQuery.get('pageSize'), '10');
 
 console.log('trackingCenterModel tests passed');
