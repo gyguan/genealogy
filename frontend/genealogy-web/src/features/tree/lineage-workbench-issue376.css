@@ -185,3 +185,99 @@
     min-height: 40px;
   }
 }
+
+.lineage-query-console {
+  display: grid;
+  gap: 12px;
+}
+
+.lineage-query-console-head,
+.lineage-query-console-actions,
+.lineage-result-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.lineage-query-console-head .ant-typography,
+.lineage-query-console-head .ant-typography + .ant-typography {
+  margin-bottom: 0;
+}
+
+.lineage-query-divider.ant-divider-horizontal {
+  margin: 4px 0 0;
+}
+
+.lineage-query-grid {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.lineage-query-grid--base {
+  grid-template-columns: minmax(180px, 240px) minmax(220px, 320px);
+}
+
+.lineage-query-grid--person {
+  grid-template-columns: minmax(280px, 1.4fr) minmax(150px, .8fr) minmax(150px, .8fr) minmax(220px, 1fr);
+}
+
+.lineage-query-grid--branch {
+  grid-template-columns: minmax(220px, 1.1fr) minmax(150px, .7fr) minmax(150px, .7fr) minmax(220px, 1fr);
+}
+
+.lineage-query-grid > .ant-form-item,
+.lineage-result-toolbar > .ant-form-item {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.lineage-query-grid .ant-select,
+.lineage-result-toolbar .ant-select {
+  width: 100%;
+}
+
+.lineage-query-console-actions {
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.lineage-result-toolbar {
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.lineage-result-toolbar > .ant-form-item {
+  width: min(360px, 100%);
+}
+
+@media (max-width: 1199px) {
+  .lineage-query-grid--person,
+  .lineage-query-grid--branch {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .lineage-query-console-head,
+  .lineage-query-console-actions,
+  .lineage-result-toolbar,
+  .lineage-query-console-actions > .ant-space {
+    width: 100%;
+  }
+
+  .lineage-query-grid--base,
+  .lineage-query-grid--person,
+  .lineage-query-grid--branch {
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-query-console-head .ant-segmented,
+  .lineage-query-console-actions .ant-btn,
+  .lineage-query-console-actions > .ant-space:last-child {
+    width: 100%;
+  }
+}
