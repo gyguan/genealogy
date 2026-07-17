@@ -10,7 +10,6 @@ import {
   Result,
   Select,
   Space,
-  Statistic,
   Table,
   Tag,
   Typography
@@ -19,8 +18,7 @@ import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogResponse,
   RiskAuditEventPage,
-  RiskAuditEventResponse,
-  RiskAuditStatsResponse
+  RiskAuditEventResponse
 } from '../../shared/api/generated/tracking-types';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { buildRiskQuery, DEFAULT_RISK_FILTERS } from './trackingCenterModel.js';
@@ -57,10 +55,6 @@ function rangeValue(from: string, to: string) {
 function rangeStrings(values: any) {
   if (!values?.[0] || !values?.[1]) return ['', ''] as const;
   return [values[0].format('YYYY-MM-DDTHH:mm:ss'), values[1].format('YYYY-MM-DDTHH:mm:ss')] as const;
-}
-
-function statsCount(stats: RiskAuditStatsResponse | null, section: keyof Pick<RiskAuditStatsResponse, 'byLevel' | 'byDisposition'>, key: string) {
-  return stats?.[section].find(item => item.key === key)?.count || 0;
 }
 
 function asOperationLog(row: RiskAuditEventResponse): OperationLogResponse {
@@ -112,7 +106,6 @@ export function RiskAuditPanel({
   onOpenTrace
 }: Props) {
   const [page, setPage] = useState<RiskAuditEventPage | null>(null);
-  const [stats, setStats] = useState<RiskAuditStatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [forbidden, setForbidden] = useState(false);
@@ -127,16 +120,9 @@ export function RiskAuditPanel({
     setForbidden(false);
     try {
       const query = buildRiskQuery(nextFilters, clanId);
-      const statsParams = new URLSearchParams(query);
-      statsParams.delete('pageNo');
-      statsParams.delete('pageSize');
-      const [nextPage, nextStats] = await Promise.all([
-        apiClient.get<RiskAuditEventPage>(`/logs/risks?${query}`),
-        apiClient.get<RiskAuditStatsResponse>(`/logs/risks/stats?${statsParams}`)
-      ]);
+      const nextPage = await apiClient.get<RiskAuditEventPage>(`/logs/risks?${query}`);
       if (version !== requestVersion.current) return;
       setPage(nextPage);
-      setStats(nextStats);
       setSelected(selectedId ? nextPage.records.find(row => String(row.id) === selectedId) || null : null);
     } catch (loadError) {
       if (version !== requestVersion.current) return;
@@ -144,7 +130,6 @@ export function RiskAuditPanel({
       setForbidden(requestError.status === 403);
       setError((loadError as Error)?.message || '风险审计查询失败');
       setPage(null);
-      setStats(null);
       setSelected(null);
     } finally {
       if (version === requestVersion.current) setLoading(false);
@@ -241,25 +226,19 @@ export function RiskAuditPanel({
         </Form>
         <div className="tracking-filter-actions">
           <Space wrap>
-            <Button type="primary" loading={loading} onClick={() => void load(filters, '')}>刷新风险事件</Button>
+            <Button type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
             <Button disabled={loading} onClick={reset}>重置</Button>
           </Space>
-          <Text type="secondary">风险数量、分页和分组统计均由服务端在权限范围内计算。</Text>
+          <Text type="secondary">风险事件分页由服务端在权限范围内计算。</Text>
         </div>
       </Card>
 
       {forbidden ? (
-        <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险数量也不会返回。" />
+        <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" />
       ) : error ? (
         <Alert type="error" showIcon message="风险审计查询失败" description={error} action={<Button size="small" onClick={() => void load()}>重试</Button>} />
       ) : (
         <>
-          <div className="tracking-stat-grid">
-            <Card size="small"><Statistic title="风险事件总数" value={stats?.total || 0} /></Card>
-            <Card size="small"><Statistic title="严重" value={statsCount(stats, 'byLevel', 'critical')} /></Card>
-            <Card size="small"><Statistic title="高风险" value={statsCount(stats, 'byLevel', 'high')} /></Card>
-            <Card size="small"><Statistic title="待处置" value={statsCount(stats, 'byDisposition', 'open')} /></Card>
-          </div>
           <Card title="高风险操作事件" extra={<Text type="secondary">点击记录查看原始日志；可追踪对象可直接跳转</Text>}>
             <Table<RiskAuditEventResponse>
               size="small"
