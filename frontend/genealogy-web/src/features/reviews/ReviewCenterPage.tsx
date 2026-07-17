@@ -64,7 +64,7 @@ const statusOptions = [
 const tabFilterCopy: Record<ReviewTabKey, { title: string; description: string; statusPlaceholder: string; submittedLabel: string }> = {
   pending: {
     title: '待审任务筛选',
-    description: '聚焦当前需要我处理的审核事项，可按对象、支派和提交时间缩小待审队列。',
+    description: '',
     statusPlaceholder: '待我审核默认只显示待审核任务',
     submittedLabel: '提交时间'
   },
@@ -682,7 +682,7 @@ export function ReviewCenterPage({ notify }: Props) {
     <div className="review-center-page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Card title="审核中心" extra={<Typography.Text type="secondary">分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。</Typography.Text>}>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}><Typography.Text type="secondary">{currentFilterCopy.description}</Typography.Text><Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>{currentFilterCopy.description ? <Typography.Text type="secondary">{currentFilterCopy.description}</Typography.Text> : null}<Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
             <Row gutter={16}>
               <Col xs={24} sm={12} lg={6}><Form.Item name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></Form.Item></Col>
               {activeTab !== 'pending' ? <Col xs={24} sm={12} lg={6}><Form.Item name="status" label={activeTab === 'processed' ? '审核结果' : '审核进展'}><Select allowClear placeholder={currentFilterCopy.statusPlaceholder} options={currentStatusOptions} /></Form.Item></Col> : null}
