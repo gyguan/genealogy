@@ -12,15 +12,15 @@ const {
   cultureMobileClass
 } = await import(pathToFileURL(modulePath).href);
 
-test('defines one stable short label and one page primary action for every culture tab', () => {
+test('defines one stable short label and one result-card primary action for every culture tab', () => {
   assert.deepEqual(cultureTabItems, [
     { key: 'items', label: '文化资料' },
     { key: 'migrations', label: '迁徙脉络' },
     { key: 'sites', label: '文化场所' }
   ]);
-  assert.equal(culturePrimaryAction('items'), '新增资料');
+  assert.equal(culturePrimaryAction('items'), '新增文化资料');
   assert.equal(culturePrimaryAction('migrations'), '新增迁徙事件');
-  assert.equal(culturePrimaryAction('sites'), '新增场所');
+  assert.equal(culturePrimaryAction('sites'), '新增文化场所');
   assert.ok(cultureTabItems.every(item => item.label.length >= 2 && item.label.length <= 6));
 });
 
