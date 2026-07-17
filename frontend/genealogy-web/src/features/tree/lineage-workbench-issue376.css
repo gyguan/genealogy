@@ -233,6 +233,23 @@
   grid-template-columns: minmax(180px, .85fr) minmax(220px, 1fr) minmax(170px, .8fr) minmax(150px, .75fr) minmax(220px, 1fr);
 }
 
+.lineage-query-grid--person .lineage-person-search {
+  display: flex;
+  width: 100%;
+  min-width: 280px;
+}
+
+.lineage-query-grid--person .lineage-person-search .ant-input-affix-wrapper,
+.lineage-query-grid--person .lineage-person-search .ant-input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.lineage-query-grid--person .lineage-person-search .ant-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .lineage-query-grid > .ant-form-item,
 .lineage-result-toolbar > .ant-form-item {
   margin-bottom: 0;
@@ -277,6 +294,10 @@
   .lineage-query-grid--person,
   .lineage-query-grid--branch {
     grid-template-columns: 1fr;
+  }
+
+  .lineage-query-grid--person .lineage-person-search {
+    min-width: 0;
   }
 
   .lineage-query-console-actions .ant-btn,
