@@ -2,6 +2,7 @@ package com.genealogy.importexport.controller;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.importexport.application.DataExportApplicationService;
+import com.genealogy.person.dto.PersonSearchQuery;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -12,9 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Validated
 @RestController
@@ -42,6 +45,45 @@ public class DataExportController {
         Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
         authorizationApplicationService.requirePermission(clanId, actorId, EXPORT_DOWNLOAD);
         return csvResponse("persons.csv", dataExportApplicationService.exportPersons(clanId));
+    }
+
+    @GetMapping("/clans/{clanId}/exports/persons/search.csv")
+    public ResponseEntity<byte[]> exportPersonSearchResult(
+            @Positive @PathVariable Long clanId,
+            @RequestParam(required = false) Long branchId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String name,
+            @RequestParam(name = "gender", required = false) List<String> genders,
+            @RequestParam(name = "generationNo", required = false) List<Integer> generationNos,
+            @RequestParam(name = "generationWord", required = false) List<String> generationWords,
+            @RequestParam(name = "dataStatus", required = false) List<String> dataStatuses,
+            @RequestParam(required = false) String sort,
+            @RequestHeader HttpHeaders headers
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(headers.getFirst(HttpHeaders.AUTHORIZATION));
+        if (branchId == null) {
+            authorizationApplicationService.requirePermission(clanId, actorId, EXPORT_DOWNLOAD);
+        } else {
+            authorizationApplicationService.requireBranchPermission(clanId, actorId, branchId, EXPORT_DOWNLOAD);
+        }
+        List<String> effectiveStatuses = dataStatuses == null || dataStatuses.isEmpty()
+                ? List.of("official")
+                : dataStatuses;
+        PersonSearchQuery query = new PersonSearchQuery(
+                clanId,
+                branchId,
+                keyword,
+                name,
+                genders,
+                generationNos,
+                generationWords,
+                effectiveStatuses,
+                sort
+        );
+        return csvResponse(
+                "persons-search.csv",
+                dataExportApplicationService.exportPersonSearchResult(query, actorId)
+        );
     }
 
     @GetMapping("/clans/{clanId}/branches/{branchId}/exports/persons.csv")
