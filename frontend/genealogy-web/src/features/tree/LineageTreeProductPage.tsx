@@ -440,8 +440,15 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const drawerWidth = screens.md ? 560 : '100%';
 
   return (
-    <div className="lineage-page lineage-tree-page lineage-tree-page--standardized">
-      <Panel title="查询图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
+    <div className="lineage-page lineage-tree-page lineage-tree-page--standardized tabbed-module-page">
+      <Card className="tabbed-module-intro">
+        <Typography.Title level={3}>世系图谱</Typography.Title>
+        <Typography.Paragraph type="secondary">
+          按中心人物或支派范围查看亲属关系、来源证据和修谱状态；图谱仅用于查询展示，正式数据变更需进入修谱与审核流程。
+        </Typography.Paragraph>
+      </Card>
+      <div className="tabbed-module-workbench">
+        <Panel title="查询图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
         {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
         <div className="lineage-query-console">
           <Tabs
@@ -500,6 +507,8 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
           {canvasView === 'graph' ? <LineageGraphCanvas graph={activeGraph} loading={activeLoadState.loading} emptyText={mode === 'person' ? '请查找并设为中心人物。' : '暂无支派世系数据。'} activeNodeId={graphCenterNodeId} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} highlightedNodeIds={highlightedPath.nodeIds} highlightedEdgeIds={highlightedPath.edgeIds} focusNodeId={locatedNodeId} autoFocus={mode === 'person' ? 'active' : 'fit'} relationScopes={activeRelationScopes} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} /> : <LineageAccessibleList graph={activeGraph} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} onSelectNode={selectNode} onSelectEdge={selectEdge} />}
         </section>
       </Card>
+
+      </div>
 
       <Drawer title={drawerTitle} width={drawerWidth} open={Boolean(selectedNode || selectedEdge)} onClose={clearSelection} destroyOnClose className="lineage-inspector-drawer">
         {selectedNode ? <div className="lineage-drawer-content">
