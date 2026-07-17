@@ -38,7 +38,6 @@ import type {
 } from '../../shared/api/generated/tree-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Field } from '../../shared/ui/Form';
-import { Panel } from '../../shared/ui/Panel';
 import { LineageGraphCanvas } from './LineageGraphCanvas';
 import { findLineagePath } from './lineageGraphModel';
 import {
@@ -448,7 +447,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         </Typography.Paragraph>
       </Card>
       <div className="tabbed-module-workbench">
-        <Panel title="查询图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
+        <Card className="panel antd-panel" size="small">
         {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
         <div className="lineage-query-console">
           <Tabs
@@ -494,7 +493,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
             ]}
           />
         </div>
-      </Panel>
+      </Card>
 
       <Card className="lineage-workbench-card" title="图谱结果">
         <div className="lineage-scope-summary"><Typography.Text type="secondary">{currentClanName} · {currentScopeText}</Typography.Text><Space size={[4, 4]} wrap>{appliedDepthText ? <Tag>{appliedDepthText}</Tag> : null}{activeRelationScopes.map(value => <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>)}{mode === 'branch' ? <Tag>{appliedIncludeSubBranches ? '包含下级支派' : '仅当前支派'}</Tag> : null}</Space></div>
