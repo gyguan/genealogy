@@ -30,6 +30,7 @@ import { ApiRequestError } from '../../shared/api/client';
 import { buildTrackingDeepLink } from '../../shared/navigation/trackingDeepLink.js';
 import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
+import { CultureSearchHeader } from './CultureSearchHeader';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { MigrationEventEditorPage } from './MigrationEventEditorPage';
 import { buildCultureEditorLocation, confirmCultureEditorLeave, isSameCultureEditor, readCultureEditorLocation } from './cultureEditorState';
@@ -40,6 +41,7 @@ import type { CultureBranchOption, CultureClanOption } from './cultureLibrarySer
 import { archiveMigrationEvent, deleteMigrationEvent, getMigrationEvent, getMigrationEventTrace, listMigrationEvents, submitMigrationEventReview } from './migrationEventService';
 import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, readMigrationLocation } from './migrationEventUrlState';
 import type { MigrationSearchState } from './migrationEventUrlState';
+import type { CultureTabKey } from './cultureTabState';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -83,9 +85,11 @@ type Props = {
   clans: CultureClanOption[];
   clansLoading: boolean;
   onClanChange: (clanId: string) => void;
+  activeTab: CultureTabKey;
+  onTabChange: (tab: string) => void;
 };
 
-export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanChange }: Props) {
+export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanChange, activeTab, onTabChange }: Props) {
   const initialLocation = useRef(readMigrationLocation()).current;
   const initialEditor = useRef(migrationEditor(readCultureEditorLocation().editor)).current;
   const previousClanId = useRef(clanId);
@@ -274,9 +278,9 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     {messageContext}
-    <Card size="small" title="迁徙事件查询">
-      <Paragraph type="secondary">按支派维护真实迁徙事件，不拼接或推测缺失路线。</Paragraph>
-      <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={4}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={migrationSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>新增迁徙事件</Button></Space></Col></Row></Form>
+    <Card size="small" className="culture-page-header">
+      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="按时间、地点和支派梳理宗族迁徙事件，不拼接或推测缺失路线。" primaryAction="新增迁徙事件" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'migration', mode: 'create' })} />
+      <Form form={searchForm} layout="vertical" onFinish={applySearch}><Row gutter={[12, 0]}><Col xs={24} md={8} xl={4}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col><Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col><Col xs={24} md={8} xl={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={branchOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} md={8} xl={2}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col><Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={migrationSortOptions} /></Form.Item></Col><Col xs={24} className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></Col></Row></Form>
     </Card>
     <Card title={`迁徙事件（${total}）`}>
       {refreshError ? <Alert type="warning" showIcon closable message="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}

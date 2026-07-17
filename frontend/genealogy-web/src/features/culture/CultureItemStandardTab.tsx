@@ -38,6 +38,7 @@ import { ApiRequestError } from '../../shared/api/client';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { CultureClanSelect } from './CultureClanSelect';
 import { CultureGovernanceModal } from './CultureGovernanceModal';
+import { CultureSearchHeader } from './CultureSearchHeader';
 import type { CultureGovernanceTarget } from './CultureGovernanceModal';
 import { CultureItemEditorPage } from './CultureItemEditorPage';
 import {
@@ -76,6 +77,7 @@ import {
 } from './cultureOptions';
 import { buildCultureLocation, cultureSearchKey, defaultCultureSearch, readCultureLocation } from './cultureUrlState';
 import type { CultureSearchState } from './cultureUrlState';
+import type { CultureTabKey } from './cultureTabState';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -130,9 +132,11 @@ type Props = {
   clans: CultureClanOption[];
   clansLoading: boolean;
   onClanChange: (clanId: string) => void;
+  activeTab: CultureTabKey;
+  onTabChange: (tab: string) => void;
 };
 
-export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChange }: Props) {
+export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChange, activeTab, onTabChange }: Props) {
   const initialLocation = useRef(readCultureLocation()).current;
   const initialEditor = useRef(itemEditor(readCultureEditorLocation().editor)).current;
   const previousClanId = useRef(clanId);
@@ -485,7 +489,8 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card size="small" title="文化资料查询">
+      <Card size="small" className="culture-page-header">
+        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" primaryAction="新增资料" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'item', mode: 'create' })} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>
             <Col xs={24} sm={12} lg={5}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
@@ -495,7 +500,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
             <Col xs={24} sm={12} lg={4}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           </Row>
           <Collapse ghost items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[12, 0]}><Col xs={24} sm={12} lg={5}><Form.Item name="privacyLevel" label="可见范围"><Select {...multiSelectProps} placeholder="可多选" options={privacyOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="hasSource" label="已有来源"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col><Col xs={24} sm={12} lg={5}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col></Row> }]} />
-          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>新增资料</Button></Space></div>
+          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
         </Form>
       </Card>
 
