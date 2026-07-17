@@ -413,7 +413,6 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   const centerNode = personGraph?.nodes.find(node => node.nodeId === personGraph.rootNodeId) || personGraph?.nodes.find(node => node.personId && String(node.personId) === workspace.personId) || personGraph?.nodes[0] || null;
   const center = centerNode ? toPersonFromNode(centerNode, branches) : null;
-  const branchName = branches.find(item => text(item.id) === appliedBranchId)?.branchName || '支派';
   const currentClanName = clans.find(item => text(item.id) === workspace.clanId)?.clanName || '族谱';
   const activeGraph = mode === 'person' ? personGraph : branchGraph;
   const activeLoadState = mode === 'person' ? loadState.personGraph : loadState.branchGraph;
@@ -426,7 +425,6 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const currentScopeText = mode === 'person' ? `${center?.name || '中心人物'} · ${DIRECTION_OPTIONS.find(item => item.value === appliedDirection)?.label}` : branchPath(branches, appliedBranchId);
   const graphOptions = activeGraph?.nodes.filter(node => node.visibility === 'visible').map(node => ({ value: node.nodeId, label: `${node.displayName}${node.generationNo ? ` · ${node.generationNo}世` : ''}${node.branchName ? ` · ${node.branchName}` : ''}` })) || [];
   const queryDirty = mode === 'person' ? personDepth !== appliedPersonDepth || direction !== appliedDirection || !sameRelationScopes(relationScopes, appliedPersonRelationScopes) : selectedBranchId !== appliedBranchId || branchDepth !== appliedBranchDepth || includeSubBranches !== appliedIncludeSubBranches || !sameRelationScopes(relationScopes, appliedBranchRelationScopes);
-  const canvasTitle = mode === 'person' ? `${center?.name || '中心人物'}的世系图` : `${branchName}世系图`;
   const appliedDepthText = mode === 'person' ? PERSON_DEPTH_OPTIONS.find(item => item.value === appliedPersonDepth)?.label : BRANCH_DEPTH_OPTIONS.find(item => item.value === appliedBranchDepth)?.label;
   const generateButtonText = queryDirty ? '生成图谱' : '刷新图谱';
 
@@ -443,14 +441,11 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   return (
     <div className="lineage-page lineage-tree-page lineage-tree-page--standardized">
-      <Panel title="世系图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
+      <Panel title="查询图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
         {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
         <div className="lineage-query-console">
           <div className="lineage-query-console-head">
-            <div>
-              <Typography.Text strong>查询图谱</Typography.Text>
-              <Typography.Paragraph type="secondary">按人物或支派分别填写查询条件；图内定位只在当前结果中查找。</Typography.Paragraph>
-            </div>
+            <Typography.Paragraph type="secondary">按人物或支派分别填写查询条件；图内定位只在当前结果中查找。</Typography.Paragraph>
           </div>
           <Tabs
             className="lineage-query-tabs"
@@ -497,7 +492,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         </div>
       </Panel>
 
-      <Card className="lineage-workbench-card" title={canvasTitle}>
+      <Card className="lineage-workbench-card" title="图谱结果">
         <div className="lineage-scope-summary"><Typography.Text type="secondary">{currentClanName} · {currentScopeText}</Typography.Text><Space size={[4, 4]} wrap>{appliedDepthText ? <Tag>{appliedDepthText}</Tag> : null}{activeRelationScopes.map(value => <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>)}{mode === 'branch' ? <Tag>{appliedIncludeSubBranches ? '包含下级支派' : '仅当前支派'}</Tag> : null}</Space></div>
         <div className="lineage-result-toolbar">
           <Field label="图内定位"><Select aria-label="图内定位人物" showSearch allowClear value={locatedNodeId || undefined} placeholder="搜索当前图人物" optionFilterProp="label" options={graphOptions} suffixIcon={<AimOutlined />} onChange={value => locateNode(value || '')} /></Field>
