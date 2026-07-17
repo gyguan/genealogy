@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Collapse, Empty, Segmented, Select, Space, Steps, Tabs, Tag, Typography } from 'antd';
+import { Alert, Card, Collapse, Empty, Segmented, Select, Space, Steps, Tabs, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
@@ -189,7 +189,7 @@ export function ImportPage({ notify }: Props) {
 
   return (
     <div className="import-center-page">
-      <header className="import-page-header"><div><Typography.Title level={3}>数据导入</Typography.Title><Typography.Paragraph type="secondary">通过标准模板批量导入人物、关系和来源资料。导入数据先生成草稿，经审核后进入正式谱库。</Typography.Paragraph></div><Space wrap><Tag color={workspace.clanId ? 'processing' : 'warning'}>{workspace.clanId ? '已选择宗族' : '未选择宗族'}</Tag>{selectedBranch ? <Tag>{selectedBranch.branchName || '未命名支派'}</Tag> : null}</Space></header>
+      <header className="import-page-header"><Typography.Title level={3}>数据导入</Typography.Title></header>
       <Tabs activeKey={activeView} onChange={changeView} items={[
         { key: 'create', label: '新建导入', children: createContent },
         { key: 'executions', label: '执行任务', children: <AsyncImportExecutionPanel notify={notify} clanId={workspace.clanId} branchId={selectedBranchId} refreshKey={jobRefreshKey} onChanged={refreshJobs} /> },
