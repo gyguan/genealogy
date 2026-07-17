@@ -230,3 +230,32 @@
   padding: 4px 11px;
   color: rgba(0, 0, 0, 0.88);
 }
+
+/* MVP 建谱向导：步骤内操作按钮统一右对齐。 */
+.mvp1-wizard-page .wizard-step-content .actions,
+.mvp1-wizard-page .wizard-step-content .antd-actions,
+.mvp1-wizard-page .wizard-step-content .source-stage-actions,
+.mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.mvp1-wizard-page .wizard-step-content .source-stage-actions {
+  display: flex;
+}
+
+.mvp1-wizard-page .wizard-step-content .actions .ant-space-item,
+.mvp1-wizard-page .wizard-step-content .antd-actions .ant-space-item,
+.mvp1-wizard-page .wizard-step-content .source-stage-actions .ant-space-item,
+.mvp1-wizard-page .wizard-step-content .wizard-source-section-actions .ant-space-item {
+  display: inline-flex;
+}
+
+@media (max-width: 767px) {
+  .mvp1-wizard-page .wizard-step-content .actions,
+  .mvp1-wizard-page .wizard-step-content .antd-actions,
+  .mvp1-wizard-page .wizard-step-content .source-stage-actions,
+  .mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
+    justify-content: flex-end;
+  }
+}
