@@ -28,6 +28,7 @@ import {
   DEFAULT_AUDIT_FILTERS,
   DEFAULT_OBJECT_FILTERS,
   DEFAULT_RISK_FILTERS,
+  TRACKING_PAGE_SIZE,
   TRACKING_TABS,
   buildAuditQuery,
   buildObjectQuery,
@@ -337,7 +338,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             onRow={row => ({ onClick: () => openTrace(row) })}
             rowClassName="tracking-clickable-row"
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }}
-            pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: objectPage?.pageSize || objectFilters.pageSize, total: objectPage?.total || 0, showSizeChanger: true, pageSizeOptions: ['10', '20', '50'], showTotal: total => `共 ${total} 个对象`, onChange: (pageNo, pageSize) => { const next = { ...objectFilters, pageNo, pageSize }; setObjectFilters(next); void loadObjects(next); } }}
+            pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: objectPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 个对象`, onChange: pageNo => { const next = { ...objectFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setObjectFilters(next); void loadObjects(next); } }}
             columns={[
               { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
               { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
@@ -377,7 +378,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
             onRow={row => ({ onClick: () => openAuditLog(row) })}
             rowClassName="tracking-clickable-row"
             locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }}
-            pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: auditPage?.pageSize || auditFilters.pageSize, total: auditPage?.total || 0, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], showTotal: total => `共 ${total} 条记录`, onChange: (pageNo, pageSize) => { const next = { ...auditFilters, pageNo, pageSize }; setAuditFilters(next); void loadAudit(next, ''); } }}
+            pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: auditPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条记录`, onChange: pageNo => { const next = { ...auditFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setAuditFilters(next); void loadAudit(next, ''); } }}
             columns={[
               { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
               { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },

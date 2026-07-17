@@ -46,6 +46,7 @@ export type TrackingCenterState = {
 };
 
 export const TRACKING_TABS: Readonly<{ OBJECT: 'object'; AUDIT: 'audit'; RISK: 'risk' }>;
+export const TRACKING_PAGE_SIZE: 10;
 export const DEFAULT_OBJECT_FILTERS: Readonly<ObjectFilters>;
 export const DEFAULT_AUDIT_FILTERS: Readonly<AuditFilters>;
 export const DEFAULT_RISK_FILTERS: Readonly<RiskFilters>;

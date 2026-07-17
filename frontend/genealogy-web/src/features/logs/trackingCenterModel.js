@@ -1,4 +1,5 @@
 export const TRACKING_TABS = Object.freeze({ OBJECT: 'object', AUDIT: 'audit', RISK: 'risk' });
+export const TRACKING_PAGE_SIZE = 10;
 
 export const DEFAULT_OBJECT_FILTERS = Object.freeze({
   objectType: 'person',
@@ -7,7 +8,7 @@ export const DEFAULT_OBJECT_FILTERS = Object.freeze({
   changedFrom: '',
   changedTo: '',
   pageNo: 1,
-  pageSize: 10
+  pageSize: TRACKING_PAGE_SIZE
 });
 
 export const DEFAULT_AUDIT_FILTERS = Object.freeze({
@@ -19,7 +20,7 @@ export const DEFAULT_AUDIT_FILTERS = Object.freeze({
   startTime: '',
   endTime: '',
   pageNo: 1,
-  pageSize: 20
+  pageSize: TRACKING_PAGE_SIZE
 });
 
 export const DEFAULT_RISK_FILTERS = Object.freeze({
@@ -31,7 +32,7 @@ export const DEFAULT_RISK_FILTERS = Object.freeze({
   startTime: '',
   endTime: '',
   pageNo: 1,
-  pageSize: 20
+  pageSize: TRACKING_PAGE_SIZE
 });
 
 const TRACKING_PARAM_KEYS = [
@@ -74,7 +75,7 @@ export function readTrackingCenterState(search = '') {
       changedFrom: text(params, 'objectFrom'),
       changedTo: text(params, 'objectTo'),
       pageNo: positiveInt(params.get('objectPage'), DEFAULT_OBJECT_FILTERS.pageNo),
-      pageSize: positiveInt(params.get('objectPageSize'), DEFAULT_OBJECT_FILTERS.pageSize)
+      pageSize: TRACKING_PAGE_SIZE
     },
     auditFilters: {
       actorId: text(params, 'auditActor'),
@@ -85,7 +86,7 @@ export function readTrackingCenterState(search = '') {
       startTime: text(params, 'auditFrom'),
       endTime: text(params, 'auditTo'),
       pageNo: positiveInt(params.get('auditPage'), DEFAULT_AUDIT_FILTERS.pageNo),
-      pageSize: positiveInt(params.get('auditPageSize'), DEFAULT_AUDIT_FILTERS.pageSize)
+      pageSize: TRACKING_PAGE_SIZE
     },
     riskFilters: {
       actorId: text(params, 'riskActor'),
@@ -96,7 +97,7 @@ export function readTrackingCenterState(search = '') {
       startTime: text(params, 'riskFrom'),
       endTime: text(params, 'riskTo'),
       pageNo: positiveInt(params.get('riskPage'), DEFAULT_RISK_FILTERS.pageNo),
-      pageSize: positiveInt(params.get('riskPageSize'), DEFAULT_RISK_FILTERS.pageSize)
+      pageSize: TRACKING_PAGE_SIZE
     },
     selectedTrace: {
       targetType,
@@ -167,7 +168,7 @@ export function buildObjectQuery(filters, clanId, branchId = '') {
     clanId: String(clanId || ''),
     objectType: String(filters.objectType || DEFAULT_OBJECT_FILTERS.objectType),
     pageNo: String(positiveInt(filters.pageNo, DEFAULT_OBJECT_FILTERS.pageNo)),
-    pageSize: String(positiveInt(filters.pageSize, DEFAULT_OBJECT_FILTERS.pageSize))
+    pageSize: String(TRACKING_PAGE_SIZE)
   });
   if (branchId) params.set('branchId', String(branchId));
   if (filters.keyword?.trim()) params.set('keyword', filters.keyword.trim());
@@ -181,7 +182,7 @@ export function buildAuditQuery(filters, clanId) {
   const params = new URLSearchParams({
     clanId: String(clanId || ''),
     pageNo: String(positiveInt(filters.pageNo, DEFAULT_AUDIT_FILTERS.pageNo)),
-    pageSize: String(positiveInt(filters.pageSize, DEFAULT_AUDIT_FILTERS.pageSize))
+    pageSize: String(TRACKING_PAGE_SIZE)
   });
   if (filters.actorId?.trim()) params.set('actorId', filters.actorId.trim());
   if (filters.actionType?.trim()) params.set('actionType', filters.actionType.trim());
@@ -197,7 +198,7 @@ export function buildRiskQuery(filters, clanId) {
   const params = new URLSearchParams({
     clanId: String(clanId || ''),
     pageNo: String(positiveInt(filters.pageNo, DEFAULT_RISK_FILTERS.pageNo)),
-    pageSize: String(positiveInt(filters.pageSize, DEFAULT_RISK_FILTERS.pageSize))
+    pageSize: String(TRACKING_PAGE_SIZE)
   });
   if (filters.actorId?.trim()) params.set('actorId', filters.actorId.trim());
   if (filters.riskLevel?.trim()) params.set('riskLevel', filters.riskLevel.trim());
