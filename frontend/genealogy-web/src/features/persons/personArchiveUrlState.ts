@@ -1,58 +1,91 @@
 export type PersonArchiveSearchState = {
   keyword: string;
   name: string;
-  gender: string;
-  generationWord: string;
-  generationNo: string;
+  genders: string[];
+  generationWords: string[];
+  generationNos: string[];
   branchId: string;
-  dataStatus: string;
+  dataStatuses: string[];
   pageNo: number;
+  pageSize: number;
   sort: string;
 };
 
 export type PersonDetailTab = 'basic' | 'events' | 'relations' | 'sources' | 'tracking';
 
 export const DEFAULT_PERSON_SORT = 'updatedAt,desc';
+export const DEFAULT_PERSON_PAGE_SIZE = 20;
+export const PERSON_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export const PERSON_SORT_OPTIONS = [
   { value: 'updatedAt,desc', label: '最近更新' },
   { value: 'name,asc', label: '姓名升序' },
   { value: 'generationNo,asc', label: '代次升序' }
 ] as const;
 
-const PERSON_ARCHIVE_QUERY_KEYS = ['keyword', 'name', 'gender', 'generationWord', 'generationNo', 'branchId', 'dataStatus', 'page', 'sort'] as const;
-const allowedGender = new Set(['', 'male', 'female', 'unknown']);
-const allowedStatus = new Set(['', 'draft', 'pending_review', 'official', 'rejected', 'archived']);
+const PERSON_ARCHIVE_QUERY_KEYS = [
+  'keyword', 'name', 'gender', 'generationWord', 'generationNo', 'branchId', 'dataStatus', 'page', 'pageSize', 'sort'
+] as const;
+const allowedGender = new Set(['male', 'female', 'unknown']);
+const allowedStatus = new Set(['draft', 'pending_review', 'official', 'rejected', 'archived']);
 const allowedSort = new Set<string>(PERSON_SORT_OPTIONS.map(item => item.value));
 const allowedTabs = new Set<PersonDetailTab>(['basic', 'events', 'relations', 'sources', 'tracking']);
 
 function text(params: URLSearchParams, key: string) {
   return String(params.get(key) || '').trim().slice(0, 200);
 }
+
+function list(params: URLSearchParams, key: string) {
+  return params.getAll(key)
+    .flatMap(value => value.split(','))
+    .map(value => value.trim().slice(0, 200))
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index);
+}
+
 function positivePage(value: string | null) {
   const page = Number(value);
   return Number.isSafeInteger(page) && page > 0 && page <= 100000 ? page : 1;
 }
 
+function pageSize(value: string | null) {
+  const size = Number(value);
+  return PERSON_PAGE_SIZE_OPTIONS.includes(size as typeof PERSON_PAGE_SIZE_OPTIONS[number])
+    ? size
+    : DEFAULT_PERSON_PAGE_SIZE;
+}
+
 export function emptyPersonArchiveSearch(): PersonArchiveSearchState {
-  return { keyword: '', name: '', gender: '', generationWord: '', generationNo: '', branchId: '', dataStatus: '', pageNo: 1, sort: DEFAULT_PERSON_SORT };
+  return {
+    keyword: '',
+    name: '',
+    genders: [],
+    generationWords: [],
+    generationNos: [],
+    branchId: '',
+    dataStatuses: ['official'],
+    pageNo: 1,
+    pageSize: DEFAULT_PERSON_PAGE_SIZE,
+    sort: DEFAULT_PERSON_SORT
+  };
 }
 
 export function readPersonArchiveSearch(url = new URL(window.location.href)): PersonArchiveSearchState {
   const params = url.searchParams;
-  const gender = text(params, 'gender');
-  const dataStatus = text(params, 'dataStatus');
   const sort = text(params, 'sort');
-  const generationNo = text(params, 'generationNo');
   const branchId = text(params, 'branchId');
+  const genders = list(params, 'gender').filter(value => allowedGender.has(value));
+  const generationNos = list(params, 'generationNo').filter(value => /^\d{1,4}$/.test(value) && Number(value) > 0);
+  const dataStatuses = list(params, 'dataStatus').filter(value => allowedStatus.has(value));
   return {
     keyword: text(params, 'keyword'),
     name: text(params, 'name'),
-    gender: allowedGender.has(gender) ? gender : '',
-    generationWord: text(params, 'generationWord'),
-    generationNo: /^\d{1,4}$/.test(generationNo) ? generationNo : '',
+    genders,
+    generationWords: list(params, 'generationWord'),
+    generationNos,
     branchId: /^\d+$/.test(branchId) ? branchId : '',
-    dataStatus: allowedStatus.has(dataStatus) ? dataStatus : '',
+    dataStatuses: dataStatuses.length ? dataStatuses : ['official'],
     pageNo: positivePage(params.get('page')),
+    pageSize: pageSize(params.get('pageSize')),
     sort: allowedSort.has(sort) ? sort : DEFAULT_PERSON_SORT
   };
 }
@@ -67,12 +100,27 @@ export function buildPersonArchiveUrl(state: PersonArchiveSearchState, source = 
   url.hash = '';
   url.searchParams.set('view', 'personArchive');
   [...PERSON_ARCHIVE_QUERY_KEYS, 'tab'].forEach(key => url.searchParams.delete(key));
-  const values: Array<[string, string]> = [
-    ['keyword', state.keyword.trim()], ['name', state.name.trim()], ['gender', state.gender], ['generationWord', state.generationWord],
-    ['generationNo', state.generationNo], ['branchId', state.branchId], ['dataStatus', state.dataStatus]
+
+  const scalarValues: Array<[string, string]> = [
+    ['keyword', state.keyword.trim()],
+    ['name', state.name.trim()],
+    ['branchId', state.branchId]
   ];
-  values.forEach(([key, value]) => { if (value) url.searchParams.set(key, value); });
+  scalarValues.forEach(([key, value]) => { if (value) url.searchParams.set(key, value); });
+
+  const multiValues: Array<[string, string[]]> = [
+    ['gender', state.genders],
+    ['generationWord', state.generationWords],
+    ['generationNo', state.generationNos],
+    ['dataStatus', state.dataStatuses]
+  ];
+  multiValues.forEach(([key, values]) => values.forEach(value => {
+    const normalized = String(value || '').trim();
+    if (normalized) url.searchParams.append(key, normalized);
+  }));
+
   if (state.pageNo > 1) url.searchParams.set('page', String(state.pageNo));
+  if (state.pageSize !== DEFAULT_PERSON_PAGE_SIZE) url.searchParams.set('pageSize', String(state.pageSize));
   if (state.sort !== DEFAULT_PERSON_SORT) url.searchParams.set('sort', state.sort);
   return `${url.pathname}${url.search}`;
 }
