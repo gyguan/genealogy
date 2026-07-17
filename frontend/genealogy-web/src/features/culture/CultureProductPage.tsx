@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Card, Typography, message } from 'antd';
+import { message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
@@ -89,15 +89,7 @@ export function CultureProductPage() {
   return (
     <div className="tabbed-module-page culture-product-page">
       {messageContext}
-      <Card className="tabbed-module-intro">
-        <Typography.Title level={3}>宗族文化</Typography.Title>
-        <Typography.Paragraph type="secondary">
-          统一维护姓氏源流、堂号郡望、迁徙脉络与祠堂资料；文化内容须绑定来源或来自已审核记录。
-        </Typography.Paragraph>
-      </Card>
-      <Card className="tabbed-module-tabs-card">
-        {renderActiveTab()}
-      </Card>
+      {renderActiveTab()}
     </div>
   );
 }
