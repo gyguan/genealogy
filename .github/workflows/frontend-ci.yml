@@ -93,6 +93,9 @@ jobs:
           status=$?
           rm -rf .person-archive-test .person-create-entry-test
           exit $status
+      - name: Test workbench query state
+        working-directory: frontend/genealogy-web
+        run: npm run test:workbench
       - name: Test import workbench state rules
         working-directory: frontend/genealogy-web
         run: npm run test:imports

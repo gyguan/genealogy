@@ -4,6 +4,10 @@ import java.time.LocalDateTime;
 
 public record WorkbenchTaskResponse(
         String key,
+        String taskName,
+        String bookName,
+        String creatorName,
+        LocalDateTime createdAt,
         String type,
         String typeText,
         String objectName,
