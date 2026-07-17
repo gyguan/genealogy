@@ -32,30 +32,60 @@
   padding: 16px;
 }
 
+.person-archive-query-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+}
+
 .person-archive-filter-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 16px;
+  min-width: 0;
+}
+
+.person-archive-filter-grid--advanced {
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+}
+
+.person-archive-filter-grid .ant-form-item {
+  min-width: 0;
 }
 
 .person-archive-more-filter {
-  height: auto;
-  padding: 0;
-  margin: 0 0 12px;
+  height: 32px;
+  padding-inline: 4px;
+  margin: 0;
 }
 
 .person-archive-query-actions {
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  align-items: center;
+  padding-bottom: 12px;
+  white-space: nowrap;
+}
+
+.person-archive-result-actions {
+  display: flex;
+  align-items: center;
 }
 
 .person-archive-result-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px 20px;
   min-height: 32px;
   margin-bottom: 12px;
+}
+
+.person-archive-result-toolbar .ant-select {
+  min-width: 132px;
 }
 
 .person-archive-text-action {
@@ -178,7 +208,7 @@
   background: #fafafa;
 }
 
-/* The clan selector now belongs to the query card; undo the former joined-header styling. */
+/* The clan selector belongs to the query card; keep the standard independent-card treatment. */
 .business-page--personArchive .person-archive-query-card {
   border-top: 1px solid var(--query-page-border) !important;
   border-radius: var(--query-page-radius) !important;
@@ -186,6 +216,16 @@
 
 .business-page--personArchive .person-archive-query-card > .ant-card-head {
   display: flex !important;
+}
+
+@media (max-width: 1399px) {
+  .person-archive-query-row {
+    grid-template-columns: 1fr;
+  }
+
+  .person-archive-query-actions {
+    padding-bottom: 0;
+  }
 }
 
 @media (max-width: 1199px) {
@@ -207,13 +247,34 @@
     grid-template-columns: 1fr;
   }
 
-  .person-archive-query-actions .ant-space {
+  .person-archive-query-actions {
     width: 100%;
   }
 
   .person-archive-query-actions .ant-btn {
     flex: 1;
     min-height: 44px;
+  }
+
+  .person-archive-result-card > .ant-card-head .ant-card-head-wrapper {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .person-archive-result-card > .ant-card-head .ant-card-extra,
+  .person-archive-result-actions {
+    width: 100%;
+  }
+
+  .person-archive-result-actions .ant-btn {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .person-archive-result-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .person-archive-desktop-list {
