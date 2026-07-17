@@ -52,7 +52,6 @@ type WizardShellProps<TKey extends string = string> = {
   onExit: () => void;
   onStepChange: (step: TKey) => void;
   onGateAction?: (step: TKey) => void;
-  onContentChange?: () => void;
   children: ReactNode;
 };
 
@@ -91,7 +90,6 @@ export function WizardShell<TKey extends string = string>({
   onExit,
   onStepChange,
   onGateAction,
-  onContentChange,
   children
 }: WizardShellProps<TKey>) {
   const screens = Grid.useBreakpoint();
@@ -193,8 +191,6 @@ export function WizardShell<TKey extends string = string>({
           aria-label={activeStepMeta ? `${activeStepMeta.title}步骤内容` : '当前步骤内容'}
           aria-busy={!loaded}
           data-step-state={loaded ? 'ready' : 'restoring'}
-          onInputCapture={onContentChange}
-          onChangeCapture={onContentChange}
         >
           {children}
         </section>
