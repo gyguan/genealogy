@@ -6,6 +6,7 @@ import {
   readWorkbenchUrlState,
   summarizeBulkResults,
   workbenchEmptyState,
+  workbenchTotalText,
   writeWorkbenchUrlState
 } from './editingWorkspaceModel.js';
 
@@ -41,6 +42,11 @@ test('builds visible filter labels', () => {
     { key: 'risk', label: '风险：高风险' },
     { key: 'status', label: '状态：待处理' }
   ]);
+});
+
+test('formats workbench total count safely', () => {
+  assert.equal(workbenchTotalText(23), '共 23 条任务');
+  assert.equal(workbenchTotalText(-1), '共 0 条任务');
 });
 
 test('summarizes partial bulk operation results', () => {

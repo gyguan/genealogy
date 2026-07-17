@@ -13,6 +13,11 @@ export type WorkbenchUrlState = WorkbenchFilters & {
 export type WorkbenchKpiKey = 'pending' | 'high' | 'source' | 'generation';
 export type WorkbenchEmptyState = { description: string; action: '' | 'clear' | 'retry' };
 
+export function workbenchTotalText(total: number) {
+  const safeTotal = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
+  return `共 ${safeTotal} 条任务`;
+}
+
 export const EMPTY_FILTERS: WorkbenchFilters = { taskType: '', risk: '', status: '' };
 
 const TASK_TYPES = new Set(['review_follow_up', 'missing_source', 'generation_mismatch', 'relationship_check', 'import_follow_up']);
