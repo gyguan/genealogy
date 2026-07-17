@@ -47,12 +47,3 @@ jobs:
 
       - name: Check generated API contract
         run: bash scripts/api/check-api-contract.sh
-
-      - name: Upload generated API contract diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-api-contract
-          path: frontend/genealogy-web/src/shared/api/generated/api-contract.ts
-          if-no-files-found: error
-          retention-days: 3
