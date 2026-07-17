@@ -188,13 +188,20 @@ export function ImportPage({ notify }: Props) {
   );
 
   return (
-    <div className="import-center-page">
-      <header className="import-page-header"><Typography.Title level={3}>数据导入</Typography.Title></header>
-      <Tabs activeKey={activeView} onChange={changeView} items={[
-        { key: 'create', label: '新建导入', children: createContent },
-        { key: 'executions', label: '执行任务', children: <AsyncImportExecutionPanel notify={notify} clanId={workspace.clanId} branchId={selectedBranchId} refreshKey={jobRefreshKey} onChanged={refreshJobs} /> },
-        { key: 'history', label: '导入记录', children: historyContent }
-      ]} />
+    <div className="import-center-page tabbed-module-page">
+      <Card className="tabbed-module-intro">
+        <Typography.Title level={3}>数据导入</Typography.Title>
+        <Typography.Paragraph type="secondary">
+          将人物、关系和来源资料导入为可校验的批次草稿；所有导入结果需经过预检、异常处理与审核后再进入正式数据。
+        </Typography.Paragraph>
+      </Card>
+      <Card className="tabbed-module-tabs-card">
+        <Tabs activeKey={activeView} onChange={changeView} items={[
+          { key: 'create', label: '新建导入', children: createContent },
+          { key: 'executions', label: '导入批次', children: <AsyncImportExecutionPanel notify={notify} clanId={workspace.clanId} branchId={selectedBranchId} refreshKey={jobRefreshKey} onChanged={refreshJobs} /> },
+          { key: 'history', label: '校验与审核', children: historyContent }
+        ]} />
+      </Card>
     </div>
   );
 }

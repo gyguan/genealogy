@@ -16,6 +16,7 @@ import './lineage-tree.css';
 import './lineage-graph.css';
 import './compact-ui.css';
 import './audit-trace.css';
+import './tabbed-module.css';
 import './antd-bridge.css';
 import './person-archive-tweaks.css';
 import './person-archive-source.css';

@@ -394,14 +394,14 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
   );
 
   return (
-    <div className="audit-trace-page">
-      <Card className="tracking-center-intro"><Title level={3}>变更与审计追踪</Title><Paragraph type="secondary">对象追踪用于回看业务对象的变更、审核和来源链路；操作审计用于检索与取证；风险审计聚合权限变更、敏感访问、批量导出和异常操作。本页面只读。</Paragraph></Card>
+    <div className="audit-trace-page tabbed-module-page">
+      <Card className="tracking-center-intro tabbed-module-intro"><Title level={3}>审计追踪</Title><Paragraph type="secondary">统一追踪操作日志、审核链路、字段变更与风险事件；审计信息仅用于授权范围内的责任追溯和问题排查，本页面只读。</Paragraph></Card>
       {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : (
-        <Card className="tracking-center-tabs-card">
+        <Card className="tracking-center-tabs-card tabbed-module-tabs-card">
           <Tabs activeKey={activeTab} onChange={changeTab} items={[
             { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
-            { key: TRACKING_TABS.AUDIT, label: '操作审计', children: auditTab },
-            { key: TRACKING_TABS.RISK, label: '风险审计', children: <RiskAuditPanel active={activeTab === TRACKING_TABS.RISK} clanId={workspace.clanId} workspaceBranchId={workspace.branchId} filters={riskFilters} setFilters={setRiskFilters} selectedRiskLogId={selectedRiskLogId} setSelectedRiskLogId={setSelectedRiskLogId} onOpenTrace={(targetType, targetId, reviewTaskId = '') => setSelectedTrace({ targetType, targetId, reviewTaskId })} /> }
+            { key: TRACKING_TABS.AUDIT, label: '操作日志', children: auditTab },
+            { key: TRACKING_TABS.RISK, label: '风险事件', children: <RiskAuditPanel active={activeTab === TRACKING_TABS.RISK} clanId={workspace.clanId} workspaceBranchId={workspace.branchId} filters={riskFilters} setFilters={setRiskFilters} selectedRiskLogId={selectedRiskLogId} setSelectedRiskLogId={setSelectedRiskLogId} onOpenTrace={(targetType, targetId, reviewTaskId = '') => setSelectedTrace({ targetType, targetId, reviewTaskId })} /> }
           ]} />
         </Card>
       )}

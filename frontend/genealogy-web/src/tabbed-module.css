@@ -1,0 +1,44 @@
+/* Unified tabbed module prototype for tree, culture, imports and audit pages. */
+.tabbed-module-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.tabbed-module-intro .ant-card-body {
+  padding-block: 18px;
+}
+
+.tabbed-module-intro h3.ant-typography {
+  margin: 0 0 6px;
+}
+
+.tabbed-module-intro .ant-typography:last-child {
+  max-width: 960px;
+  margin-bottom: 0;
+  line-height: 1.7;
+}
+
+.tabbed-module-tabs-card > .ant-card-body {
+  padding-top: 8px;
+}
+
+.tabbed-module-tabs-card > .ant-card-body > .ant-tabs > .ant-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.tabbed-module-workbench {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .tabbed-module-page {
+    gap: 12px;
+  }
+
+  .tabbed-module-tabs-card > .ant-card-body,
+  .tabbed-module-intro > .ant-card-body {
+    padding-inline: 12px;
+  }
+}
