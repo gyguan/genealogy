@@ -342,10 +342,7 @@ export function UnifiedStatisticsHomePage() {
       <Card className="public-home-page__hero">
         <div className="public-home-page__hero-layout">
           <div className="public-home-page__hero-copy">
-            <Space size={8} wrap>
-              <Tag color="blue">宗族公共主页</Tag>
-              <Text type="secondary">所有访问者看到一致的公开信息</Text>
-            </Space>
+            <Tag color="blue">宗族公共主页</Tag>
             <Title level={3}>{clanLabel(currentClan)}</Title>
             <Paragraph type="secondary">
               {display(currentClan?.description, '暂未维护宗族简介，可在宗族资料中补充公开的历史沿革与宗族概况。')}
