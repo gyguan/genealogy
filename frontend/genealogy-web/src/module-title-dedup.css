@@ -157,8 +157,9 @@
 }
 
 .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child::after {
-  content: '查询条件';
+  content: '查询图谱';
   font-size: 14px;
+  font-weight: 600;
 }
 
 .business-page--treeProduct .lineage-search-grid--workbench,

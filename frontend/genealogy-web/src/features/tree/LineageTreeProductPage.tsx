@@ -444,9 +444,6 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       <Panel title="查询图谱" description="以人物或支派为中心查看亲属关系、来源证据和修谱状态。">
         {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
         <div className="lineage-query-console">
-          <div className="lineage-query-console-head">
-            <Typography.Paragraph type="secondary">按人物或支派分别填写查询条件；图内定位只在当前结果中查找。</Typography.Paragraph>
-          </div>
           <Tabs
             className="lineage-query-tabs"
             activeKey={mode}
