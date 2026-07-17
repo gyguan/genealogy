@@ -97,7 +97,7 @@ test('culture site tab supports direct URL, detail and mobile layout', async ({ 
   expectOnlySiteTabRequests(requestedPaths);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('button', { name: /新\s*增\s*场\s*所/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: '新增文化场所' })).toBeVisible();
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   const box = await drawer.boundingBox();
   expect(box?.width).toBeGreaterThanOrEqual(389);
