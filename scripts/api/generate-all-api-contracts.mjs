@@ -8,6 +8,7 @@ const exclusions = new Set(
 );
 exclusions.add('tree');
 exclusions.add('person-archive-query');
+exclusions.add('workbench-query');
 
 process.env.OPENAPI_EXCLUDE_DOMAINS = [...exclusions].join(',');
 try {
@@ -19,3 +20,4 @@ try {
 
 await import('./generate-tree-contract.mjs');
 await import('./generate-person-archive-contract.mjs');
+await import('./generate-workbench-contract.mjs');
