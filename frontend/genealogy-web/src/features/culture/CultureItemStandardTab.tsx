@@ -489,7 +489,8 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
-      <Card size="small" className="culture-page-header" title={<CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" primaryAction="新增资料" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'item', mode: 'create' })} />}>
+      <Card size="small" className="culture-page-header">
+        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" primaryAction="新增资料" primaryDisabled={!clanId} onPrimaryAction={() => openEditor({ target: 'item', mode: 'create' })} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>
             <Col xs={24} sm={12} lg={5}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
