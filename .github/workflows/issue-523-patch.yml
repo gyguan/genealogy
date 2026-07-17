@@ -1,0 +1,54 @@
+name: Apply Issue 523 Patch
+
+on:
+  push:
+    branches:
+      - agent/issue-523-fix-person-center-controls
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-523-fix-person-center-controls
+          fetch-depth: 0
+      - name: Patch person center controls
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+            ("  Input,\n", ""),
+            ("  const [locatedNodeId, setLocatedNodeId] = useState('');\n", "  const [locatedNodeId, setLocatedNodeId] = useState('');\n  const [personGraphVersion, setPersonGraphVersion] = useState(0);\n"),
+            ("      if (requestGate.current.isCurrent(token)) setPersonGraph(graph); return graph;\n", "      if (!requestGate.current.isCurrent(token)) return null;\n      setPersonGraph(graph);\n      setPersonGraphVersion(version => version + 1);\n      return graph;\n"),
+            ("    const nextBranchId = item.branchId || selectedBranchId; setSelectedBranchId(nextBranchId); setMode('person'); setRelationScopes([...appliedPersonRelationScopes]); setLocatedNodeId(''); clearSelection();\n", "    const nextBranchId = item.branchId || selectedBranchId; setSearchInput(item.name); setSelectedBranchId(nextBranchId); setMode('person'); setRelationScopes([...appliedPersonRelationScopes]); setLocatedNodeId(''); clearSelection();\n"),
+            ("  const center = centerNode ? toPersonFromNode(centerNode, branches) : null;\n", "  const center = centerNode ? toPersonFromNode(centerNode, branches) : null;\n  const personOptions = [\n    ...(center && !searchPage.records.some(item => item.id === center.id)\n      ? [{ value: center.id, label: `${center.name} · ${center.generation} · ${center.branchName}` }]\n      : []),\n    ...searchPage.records.map(item => ({ value: item.id, label: item.label }))\n  ];\n"),
+            ("  async function handlePersonLookup() {\n", "  async function handlePersonSearch(keyword: string) {\n    setSearchInput(keyword);\n    if (!workspace.clanId) return;\n    await requestPersonPage(workspace.clanId, 1, keyword);\n  }\n  function resetPersonQuery() {\n    setSearchInput(center?.name || '');\n    setRelationScopes([...appliedPersonRelationScopes]);\n    setPersonDepth(appliedPersonDepth);\n    setDirection(appliedDirection);\n    setSelectedBranchId(center?.branchId || appliedBranchId || selectedBranchId);\n    clearSelection();\n    setLocatedNodeId('');\n  }\n  async function handlePersonLookup() {\n"),
+            ("                    <Field label=\"中心人物\"><Space.Compact className=\"lineage-person-search\"><Input allowClear value={searchInput} placeholder=\"输入姓名、谱名或字号\" onChange={event => setSearchInput(event.target.value)} onPressEnter={() => void handlePersonLookup()} disabled={!workspace.clanId} /><Button icon={<SearchOutlined />} loading={loadState.search.loading} disabled={!workspace.clanId} onClick={() => void handlePersonLookup()}>设为中心</Button></Space.Compact></Field>\n", "                    <Field label=\"中心人物\"><Select aria-label=\"选择中心人物\" showSearch allowClear value={workspace.personId || undefined} searchValue={searchInput} placeholder=\"输入姓名、谱名或字号并选择人物\" filterOption={false} loading={loadState.search.loading} disabled={!workspace.clanId} options={personOptions} onSearch={value => void handlePersonSearch(value)} onClear={() => setSearchInput('')} onChange={value => { const item = searchPage.records.find(record => record.id === value); if (item) void handlePersonSelection(item); }} notFoundContent={searchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号'} /></Field>\n"),
+            ("                    <Space wrap><Button onClick={() => { setRelationScopes([...appliedPersonRelationScopes]); setPersonDepth(appliedPersonDepth); setDirection(appliedDirection); setSelectedBranchId(appliedBranchId || selectedBranchId); }}>重置</Button><Button type=\"primary\" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={!workspace.personId} onClick={() => void applyGraphQuery()}>{generateButtonText}</Button></Space>\n", "                    <Space wrap><Button onClick={resetPersonQuery}>重置</Button><Button type=\"primary\" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={!workspace.personId} onClick={() => void applyGraphQuery()}>{generateButtonText}</Button></Space>\n"),
+            ("          {canvasView === 'graph' ? <LineageGraphCanvas graph={activeGraph}", "          {canvasView === 'graph' ? <LineageGraphCanvas key={`graph-${mode}-${personGraphVersion}`} graph={activeGraph}"),
+            ("relationScopes={activeRelationScopes} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} /> : <LineageAccessibleList graph={activeGraph}", "relationScopes={activeRelationScopes} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} /> : <LineageAccessibleList key={`list-${mode}-${personGraphVersion}`} graph={activeGraph}")
+          ]
+
+          for old, new in replacements:
+            if old not in text:
+              raise SystemExit(f'Expected source snippet not found: {old[:120]!r}')
+            text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          Path('.github/workflows/issue-523-patch.yml').unlink()
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/tree/LineageTreeProductPage.tsx .github/workflows/issue-523-patch.yml
+          git commit -m "fix(tree): repair person center controls"
+          git push origin HEAD:agent/issue-523-fix-person-center-controls
