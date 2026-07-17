@@ -7,10 +7,10 @@ import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
 import {
-  EMPTY_FILTERS, filterLabels, filtersForKpi, readWorkbenchUrlState,
+  EMPTY_FILTERS, filterLabels, readWorkbenchUrlState,
   summarizeBulkResults, workbenchEmptyState, writeWorkbenchUrlState
 } from './editingWorkspaceModel';
-import type { WorkbenchFilters, WorkbenchKpiKey, WorkbenchUrlState } from './editingWorkspaceModel';
+import type { WorkbenchFilters, WorkbenchUrlState } from './editingWorkspaceModel';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -18,7 +18,6 @@ type WorkbenchTaskType = 'review_follow_up' | 'missing_source' | 'generation_mis
 type WorkbenchNavigateKey = 'reviewCenter' | 'personArchive' | 'sourceLibrary' | 'treeProduct' | 'mvp1Wizard';
 type Props = { onNavigate?: (view: WorkbenchNavigateKey) => void };
 type ClanLike = { id?: number | string; clanName?: string; name?: string; surname?: string };
-type WorkbenchSummary = { pendingTaskCount?: number; highRiskCount?: number; missingSourceCount?: number; generationIssueCount?: number };
 type WorkbenchTask = {
   key: string; type: WorkbenchTaskType; typeText: string; objectName: string; branchName: string;
   risk: WorkbenchRisk; status: WorkbenchStatus; statusText: string; suggestion: string;
@@ -76,12 +75,9 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   const requestVersionRef = useRef(0);
   const desiredTaskIdRef = useRef(initialUrlState.taskId);
   const [clans, setClans] = useState<ClanLike[]>([]);
-  const [summary, setSummary] = useState<WorkbenchSummary>({});
   const [taskPage, setTaskPage] = useState<WorkbenchTaskPage>({ ...EMPTY_TASK_PAGE, pageNo: initialUrlState.page });
   const [selectedTask, setSelectedTask] = useState<WorkbenchTask | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
   const [taskLoading, setTaskLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState('');
   const [taskError, setTaskError] = useState('');
   const [taskType, setTaskType] = useState(initialUrlState.taskType);
   const [risk, setRisk] = useState(initialUrlState.risk);
@@ -140,22 +136,21 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   async function loadWorkbench(sourceClanId = currentClanId, nextPage = 1, filters: WorkbenchFilters = currentFilters) {
     const version = ++requestVersionRef.current;
     const nextClanId = sourceClanId || await loadClans();
-    if (!nextClanId) { setSummary({}); setTaskPage(EMPTY_TASK_PAGE); setSelectedKeys([]); return undefined; }
-    setSummaryLoading(true); setTaskLoading(true); setSummaryError(''); setTaskError('');
+    if (!nextClanId) { setTaskPage(EMPTY_TASK_PAGE); setSelectedKeys([]); return undefined; }
+    setTaskLoading(true); setTaskError('');
     const query = buildTaskQuery(nextClanId, nextPage, filters);
-    const [summaryResult, taskResult] = await Promise.allSettled([
-      apiClient.get(`/workbench/summary?clanId=${nextClanId}`),
-      apiClient.get(`/workbench/tasks?${query.toString()}`)
-    ]);
-    if (version !== requestVersionRef.current) return undefined;
-    let nextTaskPage: WorkbenchTaskPage | undefined;
-    if (summaryResult.status === 'fulfilled') { setSummary(unwrapData<WorkbenchSummary>(summaryResult.value, {})); setLastUpdatedAt(new Date()); }
-    else setSummaryError(errorMessage(summaryResult.reason, '加载工作台摘要失败'));
-    if (taskResult.status === 'fulfilled') {
-      nextTaskPage = unwrapData<WorkbenchTaskPage>(taskResult.value, { ...EMPTY_TASK_PAGE, pageNo: nextPage });
+    try {
+      const taskResult = await apiClient.get(`/workbench/tasks?${query.toString()}`);
+      if (version !== requestVersionRef.current) return undefined;
+      const nextTaskPage = unwrapData<WorkbenchTaskPage>(taskResult, { ...EMPTY_TASK_PAGE, pageNo: nextPage });
       setTaskPage(nextTaskPage); setSelectedKeys([]); setLastUpdatedAt(new Date()); restoreTaskFromPage(nextTaskPage);
-    } else setTaskError(errorMessage(taskResult.reason, '加载修谱任务失败'));
-    setSummaryLoading(false); setTaskLoading(false); return nextTaskPage;
+      return nextTaskPage;
+    } catch (error) {
+      if (version === requestVersionRef.current) setTaskError(errorMessage(error, '加载修谱任务失败'));
+      return undefined;
+    } finally {
+      if (version === requestVersionRef.current) setTaskLoading(false);
+    }
   }
   async function loadHistory(taskKey: string) {
     setHistoryLoading(true); setHistoryError('');
@@ -177,7 +172,6 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   function searchWorkbench() { applyState(currentClanId, 1, currentFilters); }
   function resetFilters() { applyState(currentClanId, 1, EMPTY_FILTERS); }
   function clearFilter(key: keyof WorkbenchFilters) { applyState(currentClanId, 1, { ...currentFilters, [key]: '' }); }
-  function applyKpiFilter(key: WorkbenchKpiKey) { applyState(currentClanId, 1, filtersForKpi(key)); }
   function changePage(page: number) { replaceUrl({ page, taskId: '' }); desiredTaskIdRef.current = ''; setSelectedTask(null); setSelectedKeys([]); void loadWorkbench(currentClanId, page, currentFilters); }
   async function refreshTaskStatus() {
     const task = selectedTask;
@@ -217,22 +211,13 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     setBulkModalOpen(false); setSelectedKeys([]); await loadWorkbench(currentClanId, taskPage.pageNo || 1, currentFilters); setBulkLoading(false);
   }
 
-  const summaryCards: Array<{ key: WorkbenchKpiKey; label: string; value?: number; tag: string; color?: string }> = [
-    { key: 'pending', label: '待处理问题', value: summary.pendingTaskCount, tag: '筛选待处理任务' },
-    { key: 'high', label: '高风险任务', value: summary.highRiskCount, tag: summary.highRiskCount ? '需优先处理' : '暂无高风险', color: summary.highRiskCount ? 'error' : 'success' },
-    { key: 'source', label: '资料缺失', value: summary.missingSourceCount, tag: summary.missingSourceCount ? '待补来源' : '来源正常', color: summary.missingSourceCount ? 'warning' : 'success' },
-    { key: 'generation', label: '代次/字辈问题', value: summary.generationIssueCount, tag: summary.generationIssueCount ? '待校验' : '已校验', color: summary.generationIssueCount ? 'processing' : 'success' }
-  ];
   const emptyState = workbenchEmptyState({ hasClan: Boolean(currentClanId), loading: taskLoading, error: Boolean(taskError), hasFilters: activeFilterLabels.length > 0, count: tasks.length });
   const emptyNode = <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>{emptyState.action === 'clear' ? <Button onClick={resetFilters}>清除筛选</Button> : emptyState.action === 'retry' ? <Button onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, currentFilters)}>重试</Button> : null}</Empty>;
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    <Card><Row gutter={[16, 16]} align="middle" justify="space-between"><Col xs={24} lg={14}><Space direction="vertical" size={4}><Typography.Title level={3} style={{ margin: 0 }}>修谱工作台</Typography.Title><Typography.Text type="secondary">集中处理资料缺失、字辈异常、关系复核和审核前阻塞问题。</Typography.Text></Space></Col><Col xs={24} lg={10}><Row gutter={[12, 12]} align="bottom"><Col xs={24} sm={16}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">当前宗族</Typography.Text><Select showSearch optionFilterProp="label" style={{ width: '100%' }} value={currentClanId} onChange={changeClan} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanLabel(clan) }))} placeholder="请选择宗族" /></Space></Col><Col xs={24} sm={8}><Button block loading={summaryLoading || taskLoading} onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, currentFilters)}>刷新</Button></Col></Row><Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>最近更新时间：{lastUpdatedAt ? lastUpdatedAt.toLocaleString('zh-CN', { hour12: false }) : '尚未更新'}</Typography.Text></Col></Row></Card>
+    <Card title="查询条件"><Space direction="vertical" size="middle" style={{ width: '100%' }}><Row gutter={[16, 16]} align="middle" justify="space-between"><Col xs={24} lg={14}><Space direction="vertical" size={4}><Typography.Title level={3} style={{ margin: 0 }}>修谱工作台</Typography.Title><Typography.Text type="secondary">集中处理资料缺失、字辈异常、关系复核和审核前阻塞问题。</Typography.Text></Space></Col><Col xs={24} lg={10}><Typography.Text type="secondary" style={{ display: 'block', textAlign: screens.lg ? 'right' : 'left' }}>最近更新时间：{lastUpdatedAt ? lastUpdatedAt.toLocaleString('zh-CN', { hour12: false }) : '尚未更新'}</Typography.Text></Col></Row><Row gutter={[16, 12]}><Col xs={24} md={12} xl={6}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">当前宗族</Typography.Text><Select showSearch optionFilterProp="label" style={{ width: '100%' }} value={currentClanId} onChange={changeClan} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanLabel(clan) }))} placeholder="请选择宗族" /></Space></Col><Col xs={24} md={12} xl={6}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">问题类型</Typography.Text><Select style={{ width: '100%' }} value={taskType} onChange={setTaskType} options={[{ value: '', label: '全部问题' }, { value: 'review_follow_up', label: '审核跟进' }, { value: 'missing_source', label: '来源证据缺失' }, { value: 'generation_mismatch', label: '字辈/代次待补' }, { value: 'relationship_check', label: '关系复核建议' }, { value: 'import_follow_up', label: '导入异常' }]} /></Space></Col><Col xs={24} md={12} xl={6}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">风险等级</Typography.Text><Select style={{ width: '100%' }} value={risk} onChange={setRisk} options={[{ value: '', label: '全部风险' }, { value: 'high', label: '高风险' }, { value: 'medium', label: '中风险' }, { value: 'low', label: '低风险' }]} /></Space></Col><Col xs={24} md={12} xl={6}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">任务状态</Typography.Text><Select style={{ width: '100%' }} value={status} onChange={setStatus} options={[{ value: '', label: '全部状态' }, { value: 'pending', label: '待处理' }, { value: 'processing', label: '处理中' }, { value: 'ready', label: '待确认' }, { value: 'blocked', label: '已阻塞' }]} /></Space></Col></Row><Row gutter={[16, 12]} align="middle" justify="space-between"><Col flex="auto">{activeFilterLabels.length ? <Space wrap><Typography.Text type="secondary">当前筛选：</Typography.Text>{activeFilterLabels.map(item => <Tag key={item.key} closable onClose={event => { event.preventDefault(); clearFilter(item.key); }}>{item.label}</Tag>)}<Button type="link" size="small" onClick={resetFilters}>清除全部</Button></Space> : <Typography.Text type="secondary">当前筛选：全部任务</Typography.Text>}</Col><Col><Space><Button onClick={resetFilters}>重置</Button><Button loading={taskLoading} onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, currentFilters)}>刷新</Button><Button type="primary" loading={taskLoading} onClick={searchWorkbench}>查询</Button></Space></Col></Row></Space></Card>
 
-    <Card title="筛选条件"><Row gutter={[16, 12]}><Col xs={24} md={8}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">问题类型</Typography.Text><Select style={{ width: '100%' }} value={taskType} onChange={setTaskType} options={[{ value: '', label: '全部问题' }, { value: 'review_follow_up', label: '审核跟进' }, { value: 'missing_source', label: '来源证据缺失' }, { value: 'generation_mismatch', label: '字辈/代次待补' }, { value: 'relationship_check', label: '关系复核建议' }, { value: 'import_follow_up', label: '导入异常' }]} /></Space></Col><Col xs={24} md={8}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">风险等级</Typography.Text><Select style={{ width: '100%' }} value={risk} onChange={setRisk} options={[{ value: '', label: '全部风险' }, { value: 'high', label: '高风险' }, { value: 'medium', label: '中风险' }, { value: 'low', label: '低风险' }]} /></Space></Col><Col xs={24} md={8}><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text type="secondary">任务状态</Typography.Text><Select style={{ width: '100%' }} value={status} onChange={setStatus} options={[{ value: '', label: '全部状态' }, { value: 'pending', label: '待处理' }, { value: 'processing', label: '处理中' }, { value: 'ready', label: '待确认' }, { value: 'blocked', label: '已阻塞' }]} /></Space></Col></Row>{activeFilterLabels.length ? <Space wrap style={{ marginTop: 16 }}><Typography.Text type="secondary">当前筛选：</Typography.Text>{activeFilterLabels.map(item => <Tag key={item.key} closable onClose={event => { event.preventDefault(); clearFilter(item.key); }}>{item.label}</Tag>)}<Button type="link" size="small" onClick={resetFilters}>清除全部</Button></Space> : null}<Row justify="end" style={{ marginTop: 16 }}><Space><Button onClick={resetFilters}>重置</Button><Button type="primary" loading={taskLoading} onClick={searchWorkbench}>查询</Button></Space></Row></Card>
 
-    {summaryError ? <Alert type="error" showIcon message="工作台摘要加载失败" description={summaryError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, currentFilters)}>重试</Button>} /> : null}
-    <Row gutter={[12, 12]}>{summaryCards.map(item => { const activeFilters = filtersForKpi(item.key); const active = activeFilters.taskType === taskType && activeFilters.risk === risk && activeFilters.status === status; return <Col xs={24} md={12} xl={6} key={item.key}><Card hoverable={!summaryLoading && !summaryError && Boolean(currentClanId)} role="button" tabIndex={0} aria-label={`${item.label}，${item.value ?? '尚未加载'}，点击筛选任务`} onClick={() => !summaryLoading && !summaryError && applyKpiFilter(item.key)} onKeyDown={event => { if ((event.key === 'Enter' || event.key === ' ') && !summaryLoading && !summaryError) { event.preventDefault(); applyKpiFilter(item.key); } }} style={{ cursor: summaryLoading || summaryError ? 'default' : 'pointer', borderColor: active ? '#1677ff' : undefined }}><Typography.Text type="secondary">{item.label}</Typography.Text>{summaryLoading ? <Skeleton.Input active size="small" style={{ display: 'block', margin: '12px 0' }} /> : <Typography.Title level={3}>{currentClanId ? item.value ?? '-' : '-'}</Typography.Title>}<Tag color={item.color}>{item.tag}</Tag><Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>{active ? '当前已应用' : '点击查看明细'}</Typography.Text></Card></Col>; })}</Row>
 
     <Card title="修谱问题任务池">
       {selectedKeys.length ? <Alert type="info" showIcon message={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
