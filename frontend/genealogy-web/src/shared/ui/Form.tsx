@@ -133,15 +133,28 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
   const element = asElement(props.children);
   const name = props.name || wizardFieldName(props.label);
   const currentValue = element?.props.value;
+  const isExternallyControlledSearch = element?.props.searchValue !== undefined;
 
   useEffect(() => {
-    if (!context.form || !name || currentValue === undefined) return;
+    if (!context.form || !name || currentValue === undefined || isExternallyControlledSearch) return;
     if (context.form.getFieldValue(name) !== currentValue) {
       context.form.setFieldValue(name, currentValue);
     }
-  }, [context.form, name, currentValue]);
+  }, [context.form, name, currentValue, isExternallyControlledSearch]);
 
   if (isTechnicalLabel(props.label)) return null;
+  if (isExternallyControlledSearch) {
+    return (
+      <Form.Item
+        className="field antd-field"
+        label={props.label}
+        extra={props.hint}
+        colon={false}
+      >
+        {props.children}
+      </Form.Item>
+    );
+  }
   const rules = context.step ? [{
     validator: async () => {
       const errors = validateWizardStep(context.step!, context.form?.getFieldsValue(true) || {});
