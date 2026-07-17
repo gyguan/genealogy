@@ -1,0 +1,181 @@
+.source-library-query-page .source-library-stack {
+  width: 100%;
+}
+
+.source-library-query-page .source-library-query-grid {
+  display: grid;
+  gap: 0 16px;
+}
+
+.source-library-query-page .source-library-query-grid--primary {
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.25fr) minmax(160px, .8fr) minmax(160px, .8fr) auto;
+  align-items: end;
+}
+
+.source-library-query-page .source-library-query-grid--advanced {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  margin-top: 16px;
+}
+
+.source-library-query-page .source-library-query-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-bottom: 12px;
+  white-space: nowrap;
+}
+
+.source-library-query-page .source-library-more-button {
+  padding-inline: 6px;
+}
+
+.source-library-query-page .source-library-more-icon {
+  margin-inline-start: 6px;
+  transition: transform .2s ease;
+}
+
+.source-library-query-page .source-library-more-icon--open {
+  transform: rotate(180deg);
+}
+
+.source-library-query-page .source-library-query-alert,
+.source-library-query-page .source-library-result-alert,
+.source-library-query-page .source-library-form-alert {
+  margin-bottom: 16px;
+}
+
+.source-library-query-page .source-library-result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.source-library-query-page .source-library-sort {
+  width: 144px;
+  flex: 0 0 auto;
+}
+
+.source-library-query-page .source-library-name-link {
+  height: auto;
+  padding: 0;
+  text-align: left;
+}
+
+.source-library-query-page .source-library-loading {
+  width: 100%;
+  padding: 48px;
+}
+
+.source-library-query-page .source-library-detail-title {
+  margin: 0;
+}
+
+.source-library-query-page .source-library-mobile-list .ant-list-item {
+  padding: 0 0 12px;
+  border-block-end: 0;
+}
+
+.source-library-query-page .source-library-mobile-card {
+  width: 100%;
+}
+
+.source-library-query-page .source-library-mobile-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.source-library-query-page .source-library-mobile-card__title {
+  height: auto;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+  font-weight: 600;
+}
+
+.source-library-query-page .source-library-mobile-card__summary {
+  display: block;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+.source-library-query-page .source-library-mobile-card__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-top: 14px;
+}
+
+.source-library-query-page .source-library-mobile-card__grid > div {
+  display: grid;
+  gap: 4px;
+}
+
+.source-library-query-page .source-library-mobile-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.source-library-query-page .source-library-mobile-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+@media (max-width: 1199px) {
+  .source-library-query-page .source-library-query-grid--primary {
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+
+  .source-library-query-page .source-library-query-actions {
+    grid-column: 1 / -1;
+  }
+
+  .source-library-query-page .source-library-query-grid--advanced {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .source-library-query-page .source-library-query-grid--primary,
+  .source-library-query-page .source-library-query-grid--advanced {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .source-library-query-page .source-library-query-actions {
+    width: 100%;
+  }
+
+  .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-head-wrapper {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-extra {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-extra > .ant-space {
+    width: 100%;
+  }
+
+  .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-extra .ant-btn:not([aria-label]) {
+    flex: 1;
+  }
+
+  .source-library-query-page .source-library-result-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .source-library-query-page .source-library-sort {
+    width: 100%;
+  }
+}
