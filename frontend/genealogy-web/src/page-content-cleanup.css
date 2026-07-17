@@ -2,6 +2,14 @@
 
 /* The global module header already identifies the page; the home dashboard starts
    directly with clan context and metrics. */
+.antd-content:has(.business-page--home) {
+  padding-top: 12px;
+}
+
+.business-page--home .statistics-home-page.ant-space-vertical {
+  row-gap: 12px;
+}
+
 .business-page--home .statistics-home-page__heading > .ant-typography {
   display: none;
 }
