@@ -14,7 +14,20 @@ export type AppViewKey =
 const VIEW_QUERY_KEYS: Record<AppViewKey, readonly string[]> = {
   home: ['clanId', 'metric', 'category'],
   mvp1Wizard: ['clanId', 'step'],
-  personArchive: ['clanId', 'branchId', 'personId', 'keyword', 'page', 'pageSize'],
+  personArchive: [
+    'clanId',
+    'branchId',
+    'personId',
+    'keyword',
+    'name',
+    'gender',
+    'generationWord',
+    'generationNo',
+    'dataStatus',
+    'sort',
+    'page',
+    'pageSize'
+  ],
   treeProduct: [
     'clanId',
     'branchId',
@@ -94,8 +107,10 @@ export function buildViewUrl(view: AppViewKey, input: string | URL, options: Vie
   const allowedKeys = new Set(VIEW_QUERY_KEYS[view]);
 
   for (const key of allowedKeys) {
-    const value = current.searchParams.get(key);
-    if (value !== null && value !== '') next.searchParams.set(key, value);
+    const values = current.searchParams.getAll(key);
+    values.forEach(value => {
+      if (value !== '') next.searchParams.append(key, value);
+    });
   }
 
   applyParams(next, options.params);
