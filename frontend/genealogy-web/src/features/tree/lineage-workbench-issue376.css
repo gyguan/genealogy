@@ -206,8 +206,17 @@
   margin-bottom: 0;
 }
 
-.lineage-query-divider.ant-divider-horizontal {
-  margin: 4px 0 0;
+.lineage-query-tabs .ant-tabs-nav {
+  margin-bottom: 16px;
+}
+
+.lineage-query-tabs .ant-tabs-tab {
+  padding-inline: 4px;
+}
+
+.lineage-query-tab-pane {
+  display: grid;
+  gap: 12px;
 }
 
 .lineage-query-grid {
@@ -216,16 +225,12 @@
   align-items: end;
 }
 
-.lineage-query-grid--base {
-  grid-template-columns: minmax(180px, 240px) minmax(220px, 320px);
-}
-
 .lineage-query-grid--person {
-  grid-template-columns: minmax(280px, 1.4fr) minmax(150px, .8fr) minmax(150px, .8fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(170px, .75fr) minmax(190px, .9fr) minmax(300px, 1.4fr) minmax(150px, .75fr) minmax(150px, .75fr) minmax(220px, 1fr);
 }
 
 .lineage-query-grid--branch {
-  grid-template-columns: minmax(220px, 1.1fr) minmax(150px, .7fr) minmax(150px, .7fr) minmax(220px, 1fr);
+  grid-template-columns: minmax(180px, .85fr) minmax(220px, 1fr) minmax(170px, .8fr) minmax(150px, .75fr) minmax(220px, 1fr);
 }
 
 .lineage-query-grid > .ant-form-item,
@@ -269,13 +274,11 @@
     width: 100%;
   }
 
-  .lineage-query-grid--base,
   .lineage-query-grid--person,
   .lineage-query-grid--branch {
     grid-template-columns: 1fr;
   }
 
-  .lineage-query-console-head .ant-segmented,
   .lineage-query-console-actions .ant-btn,
   .lineage-query-console-actions > .ant-space:last-child {
     width: 100%;
