@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftOutlined, MoreOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
   Card,
   Col,
   Descriptions,
+  Drawer,
   Dropdown,
   Empty,
   Form,
@@ -27,6 +28,7 @@ import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import {
+  createSource,
   deleteSourceAttachment,
   downloadAttachment,
   getSourceDetail,
@@ -82,6 +84,20 @@ type BindingFormValues = {
 };
 
 type AttachmentFormValues = { privacyLevel?: string; sensitiveLevel?: string };
+type SourceCreateFormValues = {
+  sourceName: string;
+  sourceType: string;
+  providerName?: string;
+  bookTitle?: string;
+  volumeNo?: string;
+  pageNo?: string;
+  sourceDate?: string;
+  excerpt?: string;
+  description?: string;
+  confidenceLevel?: string;
+  privacyLevel?: string;
+  sensitiveLevel?: string;
+};
 type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {
   hasAttachment?: string;
   hasBinding?: string;
@@ -309,6 +325,9 @@ export function SourceLibraryPage({ notify }: Props) {
   const [attachmentLoading, setAttachmentLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string>();
   const [attachmentModalOpen, setAttachmentModalOpen] = useState(false);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [createSubmitLoading, setCreateSubmitLoading] = useState(false);
+  const [createSubmitError, setCreateSubmitError] = useState<string>();
   const [attachmentSubmitLoading, setAttachmentSubmitLoading] = useState(false);
   const [attachmentSubmitError, setAttachmentSubmitError] = useState<string>();
   const [people, setPeople] = useState<PersonOption[]>([]);
@@ -326,6 +345,7 @@ export function SourceLibraryPage({ notify }: Props) {
   const [lastRevision, setLastRevision] = useState<BindingRevisionResponse | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sourceForm] = Form.useForm<SourceSearchFormValues>();
+  const [createForm] = Form.useForm<SourceCreateFormValues>();
   const [bindingForm] = Form.useForm<BindingFormValues>();
   const [attachmentForm] = Form.useForm<AttachmentFormValues>();
   const listScrollRef = useRef<number>(Number(window.history.state?.sourceLibraryScrollY || 0));
@@ -500,6 +520,62 @@ export function SourceLibraryPage({ notify }: Props) {
     setSearch(next);
     writeSearchToUrl(next);
     void loadSources(next);
+  }
+
+  function openCreateSource() {
+    setCreateSubmitError(undefined);
+    createForm.resetFields();
+    createForm.setFieldsValue({
+      sourceType: 'genealogy_book',
+      confidenceLevel: 'unknown',
+      privacyLevel: 'clan_only',
+      sensitiveLevel: 'normal'
+    });
+    setCreateDrawerOpen(true);
+  }
+
+  async function submitCreateSource(submitReview: boolean) {
+    if (!clanId) {
+      setCreateSubmitError('请先选择宗族后再新增来源');
+      return;
+    }
+    try {
+      const values = await createForm.validateFields();
+      setCreateSubmitLoading(true);
+      setCreateSubmitError(undefined);
+      const created = await createSource(clanId, {
+        sourceName: values.sourceName.trim(),
+        sourceType: values.sourceType,
+        providerName: values.providerName?.trim() || undefined,
+        bookTitle: values.bookTitle?.trim() || undefined,
+        volumeNo: values.volumeNo?.trim() || undefined,
+        pageNo: values.pageNo?.trim() || undefined,
+        sourceDate: values.sourceDate?.trim() || undefined,
+        excerpt: values.excerpt?.trim() || undefined,
+        description: values.description?.trim() || undefined,
+        confidenceLevel: values.confidenceLevel,
+        privacyLevel: values.privacyLevel,
+        sensitiveLevel: values.sensitiveLevel,
+        submitReview
+      });
+      notify({ message: submitReview ? '来源已保存并提交审核' : '来源已保存为草稿', id: created?.id });
+      setCreateDrawerOpen(false);
+      createForm.resetFields();
+      const nextSearch = { ...search, pageNo: 1 };
+      setSearch(nextSearch);
+      writeSearchToUrl(nextSearch, 'replace');
+      await loadSources(nextSearch);
+      if (created?.id) {
+        writeSourceIdToUrl(created.id);
+        setDetailSourceId(created.id);
+      }
+    } catch (error) {
+      const fieldError = error as { errorFields?: unknown[] };
+      if (fieldError?.errorFields) return;
+      setCreateSubmitError((error as Error).message || '来源创建失败');
+    } finally {
+      setCreateSubmitLoading(false);
+    }
   }
 
   function openCreateReference() {
@@ -768,7 +844,7 @@ export function SourceLibraryPage({ notify }: Props) {
 
   const emptyContent = hasActiveSearch(search)
     ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合当前条件的来源资料"><Button onClick={resetSearch}>重置筛选</Button></Empty>
-    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未录入来源资料，可通过建谱向导录入族谱原文、地方志、照片或口述记录。"><Button onClick={() => window.location.assign('/?view=wizard')}>前往建谱向导</Button></Empty>;
+    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未录入来源资料，可先在资料库创建来源草稿，也可通过建谱向导完成首条主流程。"><Space><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button><Button onClick={() => window.location.assign('/?view=wizard')}>前往建谱向导</Button></Space></Empty>;
 
   return (
     <div className="source-library-page">
@@ -786,7 +862,7 @@ export function SourceLibraryPage({ notify }: Props) {
             <Row justify="end"><Col><Space><Button onClick={resetSearch} disabled={loading}>重置</Button><Button type="primary" htmlType="submit" loading={loading}>查询</Button></Space></Col></Row>
           </Form>
         </Card>
-        <Card title={`来源资料（共 ${sourceTotal} 条）`} extra={<Tooltip title="刷新"><Button icon={<ReloadOutlined />} aria-label="刷新来源列表" loading={loading} onClick={() => void loadSources(search, true)} /></Tooltip>}>
+        <Card title={`来源资料（共 ${sourceTotal} 条）`} extra={<Space><Tooltip title={!clanId ? '请先选择宗族' : '新增来源草稿'}><span><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button></span></Tooltip><Tooltip title="刷新"><Button icon={<ReloadOutlined />} aria-label="刷新来源列表" loading={loading} onClick={() => void loadSources(search, true)} /></Tooltip></Space>}>
           {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
           {!listLoaded && loading ? <Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin /><Text type="secondary">正在加载来源资料…</Text></Space> : (
             <Table<SourceRecord>
@@ -825,6 +901,33 @@ export function SourceLibraryPage({ notify }: Props) {
           )}
         </Card>
       </Space>
+      <Drawer
+        title="新增来源"
+        width={720}
+        open={createDrawerOpen}
+        destroyOnHidden
+        onClose={() => !createSubmitLoading && setCreateDrawerOpen(false)}
+        extra={<Space><Button disabled={createSubmitLoading} onClick={() => setCreateDrawerOpen(false)}>取消</Button><Button loading={createSubmitLoading} onClick={() => void submitCreateSource(false)}>保存草稿</Button><Button type="primary" loading={createSubmitLoading} onClick={() => void submitCreateSource(true)}>保存并提交审核</Button></Space>}
+      >
+        <Form form={createForm} layout="vertical" initialValues={{ sourceType: 'genealogy_book', confidenceLevel: 'unknown', privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
+          {createSubmitError ? <Alert type="error" showIcon message="来源创建失败" description={createSubmitError} style={{ marginBottom: 16 }} /> : null}
+          <Alert type="info" showIcon message="新增来源默认保存为草稿；提交审核通过后才能作为正式证据。" style={{ marginBottom: 16 }} />
+          <Row gutter={16}>
+            <Col xs={24} md={12}><Form.Item name="sourceName" label="来源名称" rules={[{ required: true, whitespace: true, message: '请输入来源名称' }]}><Input maxLength={200} placeholder="例如：张氏族谱卷一" /></Form.Item></Col>
+            <Col xs={24} md={12}><Form.Item name="sourceType" label="来源类型" rules={[{ required: true, message: '请选择来源类型' }]}><Select options={sourceTypeOptions} /></Form.Item></Col>
+            <Col xs={24} md={12}><Form.Item name="providerName" label="提供者"><Input maxLength={100} placeholder="例如：修谱委员会、采集员姓名" /></Form.Item></Col>
+            <Col xs={24} md={12}><Form.Item name="bookTitle" label="书名/题名"><Input maxLength={200} placeholder="例如：张氏族谱" /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="volumeNo" label="卷册"><Input maxLength={50} placeholder="例如：卷一" /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="pageNo" label="页码"><Input maxLength={50} placeholder="例如：12" /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="sourceDate" label="来源年代"><Input maxLength={100} placeholder="例如：清光绪年间" /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="confidenceLevel" label="可信度"><Select options={confidenceOptions} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="privacyLevel" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}><Select options={privacyOptions} /></Form.Item></Col>
+            <Col xs={24} md={8}><Form.Item name="sensitiveLevel" label="敏感级别" rules={[{ required: true, message: '请选择敏感级别' }]}><Select options={sensitiveOptions} /></Form.Item></Col>
+          </Row>
+          <Form.Item name="excerpt" label="原文摘录"><Input.TextArea rows={4} maxLength={2000} showCount placeholder="摘录与人物、关系或支派相关的原文内容" /></Form.Item>
+          <Form.Item name="description" label="资料说明"><Input.TextArea rows={3} maxLength={1000} showCount placeholder="说明资料来源、采集背景或可信度判断依据" /></Form.Item>
+        </Form>
+      </Drawer>
     </div>
   );
 }
