@@ -131,6 +131,22 @@ export type BindingRevisionResponse = {
   rejectedReason?: string;
 };
 
+export type SourceCreatePayload = {
+  sourceName: string;
+  sourceType: string;
+  providerName?: string;
+  bookTitle?: string;
+  volumeNo?: string;
+  pageNo?: string;
+  sourceDate?: string;
+  excerpt?: string;
+  description?: string;
+  confidenceLevel?: string;
+  privacyLevel?: string;
+  sensitiveLevel?: string;
+  submitReview?: boolean;
+};
+
 export type SourceSearchParams = {
   pageNo?: number;
   pageSize?: number;
@@ -169,6 +185,10 @@ export async function listClans(): Promise<Array<{ id?: number; clanName?: strin
 export async function listSources(clanId: string, params: SourceSearchParams) {
   const query = cleanParams({ pageNo: params.pageNo || 1, pageSize: params.pageSize || 10, sort: params.sort || 'updatedAt,desc', ...params });
   return apiClient.get<PageResponse<SourceRecord>>(`/clans/${clanId}/sources?${query}`);
+}
+
+export async function createSource(clanId: string, payload: SourceCreatePayload) {
+  return apiClient.post<SourceRecord>(`/clans/${clanId}/sources`, payload);
 }
 
 export async function getSourceDetail(sourceId: number) {
