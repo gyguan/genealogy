@@ -95,7 +95,8 @@ export function hasPersonArchiveQuery(url = new URL(window.location.href)) {
 }
 
 export function buildPersonArchiveUrl(state: PersonArchiveSearchState, source = window.location.href) {
-  const url = new URL(source, window.location.origin);
+  const origin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+  const url = new URL(source, origin);
   url.pathname = '/';
   url.hash = '';
   url.searchParams.set('view', 'personArchive');
