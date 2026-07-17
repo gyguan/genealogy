@@ -84,7 +84,14 @@ jobs:
         run: npm run test:person-edit
       - name: Test person archive query state
         working-directory: frontend/genealogy-web
-        run: npm run test:person-archive
+        shell: bash
+        run: |
+          rm -rf .person-archive-test
+          npx tsc src/features/persons/personArchiveUrlState.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-archive-test --skipLibCheck
+          node --test src/features/persons/personArchiveUrlState.test.mjs
+          status=$?
+          rm -rf .person-archive-test
+          exit $status
       - name: Test import workbench state rules
         working-directory: frontend/genealogy-web
         run: npm run test:imports
