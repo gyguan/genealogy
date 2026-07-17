@@ -7,6 +7,7 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
 import { navigateToPersonDetail } from './personDetailNavigation';
 import { navigateToPersonEdit } from './personEditNavigation';
+import { getPersonCreateEntryError } from './personCreateEntryModel';
 import {
   PERSON_PAGE_SIZE_OPTIONS,
   PERSON_SORT_OPTIONS,
@@ -238,8 +239,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   function openDetail(row: any, triggerId?: string) { const id = personId(row); if (!id) return; rememberNavigation(triggerId); workspace.setPersonId(String(id)); navigateToPersonDetail(id); }
   function openEditor(row: any, triggerId?: string) { const id = personId(row); if (!id) return; rememberNavigation(triggerId); workspace.setPersonId(String(id)); navigateToPersonEdit(id); }
   function createPerson() {
-    if (!workspace.clanId) { notify({ message: '请先选择宗族后再创建人物。' }, true); return; }
-    if (!form.branchId) { notify({ message: '请先选择支派后再创建人物。' }, true); return; }
+    const entryError = getPersonCreateEntryError({ clanId: workspace.clanId, branchId: form.branchId });
+    if (entryError) { notify({ message: entryError }, true); return; }
     workspace.setBranchId(form.branchId);
     rememberNavigation();
     const url = new URL(window.location.href);
