@@ -81,7 +81,6 @@ export function Mvp1WizardPage({ notify }: Props) {
   const [gateNotice, setGateNotice] = useState<WizardGateNotice<Mvp1StepKey> | undefined>();
   const [sessionReady, setSessionReady] = useState(!storedSession);
   const promptShown = useRef(false);
-  const autosaveTimer = useRef<number | undefined>(undefined);
 
   function restoreWorkspace(session: WizardSession) {
     workspace.patch({
@@ -259,17 +258,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     return nextDrafts;
   }
 
-  function markUnsaved() {
-    setSaveState({ status: 'unsaved' });
-    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
-    autosaveTimer.current = window.setTimeout(() => {
-      const nextDrafts = captureCurrentDraft();
-      persistSession(nextDrafts);
-    }, 0);
-  }
-
   function changeStepUnchecked(step: Mvp1StepKey, historyMode: 'push' | 'replace' = 'push') {
-    const nextDrafts = captureCurrentDraft();
     setActive(step);
     setResult(undefined);
     setGateNotice(undefined);
@@ -277,7 +266,6 @@ export function Mvp1WizardPage({ notify }: Props) {
     const nextUrl = writeWizardStepToUrl(new URL(window.location.href), step);
     if (historyMode === 'replace') window.history.replaceState(window.history.state, '', nextUrl);
     else window.history.pushState(window.history.state, '', nextUrl);
-    window.setTimeout(() => persistSession(nextDrafts), 0);
   }
 
   function nearestEnterableStep(target: Mvp1StepKey) {
@@ -303,10 +291,6 @@ export function Mvp1WizardPage({ notify }: Props) {
     changeStepUnchecked(step, historyMode);
     return true;
   }
-
-  useEffect(() => () => {
-    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
-  }, []);
 
   useEffect(() => {
     if (!sessionReady || stateLoading) return;
@@ -367,7 +351,7 @@ export function Mvp1WizardPage({ notify }: Props) {
     if (taskId) workspace.setReviewTaskId(taskId);
     setResult({ message: '已提交审核。', id: taskId });
     setGateNotice(undefined);
-    window.setTimeout(() => persistSession(), 0);
+    setSaveState({ status: 'unsaved' });
   }
 
   function saveWizardProgress() {
@@ -398,13 +382,10 @@ export function Mvp1WizardPage({ notify }: Props) {
     }
     Modal.confirm({
       title: '退出建谱？',
-      content: saveState.status === 'saved' ? '当前进度已保存。' : '是否先保存当前进度？',
-      okText: saveState.status === 'saved' ? '退出' : '保存并退出',
+      content: saveState.status === 'saved' ? '当前进度已保存。' : '当前未保存内容将丢失。',
+      okText: '退出',
       cancelText: '继续建谱',
-      onOk: () => {
-        if (saveState.status !== 'saved') persistSession(captureCurrentDraft());
-        navigateToView('home');
-      }
+      onOk: () => navigateToView('home')
     });
   }
 
@@ -441,7 +422,6 @@ export function Mvp1WizardPage({ notify }: Props) {
       onExit={handleExit}
       onStepChange={requestStepChange}
       onGateAction={gateActionStep}
-      onContentChange={markUnsaved}
       navigation={{
         previousDisabled: !sessionReady || activeIndex === 0,
         saveDisabled: !sessionReady,
