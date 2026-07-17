@@ -25,6 +25,8 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [08. 后端工程结构设计](docs/08-backend-structure.md)
 - [09. 中国式族谱权限管理方案](docs/09-permission-management.md)
 - [10. 前端统一设计与实现规范（Ant Design 版）](docs/10-frontend-design-guidelines.md)
+- [21. 前端页面模式规范](docs/21-frontend-page-pattern-spec.md)
+- [22. 多 TAB 页面设计与实现规范](docs/22-multi-tab-page-spec.md)
 - [数据库开发与 Flyway 迁移规范](docs/database-development-standard.md)
 - [AI 工程流程适配方案](docs/ai/ai-engineering-workflow.md)
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
