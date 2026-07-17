@@ -17,15 +17,6 @@
   margin: 0;
 }
 
-.statistics-home-page__context {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-left: auto;
-}
-
 .statistics-home-page__scope {
   display: grid;
   gap: 4px;
@@ -45,15 +36,19 @@
   align-items: center;
 }
 
-.statistics-home-page__updated-at {
-  min-height: 32px;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
 .statistics-home-page__clan-summary .ant-card-body {
   padding-block: 16px;
+}
+
+.statistics-home-page__clan-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.statistics-home-page__clan-summary-copy {
+  min-width: 0;
 }
 
 .statistics-home-page__clan-summary .ant-typography {
@@ -196,15 +191,14 @@
 
 @media (max-width: 767px) {
   .statistics-home-page__header,
-  .statistics-home-page__context {
+  .statistics-home-page__clan-summary-header {
     width: 100%;
   }
 
-  .statistics-home-page__context {
+  .statistics-home-page__clan-summary-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    margin-left: 0;
+    gap: 12px;
   }
 
   .statistics-home-page__scope,
@@ -217,11 +211,6 @@
   .statistics-home-page__clan-select.ant-select-single .ant-select-selector {
     height: 40px;
     min-height: 40px;
-  }
-
-  .statistics-home-page__updated-at {
-    min-height: 40px;
-    white-space: normal;
   }
 
   .statistics-home-page__metric-button {
