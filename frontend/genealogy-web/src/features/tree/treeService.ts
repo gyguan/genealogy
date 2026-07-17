@@ -73,7 +73,8 @@ export async function loadPersonLineage(input: {
     dataView: input.dataView,
     maxDepth: input.depth,
     maxNodes: 500,
-    maxEdges: 1000
+    maxEdges: 1000,
+    refreshAt: Date.now()
   });
   return apiClient.get<TreeGraphResponse>(`/tree/person/${input.personId}?${query}`);
 }
