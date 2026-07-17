@@ -9,7 +9,6 @@ import {
   Dropdown,
   Empty,
   Grid,
-  Input,
   List,
   Segmented,
   Select,
@@ -300,6 +299,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const [selectedNode, setSelectedNode] = useState<TreeNodeResponse | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<TreeEdgeResponse | null>(null);
   const [locatedNodeId, setLocatedNodeId] = useState('');
+  const [personGraphVersion, setPersonGraphVersion] = useState(0);
   const [loadState, setLoadState] = useState<Record<LineageRequestScope, LoadState>>({ clan: IDLE, search: IDLE, personGraph: IDLE, branchGraph: IDLE });
 
   function setScope(scope: LineageRequestScope, patch: Partial<LoadState>) {
@@ -330,7 +330,10 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     const token = requestGate.current.begin('personGraph'); setScope('personGraph', { loading: true, error: '' });
     try {
       const graph = await loadPersonLineage({ personId, direction: options.direction || appliedDirection, relationScopes: options.relationScopes || appliedPersonRelationScopes, dataView: 'official', depth: options.depth || appliedPersonDepth });
-      if (requestGate.current.isCurrent(token)) setPersonGraph(graph); return graph;
+      if (!requestGate.current.isCurrent(token)) return null;
+      setPersonGraph(graph);
+      setPersonGraphVersion(version => version + 1);
+      return graph;
     } catch (error) { if (requestGate.current.isCurrent(token)) setScope('personGraph', { error: errorMessage(error) }); return null; }
     finally { if (requestGate.current.isCurrent(token)) setScope('personGraph', { loading: false }); }
   }
@@ -373,6 +376,20 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setAppliedBranchId(selectedBranchId); setAppliedBranchDepth(branchDepth); setAppliedBranchRelationScopes([...relationScopes]); setAppliedIncludeSubBranches(includeSubBranches);
   }
 
+  async function handlePersonSearch(keyword: string) {
+    setSearchInput(keyword);
+    if (!workspace.clanId) return;
+    await requestPersonPage(workspace.clanId, 1, keyword);
+  }
+  function resetPersonQuery() {
+    setSearchInput(center?.name || '');
+    setRelationScopes([...appliedPersonRelationScopes]);
+    setPersonDepth(appliedPersonDepth);
+    setDirection(appliedDirection);
+    setSelectedBranchId(center?.branchId || appliedBranchId || selectedBranchId);
+    clearSelection();
+    setLocatedNodeId('');
+  }
   async function handlePersonLookup() {
     const page = await requestPersonPage(workspace.clanId, 1, searchInput);
     const firstMatch = page?.records[0];
@@ -384,7 +401,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     notify({ message: '未找到匹配人物，请调整姓名、谱名或字号。' }, true);
   }
   async function handlePersonSelection(item: PersonSearchItem) {
-    const nextBranchId = item.branchId || selectedBranchId; setSelectedBranchId(nextBranchId); setMode('person'); setRelationScopes([...appliedPersonRelationScopes]); setLocatedNodeId(''); clearSelection();
+    const nextBranchId = item.branchId || selectedBranchId; setSearchInput(item.name); setSelectedBranchId(nextBranchId); setMode('person'); setRelationScopes([...appliedPersonRelationScopes]); setLocatedNodeId(''); clearSelection();
     workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' }); await loadPersonGraph(item.id);
   }
   async function setAsCenter(node: TreeNodeResponse) {
@@ -412,6 +429,12 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   const centerNode = personGraph?.nodes.find(node => node.nodeId === personGraph.rootNodeId) || personGraph?.nodes.find(node => node.personId && String(node.personId) === workspace.personId) || personGraph?.nodes[0] || null;
   const center = centerNode ? toPersonFromNode(centerNode, branches) : null;
+  const personOptions = [
+    ...(center && !searchPage.records.some(item => item.id === center.id)
+      ? [{ value: center.id, label: `${center.name} · ${center.generation} · ${center.branchName}` }]
+      : []),
+    ...searchPage.records.map(item => ({ value: item.id, label: item.label }))
+  ];
   const currentClanName = clans.find(item => text(item.id) === workspace.clanId)?.clanName || '族谱';
   const activeGraph = mode === 'person' ? personGraph : branchGraph;
   const activeLoadState = mode === 'person' ? loadState.personGraph : loadState.branchGraph;
@@ -462,14 +485,14 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
                   <div className="lineage-query-grid lineage-query-grid--person">
                     <Field label="宗族"><Select aria-label="人物中心宗族" disabled={loadState.clan.loading} value={workspace.clanId || undefined} placeholder="请选择宗族" options={clans.map(clan => ({ value: text(clan.id), label: clan.clanName || clan.surname || '未命名宗族' }))} onChange={value => void handleClanChange(value)} /></Field>
                     <Field label="搜索支派"><Select aria-label="人物搜索支派" value={selectedBranchId || undefined} placeholder="请选择支派" options={branches.map(branch => ({ value: text(branch.id), label: branch.branchName || '未命名支派' }))} onChange={handleBranchChange} /></Field>
-                    <Field label="中心人物"><Space.Compact className="lineage-person-search"><Input allowClear value={searchInput} placeholder="输入姓名、谱名或字号" onChange={event => setSearchInput(event.target.value)} onPressEnter={() => void handlePersonLookup()} disabled={!workspace.clanId} /><Button icon={<SearchOutlined />} loading={loadState.search.loading} disabled={!workspace.clanId} onClick={() => void handlePersonLookup()}>设为中心</Button></Space.Compact></Field>
+                    <Field label="中心人物"><Select aria-label="选择中心人物" showSearch allowClear value={workspace.personId || undefined} searchValue={searchInput} placeholder="输入姓名、谱名或字号并选择人物" filterOption={false} loading={loadState.search.loading} disabled={!workspace.clanId} options={personOptions} onSearch={value => void handlePersonSearch(value)} onClear={() => setSearchInput('')} onChange={value => { const item = searchPage.records.find(record => record.id === value); if (item) void handlePersonSelection(item); }} notFoundContent={searchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号'} /></Field>
                     <Field label="查看方向"><Select aria-label="人物图查看方向" value={direction} options={DIRECTION_OPTIONS} onChange={value => setDirection(value as TreeDirection)} /></Field>
                     <Field label="展开深度"><Select aria-label="人物中心展开深度" value={personDepth} options={PERSON_DEPTH_OPTIONS} onChange={setPersonDepth} /></Field>
                     <Field label="关系范围"><Select aria-label="人物中心关系范围" mode="multiple" value={relationScopes} maxTagCount="responsive" options={RELATION_OPTIONS} onChange={values => { if (values.length) setRelationScopes(values as TreeRelationScope[]); }} /></Field>
                   </div>
                   <div className="lineage-query-console-actions">
                     <Space size={[4, 4]} wrap><Typography.Text type="secondary">当前设置：</Typography.Text><Tag>{center?.name || '未选择中心人物'}</Tag><Tag>{DIRECTION_OPTIONS.find(item => item.value === direction)?.label}</Tag><Tag>{PERSON_DEPTH_OPTIONS.find(item => item.value === personDepth)?.label}</Tag>{relationScopes.map(value => <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>)}{queryDirty ? <Tag color="processing">待生成</Tag> : <Tag color="success">已应用</Tag>}</Space>
-                    <Space wrap><Button onClick={() => { setRelationScopes([...appliedPersonRelationScopes]); setPersonDepth(appliedPersonDepth); setDirection(appliedDirection); setSelectedBranchId(appliedBranchId || selectedBranchId); }}>重置</Button><Button type="primary" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={!workspace.personId} onClick={() => void applyGraphQuery()}>{generateButtonText}</Button></Space>
+                    <Space wrap><Button onClick={resetPersonQuery}>重置</Button><Button type="primary" icon={<SearchOutlined />} loading={activeLoadState.loading} disabled={!workspace.personId} onClick={() => void applyGraphQuery()}>{generateButtonText}</Button></Space>
                   </div>
                 </div>
               },
@@ -503,7 +526,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         <div className="lineage-canvas-view-bar"><Segmented aria-label="图谱展示方式" value={canvasView} options={[{ value: 'graph', label: <Space size={6}><ApartmentOutlined />图谱</Space> }, { value: 'list', label: <Space size={6}><UnorderedListOutlined />列表</Space> }]} onChange={value => setCanvasView(value as CanvasView)} /><Typography.Text type="secondary">图谱用于浏览关系，列表用于键盘访问、故障降级和移动端阅读。</Typography.Text></div>
         {activeLoadState.error ? <Alert type="error" showIcon message={`${mode === 'person' ? '人物图' : '支派图'}加载失败：${activeLoadState.error}`} action={<Space><Button type="link" onClick={() => setCanvasView('list')}>查看列表</Button><Button type="link" onClick={() => mode === 'person' ? void loadPersonGraph(workspace.personId) : void loadBranchGraph(selectedBranchId, workspace.clanId)}>重试</Button></Space>} /> : null}
         <section className={`lineage-logic-card lineage-logic-card--${mode}`}>
-          {canvasView === 'graph' ? <LineageGraphCanvas graph={activeGraph} loading={activeLoadState.loading} emptyText={mode === 'person' ? '请查找并设为中心人物。' : '暂无支派世系数据。'} activeNodeId={graphCenterNodeId} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} highlightedNodeIds={highlightedPath.nodeIds} highlightedEdgeIds={highlightedPath.edgeIds} focusNodeId={locatedNodeId} autoFocus={mode === 'person' ? 'active' : 'fit'} relationScopes={activeRelationScopes} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} /> : <LineageAccessibleList graph={activeGraph} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} onSelectNode={selectNode} onSelectEdge={selectEdge} />}
+          {canvasView === 'graph' ? <LineageGraphCanvas key={`graph-${mode}-${personGraphVersion}`} graph={activeGraph} loading={activeLoadState.loading} emptyText={mode === 'person' ? '请查找并设为中心人物。' : '暂无支派世系数据。'} activeNodeId={graphCenterNodeId} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} highlightedNodeIds={highlightedPath.nodeIds} highlightedEdgeIds={highlightedPath.edgeIds} focusNodeId={locatedNodeId} autoFocus={mode === 'person' ? 'active' : 'fit'} relationScopes={activeRelationScopes} onSelectNode={selectNode} onSelectEdge={selectEdge} onSetCenter={node => void setAsCenter(node)} /> : <LineageAccessibleList key={`list-${mode}-${personGraphVersion}`} graph={activeGraph} selectedNodeId={selectedNode?.nodeId} selectedEdgeId={selectedEdge?.edgeId} onSelectNode={selectNode} onSelectEdge={selectEdge} />}
         </section>
       </Card>
 
