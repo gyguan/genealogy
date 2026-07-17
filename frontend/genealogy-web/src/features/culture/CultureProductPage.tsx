@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { message } from 'antd';
+import { Spin, message } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
@@ -21,7 +21,7 @@ export function CultureProductPage() {
   const [messageApi, messageContext] = message.useMessage();
   const [activeTab, setActiveTab] = useState<CultureTabKey>(initialLocation.tab);
   const [clans, setClans] = useState<CultureClanOption[]>([]);
-  const [clansLoading, setClansLoading] = useState(false);
+  const [clansLoading, setClansLoading] = useState(true);
 
   useEffect(() => {
     if (!initialLocation.needsNormalization) return;
@@ -86,10 +86,12 @@ export function CultureProductPage() {
     );
   }
 
+  const hydratingInitialClan = clansLoading && !workspace.clanId;
+
   return (
     <div className="tabbed-module-page culture-product-page">
       {messageContext}
-      {renderActiveTab()}
+      {hydratingInitialClan ? <div className="culture-page-loading"><Spin size="large" tip="正在加载宗族文化…" /></div> : renderActiveTab()}
     </div>
   );
 }
