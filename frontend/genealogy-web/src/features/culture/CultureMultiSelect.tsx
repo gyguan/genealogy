@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { Button, Select, Space } from 'antd';
 
 export type CultureSelectValue = string | number;
@@ -35,7 +35,7 @@ export function CultureMultiSelect({
   const selectedValues = new Set(value);
   const allSelected = selectableValues.length > 0 && selectableValues.every(optionValue => selectedValues.has(optionValue));
 
-  function preventDropdownClose(event: React.MouseEvent<HTMLElement>) {
+  function preventDropdownClose(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
     event.stopPropagation();
   }
