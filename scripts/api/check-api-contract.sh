@@ -22,5 +22,7 @@ git diff --exit-code -- \
   frontend/genealogy-web/src/shared/api/generated/tree-types.ts \
   frontend/genealogy-web/src/shared/api/generated/person-archive-api-contract.ts \
   frontend/genealogy-web/src/shared/api/generated/person-archive-types.ts \
+  frontend/genealogy-web/src/shared/api/generated/workbench-api-contract.ts \
+  frontend/genealogy-web/src/shared/api/generated/workbench-types.ts \
   frontend/genealogy-web/src/shared/api/generated/import-execution-types.ts \
   frontend/genealogy-web/src/shared/api/generated/import-failure-types.ts
