@@ -8,12 +8,16 @@ import com.genealogy.workbench.application.WorkbenchApplicationService;
 import com.genealogy.workbench.dto.WorkbenchSummaryResponse;
 import com.genealogy.workbench.dto.WorkbenchTaskResponse;
 import jakarta.validation.constraints.Positive;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Validated
 @RestController
@@ -45,9 +49,14 @@ public class WorkbenchController {
     public ApiResponse<PageResponse<WorkbenchTaskResponse>> tasks(
             @Positive @RequestParam Long clanId,
             @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String risk,
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, name = "type") List<String> types,
+            @RequestParam(required = false, name = "status") List<String> statuses,
+            @RequestParam(required = false, name = "risk") List<String> risks,
+            @RequestParam(required = false) String creator,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(required = false) LocalDate createdFrom,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @RequestParam(required = false) LocalDate createdTo,
             PageQuery pageQuery,
             @RequestHeader(value = "Authorization", required = false) String authorization
     ) {
@@ -55,9 +64,14 @@ public class WorkbenchController {
         return ApiResponse.success(workbenchApplicationService.tasks(
                 clanId,
                 branchId,
-                type,
-                status,
-                risk,
+                taskName,
+                keyword,
+                types,
+                statuses,
+                risks,
+                creator,
+                createdFrom,
+                createdTo,
                 pageQuery.normalizedPageNo(),
                 pageQuery.normalizedPageSize(),
                 actorId
