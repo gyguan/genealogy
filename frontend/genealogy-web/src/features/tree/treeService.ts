@@ -32,6 +32,11 @@ function queryString(values: Record<string, string | number | boolean | undefine
   return params.toString();
 }
 
+function currentLineageBranchId() {
+  if (typeof window === 'undefined') return '';
+  return new URL(window.location.href).searchParams.get('branchId') || '';
+}
+
 export async function loadClans() {
   return rows(await apiClient.get('/clans')) as ClanRow[];
 }
@@ -51,7 +56,7 @@ export async function searchPersons(input: {
   const branchNames = new Map(input.branches.map(item => [String(item.id || ''), item.branchName || '未命名支派']));
   const query = queryString({
     clanId: input.clanId,
-    branchId: input.branchId,
+    branchId: input.branchId || currentLineageBranchId() || undefined,
     keyword: input.keyword.trim() || undefined,
     pageNo: input.pageNo,
     pageSize: input.pageSize || 20
@@ -62,12 +67,14 @@ export async function searchPersons(input: {
 
 export async function loadPersonLineage(input: {
   personId: string;
+  branchId?: string;
   direction: TreeDirection;
   relationScopes: TreeRelationScope[];
   dataView: TreeDataView;
   depth: string;
 }) {
   const query = queryString({
+    branchId: input.branchId || currentLineageBranchId() || undefined,
     direction: input.direction,
     relationScopes: input.relationScopes.join(','),
     dataView: input.dataView,
