@@ -81,6 +81,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   const [gateNotice, setGateNotice] = useState<WizardGateNotice<Mvp1StepKey> | undefined>();
   const [sessionReady, setSessionReady] = useState(!storedSession);
   const promptShown = useRef(false);
+  const autosaveTimer = useRef<number | undefined>(undefined);
 
   function restoreWorkspace(session: WizardSession) {
     workspace.patch({
@@ -260,8 +261,11 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   function markUnsaved() {
     setSaveState({ status: 'unsaved' });
-    const nextDrafts = captureCurrentDraft();
-    window.setTimeout(() => persistSession(nextDrafts), 0);
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = window.setTimeout(() => {
+      const nextDrafts = captureCurrentDraft();
+      persistSession(nextDrafts);
+    }, 0);
   }
 
   function changeStepUnchecked(step: Mvp1StepKey, historyMode: 'push' | 'replace' = 'push') {
@@ -299,6 +303,10 @@ export function Mvp1WizardPage({ notify }: Props) {
     changeStepUnchecked(step, historyMode);
     return true;
   }
+
+  useEffect(() => () => {
+    if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!sessionReady || stateLoading) return;
