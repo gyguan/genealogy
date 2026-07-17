@@ -61,6 +61,29 @@ const statusOptions = [
   { value: 'cancelled', label: '已取消' }
 ];
 
+const tabFilterCopy: Record<ReviewTabKey, { title: string; description: string; statusPlaceholder: string; submittedLabel: string }> = {
+  pending: {
+    title: '待审任务筛选',
+    description: '聚焦当前需要我处理的审核事项，可按对象、支派和提交时间缩小待审队列。',
+    statusPlaceholder: '待我审核默认只显示待审核任务',
+    submittedLabel: '提交时间'
+  },
+  submitted: {
+    title: '我提交的筛选',
+    description: '查看本人提交的审核进展，可按业务对象、状态、支派和提交时间追踪处理情况。',
+    statusPlaceholder: '全部进展',
+    submittedLabel: '提交时间'
+  },
+  processed: {
+    title: '已处理筛选',
+    description: '复盘本人已处理的审核记录，可按审核结果、业务对象、支派和处理时间定位记录。',
+    statusPlaceholder: '全部结果',
+    submittedLabel: '提交时间'
+  }
+};
+
+const processedStatusOptions = statusOptions.filter(option => option.value !== 'pending');
+
 function emptyFilters(): ReviewFilters {
   return { submittedRange: null, processedRange: null };
 }
@@ -231,6 +254,12 @@ function hasFilters(filters: ReviewFilters) {
   return Boolean(filters.targetType || filters.status || filters.branchId || filters.submittedRange || filters.processedRange);
 }
 
+function filtersForTab(filters: ReviewFilters, tab: ReviewTabKey): ReviewFilters {
+  if (tab === 'pending') return { ...filters, status: undefined, processedRange: null };
+  if (tab === 'submitted') return { ...filters, processedRange: null };
+  return { ...filters, submittedRange: null };
+}
+
 export function ReviewCenterPage({ notify }: Props) {
   const workspace = useWorkspace();
   const screens = Grid.useBreakpoint();
@@ -240,7 +269,7 @@ export function ReviewCenterPage({ notify }: Props) {
   const [decisionForm] = Form.useForm<DecisionFormValues>();
   const [batchForm] = Form.useForm<BatchFormValues>();
   const [activeTab, setActiveTab] = useState<ReviewTabKey>(initialState.activeTab);
-  const [appliedFilters, setAppliedFilters] = useState<ReviewFilters>(initialState.filters);
+  const [appliedFilters, setAppliedFilters] = useState<ReviewFilters>(() => filtersForTab(initialState.filters, initialState.activeTab));
   const [tasks, setTasks] = useState<ReviewTaskListItemResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [pageNo, setPageNo] = useState(initialState.pageNo);
@@ -262,6 +291,8 @@ export function ReviewCenterPage({ notify }: Props) {
   const [batchDecision, setBatchDecision] = useState<BatchDecision | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
+  const currentFilterCopy = tabFilterCopy[activeTab];
+  const currentStatusOptions = activeTab === 'processed' ? processedStatusOptions : statusOptions;
   const requestSequence = useRef(0);
 
   const selectedTasks = useMemo(
@@ -372,7 +403,11 @@ export function ReviewCenterPage({ notify }: Props) {
   }, [workspace.clanId, workspace.reviewTaskId]);
 
   function switchTab(key: string) {
-    setActiveTab(key as ReviewTabKey);
+    const nextTab = key as ReviewTabKey;
+    const nextFilters = filtersForTab(form.getFieldsValue(), nextTab);
+    setActiveTab(nextTab);
+    setAppliedFilters(nextFilters);
+    form.setFieldsValue(nextFilters);
     setPageNo(1);
     setSelectedRowKeys([]);
     setDetail(null);
@@ -383,13 +418,13 @@ export function ReviewCenterPage({ notify }: Props) {
 
   async function applyFilters() {
     const values = await form.validateFields();
-    setAppliedFilters({
+    setAppliedFilters(filtersForTab({
       targetType: values.targetType,
       status: values.status,
       branchId: values.branchId,
       submittedRange: values.submittedRange || null,
       processedRange: values.processedRange || null
-    });
+    }, activeTab));
     setPageNo(1);
     setHasLoaded(false);
   }
@@ -653,13 +688,13 @@ export function ReviewCenterPage({ notify }: Props) {
           <Typography.Text type="secondary">分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。</Typography.Text>
         </div>
 
-        <Card title="筛选条件">
-          <Form form={form} layout="vertical" initialValues={initialState.filters}>
+        <Card title={currentFilterCopy.title} extra={<Typography.Text type="secondary">{currentFilterCopy.description}</Typography.Text>}>
+          <Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
             <Row gutter={16}>
               <Col xs={24} sm={12} lg={6}><Form.Item name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></Form.Item></Col>
-              <Col xs={24} sm={12} lg={6}><Form.Item name="status" label="审核状态"><Select allowClear placeholder="全部状态" options={statusOptions} /></Form.Item></Col>
+              {activeTab !== 'pending' ? <Col xs={24} sm={12} lg={6}><Form.Item name="status" label={activeTab === 'processed' ? '审核结果' : '审核进展'}><Select allowClear placeholder={currentFilterCopy.statusPlaceholder} options={currentStatusOptions} /></Form.Item></Col> : null}
               <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="目标支派"><Select allowClear showSearch optionFilterProp="label" placeholder="全部支派" options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))} /></Form.Item></Col>
-              <Col xs={24} sm={12} lg={6}><Form.Item name="submittedRange" label="提交时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col>
+              {activeTab !== 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="submittedRange" label={currentFilterCopy.submittedLabel}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
               {activeTab === 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="processedRange" label="处理时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
             </Row>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Space><Button onClick={resetFilters}>重置</Button><Button type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button></Space></div>

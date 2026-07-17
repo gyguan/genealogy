@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MoreOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, MoreOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -59,6 +59,7 @@ import type {
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
+const BINDING_PAGE_SIZE = 10;
 const OFFICIAL_GENERATION_SCHEME_STATUSES = new Set(['official', 'active', 'approved']);
 const SOURCE_PAGE_SIZES = new Set([10, 20, 50]);
 const typeValues = new Set(['genealogy_book', 'local_chronicle', 'tombstone', 'photo', 'oral_history', 'archive', 'other']);
@@ -299,6 +300,7 @@ export function SourceLibraryPage({ notify }: Props) {
   const [detail, setDetail] = useState<SourceDetail | null>(null);
   const [bindings, setBindings] = useState<SourceBindingSummary[]>([]);
   const [bindingTotal, setBindingTotal] = useState(0);
+  const [bindingPage, setBindingPage] = useState({ pageNo: 1, pageSize: BINDING_PAGE_SIZE });
   const [bindingLoading, setBindingLoading] = useState(false);
   const [bindingError, setBindingError] = useState<string>();
   const [attachments, setAttachments] = useState<SourceAttachmentRecord[]>([]);
@@ -407,13 +409,14 @@ export function SourceLibraryPage({ notify }: Props) {
     }
   }
 
-  async function loadBindings(sourceId: number) {
+  async function loadBindings(sourceId: number, pageNo = 1, pageSize = BINDING_PAGE_SIZE) {
     setBindingLoading(true);
     setBindingError(undefined);
     try {
-      const data = await listSourceBindings(sourceId, 1, 50);
+      const data = await listSourceBindings(sourceId, pageNo, pageSize);
       setBindings(data.records || []);
       setBindingTotal(data.total || 0);
+      setBindingPage({ pageNo, pageSize });
     } catch (error) {
       setBindingError((error as Error).message || '引用关系加载失败');
     } finally {
@@ -444,7 +447,7 @@ export function SourceLibraryPage({ notify }: Props) {
     try {
       const nextDetail = await getSourceDetail(sourceId);
       setDetail(nextDetail);
-      void loadBindings(sourceId);
+      void loadBindings(sourceId, 1, BINDING_PAGE_SIZE);
       void loadAttachments(sourceId, 1, ATTACHMENT_PAGE_SIZE);
       void loadTargetOptions();
     } catch (error) {
@@ -629,7 +632,7 @@ export function SourceLibraryPage({ notify }: Props) {
         : await submitCreateBindingRevision(clanId, payload);
       setLastRevision(response);
       setBindingModalOpen(false);
-      await loadBindings(selectedSource.id);
+      await loadBindings(selectedSource.id, bindingMode === 'create' ? 1 : bindingPage.pageNo, bindingPage.pageSize);
       notify({ message: '引用变更已提交审核' });
     } catch (error) {
       setBindingSubmitError((error as Error).message || '引用审核提交失败');
@@ -643,7 +646,7 @@ export function SourceLibraryPage({ notify }: Props) {
     try {
       const response = await submitDeleteBindingRevision(row.id, '来源引用解除申请');
       setLastRevision(response);
-      await loadBindings(selectedSource.id);
+      await loadBindings(selectedSource.id, bindingPage.pageNo, bindingPage.pageSize);
       notify({ message: '解除引用申请已提交审核' });
     } catch (error) {
       notify({ message: (error as Error).message || '解除引用审核提交失败' }, true);
@@ -694,7 +697,7 @@ export function SourceLibraryPage({ notify }: Props) {
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Card>
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <Button type="link" style={{ padding: 0, alignSelf: 'flex-start' }} onClick={() => closeDetail()}>← 返回来源资料库</Button>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => closeDetail()}>返回来源资料库</Button>
               <Row justify="space-between" align="middle" gutter={[16, 12]}>
                 <Col flex="auto">
                   <Space direction="vertical" size={4}>
@@ -726,7 +729,7 @@ export function SourceLibraryPage({ notify }: Props) {
               {
                 key: 'bindings',
                 label: `引用关系（${bindingTotal || bindings.length}）`,
-                children: <Space direction="vertical" style={{ width: '100%' }}>{!canBind ? <Alert type="info" showIcon message="当前账号仅可查看引用关系" /> : null}{bindingError ? <Alert type="error" showIcon message="引用关系加载失败" description={bindingError} action={<Button size="small" onClick={() => selectedSource.id && void loadBindings(selectedSource.id)}>重新加载</Button>} /> : null}<BindingTable clanId={clanId} rows={bindings} loading={bindingLoading} canBind={canBind} onReplace={openReplaceReference} onDelete={submitDeleteReference} /></Space>
+                children: <Space direction="vertical" style={{ width: '100%' }}>{!canBind ? <Alert type="info" showIcon message="当前账号仅可查看引用关系" /> : null}{bindingError ? <Alert type="error" showIcon message="引用关系加载失败" description={bindingError} action={<Button size="small" onClick={() => selectedSource.id && void loadBindings(selectedSource.id, bindingPage.pageNo, bindingPage.pageSize)}>重新加载</Button>} /> : null}<BindingTable clanId={clanId} rows={bindings} total={bindingTotal} pageNo={bindingPage.pageNo} pageSize={bindingPage.pageSize} loading={bindingLoading} canBind={canBind} onPageChange={(pageNo, pageSize) => selectedSource.id && void loadBindings(selectedSource.id, pageNo, pageSize)} onReplace={openReplaceReference} onDelete={submitDeleteReference} /></Space>
               },
               {
                 key: 'attachments',
@@ -827,11 +830,15 @@ export function SourceLibraryPage({ notify }: Props) {
   );
 }
 
-function BindingTable({ clanId, rows, loading, canBind, onReplace, onDelete }: {
+function BindingTable({ clanId, rows, total, pageNo, pageSize, loading, canBind, onPageChange, onReplace, onDelete }: {
   clanId: string;
   rows: SourceBindingSummary[];
+  total: number;
+  pageNo: number;
+  pageSize: number;
   loading: boolean;
   canBind: boolean;
+  onPageChange: (pageNo: number, pageSize: number) => void;
   onReplace: (row: SourceBindingSummary) => void;
   onDelete: (row: SourceBindingSummary) => void;
 }) {
@@ -854,7 +861,7 @@ function BindingTable({ clanId, rows, loading, canBind, onReplace, onDelete }: {
       </Space>;
     }
   });
-  return <Table<SourceBindingSummary> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} loading={loading} pagination={false} scroll={{ x: 980 }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }} columns={columns} />;
+  return <Table<SourceBindingSummary> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} loading={loading} pagination={{ current: pageNo, pageSize, total, showSizeChanger: false, showTotal: value => `共 ${value} 条引用`, onChange: onPageChange }} scroll={{ x: 980 }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }} columns={columns} />;
 }
 
 function AttachmentTable({ rows, total, pageNo, pageSize, loading, canManage, onPageChange, onPreview, onDownload, onDelete }: {
