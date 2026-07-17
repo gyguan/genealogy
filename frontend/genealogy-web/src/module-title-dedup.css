@@ -107,7 +107,7 @@
 }
 
 .business-page--personArchive .person-archive-page-header::before {
-  content: '查询条件';
+  content: '人物档案查询';
   position: absolute;
   top: 16px;
   left: 16px;
@@ -122,13 +122,8 @@
 
 .business-page--personArchive .person-archive-query-card {
   margin-top: 0;
-  border-top: 0;
-  border-radius: 0 0 var(--query-page-radius) var(--query-page-radius);
 }
 
-.business-page--personArchive .person-archive-query-card > .ant-card-head {
-  display: none;
-}
 
 .business-page--personArchive .person-archive-result-card {
   margin-top: var(--query-page-gap);
