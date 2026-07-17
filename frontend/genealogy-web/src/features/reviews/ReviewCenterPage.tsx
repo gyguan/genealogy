@@ -278,7 +278,6 @@ export function ReviewCenterPage({ notify }: Props) {
   const [hasLoaded, setHasLoaded] = useState(false);
   const [listFailure, setListFailure] = useState<ListFailure>();
   const [staleFailure, setStaleFailure] = useState<string>();
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>();
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [processingKeys, setProcessingKeys] = useState<Key[]>([]);
   const [detail, setDetail] = useState<ReviewTaskViewDetailResponse | null>(null);
@@ -350,7 +349,6 @@ export function ReviewCenterPage({ notify }: Props) {
       setTotal(page.total || 0);
       setSelectedRowKeys([]);
       setHasLoaded(true);
-      setLastUpdatedAt(new Date());
     } catch (error) {
       if (requestId !== requestSequence.current) return;
       const forbidden = isForbiddenError(error);
@@ -683,13 +681,8 @@ export function ReviewCenterPage({ notify }: Props) {
   return (
     <div className="review-center-page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        <div>
-          <Typography.Title level={3} style={{ marginBottom: 4 }}>审核中心</Typography.Title>
-          <Typography.Text type="secondary">分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。</Typography.Text>
-        </div>
-
-        <Card title={currentFilterCopy.title} extra={<Typography.Text type="secondary">{currentFilterCopy.description}</Typography.Text>}>
-          <Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
+        <Card title="审核中心" extra={<Typography.Text type="secondary">分页查看待审任务、我提交的审核进展和本人已处理记录；筛选与权限范围均由服务端执行。</Typography.Text>}>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}><Typography.Text type="secondary">{currentFilterCopy.description}</Typography.Text><Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
             <Row gutter={16}>
               <Col xs={24} sm={12} lg={6}><Form.Item name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></Form.Item></Col>
               {activeTab !== 'pending' ? <Col xs={24} sm={12} lg={6}><Form.Item name="status" label={activeTab === 'processed' ? '审核结果' : '审核进展'}><Select allowClear placeholder={currentFilterCopy.statusPlaceholder} options={currentStatusOptions} /></Form.Item></Col> : null}
@@ -698,7 +691,7 @@ export function ReviewCenterPage({ notify }: Props) {
               {activeTab === 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="processedRange" label="处理时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
             </Row>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Space><Button onClick={resetFilters}>重置</Button><Button type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button></Space></div>
-          </Form>
+          </Form></Space>
         </Card>
 
         <Card>
@@ -710,7 +703,6 @@ export function ReviewCenterPage({ notify }: Props) {
                 { key: 'processed', label: activeTab === 'processed' && hasLoaded ? `已处理（${total}）` : '已处理' }
               ]} />
               <Space wrap>
-                {lastUpdatedAt && !listFailure?.forbidden ? <Typography.Text type="secondary">最近更新：{formatDateTime(lastUpdatedAt.toISOString())}</Typography.Text> : null}
                 {workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
               </Space>
             </Space>

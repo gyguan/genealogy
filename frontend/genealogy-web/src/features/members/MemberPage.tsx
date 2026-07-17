@@ -517,49 +517,22 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   return (
     <div className="member-role-page">
-      <Card styles={{ body: { padding: 24 } }}>
-        <Row gutter={[16, 16]} align="middle" justify="space-between">
-          <Col flex="auto">
-            <Typography.Text type="secondary">系统管理 / 成员与权限</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '4px 0 0' }}>成员与权限</Typography.Title>
-            <Typography.Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-              管理宗族成员、角色和数据授权范围。
-            </Typography.Paragraph>
-          </Col>
-          <Col>
-            <Space wrap>
-              <Space direction="vertical" size={2}>
-                <Typography.Text type="secondary">当前宗族</Typography.Text>
-                <Select
-                  showSearch
-                  optionFilterProp="label"
-                  style={{ width: isMobile ? 220 : 240 }}
-                  value={selectedClanId}
-                  onChange={changeClan}
-                  options={clans.map(clan => ({
-                    value: String(clan.id),
-                    label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
-                  }))}
-                />
-              </Space>
-              <Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>
-                新增成员授权
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      <Alert
-        style={{ marginTop: 16 }}
-        type="info"
-        showIcon
-        message="成员与权限按角色与数据范围共同生效"
-        description="支派管理员只能查看和管理授权支派及下级支派；高风险授权和成员停用均需填写原因，后端会执行越级、范围和最后管理员校验。"
-      />
-
-      <Card title="查询条件" style={{ marginTop: 16 }}>
+      <Card title="成员与权限" extra={<Space wrap><Typography.Text type="secondary">按角色与数据范围查看成员授权，权限变更由后端执行越级、范围和最后管理员校验。</Typography.Text><Button onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button></Space>}>
         <Row gutter={[16, 12]}>
+          <Col xs={24} md={12} xl={6}>
+            <Typography.Text type="secondary">当前宗族</Typography.Text>
+            <Select
+              showSearch
+              optionFilterProp="label"
+              style={{ width: '100%' }}
+              value={selectedClanId}
+              onChange={changeClan}
+              options={clans.map(clan => ({
+                value: String(clan.id),
+                label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
+              }))}
+            />
+          </Col>
           <Col xs={24} md={12} xl={6}>
             <Typography.Text type="secondary">成员关键词</Typography.Text>
             <Input allowClear value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="姓名 / 账号" />
@@ -605,6 +578,15 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           </Space>
         </div>
       </Card>
+
+      <Alert
+        style={{ marginTop: 16 }}
+        type="info"
+        showIcon
+        message="成员与权限按角色与数据范围共同生效"
+        description="支派管理员只能查看和管理授权支派及下级支派；高风险授权和成员停用均需填写原因，后端会执行越级、范围和最后管理员校验。"
+      />
+
 
       <Card title="成员列表" extra={<Typography.Text type="secondary">共 {total} 名成员</Typography.Text>} style={{ marginTop: 16 }}>
         {queryError ? <Alert type="error" showIcon message={queryError} action={<Button size="small" onClick={() => void loadMembers(selectedClanId, query)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
