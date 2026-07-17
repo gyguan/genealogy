@@ -12,8 +12,9 @@
   max-width: 760px;
 }
 
-/* The source library already has a global module title in App Header. */
-.source-library-page > .ant-space > .ant-space-item:first-child {
+/* The source library already has a global module title in App Header;
+   keep the search card visible because its body contains the filter controls. */
+.source-library-page > .ant-space > .ant-space-item:first-child .ant-card-head {
   display: none;
 }
 
