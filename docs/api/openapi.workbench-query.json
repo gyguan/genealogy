@@ -1,0 +1,61 @@
+{
+  "paths": {
+    "/api/v1/workbench/tasks": {
+      "get": {
+        "operationId": "listWorkbenchTasks",
+        "tags": ["Workbench"],
+        "parameters": [
+          { "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "branchId", "in": "query", "required": false, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "taskName", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "keyword", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "required": false, "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true },
+          { "name": "risk", "in": "query", "required": false, "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true },
+          { "name": "creator", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "createdFrom", "in": "query", "required": false, "schema": { "type": "string", "format": "date" } },
+          { "name": "createdTo", "in": "query", "required": false, "schema": { "type": "string", "format": "date" } },
+          { "name": "pageNo", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseWorkbenchTaskPage" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WorkbenchTaskResponse": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "taskName": { "type": "string" },
+          "bookName": { "type": "string" },
+          "creatorName": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "type": { "type": "string" },
+          "typeText": { "type": "string" },
+          "objectName": { "type": "string" },
+          "branchName": { "type": "string" },
+          "risk": { "type": "string" },
+          "status": { "type": "string" },
+          "statusText": { "type": "string" },
+          "suggestion": { "type": "string" },
+          "problemDescription": { "type": "string" },
+          "involvedObject": { "type": "string" },
+          "riskReason": { "type": "string" },
+          "reviewBlocked": { "type": "boolean" },
+          "relatedEntryType": { "type": "string" },
+          "relatedEntryId": { "type": "string" },
+          "relatedEntryText": { "type": "string" },
+          "statusDescription": { "type": "string" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}
