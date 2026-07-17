@@ -84,7 +84,7 @@
 /* Consistent field density across query areas. */
 .business-page--personArchive .person-archive-query-card .ant-form-item,
 .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-form-item,
-.business-page--sourceLibrary .source-library-page .ant-card[title='来源资料库'] .ant-form-item,
+.business-page--sourceLibrary .source-library-page .source-library-query-card .ant-form-item,
 .business-page--editingWorkspace .ant-card[title='修谱工作台'] .ant-space-vertical,
 .business-page--reviewCenter .ant-card[title='审核中心'] .ant-form-item,
 .business-page--memberManage .ant-card[title='成员与权限'] .ant-col > .ant-typography {
