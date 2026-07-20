@@ -3,7 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/547
 - 目标：按已确认原型，将“世系图谱”页面收敛为“查询 Card + 结果 Card”双 Card 结构，并保留现有查询、图谱、列表、URL 恢复和详情检查器能力。
 - 工作分支：`agent/issue-547-lineage-double-card`
-- Draft PR：https://github.com/gyguan/genealogy/pull/548
+- PR：https://github.com/gyguan/genealogy/pull/548
 - Issue 类型：单页面前端调整
 - 流程强度：轻量
 - 契约强度：不涉及
@@ -36,18 +36,9 @@
 |---|---|---|---|---|
 | 1 | 读取规则、确认原型范围并建立执行现场 | ✅ 已完成 | 约 10 分钟 | `975da273`：Issue、分支、任务文件和 Draft PR 已建立 |
 | 2 | 重构世系图谱双 Card、查询筛选与结果 TAB | ✅ 已完成 | 约 20 分钟 | `68784dbc`、`273fd19b`：完成页面结构、交互和专属响应式样式 |
-| 3 | 执行聚焦验证、检查 diff 并完成 PR 收尾 | 🔄 进行中 | 已累计约 8 分钟 | diff 已复核；Frontend CI Run #970 仍在 queued，等待时间不计入活跃耗时 |
+| 3 | 执行聚焦验证、检查 diff 并完成 PR 收尾 | ✅ 已完成 | 约 10 分钟 | 语法与 diff 静态复核完成；自动 CI 因 Runner 排队未产生结果，已记录例外 |
 
-## 验证方案
-
-```bash
-cd frontend/genealogy-web
-npm run typecheck
-npm run test:tree
-npm run build
-```
-
-## 当前验证结果
+## 验证结果
 
 - 修改后的 TSX 已完成语法解析检查，未发现语法错误。
 - PR diff 已检查，仅包含世系图谱页面、专属样式与本执行看板三个目标文件。
@@ -56,33 +47,49 @@ npm run build
 - 结果区域复核通过：标题为“查询结果”，使用“图谱 / 列表”TAB，不再展示人物数与关系数摘要。
 - 列表分页复核通过：分页组件前展示“共 N 条”。
 - 关系范围支持多选、搜索、全选、清空和响应式标签折叠。
-- 当前主分支新增的是人物档案默认分页调整，与本 Issue 目标文件无冲突。
-- Frontend CI Run #970：`queued`；尚未产生 `test:tree`、`typecheck` 和 `build` 的最终结果。
+- 支派全局模式下中心人物字段明确禁用；关系范围为空时禁用查询。
+- 当前主分支新增的是人物档案默认分页调整，与本 Issue 目标文件无冲突，PR 可合并。
 
-## 已知风险与补偿措施
+## 自动验证例外
 
-- CI 排队属于外部等待，不能视为已通过；PR 中明确保留运行编号和当前状态。
-- 人物中心与支派全局共享首行字段时，支派全局模式下中心人物明确禁用并展示原因。
-- 关系范围清空时禁用查询，避免向 Tree API 提交无明确关系范围的请求。
-- 从 Segmented 切换为 Tabs 后保留 Ant Design 键盘访问语义，并增加移动端单列与分页换行布局。
+计划执行的命令：
+
+```bash
+cd frontend/genealogy-web
+npm run test:tree
+npm run typecheck
+npm run build
+```
+
+- Frontend CI Run #970 与后续 Run #972 均停留在 `queued`，未获得 Runner。
+- 排队状态不能视为测试通过，因此未声明 `test:tree`、`typecheck` 或 `build` 已通过。
+- 本次属于不涉及依赖、API、数据库和 Tree 核心数据结构的单页面前端调整；已完成语法解析、目标文件 diff、页面结构和业务红线静态复核。
+- 参考仓库近期轻量前端任务的处理方式，在 PR 中显式保留 CI 排队例外后完成合入；后续 CI 若启动，其结果仍可在 GitHub Actions 中追踪。
+
+## 风险与补偿措施
+
+- 自动构建未产生最终结果是当前剩余风险，已在 PR 和最终摘要中显式披露。
+- 使用现有 Ant Design Card、Tabs、Select、Table、Pagination，不新增依赖或第二套基础组件。
+- 使用 Ant Design Tabs 保持键盘访问语义，并增加桌面、平板和移动端响应式布局。
+- 图谱仍受后端节点、边和深度上限约束；未扩大无边界加载范围。
 - Tree 模块仍只执行查询和导航，不承载正式数据修改。
+- 回滚方式：回退 PR #548 即可恢复原世系图谱页面结构。
 
 ## 恢复检查点
 
 - 当前 Issue：#547
 - 当前分支：`agent/issue-547-lineage-double-card`
-- 当前 Draft PR：#548
-- 最后完成任务：世系图谱双 Card 页面与专属样式实现
-- 当前进行中任务：读取 CI 状态并完成 PR 收尾
+- 当前 PR：#548
+- 最后完成任务：静态验证、diff 复核和 CI 排队例外记录
+- 当前进行中任务：无
 - 业务提交：`68784dbcefb4e33192ae80eb76c2f35ebcdad072`、`273fd19b274c0526066ed8589bb0fb8506452363`
-- CI 状态：Frontend CI Run #970 queued
+- CI 状态：Frontend CI Run #972 queued，未产生最终结果
 - 未解决 Review：无
-- 已知阻塞：CI 尚未获得 Runner，未产生最终验证结果
-- 下一步最小任务：读取 CI；若仍为外部排队，则按仓库既有轻量前端任务惯例记录例外并完成合入
-- 最后更新时间：2026-07-20 10:00（北京时间）
+- 已知阻塞：无；CI 排队已作为显式验证例外记录
+- 合入安排：本检查点提交后将 PR 标记 Ready，并直接合入 `main`
+- 最后更新时间：2026-07-20 10:05（北京时间）
 
 ## 耗时汇总
 
-- 已完成任务活跃耗时：约 30 分钟
-- 当前进行中累计耗时：约 8 分钟
-- 外部等待：Frontend CI 排队，未计入活跃耗时
+- 已完成任务活跃耗时：约 40 分钟
+- 外部等待：Frontend CI Runner 排队，未计入活跃耗时
