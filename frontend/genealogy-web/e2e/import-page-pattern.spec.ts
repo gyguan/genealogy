@@ -84,7 +84,7 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   if (!headerBox || !titleBox || !actionBox) return;
   expect(titleBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
   expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
-  const titleGroupBox = await resultCard.locator('.ant-card-head-title > div').boundingBox();
+  const titleGroupBox = await resultCard.locator(':scope > .ant-card-head .ant-card-head-title > div').boundingBox();
   expect(titleGroupBox).not.toBeNull();
   if (!titleGroupBox) return;
   const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
