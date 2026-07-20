@@ -28,6 +28,17 @@
         "description": "与操作日志列表使用相同的多选过滤语义。"
       }
     },
+    "/api/v1/logs/operations/export.csv": {
+      "get": {
+        "description": "与操作日志列表使用相同的多选过滤语义，并保留导出权限和导出审计。",
+        "parameters": [
+          { "name": "actorId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "integer", "format": "int64" } } },
+          { "name": "actionType", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "targetType", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "resultStatus", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string", "enum": ["success", "failed", "approved", "rejected"] } } }
+        ]
+      }
+    },
     "/api/v1/logs/risks": {
       "get": {
         "parameters": [
