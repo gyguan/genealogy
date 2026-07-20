@@ -1,0 +1,48 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Audit Multi-Select Query Contract",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/tracking/objects": {
+      "get": {
+        "parameters": [
+          { "name": "objectType", "in": "query", "required": true, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "status", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } }
+        ]
+      }
+    },
+    "/api/v1/logs/operations": {
+      "get": {
+        "parameters": [
+          { "name": "actorId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "integer", "format": "int64" } } },
+          { "name": "actionType", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "targetType", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "resultStatus", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string", "enum": ["success", "failed", "approved", "rejected"] } } }
+        ]
+      }
+    },
+    "/api/v1/logs/operations/stats": {
+      "get": {
+        "description": "与操作日志列表使用相同的多选过滤语义。"
+      }
+    },
+    "/api/v1/logs/risks": {
+      "get": {
+        "parameters": [
+          { "name": "actorId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "integer", "format": "int64" } } },
+          { "name": "riskLevel", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string", "enum": ["low", "medium", "high", "critical"] } } },
+          { "name": "eventType", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string" } } },
+          { "name": "branchId", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "integer", "format": "int64" } } },
+          { "name": "dispositionStatus", "in": "query", "required": false, "style": "form", "explode": true, "schema": { "type": "array", "items": { "type": "string", "enum": ["open", "reviewing", "resolved", "accepted"] } } }
+        ]
+      }
+    },
+    "/api/v1/logs/risks/stats": {
+      "get": {
+        "description": "与风险事件列表使用相同的多选过滤语义。"
+      }
+    }
+  }
+}
