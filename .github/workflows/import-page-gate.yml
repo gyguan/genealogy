@@ -1,0 +1,108 @@
+name: Import Page Gate
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/genealogy-web/src/features/imports/**"
+      - "frontend/genealogy-web/e2e/import-*.spec.ts"
+      - ".github/workflows/import-page-gate.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  import-page-gate:
+    name: Import State and Chromium E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Run existing import state tests
+        working-directory: frontend/genealogy-web
+        run: npm run test:imports
+
+      - name: Run import task query tests
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          rm -rf .import-workbench-test
+          npx tsc \
+            src/features/imports/import-type-registry.ts \
+            src/features/imports/import-task-query-state.ts \
+            src/features/imports/import-task-model.ts \
+            --ignoreConfig \
+            --rootDir src \
+            --target ES2020 \
+            --module ESNext \
+            --moduleResolution Bundler \
+            --lib ES2020,DOM \
+            --outDir .import-workbench-test \
+            --skipLibCheck
+          node --experimental-specifier-resolution=node --test \
+            src/features/imports/import-task-query-state.test.mjs \
+            src/features/imports/import-task-model.test.mjs
+          rm -rf .import-workbench-test
+
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build production frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+
+      - name: Check API contract
+        working-directory: frontend/genealogy-web
+        run: npm run api:check
+
+      - name: Install Chromium
+        working-directory: frontend/genealogy-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Start frontend
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          npm run dev > /tmp/import-vite.log 2>&1 &
+          echo $! > /tmp/import-vite.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5179/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/import-vite.log
+          exit 1
+
+      - name: Run import Chromium E2E
+        working-directory: frontend/genealogy-web
+        run: npx playwright test e2e/import-page-pattern.spec.ts
+
+      - name: Upload import diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: import-page-gate-diagnostics
+          path: |
+            frontend/genealogy-web/playwright-report
+            frontend/genealogy-web/test-results
+            /tmp/import-vite.log
+          if-no-files-found: ignore
+          retention-days: 5

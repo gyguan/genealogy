@@ -1,47 +1,90 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Collapse, Empty, Segmented, Select, Space, Steps, Tabs, Typography } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Tabs, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
+import { ImportFilterMultiSelect } from './ImportFilterMultiSelect';
 import { ImportHistoryOverviewPanel } from './ImportHistoryOverviewPanel';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 import { ImportReviewHistoryPanel } from './ImportReviewHistoryPanel';
+import { NewImportModal } from './NewImportModal';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
 import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
 import { SourceImportWorkspace } from './SourceImportWorkspace';
-import { readImportPageUrl, writeImportPageUrl, type ImportViewKey } from './import-page-state';
-import { emptyImportWorkspaceProgress, importStepIndex } from './import-workspace-progress';
-import type { ImportWorkspaceProgress } from './import-workspace-progress';
-import { importTypeRegistry } from './import-type-registry';
-import type { ImportTypeKey } from './import-type-registry';
+import { readImportPageUrl, writeImportPageUrl } from './import-page-state';
+import { importTaskStatusOptions } from './import-task-model';
+import {
+  defaultImportTaskQuery,
+  readImportTaskQuery,
+  writeImportTaskQuery,
+  type ImportTaskQueryState,
+  type ImportTaskStatusFilter
+} from './import-task-query-state';
+import { importTypeRegistry, type ImportFileFormat, type ImportTypeKey } from './import-type-registry';
 import './import-workbench.css';
 
+const { RangePicker } = DatePicker;
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type BranchOption = { id: number | string; branchName?: string; status?: string };
+type QueryFormValues = {
+  importTypes?: ImportTypeKey[];
+  statuses?: ImportTaskStatusFilter[];
+  keyword?: string;
+  createdRange?: [Dayjs, Dayjs];
+};
+
+const availableImportTypes = importTypeRegistry
+  .filter(item => item.availability === 'available')
+  .map(item => ({ value: item.key, label: item.title.replace('导入', '') }));
+
+function typeTitle(type: ImportTypeKey) {
+  return availableImportTypes.find(option => option.value === type)?.label || '数据';
+}
 
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
-  const initialUrlState = useMemo(() => readImportPageUrl(window.location.search), []);
-  const [activeView, setActiveView] = useState<ImportViewKey>(initialUrlState.tab);
-  const [activeType, setActiveType] = useState<ImportTypeKey>(initialUrlState.type);
+  const initialPageState = useMemo(() => readImportPageUrl(window.location.search), []);
+  const initialQuery = useMemo(() => readImportTaskQuery(window.location.search), []);
+  const [queryForm] = Form.useForm<QueryFormValues>();
+  const [query, setQuery] = useState<ImportTaskQueryState>(initialQuery);
   const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState(initialUrlState.branchId);
+  const [selectedBranchId, setSelectedBranchId] = useState(initialPageState.branchId || workspace.branchId);
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchError, setBranchError] = useState('');
+  const [activeType, setActiveType] = useState<ImportTypeKey>(initialPageState.type);
+  const [newImportOpen, setNewImportOpen] = useState(false);
+  const [uploadWorkspaceOpen, setUploadWorkspaceOpen] = useState(false);
+  const [recordsOpen, setRecordsOpen] = useState(false);
+  const [templateDownloading, setTemplateDownloading] = useState<ImportFileFormat>();
   const [jobRefreshKey, setJobRefreshKey] = useState(0);
-  const [progress, setProgress] = useState<ImportWorkspaceProgress>(emptyImportWorkspaceProgress);
-  const [invalidationMessage, setInvalidationMessage] = useState('');
-  const [refreshMessage, setRefreshMessage] = useState(initialUrlState.tab === 'create' ? '刷新页面后需重新选择本地文件并执行预检。' : '');
+  const [taskTotal, setTaskTotal] = useState(0);
+
+  const selectedBranch = useMemo(
+    () => branches.find(branch => String(branch.id) === selectedBranchId),
+    [branches, selectedBranchId]
+  );
+
+  useEffect(() => {
+    queryForm.setFieldsValue({
+      importTypes: query.importTypes,
+      statuses: query.statuses,
+      keyword: query.keyword,
+      createdRange: query.createdFrom && query.createdTo
+        ? [dayjs(query.createdFrom), dayjs(query.createdTo)]
+        : undefined
+    });
+  }, [query, queryForm]);
 
   useEffect(() => {
     const onPopState = () => {
-      const next = readImportPageUrl(window.location.search);
-      setActiveView(next.tab);
-      setActiveType(next.type);
-      setSelectedBranchId(next.branchId);
-      workspace.setBranchId(next.branchId);
-      setProgress(emptyImportWorkspaceProgress);
-      setRefreshMessage(next.tab === 'create' ? '页面状态已恢复，本地文件不会被浏览器保留，请重新选择文件。' : '');
+      const nextPageState = readImportPageUrl(window.location.search);
+      setQuery(readImportTaskQuery(window.location.search));
+      setActiveType(nextPageState.type);
+      setSelectedBranchId(nextPageState.branchId);
+      workspace.setBranchId(nextPageState.branchId);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -49,10 +92,8 @@ export function ImportPage({ notify }: Props) {
 
   useEffect(() => {
     let active = true;
-    const preferredBranchId = readImportPageUrl(window.location.search).branchId || workspace.branchId;
     setBranches([]);
     setBranchError('');
-    setProgress(emptyImportWorkspaceProgress);
     if (!workspace.clanId) {
       setSelectedBranchId('');
       workspace.setBranchId('');
@@ -65,77 +106,72 @@ export function ImportPage({ notify }: Props) {
         if (!active) return;
         const records = Array.isArray(data) ? data : [];
         setBranches(records);
-        const preferred = records.some(branch => String(branch.id) === preferredBranchId) ? preferredBranchId : '';
+        const preferred = records.some(branch => String(branch.id) === selectedBranchId)
+          ? selectedBranchId
+          : records.some(branch => String(branch.id) === workspace.branchId)
+            ? workspace.branchId
+            : '';
         setSelectedBranchId(preferred);
         workspace.setBranchId(preferred);
         writeImportPageUrl({ branchId: preferred });
       })
-      .catch(error => {
-        if (!active) return;
-        setBranchError((error as Error).message || '目标支派加载失败');
-      })
+      .catch(error => { if (active) setBranchError((error as Error).message || '目标支派加载失败'); })
       .finally(() => { if (active) setBranchLoading(false); });
     return () => { active = false; };
   }, [workspace.clanId]);
 
-  const selectedBranch = useMemo(
-    () => branches.find(branch => String(branch.id) === selectedBranchId),
-    [branches, selectedBranchId]
-  );
-
-  function refreshJobs() { setJobRefreshKey(current => current + 1); }
-
-  function invalidateProgress(message: string) {
-    setProgress(emptyImportWorkspaceProgress);
-    setInvalidationMessage(message);
+  function refreshJobs() {
+    setJobRefreshKey(current => current + 1);
   }
 
-  function changeView(key: string) {
-    const next = key as ImportViewKey;
-    setActiveView(next);
-    writeImportPageUrl({ tab: next }, 'push');
+  function applySearch(values: QueryFormValues) {
+    const range = values.createdRange;
+    const next: ImportTaskQueryState = {
+      ...query,
+      importTypes: values.importTypes || [],
+      statuses: values.statuses || [],
+      keyword: values.keyword?.trim() || '',
+      createdFrom: range?.[0]?.format('YYYY-MM-DD') || '',
+      createdTo: range?.[1]?.format('YYYY-MM-DD') || '',
+      pageNo: 1
+    };
+    setQuery(next);
+    writeImportTaskQuery(next, 'push');
   }
+
+  function resetSearch() {
+    const next = { ...defaultImportTaskQuery, pageSize: query.pageSize };
+    setQuery(next);
+    queryForm.resetFields();
+    writeImportTaskQuery(next, 'push');
+  }
+
+  const changePage = useCallback((pageNo: number, pageSize: number) => {
+    const next = { ...query, pageNo: pageSize === query.pageSize ? pageNo : 1, pageSize };
+    setQuery(next);
+    writeImportTaskQuery(next, 'replace');
+  }, [query]);
 
   function changeBranch(value: string) {
-    if (value !== selectedBranchId && (progress.hasFile || progress.previewReady)) {
-      invalidateProgress('目标支派已变更，原文件和预检结果已失效，请重新上传并预检。');
-    } else setInvalidationMessage('');
     setSelectedBranchId(value);
     workspace.setBranchId(value);
     writeImportPageUrl({ branchId: value }, 'push');
     refreshJobs();
   }
 
-  function changeType(value: string | number) {
-    const nextType = String(value) as ImportTypeKey;
-    if (nextType === activeType) return;
-    if (progress.hasFile || progress.previewReady) invalidateProgress('导入对象已变更，原文件和预检结果已失效，请使用对应模板重新上传。');
-    else setProgress(emptyImportWorkspaceProgress);
-    setActiveType(nextType);
-    writeImportPageUrl({ type: nextType }, 'push');
+  function changeType(value: ImportTypeKey) {
+    setActiveType(value);
+    writeImportPageUrl({ type: value });
   }
 
-  function updateProgress(next: ImportWorkspaceProgress) {
-    setProgress({ ...next, batchCreated: false });
-    if (next.hasFile) {
-      setInvalidationMessage('');
-      setRefreshMessage('');
-    }
+  function continueToUpload() {
+    setNewImportOpen(false);
+    setUploadWorkspaceOpen(true);
   }
 
   function handleBatchCreated() {
-    setProgress(emptyImportWorkspaceProgress);
+    setUploadWorkspaceOpen(false);
     refreshJobs();
-    setActiveView('executions');
-    writeImportPageUrl({ tab: 'executions' }, 'push');
-  }
-
-  function targetSummary() {
-    if (!selectedBranch) return '';
-    const branchName = selectedBranch.branchName || '未命名支派';
-    if (activeType === 'relationship') return `批次管理支派：${branchName}；关系双方仍按各自支派权限校验。`;
-    if (activeType === 'source') return `批次管理支派：${branchName}。`;
-    return `导入人物归属：${branchName}。`;
   }
 
   const workspaceProps = {
@@ -143,65 +179,114 @@ export function ImportPage({ notify }: Props) {
     clanId: workspace.clanId,
     branchId: selectedBranchId,
     branchName: selectedBranch?.branchName || '',
-    onBatchCreated: handleBatchCreated,
-    onProgressChange: updateProgress
+    onBatchCreated: handleBatchCreated
   };
 
-  const createContent = (
-    <Space direction="vertical" size={16} className="import-workbench-stack">
-      <Card className="import-progress-card">
-        <Steps className="import-workbench-steps" current={importStepIndex(Boolean(selectedBranch), progress)} responsive items={[
-          { title: '选择目标', description: selectedBranch ? '已完成' : '选择支派' },
-          { title: '上传文件', description: progress.hasFile ? '已选择文件' : '使用标准模板' },
-          { title: '数据预检', description: progress.previewReady ? '预检完成' : '校验警告、重复和错误' },
-          { title: '创建批次', description: '生成导入草稿' }
-        ]} />
-      </Card>
-      <Card title="选择导入对象与目标范围">
-        <Space direction="vertical" size="middle" className="import-workbench-stack">
-          <div><Typography.Text strong>导入对象</Typography.Text><div className="import-type-selector"><Segmented block value={activeType} onChange={changeType} options={importTypeRegistry.map(type => ({ value: type.key, label: type.availability === 'planned' ? `${type.title}（规划中）` : type.title, disabled: type.availability === 'planned' }))} /></div></div>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先在应用顶部选择所属宗族。" /> : null}
-          {branchError ? <Alert type="error" showIcon message={branchError} /> : null}
-          {refreshMessage ? <Alert type="info" showIcon message={refreshMessage} closable onClose={() => setRefreshMessage('')} /> : null}
-          {invalidationMessage ? <Alert type="warning" showIcon message={invalidationMessage} closable onClose={() => setInvalidationMessage('')} /> : null}
-          <div className="import-target-field"><Typography.Text strong>目标支派</Typography.Text><Select showSearch allowClear loading={branchLoading} disabled={!workspace.clanId || branchLoading || branches.length === 0} placeholder="请选择本次导入的目标支派" value={selectedBranchId || undefined} optionFilterProp="label" options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派', disabled: String(branch.status || '').toLowerCase() === 'archived' }))} onChange={value => changeBranch(value || '')} /></div>
-          {workspace.clanId && !branchLoading && !branchError && branches.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可选支派，请先建立支派" /> : null}
-          {selectedBranch ? <Typography.Text type="secondary">{targetSummary()}</Typography.Text> : null}
-        </Space>
-      </Card>
-      {activeType === 'person' ? <PersonImportWorkspace {...workspaceProps} /> : null}
-      {activeType === 'relationship' ? <RelationshipImportWorkspace {...workspaceProps} /> : null}
-      {activeType === 'source' ? <SourceImportWorkspace {...workspaceProps} /> : null}
-    </Space>
-  );
-
-  const historyContent = (
-    <Space direction="vertical" size={16} className="import-workbench-stack">
-      <ImportHistoryOverviewPanel refreshKey={jobRefreshKey} />
-      <Collapse items={[{
-        key: 'advanced-processing',
-        label: '高级批次处理：失败修正、重试与提交审核',
-        children: <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} />
-      }]} />
-      <ImportReviewHistoryPanel notify={notify} refreshKey={jobRefreshKey} />
-    </Space>
-  );
-
   return (
-    <div className="import-center-page tabbed-module-page">
-      <Card className="tabbed-module-intro">
-        <Typography.Title level={3}>数据导入</Typography.Title>
-        <Typography.Paragraph type="secondary">
-          将人物、关系和来源资料导入为可校验的批次草稿；所有导入结果需经过预检、异常处理与审核后再进入正式数据。
-        </Typography.Paragraph>
+    <div className="import-center-page import-double-card-page">
+      <Card className="import-query-card" title="导入任务查询">
+        <Typography.Paragraph type="secondary" className="import-query-description">按导入对象、状态、文件或时间筛选导入任务。</Typography.Paragraph>
+        <Form<QueryFormValues> form={queryForm} layout="vertical" onFinish={applySearch}>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={12} xl={6}>
+              <Form.Item name="importTypes" label="导入对象">
+                <ImportFilterMultiSelect<ImportTypeKey> ariaLabel="导入对象" placeholder="全部导入对象" options={availableImportTypes} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} xl={6}>
+              <Form.Item name="statuses" label="导入状态">
+                <ImportFilterMultiSelect<ImportTaskStatusFilter> ariaLabel="导入状态" placeholder="全部导入状态" options={importTaskStatusOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} xl={6}>
+              <Form.Item name="keyword" label="文件名/任务编号">
+                <Input allowClear suffix={<SearchOutlined />} placeholder="请输入文件名或任务编号" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} xl={6}>
+              <Form.Item name="createdRange" label="任务创建时间">
+                <RangePicker allowClear style={{ width: '100%' }} placeholder={['开始日期', '结束日期']} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <div className="import-query-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit">查询</Button></Space></div>
+        </Form>
       </Card>
-      <Card className="tabbed-module-tabs-card">
-        <Tabs activeKey={activeView} onChange={changeView} items={[
-          { key: 'create', label: '新建导入', children: createContent },
-          { key: 'executions', label: '导入批次', children: <AsyncImportExecutionPanel notify={notify} clanId={workspace.clanId} branchId={selectedBranchId} refreshKey={jobRefreshKey} onChanged={refreshJobs} /> },
-          { key: 'history', label: '校验与审核', children: historyContent }
+
+      <Card
+        className="import-result-card"
+        title={<div><Typography.Title level={4}>查询结果</Typography.Title><Typography.Text type="secondary">共 {taskTotal} 条</Typography.Text></div>}
+        extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setNewImportOpen(true)}>新建导入</Button>}
+      >
+        <AsyncImportExecutionPanel
+          clanId={workspace.clanId}
+          branchId={selectedBranchId}
+          branchName={selectedBranch?.branchName}
+          refreshKey={jobRefreshKey}
+          query={query}
+          notify={notify}
+          onChanged={refreshJobs}
+          onTotalChange={setTaskTotal}
+          onPageChange={changePage}
+          onOpenRecords={() => setRecordsOpen(true)}
+        />
+      </Card>
+
+      <NewImportModal
+        open={newImportOpen}
+        activeType={activeType}
+        downloading={templateDownloading}
+        onTypeChange={changeType}
+        onDownloadingChange={setTemplateDownloading}
+        onCancel={() => setNewImportOpen(false)}
+        onContinue={continueToUpload}
+        notify={notify}
+      />
+
+      <Drawer
+        open={uploadWorkspaceOpen}
+        width={960}
+        title={`新建${typeTitle(activeType)}导入`}
+        className="import-upload-workspace-drawer"
+        destroyOnHidden
+        onClose={() => setUploadWorkspaceOpen(false)}
+      >
+        <Space direction="vertical" size={16} className="import-workbench-stack">
+          <Card size="small" title="导入目标">
+            <Space direction="vertical" size={12} className="import-workbench-stack">
+              {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择所属宗族。" /> : null}
+              {branchError ? <Alert type="error" showIcon message={branchError} /> : null}
+              <Select
+                aria-label="目标支派"
+                showSearch
+                allowClear
+                loading={branchLoading}
+                disabled={!workspace.clanId || branchLoading || branches.length === 0}
+                placeholder="请选择本次导入的目标支派"
+                value={selectedBranchId || undefined}
+                optionFilterProp="label"
+                options={branches.map(branch => ({
+                  value: String(branch.id),
+                  label: branch.branchName || '未命名支派',
+                  disabled: String(branch.status || '').toLowerCase() === 'archived'
+                }))}
+                onChange={value => changeBranch(value || '')}
+              />
+            </Space>
+          </Card>
+          {activeType === 'person' ? <PersonImportWorkspace {...workspaceProps} /> : null}
+          {activeType === 'relationship' ? <RelationshipImportWorkspace {...workspaceProps} /> : null}
+          {activeType === 'source' ? <SourceImportWorkspace {...workspaceProps} /> : null}
+        </Space>
+      </Drawer>
+
+      <Drawer open={recordsOpen} width={1080} title="导入记录" destroyOnHidden onClose={() => setRecordsOpen(false)}>
+        <Tabs items={[
+          { key: 'overview', label: '导入记录', children: <ImportHistoryOverviewPanel refreshKey={jobRefreshKey} /> },
+          { key: 'processing', label: '失败修正与审核提交', children: <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} /> },
+          { key: 'review', label: '审核历史', children: <ImportReviewHistoryPanel notify={notify} refreshKey={jobRefreshKey} /> }
         ]} />
-      </Card>
+      </Drawer>
     </div>
   );
 }
