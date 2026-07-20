@@ -29,16 +29,21 @@ class TrackingControllerTest {
     void searchRequiresDirectClanViewPermissionBeforeDatabaseQuery() {
         when(authorization.requireLogin("Bearer token")).thenReturn(9L);
         PageResponse<TrackingObjectResponse> page = PageResponse.of(List.of(), 0L, 1, 20);
-        when(searchService.search(1L, 9L, "person", "张", null, null, null, null, 1, 20))
-                .thenReturn(page);
+        when(searchService.search(
+                1L, 9L, List.of("person", "source"), "张", null,
+                List.of("formal", "pending"), null, null, 1, 20
+        )).thenReturn(page);
 
         assertThat(controller.searchObjects(
-                "Bearer token", 1L, "person", "张", null, null,
-                null, null, 1, 20
+                "Bearer token", 1L, List.of("person", "source"), "张", null,
+                List.of("formal", "pending"), null, null, 1, 20
         ).getData()).isSameAs(page);
 
         verify(authorization).requireDirectClanPermission(1L, 9L, "operation_log.view");
-        verify(searchService).search(1L, 9L, "person", "张", null, null, null, null, 1, 20);
+        verify(searchService).search(
+                1L, 9L, List.of("person", "source"), "张", null,
+                List.of("formal", "pending"), null, null, 1, 20
+        );
     }
 
     @Test
@@ -63,7 +68,7 @@ class TrackingControllerTest {
                 .thenThrow(new BusinessException("AUTH_FORBIDDEN", "当前用户不是该宗族成员"));
 
         assertThatThrownBy(() -> controller.searchObjects(
-                "Bearer token", 2L, "person", null, null, null,
+                "Bearer token", 2L, List.of("person"), null, null, List.of(),
                 null, null, 1, 20
         )).isInstanceOf(BusinessException.class);
 

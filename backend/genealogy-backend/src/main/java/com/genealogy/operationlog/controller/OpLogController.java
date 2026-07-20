@@ -8,6 +8,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationLogBusinessViewApplicationService;
 import com.genealogy.operationlog.application.OperationLogExportApplicationService;
+import com.genealogy.operationlog.application.OperationLogMultiValueQueryService;
 import com.genealogy.operationlog.application.OperationRiskAuditApplicationService;
 import com.genealogy.operationlog.application.OperationRiskBusinessViewApplicationService;
 import com.genealogy.operationlog.dto.OperationLogResponse;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Validated
 @RestController
@@ -42,6 +44,7 @@ public class OpLogController {
     private static final String PERMISSION_RISK_VIEW = "operation_risk.view";
 
     private final OperationLogApplicationService operationLogApplicationService;
+    private final OperationLogMultiValueQueryService operationLogMultiValueQueryService;
     private final OperationLogBusinessViewApplicationService operationLogBusinessViewApplicationService;
     private final OperationLogExportApplicationService operationLogExportApplicationService;
     private final OperationRiskAuditApplicationService operationRiskAuditApplicationService;
@@ -51,6 +54,7 @@ public class OpLogController {
 
     public OpLogController(
             OperationLogApplicationService operationLogApplicationService,
+            OperationLogMultiValueQueryService operationLogMultiValueQueryService,
             OperationLogBusinessViewApplicationService operationLogBusinessViewApplicationService,
             OperationLogExportApplicationService operationLogExportApplicationService,
             OperationRiskAuditApplicationService operationRiskAuditApplicationService,
@@ -59,6 +63,7 @@ public class OpLogController {
             RbacAuthorizationApplicationService rbacAuthorizationApplicationService
     ) {
         this.operationLogApplicationService = operationLogApplicationService;
+        this.operationLogMultiValueQueryService = operationLogMultiValueQueryService;
         this.operationLogBusinessViewApplicationService = operationLogBusinessViewApplicationService;
         this.operationLogExportApplicationService = operationLogExportApplicationService;
         this.operationRiskAuditApplicationService = operationRiskAuditApplicationService;
@@ -71,10 +76,11 @@ public class OpLogController {
     public ApiResponse<PageResponse<OperationLogResponse>> listOperations(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String actionType,
-            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "actionType") List<String> actionTypes,
+            @RequestParam(required = false, name = "targetType") List<String> targetTypes,
             @RequestParam(required = false) Long targetId,
+            @RequestParam(required = false, name = "resultStatus") List<String> resultStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
             @RequestParam(required = false) String keyword,
@@ -88,12 +94,13 @@ public class OpLogController {
                 userId,
                 PERMISSION_EXPORT
         );
-        PageResponse<OperationLogResponse> page = operationLogApplicationService.search(
+        PageResponse<OperationLogResponse> page = operationLogMultiValueQueryService.search(
                 clanId,
-                actorId,
-                actionType,
-                targetType,
+                actorIds,
+                actionTypes,
+                targetTypes,
                 targetId,
+                resultStatuses,
                 startTime,
                 endTime,
                 keyword,
@@ -108,11 +115,11 @@ public class OpLogController {
     public ApiResponse<PageResponse<RiskAuditEventResponse>> listRisks(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String riskLevel,
-            @RequestParam(required = false) String eventType,
-            @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) String dispositionStatus,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "riskLevel") List<String> riskLevels,
+            @RequestParam(required = false, name = "eventType") List<String> eventTypes,
+            @RequestParam(required = false, name = "branchId") List<Long> branchIds,
+            @RequestParam(required = false, name = "dispositionStatus") List<String> dispositionStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
             @Min(1) @RequestParam(defaultValue = "1") int pageNo,
@@ -132,11 +139,11 @@ public class OpLogController {
         );
         PageResponse<RiskAuditEventResponse> page = operationRiskAuditApplicationService.search(
                 clanId,
-                actorId,
-                riskLevel,
-                eventType,
-                branchId,
-                dispositionStatus,
+                actorIds,
+                riskLevels,
+                eventTypes,
+                branchIds,
+                dispositionStatuses,
                 startTime,
                 endTime,
                 pageNo,
@@ -151,11 +158,11 @@ public class OpLogController {
     public ApiResponse<RiskAuditStatsResponse> riskStats(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String riskLevel,
-            @RequestParam(required = false) String eventType,
-            @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) String dispositionStatus,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "riskLevel") List<String> riskLevels,
+            @RequestParam(required = false, name = "eventType") List<String> eventTypes,
+            @RequestParam(required = false, name = "branchId") List<Long> branchIds,
+            @RequestParam(required = false, name = "dispositionStatus") List<String> dispositionStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime
     ) {
@@ -168,11 +175,11 @@ public class OpLogController {
         );
         return ApiResponse.success(operationRiskAuditApplicationService.stats(
                 clanId,
-                actorId,
-                riskLevel,
-                eventType,
-                branchId,
-                dispositionStatus,
+                actorIds,
+                riskLevels,
+                eventTypes,
+                branchIds,
+                dispositionStatuses,
                 startTime,
                 endTime,
                 scope
@@ -183,10 +190,11 @@ public class OpLogController {
     public ResponseEntity<byte[]> exportOperations(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String actionType,
-            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "actionType") List<String> actionTypes,
+            @RequestParam(required = false, name = "targetType") List<String> targetTypes,
             @RequestParam(required = false) Long targetId,
+            @RequestParam(required = false, name = "resultStatus") List<String> resultStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
             @RequestParam(required = false) String keyword
@@ -196,10 +204,11 @@ public class OpLogController {
         byte[] content = operationLogExportApplicationService.exportCsv(
                 clanId,
                 userId,
-                actorId,
-                actionType,
-                targetType,
+                actorIds,
+                actionTypes,
+                targetTypes,
                 targetId,
+                resultStatuses,
                 startTime,
                 endTime,
                 keyword
@@ -217,22 +226,24 @@ public class OpLogController {
     public ApiResponse<OperationLogStatsResponse> operationStats(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String actionType,
-            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "actionType") List<String> actionTypes,
+            @RequestParam(required = false, name = "targetType") List<String> targetTypes,
             @RequestParam(required = false) Long targetId,
+            @RequestParam(required = false, name = "resultStatus") List<String> resultStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
             @RequestParam(required = false) String keyword
     ) {
         Long userId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requireDirectClanPermission(clanId, userId, PERMISSION_VIEW);
-        return ApiResponse.success(operationLogApplicationService.stats(
+        return ApiResponse.success(operationLogMultiValueQueryService.stats(
                 clanId,
-                actorId,
-                actionType,
-                targetType,
+                actorIds,
+                actionTypes,
+                targetTypes,
                 targetId,
+                resultStatuses,
                 startTime,
                 endTime,
                 keyword

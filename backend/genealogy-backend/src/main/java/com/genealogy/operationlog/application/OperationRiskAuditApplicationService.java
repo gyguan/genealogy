@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -58,11 +59,11 @@ public class OperationRiskAuditApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<RiskAuditEventResponse> search(
             Long clanId,
-            Long actorId,
-            String riskLevel,
-            String eventType,
-            Long branchId,
-            String dispositionStatus,
+            List<Long> actorIds,
+            List<String> riskLevels,
+            List<String> eventTypes,
+            List<Long> branchIds,
+            List<String> dispositionStatuses,
             LocalDateTime startTime,
             LocalDateTime endTime,
             int pageNo,
@@ -73,7 +74,15 @@ public class OperationRiskAuditApplicationService {
         int normalizedPageNo = Math.max(1, pageNo);
         int normalizedPageSize = Math.max(1, Math.min(pageSize, 100));
         Specification<OperationLogEntity> specification = specification(
-                clanId, actorId, riskLevel, eventType, branchId, dispositionStatus, startTime, endTime, scope
+                clanId,
+                actorIds,
+                riskLevels,
+                eventTypes,
+                branchIds,
+                dispositionStatuses,
+                startTime,
+                endTime,
+                scope
         );
         PageRequest pageRequest = PageRequest.of(
                 normalizedPageNo - 1,
@@ -89,7 +98,67 @@ public class OperationRiskAuditApplicationService {
         );
     }
 
+    public PageResponse<RiskAuditEventResponse> search(
+            Long clanId,
+            Long actorId,
+            String riskLevel,
+            String eventType,
+            Long branchId,
+            String dispositionStatus,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            int pageNo,
+            int pageSize,
+            boolean includeTechnicalFields,
+            PermissionDataScope scope
+    ) {
+        return search(
+                clanId,
+                actorId == null ? List.of() : List.of(actorId),
+                riskLevel == null ? List.of() : List.of(riskLevel),
+                eventType == null ? List.of() : List.of(eventType),
+                branchId == null ? List.of() : List.of(branchId),
+                dispositionStatus == null ? List.of() : List.of(dispositionStatus),
+                startTime,
+                endTime,
+                pageNo,
+                pageSize,
+                includeTechnicalFields,
+                scope
+        );
+    }
+
     @Transactional(readOnly = true)
+    public RiskAuditStatsResponse stats(
+            Long clanId,
+            List<Long> actorIds,
+            List<String> riskLevels,
+            List<String> eventTypes,
+            List<Long> branchIds,
+            List<String> dispositionStatuses,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            PermissionDataScope scope
+    ) {
+        Specification<OperationLogEntity> specification = specification(
+                clanId,
+                actorIds,
+                riskLevels,
+                eventTypes,
+                branchIds,
+                dispositionStatuses,
+                startTime,
+                endTime,
+                scope
+        );
+        return new RiskAuditStatsResponse(
+                operationLogRepository.count(specification),
+                group(specification, "riskLevel"),
+                group(specification, "riskEventType"),
+                group(specification, "dispositionStatus")
+        );
+    }
+
     public RiskAuditStatsResponse stats(
             Long clanId,
             Long actorId,
@@ -101,45 +170,64 @@ public class OperationRiskAuditApplicationService {
             LocalDateTime endTime,
             PermissionDataScope scope
     ) {
-        Specification<OperationLogEntity> specification = specification(
-                clanId, actorId, riskLevel, eventType, branchId, dispositionStatus, startTime, endTime, scope
-        );
-        return new RiskAuditStatsResponse(
-                operationLogRepository.count(specification),
-                group(specification, "riskLevel"),
-                group(specification, "riskEventType"),
-                group(specification, "dispositionStatus")
+        return stats(
+                clanId,
+                actorId == null ? List.of() : List.of(actorId),
+                riskLevel == null ? List.of() : List.of(riskLevel),
+                eventType == null ? List.of() : List.of(eventType),
+                branchId == null ? List.of() : List.of(branchId),
+                dispositionStatus == null ? List.of() : List.of(dispositionStatus),
+                startTime,
+                endTime,
+                scope
         );
     }
 
     private Specification<OperationLogEntity> specification(
             Long clanId,
-            Long actorId,
-            String riskLevel,
-            String eventType,
-            Long branchId,
-            String dispositionStatus,
+            List<Long> actorIds,
+            List<String> riskLevels,
+            List<String> eventTypes,
+            List<Long> branchIds,
+            List<String> dispositionStatuses,
             LocalDateTime startTime,
             LocalDateTime endTime,
             PermissionDataScope scope
     ) {
-        String normalizedLevel = validated(riskLevel, LEVELS, "OPERATION_RISK_LEVEL_INVALID", "风险等级不正确");
-        String normalizedEventType = validated(eventType, EVENT_TYPES, "OPERATION_RISK_EVENT_INVALID", "风险事件类型不正确");
-        String normalizedDisposition = validated(
-                dispositionStatus, DISPOSITIONS, "OPERATION_RISK_DISPOSITION_INVALID", "风险处置状态不正确"
+        List<Long> normalizedActors = normalizeLongs(actorIds);
+        Set<String> normalizedLevels = validatedValues(
+                riskLevels,
+                LEVELS,
+                "OPERATION_RISK_LEVEL_INVALID",
+                "风险等级不正确"
         );
+        Set<String> normalizedEventTypes = validatedValues(
+                eventTypes,
+                EVENT_TYPES,
+                "OPERATION_RISK_EVENT_INVALID",
+                "风险事件类型不正确"
+        );
+        Set<String> normalizedDispositions = validatedValues(
+                dispositionStatuses,
+                DISPOSITIONS,
+                "OPERATION_RISK_DISPOSITION_INVALID",
+                "风险处置状态不正确"
+        );
+        Set<Long> requestedBranchIds = new LinkedHashSet<>(normalizeLongs(branchIds));
         PermissionDataScope effectiveScope = scope == null ? PermissionDataScope.none() : scope;
-        if (branchId != null && !effectiveScope.canAccessBranch(branchId)) {
-            throw new BusinessException("AUTH_FORBIDDEN", "当前账号无权查看该支派的风险事件");
+        for (Long branchId : requestedBranchIds) {
+            if (!effectiveScope.canAccessBranch(branchId)) {
+                throw new BusinessException("AUTH_FORBIDDEN", "当前账号无权查看该支派的风险事件");
+            }
         }
-        Set<Long> constrainedBranchIds = branchId == null
+        Set<Long> constrainedBranchIds = requestedBranchIds.isEmpty()
                 ? effectiveScope.visibleBranchIds()
-                : Set.of(branchId);
+                : requestedBranchIds;
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
             predicates.add(criteriaBuilder.isNotNull(root.get("riskEventType")));
-            if (branchId != null || !effectiveScope.fullClanAccess()) {
+            if (!requestedBranchIds.isEmpty() || !effectiveScope.fullClanAccess()) {
                 predicates.add(branchVisibilityPredicate(
                         root,
                         query,
@@ -148,17 +236,17 @@ public class OperationRiskAuditApplicationService {
                         constrainedBranchIds
                 ));
             }
-            if (actorId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("actorId"), actorId));
+            if (!normalizedActors.isEmpty()) {
+                predicates.add(root.get("actorId").in(normalizedActors));
             }
-            if (normalizedLevel != null) {
-                predicates.add(criteriaBuilder.equal(root.get("riskLevel"), normalizedLevel));
+            if (!normalizedLevels.isEmpty()) {
+                predicates.add(root.get("riskLevel").in(normalizedLevels));
             }
-            if (normalizedEventType != null) {
-                predicates.add(criteriaBuilder.equal(root.get("riskEventType"), normalizedEventType));
+            if (!normalizedEventTypes.isEmpty()) {
+                predicates.add(root.get("riskEventType").in(normalizedEventTypes));
             }
-            if (normalizedDisposition != null) {
-                predicates.add(criteriaBuilder.equal(root.get("dispositionStatus"), normalizedDisposition));
+            if (!normalizedDispositions.isEmpty()) {
+                predicates.add(root.get("dispositionStatus").in(normalizedDispositions));
             }
             if (startTime != null) {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
@@ -350,14 +438,38 @@ public class OperationRiskAuditApplicationService {
         );
     }
 
-    private String validated(String value, Set<String> allowed, String code, String message) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private List<Long> normalizeLongs(List<Long> values) {
+        if (values == null) {
+            return List.of();
         }
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
-        if (!allowed.contains(normalized)) {
-            throw new BusinessException(code, message);
+        return values.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Set<String> validatedValues(
+            List<String> values,
+            Set<String> allowed,
+            String code,
+            String message
+    ) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (values == null) {
+            return normalized;
         }
+        values.stream()
+                .filter(java.util.Objects::nonNull)
+                .flatMap(value -> java.util.Arrays.stream(value.split(",")))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .forEach(value -> {
+                    if (!allowed.contains(value)) {
+                        throw new BusinessException(code, message);
+                    }
+                    normalized.add(value);
+                });
         return normalized;
     }
 }
