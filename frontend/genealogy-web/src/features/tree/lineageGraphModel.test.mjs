@@ -4,10 +4,10 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const modulePath = path.resolve('.tree-test/features/tree/lineageGraphModel.js');
-const { buildLineageLayout } = await import(pathToFileURL(modulePath).href);
+const { buildLineageLayout, buildPersonCenteredLayout } = await import(pathToFileURL(modulePath).href);
 
-function node(id, generationNo) {
-  return { nodeId: id, personId: Number(id.replace(/\D/g, '')) || null, displayName: id, visibility: 'visible', generationNo };
+function node(id, generationNo, gender = 'unknown') {
+  return { nodeId: id, personId: Number(id.replace(/\D/g, '')) || null, displayName: id, visibility: 'visible', generationNo, gender };
 }
 
 function edge(id, from, to, relationType = 'parent_child', relationCategory = 'blood') {
@@ -16,6 +16,10 @@ function edge(id, from, to, relationType = 'parent_child', relationCategory = 'b
 
 function graph(nodes, edges, rootNodeId = nodes[0]?.nodeId || null, warnings = []) {
   return { rootNodeId, direction: 'both', dataView: 'official', nodes, edges, meta: { requestedDepth: 5, appliedDepth: 5, nodeCount: nodes.length, edgeCount: edges.length, truncated: false, truncationReasons: [], cycleDetected: false, duplicateEdgeCount: 0, generatedAt: '2026-07-14T00:00:00Z' }, warnings };
+}
+
+function centerX(item) {
+  return item.x + item.width / 2;
 }
 
 test('parent edges determine layers instead of generation peers', () => {
@@ -41,6 +45,63 @@ test('spouses share one visual layer and use spouse edge semantics', () => {
   assert.equal(positions.get('parent').layer, positions.get('spouse').layer);
   assert.equal(layout.edges.find(item => item.id === 'marriage').kind, 'spouse');
   assert.ok(positions.get('child').layer > positions.get('parent').layer);
+});
+
+test('person-centered layout places first-degree family around the center person', () => {
+  const input = graph(
+    [
+      node('father', 1, 'male'),
+      node('mother', 1, 'female'),
+      node('sister', 2, 'female'),
+      node('center', 2, 'male'),
+      node('spouse', 2, 'female'),
+      node('son', 3, 'male'),
+      node('daughter', 3, 'female')
+    ],
+    [
+      edge('father-center', 'father', 'center'),
+      edge('mother-center', 'mother', 'center'),
+      edge('father-sister', 'father', 'sister'),
+      edge('mother-sister', 'mother', 'sister'),
+      edge('center-spouse', 'center', 'spouse', 'spouse', 'marriage'),
+      edge('center-son', 'center', 'son'),
+      edge('center-daughter', 'center', 'daughter')
+    ],
+    'center'
+  );
+  const layout = buildPersonCenteredLayout(input);
+  const positions = new Map(layout.nodes.map(item => [item.id, item]));
+  const center = positions.get('center');
+  const father = positions.get('father');
+  const mother = positions.get('mother');
+  const spouse = positions.get('spouse');
+  const sister = positions.get('sister');
+  const son = positions.get('son');
+  const daughter = positions.get('daughter');
+
+  assert.ok(father.y < center.y);
+  assert.ok(mother.y < center.y);
+  assert.equal(spouse.y, center.y);
+  assert.equal(sister.y, center.y);
+  assert.ok(son.y > center.y);
+  assert.ok(daughter.y > center.y);
+  assert.ok(Math.abs(centerX(spouse) - centerX(center)) < Math.abs(centerX(sister) - centerX(center)));
+  assert.notEqual(father.x, mother.x);
+  assert.notEqual(son.x, daughter.x);
+});
+
+test('client layout marker routes only person graphs to centered layout', () => {
+  const personGraph = graph([node('parent', 1), node('center', 2), node('child', 3)], [edge('p-c', 'parent', 'center'), edge('c-child', 'center', 'child')], 'center');
+  personGraph.clientLayoutMode = 'person-centered';
+  const personLayout = buildLineageLayout(personGraph);
+  const personPositions = new Map(personLayout.nodes.map(item => [item.id, item]));
+  assert.ok(personPositions.get('parent').y < personPositions.get('center').y);
+  assert.ok(personPositions.get('child').y > personPositions.get('center').y);
+
+  const branchLayout = buildLineageLayout(graph([node('root', 1), node('child', 2)], [edge('root-child', 'root', 'child')], 'root'));
+  const branchPositions = new Map(branchLayout.nodes.map(item => [item.id, item]));
+  assert.equal(branchPositions.get('root').layer, 0);
+  assert.equal(branchPositions.get('child').layer, 1);
 });
 
 test('cycle data produces finite unique layout', () => {

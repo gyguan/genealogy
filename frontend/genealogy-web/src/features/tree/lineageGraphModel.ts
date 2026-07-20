@@ -6,6 +6,7 @@ import type {
 } from '../../shared/api/generated/tree-types';
 
 export type LineageEdgeKind = 'parent' | 'spouse' | 'status' | 'other';
+export type LineageClientLayoutMode = 'person-centered';
 
 export type LineageLayoutNode = {
   id: string;
@@ -51,6 +52,10 @@ const NODE_GAP = 46;
 const GROUP_GAP = 72;
 const LAYER_GAP = 176;
 const CANVAS_PADDING = 72;
+const CENTER_HORIZONTAL_STEP = NODE_WIDTH + 52;
+const CENTER_GROUP_GAP = 72;
+const CENTER_VERTICAL_GAP = 196;
+const CENTER_OUTER_VERTICAL_GAP = 170;
 
 const PARENT_RELATION_TYPES = new Set([
   'parent_child',
@@ -72,6 +77,16 @@ function edgeKind(edge: TreeEdgeResponse): LineageEdgeKind {
 function stableNodeCompare(a: TreeNodeResponse, b: TreeNodeResponse, rootNodeId: string | null) {
   if (a.nodeId === rootNodeId) return -1;
   if (b.nodeId === rootNodeId) return 1;
+  const generationCompare = (a.generationNo ?? Number.MAX_SAFE_INTEGER) - (b.generationNo ?? Number.MAX_SAFE_INTEGER);
+  if (generationCompare) return generationCompare;
+  const nameCompare = a.displayName.localeCompare(b.displayName, 'zh-CN');
+  return nameCompare || a.nodeId.localeCompare(b.nodeId);
+}
+
+function familyNodeCompare(a: TreeNodeResponse, b: TreeNodeResponse) {
+  const genderOrder = { male: 0, female: 1, unknown: 2 } as const;
+  const genderCompare = genderOrder[a.gender || 'unknown'] - genderOrder[b.gender || 'unknown'];
+  if (genderCompare) return genderCompare;
   const generationCompare = (a.generationNo ?? Number.MAX_SAFE_INTEGER) - (b.generationNo ?? Number.MAX_SAFE_INTEGER);
   if (generationCompare) return generationCompare;
   const nameCompare = a.displayName.localeCompare(b.displayName, 'zh-CN');
@@ -188,7 +203,6 @@ function assignLayers(
     }
   });
 
-  // Spouses share a layer. Raising one spouse can raise its descendants, so settle both constraints together.
   for (let round = 0; round < nodes.length + 2; round += 1) {
     let changed = false;
     spouseEdges.forEach(edge => {
@@ -267,7 +281,208 @@ function mergeNotices(graphWarnings: TreeGraphWarning[], roots: string[], isolat
   return notices;
 }
 
-export function buildLineageLayout(
+function graphRoots(nodes: TreeNodeResponse[], parentEdges: TreeEdgeResponse[], preferredRootId: string | null) {
+  const incomingParentCount = new Map(nodes.map(node => [node.nodeId, 0]));
+  parentEdges.forEach(edge => incomingParentCount.set(edge.toNodeId, (incomingParentCount.get(edge.toNodeId) || 0) + 1));
+  let roots = nodes.filter(node => (incomingParentCount.get(node.nodeId) || 0) === 0).map(node => node.nodeId);
+  if (!roots.length && preferredRootId && nodes.some(node => node.nodeId === preferredRootId)) roots = [preferredRootId];
+  if (!roots.length && nodes.length) roots = [nodes[0].nodeId];
+  return roots;
+}
+
+function centeredCoordinates(count: number, step = CENTER_HORIZONTAL_STEP) {
+  const first = -((count - 1) * step) / 2;
+  return Array.from({ length: count }, (_value, index) => first + index * step);
+}
+
+function alternatingSideCoordinates(count: number, startDistance: number, step = CENTER_HORIZONTAL_STEP) {
+  return Array.from({ length: count }, (_value, index) => {
+    const rank = Math.floor(index / 2);
+    const direction = index % 2 === 0 ? 1 : -1;
+    return direction * (startDistance + rank * step);
+  });
+}
+
+function reachableFrom(seeds: string[], edgesByFrom: Map<string, string[]>) {
+  const reached = new Set<string>();
+  const queue = [...seeds];
+  while (queue.length) {
+    const current = queue.shift() as string;
+    for (const next of edgesByFrom.get(current) || []) {
+      if (reached.has(next)) continue;
+      reached.add(next);
+      queue.push(next);
+    }
+  }
+  return reached;
+}
+
+function placeNode(
+  positioned: Map<string, LineageLayoutNode>,
+  node: TreeNodeResponse,
+  centerX: number,
+  y: number,
+  layer: number,
+  parentEdges: TreeEdgeResponse[],
+  collapsedNodeIds: ReadonlySet<string>,
+  isolatedNodeIds: string[]
+) {
+  positioned.set(node.nodeId, {
+    id: node.nodeId,
+    node,
+    x: centerX - NODE_WIDTH / 2,
+    y,
+    width: NODE_WIDTH,
+    height: NODE_HEIGHT,
+    layer,
+    hasChildren: parentEdges.some(edge => edge.fromNodeId === node.nodeId),
+    collapsed: collapsedNodeIds.has(node.nodeId),
+    isolated: isolatedNodeIds.includes(node.nodeId)
+  });
+}
+
+function normalizeCenteredPositions(positioned: Map<string, LineageLayoutNode>) {
+  const values = [...positioned.values()];
+  if (!values.length) return { width: 720, height: 560 };
+  const minimumX = Math.min(...values.map(node => node.x));
+  const maximumX = Math.max(...values.map(node => node.x + node.width));
+  const minimumY = Math.min(...values.map(node => node.y));
+  const maximumY = Math.max(...values.map(node => node.y + node.height));
+  const shiftX = CANVAS_PADDING - minimumX;
+  const shiftY = CANVAS_PADDING - minimumY;
+  values.forEach(node => {
+    node.x += shiftX;
+    node.y += shiftY;
+  });
+  return {
+    width: Math.max(720, maximumX - minimumX + CANVAS_PADDING * 2),
+    height: Math.max(560, maximumY - minimumY + CANVAS_PADDING * 2)
+  };
+}
+
+export function buildPersonCenteredLayout(
+  graph: TreeGraphResponse,
+  collapsedNodeIds: ReadonlySet<string> = new Set()
+): LineageLayout {
+  const { nodeMap, edges: uniqueEdges } = uniqueGraph(graph);
+  const allNodes = [...nodeMap.values()];
+  const parentEdges = uniqueEdges.filter(edge => edgeKind(edge) === 'parent');
+  const visibleIds = visibleAfterCollapse(allNodes.map(node => node.nodeId), parentEdges, graph.rootNodeId, collapsedNodeIds);
+  const nodes = allNodes.filter(node => visibleIds.has(node.nodeId));
+  const visibleEdges = uniqueEdges.filter(edge => visibleIds.has(edge.fromNodeId) && visibleIds.has(edge.toNodeId));
+  const visibleParentEdges = visibleEdges.filter(edge => edgeKind(edge) === 'parent');
+  const visibleSpouseEdges = visibleEdges.filter(edge => edgeKind(edge) === 'spouse');
+  const center = nodes.find(node => node.nodeId === graph.rootNodeId) || nodes[0];
+  if (!center) {
+    return { nodes: [], edges: [], width: 720, height: 560, roots: [], isolatedNodeIds: [], notices: [] };
+  }
+
+  const incidentIds = new Set(visibleEdges.flatMap(edge => [edge.fromNodeId, edge.toNodeId]));
+  const isolatedNodeIds = nodes.filter(node => !incidentIds.has(node.nodeId)).map(node => node.nodeId);
+  const directParentIds = new Set(visibleParentEdges.filter(edge => edge.toNodeId === center.nodeId).map(edge => edge.fromNodeId));
+  const directChildIds = new Set(visibleParentEdges.filter(edge => edge.fromNodeId === center.nodeId).map(edge => edge.toNodeId));
+  const spouseIds = new Set(visibleSpouseEdges.flatMap(edge => {
+    if (edge.fromNodeId === center.nodeId) return [edge.toNodeId];
+    if (edge.toNodeId === center.nodeId) return [edge.fromNodeId];
+    return [];
+  }));
+  const siblingIds = new Set<string>();
+  visibleParentEdges.forEach(edge => {
+    if (directParentIds.has(edge.fromNodeId) && edge.toNodeId !== center.nodeId) siblingIds.add(edge.toNodeId);
+  });
+
+  const parents = nodes.filter(node => directParentIds.has(node.nodeId)).sort(familyNodeCompare);
+  const children = nodes.filter(node => directChildIds.has(node.nodeId)).sort(familyNodeCompare);
+  const spouses = nodes.filter(node => spouseIds.has(node.nodeId)).sort(familyNodeCompare);
+  const siblings = nodes.filter(node => siblingIds.has(node.nodeId) && !spouseIds.has(node.nodeId)).sort(familyNodeCompare);
+  const immediateIds = new Set([
+    center.nodeId,
+    ...parents.map(node => node.nodeId),
+    ...children.map(node => node.nodeId),
+    ...spouses.map(node => node.nodeId),
+    ...siblings.map(node => node.nodeId)
+  ]);
+
+  const childrenByParent = new Map<string, string[]>();
+  const parentsByChild = new Map<string, string[]>();
+  visibleParentEdges.forEach(edge => {
+    childrenByParent.set(edge.fromNodeId, [...(childrenByParent.get(edge.fromNodeId) || []), edge.toNodeId]);
+    parentsByChild.set(edge.toNodeId, [...(parentsByChild.get(edge.toNodeId) || []), edge.fromNodeId]);
+  });
+  const descendantIds = reachableFrom([...directChildIds], childrenByParent);
+  directChildIds.forEach(id => descendantIds.add(id));
+  const ancestorIds = reachableFrom([...directParentIds], parentsByChild);
+  directParentIds.forEach(id => ancestorIds.add(id));
+
+  const remaining = nodes.filter(node => !immediateIds.has(node.nodeId));
+  const centerGeneration = center.generationNo;
+  const outerAncestors = remaining
+    .filter(node => ancestorIds.has(node.nodeId) || (centerGeneration !== undefined && node.generationNo !== undefined && node.generationNo < centerGeneration))
+    .sort(familyNodeCompare);
+  const outerDescendants = remaining
+    .filter(node => !outerAncestors.some(item => item.nodeId === node.nodeId))
+    .filter(node => descendantIds.has(node.nodeId) || (centerGeneration !== undefined && node.generationNo !== undefined && node.generationNo > centerGeneration))
+    .sort(familyNodeCompare);
+  const outerPeerIds = new Set([...outerAncestors, ...outerDescendants].map(node => node.nodeId));
+  const outerPeers = remaining.filter(node => !outerPeerIds.has(node.nodeId)).sort(familyNodeCompare);
+
+  const positioned = new Map<string, LineageLayoutNode>();
+  const parentY = 0;
+  const centerY = CENTER_VERTICAL_GAP;
+  const childY = CENTER_VERTICAL_GAP * 2;
+
+  centeredCoordinates(parents.length).forEach((x, index) => {
+    placeNode(positioned, parents[index], x, parentY, 1, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+  placeNode(positioned, center, 0, centerY, 2, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+
+  const spouseCoordinates = alternatingSideCoordinates(spouses.length, CENTER_HORIZONTAL_STEP);
+  spouseCoordinates.forEach((x, index) => {
+    placeNode(positioned, spouses[index], x, centerY, 2, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+  const maximumSpouseRank = spouses.length ? Math.ceil(spouses.length / 2) : 0;
+  const siblingStart = (maximumSpouseRank + 1) * CENTER_HORIZONTAL_STEP + CENTER_GROUP_GAP;
+  alternatingSideCoordinates(siblings.length, siblingStart).forEach((x, index) => {
+    placeNode(positioned, siblings[index], x, centerY, 2, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+  const peerStart = siblingStart + Math.ceil(siblings.length / 2) * CENTER_HORIZONTAL_STEP + CENTER_GROUP_GAP;
+  alternatingSideCoordinates(outerPeers.length, peerStart).forEach((x, index) => {
+    placeNode(positioned, outerPeers[index], x, centerY, 2, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+
+  centeredCoordinates(children.length).forEach((x, index) => {
+    placeNode(positioned, children[index], x, childY, 3, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+  centeredCoordinates(outerAncestors.length).forEach((x, index) => {
+    placeNode(positioned, outerAncestors[index], x, parentY - CENTER_OUTER_VERTICAL_GAP, 0, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+  centeredCoordinates(outerDescendants.length).forEach((x, index) => {
+    placeNode(positioned, outerDescendants[index], x, childY + CENTER_OUTER_VERTICAL_GAP, 4, visibleParentEdges, collapsedNodeIds, isolatedNodeIds);
+  });
+
+  const dimensions = normalizeCenteredPositions(positioned);
+  const layoutEdges = visibleEdges.flatMap(edge => {
+    const from = positioned.get(edge.fromNodeId);
+    const to = positioned.get(edge.toNodeId);
+    if (!from || !to) return [];
+    const kind = edgeKind(edge);
+    const geometry = edgePath(kind, from, to);
+    return [{ id: edge.edgeId, edge, kind, ...geometry }];
+  });
+  const roots = graphRoots(nodes, visibleParentEdges, graph.rootNodeId);
+
+  return {
+    nodes: [...positioned.values()],
+    edges: layoutEdges,
+    width: dimensions.width,
+    height: dimensions.height,
+    roots,
+    isolatedNodeIds,
+    notices: mergeNotices(graph.warnings || [], roots, isolatedNodeIds)
+  };
+}
+
+function buildGenerationLayout(
   graph: TreeGraphResponse,
   collapsedNodeIds: ReadonlySet<string> = new Set()
 ): LineageLayout {
@@ -280,12 +495,7 @@ export function buildLineageLayout(
   const visibleParentEdges = visibleEdges.filter(edge => edgeKind(edge) === 'parent');
   const visibleSpouseEdges = visibleEdges.filter(edge => edgeKind(edge) === 'spouse');
 
-  const incomingParentCount = new Map(nodes.map(node => [node.nodeId, 0]));
-  visibleParentEdges.forEach(edge => incomingParentCount.set(edge.toNodeId, (incomingParentCount.get(edge.toNodeId) || 0) + 1));
-  let roots = nodes.filter(node => (incomingParentCount.get(node.nodeId) || 0) === 0).map(node => node.nodeId);
-  if (!roots.length && graph.rootNodeId && visibleIds.has(graph.rootNodeId)) roots = [graph.rootNodeId];
-  if (!roots.length && nodes.length) roots = [nodes[0].nodeId];
-
+  const roots = graphRoots(nodes, visibleParentEdges, graph.rootNodeId);
   const layers = assignLayers(nodes, visibleParentEdges, visibleSpouseEdges, graph.rootNodeId);
   const incidentIds = new Set(visibleEdges.flatMap(edge => [edge.fromNodeId, edge.toNodeId]));
   const isolatedNodeIds = nodes.filter(node => !incidentIds.has(node.nodeId)).map(node => node.nodeId);
@@ -340,6 +550,16 @@ export function buildLineageLayout(
     isolatedNodeIds,
     notices: mergeNotices(graph.warnings || [], roots, isolatedNodeIds)
   };
+}
+
+export function buildLineageLayout(
+  graph: TreeGraphResponse,
+  collapsedNodeIds: ReadonlySet<string> = new Set()
+): LineageLayout {
+  const layoutMode = (graph as TreeGraphResponse & { clientLayoutMode?: LineageClientLayoutMode }).clientLayoutMode;
+  return layoutMode === 'person-centered'
+    ? buildPersonCenteredLayout(graph, collapsedNodeIds)
+    : buildGenerationLayout(graph, collapsedNodeIds);
 }
 
 export function relationLabel(edge: TreeEdgeResponse) {

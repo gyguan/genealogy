@@ -10,6 +10,7 @@ import { readSearchPage, toPersonSearchItem, type PersonSearchItem, type SearchP
 export type GenericRow = Record<string, unknown>;
 export type BranchRow = GenericRow & { id?: string | number; branchName?: string; parentId?: string | number };
 export type ClanRow = GenericRow & { id?: string | number; clanName?: string; surname?: string };
+export type LineageClientGraph = TreeGraphResponse & { clientLayoutMode?: 'person-centered' };
 
 function asRecord(value: unknown): GenericRow {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as GenericRow : {};
@@ -72,7 +73,7 @@ export async function loadPersonLineage(input: {
   relationScopes: TreeRelationScope[];
   dataView: TreeDataView;
   depth: string;
-}) {
+}): Promise<LineageClientGraph> {
   const query = queryString({
     branchId: input.branchId || currentLineageBranchId() || undefined,
     direction: input.direction,
@@ -83,7 +84,8 @@ export async function loadPersonLineage(input: {
     maxEdges: 1000,
     refreshAt: Date.now()
   });
-  return apiClient.get<TreeGraphResponse>(`/tree/person/${input.personId}?${query}`);
+  const graph = await apiClient.get<TreeGraphResponse>(`/tree/person/${input.personId}?${query}`);
+  return { ...graph, clientLayoutMode: 'person-centered' };
 }
 
 export async function loadBranchLineage(input: {
