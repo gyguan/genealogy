@@ -4,59 +4,44 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const modulePath = path.resolve('.tree-test/features/tree/lineageSemanticsModel.js');
-const {
-  edgeIndicators,
-  edgeVisual,
-  nodeIndicators,
-  relationshipDisplayLabel,
-  summaryText
-} = await import(pathToFileURL(modulePath).href);
+const { edgeIndicators, edgeVisual, nodeIndicators, relationshipDisplayLabel, summaryText } = await import(pathToFileURL(modulePath).href);
 
 function edge(overrides = {}) {
-  return {
-    edgeId: 'relationship-1',
-    relationshipId: 1,
-    fromNodeId: 'person-1',
-    toNodeId: 'person-2',
-    relationType: 'parent_child',
-    relationCategory: 'blood',
-    visibility: 'visible',
-    ...overrides
-  };
+  return { edgeId: 'relationship-1', relationshipId: 1, fromNodeId: 'person-1', toNodeId: 'person-2', relationType: 'parent_child', relationCategory: 'blood', visibility: 'visible', ...overrides };
 }
-
 function node(overrides = {}) {
-  return {
-    nodeId: 'person-1',
-    personId: 1,
-    displayName: '甲',
-    visibility: 'visible',
-    ...overrides
-  };
+  return { nodeId: 'person-1', personId: 1, displayName: '甲', visibility: 'visible', ...overrides };
 }
 
 test('relationship matrix exposes accessible Chinese semantics', () => {
-  assert.deepEqual(edgeVisual(edge()), {
-    tone: 'blood',
-    label: '亲子',
-    description: '亲子血缘关系，使用实线箭头表示',
-    marker: 'arrow'
-  });
+  assert.deepEqual(edgeVisual(edge()), { tone: 'blood', label: '亲子', description: '亲子血缘关系，使用实线箭头表示', marker: 'arrow' });
   assert.equal(relationshipDisplayLabel(edge({ isBiological: false })), '法定亲子');
-
   const ritual = edgeVisual(edge({ relationType: 'successor', relationCategory: 'ritual', ritualRelationType: 'successor' }));
   assert.equal(ritual.tone, 'ritual');
   assert.equal(ritual.label, '承嗣');
   assert.equal(ritual.marker, 'ritual');
-
   const spouse = edgeVisual(edge({ relationType: 'spouse', relationCategory: 'marriage', isPrimary: false }));
   assert.equal(spouse.tone, 'marriage');
   assert.equal(spouse.label, '继配/侧室');
   assert.equal(spouse.marker, 'none');
-
   const status = edgeVisual(edge({ relationType: 'no_descendant', relationCategory: 'status' }));
   assert.equal(status.tone, 'status');
   assert.equal(status.label, '无嗣');
+});
+
+test('historical ritual labels are localized and custom Chinese labels remain unchanged', () => {
+  const aliases = [
+    '\u0068\u0065\u0069\u0072_son',
+    '\u0068\u0065\u0069\u0072_successor',
+    '\u0068\u0065\u0069\u0072_sucessor'
+  ];
+  for (const relationLabel of aliases) {
+    const value = edge({ relationType: 'other', relationCategory: 'ritual', relationLabel });
+    assert.equal(relationshipDisplayLabel(value), '嗣子');
+    assert.equal(edgeVisual(value).label, '嗣子');
+  }
+  assert.equal(relationshipDisplayLabel(edge({ relationType: 'successor', relationCategory: 'ritual' })), '承嗣');
+  assert.equal(relationshipDisplayLabel(edge({ relationType: 'other', relationCategory: 'ritual', relationLabel: '家族自定义关系' })), '家族自定义关系');
 });
 
 test('node indicators prioritize severe risks over evidence and review notices', () => {
@@ -87,10 +72,7 @@ test('masked objects never expose internal summary indicators', () => {
     evidenceSummary: { bindingCount: 9, officialBindingCount: 0, confidenceLevel: 'low', missingOfficialEvidence: true },
     anomalySummary: { codes: ['relationship_conflict'], count: 1, highestRisk: 'high' }
   })), [{ code: 'privacy', label: '隐私保护', tone: 'neutral', glyph: '私' }]);
-  assert.deepEqual(edgeIndicators(edge({
-    visibility: 'masked',
-    reviewSummary: { state: 'rejected', pendingTaskCount: 0, rejectedTaskCount: 1 }
-  })), []);
+  assert.deepEqual(edgeIndicators(edge({ visibility: 'masked', reviewSummary: { state: 'rejected', pendingTaskCount: 0, rejectedTaskCount: 1 } })), []);
 });
 
 test('summary text localizes backend review and risk values', () => {
