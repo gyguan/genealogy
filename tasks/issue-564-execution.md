@@ -1,67 +1,73 @@
 # Issue #564 执行看板
 
 - Issue：https://github.com/gyguan/genealogy/issues/564
-- PR：https://github.com/gyguan/genealogy/pull/568
-- 目标：为“人物中心”TAB实现独立中心关系图布局，支派全局保持现有分层布局。
-- 工作分支：`agent/issue-564-person-centered-layout`
-- Issue 类型：Tree 前端布局模型调整
+- 首次 PR：https://github.com/gyguan/genealogy/pull/568
+- 修复 PR：https://github.com/gyguan/genealogy/pull/574
+- 本次目标：补齐人物中心关系图的真实兄弟姐妹数据，使现有专用布局能够按原型展示父母、子女、配偶和兄弟姐妹。
+- 工作分支：`agent/issue-564-fix-person-centered-layout`
+- Issue 类型：Tree 后端查询结果修复
 - 流程强度：标准
-- 契约强度：不涉及
-- 验证强度：Tree 聚焦测试 + TypeScript + 生产构建 + diff 检查
-- 影响模块：`frontend/genealogy-web/src/features/tree`
+- 契约强度：无 schema 变更；保持既有 Tree API DTO
+- 验证强度：后端完整编译、单元测试与打包 + 现有前端布局测试复核 + diff 检查
+- 影响模块：`backend/genealogy-backend/src/main/java/com/genealogy/tree`
 
-## 实现范围
+## 复核结论
 
-1. 中心人物固定为关系布局原点，并由人物中心视图自动居中到画布视口。
-2. 父母位于上方，父亲优先在左、母亲优先在右；子女位于下方。
-3. 配偶位于中心人物左右近邻。
-4. 兄弟姐妹通过共同父母关系推导，与中心人物同层并位于配偶外侧。
-5. 更远祖先、后代及其他节点保留在外层，避免查询数据丢失。
-6. 人物图通过客户端布局标记进入专用布局；支派全局未标记，继续使用原有分层布局。
-7. 保留折叠、缩放、居中、图内定位、边路径、节点详情和中心人物切换能力。
-8. 增加模型测试覆盖核心相对位置与人物/支派模式隔离。
+首次交付的前端中心布局函数和人物/支派模式路由已经存在，中心、父母、子女、配偶和共享父母的兄弟姐妹布局测试也已覆盖。真正导致页面看不到兄弟姐妹的运行时缺口位于后端：
+
+- `direction=both` 只遍历中心人物的祖先链和后代链；
+- 不会从中心人物的直接父母向下查询“父母的其他子女”；
+- 因此响应通常没有兄弟姐妹节点和父母→兄弟姐妹关系边；
+- 前端布局无法展示服务端没有返回的数据。
+
+前端使用 `clientLayoutMode` 路由专用布局属于实现方式问题，但已能正确进入 `buildPersonCenteredLayout`，不是本次功能未生效的根因。本次不扩大范围重构前端接口，避免在数据修复中引入无关风险。
+
+## 本次实现
+
+1. 新增 `PersonCenteredTreeApplicationService`，作为 `@Primary` Tree 查询服务接管人物查询。
+2. 先调用原 `TreeApplicationService` 构建受权限、隐私、状态、关系范围和容量限制保护的基础图。
+3. 对 `family`、`both` 查询，从基础图提取已可见的直接父母。
+4. 复用受保护的父母家庭查询，合并父母的其他子女及对应父子关系边。
+5. 按节点 ID 和边 ID 去重，并继续遵守 `maxNodes`、`maxEdges`，同步更新 meta 和 warning。
+6. `ancestors`、`descendants`、支派全局查询保持原逻辑。
+7. 新增后端测试覆盖 `both` 与兼容 `family` 入口真实返回兄弟姐妹。
 
 ## 任务看板
 
 | 序号 | 任务 | 状态 | 结果或说明 |
 |---|---|---|---|
-| 1 | 建立 Issue、分支和执行现场 | ✅ 已完成 | Issue #564、分支与 Draft PR #568 |
-| 2 | 实现人物中心关系分组和专用布局 | ✅ 已完成 | `c667ec8f`：新增人物中心布局、亲属分组和外层节点策略 |
-| 3 | 接入人物图与支派图模式隔离 | ✅ 已完成 | `1c9e2290`：人物接口结果标记为 `person-centered`，支派图保持原布局 |
-| 4 | 补充测试、运行 CI、复核 diff | ✅ 已完成 | `f917f9e0`；Frontend CI Run #1028 全部通过 |
+| 1 | 重新读取 main、Issue 与前后端实现，确认真实根因 | ✅ 已完成 | 确认后端响应缺少兄弟姐妹；前端专用布局路由已存在 |
+| 2 | 恢复 Issue、创建修复分支和 Draft PR | ✅ 已完成 | Issue #564、当前分支、Draft PR #574 |
+| 3 | 后端补齐人物中心兄弟姐妹查询 | ✅ 已完成 | `15554348`：新增受保护的兄弟姐妹查询增强服务 |
+| 4 | 增加聚焦测试并复核前端布局链路 | ✅ 已完成 | `d7549811`：覆盖 both/family；现有前端布局可消费新增节点和边 |
+| 5 | 执行 CI、diff Review、合入 main | 🔄 进行中 | Backend CI Run #2640 success；待最终 Review 与合入 |
 
 ## 验证结果
 
-- Tree graph model 测试：通过，新增 2 个中心关系图测试。
-- 前端现有测试：通过。
-- TypeScript 类型检查：通过。
-- 生产构建：通过。
-- Frontend CI Run #1028：`success`。
-- diff 复核：仅修改 Tree 布局模型、Tree 服务标记、对应测试和本执行看板。
-- API、OpenAPI、后端、数据库、权限及其他页面：无修改。
+- Backend CI Run #2640：通过。
+- Java 17 编译：通过。
+- 后端完整单元测试：通过。
+- 后端 package：通过。
+- 新增测试：
+  - `bothQueryAddsSiblingThroughVisibleDirectParent`
+  - `familyCompatibilityEntryAlsoAddsSibling`
+- 前端未修改；首次实现中的 `buildPersonCenteredLayout` 及人物/支派模式隔离测试仍在 `main`，已在 Frontend CI Run #1029 验证通过。
+- OpenAPI、DTO、数据库、权限规则和支派全局布局：无修改。
 
-## 布局规则
+## 风险与补偿
 
-- 父母：直接指向中心人物的亲子/承嗣类关系，位于中心上方。
-- 子女：由中心人物直接指向的亲子/承嗣类关系，位于中心下方。
-- 配偶：与中心人物直接相连的婚配关系，左右交替且靠近中心。
-- 兄弟姐妹：与中心人物共享至少一位直接父母，位于中心同层、配偶外侧。
-- 远层节点：根据祖先/后代可达关系及世代信息放入更外层，不丢弃查询返回节点。
-
-## 风险与回滚
-
-- 部分历史数据若缺少共同父母边，兄弟姐妹会作为同世代外层人物展示，而不会被错误丢弃。
-- 若边方向异常，世代信息作为外层分类兜底，不改变原始关系数据。
-- 回滚方式：回退 PR #568 即可恢复人物中心与支派全局共用分层布局。
+- 多父母可能重复发现同一兄弟姐妹：按节点 ID 和边 ID 去重。
+- 隐私或支派范围可能过滤部分亲属：继续复用原 Tree 查询的可见性投影，不在前端补全敏感数据。
+- 每位已可见直接父母执行一次受保护家庭查询；直接父母数量受当前图容量约束，避免无边界查询。
+- 回滚修复 PR 即可恢复首次实现状态，无数据库或契约迁移。
 
 ## 恢复检查点
 
-- 当前 Issue：#564
-- 当前分支：`agent/issue-564-person-centered-layout`
-- 当前 Draft PR：#568
-- 业务提交：`c667ec8f4af58073b1c909069c13afd9099e3e76`、`1c9e229042598187f80ca226e6a7e88b107370b9`、`f917f9e0ab73d6727cfaaceefff675486eafe967`
-- CI 状态：Frontend CI Run #1028 success
-- 未解决 Review：无
+- 当前 Issue：#564（已重新打开）
+- 当前分支：`agent/issue-564-fix-person-centered-layout`
+- 当前 Draft PR：#574
+- 核心提交：`155543485d3f9bae2fe852b658aaad99ac1abaa9`、`d75498111cef86588d37a7a835d0ca98a26fbebd`
+- CI 状态：Backend CI Run #2640 success
 - 已知阻塞：无
-- 下一步最小任务：更新 PR 摘要，标记 Ready 并合入 `main`
+- 下一步最小任务：更新 PR 完成摘要，标记 Ready 并合入 `main`
 - 最后更新时间：2026-07-20（北京时间）
