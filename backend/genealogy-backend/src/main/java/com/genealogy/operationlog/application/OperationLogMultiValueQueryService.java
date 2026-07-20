@@ -13,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +63,46 @@ public class OperationLogMultiValueQueryService {
                 normalizedPageNo,
                 normalizedPageSize
         );
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] exportCsv(
+            Long clanId,
+            List<Long> actorIds,
+            List<String> actionTypes,
+            List<String> targetTypes,
+            Long targetId,
+            List<String> resultStatuses,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword
+    ) {
+        PageRequest pageRequest = PageRequest.of(
+                0,
+                OperationLogApplicationService.EXPORT_LIMIT,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        List<OperationLogEntity> logs = operationLogRepository.findAll(
+                specification(clanId, actorIds, actionTypes, targetTypes, targetId, resultStatuses, startTime, endTime, keyword),
+                pageRequest
+        ).getContent();
+        StringBuilder builder = new StringBuilder();
+        appendCsvRow(builder, List.of(
+                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
+                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
+                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
+        ));
+        for (OperationLogEntity log : logs) {
+            appendCsvRow(builder, List.of(
+                    value(log.getId()), value(log.getClanId()), value(log.getActorId()), value(log.getActionType()),
+                    value(log.getTargetType()), value(log.getTargetId()), value(log.getTraceId()), value(log.getRevisionId()),
+                    value(log.getReviewTaskId()), value(log.getBusinessTargetType()), value(log.getBusinessTargetId()),
+                    value(log.getEventResult()), value(log.getRiskLevel()), value(log.getRiskEventType()),
+                    value(log.getDispositionStatus()), value(log.getBranchId()), value(log.getSummary()), value(log.getDetail()),
+                    value(log.getRequestId()), value(log.getClientIp()), value(log.getCreatedAt())
+            ));
+        }
+        return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
     }
 
     @Transactional(readOnly = true)
@@ -199,5 +240,27 @@ public class OperationLogMultiValueQueryService {
                 entity.getBusinessTargetId(),
                 entity.getEventResult()
         );
+    }
+
+    private void appendCsvRow(StringBuilder builder, List<String> values) {
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) {
+                builder.append(',');
+            }
+            builder.append(escapeCsv(values.get(index)));
+        }
+        builder.append('\n');
+    }
+
+    private String escapeCsv(String value) {
+        String normalized = value == null ? "" : value;
+        if (normalized.contains(",") || normalized.contains("\"") || normalized.contains("\n") || normalized.contains("\r")) {
+            return "\"" + normalized.replace("\"", "\"\"") + "\"";
+        }
+        return normalized;
+    }
+
+    private String value(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 }
