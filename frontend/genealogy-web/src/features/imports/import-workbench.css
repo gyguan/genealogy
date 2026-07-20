@@ -30,8 +30,18 @@
   padding-top: 4px;
 }
 
+.import-result-card > .ant-card-head {
+  padding-inline: 16px;
+}
+
 .import-result-card .ant-card-head-wrapper {
-  align-items: flex-start;
+  min-height: 76px;
+  align-items: center;
+}
+
+.import-result-card .ant-card-head-title,
+.import-result-card .ant-card-extra {
+  padding-block: 16px;
 }
 
 .import-result-card .ant-card-head-title .ant-typography {
@@ -271,10 +281,11 @@
   }
 
   .import-result-card .ant-card-head-wrapper {
+    min-height: 0;
     align-items: stretch;
     flex-direction: column;
     gap: 12px;
-    padding-block: 12px;
+    padding-block: 16px;
   }
 
   .import-result-card .ant-card-head-title,
