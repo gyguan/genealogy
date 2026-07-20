@@ -8,28 +8,20 @@ import {
   Divider,
   Drawer,
   Dropdown,
-  Empty,
   Grid,
   List,
-  Pagination,
   Select,
   Space,
-  Table,
   Tabs,
   Tag,
   Typography
 } from 'antd';
 import type { MenuProps } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import {
   AimOutlined,
-  ApartmentOutlined,
   BranchesOutlined,
-  DownOutlined,
   MoreOutlined,
   SearchOutlined,
-  UnorderedListOutlined,
-  UpOutlined,
   UserOutlined
 } from '@ant-design/icons';
 import type {
@@ -56,7 +48,12 @@ import {
   withLineageUrlState,
   type LineageMode
 } from './lineageUrlState';
-import { LineageRequestGate, type LineageRequestScope, type PersonSearchItem, type SearchPage } from './lineageRequestState';
+import {
+  LineageRequestGate,
+  type LineageRequestScope,
+  type PersonSearchItem,
+  type SearchPage
+} from './lineageRequestState';
 import {
   loadBranchLineage,
   loadBranches,
@@ -84,42 +81,28 @@ type Props = {
 };
 type LoadState = { loading: boolean; error: string };
 type SummaryTarget = Pick<TreeNodeResponse, 'evidenceSummary' | 'reviewSummary' | 'anomalySummary'>;
-type CanvasView = 'graph' | 'list';
-
 type PersonCard = {
   id: string;
-  nodeId?: string;
   name: string;
-  gender: string;
   generation: string;
-  word: string;
   branchId: string;
   branchName: string;
-  years: string;
-  status: string;
 };
 
 const IDLE: LoadState = { loading: false, error: '' };
-const EMPTY_SEARCH: SearchPage<PersonSearchItem> = { records: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 1 };
-const LIST_PAGE_SIZE = 10;
-const PERSON_DEPTH_OPTIONS = [
-  { value: '2', label: '上下各 2 代' },
-  { value: '3', label: '上下各 3 代' },
-  { value: '5', label: '上下各 5 代' },
-  { value: '8', label: '上下各 8 代' }
+const EMPTY_SEARCH: SearchPage<PersonSearchItem> = {
+  records: [],
+  total: 0,
+  pageNo: 1,
+  pageSize: 20,
+  totalPages: 1
+};
+const COMMON_DEPTH_OPTIONS = [
+  { value: '3', label: '3 代（含本代）' },
+  { value: '5', label: '5 代（含本代）' },
+  { value: '8', label: '8 代（含本代）' }
 ];
-const BRANCH_DEPTH_OPTIONS = [
-  { value: '3', label: '展开 3 代' },
-  { value: '5', label: '展开 5 代' },
-  { value: '8', label: '展开 8 代' },
-  { value: '12', label: '展开 12 代' }
-];
-const DIRECTION_OPTIONS = [
-  { value: 'family', label: '直接家庭' },
-  { value: 'ancestors', label: '上溯祖先' },
-  { value: 'descendants', label: '下延后代' },
-  { value: 'both', label: '祖先与后代' }
-];
+const COMMON_DEPTH_VALUES = new Set(COMMON_DEPTH_OPTIONS.map(item => item.value));
 const RELATION_OPTIONS: Array<{ value: TreeRelationScope; label: string }> = [
   { value: 'blood', label: '血缘' },
   { value: 'ritual', label: '宗法承嗣' },
@@ -130,6 +113,10 @@ const ALL_RELATION_SCOPES = RELATION_OPTIONS.map(item => item.value);
 
 function text(value: unknown) {
   return value === null || value === undefined ? '' : String(value);
+}
+
+function normalizeDepth(value: string) {
+  return COMMON_DEPTH_VALUES.has(value) ? value : '3';
 }
 
 function sameRelationScopes(left: TreeRelationScope[], right: TreeRelationScope[]) {
@@ -163,15 +150,10 @@ function toPersonFromNode(node: TreeNodeResponse, branches: BranchRow[]): Person
   const branchId = node.branchId ? String(node.branchId) : '';
   return {
     id: node.personId ? String(node.personId) : '',
-    nodeId: node.nodeId,
     name: node.displayName,
-    gender: node.gender || 'unknown',
     generation: node.generationNo ? `${node.generationNo}世` : '世次未维护',
-    word: node.generationWord || '-',
     branchId,
-    branchName: node.branchName || branches.find(item => text(item.id) === branchId)?.branchName || '未归属支派',
-    years: node.birthText || node.deathText ? `${node.birthText || '?'}-${node.deathText || ''}` : '-',
-    status: dataStatusText(node.dataStatus || (node.visibility === 'masked' ? '受保护' : 'official'))
+    branchName: node.branchName || branches.find(item => text(item.id) === branchId)?.branchName || '未归属支派'
   };
 }
 
@@ -199,7 +181,9 @@ function IndicatorTags({ indicators }: { indicators: LineageIndicator[] }) {
   return (
     <div className="lineage-detail-tags">
       {indicators.map(indicator => (
-        <span key={indicator.code} className={`lineage-detail-tag tone-${indicator.tone}`}>{indicator.glyph} · {indicator.label}</span>
+        <span key={indicator.code} className={`lineage-detail-tag tone-${indicator.tone}`}>
+          {indicator.glyph} · {indicator.label}
+        </span>
       ))}
     </div>
   );
@@ -213,19 +197,27 @@ function DetailSummary({ target, indicators }: { target: SummaryTarget; indicato
         {target.evidenceSummary ? (
           <div className="lineage-detail-summary-card">
             <span>来源证据</span>
-            <strong>{target.evidenceSummary.officialBindingCount}/{target.evidenceSummary.bindingCount} 条正式 · {confidenceCn(target.evidenceSummary.confidenceLevel)}</strong>
+            <strong>
+              {target.evidenceSummary.officialBindingCount}/{target.evidenceSummary.bindingCount} 条正式 · {confidenceCn(target.evidenceSummary.confidenceLevel)}
+            </strong>
           </div>
         ) : null}
         {target.reviewSummary ? (
           <div className="lineage-detail-summary-card">
             <span>审核状态</span>
-            <strong>{reviewCn(target.reviewSummary.state)} · 待审 {target.reviewSummary.pendingTaskCount} · 驳回 {target.reviewSummary.rejectedTaskCount}</strong>
+            <strong>
+              {reviewCn(target.reviewSummary.state)} · 待审 {target.reviewSummary.pendingTaskCount} · 驳回 {target.reviewSummary.rejectedTaskCount}
+            </strong>
           </div>
         ) : null}
         {target.anomalySummary ? (
           <div className="lineage-detail-summary-card">
             <span>修谱提示</span>
-            <strong>{target.anomalySummary.count ? `${target.anomalySummary.count} 项 · ${riskLevelText(target.anomalySummary.highestRisk)}` : '暂无异常'}</strong>
+            <strong>
+              {target.anomalySummary.count
+                ? `${target.anomalySummary.count} 项 · ${riskLevelText(target.anomalySummary.highestRisk)}`
+                : '暂无异常'}
+            </strong>
           </div>
         ) : null}
       </div>
@@ -234,7 +226,10 @@ function DetailSummary({ target, indicators }: { target: SummaryTarget; indicato
   );
 }
 
-function RelationScopeSelect({ value, onChange }: { value: TreeRelationScope[]; onChange: (value: TreeRelationScope[]) => void }) {
+function RelationScopeSelect({ value, onChange }: {
+  value: TreeRelationScope[];
+  onChange: (value: TreeRelationScope[]) => void;
+}) {
   function renderPopup(menu: ReactNode) {
     return (
       <div>
@@ -271,28 +266,23 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const requestGate = useRef(new LineageRequestGate());
   const initialized = useRef(false);
   const initialUrlState = useRef(readLineageUrlState(window.location.href)).current;
+  const initialDepth = normalizeDepth(
+    initialUrlState.mode === 'branch' ? initialUrlState.branchDepth : initialUrlState.personDepth
+  );
+  const personDirection = initialUrlState.direction;
+  const includeSubBranches = initialUrlState.includeSubBranches;
 
   const [clans, setClans] = useState<ClanRow[]>([]);
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [searchPage, setSearchPage] = useState<SearchPage<PersonSearchItem>>(EMPTY_SEARCH);
   const [mode, setMode] = useState<LineageMode>(initialUrlState.mode);
-  const [canvasView, setCanvasView] = useState<CanvasView>('graph');
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
-  const [listPage, setListPage] = useState(1);
-  const [personDepth, setPersonDepth] = useState(initialUrlState.personDepth);
-  const [branchDepth, setBranchDepth] = useState(initialUrlState.branchDepth);
-  const [direction, setDirection] = useState<TreeDirection>(initialUrlState.direction);
+  const [depth, setDepth] = useState(initialDepth);
+  const [appliedDepth, setAppliedDepth] = useState(initialDepth);
   const [relationScopes, setRelationScopes] = useState<TreeRelationScope[]>([...initialUrlState.relationScopes]);
-  const [includeSubBranches, setIncludeSubBranches] = useState(initialUrlState.includeSubBranches);
+  const [appliedRelationScopes, setAppliedRelationScopes] = useState<TreeRelationScope[]>([...initialUrlState.relationScopes]);
   const initialBranchId = initialUrlState.branchId || workspace.branchId || '';
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId);
-  const [appliedPersonDepth, setAppliedPersonDepth] = useState(initialUrlState.personDepth);
-  const [appliedBranchDepth, setAppliedBranchDepth] = useState(initialUrlState.branchDepth);
-  const [appliedDirection, setAppliedDirection] = useState<TreeDirection>(initialUrlState.direction);
-  const [appliedPersonRelationScopes, setAppliedPersonRelationScopes] = useState<TreeRelationScope[]>([...initialUrlState.relationScopes]);
-  const [appliedBranchRelationScopes, setAppliedBranchRelationScopes] = useState<TreeRelationScope[]>([...initialUrlState.relationScopes]);
-  const [appliedIncludeSubBranches, setAppliedIncludeSubBranches] = useState(initialUrlState.includeSubBranches);
   const [appliedBranchId, setAppliedBranchId] = useState(initialBranchId);
   const [personGraph, setPersonGraph] = useState<TreeGraphResponse | null>(null);
   const [branchGraph, setBranchGraph] = useState<TreeGraphResponse | null>(null);
@@ -300,7 +290,12 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const [selectedEdge, setSelectedEdge] = useState<TreeEdgeResponse | null>(null);
   const [locatedNodeId, setLocatedNodeId] = useState('');
   const [personGraphVersion, setPersonGraphVersion] = useState(0);
-  const [loadState, setLoadState] = useState<Record<LineageRequestScope, LoadState>>({ clan: IDLE, search: IDLE, personGraph: IDLE, branchGraph: IDLE });
+  const [loadState, setLoadState] = useState<Record<LineageRequestScope, LoadState>>({
+    clan: IDLE,
+    search: IDLE,
+    personGraph: IDLE,
+    branchGraph: IDLE
+  });
 
   function setScope(scope: LineageRequestScope, patch: Partial<LoadState>) {
     setLoadState(previous => ({ ...previous, [scope]: { ...previous[scope], ...patch } }));
@@ -321,17 +316,36 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     setLocatedNodeId('');
     setPersonGraph(null);
     setBranchGraph(null);
-    setListPage(1);
     clearSelection();
     setLoadState({ clan: IDLE, search: IDLE, personGraph: IDLE, branchGraph: IDLE });
-    workspace.patch({ clanId, branchId: '', personId: '', relationshipId: '', sourceId: '', sourceFocusReason: '', reviewTaskId: '' });
+    workspace.patch({
+      clanId,
+      branchId: '',
+      personId: '',
+      relationshipId: '',
+      sourceId: '',
+      sourceFocusReason: '',
+      reviewTaskId: ''
+    });
   }
 
-  async function requestPersonPage(clanId: string, pageNo: number, keyword: string, nextBranches = branches, branchId = selectedBranchId) {
+  async function requestPersonPage(
+    clanId: string,
+    pageNo: number,
+    keyword: string,
+    nextBranches = branches,
+    branchId = appliedBranchId || selectedBranchId
+  ) {
     const token = requestGate.current.begin('search');
     setScope('search', { loading: true, error: '' });
     try {
-      const page = await searchPersons({ clanId, branchId: branchId || undefined, keyword, pageNo, branches: nextBranches });
+      const page = await searchPersons({
+        clanId,
+        branchId: branchId || undefined,
+        keyword,
+        pageNo,
+        branches: nextBranches
+      });
       if (!requestGate.current.isCurrent(token)) return null;
       setSearchPage(page);
       return page;
@@ -344,7 +358,12 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     }
   }
 
-  async function loadPersonGraph(personId: string, options: Partial<{ depth: string; direction: TreeDirection; relationScopes: TreeRelationScope[]; branchId: string }> = {}) {
+  async function loadPersonGraph(personId: string, options: Partial<{
+    depth: string;
+    direction: TreeDirection;
+    relationScopes: TreeRelationScope[];
+    branchId: string;
+  }> = {}) {
     requestGate.current.invalidate('personGraph');
     if (!personId) {
       setPersonGraph(null);
@@ -356,11 +375,11 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     try {
       const graph = await loadPersonLineage({
         personId,
-        branchId: options.branchId || selectedBranchId || undefined,
-        direction: options.direction || appliedDirection,
-        relationScopes: options.relationScopes || appliedPersonRelationScopes,
+        branchId: options.branchId || appliedBranchId || selectedBranchId || undefined,
+        direction: options.direction || personDirection,
+        relationScopes: options.relationScopes || appliedRelationScopes,
         dataView: 'official',
-        depth: options.depth || appliedPersonDepth
+        depth: options.depth || appliedDepth
       });
       if (!requestGate.current.isCurrent(token)) return null;
       setPersonGraph(graph);
@@ -374,7 +393,10 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     }
   }
 
-  async function loadBranchGraph(branchId: string, clanId: string, options: Partial<{ depth: string; relationScopes: TreeRelationScope[]; includeSubBranches: boolean }> = {}) {
+  async function loadBranchGraph(branchId: string, clanId: string, options: Partial<{
+    depth: string;
+    relationScopes: TreeRelationScope[];
+  }> = {}) {
     requestGate.current.invalidate('branchGraph');
     if (!branchId || !clanId) {
       setBranchGraph(null);
@@ -387,10 +409,10 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       const graph = await loadBranchLineage({
         clanId,
         branchId,
-        relationScopes: options.relationScopes || appliedBranchRelationScopes,
+        relationScopes: options.relationScopes || appliedRelationScopes,
         dataView: 'official',
-        includeSubBranches: options.includeSubBranches ?? appliedIncludeSubBranches,
-        depth: options.depth || appliedBranchDepth
+        includeSubBranches,
+        depth: options.depth || appliedDepth
       });
       if (!requestGate.current.isCurrent(token)) return null;
       setBranchGraph(graph);
@@ -412,16 +434,38 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       const branchRows = await loadBranches(clanId);
       if (!requestGate.current.isCurrent(token)) return;
       setBranches(branchRows);
-      const nextBranchId = branchRows.some(item => text(item.id) === preferredBranchId) ? preferredBranchId : text(branchRows[0]?.id);
+      const nextBranchId = branchRows.some(item => text(item.id) === preferredBranchId)
+        ? preferredBranchId
+        : text(branchRows[0]?.id);
       setSelectedBranchId(nextBranchId);
       setAppliedBranchId(nextBranchId);
       const page = await requestPersonPage(clanId, 1, '', branchRows, nextBranchId);
       if (!requestGate.current.isCurrent(token)) return;
-      const nextPersonId = preferredPersonId || page?.records[0]?.id || '';
-      workspace.patch({ clanId, branchId: nextBranchId, personId: nextPersonId, relationshipId: '', sourceId: '', sourceFocusReason: '', reviewTaskId: '' });
+      const preferredPerson = page?.records.find(item => item.id === preferredPersonId);
+      const nextPerson = preferredPerson || page?.records[0];
+      const nextPersonId = nextPerson?.id || '';
+      setSearchInput(nextPerson?.name || '');
+      workspace.patch({
+        clanId,
+        branchId: nextBranchId,
+        personId: nextPersonId,
+        relationshipId: '',
+        sourceId: '',
+        sourceFocusReason: '',
+        reviewTaskId: ''
+      });
+      setAppliedDepth(depth);
+      setAppliedRelationScopes([...relationScopes]);
       await Promise.all([
-        loadPersonGraph(nextPersonId, { branchId: nextBranchId }),
-        loadBranchGraph(nextBranchId, clanId)
+        loadPersonGraph(nextPersonId, {
+          branchId: nextBranchId,
+          depth,
+          relationScopes
+        }),
+        loadBranchGraph(nextBranchId, clanId, {
+          depth,
+          relationScopes
+        })
       ]);
     } catch (error) {
       if (requestGate.current.isCurrent(token)) setScope('clan', { error: errorMessage(error) });
@@ -446,87 +490,100 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   async function handleClanChange(clanId: string) {
     await initializeClan(clanId);
-    notify({ message: clanId ? '宗族已切换，旧图谱和人物状态已清空' : '已清空宗族选择' });
+    notify({ message: clanId ? '宗族已切换，图谱查询范围已重新初始化' : '已清空宗族选择' });
   }
 
   function handleBranchChange(branchId: string) {
     setSelectedBranchId(branchId || '');
-    setListPage(1);
+    setSearchInput('');
     clearSelection();
     setLocatedNodeId('');
-    if (workspace.clanId) void requestPersonPage(workspace.clanId, 1, searchInput, branches, branchId || '');
+    if (workspace.clanId && branchId) {
+      void requestPersonPage(workspace.clanId, 1, '', branches, branchId);
+    }
+  }
+
+  async function resolveCenterPerson(branchId: string) {
+    const page = await requestPersonPage(workspace.clanId, 1, '', branches, branchId);
+    const currentPerson = page?.records.find(item => item.id === workspace.personId);
+    const nextPerson = currentPerson || page?.records[0];
+    const nextPersonId = nextPerson?.id || '';
+    setSearchInput(nextPerson?.name || '');
+    workspace.patch({
+      branchId,
+      personId: nextPersonId,
+      relationshipId: ''
+    });
+    return nextPersonId;
   }
 
   async function applyGraphQuery() {
     clearSelection();
     setLocatedNodeId('');
-    setListPage(1);
-    if (mode === 'person') {
-      const graph = await loadPersonGraph(workspace.personId, { depth: personDepth, direction, relationScopes, branchId: selectedBranchId });
-      if (!graph) return;
-      setAppliedPersonDepth(personDepth);
-      setAppliedDirection(direction);
-      setAppliedPersonRelationScopes([...relationScopes]);
-      setAppliedBranchId(selectedBranchId);
-      return;
-    }
-    const graph = await loadBranchGraph(selectedBranchId, workspace.clanId, { depth: branchDepth, relationScopes, includeSubBranches });
-    if (!graph) return;
+    const centerPersonId = await resolveCenterPerson(selectedBranchId);
+    await Promise.all([
+      loadPersonGraph(centerPersonId, {
+        branchId: selectedBranchId,
+        depth,
+        relationScopes
+      }),
+      loadBranchGraph(selectedBranchId, workspace.clanId, {
+        depth,
+        relationScopes
+      })
+    ]);
     setAppliedBranchId(selectedBranchId);
-    setAppliedBranchDepth(branchDepth);
-    setAppliedBranchRelationScopes([...relationScopes]);
-    setAppliedIncludeSubBranches(includeSubBranches);
+    setAppliedDepth(depth);
+    setAppliedRelationScopes([...relationScopes]);
+  }
+
+  function resetQuery() {
+    setSelectedBranchId(appliedBranchId || selectedBranchId);
+    setDepth(appliedDepth);
+    setRelationScopes([...appliedRelationScopes]);
+    setLocatedNodeId('');
+    clearSelection();
   }
 
   async function handlePersonSearch(keyword: string) {
     setSearchInput(keyword);
-    if (!workspace.clanId) return;
-    await requestPersonPage(workspace.clanId, 1, keyword, branches, selectedBranchId);
-  }
-
-  function resetQuery() {
-    setShowMoreFilters(false);
-    setListPage(1);
-    setLocatedNodeId('');
-    clearSelection();
-    if (mode === 'person') {
-      setSearchInput(center?.name || '');
-      setRelationScopes([...appliedPersonRelationScopes]);
-      setPersonDepth(appliedPersonDepth);
-      setDirection(appliedDirection);
-      setSelectedBranchId(center?.branchId || appliedBranchId || selectedBranchId);
-      return;
-    }
-    setRelationScopes([...appliedBranchRelationScopes]);
-    setBranchDepth(appliedBranchDepth);
-    setSelectedBranchId(appliedBranchId || selectedBranchId);
-    setIncludeSubBranches(appliedIncludeSubBranches);
+    if (!workspace.clanId || !appliedBranchId) return;
+    await requestPersonPage(workspace.clanId, 1, keyword, branches, appliedBranchId);
   }
 
   async function handlePersonSelection(item: PersonSearchItem) {
-    const nextBranchId = item.branchId || selectedBranchId;
     setSearchInput(item.name);
-    setSelectedBranchId(nextBranchId);
-    setRelationScopes([...appliedPersonRelationScopes]);
+    setMode('person');
     setLocatedNodeId('');
-    setListPage(1);
     clearSelection();
-    workspace.patch({ personId: item.id, branchId: nextBranchId, relationshipId: '' });
-    await loadPersonGraph(item.id, { branchId: nextBranchId });
+    workspace.patch({
+      personId: item.id,
+      branchId: appliedBranchId,
+      relationshipId: ''
+    });
+    await loadPersonGraph(item.id, {
+      branchId: appliedBranchId,
+      depth: appliedDepth,
+      relationScopes: appliedRelationScopes
+    });
   }
 
   async function setAsCenter(node: TreeNodeResponse) {
     if (!node.personId) return;
     const personId = String(node.personId);
-    const branchId = node.branchId ? String(node.branchId) : selectedBranchId;
-    setSelectedBranchId(branchId);
     setMode('person');
-    setRelationScopes([...appliedPersonRelationScopes]);
     setLocatedNodeId('');
-    setListPage(1);
     clearSelection();
-    workspace.patch({ personId, branchId, relationshipId: '' });
-    await loadPersonGraph(personId, { branchId });
+    workspace.patch({
+      personId,
+      branchId: appliedBranchId,
+      relationshipId: ''
+    });
+    await loadPersonGraph(personId, {
+      branchId: appliedBranchId,
+      depth: appliedDepth,
+      relationScopes: appliedRelationScopes
+    });
   }
 
   function selectNode(node: TreeNodeResponse) {
@@ -543,7 +600,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   function navigateFromNode(target: NavigateTarget, node: TreeNodeResponse) {
     if (!onNavigate || node.visibility === 'masked') return;
     const personId = node.personId ? String(node.personId) : '';
-    const branchId = node.branchId ? String(node.branchId) : selectedBranchId;
+    const branchId = node.branchId ? String(node.branchId) : appliedBranchId;
     const patch = { personId, branchId, relationshipId: '', sourceId: '', reviewTaskId: '' };
     if (target === 'sourceLibrary') workspace.patch({ ...patch, sourceFocusReason: 'tree_person_evidence' });
     else workspace.patch({ ...patch, sourceFocusReason: '' });
@@ -572,14 +629,14 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
       branchId: appliedBranchId,
       personId: workspace.personId,
       mode,
-      personDepth: appliedPersonDepth,
-      branchDepth: appliedBranchDepth,
-      direction: appliedDirection,
-      relationScopes: mode === 'person' ? appliedPersonRelationScopes : appliedBranchRelationScopes,
-      includeSubBranches: appliedIncludeSubBranches
+      personDepth: appliedDepth,
+      branchDepth: appliedDepth,
+      direction: personDirection,
+      relationScopes: appliedRelationScopes,
+      includeSubBranches
     });
     window.history.replaceState(window.history.state, '', nextUrl);
-  }, [workspace.clanId, appliedBranchId, workspace.personId, mode, appliedPersonDepth, appliedBranchDepth, appliedDirection, appliedPersonRelationScopes, appliedBranchRelationScopes, appliedIncludeSubBranches]);
+  }, [workspace.clanId, workspace.personId, appliedBranchId, appliedDepth, appliedRelationScopes, mode]);
 
   const centerNode = personGraph?.nodes.find(node => node.nodeId === personGraph.rootNodeId)
     || personGraph?.nodes.find(node => node.personId && String(node.personId) === workspace.personId)
@@ -595,12 +652,14 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   const currentClanName = clans.find(item => text(item.id) === workspace.clanId)?.clanName || '族谱';
   const activeGraph = mode === 'person' ? personGraph : branchGraph;
   const activeLoadState = mode === 'person' ? loadState.personGraph : loadState.branchGraph;
-  const activeRelationScopes = mode === 'person' ? appliedPersonRelationScopes : appliedBranchRelationScopes;
   const graphCenterNodeId = mode === 'person'
     ? centerNode?.nodeId || activeGraph?.rootNodeId
-    : activeGraph?.nodes.some(node => node.nodeId === centerNode?.nodeId) ? centerNode?.nodeId : activeGraph?.rootNodeId;
+    : activeGraph?.rootNodeId;
   const selectedEdges = selectedNode ? relatedEdges(selectedNode, activeGraph) : [];
-  const nodeMap = useMemo(() => new Map(activeGraph?.nodes.map(node => [node.nodeId, node]) || []), [activeGraph]);
+  const nodeMap = useMemo(
+    () => new Map(activeGraph?.nodes.map(node => [node.nodeId, node]) || []),
+    [activeGraph]
+  );
   const locatedNode = activeGraph?.nodes.find(node => node.nodeId === locatedNodeId) || null;
   const highlightedPath = useMemo(
     () => activeGraph && locatedNode && graphCenterNodeId
@@ -610,23 +669,21 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
   );
   const graphOptions = activeGraph?.nodes
     .filter(node => node.visibility === 'visible')
-    .map(node => ({ value: node.nodeId, label: `${node.displayName}${node.generationNo ? ` · ${node.generationNo}世` : ''}${node.branchName ? ` · ${node.branchName}` : ''}` })) || [];
-  const appliedDepthText = mode === 'person'
-    ? PERSON_DEPTH_OPTIONS.find(item => item.value === appliedPersonDepth)?.label
-    : BRANCH_DEPTH_OPTIONS.find(item => item.value === appliedBranchDepth)?.label;
-  const queryDirty = mode === 'person'
-    ? personDepth !== appliedPersonDepth
-      || direction !== appliedDirection
-      || selectedBranchId !== appliedBranchId
-      || !sameRelationScopes(relationScopes, appliedPersonRelationScopes)
-    : selectedBranchId !== appliedBranchId
-      || branchDepth !== appliedBranchDepth
-      || includeSubBranches !== appliedIncludeSubBranches
-      || !sameRelationScopes(relationScopes, appliedBranchRelationScopes);
+    .map(node => ({
+      value: node.nodeId,
+      label: `${node.displayName}${node.generationNo ? ` · ${node.generationNo}世` : ''}${node.branchName ? ` · ${node.branchName}` : ''}`
+    })) || [];
+  const appliedDepthText = COMMON_DEPTH_OPTIONS.find(item => item.value === appliedDepth)?.label;
+  const queryDirty = selectedBranchId !== appliedBranchId
+    || depth !== appliedDepth
+    || !sameRelationScopes(relationScopes, appliedRelationScopes);
+  const queryLoading = loadState.personGraph.loading || loadState.branchGraph.loading;
+  const queryDisabled = !workspace.clanId || !selectedBranchId || !relationScopes.length || !depth;
 
   useEffect(() => {
-    if (locatedNodeId && !activeGraph?.nodes.some(node => node.nodeId === locatedNodeId)) setLocatedNodeId('');
-    setListPage(1);
+    if (locatedNodeId && !activeGraph?.nodes.some(node => node.nodeId === locatedNodeId)) {
+      setLocatedNodeId('');
+    }
   }, [activeGraph, locatedNodeId]);
 
   function locateNode(nodeId: string) {
@@ -635,101 +692,34 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   async function handleModeChange(nextMode: LineageMode) {
     setMode(nextMode);
-    setRelationScopes([...(nextMode === 'person' ? appliedPersonRelationScopes : appliedBranchRelationScopes)]);
-    setShowMoreFilters(false);
-    setListPage(1);
     clearSelection();
     setLocatedNodeId('');
-    if (nextMode === 'person') await loadPersonGraph(workspace.personId, { branchId: selectedBranchId });
-    else await loadBranchGraph(appliedBranchId || selectedBranchId, workspace.clanId);
-  }
-
-  function relationToCenter(node: TreeNodeResponse) {
-    if (node.nodeId === graphCenterNodeId) return '中心人物';
-    const edge = activeGraph?.edges.find(item => (
-      item.fromNodeId === graphCenterNodeId && item.toNodeId === node.nodeId
-    ) || (
-      item.toNodeId === graphCenterNodeId && item.fromNodeId === node.nodeId
-    ));
-    return edge ? relationshipDisplayLabel(edge) : '间接关联';
-  }
-
-  const sortedNodes = useMemo(
-    () => [...(activeGraph?.nodes || [])].sort((left, right) => (
-      (left.generationNo || 9999) - (right.generationNo || 9999)
-      || left.displayName.localeCompare(right.displayName)
-    )),
-    [activeGraph]
-  );
-  const pagedNodes = sortedNodes.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE);
-  const listColumns: ColumnsType<TreeNodeResponse> = [
-    {
-      title: '人物',
-      dataIndex: 'displayName',
-      key: 'displayName',
-      fixed: 'left',
-      width: 160,
-      render: (_value, node) => (
-        <Space size={8}>
-          <span className="lineage-avatar lineage-avatar--table">{firstChar(node.displayName)}</span>
-          <Typography.Link onClick={() => selectNode(node)}>{node.displayName}</Typography.Link>
-          {node.nodeId === graphCenterNodeId ? <Tag color="processing">中心</Tag> : null}
-        </Space>
-      )
-    },
-    {
-      title: '世次 / 字辈',
-      key: 'generation',
-      width: 150,
-      render: (_value, node) => node.visibility === 'masked'
-        ? '信息受保护'
-        : `${node.generationNo ? `${node.generationNo}世` : '世次未维护'} · ${node.generationWord || '-'}字辈`
-    },
-    {
-      title: '所属支派',
-      dataIndex: 'branchName',
-      key: 'branchName',
-      width: 140,
-      render: (value, node) => node.visibility === 'masked' ? '受保护' : value || '未标注'
-    },
-    {
-      title: '关系',
-      key: 'relationship',
-      width: 140,
-      render: (_value, node) => relationToCenter(node)
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 120,
-      render: (_value, node) => <Tag>{dataStatusText(node.dataStatus || (node.visibility === 'masked' ? '受保护' : 'official'))}</Tag>
-    },
-    {
-      title: '证据',
-      key: 'evidence',
-      width: 160,
-      render: (_value, node) => node.evidenceSummary
-        ? `${node.evidenceSummary.bindingCount} 条 · ${confidenceCn(node.evidenceSummary.confidenceLevel)}`
-        : '-'
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      fixed: 'right',
-      width: 92,
-      render: (_value, node) => <Button type="link" onClick={() => selectNode(node)}>查看</Button>
+    if (nextMode === 'person' && !personGraph && workspace.personId) {
+      await loadPersonGraph(workspace.personId, {
+        branchId: appliedBranchId,
+        depth: appliedDepth,
+        relationScopes: appliedRelationScopes
+      });
     }
-  ];
+    if (nextMode === 'branch' && !branchGraph) {
+      await loadBranchGraph(appliedBranchId, workspace.clanId, {
+        depth: appliedDepth,
+        relationScopes: appliedRelationScopes
+      });
+    }
+  }
 
   const resultMeta = (
     <div className="lineage-result-meta">
       <Space size={[4, 6]} wrap>
         <Tag color="blue">{mode === 'person' ? '人物中心' : '支派全局'}</Tag>
         <Tag>{currentClanName}</Tag>
-        <Tag>{mode === 'person' ? center?.name || '未选择中心人物' : branchPath(branches, appliedBranchId)}</Tag>
-        {mode === 'person' ? <Tag>{DIRECTION_OPTIONS.find(item => item.value === appliedDirection)?.label}</Tag> : null}
+        <Tag>{branchPath(branches, appliedBranchId)}</Tag>
+        {mode === 'person' ? <Tag>{center?.name || '未选择中心人物'}</Tag> : null}
         {appliedDepthText ? <Tag>{appliedDepthText}</Tag> : null}
-        {activeRelationScopes.map(value => <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>)}
+        {appliedRelationScopes.map(value => (
+          <Tag key={value}>{RELATION_OPTIONS.find(item => item.value === value)?.label}</Tag>
+        ))}
       </Space>
       <div className="lineage-result-legend" aria-label="图谱图例">
         <span><i className="tone-center" />中心人物</span>
@@ -740,10 +730,30 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     </div>
   );
 
-  const graphResult = (
+  const resultContent = (
     <div className="lineage-result-pane">
       {resultMeta}
-      <div className="lineage-result-toolbar lineage-result-toolbar--double-card">
+      <div className={`lineage-result-toolbar lineage-result-toolbar--double-card${mode === 'person' ? ' is-person' : ''}`}>
+        {mode === 'person' ? (
+          <Field label="中心人物" hint="中心人物仅影响人物中心视图，不改变图谱查询范围">
+            <Select
+              aria-label="切换中心人物"
+              showSearch
+              value={workspace.personId || undefined}
+              searchValue={searchInput}
+              placeholder="输入姓名、谱名或字号"
+              filterOption={false}
+              loading={loadState.search.loading}
+              options={personOptions}
+              onSearch={value => void handlePersonSearch(value)}
+              onChange={value => {
+                const item = searchPage.records.find(record => record.id === value);
+                if (item) void handlePersonSelection(item);
+              }}
+              notFoundContent={loadState.search.error || (searchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
+            />
+          </Field>
+        ) : null}
         <Field label="图内定位">
           <Select
             aria-label="图内定位人物"
@@ -762,16 +772,23 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         <Alert
           type="error"
           showIcon
-          message={`${mode === 'person' ? '人物图' : '支派图'}加载失败：${activeLoadState.error}`}
+          message={`${mode === 'person' ? '人物中心图' : '支派全局图'}加载失败：${activeLoadState.error}`}
           action={(
-            <Space>
-              <Button type="link" onClick={() => setCanvasView('list')}>查看列表</Button>
-              <Button type="link" onClick={() => mode === 'person'
-                ? void loadPersonGraph(workspace.personId, { branchId: selectedBranchId })
-                : void loadBranchGraph(selectedBranchId, workspace.clanId)}>
-                重试
-              </Button>
-            </Space>
+            <Button
+              type="link"
+              onClick={() => mode === 'person'
+                ? void loadPersonGraph(workspace.personId, {
+                  branchId: appliedBranchId,
+                  depth: appliedDepth,
+                  relationScopes: appliedRelationScopes
+                })
+                : void loadBranchGraph(appliedBranchId, workspace.clanId, {
+                  depth: appliedDepth,
+                  relationScopes: appliedRelationScopes
+                })}
+            >
+              重试
+            </Button>
           )}
         />
       ) : null}
@@ -780,7 +797,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
           key={`graph-${mode}-${personGraphVersion}`}
           graph={activeGraph}
           loading={activeLoadState.loading}
-          emptyText={mode === 'person' ? '请选择中心人物后查询。' : '请选择支派后查询。'}
+          emptyText={mode === 'person' ? '当前支派暂无可作为中心的人物。' : '当前支派暂无世系数据。'}
           activeNodeId={graphCenterNodeId}
           selectedNodeId={selectedNode?.nodeId}
           selectedEdgeId={selectedEdge?.edgeId}
@@ -788,7 +805,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
           highlightedEdgeIds={highlightedPath.edgeIds}
           focusNodeId={locatedNodeId}
           autoFocus={mode === 'person' ? 'active' : 'fit'}
-          relationScopes={activeRelationScopes}
+          relationScopes={appliedRelationScopes}
           onSelectNode={selectNode}
           onSelectEdge={selectEdge}
           onSetCenter={node => void setAsCenter(node)}
@@ -797,68 +814,20 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
     </div>
   );
 
-  const listResult = (
-    <div className="lineage-result-pane">
-      {resultMeta}
-      {activeLoadState.error ? (
-        <Alert
-          type="error"
-          showIcon
-          message={`${mode === 'person' ? '人物图' : '支派图'}加载失败：${activeLoadState.error}`}
-          action={<Button type="link" onClick={() => mode === 'person' ? void loadPersonGraph(workspace.personId, { branchId: selectedBranchId }) : void loadBranchGraph(selectedBranchId, workspace.clanId)}>重试</Button>}
-        />
-      ) : null}
-      {activeGraph?.nodes.length ? (
-        <>
-          <Table<TreeNodeResponse>
-            className="lineage-result-table"
-            size="middle"
-            rowKey="nodeId"
-            loading={activeLoadState.loading}
-            columns={listColumns}
-            dataSource={pagedNodes}
-            pagination={false}
-            scroll={{ x: 980 }}
-          />
-          <div className="lineage-list-pagination">
-            <Typography.Text type="secondary">共 {sortedNodes.length} 条</Typography.Text>
-            <Pagination
-              current={listPage}
-              pageSize={LIST_PAGE_SIZE}
-              total={sortedNodes.length}
-              showSizeChanger={false}
-              hideOnSinglePage={false}
-              onChange={setListPage}
-            />
-          </div>
-        </>
-      ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前图谱暂无可展示人物" />
-      )}
-    </div>
-  );
-
   const drawerTitle = selectedNode
     ? `人物 · ${selectedNode.displayName || '隐私保护'}`
     : selectedEdge ? `关系 · ${relationshipDisplayLabel(selectedEdge)}` : '';
-  const endpointLabels = selectedEdge ? relationshipEndpointLabels(selectedEdge) : ['起点人物', '终点人物'] as const;
+  const endpointLabels = selectedEdge
+    ? relationshipEndpointLabels(selectedEdge)
+    : ['起点人物', '终点人物'] as const;
   const drawerWidth = screens.md ? 560 : '100%';
-  const queryDisabled = !workspace.clanId || !selectedBranchId || !relationScopes.length || (mode === 'person' && !workspace.personId);
 
   return (
     <div className="lineage-page lineage-tree-page lineage-tree-page--standardized lineage-double-card-page">
-      <Card className="lineage-double-card-query" title="世系图谱" size="small">
-        {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
-        <Tabs
-          className="lineage-query-tabs lineage-double-card-query-tabs"
-          activeKey={mode}
-          onChange={value => void handleModeChange(value as LineageMode)}
-          items={[
-            { key: 'person', label: <Space size={6}><UserOutlined />人物中心</Space> },
-            { key: 'branch', label: <Space size={6}><BranchesOutlined />支派全局</Space> }
-          ]}
-        />
-
+      <Card className="lineage-double-card-query" title="图谱查询" size="small">
+        {loadState.clan.error ? (
+          <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} />
+        ) : null}
         <div className="lineage-double-card-form">
           <div className="lineage-double-card-grid">
             <Field label="宗族">
@@ -870,110 +839,78 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
                 disabled={loadState.clan.loading}
                 value={workspace.clanId || undefined}
                 placeholder="请选择宗族"
-                options={clans.map(clan => ({ value: text(clan.id), label: clan.clanName || clan.surname || '未命名宗族' }))}
+                options={clans.map(clan => ({
+                  value: text(clan.id),
+                  label: clan.clanName || clan.surname || '未命名宗族'
+                }))}
                 onChange={value => void handleClanChange(value || '')}
               />
             </Field>
-            <Field label="搜索支派">
+            <Field label="支派">
               <Select
-                aria-label="搜索支派"
+                aria-label="支派"
                 showSearch
                 allowClear
                 optionFilterProp="label"
+                disabled={!workspace.clanId || loadState.clan.loading}
                 value={selectedBranchId || undefined}
-                placeholder="请选择或搜索支派"
-                options={branches.map(branch => ({ value: text(branch.id), label: branch.branchName || '未命名支派' }))}
+                placeholder="请选择支派"
+                options={branches.map(branch => ({
+                  value: text(branch.id),
+                  label: branch.branchName || '未命名支派'
+                }))}
                 onChange={value => handleBranchChange(value || '')}
-              />
-            </Field>
-            <Field label="中心人物" hint={mode === 'branch' ? '支派全局模式无需选择中心人物' : '支持姓名、谱名或字号检索'}>
-              <Select
-                aria-label="中心人物"
-                showSearch
-                allowClear
-                value={workspace.personId || undefined}
-                searchValue={searchInput}
-                placeholder={mode === 'branch' ? '支派全局模式无需选择' : '输入姓名、谱名或字号'}
-                filterOption={false}
-                loading={loadState.search.loading}
-                disabled={mode === 'branch' || !workspace.clanId}
-                options={personOptions}
-                onSearch={value => void handlePersonSearch(value)}
-                onClear={() => {
-                  setSearchInput('');
-                  workspace.patch({ personId: '', relationshipId: '' });
-                  setPersonGraph(null);
-                }}
-                onChange={value => {
-                  const item = searchPage.records.find(record => record.id === value);
-                  if (item) void handlePersonSelection(item);
-                }}
-                notFoundContent={loadState.search.error || (searchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
               />
             </Field>
             <Field label="关系范围" hint={!relationScopes.length ? '请至少选择一种关系范围' : undefined}>
               <RelationScopeSelect value={relationScopes} onChange={setRelationScopes} />
             </Field>
+            <Field label="展开深度">
+              <Select
+                aria-label="展开深度"
+                value={depth}
+                options={COMMON_DEPTH_OPTIONS}
+                placeholder="请选择展开深度"
+                onChange={setDepth}
+              />
+            </Field>
           </div>
-
-          {showMoreFilters ? (
-            <div className="lineage-double-card-more">
-              <div className="lineage-double-card-grid lineage-double-card-grid--more">
-                <Field label="查看方向">
-                  {mode === 'person' ? (
-                    <Select
-                      aria-label="查看方向"
-                      value={direction}
-                      options={DIRECTION_OPTIONS}
-                      onChange={value => setDirection(value as TreeDirection)}
-                    />
-                  ) : (
-                    <Select aria-label="查看方向" value="branch" disabled options={[{ value: 'branch', label: '按支派世代展开' }]} />
-                  )}
-                </Field>
-                <Field label="展开深度">
-                  <Select
-                    aria-label="展开深度"
-                    value={mode === 'person' ? personDepth : branchDepth}
-                    options={mode === 'person' ? PERSON_DEPTH_OPTIONS : BRANCH_DEPTH_OPTIONS}
-                    onChange={value => mode === 'person' ? setPersonDepth(value) : setBranchDepth(value)}
-                  />
-                </Field>
-              </div>
-            </div>
-          ) : null}
-
           <div className="lineage-double-card-actions">
-            <Button
-              type="text"
-              icon={showMoreFilters ? <UpOutlined /> : <DownOutlined />}
-              onClick={() => setShowMoreFilters(value => !value)}
-            >
-              更多筛选
-            </Button>
             <Button onClick={resetQuery}>重置</Button>
             <Button
               type="primary"
               icon={<SearchOutlined />}
-              loading={activeLoadState.loading}
+              loading={queryLoading}
               disabled={queryDisabled}
               onClick={() => void applyGraphQuery()}
             >
               查询
             </Button>
           </div>
-          {queryDirty ? <Typography.Text className="lineage-query-dirty" type="secondary">查询条件已调整，点击“查询”后生效。</Typography.Text> : null}
+          {queryDirty ? (
+            <Typography.Text className="lineage-query-dirty" type="secondary">
+              查询条件已调整，点击“查询”后同时刷新人物中心和支派全局结果。
+            </Typography.Text>
+          ) : null}
         </div>
       </Card>
 
       <Card className="lineage-double-card-result" title="查询结果" size="small">
         <Tabs
           className="lineage-result-tabs"
-          activeKey={canvasView}
-          onChange={value => setCanvasView(value as CanvasView)}
+          activeKey={mode}
+          onChange={value => void handleModeChange(value as LineageMode)}
           items={[
-            { key: 'graph', label: <Space size={6}><ApartmentOutlined />图谱</Space>, children: graphResult },
-            { key: 'list', label: <Space size={6}><UnorderedListOutlined />列表</Space>, children: listResult }
+            {
+              key: 'person',
+              label: <Space size={6}><UserOutlined />人物中心</Space>,
+              children: mode === 'person' ? resultContent : null
+            },
+            {
+              key: 'branch',
+              label: <Space size={6}><BranchesOutlined />支派全局</Space>,
+              children: mode === 'branch' ? resultContent : null
+            }
           ]}
         />
       </Card>
@@ -992,7 +929,11 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               <span className="lineage-avatar">{firstChar(selectedNode.displayName)}</span>
               <div>
                 <h3>{selectedNode.displayName}</h3>
-                <p>{selectedNode.visibility === 'masked' ? '隐私保护人物' : `${genderCn(selectedNode.gender || 'unknown')} · ${selectedNode.generationNo ? `${selectedNode.generationNo}世` : '世次未维护'} · ${selectedNode.generationWord || '-'}字辈`}</p>
+                <p>
+                  {selectedNode.visibility === 'masked'
+                    ? '隐私保护人物'
+                    : `${genderCn(selectedNode.gender || 'unknown')} · ${selectedNode.generationNo ? `${selectedNode.generationNo}世` : '世次未维护'} · ${selectedNode.generationWord || '-'}字辈`}
+                </p>
               </div>
             </div>
             <Descriptions
@@ -1000,10 +941,30 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               size="small"
               column={1}
               items={[
-                { key: 'branch', label: '所属支派', children: selectedNode.visibility === 'masked' ? '受保护' : selectedNode.branchName || '未标注' },
-                { key: 'years', label: '生卒信息', children: selectedNode.visibility === 'masked' ? '受保护' : selectedNode.birthText || selectedNode.deathText ? `${selectedNode.birthText || '?'}-${selectedNode.deathText || ''}` : '-' },
-                { key: 'status', label: '数据状态', children: dataStatusText(selectedNode.dataStatus || (selectedNode.visibility === 'masked' ? '受保护' : 'official')) },
-                { key: 'privacy', label: '可见范围', children: selectedNode.visibility === 'masked' ? '安全占位' : privacyLevelText(selectedNode.privacyLevel) }
+                {
+                  key: 'branch',
+                  label: '所属支派',
+                  children: selectedNode.visibility === 'masked' ? '受保护' : selectedNode.branchName || '未标注'
+                },
+                {
+                  key: 'years',
+                  label: '生卒信息',
+                  children: selectedNode.visibility === 'masked'
+                    ? '受保护'
+                    : selectedNode.birthText || selectedNode.deathText
+                      ? `${selectedNode.birthText || '?'}-${selectedNode.deathText || ''}`
+                      : '-'
+                },
+                {
+                  key: 'status',
+                  label: '数据状态',
+                  children: dataStatusText(selectedNode.dataStatus || (selectedNode.visibility === 'masked' ? '受保护' : 'official'))
+                },
+                {
+                  key: 'privacy',
+                  label: '可见范围',
+                  children: selectedNode.visibility === 'masked' ? '安全占位' : privacyLevelText(selectedNode.privacyLevel)
+                }
               ]}
             />
             {selectedNode.visibility !== 'masked'
@@ -1029,18 +990,32 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
             />
             <Divider />
             <Space wrap className="lineage-inspector-actions">
-              {selectedNode.personId ? <Button type="primary" onClick={() => void setAsCenter(selectedNode)}>设为中心人物</Button> : null}
-              {selectedNode.personId && onNavigate ? <Button onClick={() => navigateFromNode('personArchive', selectedNode)}>查看人物档案</Button> : null}
-              {selectedNode.evidenceSummary && onNavigate ? <Button onClick={() => navigateFromNode('sourceLibrary', selectedNode)}>查看来源证据</Button> : null}
+              {selectedNode.personId ? (
+                <Button type="primary" onClick={() => void setAsCenter(selectedNode)}>设为中心人物</Button>
+              ) : null}
+              {selectedNode.personId && onNavigate ? (
+                <Button onClick={() => navigateFromNode('personArchive', selectedNode)}>查看人物档案</Button>
+              ) : null}
+              {selectedNode.evidenceSummary && onNavigate ? (
+                <Button onClick={() => navigateFromNode('sourceLibrary', selectedNode)}>查看来源证据</Button>
+              ) : null}
               {(selectedNode.reviewSummary?.state && selectedNode.reviewSummary.state !== 'none') || selectedNode.anomalySummary?.count ? (
                 <Dropdown
                   menu={{
                     items: [
                       selectedNode.reviewSummary?.state && selectedNode.reviewSummary.state !== 'none' && onNavigate
-                        ? { key: 'review', label: '进入审核中心', onClick: () => navigateFromNode('reviewCenter', selectedNode) }
+                        ? {
+                          key: 'review',
+                          label: '进入审核中心',
+                          onClick: () => navigateFromNode('reviewCenter', selectedNode)
+                        }
                         : null,
                       selectedNode.anomalySummary?.count && onNavigate
-                        ? { key: 'workbench', label: '进入修谱工作台', onClick: () => navigateFromNode('editingWorkspace', selectedNode) }
+                        ? {
+                          key: 'workbench',
+                          label: '进入修谱工作台',
+                          onClick: () => navigateFromNode('editingWorkspace', selectedNode)
+                        }
                         : null
                     ].filter(Boolean) as MenuProps['items']
                   }}
@@ -1063,18 +1038,40 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
               size="small"
               column={1}
               items={[
-                { key: 'from', label: endpointLabels[0], children: nodeMap.get(selectedEdge.fromNodeId)?.displayName || '受保护人物' },
-                { key: 'to', label: endpointLabels[1], children: nodeMap.get(selectedEdge.toNodeId)?.displayName || '受保护人物' },
-                { key: 'category', label: '关系类别', children: relationCategoryText(selectedEdge.relationCategory) },
-                { key: 'status', label: '数据状态', children: dataStatusText(selectedEdge.dataStatus) }
+                {
+                  key: 'from',
+                  label: endpointLabels[0],
+                  children: nodeMap.get(selectedEdge.fromNodeId)?.displayName || '受保护人物'
+                },
+                {
+                  key: 'to',
+                  label: endpointLabels[1],
+                  children: nodeMap.get(selectedEdge.toNodeId)?.displayName || '受保护人物'
+                },
+                {
+                  key: 'category',
+                  label: '关系类别',
+                  children: relationCategoryText(selectedEdge.relationCategory)
+                },
+                {
+                  key: 'status',
+                  label: '数据状态',
+                  children: dataStatusText(selectedEdge.dataStatus)
+                }
               ]}
             />
             <DetailSummary target={selectedEdge} indicators={edgeIndicators(selectedEdge)} />
             <Divider />
             <Space wrap className="lineage-inspector-actions">
-              {selectedEdge.evidenceSummary && onNavigate ? <Button type="primary" onClick={() => navigateFromEdge('sourceLibrary', selectedEdge)}>查看来源证据</Button> : null}
-              {selectedEdge.reviewSummary && selectedEdge.reviewSummary.state !== 'none' && onNavigate ? <Button onClick={() => navigateFromEdge('reviewCenter', selectedEdge)}>进入审核中心</Button> : null}
-              {selectedEdge.anomalySummary?.count && onNavigate ? <Button onClick={() => navigateFromEdge('editingWorkspace', selectedEdge)}>进入修谱工作台</Button> : null}
+              {selectedEdge.evidenceSummary && onNavigate ? (
+                <Button type="primary" onClick={() => navigateFromEdge('sourceLibrary', selectedEdge)}>查看来源证据</Button>
+              ) : null}
+              {selectedEdge.reviewSummary && selectedEdge.reviewSummary.state !== 'none' && onNavigate ? (
+                <Button onClick={() => navigateFromEdge('reviewCenter', selectedEdge)}>进入审核中心</Button>
+              ) : null}
+              {selectedEdge.anomalySummary?.count && onNavigate ? (
+                <Button onClick={() => navigateFromEdge('editingWorkspace', selectedEdge)}>进入修谱工作台</Button>
+              ) : null}
             </Space>
           </div>
         ) : null}
