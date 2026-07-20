@@ -1,6 +1,12 @@
--- demo_admin is the platform demonstration administrator and must be able to
--- create/manage multiple demo clans. Keep the normal single-clan restriction
--- unchanged for every other account.
+-- Purpose: 为演示管理员 demo_admin 补授跨宗族管理员角色，允许创建和管理多个演示宗族。
+-- Issue/PR: #575 / PR #576
+-- Risk: low
+-- Lock impact: 仅插入单条 member_role 数据，短暂持有行级写锁。
+-- Data volume: 扫描单个用户名及其少量成员关系，预计新增 0 或 1 行。
+-- Compatibility: 不修改普通用户单宗族校验，不影响已有授权。
+-- Rollback/Compensation: 使用 database/rollback/20260720_issue-575_revoke_demo_admin_cross_clan_role.sql 删除本迁移新增授权。
+-- Verification: 查询 demo_admin 的有效角色应包含 cross_clan_admin，且重复执行逻辑不会产生重复有效授权。
+
 insert into member_role (
     membership_id,
     role_id,
