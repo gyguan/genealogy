@@ -313,7 +313,6 @@ public class ApprovalApplicationService {
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_APPROVE);
-        ensureNotSelfReview(record, request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
         record.setStatus(STATUS_APPROVED);
         record.setApprovedAt(now);
@@ -341,7 +340,6 @@ public class ApprovalApplicationService {
         ensurePending(task);
         AuditRecordEntity record = getRecord(task.getRevisionId());
         authorizationApplicationService.requirePermission(record.getClanId(), request.reviewerId(), REVIEW_REJECT);
-        ensureNotSelfReview(record, request.reviewerId());
         LocalDateTime now = LocalDateTime.now();
         String comment = trimToNull(request.comment());
         record.setStatus(STATUS_REJECTED);
@@ -375,12 +373,6 @@ public class ApprovalApplicationService {
             throw new BusinessException("REVIEW_TARGET_ARCHIVED", "对象已归档，不能提交审核");
         }
         throw new BusinessException("REVIEW_TARGET_STATUS_NOT_SUBMITTABLE", "对象当前状态不允许提交审核: " + targetType + "#" + targetId + " status=" + (status == null ? "null" : status));
-    }
-
-    private void ensureNotSelfReview(AuditRecordEntity record, Long reviewerId) {
-        if (Objects.equals(record.getSubmitterId(), reviewerId)) {
-            throw new BusinessException("REVIEW_SELF_FORBIDDEN", "审核员不能审核自己提交的变更");
-        }
     }
 
     private Long relationshipBranchId(RelationshipEntity relationship) {
