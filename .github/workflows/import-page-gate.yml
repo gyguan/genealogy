@@ -6,7 +6,6 @@ on:
     paths:
       - "frontend/genealogy-web/src/features/imports/**"
       - "frontend/genealogy-web/e2e/import-*.spec.ts"
-      - "frontend/genealogy-web/package.json"
       - ".github/workflows/import-page-gate.yml"
   workflow_dispatch:
 
@@ -35,9 +34,31 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm install
 
-      - name: Run import state tests
+      - name: Run existing import state tests
         working-directory: frontend/genealogy-web
         run: npm run test:imports
+
+      - name: Run import task query tests
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          rm -rf .import-workbench-test
+          npx tsc \
+            src/features/imports/import-type-registry.ts \
+            src/features/imports/import-task-query-state.ts \
+            src/features/imports/import-task-model.ts \
+            --ignoreConfig \
+            --rootDir src \
+            --target ES2020 \
+            --module ESNext \
+            --moduleResolution Bundler \
+            --lib ES2020,DOM \
+            --outDir .import-workbench-test \
+            --skipLibCheck
+          node --experimental-specifier-resolution=node --test \
+            src/features/imports/import-task-query-state.test.mjs \
+            src/features/imports/import-task-model.test.mjs
+          rm -rf .import-workbench-test
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
@@ -72,7 +93,7 @@ jobs:
 
       - name: Run import Chromium E2E
         working-directory: frontend/genealogy-web
-        run: npm run test:import-page
+        run: npx playwright test e2e/import-page-pattern.spec.ts
 
       - name: Upload import diagnostics
         if: failure()
