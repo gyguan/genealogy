@@ -32,12 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 
 @Validated
 @RestController
@@ -142,7 +137,7 @@ public class OpLogController {
                 userId,
                 PERMISSION_EXPORT
         );
-        PageResponse<RiskAuditEventResponse> page = aggregateRiskPages(
+        PageResponse<RiskAuditEventResponse> page = operationRiskAuditApplicationService.search(
                 clanId,
                 actorIds,
                 riskLevels,
@@ -178,7 +173,7 @@ public class OpLogController {
                 clanId,
                 PERMISSION_RISK_VIEW
         );
-        return ApiResponse.success(aggregateRiskStats(
+        return ApiResponse.success(operationRiskAuditApplicationService.stats(
                 clanId,
                 actorIds,
                 riskLevels,
@@ -251,143 +246,5 @@ public class OpLogController {
                 endTime,
                 keyword
         ));
-    }
-
-    private PageResponse<RiskAuditEventResponse> aggregateRiskPages(
-            Long clanId,
-            List<Long> actorIds,
-            List<String> riskLevels,
-            List<String> eventTypes,
-            List<Long> branchIds,
-            List<String> dispositionStatuses,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            int pageNo,
-            int pageSize,
-            boolean includeTechnicalFields,
-            PermissionDataScope scope
-    ) {
-        List<Long> actors = values(actorIds);
-        List<String> levels = values(riskLevels);
-        List<String> events = values(eventTypes);
-        List<Long> branches = values(branchIds);
-        List<String> dispositions = values(dispositionStatuses);
-        int requiredRecords = Math.min(pageNo * pageSize, 100);
-        List<RiskAuditEventResponse> merged = new ArrayList<>();
-        long total = 0L;
-        for (Long actorId : nullableValues(actors)) {
-            for (String riskLevel : nullableValues(levels)) {
-                for (String eventType : nullableValues(events)) {
-                    for (Long branchId : nullableValues(branches)) {
-                        for (String dispositionStatus : nullableValues(dispositions)) {
-                            PageResponse<RiskAuditEventResponse> page = operationRiskAuditApplicationService.search(
-                                    clanId,
-                                    actorId,
-                                    riskLevel,
-                                    eventType,
-                                    branchId,
-                                    dispositionStatus,
-                                    startTime,
-                                    endTime,
-                                    1,
-                                    requiredRecords,
-                                    includeTechnicalFields,
-                                    scope
-                            );
-                            merged.addAll(page.records());
-                            total += page.total();
-                        }
-                    }
-                }
-            }
-        }
-        List<RiskAuditEventResponse> ordered = merged.stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        RiskAuditEventResponse::id,
-                        Function.identity(),
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ))
-                .values().stream()
-                .sorted(Comparator.comparing(
-                        RiskAuditEventResponse::createdAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())
-                ).thenComparing(RiskAuditEventResponse::id, Comparator.reverseOrder()))
-                .toList();
-        int fromIndex = Math.min((pageNo - 1) * pageSize, ordered.size());
-        int toIndex = Math.min(fromIndex + pageSize, ordered.size());
-        return PageResponse.of(ordered.subList(fromIndex, toIndex), total, pageNo, pageSize);
-    }
-
-    private RiskAuditStatsResponse aggregateRiskStats(
-            Long clanId,
-            List<Long> actorIds,
-            List<String> riskLevels,
-            List<String> eventTypes,
-            List<Long> branchIds,
-            List<String> dispositionStatuses,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            PermissionDataScope scope
-    ) {
-        long total = 0L;
-        Map<String, Long> byLevel = new LinkedHashMap<>();
-        Map<String, Long> byEventType = new LinkedHashMap<>();
-        Map<String, Long> byDisposition = new LinkedHashMap<>();
-        for (Long actorId : nullableValues(values(actorIds))) {
-            for (String riskLevel : nullableValues(values(riskLevels))) {
-                for (String eventType : nullableValues(values(eventTypes))) {
-                    for (Long branchId : nullableValues(values(branchIds))) {
-                        for (String dispositionStatus : nullableValues(values(dispositionStatuses))) {
-                            RiskAuditStatsResponse stats = operationRiskAuditApplicationService.stats(
-                                    clanId,
-                                    actorId,
-                                    riskLevel,
-                                    eventType,
-                                    branchId,
-                                    dispositionStatus,
-                                    startTime,
-                                    endTime,
-                                    scope
-                            );
-                            total += stats.total();
-                            mergeCounts(byLevel, stats.byLevel());
-                            mergeCounts(byEventType, stats.byEventType());
-                            mergeCounts(byDisposition, stats.byDisposition());
-                        }
-                    }
-                }
-            }
-        }
-        return new RiskAuditStatsResponse(
-                total,
-                toStatsItems(byLevel),
-                toStatsItems(byEventType),
-                toStatsItems(byDisposition)
-        );
-    }
-
-    private void mergeCounts(Map<String, Long> target, List<RiskAuditStatsResponse.Item> items) {
-        for (RiskAuditStatsResponse.Item item : items) {
-            target.merge(item.key(), item.count(), Long::sum);
-        }
-    }
-
-    private List<RiskAuditStatsResponse.Item> toStatsItems(Map<String, Long> counts) {
-        return counts.entrySet().stream()
-                .map(entry -> new RiskAuditStatsResponse.Item(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparingLong(RiskAuditStatsResponse.Item::count).reversed())
-                .toList();
-    }
-
-    private <T> List<T> values(List<T> values) {
-        if (values == null) {
-            return List.of();
-        }
-        return values.stream().filter(java.util.Objects::nonNull).distinct().toList();
-    }
-
-    private <T> List<T> nullableValues(List<T> values) {
-        return values.isEmpty() ? java.util.Collections.singletonList(null) : values;
     }
 }
