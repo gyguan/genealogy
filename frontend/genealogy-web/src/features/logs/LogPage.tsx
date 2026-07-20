@@ -1,25 +1,15 @@
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  Alert,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Form,
-  Input,
-  Result,
-  Select,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Typography
+  Alert, Button, Card, DatePicker, Empty, Form, Input, Result, Select, Space, Table, Tabs, Tag, Typography
 } from 'antd';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogPage,
   OperationLogResponse,
+  RiskAuditEventPage,
+  RiskAuditEventResponse,
   TrackingObjectPage,
   TrackingObjectResponse
 } from '../../shared/api/generated/tracking-types';
@@ -32,6 +22,7 @@ import {
   TRACKING_TABS,
   buildAuditQuery,
   buildObjectQuery,
+  buildRiskQuery,
   readTrackingCenterState,
   writeTrackingCenterState
 } from './trackingCenterModel.js';
@@ -42,19 +33,31 @@ import {
   AUDIT_TARGET_OPTIONS,
   OBJECT_STATUS_OPTIONS,
   OBJECT_TYPE_OPTIONS,
+  RISK_DISPOSITION_OPTIONS,
+  RISK_EVENT_OPTIONS,
+  RISK_LEVEL_OPTIONS,
   actionText,
   display,
   formatDateTime,
+  riskDispositionColor,
+  riskDispositionText,
+  riskEventText,
+  riskLevelColor,
+  riskLevelText,
   statusColor,
   statusText,
   targetTypeText
 } from './trackingCenterLabels';
+import { TrackingMultiSelect } from './TrackingMultiSelect';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
-import { RiskAuditPanel } from './RiskAuditPanel';
+import './tracking-page.css';
 
-const { Paragraph, Text, Title } = Typography;
+const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
+const TRACEABLE_TYPES = new Set(['person', 'relationship', 'source', 'branch', 'review_task', 'culture_item', 'migration_event', 'culture_site']);
+
+type ExpandedState = Record<TrackingTab, boolean>;
 
 function rangeValue(from: string, to: string) {
   if (!from || !to) return null;
@@ -79,29 +82,63 @@ function technicalFieldsReturned(row: OperationLogResponse) {
     || Object.prototype.hasOwnProperty.call(row, 'clientIp');
 }
 
+function asOperationLog(row: RiskAuditEventResponse): OperationLogResponse {
+  return {
+    id: row.id,
+    clanId: row.clanId,
+    actorId: row.actorId,
+    actorDisplayName: row.actorDisplayName,
+    actionType: row.actionType,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    targetDisplayName: row.targetDisplayName,
+    targetBranchName: row.targetBranchName,
+    targetSummary: row.targetSummary,
+    resultStatus: row.resultStatus,
+    summary: row.summary,
+    detail: row.detail,
+    requestId: row.requestId,
+    clientIp: row.clientIp,
+    createdAt: row.createdAt,
+    traceId: row.traceId,
+    revisionId: row.revisionId,
+    reviewTaskId: row.reviewTaskId,
+    businessTargetType: row.trackingTargetType,
+    businessTargetId: row.trackingTargetId,
+    eventResult: row.resultStatus
+  };
+}
+
 export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const initial = useRef(readTrackingCenterState(window.location.search)).current;
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
+  const [expanded, setExpanded] = useState<ExpandedState>({ object: false, audit: false, risk: false });
   const [objectFilters, setObjectFilters] = useState<ObjectFilters>(initial.objectFilters);
   const [auditFilters, setAuditFilters] = useState<AuditFilters>(initial.auditFilters);
   const [riskFilters, setRiskFilters] = useState<RiskFilters>(initial.riskFilters);
   const [objectPage, setObjectPage] = useState<TrackingObjectPage | null>(null);
-  const [objectLoading, setObjectLoading] = useState(false);
-  const [objectError, setObjectError] = useState('');
-  const [objectForbidden, setObjectForbidden] = useState(false);
   const [auditPage, setAuditPage] = useState<OperationLogPage | null>(null);
+  const [riskPage, setRiskPage] = useState<RiskAuditEventPage | null>(null);
+  const [objectLoading, setObjectLoading] = useState(false);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [objectError, setObjectError] = useState('');
   const [auditError, setAuditError] = useState('');
+  const [riskError, setRiskError] = useState('');
+  const [objectForbidden, setObjectForbidden] = useState(false);
   const [auditForbidden, setAuditForbidden] = useState(false);
+  const [riskForbidden, setRiskForbidden] = useState(false);
   const [auditExporting, setAuditExporting] = useState(false);
   const [selectedTrace, setSelectedTrace] = useState(initial.selectedTrace);
   const [selectedObject, setSelectedObject] = useState<TrackingObjectResponse | null>(null);
   const [selectedAuditLogId, setSelectedAuditLogId] = useState(initial.selectedAuditLogId);
   const [selectedAuditLog, setSelectedAuditLog] = useState<OperationLogResponse | null>(null);
   const [selectedRiskLogId, setSelectedRiskLogId] = useState(initial.selectedRiskLogId);
+  const [selectedRiskLog, setSelectedRiskLog] = useState<RiskAuditEventResponse | null>(null);
   const objectRequestVersion = useRef(0);
   const auditRequestVersion = useRef(0);
+  const riskRequestVersion = useRef(0);
   const initializedClan = useRef('');
   const pendingClanRestore = useRef(initial.clanId);
 
@@ -140,6 +177,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       setSelectedAuditLogId(restored.selectedAuditLogId);
       setSelectedRiskLogId(restored.selectedRiskLogId);
       setSelectedAuditLog(null);
+      setSelectedRiskLog(null);
       setSelectedObject(null);
       if (restored.clanId && restored.clanId !== workspace.clanId) {
         pendingClanRestore.current = restored.clanId;
@@ -148,8 +186,9 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         return;
       }
       if (!workspace.clanId || restored.selectedTrace.targetId) return;
-      void loadObjects(restored.objectFilters);
+      if (restored.activeTab === TRACKING_TABS.OBJECT) void loadObjects(restored.objectFilters);
       if (restored.activeTab === TRACKING_TABS.AUDIT) void loadAudit(restored.auditFilters, restored.selectedAuditLogId);
+      if (restored.activeTab === TRACKING_TABS.RISK) void loadRisk(restored.riskFilters, restored.selectedRiskLogId);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -161,53 +200,74 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     pendingClanRestore.current = '';
     initializedClan.current = workspace.clanId;
     if (!selectedTrace.targetId) {
-      void loadObjects(objectFilters);
+      if (activeTab === TRACKING_TABS.OBJECT) void loadObjects(objectFilters);
       if (activeTab === TRACKING_TABS.AUDIT) void loadAudit(auditFilters, selectedAuditLogId);
+      if (activeTab === TRACKING_TABS.RISK) void loadRisk(riskFilters, selectedRiskLogId);
     }
   }, [workspace.clanId]);
 
   async function loadObjects(filters: ObjectFilters) {
     if (!workspace.clanId) return;
-    const requestVersion = ++objectRequestVersion.current;
+    const version = ++objectRequestVersion.current;
     setObjectLoading(true);
     setObjectError('');
     setObjectForbidden(false);
     try {
-      const query = buildObjectQuery(filters, workspace.clanId, workspace.branchId);
-      const page = await apiClient.get<TrackingObjectPage>(`/tracking/objects?${query}`);
-      if (requestVersion !== objectRequestVersion.current) return;
-      setObjectPage(page);
+      const page = await apiClient.get<TrackingObjectPage>(`/tracking/objects?${buildObjectQuery(filters, workspace.clanId, workspace.branchId)}`);
+      if (version === objectRequestVersion.current) setObjectPage(page);
     } catch (error) {
-      if (requestVersion !== objectRequestVersion.current) return;
+      if (version !== objectRequestVersion.current) return;
       const state = errorState(error, '业务对象查询失败');
       setObjectError(state.message);
       setObjectForbidden(state.forbidden);
       setObjectPage(null);
     } finally {
-      if (requestVersion === objectRequestVersion.current) setObjectLoading(false);
+      if (version === objectRequestVersion.current) setObjectLoading(false);
     }
   }
 
-  async function loadAudit(filters: AuditFilters, auditLogId = selectedAuditLogId) {
+  async function loadAudit(filters: AuditFilters, selectedId = selectedAuditLogId) {
     if (!workspace.clanId) return;
-    const requestVersion = ++auditRequestVersion.current;
+    const version = ++auditRequestVersion.current;
     setAuditLoading(true);
     setAuditError('');
     setAuditForbidden(false);
     try {
-      const query = buildAuditQuery(filters, workspace.clanId);
-      const page = await apiClient.get<OperationLogPage>(`/logs/operations?${query}`);
-      if (requestVersion !== auditRequestVersion.current) return;
+      const page = await apiClient.get<OperationLogPage>(`/logs/operations?${buildAuditQuery(filters, workspace.clanId)}`);
+      if (version !== auditRequestVersion.current) return;
       setAuditPage(page);
-      if (auditLogId) setSelectedAuditLog(page.records.find(row => String(row.id) === auditLogId) || null);
+      if (selectedId) setSelectedAuditLog(page.records.find(row => String(row.id) === selectedId) || null);
     } catch (error) {
-      if (requestVersion !== auditRequestVersion.current) return;
+      if (version !== auditRequestVersion.current) return;
       const state = errorState(error, '操作审计查询失败');
       setAuditError(state.message);
       setAuditForbidden(state.forbidden);
       setAuditPage(null);
     } finally {
-      if (requestVersion === auditRequestVersion.current) setAuditLoading(false);
+      if (version === auditRequestVersion.current) setAuditLoading(false);
+    }
+  }
+
+  async function loadRisk(filters: RiskFilters, selectedId = selectedRiskLogId) {
+    if (!workspace.clanId) return;
+    const version = ++riskRequestVersion.current;
+    setRiskLoading(true);
+    setRiskError('');
+    setRiskForbidden(false);
+    try {
+      const page = await apiClient.get<RiskAuditEventPage>(`/logs/risks?${buildRiskQuery(filters, workspace.clanId)}`);
+      if (version !== riskRequestVersion.current) return;
+      setRiskPage(page);
+      if (selectedId) setSelectedRiskLog(page.records.find(row => String(row.id) === selectedId) || null);
+    } catch (error) {
+      if (version !== riskRequestVersion.current) return;
+      const state = errorState(error, '风险审计查询失败');
+      setRiskError(state.message);
+      setRiskForbidden(state.forbidden);
+      setRiskPage(null);
+      setSelectedRiskLog(null);
+    } finally {
+      if (version === riskRequestVersion.current) setRiskLoading(false);
     }
   }
 
@@ -222,48 +282,12 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     window.setTimeout(() => void loadObjects(objectFilters), 0);
   }
 
-  function searchObjects() {
-    const next = { ...objectFilters, pageNo: 1 };
-    setObjectFilters(next);
-    void loadObjects(next);
-  }
-
-  function resetObjects() {
-    const next = { ...DEFAULT_OBJECT_FILTERS };
-    setObjectFilters(next);
-    setObjectPage(null);
-    setObjectError('');
-    setObjectForbidden(false);
-    void loadObjects(next);
-  }
-
-  function searchAudit() {
-    const next = { ...auditFilters, pageNo: 1 };
-    setAuditFilters(next);
-    void loadAudit(next, '');
-  }
-
-  function resetAudit() {
-    const next = { ...DEFAULT_AUDIT_FILTERS };
-    setAuditFilters(next);
-    setSelectedAuditLogId('');
-    setSelectedAuditLog(null);
-    setAuditPage(null);
-    setAuditError('');
-    setAuditForbidden(false);
-    void loadAudit(next, '');
-  }
-
   function changeTab(key: string) {
     const next = key === TRACKING_TABS.RISK ? TRACKING_TABS.RISK : key === TRACKING_TABS.AUDIT ? TRACKING_TABS.AUDIT : TRACKING_TABS.OBJECT;
     setActiveTab(next);
     if (next === TRACKING_TABS.OBJECT && !objectPage && !objectLoading) void loadObjects(objectFilters);
     if (next === TRACKING_TABS.AUDIT && !auditPage && !auditLoading) void loadAudit(auditFilters);
-  }
-
-  function openAuditLog(row: OperationLogResponse) {
-    setSelectedAuditLog(row);
-    setSelectedAuditLogId(String(row.id));
+    if (next === TRACKING_TABS.RISK && !riskPage && !riskLoading) void loadRisk(riskFilters);
   }
 
   async function exportAuditCsv() {
@@ -287,126 +311,148 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
     }
   }
 
-  const actorOptions = useMemo(() => {
+  const objectRows = objectPage?.records || [];
+  const auditRows = auditPage?.records || [];
+  const riskRows = riskPage?.records || [];
+  const canExportAudit = Boolean(auditRows.some(technicalFieldsReturned));
+
+  const auditActorOptions = useMemo(() => {
     const names = new Map<string, string>();
-    (auditPage?.records || []).forEach(row => {
-      if (row.actorId != null) names.set(String(row.actorId), display(row.actorDisplayName, '系统或未知操作者'));
-    });
-    if (auditFilters.actorId && !names.has(auditFilters.actorId)) names.set(auditFilters.actorId, '已选操作者');
+    auditRows.forEach(row => { if (row.actorId != null) names.set(String(row.actorId), display(row.actorDisplayName, '系统或未知操作者')); });
+    String(auditFilters.actorId || '').split(',').filter(Boolean).forEach(id => { if (!names.has(id)) names.set(id, '已选操作者'); });
     return Array.from(names.entries()).map(([value, label]) => ({ value, label }));
   }, [auditPage, auditFilters.actorId]);
 
+  const riskActorOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    riskRows.forEach(row => { if (row.actorId != null) names.set(String(row.actorId), display(row.actorDisplayName, '系统或未知操作者')); });
+    String(riskFilters.actorId || '').split(',').filter(Boolean).forEach(id => { if (!names.has(id)) names.set(id, '已选操作者'); });
+    return Array.from(names.entries()).map(([value, label]) => ({ value, label }));
+  }, [riskPage, riskFilters.actorId]);
+
+  const branchOptions = [
+    ...(workspace.branchId ? [{ value: workspace.branchId, label: '当前工作区支派' }] : [])
+  ];
+
   if (selectedTrace.targetType && selectedTrace.targetId) {
+    return <TrackingTraceDetailPage clanId={workspace.clanId} targetType={selectedTrace.targetType} targetId={selectedTrace.targetId} reviewTaskId={selectedTrace.reviewTaskId} selectedObject={selectedObject} onBack={closeTrace} />;
+  }
+
+  function moreButton() {
+    const isExpanded = expanded[activeTab];
     return (
-      <TrackingTraceDetailPage
-        clanId={workspace.clanId}
-        targetType={selectedTrace.targetType}
-        targetId={selectedTrace.targetId}
-        reviewTaskId={selectedTrace.reviewTaskId}
-        selectedObject={selectedObject}
-        onBack={closeTrace}
-      />
+      <Button type="link" className="tracking-more-button" icon={isExpanded ? <UpOutlined /> : <DownOutlined />} iconPosition="end" onClick={() => setExpanded(previous => ({ ...previous, [activeTab]: !isExpanded }))}>
+        {isExpanded ? '收起' : '更多筛选'}
+      </Button>
     );
   }
 
-  const objectRows = objectPage?.records || [];
-  const auditRows = auditPage?.records || [];
-  const canExportAudit = Boolean(auditPage?.records.some(technicalFieldsReturned));
+  function queryActions(reset: () => void, query: () => void, loading: boolean) {
+    return <div className="tracking-query-actions"><Space wrap>{moreButton()}<Button disabled={loading} onClick={reset}>重置</Button><Button type="primary" loading={loading} onClick={query}>查询</Button></Space></div>;
+  }
 
-  const objectTab = (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card className="tracking-filter-card">
-        <Form layout="vertical">
-          <div className="tracking-filter-grid tracking-filter-grid--object">
-            <Form.Item label="对象类型"><Select value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></Form.Item>
-            <Form.Item label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={searchObjects} /></Form.Item>
-            <Form.Item label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></Form.Item>
-            <Form.Item label="业务状态"><Select value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></Form.Item>
-            <Form.Item label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></Form.Item>
-          </div>
-        </Form>
-        <div className="tracking-filter-actions"><Space wrap><Button type="primary" loading={objectLoading} onClick={searchObjects}>查询对象</Button><Button disabled={objectLoading} onClick={resetObjects}>重置</Button></Space><Text type="secondary">仅查询当前宗族、授权支派和隐私规则允许查看的对象。</Text></div>
-      </Card>
-      {objectForbidden ? <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" /> : objectError ? <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button onClick={() => void loadObjects(objectFilters)}>重试</Button>} /> : (
-        <Card title="可追踪业务对象" extra={<Text type="secondary">点击整行直接进入追踪详情</Text>}>
-          <Table<TrackingObjectResponse>
-            size="small"
-            rowKey={row => `${row.objectType}-${row.objectId}`}
-            dataSource={objectRows}
-            loading={objectLoading}
-            scroll={{ x: 900 }}
-            onRow={row => ({ onClick: () => openTrace(row) })}
-            rowClassName="tracking-clickable-row"
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }}
-            pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: objectPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 个对象`, onChange: pageNo => { const next = { ...objectFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setObjectFilters(next); void loadObjects(next); } }}
-            columns={[
-              { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
-              { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
-              { key: 'branch', title: '所属支派', width: 150, render: (_value, row) => display(row.branchName, '未归属支派') },
-              { key: 'summary', title: '业务摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
-              { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
-              { key: 'changedAt', title: '最近变更', width: 180, render: (_value, row) => formatDateTime(row.changedAt) },
-              { key: 'open', title: '操作', width: 100, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); openTrace(row); }}>查看追踪</Button> }
-            ]}
-          />
-        </Card>
-      )}
-    </Space>
+  const objectFiltersView = (
+    <Form layout="vertical" className="tracking-query-form">
+      <div className="tracking-query-grid">
+        <Form.Item label="对象类型"><TrackingMultiSelect ariaLabel="对象类型" value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} placeholder="全部对象类型" onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></Form.Item>
+        <Form.Item label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadObjects({ ...objectFilters, pageNo: 1 })} /></Form.Item>
+        <Form.Item label="业务状态"><TrackingMultiSelect ariaLabel="业务状态" value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} placeholder="全部状态" onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></Form.Item>
+        <Form.Item label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></Form.Item>
+        {expanded.object ? <Form.Item label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></Form.Item> : null}
+      </div>
+      {queryActions(() => { const next = { ...DEFAULT_OBJECT_FILTERS }; setObjectFilters(next); void loadObjects(next); }, () => { const next = { ...objectFilters, pageNo: 1 }; setObjectFilters(next); void loadObjects(next); }, objectLoading)}
+    </Form>
   );
 
-  const auditTab = (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card className="tracking-filter-card">
-        <Form layout="vertical"><div className="tracking-filter-grid tracking-filter-grid--audit">
-          <Form.Item label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
-          <Form.Item label="操作者"><Select value={auditFilters.actorId || undefined} options={actorOptions} placeholder="全部操作者" allowClear showSearch optionFilterProp="label" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value || '' }))} /></Form.Item>
-          <Form.Item label="动作分类"><Select value={auditFilters.actionType || undefined} options={ACTION_OPTIONS} placeholder="全部动作" allowClear showSearch optionFilterProp="label" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value || '' }))} /></Form.Item>
-          <Form.Item label="对象类型"><Select value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></Form.Item>
-          <Form.Item label="执行结果"><Select value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></Form.Item>
-          <Form.Item label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={searchAudit} /></Form.Item>
-        </div></Form>
-        <div className="tracking-filter-actions"><Space wrap><Button type="primary" loading={auditLoading} onClick={searchAudit}>查询审计记录</Button><Button disabled={auditLoading} onClick={resetAudit}>重置</Button>{canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}</Space><Text type="secondary">按操作时间倒序展示；技术信息默认折叠。</Text></div>
-      </Card>
-      {auditForbidden ? <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" /> : auditError ? <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button onClick={() => void loadAudit(auditFilters)}>重试</Button>} /> : (
-        <Card title="操作审计记录" extra={<Text type="secondary">点击整行查看详情</Text>}>
-          <Table<OperationLogResponse>
-            size="small"
-            rowKey={row => String(row.id)}
-            dataSource={auditRows}
-            loading={auditLoading}
-            scroll={{ x: 980 }}
-            onRow={row => ({ onClick: () => openAuditLog(row) })}
-            rowClassName="tracking-clickable-row"
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }}
-            pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: auditPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条记录`, onChange: pageNo => { const next = { ...auditFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setAuditFilters(next); void loadAudit(next, ''); } }}
-            columns={[
-              { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
-              { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
-              { key: 'action', title: '动作', width: 140, render: (_value, row) => actionText(row.actionType) },
-              { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, '业务信息不可用')}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
-              { key: 'result', title: '结果', width: 110, render: (_value, row) => row.resultStatus ? <Tag color={statusColor(row.resultStatus)}>{statusText(row.resultStatus)}</Tag> : '未记录' },
-              { key: 'summary', title: '摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
-              { key: 'detail', title: '操作', width: 90, render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); openAuditLog(row); }}>查看</Button> }
-            ]}
-          />
-        </Card>
-      )}
-    </Space>
+  const auditFiltersView = (
+    <Form layout="vertical" className="tracking-query-form">
+      <div className="tracking-query-grid">
+        <Form.Item label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
+        <Form.Item label="操作者"><TrackingMultiSelect ariaLabel="操作者" value={auditFilters.actorId} options={auditActorOptions} placeholder="全部操作者" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value }))} /></Form.Item>
+        <Form.Item label="动作分类"><TrackingMultiSelect ariaLabel="动作分类" value={auditFilters.actionType} options={ACTION_OPTIONS} placeholder="全部动作" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value }))} /></Form.Item>
+        <Form.Item label="对象类型"><TrackingMultiSelect ariaLabel="日志对象类型" value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} placeholder="全部对象" onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></Form.Item>
+        {expanded.audit ? <><Form.Item label="执行结果"><TrackingMultiSelect ariaLabel="执行结果" value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} placeholder="全部结果" onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></Form.Item><Form.Item label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadAudit({ ...auditFilters, pageNo: 1 }, '')} /></Form.Item></> : null}
+      </div>
+      {queryActions(() => { const next = { ...DEFAULT_AUDIT_FILTERS }; setAuditFilters(next); setSelectedAuditLog(null); setSelectedAuditLogId(''); void loadAudit(next, ''); }, () => { const next = { ...auditFilters, pageNo: 1 }; setAuditFilters(next); void loadAudit(next, ''); }, auditLoading)}
+    </Form>
   );
+
+  const riskFiltersView = (
+    <Form layout="vertical" className="tracking-query-form">
+      <div className="tracking-query-grid">
+        <Form.Item label="时间范围"><RangePicker value={rangeValue(riskFilters.startTime, riskFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setRiskFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
+        <Form.Item label="风险等级"><TrackingMultiSelect ariaLabel="风险等级" value={riskFilters.riskLevel} options={RISK_LEVEL_OPTIONS} placeholder="全部等级" onChange={value => setRiskFilters(previous => ({ ...previous, riskLevel: value }))} /></Form.Item>
+        <Form.Item label="事件类型"><TrackingMultiSelect ariaLabel="事件类型" value={riskFilters.eventType} options={RISK_EVENT_OPTIONS} placeholder="全部事件" onChange={value => setRiskFilters(previous => ({ ...previous, eventType: value }))} /></Form.Item>
+        <Form.Item label="处置状态"><TrackingMultiSelect ariaLabel="处置状态" value={riskFilters.dispositionStatus} options={RISK_DISPOSITION_OPTIONS} placeholder="全部处置状态" onChange={value => setRiskFilters(previous => ({ ...previous, dispositionStatus: value }))} /></Form.Item>
+        {expanded.risk ? <><Form.Item label="操作者"><TrackingMultiSelect ariaLabel="风险操作者" value={riskFilters.actorId} options={riskActorOptions} placeholder="全部操作者" onChange={value => setRiskFilters(previous => ({ ...previous, actorId: value }))} /></Form.Item><Form.Item label="所属支派"><TrackingMultiSelect ariaLabel="风险所属支派" value={riskFilters.branchId} options={branchOptions} placeholder="本人可见支派范围" onChange={value => setRiskFilters(previous => ({ ...previous, branchId: value }))} /></Form.Item></> : null}
+      </div>
+      {queryActions(() => { const next = { ...DEFAULT_RISK_FILTERS }; setRiskFilters(next); setSelectedRiskLog(null); setSelectedRiskLogId(''); void loadRisk(next, ''); }, () => { const next = { ...riskFilters, pageNo: 1 }; setRiskFilters(next); void loadRisk(next, ''); }, riskLoading)}
+    </Form>
+  );
+
+  const objectResult = objectForbidden ? <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" /> : objectError ? <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button onClick={() => void loadObjects(objectFilters)}>重试</Button>} /> : (
+    <Table<TrackingObjectResponse> size="small" rowKey={row => `${row.objectType}-${row.objectId}`} dataSource={objectRows} loading={objectLoading} scroll={{ x: 900 }} onRow={row => ({ onClick: () => openTrace(row) })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }} pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: objectPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 个对象`, onChange: pageNo => { const next = { ...objectFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setObjectFilters(next); void loadObjects(next); } }} columns={[
+      { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
+      { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
+      { key: 'branch', title: '所属支派', width: 150, render: (_value, row) => display(row.branchName, '未归属支派') },
+      { key: 'summary', title: '业务摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+      { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
+      { key: 'changedAt', title: '最近变更', width: 180, render: (_value, row) => formatDateTime(row.changedAt) },
+      { key: 'open', title: '操作', width: 100, fixed: 'right', render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); openTrace(row); }}>查看追踪</Button> }
+    ]} />
+  );
+
+  const auditResult = auditForbidden ? <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" /> : auditError ? <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button onClick={() => void loadAudit(auditFilters)}>重试</Button>} /> : (
+    <Table<OperationLogResponse> size="small" rowKey={row => String(row.id)} dataSource={auditRows} loading={auditLoading} scroll={{ x: 980 }} onRow={row => ({ onClick: () => { setSelectedAuditLog(row); setSelectedAuditLogId(String(row.id)); } })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }} pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: auditPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条记录`, onChange: pageNo => { const next = { ...auditFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setAuditFilters(next); void loadAudit(next, ''); } }} columns={[
+      { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
+      { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
+      { key: 'action', title: '动作', width: 140, render: (_value, row) => actionText(row.actionType) },
+      { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, '业务信息不可用')}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
+      { key: 'result', title: '结果', width: 110, render: (_value, row) => row.resultStatus ? <Tag color={statusColor(row.resultStatus)}>{statusText(row.resultStatus)}</Tag> : '未记录' },
+      { key: 'summary', title: '摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+      { key: 'detail', title: '操作', width: 90, fixed: 'right', render: (_value, row) => <Button type="link" onClick={event => { event.stopPropagation(); setSelectedAuditLog(row); setSelectedAuditLogId(String(row.id)); }}>查看</Button> }
+    ]} />
+  );
+
+  const riskResult = riskForbidden ? <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" /> : riskError ? <Alert type="error" showIcon message="风险审计查询失败" description={riskError} action={<Button onClick={() => void loadRisk(riskFilters)}>重试</Button>} /> : (
+    <Table<RiskAuditEventResponse> size="small" rowKey={row => String(row.id)} dataSource={riskRows} loading={riskLoading} scroll={{ x: 1180 }} onRow={row => ({ onClick: () => { setSelectedRiskLog(row); setSelectedRiskLogId(String(row.id)); } })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }} pagination={{ current: riskPage?.pageNo || riskFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: riskPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条风险事件`, onChange: pageNo => { const next = { ...riskFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setRiskFilters(next); void loadRisk(next, ''); } }} columns={[
+      { key: 'time', title: '发生时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
+      { key: 'level', title: '风险等级', width: 100, render: (_value, row) => <Tag color={riskLevelColor(row.riskLevel)}>{riskLevelText(row.riskLevel)}</Tag> },
+      { key: 'event', title: '事件类型', width: 170, render: (_value, row) => riskEventText(row.eventType) },
+      { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
+      { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, targetTypeText(row.targetType))}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
+      { key: 'action', title: '动作', width: 150, render: (_value, row) => actionText(row.actionType) },
+      { key: 'disposition', title: '处置状态', width: 110, render: (_value, row) => <Tag color={riskDispositionColor(row.dispositionStatus)}>{riskDispositionText(row.dispositionStatus)}</Tag> },
+      { key: 'summary', title: '风险摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+      { key: 'actions', title: '操作', width: 170, fixed: 'right', render: (_value, row) => <Space size={4}><Button type="link" onClick={event => { event.stopPropagation(); setSelectedRiskLog(row); setSelectedRiskLogId(String(row.id)); }}>日志详情</Button>{row.trackingTargetType && row.trackingTargetId != null && TRACEABLE_TYPES.has(row.trackingTargetType) ? <Button type="link" onClick={event => { event.stopPropagation(); setSelectedTrace({ targetType: row.trackingTargetType!, targetId: String(row.trackingTargetId), reviewTaskId: row.reviewTaskId ? String(row.reviewTaskId) : '' }); }}>对象追踪</Button> : null}</Space> }
+    ]} />
+  );
+
+  const resultTotal = activeTab === TRACKING_TABS.OBJECT ? objectPage?.total || 0 : activeTab === TRACKING_TABS.AUDIT ? auditPage?.total || 0 : riskPage?.total || 0;
+  const activeFilters = activeTab === TRACKING_TABS.OBJECT ? objectFiltersView : activeTab === TRACKING_TABS.AUDIT ? auditFiltersView : riskFiltersView;
+  const activeResult = activeTab === TRACKING_TABS.OBJECT ? objectResult : activeTab === TRACKING_TABS.AUDIT ? auditResult : riskResult;
 
   return (
-    <div className="audit-trace-page tabbed-module-page">
-      <Card className="tracking-center-intro tabbed-module-intro"><Title level={3}>审计追踪</Title><Paragraph type="secondary">统一追踪操作日志、审核链路、字段变更与风险事件；审计信息仅用于授权范围内的责任追溯和问题排查，本页面只读。</Paragraph></Card>
-      {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : (
-        <Card className="tracking-center-tabs-card tabbed-module-tabs-card">
-          <Tabs activeKey={activeTab} onChange={changeTab} items={[
-            { key: TRACKING_TABS.OBJECT, label: '对象追踪', children: objectTab },
-            { key: TRACKING_TABS.AUDIT, label: '操作日志', children: auditTab },
-            { key: TRACKING_TABS.RISK, label: '风险事件', children: <RiskAuditPanel active={activeTab === TRACKING_TABS.RISK} clanId={workspace.clanId} workspaceBranchId={workspace.branchId} filters={riskFilters} setFilters={setRiskFilters} selectedRiskLogId={selectedRiskLogId} setSelectedRiskLogId={setSelectedRiskLogId} onOpenTrace={(targetType, targetId, reviewTaskId = '') => setSelectedTrace({ targetType, targetId, reviewTaskId })} /> }
-          ]} />
-        </Card>
-      )}
+    <div className="audit-trace-page tracking-double-card-page">
+      <Card className="tracking-query-card" title="审计追踪">
+        <Tabs className="tracking-query-tabs" activeKey={activeTab} onChange={changeTab} items={[
+          { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
+          { key: TRACKING_TABS.AUDIT, label: '操作日志' },
+          { key: TRACKING_TABS.RISK, label: '风险事件' }
+        ]} />
+        {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
+      </Card>
+
+      <Card
+        className="tracking-result-card"
+        title={<div className="tracking-result-title"><Title level={4}>查询结果</Title><Text type="secondary">共 {resultTotal} 条</Text></div>}
+        extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
+      >
+        {workspace.clanId ? activeResult : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选择宗族后查看审计结果" />}
+      </Card>
+
       <OperationLogDrawer log={selectedAuditLog} onClose={() => { setSelectedAuditLog(null); setSelectedAuditLogId(''); }} />
+      <OperationLogDrawer log={selectedRiskLog ? asOperationLog(selectedRiskLog) : null} onClose={() => { setSelectedRiskLog(null); setSelectedRiskLogId(''); }} />
     </div>
   );
 }
