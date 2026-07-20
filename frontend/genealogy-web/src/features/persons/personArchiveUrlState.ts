@@ -14,7 +14,7 @@ export type PersonArchiveSearchState = {
 export type PersonDetailTab = 'basic' | 'events' | 'relations' | 'sources' | 'tracking';
 
 export const DEFAULT_PERSON_SORT = 'updatedAt,desc';
-export const DEFAULT_PERSON_PAGE_SIZE = 20;
+export const DEFAULT_PERSON_PAGE_SIZE = 10;
 export const PERSON_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 export const PERSON_SORT_OPTIONS = [
   { value: 'updatedAt,desc', label: '最近更新' },
