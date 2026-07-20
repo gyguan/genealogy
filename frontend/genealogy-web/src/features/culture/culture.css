@@ -4,11 +4,29 @@
 .culture-page-title { margin: 0 !important; font-size: 20px !important; line-height: 28px !important; }
 .culture-search-header .ant-tabs-nav { margin-bottom: 8px; }
 .culture-search-description { margin: 0 !important; }
-.culture-search-card .ant-form { padding-top: 4px; }
-.culture-more-filters { margin-top: -4px; }
-.culture-more-filters > .ant-collapse-item > .ant-collapse-header { padding: 8px 0; }
+.culture-search-card .ant-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 8px;
+  padding-top: 4px;
+}
+.culture-search-card .ant-form > .ant-row { grid-column: 1 / -1; grid-row: 1; }
+.culture-more-filters { display: contents; }
+.culture-more-filters > .ant-collapse-item { display: contents; }
+.culture-more-filters > .ant-collapse-item > .ant-collapse-header {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: center;
+  justify-self: end;
+  min-height: 32px;
+  padding: 0 8px;
+}
+.culture-more-filters > .ant-collapse-item > .ant-collapse-content {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
 .culture-more-filters .ant-collapse-content-box { padding: 4px 0 0 !important; }
-.culture-search-actions { display: flex; align-items: flex-end; justify-content: flex-end; padding-top: 4px; padding-bottom: 12px; }
+.culture-search-actions { grid-column: 3; grid-row: 3; display: flex; align-items: flex-end; justify-content: flex-end; padding-top: 4px; padding-bottom: 12px; }
 .culture-result-actions { display: flex; align-items: center; justify-content: flex-end; }
 .culture-result-sort { width: 136px; }
 .culture-result-card .ant-card-extra .ant-btn { min-width: 88px; }
@@ -52,7 +70,9 @@
   .culture-page-header .ant-tabs-tab { min-height: 44px; padding-inline: 12px; }
 
   .culture-managed-tab .ant-form-item { margin-bottom: 12px; }
-  .culture-search-actions { justify-content: stretch; padding-bottom: 0; }
+  .culture-search-card .ant-form { grid-template-columns: auto minmax(0, 1fr); }
+  .culture-more-filters > .ant-collapse-item > .ant-collapse-header { grid-column: 1; min-height: 44px; padding-inline: 0 8px; }
+  .culture-search-actions { grid-column: 2; justify-content: stretch; padding-bottom: 0; }
   .culture-search-actions .ant-space { width: 100%; }
   .culture-search-actions .ant-space-item { flex: 1; }
   .culture-search-actions .ant-btn { width: 100%; min-height: 44px; }
