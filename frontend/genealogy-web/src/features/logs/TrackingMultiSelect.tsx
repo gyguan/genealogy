@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Button, Divider, Select } from 'antd';
 
 export type TrackingOption = {
-  value: string;
+  value?: string;
   label: string;
   options?: TrackingOption[];
 };
