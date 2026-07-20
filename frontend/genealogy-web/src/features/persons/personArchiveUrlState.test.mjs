@@ -45,8 +45,8 @@ test('writes repeated parameters and preserves defaults compactly', () => {
   assert.equal(url.searchParams.has('tab'), false);
 });
 
-test('uses official status and twenty rows as initial defaults', () => {
+test('uses official status and ten rows as initial defaults', () => {
   const state = emptyPersonArchiveSearch();
   assert.deepEqual(state.dataStatuses, ['official']);
-  assert.equal(state.pageSize, 20);
+  assert.equal(state.pageSize, 10);
 });
