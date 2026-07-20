@@ -87,9 +87,10 @@ test('data import page uses query and result cards with new import modal', async
   await expect(page.getByRole('button', { name: '清空' })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await expect(page.getByText('黄氏人物资料.xlsx')).toBeVisible();
-  await expect(page.getByText('IMP-20260720-0101')).toBeVisible();
-  await expect(page.getByText('部分成功')).toBeVisible();
+  const taskTable = page.locator('.import-execution-table');
+  await expect(taskTable.getByText('黄氏人物资料.xlsx')).toBeVisible();
+  await expect(taskTable.getByText('IMP-20260720-0101')).toBeVisible();
+  await expect(taskTable.getByText('部分成功')).toBeVisible();
 
   await page.getByRole('button', { name: '新建导入' }).click();
   const modal = page.getByRole('dialog', { name: '新建导入' });
