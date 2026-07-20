@@ -26,6 +26,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,7 +81,7 @@ class ApprovalSelfReviewTest {
         assertThat(response.status()).isEqualTo("approved");
         assertThat(response.reviewerId()).isEqualTo(9L);
         verify(authorizationApplicationService).requirePermission(1L, 9L, "review_task:approve");
-        verify(revisionApplyService).apply(record, any(LocalDateTime.class));
+        verify(revisionApplyService).apply(eq(record), any(LocalDateTime.class));
     }
 
     @Test
@@ -96,7 +97,7 @@ class ApprovalSelfReviewTest {
         assertThat(response.reviewerId()).isEqualTo(9L);
         assertThat(record.getRejectedReason()).isEqualTo("资料需要补充");
         verify(authorizationApplicationService).requirePermission(1L, 9L, "review_task:reject");
-        verify(revisionApplyService).reject(record, any(LocalDateTime.class));
+        verify(revisionApplyService).reject(eq(record), any(LocalDateTime.class));
     }
 
     private CheckTaskEntity pendingTask() {
