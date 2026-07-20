@@ -151,6 +151,7 @@
 .lineage-result-toolbar--double-card {
   display: grid;
   grid-template-columns: minmax(240px, 320px);
+  align-items: start;
   justify-content: end;
   gap: 16px;
   margin-bottom: 4px;
