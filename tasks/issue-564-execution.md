@@ -1,67 +1,65 @@
 # Issue #564 执行看板
 
 - Issue：https://github.com/gyguan/genealogy/issues/564
-- PR：https://github.com/gyguan/genealogy/pull/568
-- 目标：为“人物中心”TAB实现独立中心关系图布局，支派全局保持现有分层布局。
-- 工作分支：`agent/issue-564-person-centered-layout`
-- Issue 类型：Tree 前端布局模型调整
+- 首次 PR：https://github.com/gyguan/genealogy/pull/568
+- 本次目标：补齐人物中心关系图真实数据与显式布局接入，确保父母、子女、配偶、兄弟姐妹按原型展示。
+- 工作分支：`agent/issue-564-fix-person-centered-layout`
+- Issue 类型：Tree 前后端查询与布局修复
 - 流程强度：标准
-- 契约强度：不涉及
-- 验证强度：Tree 聚焦测试 + TypeScript + 生产构建 + diff 检查
-- 影响模块：`frontend/genealogy-web/src/features/tree`
+- 契约强度：无 schema 变更；保持既有 Tree API DTO
+- 验证强度：后端聚焦测试 + 前端 Tree 测试 + TypeScript + 生产构建 + diff 检查
+- 影响模块：`backend/genealogy-backend/src/main/java/com/genealogy/tree`、`frontend/genealogy-web/src/features/tree`
 
-## 实现范围
+## 复核结论
 
-1. 中心人物固定为关系布局原点，并由人物中心视图自动居中到画布视口。
-2. 父母位于上方，父亲优先在左、母亲优先在右；子女位于下方。
-3. 配偶位于中心人物左右近邻。
-4. 兄弟姐妹通过共同父母关系推导，与中心人物同层并位于配偶外侧。
-5. 更远祖先、后代及其他节点保留在外层，避免查询数据丢失。
-6. 人物图通过客户端布局标记进入专用布局；支派全局未标记，继续使用原有分层布局。
-7. 保留折叠、缩放、居中、图内定位、边路径、节点详情和中心人物切换能力。
-8. 增加模型测试覆盖核心相对位置与人物/支派模式隔离。
+首次交付存在两个功能缺口：
+
+1. 前端通过给 API 响应附加 `clientLayoutMode` 字段间接选择布局，没有按 Issue 要求由页面显式向 `LineageGraphCanvas` 传递布局模式。
+2. 后端人物图 `direction=both` 只遍历祖先链和后代链，不会从中心人物的直接父母向下查询“父母的其他子女”，因此响应通常不包含兄弟姐妹，前端无法展示。
+
+## 本次实现范围
+
+1. 页面显式传递 `person-centered / branch-global` 布局模式。
+2. Canvas 按显式模式调用人物中心布局或支派全局布局。
+3. 移除人物图响应对象的隐藏客户端布局标记。
+4. 后端 `family`、`both` 查询补齐兄弟姐妹节点和父子关系边。
+5. 复用现有权限、隐私、状态过滤、节点/边去重与容量限制。
+6. 增加后端兄弟姐妹查询测试和前端显式模式隔离测试。
 
 ## 任务看板
 
 | 序号 | 任务 | 状态 | 结果或说明 |
 |---|---|---|---|
-| 1 | 建立 Issue、分支和执行现场 | ✅ 已完成 | Issue #564、分支与 Draft PR #568 |
-| 2 | 实现人物中心关系分组和专用布局 | ✅ 已完成 | `c667ec8f`：新增人物中心布局、亲属分组和外层节点策略 |
-| 3 | 接入人物图与支派图模式隔离 | ✅ 已完成 | `1c9e2290`：人物接口结果标记为 `person-centered`，支派图保持原布局 |
-| 4 | 补充测试、运行 CI、复核 diff | ✅ 已完成 | `f917f9e0`；Frontend CI Run #1028 全部通过 |
+| 1 | 重新读取 main、Issue 与前后端实现，确认真实根因 | ✅ 已完成 | 已确认兄弟姐妹数据缺失及隐式布局路由问题 |
+| 2 | 恢复 Issue、创建修复分支和 Draft PR | 🔄 进行中 | 分支已创建；本检查点完成后创建 Draft PR |
+| 3 | 后端补齐人物中心兄弟姐妹查询 | ⏳ 待处理 | 复用父母入边与父母出边批量查询 |
+| 4 | 前端改为页面显式传递布局模式 | ⏳ 待处理 | Canvas 不再读取响应附加字段 |
+| 5 | 补充测试并执行 CI、diff Review、合入 main | ⏳ 待处理 | — |
 
-## 验证结果
+## 验证方案
 
-- Tree graph model 测试：通过，新增 2 个中心关系图测试。
-- 前端现有测试：通过。
-- TypeScript 类型检查：通过。
-- 生产构建：通过。
-- Frontend CI Run #1028：`success`。
-- diff 复核：仅修改 Tree 布局模型、Tree 服务标记、对应测试和本执行看板。
-- API、OpenAPI、后端、数据库、权限及其他页面：无修改。
+```bash
+cd backend/genealogy-backend
+mvn -Dtest=TreeApplicationServiceTest test
 
-## 布局规则
+cd frontend/genealogy-web
+npm run test:tree
+npm run typecheck
+npm run build
+npm run api:check
+```
 
-- 父母：直接指向中心人物的亲子/承嗣类关系，位于中心上方。
-- 子女：由中心人物直接指向的亲子/承嗣类关系，位于中心下方。
-- 配偶：与中心人物直接相连的婚配关系，左右交替且靠近中心。
-- 兄弟姐妹：与中心人物共享至少一位直接父母，位于中心同层、配偶外侧。
-- 远层节点：根据祖先/后代可达关系及世代信息放入更外层，不丢弃查询返回节点。
+## 风险与补偿
 
-## 风险与回滚
-
-- 部分历史数据若缺少共同父母边，兄弟姐妹会作为同世代外层人物展示，而不会被错误丢弃。
-- 若边方向异常，世代信息作为外层分类兜底，不改变原始关系数据。
-- 回滚方式：回退 PR #568 即可恢复人物中心与支派全局共用分层布局。
+- 多父母可能重复发现同一兄弟姐妹：复用 `TreeGraphAccumulator` 节点/边去重。
+- 隐私或支派范围可能过滤部分亲属：继续以后端现有可见性投影为准，不在前端补全敏感数据。
+- 不修改 OpenAPI schema、数据库、关系语义与支派全局布局。
 
 ## 恢复检查点
 
-- 当前 Issue：#564
-- 当前分支：`agent/issue-564-person-centered-layout`
-- 当前 Draft PR：#568
-- 业务提交：`c667ec8f4af58073b1c909069c13afd9099e3e76`、`1c9e229042598187f80ca226e6a7e88b107370b9`、`f917f9e0ab73d6727cfaaceefff675486eafe967`
-- CI 状态：Frontend CI Run #1028 success
-- 未解决 Review：无
+- 当前 Issue：#564（已重新打开）
+- 当前分支：`agent/issue-564-fix-person-centered-layout`
+- 当前 Draft PR：待创建
 - 已知阻塞：无
-- 下一步最小任务：更新 PR 摘要，标记 Ready 并合入 `main`
+- 下一步最小任务：创建 Draft PR，然后实现后端兄弟姐妹查询
 - 最后更新时间：2026-07-20（北京时间）
