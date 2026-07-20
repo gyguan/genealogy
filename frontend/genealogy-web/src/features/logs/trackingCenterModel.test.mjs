@@ -14,35 +14,19 @@ import {
 const legacy = readTrackingCenterState('?view=auditTrace&trackingTab=audit&objectType=source&objectKeyword=%E6%97%8F%E8%B0%B1&objectPage=3&traceType=source&traceId=88&auditActor=9&auditAction=source_update&auditPageSize=50&auditLog=31');
 assert.equal(legacy.activeTab, TRACKING_TABS.AUDIT);
 assert.equal(legacy.clanId, '');
-assert.deepEqual(legacy.objectFilters, {
-  ...DEFAULT_OBJECT_FILTERS,
-  objectType: 'source',
-  keyword: '族谱',
-  pageNo: 3
-});
-assert.deepEqual(legacy.auditFilters, {
-  ...DEFAULT_AUDIT_FILTERS,
-  actorId: '9',
-  actionType: 'source_update'
-});
+assert.deepEqual(legacy.objectFilters, { ...DEFAULT_OBJECT_FILTERS, objectType: 'source', keyword: '族谱', pageNo: 3 });
+assert.deepEqual(legacy.auditFilters, { ...DEFAULT_AUDIT_FILTERS, actorId: '9', actionType: 'source_update' });
 assert.deepEqual(legacy.riskFilters, DEFAULT_RISK_FILTERS);
 assert.deepEqual(legacy.selectedTrace, { targetType: 'source', targetId: '88', reviewTaskId: '' });
 assert.equal(legacy.selectedAuditLogId, '31');
 assert.equal(legacy.selectedRiskLogId, '');
 
-const canonical = readTrackingCenterState('?view=auditTrace&tab=risk&clanId=7&targetType=relationship&targetId=91&reviewTaskId=33&objectKeyword=%E5%BC%A0%E4%B8%89&riskLevel=critical&riskEvent=permission_change&riskBranch=12&riskDisposition=open&riskPage=2&riskLog=77');
+const canonical = readTrackingCenterState('?view=auditTrace&tab=risk&clanId=7&targetType=relationship&targetId=91&reviewTaskId=33&objectKeyword=%E5%BC%A0%E4%B8%89&riskLevel=critical,high&riskEvent=permission_change&riskBranch=12&riskDisposition=open&riskPage=2&riskLog=77');
 assert.equal(canonical.activeTab, TRACKING_TABS.RISK);
 assert.equal(canonical.clanId, '7');
 assert.deepEqual(canonical.selectedTrace, { targetType: 'relationship', targetId: '91', reviewTaskId: '33' });
 assert.equal(canonical.objectFilters.keyword, '张三');
-assert.deepEqual(canonical.riskFilters, {
-  ...DEFAULT_RISK_FILTERS,
-  riskLevel: 'critical',
-  eventType: 'permission_change',
-  branchId: '12',
-  dispositionStatus: 'open',
-  pageNo: 2
-});
+assert.deepEqual(canonical.riskFilters, { ...DEFAULT_RISK_FILTERS, riskLevel: 'critical,high', eventType: 'permission_change', branchId: '12', dispositionStatus: 'open', pageNo: 2 });
 assert.equal(canonical.selectedRiskLogId, '77');
 
 const serialized = writeTrackingCenterState(canonical, '?unrelated=keep&view=home&traceType=person&traceId=1');
@@ -54,7 +38,7 @@ assert.equal(serializedParams.get('clanId'), '7');
 assert.equal(serializedParams.get('targetType'), 'relationship');
 assert.equal(serializedParams.get('targetId'), '91');
 assert.equal(serializedParams.get('reviewTaskId'), '33');
-assert.equal(serializedParams.get('riskLevel'), 'critical');
+assert.equal(serializedParams.get('riskLevel'), 'critical,high');
 assert.equal(serializedParams.get('riskEvent'), 'permission_change');
 assert.equal(serializedParams.get('riskBranch'), '12');
 assert.equal(serializedParams.get('riskDisposition'), 'open');
@@ -64,54 +48,31 @@ assert.equal(serializedParams.get('traceType'), null);
 assert.doesNotMatch(serialized, /objectPageSize=10/);
 assert.deepEqual(readTrackingCenterState(serialized), canonical);
 
-const objectQuery = new URLSearchParams(buildObjectQuery({
-  ...DEFAULT_OBJECT_FILTERS,
-  keyword: '张三',
-  status: 'official',
-  changedFrom: '2026-07-01T00:00:00',
-  pageNo: 2
-}, '1', '10'));
+const objectQuery = new URLSearchParams(buildObjectQuery({ ...DEFAULT_OBJECT_FILTERS, objectType: 'person,source', keyword: '张三', status: 'official,verified', changedFrom: '2026-07-01T00:00:00', pageNo: 2 }, '1', '10'));
 assert.equal(objectQuery.get('clanId'), '1');
 assert.equal(objectQuery.get('branchId'), '10');
+assert.deepEqual(objectQuery.getAll('objectType'), ['person', 'source']);
+assert.deepEqual(objectQuery.getAll('status'), ['official', 'verified']);
 assert.equal(objectQuery.get('keyword'), '张三');
-assert.equal(objectQuery.get('status'), 'official');
 assert.equal(objectQuery.get('pageNo'), '2');
 assert.equal(objectQuery.get('pageSize'), '10');
 
-const auditQuery = new URLSearchParams(buildAuditQuery({
-  ...DEFAULT_AUDIT_FILTERS,
-  actorId: '9',
-  actionType: 'review_approve',
-  targetType: 'review_task',
-  resultStatus: 'success',
-  keyword: '审核',
-  startTime: '2026-07-01T00:00:00'
-}, '1'));
-assert.equal(auditQuery.get('actorId'), '9');
-assert.equal(auditQuery.get('actionType'), 'review_approve');
-assert.equal(auditQuery.get('targetType'), 'review_task');
-assert.equal(auditQuery.get('resultStatus'), 'success');
+const auditQuery = new URLSearchParams(buildAuditQuery({ ...DEFAULT_AUDIT_FILTERS, actorId: '9,10', actionType: 'review_approve,review_reject', targetType: 'review_task,person', resultStatus: 'success,failed', keyword: '审核', startTime: '2026-07-01T00:00:00' }, '1'));
+assert.deepEqual(auditQuery.getAll('actorId'), ['9', '10']);
+assert.deepEqual(auditQuery.getAll('actionType'), ['review_approve', 'review_reject']);
+assert.deepEqual(auditQuery.getAll('targetType'), ['review_task', 'person']);
+assert.deepEqual(auditQuery.getAll('resultStatus'), ['success', 'failed']);
 assert.equal(auditQuery.get('keyword'), '审核');
 assert.equal(auditQuery.get('startTime'), '2026-07-01T00:00:00');
 assert.equal(auditQuery.get('pageSize'), '10');
 
-const riskQuery = new URLSearchParams(buildRiskQuery({
-  ...DEFAULT_RISK_FILTERS,
-  actorId: '9',
-  riskLevel: 'high',
-  eventType: 'bulk_export',
-  branchId: '12',
-  dispositionStatus: 'resolved',
-  startTime: '2026-07-01T00:00:00',
-  pageNo: 3,
-  pageSize: 50
-}, '1'));
+const riskQuery = new URLSearchParams(buildRiskQuery({ ...DEFAULT_RISK_FILTERS, actorId: '9,10', riskLevel: 'high,critical', eventType: 'bulk_export,permission_change', branchId: '12,13', dispositionStatus: 'resolved,open', startTime: '2026-07-01T00:00:00', pageNo: 3, pageSize: 50 }, '1'));
 assert.equal(riskQuery.get('clanId'), '1');
-assert.equal(riskQuery.get('actorId'), '9');
-assert.equal(riskQuery.get('riskLevel'), 'high');
-assert.equal(riskQuery.get('eventType'), 'bulk_export');
-assert.equal(riskQuery.get('branchId'), '12');
-assert.equal(riskQuery.get('dispositionStatus'), 'resolved');
+assert.deepEqual(riskQuery.getAll('actorId'), ['9', '10']);
+assert.deepEqual(riskQuery.getAll('riskLevel'), ['high', 'critical']);
+assert.deepEqual(riskQuery.getAll('eventType'), ['bulk_export', 'permission_change']);
+assert.deepEqual(riskQuery.getAll('branchId'), ['12', '13']);
+assert.deepEqual(riskQuery.getAll('dispositionStatus'), ['resolved', 'open']);
 assert.equal(riskQuery.get('startTime'), '2026-07-01T00:00:00');
 assert.equal(riskQuery.get('pageNo'), '3');
 assert.equal(riskQuery.get('pageSize'), '10');
