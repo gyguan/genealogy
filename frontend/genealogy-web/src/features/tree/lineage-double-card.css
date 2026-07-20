@@ -114,7 +114,11 @@
 }
 
 .lineage-result-toolbar--double-card.is-person {
-  grid-template-columns: repeat(2, minmax(240px, 320px));
+  grid-template-columns: minmax(240px, 320px);
+}
+
+.lineage-result-toolbar--double-card.is-person > :nth-child(2) {
+  display: none;
 }
 
 .lineage-double-card-result .lineage-logic-card {
