@@ -41,7 +41,7 @@
 - [x] 增加多选、全选/清空及响应式样式。
 - [x] 更新聚焦测试与 Chromium E2E。
 - [x] 执行 typecheck、build、api:check 和页面门禁。
-- [ ] 检查最终 diff、PR 和 CI，满足门禁后合入 main。
+- [x] 检查最终 diff、PR 和 CI，满足门禁后合入 main。
 
 ## 实现结果
 
@@ -60,7 +60,7 @@
 
 ## 验证结果
 
-业务与测试提交：`50b37e23d1a8960e70100de0bc1ec5a16d9e4440`。
+最终提交：`74bf4533e4d10d430e9d762ca8badd73f823603f`。
 
 - `npm run test:tracking-center`：通过，新增多值 URL 与同名重复查询参数断言。
 - `npm run typecheck`：通过。
