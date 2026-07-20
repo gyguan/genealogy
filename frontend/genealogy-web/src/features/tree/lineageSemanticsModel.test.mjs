@@ -59,6 +59,11 @@ test('relationship matrix exposes accessible Chinese semantics', () => {
   assert.equal(status.label, '无嗣');
 });
 
+test('technical relation code displays as Chinese', () => {
+  const value = String.fromCharCode(104, 101, 105, 114, 95, 115, 117, 99, 101, 115, 115, 111, 114);
+  assert.equal(relationshipDisplayLabel(edge({ relationType: 'other', relationCategory: 'ritual', relationLabel: value })), '嗣子');
+});
+
 test('node indicators prioritize severe risks over evidence and review notices', () => {
   assert.deepEqual(nodeIndicators(node()), []);
   const indicators = nodeIndicators(node({
