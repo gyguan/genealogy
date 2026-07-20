@@ -1,7 +1,15 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 function ok(data: unknown) {
   return { status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) };
+}
+
+function compactText(value: string) {
+  return value.replace(/\s+/g, '');
+}
+
+async function buttonTexts(locator: Locator) {
+  return (await locator.allTextContents()).map(compactText);
 }
 
 async function mockTrackingApi(page: Page) {
@@ -47,7 +55,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
 
   await expectDefaultFourFields(page, ['对象类型', '业务关键词', '业务状态', '最近变更时间']);
   const actionButtons = page.locator('.tracking-query-actions button');
-  expect(await actionButtons.allTextContents()).toEqual(['更多筛选', '重置', '查询']);
+  expect(await buttonTexts(actionButtons)).toEqual(['更多筛选', '重置', '查询']);
 
   const grid = page.locator('.tracking-query-grid');
   const beforeGap = await grid.evaluate(element => getComputedStyle(element).rowGap);
@@ -55,7 +63,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.getByRole('button', { name: '收起' })).toBeVisible();
   await expect(page.locator('.tracking-query-grid > .ant-form-item')).toHaveCount(5);
   expect(await grid.evaluate(element => getComputedStyle(element).rowGap)).toBe(beforeGap);
-  expect(await page.locator('.tracking-query-actions button').allTextContents()).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
 
   await page.getByLabel('对象类型').click();
@@ -68,7 +76,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.getByText('更新人物资料')).toBeVisible();
   await page.getByRole('button', { name: '更多筛选' }).click();
   await expect(page.locator('.tracking-query-grid > .ant-form-item')).toHaveCount(6);
-  expect(await page.locator('.tracking-query-actions button').allTextContents()).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
 
   await page.getByRole('tab', { name: '风险事件' }).click();
   await expectDefaultFourFields(page, ['时间范围', '风险等级', '事件类型', '处置状态']);
@@ -82,8 +90,8 @@ test('390px viewport keeps single-column filters and action order', async ({ pag
 
   const gridColumns = await page.locator('.tracking-query-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns);
   expect(gridColumns.split(' ').length).toBe(1);
-  expect(await page.locator('.tracking-query-actions button').allTextContents()).toEqual(['更多筛选', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['更多筛选', '重置', '查询']);
   await page.getByRole('button', { name: '更多筛选' }).click();
-  expect(await page.locator('.tracking-query-actions button').allTextContents()).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
   expect(await page.locator('.audit-trace-page').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 });
