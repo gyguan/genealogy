@@ -69,7 +69,8 @@ public class TrackingObjectSearchApplicationService {
             return PageResponse.of(List.of(), 0L, normalizedPageNo, normalizedPageSize);
         }
 
-        int requiredRecords = Math.multiplyExact(normalizedPageNo, normalizedPageSize);
+        long requested = (long) normalizedPageNo * normalizedPageSize;
+        int requiredRecords = (int) Math.min(requested, 10_000L);
         List<TrackingObjectResponse> merged = new ArrayList<>();
         long total = 0L;
         for (String objectType : normalizedObjectTypes) {
@@ -78,16 +79,16 @@ public class TrackingObjectSearchApplicationService {
                         clanId, objectType, normalizedKeyword, branchId, null, changedFrom, changedTo,
                         dataScope, requiredRecords
                 );
-                merged.addAll(page.getRecords());
-                total += page.getTotal();
+                merged.addAll(page.records());
+                total += page.total();
             } else {
                 for (String status : normalizedStatuses) {
                     PageResponse<TrackingObjectResponse> page = searchSingle(
                             clanId, objectType, normalizedKeyword, branchId, status, changedFrom, changedTo,
                             dataScope, requiredRecords
                     );
-                    merged.addAll(page.getRecords());
-                    total += page.getTotal();
+                    merged.addAll(page.records());
+                    total += page.total();
                 }
             }
         }
