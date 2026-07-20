@@ -69,6 +69,22 @@ public class TrackingObjectSearchApplicationService {
             return PageResponse.of(List.of(), 0L, normalizedPageNo, normalizedPageSize);
         }
 
+        if (normalizedObjectTypes.size() == 1 && normalizedStatuses.size() <= 1) {
+            return queryRepository.search(
+                    clanId,
+                    normalizedObjectTypes.get(0),
+                    normalizedKeyword,
+                    branchId,
+                    normalizedStatuses.isEmpty() ? null : normalizedStatuses.get(0),
+                    changedFrom,
+                    changedTo,
+                    dataScope.fullClanAccess(),
+                    dataScope.queryVisibleBranchIds(),
+                    normalizedPageNo,
+                    normalizedPageSize
+            );
+        }
+
         long requested = (long) normalizedPageNo * normalizedPageSize;
         int requiredRecords = (int) Math.min(requested, 10_000L);
         List<TrackingObjectResponse> merged = new ArrayList<>();
