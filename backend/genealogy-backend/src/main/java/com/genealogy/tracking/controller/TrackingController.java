@@ -9,7 +9,6 @@ import com.genealogy.tracking.dto.TrackingObjectResponse;
 import com.genealogy.tracking.dto.TrackingTraceDetailResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -22,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Validated
 @RestController
@@ -46,10 +46,10 @@ public class TrackingController {
     public ApiResponse<PageResponse<TrackingObjectResponse>> searchObjects(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @NotBlank @RequestParam("objectType") String objectType,
+            @RequestParam("objectType") List<String> objectTypes,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long branchId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false, name = "status") List<String> statuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime changedFrom,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime changedTo,
             @Min(1) @RequestParam(defaultValue = "1") int pageNo,
@@ -64,16 +64,17 @@ public class TrackingController {
         return ApiResponse.success(trackingObjectSearchApplicationService.search(
                 clanId,
                 actorId,
-                objectType,
+                objectTypes,
                 keyword,
                 branchId,
-                status,
+                statuses,
                 changedFrom,
                 changedTo,
                 pageNo,
                 pageSize
         ));
     }
+
     @GetMapping("/objects/{targetType}/{targetId}/trace")
     public ApiResponse<TrackingTraceDetailResponse> traceObject(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
@@ -100,5 +101,4 @@ public class TrackingController {
                 includeTechnicalFields
         ));
     }
-
 }
