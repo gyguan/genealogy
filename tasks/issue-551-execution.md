@@ -40,7 +40,7 @@
 - [x] 更新样式与移动端布局。
 - [x] 更新聚焦测试与 E2E。
 - [x] 执行 typecheck、build、api:check 和页面门禁。
-- [ ] 检查最终 diff、PR 和全部 CI，满足门禁后合入 main。
+- [x] 检查最终 diff、PR 和全部 CI，满足门禁后合入 main。
 
 ## 实现结果
 
@@ -56,20 +56,21 @@
 
 ## 验证结果
 
-最终业务提交 `0b7d62262ee2c8caa3ade0e868ca58eeb4df1739`：
+最终实现提交：`704b51f7b81a4385fa523c69460bb2ddb702ae0b`。
 
-- `npm run test:imports`：通过。
+- 现有导入状态测试：通过。
+- 新增任务查询与展示模型测试：通过。
 - `npm run typecheck`：通过。
 - `npm run build`：通过。
 - `npm run api:check`：通过。
-- `npm run test:import-page`：通过，覆盖双 Card、四项查询、多选全选/清空、新建导入弹窗、上传预检 Drawer 和 390px 视口。
+- `npx playwright test e2e/import-page-pattern.spec.ts`：通过，覆盖双 Card、四项查询、多选全选/清空、新建导入弹窗、上传预检 Drawer 和 390px 视口。
 - Import Page Gate：通过。
 - Frontend CI：通过。
-- API Contract：通过。
 
 ## 失败修复记录
 
-首轮 Chromium E2E 的桌面任务文本定位同时命中可见表格和隐藏移动端卡片，触发 Playwright strict-mode 冲突。该问题仅属于测试定位范围，已将断言收紧到桌面任务表，业务代码未调整，复跑通过。
+1. 首轮 Chromium E2E 的桌面任务文本定位同时命中可见表格和隐藏移动端卡片，触发 Playwright strict-mode 冲突。该问题仅属于测试定位范围，已将断言收紧到桌面任务表，业务代码未调整，复跑通过。
+2. `package.json` 变更曾触发无关的 Culture Page Gate；其失败根因为主分支既有文化 E2E 用“重置”定位实际可访问名称“重 置”，与数据导入实现无关。最终撤销 `package.json` 差异，由 Import Page Gate 直接执行新增测试，避免在本 PR 修改无关文化模块。
 
 ## 风险与控制
 
