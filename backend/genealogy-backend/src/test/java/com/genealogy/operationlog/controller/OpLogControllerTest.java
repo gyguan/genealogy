@@ -25,7 +25,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -118,15 +117,20 @@ class OpLogControllerTest {
                 .thenReturn(scope);
         PageResponse<RiskAuditEventResponse> rawPage = PageResponse.of(List.of(), 0, 1, 20);
         when(riskAuditApplicationService.search(
-                eq(1L), eq(7L), eq("high"), eq("bulk_export"), eq(3L), eq("open"),
-                eq(null), eq(null), eq(1), eq(20), eq(false), eq(scope)
+                1L,
+                List.of(7L),
+                List.of("high", "critical"),
+                List.of("bulk_export"),
+                List.of(3L),
+                List.of("open"),
+                null,
+                null,
+                1,
+                20,
+                false,
+                scope
         )).thenReturn(rawPage);
-        when(riskAuditApplicationService.search(
-                eq(1L), eq(7L), eq("critical"), eq("bulk_export"), eq(3L), eq("open"),
-                eq(null), eq(null), eq(1), eq(20), eq(false), eq(scope)
-        )).thenReturn(rawPage);
-        when(riskBusinessViewApplicationService.enrich(org.mockito.ArgumentMatchers.any(), eq(1L), eq(99L)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(riskBusinessViewApplicationService.enrich(rawPage, 1L, 99L)).thenReturn(rawPage);
 
         controller.listRisks(
                 "Bearer token",
@@ -146,6 +150,20 @@ class OpLogControllerTest {
                 .requireDirectClanPermission(1L, 99L, "operation_risk.view");
         verify(rbacAuthorizationApplicationService)
                 .permissionDataScope(99L, 1L, "operation_risk.view");
+        verify(riskAuditApplicationService).search(
+                1L,
+                List.of(7L),
+                List.of("high", "critical"),
+                List.of("bulk_export"),
+                List.of(3L),
+                List.of("open"),
+                null,
+                null,
+                1,
+                20,
+                false,
+                scope
+        );
     }
 
     @Test
