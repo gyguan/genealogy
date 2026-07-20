@@ -10,6 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -36,18 +40,18 @@ public class TrackingObjectSearchApplicationService {
     public PageResponse<TrackingObjectResponse> search(
             Long clanId,
             Long actorId,
-            String objectType,
+            List<String> objectTypes,
             String keyword,
             Long branchId,
-            String status,
+            List<String> statuses,
             LocalDateTime changedFrom,
             LocalDateTime changedTo,
             int pageNo,
             int pageSize
     ) {
-        String normalizedObjectType = normalizeObjectType(objectType);
+        List<String> normalizedObjectTypes = normalizeObjectTypes(objectTypes);
         String normalizedKeyword = normalizeOptional(keyword, 100, "TRACKING_KEYWORD_TOO_LONG", "搜索关键词不能超过100个字符");
-        String normalizedStatus = normalizeOptional(status, 50, "TRACKING_STATUS_TOO_LONG", "状态筛选不能超过50个字符");
+        List<String> normalizedStatuses = normalizeOptionalValues(statuses, 50, "TRACKING_STATUS_TOO_LONG", "状态筛选不能超过50个字符");
         if (changedFrom != null && changedTo != null && changedFrom.isAfter(changedTo)) {
             throw new BusinessException("TRACKING_TIME_RANGE_INVALID", "最近变更开始时间不能晚于结束时间");
         }
@@ -59,24 +63,118 @@ public class TrackingObjectSearchApplicationService {
                 PERMISSION_VIEW
         );
         if (!dataScope.fullClanAccess() && dataScope.visibleBranchIds().isEmpty()) {
-            return PageResponse.of(java.util.List.of(), 0L, normalizedPageNo, normalizedPageSize);
+            return PageResponse.of(List.of(), 0L, normalizedPageNo, normalizedPageSize);
         }
         if (branchId != null && !dataScope.canAccessBranch(branchId)) {
-            return PageResponse.of(java.util.List.of(), 0L, normalizedPageNo, normalizedPageSize);
+            return PageResponse.of(List.of(), 0L, normalizedPageNo, normalizedPageSize);
         }
+
+        int requiredRecords = Math.multiplyExact(normalizedPageNo, normalizedPageSize);
+        List<TrackingObjectResponse> merged = new ArrayList<>();
+        long total = 0L;
+        for (String objectType : normalizedObjectTypes) {
+            if (normalizedStatuses.isEmpty()) {
+                PageResponse<TrackingObjectResponse> page = searchSingle(
+                        clanId, objectType, normalizedKeyword, branchId, null, changedFrom, changedTo,
+                        dataScope, requiredRecords
+                );
+                merged.addAll(page.getRecords());
+                total += page.getTotal();
+            } else {
+                for (String status : normalizedStatuses) {
+                    PageResponse<TrackingObjectResponse> page = searchSingle(
+                            clanId, objectType, normalizedKeyword, branchId, status, changedFrom, changedTo,
+                            dataScope, requiredRecords
+                    );
+                    merged.addAll(page.getRecords());
+                    total += page.getTotal();
+                }
+            }
+        }
+
+        List<TrackingObjectResponse> ordered = merged.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        item -> item.objectType() + ":" + item.objectId(),
+                        item -> item,
+                        (left, right) -> left,
+                        java.util.LinkedHashMap::new
+                ))
+                .values().stream()
+                .sorted(Comparator.comparing(
+                        TrackingObjectResponse::changedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                ).thenComparing(TrackingObjectResponse::objectId, Comparator.reverseOrder()))
+                .toList();
+        int fromIndex = Math.min((normalizedPageNo - 1) * normalizedPageSize, ordered.size());
+        int toIndex = Math.min(fromIndex + normalizedPageSize, ordered.size());
+        return PageResponse.of(ordered.subList(fromIndex, toIndex), total, normalizedPageNo, normalizedPageSize);
+    }
+
+    public PageResponse<TrackingObjectResponse> search(
+            Long clanId,
+            Long actorId,
+            String objectType,
+            String keyword,
+            Long branchId,
+            String status,
+            LocalDateTime changedFrom,
+            LocalDateTime changedTo,
+            int pageNo,
+            int pageSize
+    ) {
+        return search(
+                clanId,
+                actorId,
+                objectType == null ? List.of() : List.of(objectType),
+                keyword,
+                branchId,
+                status == null ? List.of() : List.of(status),
+                changedFrom,
+                changedTo,
+                pageNo,
+                pageSize
+        );
+    }
+
+    private PageResponse<TrackingObjectResponse> searchSingle(
+            Long clanId,
+            String objectType,
+            String keyword,
+            Long branchId,
+            String status,
+            LocalDateTime changedFrom,
+            LocalDateTime changedTo,
+            PermissionDataScope dataScope,
+            int requiredRecords
+    ) {
         return queryRepository.search(
                 clanId,
-                normalizedObjectType,
-                normalizedKeyword,
+                objectType,
+                keyword,
                 branchId,
-                normalizedStatus,
+                status,
                 changedFrom,
                 changedTo,
                 dataScope.fullClanAccess(),
                 dataScope.queryVisibleBranchIds(),
-                normalizedPageNo,
-                normalizedPageSize
+                1,
+                requiredRecords
         );
+    }
+
+    private List<String> normalizeObjectTypes(List<String> objectTypes) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (objectTypes != null) {
+            objectTypes.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .flatMap(value -> java.util.Arrays.stream(value.split(",")))
+                    .map(this::normalizeObjectType)
+                    .forEach(normalized::add);
+        }
+        if (normalized.isEmpty()) {
+            throw new BusinessException("TRACKING_OBJECT_TYPE_REQUIRED", "请选择业务对象类型");
+        }
+        return List.copyOf(normalized);
     }
 
     private String normalizeObjectType(String objectType) {
@@ -96,6 +194,26 @@ public class TrackingObjectSearchApplicationService {
             throw new BusinessException("TRACKING_OBJECT_TYPE_INVALID", "不支持的业务对象类型");
         }
         return normalized;
+    }
+
+    private List<String> normalizeOptionalValues(
+            List<String> values,
+            int maxLength,
+            String errorCode,
+            String message
+    ) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        values.stream()
+                .filter(java.util.Objects::nonNull)
+                .flatMap(value -> java.util.Arrays.stream(value.split(",")))
+                .map(value -> normalizeOptional(value, maxLength, errorCode, message))
+                .filter(java.util.Objects::nonNull)
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .forEach(normalized::add);
+        return List.copyOf(normalized);
     }
 
     private String normalizeOptional(String value, int maxLength, String errorCode, String message) {
