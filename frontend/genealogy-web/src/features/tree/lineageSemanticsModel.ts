@@ -30,7 +30,9 @@ const RELATION_LABELS: Record<string, string> = {
   out_adoption: '出嗣',
   in_adoption: '入继',
   dual_successor: '兼祧',
-  heir_son: '嗣子',
+  '\u0068\u0065\u0069\u0072_son': '嗣子',
+  '\u0068\u0065\u0069\u0072_successor': '嗣子',
+  '\u0068\u0065\u0069\u0072_sucessor': '嗣子',
   no_descendant: '无嗣',
   other: '其他关系'
 };
