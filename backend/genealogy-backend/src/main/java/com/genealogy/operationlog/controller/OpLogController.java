@@ -190,10 +190,11 @@ public class OpLogController {
     public ResponseEntity<byte[]> exportOperations(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @NotNull @RequestParam("clanId") Long clanId,
-            @RequestParam(required = false) Long actorId,
-            @RequestParam(required = false) String actionType,
-            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false, name = "actorId") List<Long> actorIds,
+            @RequestParam(required = false, name = "actionType") List<String> actionTypes,
+            @RequestParam(required = false, name = "targetType") List<String> targetTypes,
             @RequestParam(required = false) Long targetId,
+            @RequestParam(required = false, name = "resultStatus") List<String> resultStatuses,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime startTime,
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(required = false) LocalDateTime endTime,
             @RequestParam(required = false) String keyword
@@ -203,10 +204,11 @@ public class OpLogController {
         byte[] content = operationLogExportApplicationService.exportCsv(
                 clanId,
                 userId,
-                actorId,
-                actionType,
-                targetType,
+                actorIds,
+                actionTypes,
+                targetTypes,
                 targetId,
+                resultStatuses,
                 startTime,
                 endTime,
                 keyword
