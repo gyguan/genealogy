@@ -101,51 +101,7 @@
 }
 
 .lineage-result-meta {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding: 0 0 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.lineage-result-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 16px;
-  color: rgba(0, 0, 0, 0.65);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.lineage-result-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.lineage-result-legend i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.lineage-result-legend .tone-center {
-  background: #1677ff;
-}
-
-.lineage-result-legend .tone-official {
-  background: #52c41a;
-}
-
-.lineage-result-legend .tone-review {
-  background: #faad14;
-}
-
-.lineage-result-legend .tone-marriage {
-  background: #c41d7f;
+  display: none;
 }
 
 .lineage-result-toolbar--double-card {
@@ -169,15 +125,6 @@
 @media (max-width: 1199px) {
   .lineage-double-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lineage-result-meta {
-    flex-direction: column;
-  }
-
-  .lineage-result-legend {
-    justify-content: flex-start;
-    white-space: normal;
   }
 }
 
