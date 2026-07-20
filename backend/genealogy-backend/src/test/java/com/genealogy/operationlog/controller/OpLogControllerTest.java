@@ -194,21 +194,47 @@ class OpLogControllerTest {
     }
 
     @Test
-    void exportRequiresDedicatedPermissionAndPassesAuthenticatedActorToAuditService() {
+    void exportRequiresDedicatedPermissionAndPassesRepeatedFilters() {
         when(authorizationApplicationService.requireLogin("Bearer token")).thenReturn(99L);
         when(exportApplicationService.exportCsv(
-                1L, 99L, null, null, null, null, null, null, null
+                1L,
+                99L,
+                List.of(7L, 9L),
+                List.of("create", "update"),
+                List.of("person", "source"),
+                null,
+                List.of("approved", "rejected"),
+                null,
+                null,
+                "张"
         )).thenReturn(new byte[]{1});
 
         controller.exportOperations(
-                "Bearer token", 1L, null, null, null, null,
-                null, null, null
+                "Bearer token",
+                1L,
+                List.of(7L, 9L),
+                List.of("create", "update"),
+                List.of("person", "source"),
+                null,
+                List.of("approved", "rejected"),
+                null,
+                null,
+                "张"
         );
 
         verify(authorizationApplicationService)
                 .requireDirectClanPermission(1L, 99L, "operation_log.export");
         verify(exportApplicationService).exportCsv(
-                1L, 99L, null, null, null, null, null, null, null
+                1L,
+                99L,
+                List.of(7L, 9L),
+                List.of("create", "update"),
+                List.of("person", "source"),
+                null,
+                List.of("approved", "rejected"),
+                null,
+                null,
+                "张"
         );
     }
 
