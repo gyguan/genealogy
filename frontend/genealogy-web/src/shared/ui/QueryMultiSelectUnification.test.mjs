@@ -49,10 +49,10 @@ test('global styles preserve Ant-native selector and tag states', () => {
   assert.doesNotMatch(unifiedStyles, /query-multi-select-popup-actions/);
 });
 
-test('legacy lineage actions are rendered with Ant option-row dimensions', () => {
+test('legacy lineage actions are rendered with current Ant option-row dimensions', () => {
   assert.match(unifiedStyles, /\.lineage-select-all-actions/);
   assert.match(unifiedStyles, /height: 32px/);
   assert.match(unifiedStyles, /padding: 5px 12px/);
-  assert.match(unifiedStyles, /border-radius: 4px/);
+  assert.match(unifiedStyles, /border-radius: 6px/);
   assert.match(unifiedStyles, /\.lineage-select-all-divider\s*\{[\s\S]*display: none/);
 });
