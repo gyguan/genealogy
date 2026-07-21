@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { Button, Divider, Select, Space } from 'antd';
 import type { SelectProps } from 'antd';
+import './query-multi-select.css';
 
 export type QueryMultiSelectValue = string | number;
 
