@@ -70,6 +70,11 @@ jobs:
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
+      - name: Record remaining duplicate copy
+        if: steps.guard.outputs.skip != 'true'
+        shell: bash
+        run: |
+          grep -RFn --include='*.tsx' '来源资料库 / 来源详情' frontend/genealogy-web/src | tee /tmp/issue-641-matches.log || true
       - name: Install frontend dependencies
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
@@ -96,6 +101,7 @@ jobs:
           name: issue-641-cleanup-diagnostics
           path: |
             /tmp/issue-641-runner.log
+            /tmp/issue-641-matches.log
             /tmp/issue-641-test.log
             /tmp/issue-641-typecheck.log
             /tmp/issue-641-build.log
