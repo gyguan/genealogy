@@ -10,6 +10,7 @@ export type PersonLike = {
   dataStatus?: string;
   status?: string;
   branchId?: number | string;
+  allowedActions?: string[];
 };
 
 export type CreatePersonPayload = {
@@ -50,4 +51,8 @@ export async function loadPersons(clanId?: number | string): Promise<PersonLike[
 
 export async function createPersonApi(clanId: number | string, payload: CreatePersonPayload): Promise<PersonLike> {
   return apiClient.post(`/clans/${clanId}/persons`, payload);
+}
+
+export async function deletePersonApi(personId: number | string): Promise<void> {
+  await apiClient.delete(`/persons/${personId}`);
 }
