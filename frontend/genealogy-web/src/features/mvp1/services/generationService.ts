@@ -10,6 +10,7 @@ export type GenerationSchemeLike = {
   dataStatus?: string;
   status?: string;
   verificationStatus?: string;
+  allowedActions?: string[];
 };
 
 export type GenerationItemLike = {
@@ -49,4 +50,8 @@ export async function createGenerationSchemeApi(clanId: number | string, payload
 
 export async function createGenerationItemApi(schemeId: number | string, payload: CreateGenerationItemPayload): Promise<GenerationItemLike> {
   return apiClient.post(`/generation-schemes/${schemeId}/items`, payload);
+}
+
+export async function deleteGenerationSchemeApi(schemeId: number | string): Promise<void> {
+  await apiClient.delete(`/generation-schemes/${schemeId}`);
 }
