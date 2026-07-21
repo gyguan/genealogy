@@ -30,6 +30,14 @@ type Props = {
   onSavingChange?: (saving: boolean) => void;
 };
 
+type GenerationOptionItem = {
+  schemeId: string;
+  branchId: string;
+  schemeName: string;
+  generationNo: string;
+  word: string;
+};
+
 function display(value: unknown, fallback = '-') {
   const text = String(value ?? '').trim();
   return text || fallback;
@@ -37,6 +45,19 @@ function display(value: unknown, fallback = '-') {
 
 function branchLabel(branch: any) {
   return branch.branchName || branch.name || '未命名支派';
+}
+
+function generationSchemeLabel(scheme: any) {
+  return scheme.schemeName || scheme.name || '未命名字辈方案';
+}
+
+function isOfficialGenerationScheme(scheme: any) {
+  const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();
+  return ['official', 'active', 'approved'].includes(status);
+}
+
+function distinct(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function datePickerMode(precision: PersonDatePrecision): 'year' | 'month' | 'date' {
@@ -64,7 +85,9 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   const [form] = Form.useForm<PersonEditForm>();
   const [person, setPerson] = useState<any>();
   const [branches, setBranches] = useState<any[]>([]);
+  const [generationItems, setGenerationItems] = useState<GenerationOptionItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingGenerations, setLoadingGenerations] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<PersonStatusActionKey | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -73,12 +96,56 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   const [saved, setSaved] = useState(false);
   const birthPrecision = Form.useWatch('birthDatePrecision', form) || 'unknown';
   const deathPrecision = Form.useWatch('deathDatePrecision', form) || 'unknown';
+  const selectedBranchId = Form.useWatch('branchId', form) || '';
+  const selectedGenerationNo = Form.useWatch('generationNo', form) || '';
+  const selectedGenerationWord = Form.useWatch('generationWord', form) || '';
   const busy = saving || actionLoading !== null;
 
   const branchOptions = useMemo(
     () => branches.map(branch => ({ value: String(branch.id), label: branchLabel(branch) })),
     [branches]
   );
+
+  const availableGenerationItems = useMemo(
+    () => generationItems.filter(item => !selectedBranchId || !item.branchId || item.branchId === selectedBranchId),
+    [generationItems, selectedBranchId]
+  );
+
+  const generationWordOptions = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    availableGenerationItems.forEach(item => {
+      if (!item.word) return;
+      grouped.set(item.word, distinct([...(grouped.get(item.word) || []), item.generationNo]));
+    });
+    const options = [...grouped.entries()]
+      .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
+      .map(([word, generationNos]) => ({
+        value: word,
+        label: generationNos.length ? `${word} · ${generationNos.map(no => `第${no}世`).join(' / ')}` : word
+      }));
+    if (selectedGenerationWord && !grouped.has(selectedGenerationWord)) {
+      options.unshift({ value: selectedGenerationWord, label: `${selectedGenerationWord}（当前值）` });
+    }
+    return options;
+  }, [availableGenerationItems, selectedGenerationWord]);
+
+  const generationNoOptions = useMemo(() => {
+    const grouped = new Map<string, string[]>();
+    availableGenerationItems.forEach(item => {
+      if (!item.generationNo) return;
+      grouped.set(item.generationNo, distinct([...(grouped.get(item.generationNo) || []), item.word]));
+    });
+    const options = [...grouped.entries()]
+      .sort(([left], [right]) => Number(left) - Number(right))
+      .map(([generationNo, words]) => ({
+        value: generationNo,
+        label: words.length ? `第${generationNo}世 · ${words.join(' / ')}` : `第${generationNo}世`
+      }));
+    if (selectedGenerationNo && !grouped.has(selectedGenerationNo)) {
+      options.unshift({ value: selectedGenerationNo, label: `第${selectedGenerationNo}世（当前值）` });
+    }
+    return options;
+  }, [availableGenerationItems, selectedGenerationNo]);
 
   useEffect(() => { void loadPerson(); }, [personId]);
 
@@ -96,12 +163,37 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     };
   }, [busy, onSavingChange]);
 
+  async function loadGenerationOptions(clanId: string) {
+    setLoadingGenerations(true);
+    setGenerationItems([]);
+    try {
+      const schemeData = await apiClient.get(`/clans/${clanId}/generation-schemes`).catch(() => []);
+      const schemes = toRecordList<any>(schemeData).filter(isOfficialGenerationScheme);
+      const itemGroups = await Promise.all(schemes.map(async scheme => {
+        const schemeId = String(scheme.id || '');
+        if (!schemeId) return [];
+        const itemData = await apiClient.get(`/generation-schemes/${schemeId}/items`).catch(() => []);
+        return toRecordList<any>(itemData).map(item => ({
+          schemeId,
+          branchId: String(scheme.branchId || ''),
+          schemeName: generationSchemeLabel(scheme),
+          generationNo: String(item.generationNo || ''),
+          word: String(item.word || '').trim()
+        }));
+      }));
+      setGenerationItems(itemGroups.flat().filter(item => item.word || item.generationNo));
+    } finally {
+      setLoadingGenerations(false);
+    }
+  }
+
   async function loadPerson() {
     setLoading(true);
     setLoadError('');
     setSaveError('');
     setActionError('');
     setSaved(false);
+    setGenerationItems([]);
     try {
       const detail = await apiClient.get<any>(`/persons/${personId}`);
       setPerson(detail);
@@ -109,10 +201,14 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
       form.setFieldsValue(toPersonEditForm(detail));
       const clanId = String(detail?.clanId || detail?.clan?.id || workspace.clanId || '');
       if (clanId) {
-        const branchData = await apiClient.get(`/clans/${clanId}/branches`).catch(() => []);
+        const [branchData] = await Promise.all([
+          apiClient.get(`/clans/${clanId}/branches`).catch(() => []),
+          loadGenerationOptions(clanId)
+        ]);
         setBranches(toRecordList<any>(branchData));
       } else {
         setBranches([]);
+        setGenerationItems([]);
       }
     } catch (error) {
       setPerson(undefined);
@@ -120,6 +216,26 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     } finally {
       setLoading(false);
     }
+  }
+
+  function changeGenerationWord(value?: string) {
+    const nextWord = value || '';
+    form.setFieldValue('generationWord', nextWord);
+    if (!nextWord) return;
+    const matchingGenerationNos = distinct(
+      availableGenerationItems.filter(item => item.word === nextWord).map(item => item.generationNo)
+    );
+    if (matchingGenerationNos.length === 1) form.setFieldValue('generationNo', matchingGenerationNos[0]);
+  }
+
+  function changeGenerationNo(value?: string) {
+    const nextGenerationNo = value || '';
+    form.setFieldValue('generationNo', nextGenerationNo);
+    if (!nextGenerationNo) return;
+    const matchingWords = distinct(
+      availableGenerationItems.filter(item => item.generationNo === nextGenerationNo).map(item => item.word)
+    );
+    if (matchingWords.length === 1) form.setFieldValue('generationWord', matchingWords[0]);
   }
 
   function changePrecision(field: 'birth' | 'death', precision: PersonDatePrecision) {
@@ -243,8 +359,30 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
 
           <Card title="世系与支派"><div className="person-edit-fields">
             <Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item>
-            <Form.Item name="generationNo" label="代次"><Input inputMode="numeric" placeholder="例如：18" /></Form.Item>
-            <Form.Item name="generationWord" label="字辈"><Input /></Form.Item>
+            <Form.Item name="generationNo" label="代次" extra="仅展示已审核通过的字辈方案明细">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                loading={loadingGenerations}
+                disabled={!loadingGenerations && !generationNoOptions.length}
+                placeholder={loadingGenerations ? '正在加载代次' : '请选择代次'}
+                options={generationNoOptions}
+                onChange={changeGenerationNo}
+              />
+            </Form.Item>
+            <Form.Item name="generationWord" label="字辈" extra="选择字辈或代次后，唯一匹配项会自动联动">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                loading={loadingGenerations}
+                disabled={!loadingGenerations && !generationWordOptions.length}
+                placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'}
+                options={generationWordOptions}
+                onChange={changeGenerationWord}
+              />
+            </Form.Item>
             <Form.Item name="rankInFamily" label="排行"><Input /></Form.Item>
           </div></Card>
 
