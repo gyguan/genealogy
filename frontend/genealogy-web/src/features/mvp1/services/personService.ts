@@ -10,7 +10,6 @@ export type PersonLike = {
   dataStatus?: string;
   status?: string;
   branchId?: number | string;
-  allowedActions?: string[];
 };
 
 export type CreatePersonPayload = {
