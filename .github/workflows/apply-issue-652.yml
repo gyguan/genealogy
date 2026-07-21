@@ -1,0 +1,66 @@
+name: Apply Issue 652 Source MultiSelect
+
+on:
+  push:
+    branches:
+      - agent/issue-652-query-multiselect
+    paths:
+      - .github/workflows/apply-issue-652.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-652-query-multiselect
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply source library multi-select changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          service = Path('frontend/genealogy-web/src/features/sources/sourceLibraryService.ts')
+          text = service.read_text()
+          text = text.replace("  sourceType?: string;\n  verificationStatus?: string;\n  privacyLevel?: string;", "  sourceType?: string[];\n  verificationStatus?: string[];\n  privacyLevel?: string[];")
+          text = text.replace("  hasAttachment?: boolean;\n  hasBinding?: boolean;", "  hasAttachment?: boolean[];\n  hasBinding?: boolean[];")
+          text = text.replace("    search.set(key, String(value));", "    if (Array.isArray(value)) {\n      value.filter(item => item !== undefined && item !== null && item !== '').forEach(item => search.append(key, String(item)));\n      return;\n    }\n    search.set(key, String(value));")
+          service.write_text(text)
+
+          page = Path('frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx')
+          text = page.read_text()
+          text = text.replace("import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';", "import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';\nimport { QueryMultiSelect, readMultiValue, writeMultiValue } from '../../shared/ui/QueryMultiSelect';")
+          text = text.replace("type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {\n  clanId?: string;\n  hasAttachment?: string;\n  hasBinding?: string;\n};", "type SourceSearchFormValues = SourceSearchParams & { clanId?: string };")
+          text = text.replace("function boolFilter(value?: string) {\n  if (value === 'true') return true;\n  if (value === 'false') return false;\n  return undefined;\n}", "")
+          text = text.replace("return Boolean(value.keyword || value.sourceType || value.verificationStatus || value.privacyLevel || value.hasAttachment !== undefined || value.hasBinding !== undefined);", "return Boolean(value.keyword || value.sourceType?.length || value.verificationStatus?.length || value.privacyLevel?.length || value.hasAttachment?.length || value.hasBinding?.length);")
+          text = text.replace("return Boolean(value.privacyLevel || value.hasAttachment !== undefined || value.hasBinding !== undefined);", "return Boolean(value.privacyLevel?.length || value.hasAttachment?.length || value.hasBinding?.length);")
+          old = """  const optionValue = (name: string, values: Set<string>) => {\n    const value = params.get(name);\n    return value && values.has(value) ? value : undefined;\n  };\n  const boolValue = (name: string) => {\n    const value = params.get(name);\n    if (value === 'true') return true;\n    if (value === 'false') return false;\n    return undefined;\n  };"""
+          new = """  const optionValues = (name: string, values: Set<string>) => readMultiValue(params, name, values);\n  const boolValues = (name: string) => readMultiValue(params, name, new Set(['true', 'false'])).map(value => value === 'true');"""
+          text = text.replace(old, new)
+          text = text.replace("sourceType: optionValue('sourceType', typeValues),\n    verificationStatus: optionValue('verificationStatus', statusValues),\n    privacyLevel: optionValue('privacyLevel', privacyValues),\n    hasAttachment: boolValue('hasAttachment'),\n    hasBinding: boolValue('hasBinding')", "sourceType: optionValues('sourceType', typeValues),\n    verificationStatus: optionValues('verificationStatus', statusValues),\n    privacyLevel: optionValues('privacyLevel', privacyValues),\n    hasAttachment: boolValues('hasAttachment'),\n    hasBinding: boolValues('hasBinding')")
+          text = text.replace("function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {\n  return {\n    ...value,\n    clanId: clanId || undefined,\n    hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),\n    hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)\n  };\n}", "function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {\n  return { ...value, clanId: clanId || undefined };\n}")
+          text = text.replace("  Object.entries(value).forEach(([key, item]) => {\n    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));\n  });", "  Object.entries(value).forEach(([key, item]) => {\n    if (Array.isArray(item)) {\n      writeMultiValue(url.searchParams, key, item.map(value => String(value)));\n    } else if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));\n  });")
+          text = text.replace("    const { clanId: nextClanId, hasAttachment, hasBinding, ...filters } = values;\n    const next: SourceSearchParams = {\n      ...filters,\n      hasAttachment: boolFilter(hasAttachment),\n      hasBinding: boolFilter(hasBinding),", "    const { clanId: nextClanId, ...filters } = values;\n    const next: SourceSearchParams = {\n      ...filters,")
+          text = text.replace('<Form.Item name="sourceType" label="来源类型"><Select allowClear placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>', '<Form.Item name="sourceType" label="来源类型"><QueryMultiSelect placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>')
+          text = text.replace('<Form.Item name="verificationStatus" label="资料状态"><Select allowClear placeholder="全部状态" options={statusOptions} /></Form.Item>', '<Form.Item name="verificationStatus" label="资料状态"><QueryMultiSelect placeholder="全部状态" options={statusOptions} /></Form.Item>')
+          text = text.replace('<Form.Item name="privacyLevel" label="可见范围"><Select allowClear placeholder="全部范围" options={privacyOptions} /></Form.Item>', '<Form.Item name="privacyLevel" label="可见范围"><QueryMultiSelect placeholder="全部范围" options={privacyOptions} /></Form.Item>')
+          text = text.replace('<Form.Item name="hasAttachment" label="附件情况"><Select allowClear placeholder="全部" options={booleanOptions.attachment} /></Form.Item>', '<Form.Item name="hasAttachment" label="附件情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.attachment} /></Form.Item>')
+          text = text.replace('<Form.Item name="hasBinding" label="引用情况"><Select allowClear placeholder="全部" options={booleanOptions.binding} /></Form.Item>', '<Form.Item name="hasBinding" label="引用情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.binding} /></Form.Item>')
+          page.write_text(text)
+          PY
+      - name: Verify migration markers
+        run: |
+          grep -q 'QueryMultiSelect placeholder="全部类型"' frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx
+          grep -q 'sourceType?: string\[\]' frontend/genealogy-web/src/features/sources/sourceLibraryService.ts
+      - name: Commit migration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx frontend/genealogy-web/src/features/sources/sourceLibraryService.ts
+          git commit -m "feat(source): support multi-select query filters"
+          git push
