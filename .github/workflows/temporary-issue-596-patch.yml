@@ -1,0 +1,33 @@
+name: Temporary Issue 596 Patch
+
+on:
+  push:
+    branches:
+      - agent/issue-596-person-draft-delete
+    paths:
+      - .github/workflows/temporary-issue-596-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-person-step:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-596-person-draft-delete
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply focused source patch
+        run: python scripts/temporary/patch_issue_596_person_step.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/mvp1/steps/person/PersonStep.tsx
+          git commit -m "feat(wizard): add person draft delete entry"
+          git push origin HEAD:agent/issue-596-person-draft-delete
