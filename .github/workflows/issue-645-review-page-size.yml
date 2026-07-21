@@ -1,81 +1,10 @@
 name: Issue 645 Review Page Size
 
 on:
-  pull_request:
-    branches: ["main"]
-    types: [opened, reopened, synchronize]
-    paths:
-      - ".github/workflows/issue-645-review-page-size.yml"
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  apply:
-    if: github.head_ref == 'agent/issue-645-review-page-size-10'
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Apply change and regression test
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          page = Path('frontend/genealogy-web/src/features/reviews/ReviewCenterPage.tsx')
-          text = page.read_text(encoding='utf-8')
-          old = 'const DEFAULT_PAGE_SIZE = 20;'
-          new = 'const DEFAULT_PAGE_SIZE = 10;'
-          if text.count(old) != 1:
-              raise RuntimeError('DEFAULT_PAGE_SIZE definition changed')
-          page.write_text(text.replace(old, new), encoding='utf-8')
-
-          test = Path('frontend/genealogy-web/src/features/reviews/reviewDefaultPageSize.test.mjs')
-          test.write_text("""import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import test from 'node:test';
-
-const source = readFileSync(new URL('./ReviewCenterPage.tsx', import.meta.url), 'utf8');
-
-test('review center defaults all tabs to 10 rows per page', () => {
-  assert.match(source, /const DEFAULT_PAGE_SIZE = 10;/);
-  assert.match(source, /const PAGE_SIZE_OPTIONS = \[10, 20, 50, 100\];/);
-  assert.match(source, /validPositiveInt\(params\.get\('pageSize'\), DEFAULT_PAGE_SIZE\)/);
-  assert.match(source, /pageSize: PAGE_SIZE_OPTIONS\.includes\(requestedPageSize\) \? requestedPageSize : DEFAULT_PAGE_SIZE/);
-  assert.match(source, /if \(pageSize !== DEFAULT_PAGE_SIZE\) params\.set\('pageSize', String\(pageSize\)\); else params\.delete\('pageSize'\);/);
-});
-""", encoding='utf-8')
-
-          package = Path('frontend/genealogy-web/package.json')
-          content = package.read_text(encoding='utf-8')
-          marker = '"test:members": "node --test src/features/members/memberPageModel.test.js"'
-          replacement = '"test:review-page-size": "node --test src/features/reviews/reviewDefaultPageSize.test.mjs",\n    ' + marker
-          if marker not in content:
-              raise RuntimeError('package script insertion point changed')
-          package.write_text(content.replace(marker, replacement), encoding='utf-8')
-          PY
-      - name: Install dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install --no-package-lock
-      - name: Run regression test
-        working-directory: frontend/genealogy-web
-        run: npm run test:review-page-size
-      - name: Typecheck
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build
-        working-directory: frontend/genealogy-web
-        run: npm run build
-      - name: Commit changes
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/genealogy-web
-          git commit -m "fix(review): default pagination to 10 rows"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+      - run: echo issue-645
