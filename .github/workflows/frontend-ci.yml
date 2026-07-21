@@ -55,6 +55,9 @@ jobs:
       - name: Test draft delete model
         working-directory: frontend/genealogy-web
         run: npm run test:draft-delete
+      - name: Test entity navigation guard
+        working-directory: frontend/genealogy-web
+        run: npm run test:entity-navigation
       - name: Test wizard state model
         working-directory: frontend/genealogy-web
         run: npm run test:wizard
