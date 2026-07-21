@@ -106,7 +106,7 @@
 
 .lineage-result-toolbar--double-card {
   display: grid;
-  grid-template-columns: minmax(240px, 320px);
+  grid-template-columns: minmax(280px, 360px);
   align-items: start;
   justify-content: end;
   gap: 16px;
@@ -114,10 +114,40 @@
 }
 
 .lineage-result-toolbar--double-card.is-person {
-  grid-template-columns: minmax(240px, 320px);
+  grid-template-columns: minmax(280px, 360px);
 }
 
 .lineage-result-toolbar--double-card.is-person > :nth-child(2) {
+  display: none;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label {
+  flex: 0 0 auto;
+  padding: 0 12px 0 0;
+  white-space: nowrap;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label {
+  height: 32px;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lineage-result-toolbar--double-card.is-person .ant-form-item-extra {
   display: none;
 }
 
