@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Empty, Pagination, Space, Table, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
+import { paginateSourceBindings, SOURCE_BINDING_PAGE_SIZE } from '../../domain/sourceStageModel';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
@@ -93,6 +94,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   const [relationships, setRelationships] = useState<RelationshipLike[]>([]);
   const [sources, setSources] = useState<SourceLike[]>([]);
   const [sourceLinks, setSourceLinks] = useState<SourceLinkLike[]>([]);
+  const [sourceLinkPage, setSourceLinkPage] = useState(1);
   const [selectedSourceRowKeys, setSelectedSourceRowKeys] = useState<Key[]>([]);
   const [loadingClans, setLoadingClans] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
@@ -225,6 +227,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     if (!sourceId) {
       setSourceLinks([]);
       setSourceLinksError('');
+      setSourceLinkPage(1);
       return;
     }
     setLoadingSourceLinks(true);
@@ -245,12 +248,19 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setSourceForm({ ...defaultSourceForm });
     setSourceLinks([]);
     setSourceLinksError('');
+    setSourceLinkPage(1);
     void loadStepData();
   }, [workspace.clanId]);
 
   useEffect(() => {
+    setSourceLinkPage(1);
     void loadSourceLinks();
   }, [workspace.sourceId]);
+
+  useEffect(() => {
+    const pageCount = Math.max(1, Math.ceil(sourceLinks.length / SOURCE_BINDING_PAGE_SIZE));
+    setSourceLinkPage(previous => Math.min(previous, pageCount));
+  }, [sourceLinks.length]);
 
   function changeClan(nextClanId: string) {
     workspace.patch({ clanId: nextClanId, sourceId: '', relationshipId: '', personId: '' });
@@ -261,6 +271,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setSources([]);
     setSourceLinks([]);
     setSourceLinksError('');
+    setSourceLinkPage(1);
     setSelectedSourceRowKeys([]);
   }
 
@@ -384,6 +395,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         targetId: Number(targetId)
       });
       setSourceForm(prev => ({ ...prev, targetId }));
+      setSourceLinkPage(1);
       toast({ message: '来源绑定成功。', id: data?.id });
       await loadSourceLinks(workspace.sourceId);
     } catch (error) {
@@ -443,6 +455,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
 
   const sourceBindDisabledReason = bindSourceDisabledReason();
   const sourceLinkViews = sourceLinks.map(buildSourceLinkView);
+  const sourceLinkPageData = paginateSourceBindings(sourceLinkViews, sourceLinkPage);
 
   return (
     <Panel title="绑定来源证据" description="来源和绑定对象都必须审核通过后才能建立绑定。">
@@ -505,22 +518,37 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
           {!workspace.sourceId ? <Alert type="info" showIcon message="请先选择已审核通过的来源，再查看已绑定对象。" /> : null}
           {sourceLinksError ? <Alert type="error" showIcon message={sourceLinksError} /> : null}
           {sourceLinkViews.length ? (
-            <div className="source-step-bound-list">
-              {sourceLinkViews.map(link => (
-                <div className="source-step-bound-card" key={link.key}>
-                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                    <Space wrap>
-                      <strong>{link.sourceText}</strong>
-                      <Tag>{link.targetTypeText}</Tag>
-                      <span>{link.targetText}</span>
+            <>
+              <div className="source-step-bound-list">
+                {sourceLinkPageData.rows.map(link => (
+                  <div className="source-step-bound-card" key={link.key}>
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <Space wrap>
+                        <strong>{link.sourceText}</strong>
+                        <Tag>{link.targetTypeText}</Tag>
+                        <span>{link.targetText}</span>
+                      </Space>
+                      {link.excerpt ? <span>摘录：{link.excerpt}</span> : null}
+                      {link.bindingReason ? <span>绑定说明：{link.bindingReason}</span> : null}
+                      <small>绑定时间：{link.createdAt}</small>
                     </Space>
-                    {link.excerpt ? <span>摘录：{link.excerpt}</span> : null}
-                    {link.bindingReason ? <span>绑定说明：{link.bindingReason}</span> : null}
-                    <small>绑定时间：{link.createdAt}</small>
-                  </Space>
+                  </div>
+                ))}
+              </div>
+              {sourceLinkPageData.total > SOURCE_BINDING_PAGE_SIZE ? (
+                <div className="source-step-bound-pagination" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Pagination
+                    size="small"
+                    current={sourceLinkPageData.page}
+                    pageSize={SOURCE_BINDING_PAGE_SIZE}
+                    total={sourceLinkPageData.total}
+                    showSizeChanger={false}
+                    showTotal={total => `共 ${total} 条`}
+                    onChange={setSourceLinkPage}
+                  />
                 </div>
-              ))}
-            </div>
+              ) : null}
+            </>
           ) : (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadingSourceLinks ? '正在查询已绑定对象' : '暂无已绑定来源对象'} />
           )}
