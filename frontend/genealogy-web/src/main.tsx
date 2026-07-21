@@ -73,8 +73,40 @@ function installTrackingMoreFilterTextSync() {
   syncText();
 }
 
+function installResultSortHeaderPlacement() {
+  const moveSort = (cardSelector: string, sourceSelector: string) => {
+    const card = document.querySelector<HTMLElement>(cardSelector);
+    const source = card?.querySelector<HTMLElement>(sourceSelector);
+    const extra = card?.querySelector<HTMLElement>(':scope > .ant-card-head .ant-card-extra');
+    if (!card || !source || !extra || source.dataset.headerPlaced === 'true') return;
+
+    extra.style.display = 'flex';
+    extra.style.alignItems = 'center';
+    extra.style.gap = '8px';
+
+    const slot = document.createElement('div');
+    slot.className = 'result-sort-header-slot';
+    slot.style.display = 'flex';
+    slot.style.alignItems = 'center';
+    slot.style.flexShrink = '0';
+    slot.appendChild(source);
+    extra.insertBefore(slot, extra.firstChild);
+    source.dataset.headerPlaced = 'true';
+  };
+
+  const syncPlacement = () => {
+    moveSort('.person-archive-result-card', '.person-archive-result-toolbar > .ant-space');
+    moveSort('.source-library-result-card', '.source-library-result-meta .source-library-sort');
+  };
+
+  const observer = new MutationObserver(syncPlacement);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  syncPlacement();
+}
+
 installSourceRouteHistorySync();
 installTrackingMoreFilterTextSync();
+installResultSortHeaderPlacement();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
