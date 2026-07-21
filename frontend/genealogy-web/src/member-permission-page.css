@@ -18,9 +18,15 @@
 
 .member-list-card > .ant-card-head .ant-card-head-title [data-member-total-placed='true'] {
   margin-inline-start: 0;
-  font-size: 14px;
+  font-size: 0;
   font-weight: 400;
+  line-height: 1.5;
   white-space: nowrap;
+}
+
+.member-list-card > .ant-card-head .ant-card-head-title [data-member-total-placed='true']::before {
+  content: '（共' attr(data-member-total-count) '名）';
+  font-size: 14px;
 }
 
 .member-list-card > .ant-card-head .ant-card-extra {

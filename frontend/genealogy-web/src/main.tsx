@@ -137,12 +137,13 @@ function installMemberListHeaderPlacement() {
       .find(button => button.textContent?.trim() === label);
   };
 
-  const formatMemberTotal = (element?: HTMLElement | null) => {
+  const syncMemberTotalCount = (element?: HTMLElement | null) => {
     if (!element) return;
     const match = element.textContent?.match(/共\s*(\d+)\s*名(?:成员)?/);
     if (!match) return;
-    const formatted = `（共${match[1]}名）`;
-    if (element.textContent !== formatted) element.textContent = formatted;
+    if (element.dataset.memberTotalCount !== match[1]) {
+      element.dataset.memberTotalCount = match[1];
+    }
   };
 
   const syncPlacement = () => {
@@ -167,7 +168,7 @@ function installMemberListHeaderPlacement() {
       sourceTotal.dataset.memberTotalPlaced = 'true';
       title.appendChild(sourceTotal);
     }
-    formatMemberTotal(sourceTotal instanceof HTMLElement ? sourceTotal : placedTotal);
+    syncMemberTotalCount(sourceTotal instanceof HTMLElement ? sourceTotal : placedTotal);
 
     const inviteButton = findButton(document.querySelector('.github-like-header'), '邀请新成员')
       || findButton(extra, '邀请新成员');
