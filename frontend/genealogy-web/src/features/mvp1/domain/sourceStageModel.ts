@@ -1,5 +1,7 @@
 import { isOfficial, isReviewable } from './status';
 
+export const SOURCE_BINDING_PAGE_SIZE = 10;
+
 export type SourceStageSource = {
   id?: number | string;
   sourceName?: string;
@@ -21,6 +23,14 @@ export type SourceStageState = {
   bindingOpen: boolean;
   stageOneStatus: 'empty' | 'draft' | 'reviewing' | 'official' | 'rejected';
   stageTwoReason: string;
+};
+
+export type SourceBindingPage<T> = {
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  total: number;
+  rows: T[];
 };
 
 export function deriveSourceStageState(sources: SourceStageSource[], selectedSourceId?: string): SourceStageState {
@@ -58,4 +68,21 @@ export function resetSourceBindingSelection(previousSourceId: string, nextSource
 export function appendSourceBinding(links: SourceStageLink[], created: SourceStageLink) {
   const key = (link: SourceStageLink) => String(link.id || `${link.sourceId}-${link.targetType}-${link.targetId}`);
   return [created, ...links.filter(link => key(link) !== key(created))];
+}
+
+export function paginateSourceBindings<T>(rows: T[], requestedPage: number, pageSize = SOURCE_BINDING_PAGE_SIZE): SourceBindingPage<T> {
+  const normalizedPageSize = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : SOURCE_BINDING_PAGE_SIZE;
+  const total = rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / normalizedPageSize));
+  const normalizedPage = Number.isFinite(requestedPage) ? Math.max(1, Math.floor(requestedPage)) : 1;
+  const page = Math.min(normalizedPage, pageCount);
+  const start = (page - 1) * normalizedPageSize;
+
+  return {
+    page,
+    pageSize: normalizedPageSize,
+    pageCount,
+    total,
+    rows: rows.slice(start, start + normalizedPageSize)
+  };
 }
