@@ -58,6 +58,31 @@ function installSourceRouteHistorySync() {
   };
 }
 
+function installReviewCenterDefaultPageSize() {
+  const historyWithMarker = window.history as History & { __reviewDefaultPageSizeInstalled?: boolean };
+  if (historyWithMarker.__reviewDefaultPageSizeInstalled) return;
+  historyWithMarker.__reviewDefaultPageSizeInstalled = true;
+
+  const originalPushState = window.history.pushState.bind(window.history);
+  const originalReplaceState = window.history.replaceState.bind(window.history);
+  const normalizeReviewPageSize = () => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('view') !== 'reviewCenter' || url.searchParams.has('pageSize')) return;
+    url.searchParams.set('pageSize', '10');
+    originalReplaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  };
+
+  window.history.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
+    originalPushState(data, unused, url);
+    normalizeReviewPageSize();
+  };
+  window.history.replaceState = (data: unknown, unused: string, url?: string | URL | null) => {
+    originalReplaceState(data, unused, url);
+    normalizeReviewPageSize();
+  };
+  normalizeReviewPageSize();
+}
+
 function installTrackingMoreFilterTextSync() {
   const syncText = () => {
     document.querySelectorAll<HTMLButtonElement>('.tracking-more-button').forEach(button => {
@@ -74,6 +99,7 @@ function installTrackingMoreFilterTextSync() {
 }
 
 installSourceRouteHistorySync();
+installReviewCenterDefaultPageSize();
 installTrackingMoreFilterTextSync();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
