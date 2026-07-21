@@ -9,6 +9,7 @@ import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.mapper.ClanMapper;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.member.entity.ClanMembershipEntity;
@@ -136,9 +137,15 @@ public class ClanApplicationService {
     public void delete(Long id, Long actorId) {
         ClanEntity entity = getEntity(id);
         authorizationApplicationService.requirePermission(id, actorId, CLAN_DELETE);
+        DraftDeletePolicy.requireDraft(
+                entity.getStatus(),
+                "CLAN_DELETE_DRAFT_ONLY",
+                "仅草稿宗族可直接删除"
+        );
         if (branchRepository.existsByClanId(id)) {
             throw new BusinessException("CLAN_HAS_BRANCHES", "宗族下存在支派，不能删除");
         }
+        deleteMemberships(id);
         clanRepository.delete(entity);
     }
 
@@ -189,6 +196,17 @@ public class ClanApplicationService {
         memberRole.setUpdatedBy(creatorUserId);
         memberRole.setUpdatedAt(now);
         memberRoleRepository.save(memberRole);
+    }
+
+    private void deleteMemberships(Long clanId) {
+        List<ClanMembershipEntity> memberships = clanMembershipRepository.findByClanId(clanId);
+        List<Long> membershipIds = memberships.stream()
+                .map(ClanMembershipEntity::getId)
+                .toList();
+        if (!membershipIds.isEmpty()) {
+            memberRoleRepository.deleteAll(memberRoleRepository.findByMembershipIdIn(membershipIds));
+        }
+        clanMembershipRepository.deleteAll(memberships);
     }
 
     private ClanEntity getEntity(Long id) {
