@@ -18,3 +18,7 @@ export async function loadRelationships(personId?: number | string): Promise<Rel
 export async function createRelationshipApi(clanId: number | string, payload: CreateRelationshipPayload): Promise<RelationshipLike> {
   return apiClient.post(`/clans/${clanId}/relationships`, payload);
 }
+
+export async function deleteRelationshipApi(relationshipId: number | string): Promise<void> {
+  await apiClient.delete(`/relationships/${relationshipId}`);
+}
