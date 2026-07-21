@@ -71,7 +71,7 @@ async function mockImportApi(page: Page) {
 async function expectDesktopResultHeaderSpacing(page: Page) {
   const resultCard = page.locator('.import-result-card');
   const header = resultCard.locator(':scope > .ant-card-head');
-  const title = resultCard.getByText('查询结果', { exact: true });
+  const title = resultCard.getByText(/^查询结果（\d+）$/);
   const action = resultCard.getByRole('button', { name: '新建导入' });
   const [headerBox, titleBox, actionBox] = await Promise.all([
     header.boundingBox(),
@@ -84,7 +84,7 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   if (!headerBox || !titleBox || !actionBox) return;
   expect(titleBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
   expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
-  const titleGroupBox = await resultCard.locator(':scope > .ant-card-head .ant-card-head-title > div').boundingBox();
+  const titleGroupBox = await resultCard.locator(':scope > .ant-card-head .ant-card-head-title').boundingBox();
   expect(titleGroupBox).not.toBeNull();
   if (!titleGroupBox) return;
   const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
@@ -101,7 +101,7 @@ test('data import page uses query and result cards with new import modal', async
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
-  await expect(page.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^查询结果（\d+）$/)).toBeVisible();
   await expectDesktopResultHeaderSpacing(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
