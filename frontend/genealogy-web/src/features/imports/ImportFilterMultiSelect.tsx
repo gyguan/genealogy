@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { Button, Divider, Select } from 'antd';
+import { QueryMultiSelect } from '../../shared/ui/QueryMultiSelect';
 
 export type ImportFilterOption<Value extends string> = { value: Value; label: string };
 
@@ -18,32 +17,13 @@ export function ImportFilterMultiSelect<Value extends string>({
   ariaLabel,
   onChange
 }: Props<Value>) {
-  function renderPopup(menu: ReactNode) {
-    return (
-      <div className="import-filter-popup">
-        <div className="import-filter-popup-actions" onMouseDown={event => event.preventDefault()}>
-          <Button type="link" size="small" onClick={() => onChange?.(options.map(option => option.value))}>全选</Button>
-          <Button type="link" size="small" onClick={() => onChange?.([])}>清空</Button>
-        </div>
-        <Divider className="import-filter-popup-divider" />
-        {menu}
-      </div>
-    );
-  }
-
   return (
-    <Select<Value[]>
+    <QueryMultiSelect<Value>
       aria-label={ariaLabel}
-      mode="multiple"
-      allowClear
-      showSearch
-      optionFilterProp="label"
       value={value}
       options={options}
       placeholder={placeholder}
-      maxTagCount="responsive"
-      popupRender={renderPopup}
-      onChange={values => onChange?.(values as Value[])}
+      onChange={onChange}
     />
   );
 }
