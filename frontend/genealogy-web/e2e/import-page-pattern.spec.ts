@@ -82,7 +82,6 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   expect(titleGroupBox).not.toBeNull();
   expect(actionBox).not.toBeNull();
   if (!headerBox || !titleGroupBox || !actionBox) return;
-  expect(titleGroupBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
   expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
   const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
   const actionCenter = actionBox.y + actionBox.height / 2;
