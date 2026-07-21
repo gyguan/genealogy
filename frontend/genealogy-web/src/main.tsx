@@ -130,10 +130,58 @@ function installResultSortHeaderPlacement() {
   syncPlacement();
 }
 
+function installMemberListHeaderPlacement() {
+  const findButton = (root: ParentNode | null, label: string) => {
+    if (!root) return undefined;
+    return Array.from(root.querySelectorAll<HTMLButtonElement>('button'))
+      .find(button => button.textContent?.trim() === label);
+  };
+
+  const syncPlacement = () => {
+    const page = document.querySelector<HTMLElement>('.member-role-page');
+    const cards = page?.querySelectorAll<HTMLElement>(':scope > .ant-card');
+    const queryCard = cards?.[0];
+    const resultCard = cards?.[1];
+    if (!queryCard || !resultCard) return;
+
+    queryCard.classList.add('member-query-card');
+    resultCard.classList.add('member-list-card');
+
+    const title = resultCard.querySelector<HTMLElement>(':scope > .ant-card-head .ant-card-head-title');
+    const extra = resultCard.querySelector<HTMLElement>(':scope > .ant-card-head .ant-card-extra');
+    const queryExtra = queryCard.querySelector<HTMLElement>(':scope > .ant-card-head .ant-card-extra');
+    if (!title || !extra) return;
+
+    const placedTotal = title.querySelector<HTMLElement>('[data-member-total-placed="true"]');
+    const sourceTotal = Array.from(extra.children).find(child => child.textContent?.trim().startsWith('共 '));
+    if (sourceTotal instanceof HTMLElement && sourceTotal !== placedTotal) {
+      placedTotal?.remove();
+      sourceTotal.dataset.memberTotalPlaced = 'true';
+      title.appendChild(sourceTotal);
+    }
+
+    const inviteButton = findButton(document.querySelector('.github-like-header'), '邀请新成员')
+      || findButton(extra, '邀请新成员');
+    const grantButton = findButton(queryExtra, '新增成员授权')
+      || findButton(extra, '新增成员授权');
+
+    if (inviteButton && inviteButton.parentElement !== extra) extra.appendChild(inviteButton);
+    if (grantButton && grantButton.parentElement !== extra) extra.appendChild(grantButton);
+    if (inviteButton && grantButton && inviteButton.nextElementSibling !== grantButton) {
+      extra.insertBefore(inviteButton, grantButton);
+    }
+  };
+
+  const observer = new MutationObserver(syncPlacement);
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  syncPlacement();
+}
+
 installSourceRouteHistorySync();
 installReviewCenterDefaultPageSize();
 installTrackingMoreFilterTextSync();
 installResultSortHeaderPlacement();
+installMemberListHeaderPlacement();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
