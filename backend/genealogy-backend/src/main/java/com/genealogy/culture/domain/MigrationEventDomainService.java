@@ -1,5 +1,6 @@
 package com.genealogy.culture.domain;
 
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.dto.MigrationEventCreateRequest;
 import com.genealogy.culture.dto.MigrationEventSearchCriteria;
@@ -83,6 +84,18 @@ public class MigrationEventDomainService {
             throw new BusinessException("MIGRATION_EVENT_PENDING_REVIEW", "迁徙事件正在审核中，不能直接修改");
         }
         throw new BusinessException("MIGRATION_EVENT_REVIEW_REQUIRED", "正式或归档迁徙事件不能直接修改，需提交审核变更");
+    }
+
+    public void requireDirectlyDeletable(MigrationEventEntity entity) {
+        DraftDeletePolicy.requireDraft(
+                entity == null ? null : entity.getDataStatus(),
+                "MIGRATION_EVENT_DELETE_DRAFT_ONLY",
+                "仅草稿迁徙事件可直接删除"
+        );
+    }
+
+    public boolean isDirectlyDeletable(MigrationEventEntity entity) {
+        return entity != null && DraftDeletePolicy.isDraft(entity.getDataStatus());
     }
 
     public void requireExpectedVersion(MigrationEventEntity entity, Long expectedVersion) {
