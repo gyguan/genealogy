@@ -3,7 +3,7 @@ name: Issue 641 PR Runner
 on:
   pull_request:
     branches: ["main"]
-    types: [opened, reopened]
+    types: [opened, reopened, synchronize]
     paths:
       - ".github/workflows/issue-641-copy-cleanup.yml"
       - ".github/workflows/issue-641-pr-runner.yml"
@@ -20,12 +20,23 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+      - name: Skip completed or diagnosed run
+        id: guard
+        shell: bash
+        run: |
+          if [[ -f frontend/genealogy-web/src/shared/ui/promptCopyCleanup.test.mjs || -f tasks/issue-641-runner-error.log ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip != 'true'
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
       - name: Extract and apply focused cleanup
+        if: steps.guard.outputs.skip != 'true'
         shell: bash
         run: |
           python3 - <<'PY'
@@ -37,20 +48,38 @@ jobs:
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
-          python3 /tmp/issue-641-cleanup.py
+          set +e
+          python3 /tmp/issue-641-cleanup.py > /tmp/issue-641-runner.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/issue-641-runner.log
+          if [[ $status -ne 0 ]]; then
+            cp /tmp/issue-641-runner.log tasks/issue-641-runner-error.log
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add tasks/issue-641-runner-error.log
+            git commit -m "chore: capture issue 641 cleanup error"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+            exit $status
+          fi
       - name: Install frontend dependencies
+        if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
         run: npm install
       - name: Run focused regression test
+        if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
         run: npm run test:person-edit
       - name: Typecheck frontend
+        if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
         run: npm run typecheck
       - name: Build frontend
+        if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
         run: npm run build
       - name: Commit cleanup
+        if: steps.guard.outputs.skip != 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
