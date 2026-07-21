@@ -1,0 +1,50 @@
+name: Fix Issue 652 Typecheck
+
+on:
+  push:
+    branches:
+      - agent/issue-652-query-multiselect
+    paths:
+      - .github/workflows/fix-issue-652-typecheck.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-652-query-multiselect
+      - name: Fix source search form boolean values
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx')
+          text = p.read_text()
+          text = text.replace(
+              "type SourceSearchFormValues = SourceSearchParams & { clanId?: string };",
+              "type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {\n  clanId?: string;\n  hasAttachment?: string[];\n  hasBinding?: string[];\n};"
+          )
+          text = text.replace(
+              "function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {\n  return { ...value, clanId: clanId || undefined };\n}",
+              "function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {\n  return {\n    ...value,\n    clanId: clanId || undefined,\n    hasAttachment: value.hasAttachment?.map(item => String(item)),\n    hasBinding: value.hasBinding?.map(item => String(item))\n  };\n}"
+          )
+          text = text.replace(
+              "  function submitSearch(values: SourceSearchFormValues) {\n    const { clanId: nextClanId, ...filters } = values;\n    const next: SourceSearchParams = {\n      ...filters,",
+              "  function submitSearch(values: SourceSearchFormValues) {\n    const { clanId: nextClanId, hasAttachment, hasBinding, ...filters } = values;\n    const next: SourceSearchParams = {\n      ...filters,\n      hasAttachment: hasAttachment?.map(item => item === 'true'),\n      hasBinding: hasBinding?.map(item => item === 'true'),"
+          )
+          p.write_text(text)
+          PY
+      - name: Verify type conversion markers
+        run: |
+          grep -q "hasAttachment?: string\[\]" frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx
+          grep -q "hasAttachment: hasAttachment?.map" frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx
+          git commit -m "fix(source): align multi-select form value types"
+          git push
