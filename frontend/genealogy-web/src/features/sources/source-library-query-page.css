@@ -73,6 +73,11 @@
   margin: 0;
 }
 
+.source-library-query-page button[aria-label="刷新查询结果"],
+.source-library-query-page .ant-card:has(.source-library-detail-title) .ant-row > .ant-col:last-child > .ant-space > .ant-space-item:nth-child(2) {
+  display: none;
+}
+
 .source-library-query-page .source-library-mobile-list .ant-list-item {
   padding: 0 0 12px;
   border-block-end: 0;
