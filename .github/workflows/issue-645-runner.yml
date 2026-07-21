@@ -1,15 +1,16 @@
 name: Issue 645 Runner
 
 on:
-  push:
+  pull_request_target:
     branches: ["main"]
-    paths: [".github/workflows/issue-645-runner.yml"]
+    types: [synchronize]
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.event.pull_request.number == 647
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,6 +45,7 @@ test('review center defaults all tabs to 10 rows per page', () => {
   assert.match(source, /pageSize: PAGE_SIZE_OPTIONS\.includes\(requestedPageSize\) \? requestedPageSize : DEFAULT_PAGE_SIZE/);
 });
 """, encoding='utf-8')
+
           package = Path('frontend/genealogy-web/package.json')
           content = package.read_text(encoding='utf-8')
           marker = '"test:members": "node --test src/features/members/memberPageModel.test.js"'
