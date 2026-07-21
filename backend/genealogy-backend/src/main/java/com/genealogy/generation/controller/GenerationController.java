@@ -10,6 +10,7 @@ import com.genealogy.generation.dto.GenSchemeResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,6 +56,16 @@ public class GenerationController {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requireClanMember(clanId, actorId);
         return ApiResponse.success(generationApplicationService.listSchemes(clanId));
+    }
+
+    @DeleteMapping("/generation-schemes/{schemeId}")
+    public ApiResponse<Void> deleteScheme(
+            @Positive @PathVariable Long schemeId,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        generationApplicationService.deleteScheme(schemeId, actorId);
+        return ApiResponse.success();
     }
 
     @PutMapping("/generation-schemes/{schemeId}/items")
