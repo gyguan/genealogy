@@ -24,6 +24,7 @@ import { PersonEditPage } from '../features/persons/PersonEditPage';
 import { navigateBackFromPersonEdit, readPersonEditRoute } from '../features/persons/personEditNavigation';
 import type { PersonEditRoute } from '../features/persons/personEditNavigation';
 import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
+import { SourceDraftDeleteAction } from '../features/sources/SourceDraftDeleteAction';
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
@@ -158,7 +159,7 @@ function AppShell() {
       case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
       case 'treeProduct': return <LineageTreeProductPage notify={notify} onNavigate={enterPage} />;
       case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
-      case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceLibraryQueryPage notify={notify} /></>;
+      case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceDraftDeleteAction notify={notify} /><SourceLibraryQueryPage notify={notify} /></>;
       case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
       case 'imports': return <ImportPage notify={notify} />;
       case 'reviewCenter': return <ReviewCenterPage notify={notify} />;

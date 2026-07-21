@@ -5,10 +5,19 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
+import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
-import { createGenerationItemApi, createGenerationSchemeApi, loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
+import {
+  createGenerationItemApi,
+  createGenerationSchemeApi,
+  deleteGenerationSchemeApi,
+  loadGenerationItems as queryGenerationItems,
+  loadGenerationSchemes as queryGenerationSchemes,
+  type GenerationItemLike,
+  type GenerationSchemeLike
+} from '../../services/generationService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type SchemeForm = {
@@ -290,6 +299,15 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  async function afterDeleteScheme(row: GenerationSchemeLike) {
+    if (String(row.id || '') === selectedSchemeId) {
+      setSelectedSchemeId('');
+      setItems([]);
+      setWordsModalOpen(false);
+    }
+    await loadSchemes();
+  }
+
   return (
     <Panel title="维护字辈" description="字辈方案保存后默认为草稿；审核通过后才能用于人物录入。">
       <section className="wizard-generation-section">
@@ -351,11 +369,12 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
             {
               key: 'actions',
               title: '操作',
-              width: 200,
+              width: 300,
               render: (_value, row) => (
                 <Space size="small" wrap>
                   {isReviewable(row) ? <Button size="small" onClick={() => openWordsModal(row)}>维护字辈</Button> : null}
                   {isReviewable(row) ? <Button size="small" type="primary" loading={submittingSchemes} onClick={() => void submitScheme(row)}>提交审核</Button> : null}
+                  {row.id ? <DraftDeleteButton object={row} objectName={schemeName(row)} objectType="字辈方案" onDelete={() => deleteGenerationSchemeApi(row.id!)} onDeleted={() => afterDeleteScheme(row)} label="删除草稿" buttonProps={{ size: 'small' }} /> : null}
                   {!isReviewable(row) ? '-' : null}
                 </Space>
               )

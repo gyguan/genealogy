@@ -52,6 +52,9 @@ jobs:
         working-directory: frontend/genealogy-web
         shell: bash
         run: set -o pipefail; npm run test:tree 2>&1 | tee tree-test-output.log
+      - name: Test draft delete model
+        working-directory: frontend/genealogy-web
+        run: npm run test:draft-delete
       - name: Test wizard state model
         working-directory: frontend/genealogy-web
         run: npm run test:wizard

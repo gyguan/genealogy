@@ -195,6 +195,10 @@ export async function getSourceDetail(sourceId: number) {
   return apiClient.get<SourceDetail>(`/sources/${sourceId}`);
 }
 
+export async function deleteSource(sourceId: number) {
+  return apiClient.delete(`/sources/${sourceId}`);
+}
+
 export async function listSourceBindings(sourceId: number, pageNo = 1, pageSize = 10) {
   return apiClient.get<PageResponse<SourceBindingSummary>>(`/sources/${sourceId}/bindings?pageNo=${pageNo}&pageSize=${pageSize}`);
 }
