@@ -17,7 +17,7 @@
 }
 
 .member-list-card > .ant-card-head .ant-card-head-title [data-member-total-placed='true'] {
-  margin-inline-start: 8px;
+  margin-inline-start: 0;
   font-size: 14px;
   font-weight: 400;
   white-space: nowrap;
