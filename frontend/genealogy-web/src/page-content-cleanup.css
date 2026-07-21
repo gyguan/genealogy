@@ -13,3 +13,10 @@
 .business-page--home .statistics-home-page__heading > .ant-typography {
   display: none;
 }
+
+/* Keep the expanded person archive filters visually consistent with other query pages. */
+.business-page--personArchive .person-archive-filter-grid--advanced {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
