@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeftOutlined,
-  DownOutlined,
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -12,6 +11,7 @@ import {
   Button,
   Card,
   Col,
+  Collapse,
   Descriptions,
   Drawer,
   Dropdown,
@@ -952,22 +952,28 @@ export function SourceLibraryQueryPage({ notify }: Props) {
               <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名称、提供者、书名或摘录" /></Form.Item>
               <Form.Item name="sourceType" label="来源类型"><Select allowClear placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>
               <Form.Item name="verificationStatus" label="资料状态"><Select allowClear placeholder="全部状态" options={statusOptions} /></Form.Item>
-              <div className="source-library-query-actions">
-                <Button type="text" className="source-library-more-button" onClick={() => setAdvancedOpen(value => !value)} aria-expanded={advancedOpen}>
-                  {advancedOpen ? '收起筛选' : '更多筛选'}
-                  <DownOutlined className={advancedOpen ? 'source-library-more-icon source-library-more-icon--open' : 'source-library-more-icon'} />
-                </Button>
-                <Button onClick={resetSearch} disabled={loading}>重置</Button>
-                <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
-              </div>
             </div>
-            {advancedOpen ? (
-              <div className="source-library-query-grid source-library-query-grid--advanced">
-                <Form.Item name="privacyLevel" label="可见范围"><Select allowClear placeholder="全部范围" options={privacyOptions} /></Form.Item>
-                <Form.Item name="hasAttachment" label="附件情况"><Select allowClear placeholder="全部" options={booleanOptions.attachment} /></Form.Item>
-                <Form.Item name="hasBinding" label="引用情况"><Select allowClear placeholder="全部" options={booleanOptions.binding} /></Form.Item>
-              </div>
-            ) : null}
+            <Collapse
+              ghost
+              className="source-library-more-filters"
+              activeKey={advancedOpen ? ['advanced'] : []}
+              onChange={keys => setAdvancedOpen(Array.isArray(keys) ? keys.includes('advanced') : keys === 'advanced')}
+              items={[{
+                key: 'advanced',
+                label: advancedOpen ? '收起筛选' : '更多筛选',
+                children: (
+                  <div className="source-library-query-grid source-library-query-grid--advanced">
+                    <Form.Item name="privacyLevel" label="可见范围"><Select allowClear placeholder="全部范围" options={privacyOptions} /></Form.Item>
+                    <Form.Item name="hasAttachment" label="附件情况"><Select allowClear placeholder="全部" options={booleanOptions.attachment} /></Form.Item>
+                    <Form.Item name="hasBinding" label="引用情况"><Select allowClear placeholder="全部" options={booleanOptions.binding} /></Form.Item>
+                  </div>
+                )
+              }]}
+            />
+            <div className="source-library-query-actions">
+              <Button onClick={resetSearch} disabled={loading}>重置</Button>
+              <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
+            </div>
           </Form>
         </Card>
 
