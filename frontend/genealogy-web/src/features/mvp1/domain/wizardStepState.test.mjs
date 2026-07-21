@@ -35,13 +35,7 @@ function byKey(steps, key) {
 test('normal progression marks all seven steps completed', () => {
   const steps = deriveWizardStepStates(completedSnapshot());
   assert.deepEqual(steps.map(step => step.state), [
-    'completed',
-    'completed',
-    'completed',
-    'completed',
-    'completed',
-    'completed',
-    'completed'
+    'completed', 'completed', 'completed', 'completed', 'completed', 'completed', 'completed'
   ]);
   assert.equal(getWizardStepGate(steps, 'review').allowed, true);
 });
@@ -54,7 +48,8 @@ test('business steps remain enterable when earlier steps are incomplete', () => 
 
   assert.equal(byKey(steps, 'branch').state, 'editing');
   assert.equal(byKey(steps, 'generation').state, 'waiting');
-  assert.equal(byKey(steps, 'generation').stateLabel, '可进入');
+  assert.equal(byKey(steps, 'generation').stateLabel, '待完成');
+  assert.match(byKey(steps, 'generation').reason, /可独立进入/);
   assert.equal(getWizardStepGate(steps, 'generation').allowed, true);
 });
 
