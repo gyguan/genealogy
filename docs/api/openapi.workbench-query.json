@@ -25,6 +25,21 @@
           }
         }
       }
+    },
+    "/api/v1/workbench/tasks/{taskKey}/history": {
+      "get": {
+        "operationId": "getWorkbenchTaskHistory",
+        "tags": ["Workbench"],
+        "parameters": [
+          { "name": "taskKey", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review-backed workbench history; rule-derived tasks return an empty list",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseWorkbenchHistoryItemList" } } }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -54,6 +69,31 @@
           "relatedEntryText": { "type": "string" },
           "statusDescription": { "type": "string" },
           "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WorkbenchHistoryItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "operatorName": { "type": "string" },
+          "actionText": { "type": "string" },
+          "comment": { "type": "string", "nullable": true },
+          "resultText": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "WorkbenchHistoryItemList": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/WorkbenchHistoryItemResponse" }
+      },
+      "ApiResponseWorkbenchHistoryItemList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/WorkbenchHistoryItemList" },
+          "traceId": { "type": "string" }
         }
       }
     }
