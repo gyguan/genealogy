@@ -1,0 +1,160 @@
+{
+  "paths": {
+    "/clans/{clanId}/members": {
+      "get": {
+        "operationId": "listAggregatedClanMembers",
+        "tags": [
+          "MemberPermission"
+        ],
+        "parameters": [
+          {
+            "name": "clanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "roleCode",
+            "in": "query",
+            "required": false,
+            "description": "角色编码筛选，可传多个值；按 form + explode=false 序列化为逗号分隔字符串。",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": false,
+            "description": "授权范围筛选，可传多个值；按 form + explode=false 序列化为逗号分隔字符串。",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/MemberScopeType"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "成员状态筛选，可传多个值；按 form + explode=false 序列化为逗号分隔字符串。",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/components/schemas/MembershipStatus"
+              }
+            }
+          },
+          {
+            "name": "pageNo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated member page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberAggregatePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission or scope denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member, grant, role, branch or user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Permission state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberPermissionErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

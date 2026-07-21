@@ -22,6 +22,7 @@ import {
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
+import { QueryMultiSelect } from '../../shared/ui/QueryMultiSelect';
 import {
   memberPermissionApi,
   type GrantableRole,
@@ -70,6 +71,14 @@ function statusColor(status?: string) {
 
 function dateTime(value?: string) {
   return value ? value.replace('T', ' ').slice(0, 16) : '-';
+}
+
+function splitFilter(value?: string) {
+  return [...new Set(String(value || '').split(',').map(item => item.trim()).filter(Boolean))];
+}
+
+function joinFilter(values: string[]) {
+  return values.join(',');
 }
 
 function readUrlState(): MemberQuery & { memberId?: number } {
@@ -122,9 +131,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
   const [query, setQuery] = useState<MemberQuery>(() => createMemberQuery(initialUrlState, initialUrlState.pageNo, initialUrlState.pageSize));
 
   const [keyword, setKeyword] = useState(initialUrlState.keyword);
-  const [roleFilter, setRoleFilter] = useState(initialUrlState.roleCode);
-  const [scopeFilter, setScopeFilter] = useState(initialUrlState.scopeType);
-  const [statusFilter, setStatusFilter] = useState(initialUrlState.status);
+  const [roleFilter, setRoleFilter] = useState<string[]>(() => splitFilter(initialUrlState.roleCode));
+  const [scopeFilter, setScopeFilter] = useState<string[]>(() => splitFilter(initialUrlState.scopeType));
+  const [statusFilter, setStatusFilter] = useState<string[]>(() => splitFilter(initialUrlState.status));
 
   const [initializing, setInitializing] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
@@ -262,9 +271,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       const state = readUrlState();
       const nextQuery = createMemberQuery(state, state.pageNo, state.pageSize);
       setKeyword(nextQuery.keyword);
-      setRoleFilter(nextQuery.roleCode);
-      setScopeFilter(nextQuery.scopeType);
-      setStatusFilter(nextQuery.status);
+      setRoleFilter(splitFilter(nextQuery.roleCode));
+      setScopeFilter(splitFilter(nextQuery.scopeType));
+      setStatusFilter(splitFilter(nextQuery.status));
       setPendingMemberId(state.memberId);
       void loadMembers(selectedClanId, nextQuery, state.memberId, false);
     };
@@ -278,9 +287,9 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     setMemberDrawerOpen(false);
     setPendingMemberId(undefined);
     setKeyword('');
-    setRoleFilter('');
-    setScopeFilter('');
-    setStatusFilter('');
+    setRoleFilter([]);
+    setScopeFilter([]);
+    setStatusFilter([]);
     const nextQuery = resetMemberQuery(query.pageSize);
     writeUrlState(nextQuery, undefined, true);
     void loadClanContext(clanId, nextQuery);
@@ -539,39 +548,57 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           </Col>
           <Col xs={24} md={12} xl={6}>
             <Typography.Text type="secondary">角色</Typography.Text>
-            <Select style={{ width: '100%' }} value={roleFilter} onChange={setRoleFilter} options={[{ value: '', label: '全部角色' }, ...roles.map(role => ({ value: role.roleCode, label: role.roleName }))]} />
+            <QueryMultiSelect
+              value={roleFilter}
+              onChange={setRoleFilter}
+              options={roles.map(role => ({ value: role.roleCode, label: role.roleName }))}
+              placeholder="请选择角色（可多选）"
+            />
           </Col>
           <Col xs={24} md={12} xl={6}>
             <Typography.Text type="secondary">授权范围</Typography.Text>
-            <Select style={{ width: '100%' }} value={scopeFilter} onChange={setScopeFilter} options={[
-              { value: '', label: '全部范围' },
-              { value: 'clan', label: '全宗族' },
-              { value: 'branch_subtree', label: '支派及下级支派' }
-            ]} />
+            <QueryMultiSelect
+              value={scopeFilter}
+              onChange={setScopeFilter}
+              options={[
+                { value: 'clan', label: '全宗族' },
+                { value: 'branch_subtree', label: '支派及下级支派' }
+              ]}
+              placeholder="请选择授权范围（可多选）"
+            />
           </Col>
           <Col xs={24} md={12} xl={6}>
             <Typography.Text type="secondary">成员状态</Typography.Text>
-            <Select style={{ width: '100%' }} value={statusFilter} onChange={setStatusFilter} options={[
-              { value: '', label: '全部状态' },
-              { value: 'active', label: '有效' },
-              { value: 'disabled', label: '已停用' },
-              { value: 'removed', label: '已移除' }
-            ]} />
+            <QueryMultiSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'active', label: '有效' },
+                { value: 'disabled', label: '已停用' },
+                { value: 'removed', label: '已移除' }
+              ]}
+              placeholder="请选择成员状态（可多选）"
+            />
           </Col>
         </Row>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
           <Space>
             <Button onClick={() => {
               setKeyword('');
-              setRoleFilter('');
-              setScopeFilter('');
-              setStatusFilter('');
+              setRoleFilter([]);
+              setScopeFilter([]);
+              setStatusFilter([]);
               const nextQuery = resetMemberQuery(query.pageSize);
               writeUrlState(nextQuery, undefined);
               void loadMembers(selectedClanId, nextQuery);
             }}>重置</Button>
             <Button type="primary" loading={queryLoading} onClick={() => {
-              const nextQuery = createMemberQuery({ keyword, roleCode: roleFilter, scopeType: scopeFilter, status: statusFilter }, 1, query.pageSize);
+              const nextQuery = createMemberQuery({
+                keyword,
+                roleCode: joinFilter(roleFilter),
+                scopeType: joinFilter(scopeFilter),
+                status: joinFilter(statusFilter)
+              }, 1, query.pageSize);
               writeUrlState(nextQuery, undefined);
               void loadMembers(selectedClanId, nextQuery);
             }}>查询</Button>

@@ -57,24 +57,24 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                                    and visibleRole.scopeId in :visibleSubtreeIds)
                              )
                       ))
-                      and (:memberStatus is null or membership.memberStatus = :memberStatus)
+                      and (:filterByMemberStatuses = false or membership.memberStatus in :memberStatuses)
                       and (:keyword is null
                            or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
                            or lower(appUser.displayName) like concat('%', cast(:keyword as string), '%'))
-                      and (:roleCode is null or exists (
+                      and (:filterByRoleCodes = false or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
                            where memberRole.membershipId = membership.id
                              and memberRole.roleId = role.id
                              and memberRole.status = 'active'
-                             and role.roleCode = :roleCode
+                             and role.roleCode in :roleCodes
                       ))
-                      and (:scopeType is null or exists (
+                      and (:filterByScopeTypes = false or exists (
                            select scopedRole.id
                            from MemberRoleEntity scopedRole
                            where scopedRole.membershipId = membership.id
                              and scopedRole.status = 'active'
-                             and scopedRole.scopeType = :scopeType
+                             and scopedRole.scopeType in :scopeTypes
                       ))
                     """,
             countQuery = """
@@ -96,33 +96,36 @@ public interface ClanMembershipRepository extends JpaRepository<ClanMembershipEn
                                    and visibleRole.scopeId in :visibleSubtreeIds)
                              )
                       ))
-                      and (:memberStatus is null or membership.memberStatus = :memberStatus)
+                      and (:filterByMemberStatuses = false or membership.memberStatus in :memberStatuses)
                       and (:keyword is null
                            or lower(appUser.username) like concat('%', cast(:keyword as string), '%')
                            or lower(appUser.displayName) like concat('%', cast(:keyword as string), '%'))
-                      and (:roleCode is null or exists (
+                      and (:filterByRoleCodes = false or exists (
                            select memberRole.id
                            from MemberRoleEntity memberRole, RoleEntity role
                            where memberRole.membershipId = membership.id
                              and memberRole.roleId = role.id
                              and memberRole.status = 'active'
-                             and role.roleCode = :roleCode
+                             and role.roleCode in :roleCodes
                       ))
-                      and (:scopeType is null or exists (
+                      and (:filterByScopeTypes = false or exists (
                            select scopedRole.id
                            from MemberRoleEntity scopedRole
                            where scopedRole.membershipId = membership.id
                              and scopedRole.status = 'active'
-                             and scopedRole.scopeType = :scopeType
+                             and scopedRole.scopeType in :scopeTypes
                       ))
                     """
     )
     Page<ClanMembershipEntity> searchMembers(
             @Param("clanId") Long clanId,
             @Param("keyword") String keyword,
-            @Param("roleCode") String roleCode,
-            @Param("scopeType") MemberRoleScopeType scopeType,
-            @Param("memberStatus") MemberStatus memberStatus,
+            @Param("filterByRoleCodes") boolean filterByRoleCodes,
+            @Param("roleCodes") Collection<String> roleCodes,
+            @Param("filterByScopeTypes") boolean filterByScopeTypes,
+            @Param("scopeTypes") Collection<MemberRoleScopeType> scopeTypes,
+            @Param("filterByMemberStatuses") boolean filterByMemberStatuses,
+            @Param("memberStatuses") Collection<MemberStatus> memberStatuses,
             @Param("fullClanAccess") boolean fullClanAccess,
             @Param("branchScope") MemberRoleScopeType branchScope,
             @Param("branchSubtreeScope") MemberRoleScopeType branchSubtreeScope,

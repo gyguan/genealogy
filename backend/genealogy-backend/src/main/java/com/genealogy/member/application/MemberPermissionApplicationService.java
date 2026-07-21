@@ -102,12 +102,18 @@ public class MemberPermissionApplicationService {
                 Sort.by(Sort.Direction.ASC, "id")
         );
         ActorScope actorScope = memberGrantPolicyService.actorScope(clanId, actorId);
+        List<String> roleCodes = parseOptionalRoleCodes(roleCode);
+        List<MemberRoleScopeType> scopeTypes = parseOptionalScopeTypes(scopeType);
+        List<MemberStatus> memberStatuses = parseOptionalMemberStatuses(status);
         Page<ClanMembershipEntity> membershipPage = clanMembershipRepository.searchMembers(
                 clanId,
                 normalizeFilter(keyword),
-                normalizeFilter(roleCode),
-                parseOptionalScopeType(scopeType),
-                parseOptionalMemberStatus(status),
+                !roleCodes.isEmpty(),
+                roleCodes.isEmpty() ? List.of("__none__") : roleCodes,
+                !scopeTypes.isEmpty(),
+                scopeTypes.isEmpty() ? List.of(MemberRoleScopeType.clan) : scopeTypes,
+                !memberStatuses.isEmpty(),
+                memberStatuses.isEmpty() ? List.of(MemberStatus.active) : memberStatuses,
                 actorScope.fullClanAccess(),
                 MemberRoleScopeType.branch,
                 MemberRoleScopeType.branch_subtree,
@@ -615,11 +621,18 @@ public class MemberPermissionApplicationService {
         }
     }
 
-    private MemberRoleScopeType parseOptionalScopeType(String scopeType) {
-        String normalized = normalizeFilter(scopeType);
-        if (normalized == null) {
-            return null;
-        }
+    private List<String> parseOptionalRoleCodes(String roleCode) {
+        return splitFilterValues(roleCode);
+    }
+
+    private List<MemberRoleScopeType> parseOptionalScopeTypes(String scopeType) {
+        return splitFilterValues(scopeType).stream()
+                .map(this::parseScopeTypeFilterValue)
+                .distinct()
+                .toList();
+    }
+
+    private MemberRoleScopeType parseScopeTypeFilterValue(String normalized) {
         if (MemberRoleScopeType.branch.name().equals(normalized)) {
             return MemberRoleScopeType.branch_subtree;
         }
@@ -630,12 +643,22 @@ public class MemberPermissionApplicationService {
         }
     }
 
-    private MemberStatus parseOptionalMemberStatus(String status) {
-        String normalized = normalizeFilter(status);
-        if (normalized == null) {
-            return null;
+    private List<MemberStatus> parseOptionalMemberStatuses(String status) {
+        return splitFilterValues(status).stream()
+                .map(this::parseMemberStatus)
+                .distinct()
+                .toList();
+    }
+
+    private List<String> splitFilterValues(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
         }
-        return parseMemberStatus(normalized);
+        return List.of(value.split(",")).stream()
+                .map(this::normalizeFilter)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private MemberStatus parseWriteMemberStatus(String status) {

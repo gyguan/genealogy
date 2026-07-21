@@ -6,6 +6,8 @@ import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.member.domain.MemberGrantPolicyService;
 import com.genealogy.member.dto.MemberCandidateResponse;
+import com.genealogy.member.enums.MemberRoleScopeType;
+import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMembershipRepository;
 import com.genealogy.member.repository.MemberRoleRepository;
 import com.genealogy.member.repository.RoleRepository;
@@ -65,5 +67,38 @@ class MemberPermissionApplicationServiceTest {
         assertThat(candidate.displayName()).isEqualTo("黄海静");
         assertThat(candidate.maskedAccount()).isEqualTo("hu***");
         assertThat(candidate.alreadyMember()).isFalse();
+    }
+
+    @Test
+    void memberSearchExpandsCommaSeparatedFiltersIntoRepositoryCollections() {
+        when(memberGrantPolicyService.actorScope(1L, 2L))
+                .thenReturn(MemberGrantPolicyService.ActorScope.full(true, true));
+        when(clanMembershipRepository.searchMembers(
+                eq(1L),
+                eq("huang"),
+                eq(true),
+                eq(List.of("viewer", "editor")),
+                eq(true),
+                eq(List.of(MemberRoleScopeType.clan, MemberRoleScopeType.branch_subtree)),
+                eq(true),
+                eq(List.of(MemberStatus.active, MemberStatus.disabled)),
+                eq(true),
+                eq(MemberRoleScopeType.branch),
+                eq(MemberRoleScopeType.branch_subtree),
+                eq(List.of(-1L)),
+                eq(List.of(-1L)),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
+
+        assertThat(service.members(
+                1L,
+                2L,
+                "huang",
+                "viewer,editor",
+                "clan,branch_subtree",
+                "active,disabled",
+                1,
+                20
+        ).records()).isEmpty();
     }
 }
