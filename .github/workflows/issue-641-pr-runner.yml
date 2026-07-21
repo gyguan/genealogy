@@ -1,0 +1,60 @@
+name: Issue 641 PR Runner
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, reopened]
+    paths:
+      - ".github/workflows/issue-641-copy-cleanup.yml"
+      - ".github/workflows/issue-641-pr-runner.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply-cleanup:
+    if: github.head_ref == 'agent/issue-641-prompt-copy-cleanup'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Extract and apply focused cleanup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/issue-641-copy-cleanup.yml').read_text(encoding='utf-8')
+          start = workflow.index("          python3 <<'PY'\n") + len("          python3 <<'PY'\n")
+          end = workflow.index("\n          PY\n", start)
+          lines = workflow[start:end].splitlines()
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+          Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
+          PY
+          python3 /tmp/issue-641-cleanup.py
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Run focused regression test
+        working-directory: frontend/genealogy-web
+        run: npm run test:person-edit
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web
+          git commit -m "refactor(ui): remove duplicated page prompts"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
