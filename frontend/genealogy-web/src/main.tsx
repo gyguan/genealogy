@@ -58,7 +58,23 @@ function installSourceRouteHistorySync() {
   };
 }
 
+function installTrackingMoreFilterTextSync() {
+  const syncText = () => {
+    document.querySelectorAll<HTMLButtonElement>('.tracking-more-button').forEach(button => {
+      const textNode = Array.from(button.childNodes).find(node => (
+        node.nodeType === Node.TEXT_NODE && node.textContent?.trim() === '收起'
+      ));
+      if (textNode) textNode.textContent = '收起筛选';
+    });
+  };
+
+  const observer = new MutationObserver(syncText);
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  syncText();
+}
+
 installSourceRouteHistorySync();
+installTrackingMoreFilterTextSync();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
