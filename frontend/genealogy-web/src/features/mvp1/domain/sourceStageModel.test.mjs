@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   SOURCE_BINDING_PAGE_SIZE,
@@ -7,6 +8,8 @@ import {
   paginateSourceBindings,
   resetSourceBindingSelection
 } from '../../../../.source-stage-test/features/mvp1/domain/sourceStageModel.js';
+
+const activeSourceStageSource = readFileSync(new URL('../steps/source/SourceStageStep.tsx', import.meta.url), 'utf8');
 
 test('draft source keeps binding stage blocked', () => {
   const state = deriveSourceStageState([{ id: 1, dataStatus: 'draft' }], '1');
@@ -50,4 +53,14 @@ test('source binding pagination clamps an out-of-range page after data shrinks',
 
   assert.equal(page.page, 2);
   assert.deepEqual(page.rows.map(row => row.id), [11, 12]);
+});
+
+test('active staged source page renders the bound list through ten-row pagination', () => {
+  assert.match(activeSourceStageSource, /Alert, Button, Card, Empty, Pagination, Select/);
+  assert.match(activeSourceStageSource, /paginateSourceBindings\(links, linkPage\)/);
+  assert.match(activeSourceStageSource, /pagedLinks\.rows\.map/);
+  assert.match(activeSourceStageSource, /pageSize=\{SOURCE_BINDING_PAGE_SIZE\}/);
+  assert.match(activeSourceStageSource, /showSizeChanger=\{false\}/);
+  assert.match(activeSourceStageSource, /aria-label="已绑定对象分页"/);
+  assert.doesNotMatch(activeSourceStageSource, /links\.map\(link => <Card/);
 });
