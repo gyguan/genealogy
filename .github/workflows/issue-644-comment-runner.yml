@@ -1,16 +1,16 @@
 name: Issue 644 Comment Runner
 
 on:
-  issue_comment:
-    types: [created]
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/issue-644-comment-runner.yml"
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   implement:
-    if: github.event.issue.pull_request && github.event.issue.number == 648 && github.event.comment.body == '/implement-issue-644'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
