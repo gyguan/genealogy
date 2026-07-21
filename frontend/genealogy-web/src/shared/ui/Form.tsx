@@ -134,6 +134,19 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
   const name = props.name || wizardFieldName(props.label);
   const currentValue = element?.props.value;
   const isExternallyControlledSearch = element?.props.searchValue !== undefined;
+  const originalOnChange = element?.props.onChange;
+  const syncedChild = element && context.form && name
+    ? cloneElement(element, {
+        onChange: (eventOrValue: any) => {
+          const target = eventOrValue?.target;
+          const nextValue = target
+            ? ((target.type === 'checkbox' || target.type === 'radio') ? target.checked : target.value)
+            : eventOrValue;
+          context.form?.setFieldValue(name, nextValue);
+          if (typeof originalOnChange === 'function') originalOnChange(eventOrValue);
+        }
+      })
+    : props.children;
 
   useEffect(() => {
     if (!context.form || !name || currentValue === undefined || isExternallyControlledSearch) return;
@@ -151,10 +164,11 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
         extra={props.hint}
         colon={false}
       >
-        {props.children}
+        {syncedChild}
       </Form.Item>
     );
   }
+
   const rules = context.step ? [{
     validator: async () => {
       const errors = validateWizardStep(context.step!, context.form?.getFieldsValue(true) || {});
@@ -176,7 +190,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
       getValueProps={() => ({})}
       initialValue={currentValue}
     >
-      {toAntdControl(props.children)}
+      {toAntdControl(syncedChild)}
     </Form.Item>
   );
 }
