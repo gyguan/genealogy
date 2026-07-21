@@ -8,6 +8,7 @@ import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.mapper.BranchMapper;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -99,7 +100,11 @@ public class BranchApplicationService {
     public void delete(Long id, Long actorId) {
         BranchEntity entity = getEntity(id);
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getId(), BRANCH_DELETE);
-        ensureMutableBranch(entity);
+        DraftDeletePolicy.requireDraft(
+                entity.getStatus(),
+                "BRANCH_DELETE_DRAFT_ONLY",
+                "仅草稿支派可直接删除"
+        );
         if (branchRepository.existsByParentId(id)) {
             throw new BusinessException("BRANCH_HAS_CHILDREN", "支派下存在下级支派，不能删除");
         }

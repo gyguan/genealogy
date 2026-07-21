@@ -2,6 +2,7 @@ package com.genealogy.generation.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.generation.dto.GenItemRequest;
@@ -74,6 +75,19 @@ public class GenerationApplicationService {
             throw new BusinessException(ErrorCode.CLAN_NOT_FOUND);
         }
         return schemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId).stream().map(this::toSchemeResponse).toList();
+    }
+
+    @Transactional
+    public void deleteScheme(Long schemeId, Long actorId) {
+        GenerationSchemeEntity scheme = getScheme(schemeId);
+        authorizationApplicationService.requireBranchWriteScope(scheme.getClanId(), actorId, scheme.getBranchId());
+        DraftDeletePolicy.requireDraft(
+                scheme.getStatus(),
+                "GENERATION_SCHEME_DELETE_DRAFT_ONLY",
+                "仅草稿字辈方案可直接删除"
+        );
+        wordRepository.deleteBySchemeId(schemeId);
+        schemeRepository.delete(scheme);
     }
 
     @Transactional

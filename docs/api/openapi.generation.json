@@ -1,0 +1,45 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Genealogy Generation API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/generation-schemes/{schemeId}": {
+      "delete": {
+        "operationId": "deleteGenerationScheme",
+        "tags": [
+          "Generation"
+        ],
+        "summary": "删除草稿字辈方案",
+        "description": "仅允许具备对应支派写权限的用户直接删除 draft 状态字辈方案；同时删除方案下字辈明细。",
+        "parameters": [
+          {
+            "name": "schemeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "草稿字辈方案删除成功"
+          },
+          "400": {
+            "description": "对象不是草稿或请求参数不合法"
+          },
+          "403": {
+            "description": "无对应支派写权限"
+          },
+          "404": {
+            "description": "字辈方案不存在"
+          }
+        }
+      }
+    }
+  }
+}

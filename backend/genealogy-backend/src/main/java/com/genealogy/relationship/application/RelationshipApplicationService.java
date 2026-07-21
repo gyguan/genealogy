@@ -2,6 +2,7 @@ package com.genealogy.relationship.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -232,7 +233,11 @@ public class RelationshipApplicationService {
     public void delete(Long id, Long actorId) {
         RelationshipEntity entity = getActiveEntity(id);
         requireRelationshipBranchPermission(entity.getClanId(), actorId, entity.getFromPersonId(), entity.getToPersonId(), RELATIONSHIP_DELETE);
-        requireReviewForOfficialRelationship(entity, actorId);
+        DraftDeletePolicy.requireDraft(
+                entity.getDataStatus(),
+                "RELATIONSHIP_DELETE_DRAFT_ONLY",
+                "仅草稿关系可直接删除"
+        );
         LocalDateTime now = LocalDateTime.now();
         entity.setDeletedAt(now);
         entity.setUpdatedAt(now);
