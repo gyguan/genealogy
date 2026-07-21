@@ -71,22 +71,19 @@ async function mockImportApi(page: Page) {
 async function expectDesktopResultHeaderSpacing(page: Page) {
   const resultCard = page.locator('.import-result-card');
   const header = resultCard.locator(':scope > .ant-card-head');
-  const title = resultCard.getByText(/^查询结果（\d+）$/);
+  const titleGroup = resultCard.locator(':scope > .ant-card-head .ant-card-head-title');
   const action = resultCard.getByRole('button', { name: '新建导入' });
-  const [headerBox, titleBox, actionBox] = await Promise.all([
+  const [headerBox, titleGroupBox, actionBox] = await Promise.all([
     header.boundingBox(),
-    title.boundingBox(),
+    titleGroup.boundingBox(),
     action.boundingBox()
   ]);
   expect(headerBox).not.toBeNull();
-  expect(titleBox).not.toBeNull();
-  expect(actionBox).not.toBeNull();
-  if (!headerBox || !titleBox || !actionBox) return;
-  expect(titleBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
-  expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
-  const titleGroupBox = await resultCard.locator(':scope > .ant-card-head .ant-card-head-title').boundingBox();
   expect(titleGroupBox).not.toBeNull();
-  if (!titleGroupBox) return;
+  expect(actionBox).not.toBeNull();
+  if (!headerBox || !titleGroupBox || !actionBox) return;
+  expect(titleGroupBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
+  expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
   const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
   const actionCenter = actionBox.y + actionBox.height / 2;
   expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
