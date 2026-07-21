@@ -1,0 +1,81 @@
+.lineage-double-card-result > .ant-card-head {
+  padding-right: 760px;
+}
+
+.lineage-result-toolbar--double-card,
+.lineage-result-toolbar--double-card.is-person {
+  width: 720px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.lineage-result-toolbar--double-card.is-person > :nth-child(2) {
+  display: block;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label {
+  padding: 0;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label {
+  height: 32px;
+  white-space: nowrap;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label::after {
+  margin-inline-start: 2px;
+  content: '：';
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item:has(.ant-select[aria-label='图内定位人物']) .ant-form-item-label > label {
+  font-size: 0;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item:has(.ant-select[aria-label='图内定位人物']) .ant-form-item-label > label::before {
+  font-size: 14px;
+  content: '圈内定位';
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control,
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input,
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input-content {
+  min-width: 0;
+}
+
+.lineage-graph-help {
+  display: none !important;
+}
+
+@media (max-width: 1399px) {
+  .lineage-double-card-result > .ant-card-head {
+    padding-right: 16px;
+  }
+
+  .lineage-result-toolbar--double-card,
+  .lineage-result-toolbar--double-card.is-person {
+    position: static;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 767px) {
+  .lineage-result-toolbar--double-card,
+  .lineage-result-toolbar--double-card.is-person {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+}
