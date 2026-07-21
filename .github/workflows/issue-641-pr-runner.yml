@@ -56,7 +56,7 @@ jobs:
           )
           script = script.replace(
               "import { join } from 'node:path';",
-              "import { join } from 'node:path';\\n          import { fileURLToPath } from 'node:url';"
+              "import { join } from 'node:path';\n          import { fileURLToPath } from 'node:url';"
           )
           script = script.replace(
               "const root = new URL('../../', import.meta.url);",
@@ -66,16 +66,6 @@ jobs:
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
-      - name: Upload cleanup diagnostics
-        if: failure() && steps.guard.outputs.skip != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-641-cleanup-diagnostics
-          path: |
-            /tmp/issue-641-runner.log
-            /tmp/issue-641-test.log
-          if-no-files-found: warn
-          retention-days: 3
       - name: Install frontend dependencies
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
@@ -88,13 +78,27 @@ jobs:
       - name: Typecheck frontend
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
-        run: npm run typecheck
+        shell: bash
+        run: set -o pipefail; npm run typecheck 2>&1 | tee /tmp/issue-641-typecheck.log
       - name: Build frontend
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
-        run: npm run build
+        shell: bash
+        run: set -o pipefail; npm run build 2>&1 | tee /tmp/issue-641-build.log
+      - name: Upload cleanup diagnostics
+        if: failure() && steps.guard.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-641-cleanup-diagnostics
+          path: |
+            /tmp/issue-641-runner.log
+            /tmp/issue-641-test.log
+            /tmp/issue-641-typecheck.log
+            /tmp/issue-641-build.log
+          if-no-files-found: warn
+          retention-days: 3
       - name: Commit cleanup
-        if: steps.guard.outputs.skip != 'true'
+        if: success() && steps.guard.outputs.skip != 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
