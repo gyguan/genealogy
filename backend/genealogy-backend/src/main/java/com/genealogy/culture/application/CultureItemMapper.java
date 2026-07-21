@@ -1,5 +1,6 @@
 package com.genealogy.culture.application;
 
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.culture.dto.CultureAttachmentSummaryResponse;
 import com.genealogy.culture.dto.CultureItemDetailResponse;
 import com.genealogy.culture.dto.CultureItemSummaryResponse;
@@ -41,7 +42,7 @@ public class CultureItemMapper {
                 sourceCount,
                 attachmentCount,
                 reviewCount,
-                allowedActions,
+                filterDeleteAction(entity, allowedActions),
                 entity.getVersion(),
                 createdByName,
                 entity.getCreatedAt(),
@@ -83,5 +84,12 @@ public class CultureItemMapper {
                 attachments,
                 review
         );
+    }
+
+    private List<String> filterDeleteAction(CultureItemEntity entity, List<String> allowedActions) {
+        if (DraftDeletePolicy.isDraft(entity.getDataStatus())) {
+            return allowedActions;
+        }
+        return allowedActions.stream().filter(action -> !"delete".equals(action)).toList();
     }
 }

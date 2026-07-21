@@ -1,5 +1,6 @@
 package com.genealogy.culture.domain;
 
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.dto.CultureItemCreateRequest;
 import com.genealogy.culture.dto.CultureItemSearchCriteria;
@@ -111,6 +112,14 @@ public class CultureItemDomainService {
         throw new BusinessException("CULTURE_ITEM_REVIEW_REQUIRED", "正式或归档文化资料不能直接修改，需提交审核变更");
     }
 
+    public void requireDirectlyDeletable(CultureItemEntity entity) {
+        DraftDeletePolicy.requireDraft(
+                entity == null ? null : entity.getDataStatus(),
+                "CULTURE_ITEM_DELETE_DRAFT_ONLY",
+                "仅草稿文化资料可直接删除"
+        );
+    }
+
     public void requireExpectedVersion(CultureItemEntity entity, Long expectedVersion) {
         if (expectedVersion == null || entity.getVersion() == null || !entity.getVersion().equals(expectedVersion)) {
             throw new BusinessException("CULTURE_ITEM_VERSION_CONFLICT", "文化资料版本已变化，请刷新后重试");
@@ -119,6 +128,10 @@ public class CultureItemDomainService {
 
     public boolean isDirectlyMutable(CultureItemEntity entity) {
         return entity != null && MUTABLE_STATUSES.contains(normalizeStatus(entity.getDataStatus()));
+    }
+
+    public boolean isDirectlyDeletable(CultureItemEntity entity) {
+        return entity != null && DraftDeletePolicy.isDraft(entity.getDataStatus());
     }
 
     public String normalizeStatus(String value) {

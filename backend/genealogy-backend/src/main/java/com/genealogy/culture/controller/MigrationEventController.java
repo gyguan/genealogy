@@ -4,6 +4,7 @@ import com.genealogy.auth.application.RequestContextApplicationService;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
+import com.genealogy.culture.application.CultureDeletionApplicationService;
 import com.genealogy.culture.application.MigrationEventApplicationService;
 import com.genealogy.culture.application.MigrationEventGovernanceApplicationService;
 import com.genealogy.culture.domain.MigrationEventDomainService;
@@ -39,15 +40,18 @@ public class MigrationEventController {
 
     private final MigrationEventApplicationService migrationEventApplicationService;
     private final MigrationEventGovernanceApplicationService governanceApplicationService;
+    private final CultureDeletionApplicationService cultureDeletionApplicationService;
     private final RequestContextApplicationService requestContextApplicationService;
 
     public MigrationEventController(
             MigrationEventApplicationService migrationEventApplicationService,
             MigrationEventGovernanceApplicationService governanceApplicationService,
+            CultureDeletionApplicationService cultureDeletionApplicationService,
             RequestContextApplicationService requestContextApplicationService
     ) {
         this.migrationEventApplicationService = migrationEventApplicationService;
         this.governanceApplicationService = governanceApplicationService;
+        this.cultureDeletionApplicationService = cultureDeletionApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
     }
 
@@ -133,7 +137,7 @@ public class MigrationEventController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(migrationEventApplicationService.delete(
+        return ApiResponse.success(cultureDeletionApplicationService.deleteMigrationEvent(
                 migrationEventId,
                 context.userId(),
                 context.requestId(),

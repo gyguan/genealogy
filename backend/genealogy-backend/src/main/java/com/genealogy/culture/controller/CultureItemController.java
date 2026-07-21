@@ -4,6 +4,7 @@ import com.genealogy.auth.application.RequestContextApplicationService;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
+import com.genealogy.culture.application.CultureDeletionApplicationService;
 import com.genealogy.culture.application.CultureItemApplicationService;
 import com.genealogy.culture.application.CultureOverviewApplicationService;
 import com.genealogy.culture.domain.CultureItemDomainService;
@@ -38,15 +39,18 @@ public class CultureItemController {
 
     private final CultureItemApplicationService cultureItemApplicationService;
     private final CultureOverviewApplicationService cultureOverviewApplicationService;
+    private final CultureDeletionApplicationService cultureDeletionApplicationService;
     private final RequestContextApplicationService requestContextApplicationService;
 
     public CultureItemController(
             CultureItemApplicationService cultureItemApplicationService,
             CultureOverviewApplicationService cultureOverviewApplicationService,
+            CultureDeletionApplicationService cultureDeletionApplicationService,
             RequestContextApplicationService requestContextApplicationService
     ) {
         this.cultureItemApplicationService = cultureItemApplicationService;
         this.cultureOverviewApplicationService = cultureOverviewApplicationService;
+        this.cultureDeletionApplicationService = cultureDeletionApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
     }
 
@@ -132,7 +136,7 @@ public class CultureItemController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(cultureItemApplicationService.delete(
+        return ApiResponse.success(cultureDeletionApplicationService.deleteCultureItem(
                 cultureItemId, context.userId(), context.requestId(), context.clientIp()
         ));
     }
