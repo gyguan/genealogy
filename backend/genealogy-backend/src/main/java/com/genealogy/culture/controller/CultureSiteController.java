@@ -4,6 +4,7 @@ import com.genealogy.auth.application.RequestContextApplicationService;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
+import com.genealogy.culture.application.CultureDeletionApplicationService;
 import com.genealogy.culture.application.CultureSiteApplicationService;
 import com.genealogy.culture.application.CultureSiteGovernanceApplicationService;
 import com.genealogy.culture.domain.CultureSiteDomainService;
@@ -39,15 +40,18 @@ public class CultureSiteController {
 
     private final CultureSiteApplicationService applicationService;
     private final CultureSiteGovernanceApplicationService governanceApplicationService;
+    private final CultureDeletionApplicationService cultureDeletionApplicationService;
     private final RequestContextApplicationService requestContextApplicationService;
 
     public CultureSiteController(
             CultureSiteApplicationService applicationService,
             CultureSiteGovernanceApplicationService governanceApplicationService,
+            CultureDeletionApplicationService cultureDeletionApplicationService,
             RequestContextApplicationService requestContextApplicationService
     ) {
         this.applicationService = applicationService;
         this.governanceApplicationService = governanceApplicationService;
+        this.cultureDeletionApplicationService = cultureDeletionApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
     }
 
@@ -120,7 +124,7 @@ public class CultureSiteController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(applicationService.delete(
+        return ApiResponse.success(cultureDeletionApplicationService.deleteCultureSite(
                 cultureSiteId, context.userId(), context.requestId(), context.clientIp()
         ));
     }
