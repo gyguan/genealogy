@@ -1,0 +1,101 @@
+.entity-page-header {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.entity-page-header__back {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.entity-page-back-button.ant-btn-link {
+  height: 32px;
+  padding: 0;
+  font-weight: 400;
+}
+
+.entity-page-header__main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.entity-page-header__copy {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.entity-page-header__title-row.ant-space {
+  min-width: 0;
+}
+
+.entity-page-header__title-row .ant-typography {
+  margin: 0;
+}
+
+.entity-page-header__subtitle {
+  display: block;
+}
+
+.entity-page-header__actions {
+  justify-content: flex-end;
+}
+
+/* 来源详情保留现有结构，但返回入口与统一页头保持一致。 */
+.source-library-query-page .source-library-detail-title {
+  margin-bottom: 0;
+}
+
+.source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
+  height: 32px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  color: #1677ff;
+  background: transparent;
+}
+
+.source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn:hover {
+  color: #4096ff;
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  .entity-page-header {
+    gap: 8px;
+  }
+
+  .entity-page-header__back {
+    min-height: 44px;
+  }
+
+  .entity-page-back-button.ant-btn-link {
+    min-height: 44px;
+  }
+
+  .entity-page-header__main {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .entity-page-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .entity-page-header__actions > .ant-space-item {
+    flex: 1 1 auto;
+  }
+
+  .entity-page-header__actions .ant-btn {
+    min-height: 40px;
+  }
+
+  .source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
+    min-height: 44px;
+  }
+}
