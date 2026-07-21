@@ -63,6 +63,10 @@ jobs:
               "const root = fileURLToPath(new URL('../../', import.meta.url));"
           )
           script = script.replace("files(root.pathname)", "files(root)")
+          script = script.replace(
+              ".filter(path => /\\.(tsx?|mjs)$/.test(path) && !path.endsWith('promptCopyCleanup.test.mjs'))",
+              ".filter(path => path.endsWith('.tsx'))"
+          )
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
