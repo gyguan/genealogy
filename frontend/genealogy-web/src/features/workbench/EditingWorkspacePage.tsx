@@ -417,14 +417,9 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
           items={[{
             key: 'advanced',
             showArrow: false,
-            collapsible: 'icon',
-            label: <Row justify={screens.xl ? 'end' : 'start'}>
-              <Space wrap onClick={event => event.stopPropagation()}>
-                <Button type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-                <Button onClick={resetFilters}>重置</Button>
-                <Button type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
-              </Space>
-            </Row>,
+            collapsible: 'disabled',
+            label: null,
+            styles: { header: { display: 'none' }, body: { padding: 0 } },
             children: <Row gutter={[16, 0]}>
               <Col xs={24} sm={12} xl={4}><Form.Item label="任务状态"><Select mode="multiple" maxTagCount="responsive" value={filters.statuses} onChange={values => patchMulti('statuses', values, statusOptions.map(item => item.value))} options={optionsWithAll(statusOptions)} placeholder="请选择（多选）" allowClear /></Form.Item></Col>
               <Col xs={24} sm={12} xl={4}><Form.Item label="任务类型"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={filters.taskTypes} onChange={values => patchMulti('taskTypes', values, taskTypeOptions.map(item => item.value))} options={optionsWithAll(taskTypeOptions)} placeholder="请选择（多选）" allowClear /></Form.Item></Col>
@@ -434,6 +429,13 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
             </Row>
           }]}
         />
+        <Row justify={screens.xl ? 'end' : 'start'} style={{ marginTop: 8 }}>
+          <Space wrap>
+            <Button type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+            <Button onClick={resetFilters}>重置</Button>
+            <Button type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
+          </Space>
+        </Row>
       </Form>
     </Card>
 
