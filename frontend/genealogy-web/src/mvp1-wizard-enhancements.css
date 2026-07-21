@@ -232,6 +232,7 @@
 }
 
 /* MVP 建谱向导：步骤内操作按钮统一右对齐。 */
+.mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > button),
 .mvp1-wizard-page .wizard-step-content .actions,
 .mvp1-wizard-page .wizard-step-content .antd-actions,
 .mvp1-wizard-page .wizard-step-content .source-stage-actions,
@@ -252,6 +253,7 @@
 }
 
 @media (max-width: 767px) {
+  .mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > button),
   .mvp1-wizard-page .wizard-step-content .actions,
   .mvp1-wizard-page .wizard-step-content .antd-actions,
   .mvp1-wizard-page .wizard-step-content .source-stage-actions,
