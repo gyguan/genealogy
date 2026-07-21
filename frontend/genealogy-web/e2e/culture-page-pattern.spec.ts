@@ -98,8 +98,8 @@ async function expectDoubleCardShell(page: Page) {
 async function expectMoreFiltersBeforeReset(page: Page) {
   const searchCard = page.locator('.culture-search-card');
   const moreFilters = searchCard.locator('.culture-more-filters .ant-collapse-header');
-  const reset = searchCard.getByRole('button', { name: '重置' });
-  const query = searchCard.getByRole('button', { name: '查询' });
+  const reset = searchCard.getByRole('button', { name: /重\s*置/ });
+  const query = searchCard.getByRole('button', { name: /查\s*询/ });
   await expect(moreFilters).toBeVisible();
   await expect(moreFilters).toHaveAttribute('aria-expanded', 'false');
   const [moreBox, resetBox, queryBox] = await Promise.all([
