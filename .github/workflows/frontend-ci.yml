@@ -88,6 +88,9 @@ jobs:
       - name: Test person edit semantics
         working-directory: frontend/genealogy-web
         run: npm run test:person-edit
+      - name: Test review center pagination
+        working-directory: frontend/genealogy-web
+        run: npm run test:reviews
       - name: Test person archive query and create entry state
         working-directory: frontend/genealogy-web
         shell: bash
