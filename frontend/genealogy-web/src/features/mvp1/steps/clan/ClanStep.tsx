@@ -117,7 +117,6 @@ export function ClanStep({ notify, onCreated }: Props) {
             type="info"
             showIcon
             message={`${currentClan.clanName || currentClan.surname || '当前宗族'} · ${String(currentClan.status || 'draft') === 'draft' ? '草稿' : currentClan.status || '状态待确认'}`}
-            description="只有尚未创建支派的草稿宗族可直接删除；存在支派时后端会阻止删除并返回真实原因。"
           />
         </Card>
       ) : null}
