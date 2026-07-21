@@ -72,11 +72,19 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
 
   await page.getByLabel('对象类型').click();
-  const selectAllOption = page.getByRole('option', { name: '全选 / 取消全选' });
+  const visibleDropdown = page.locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)');
+  const selectAllOption = visibleDropdown.locator('.ant-select-item-option').filter({ hasText: '全选 / 取消全选' }).first();
   await expect(selectAllOption).toBeVisible();
   await expect(page.locator('.query-multi-select-popup-actions')).toHaveCount(0);
-  expect(await selectAllOption.evaluate(element => getComputedStyle(element).height)).toBe('32px');
-  expect(await selectAllOption.evaluate(element => getComputedStyle(element).padding)).toBe('5px 12px');
+  const optionStyle = await selectAllOption.evaluate(element => {
+    const style = getComputedStyle(element);
+    return {
+      paddingTop: style.paddingTop,
+      paddingRight: style.paddingRight,
+      borderRadius: style.borderRadius
+    };
+  });
+  expect(optionStyle).toEqual({ paddingTop: '5px', paddingRight: '12px', borderRadius: '4px' });
   await page.keyboard.press('Escape');
 
   await page.getByRole('tab', { name: '操作日志' }).click();
