@@ -231,8 +231,9 @@ function installDetailActionUnification() {
   const normalizeSourceDetail = () => {
     const page = document.querySelector<HTMLElement>('.source-library-query-page');
     const headerCard = page?.querySelector<HTMLElement>('.source-library-stack > .ant-space-item:first-child > .ant-card:first-child');
+    const hasDetailTitle = Boolean(headerCard?.querySelector('.source-library-detail-title'));
     const actionGroup = headerCard?.querySelector<HTMLElement>('.ant-card-body .ant-row > .ant-col:last-child > .ant-space');
-    if (!headerCard || !actionGroup) return;
+    if (!headerCard || !hasDetailTitle || !actionGroup) return;
 
     headerCard.classList.add('entity-detail-source-header');
     normalizeActionGroup(actionGroup);
