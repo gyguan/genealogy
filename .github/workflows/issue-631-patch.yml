@@ -1,0 +1,28 @@
+name: Apply issue 631 patch
+
+on:
+  push:
+    branches:
+      - agent/issue-631-workbench-actions-last
+    paths:
+      - scripts/temp_issue_631_patch.py
+      - .github/workflows/issue-631-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-631-workbench-actions-last
+      - run: python scripts/temp_issue_631_patch.py
+      - run: rm scripts/temp_issue_631_patch.py .github/workflows/issue-631-patch.yml
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/workbench/EditingWorkspacePage.tsx scripts/temp_issue_631_patch.py .github/workflows/issue-631-patch.yml
+          git commit -m "fix(workbench): keep actions after all filters"
+          git push
