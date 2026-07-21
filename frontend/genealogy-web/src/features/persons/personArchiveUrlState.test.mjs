@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   DEFAULT_PERSON_PAGE_SIZE,
   buildPersonArchiveUrl,
   emptyPersonArchiveSearch,
   readPersonArchiveSearch
 } from '../../../.person-archive-test/features/persons/personArchiveUrlState.js';
+
+const personArchivePageSource = readFileSync(new URL('./PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
 
 test('reads repeated and comma-compatible multi-value filters', () => {
   const state = readPersonArchiveSearch(new URL(
@@ -49,4 +52,16 @@ test('uses official status and ten rows as initial defaults', () => {
   const state = emptyPersonArchiveSearch();
   assert.deepEqual(state.dataStatuses, ['official']);
   assert.equal(state.pageSize, 10);
+});
+
+test('renders advanced filters with Collapse before the trailing query actions', () => {
+  assert.match(personArchivePageSource, /Card, Collapse, Dropdown/);
+  assert.match(personArchivePageSource, /className="person-archive-advanced-collapse"/);
+  assert.match(personArchivePageSource, /activeKey=\{advancedOpen \? \['advanced'\] : \[\]\}/);
+  assert.match(personArchivePageSource, /styles: \{ header: \{ display: 'none' \}, body: \{ padding: 0 \} \}/);
+  assert.match(personArchivePageSource, /aria-expanded=\{advancedOpen\}/);
+  assert.match(personArchivePageSource, /aria-controls="person-archive-advanced-filters"/);
+  const collapseIndex = personArchivePageSource.indexOf('className="person-archive-advanced-collapse"');
+  const actionsIndex = personArchivePageSource.indexOf('<Space className="person-archive-query-actions">');
+  assert.ok(collapseIndex >= 0 && actionsIndex > collapseIndex);
 });
