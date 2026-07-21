@@ -5,12 +5,13 @@ import { Alert, Button, Card, DatePicker, Empty, Form, Input, Select, Space, Tag
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
+import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
 import { nullableBoolean, nullableNumber, nullableString } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
-import { createPersonApi, loadPersons as queryPersons, type CreatePersonPayload, type PersonLike } from '../../services/personService';
+import { createPersonApi, deletePersonApi, loadPersons as queryPersons, type CreatePersonPayload, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type PersonForm = {
@@ -419,6 +420,13 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  async function afterDeletePerson(row: PersonLike) {
+    const personId = String(row.id || '');
+    setSelectedPersonRowKeys(prev => prev.filter(key => String(key) !== personId));
+    if (workspace.personId === personId) workspace.setPersonId('');
+    await loadPersons();
+  }
+
   function selectPerson(row: PersonLike) {
     if (!isOfficial(row)) {
       toast({ message: '该人物未审核通过，暂不能作为中心人物建立关系' }, true);
@@ -599,7 +607,23 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
               { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(row.gender) },
               { key: 'generationNo', title: '代次', width: 100, render: (_value, row) => row.generationNo ? `第${row.generationNo}世` : '-' },
               { key: 'generationWord', title: '字辈', width: 100, render: (_value, row) => row.generationWord || '-' },
-              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> }
+              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+              {
+                key: 'actions',
+                title: '操作',
+                width: 120,
+                render: (_value, row) => row.id ? (
+                  <DraftDeleteButton
+                    object={row}
+                    objectName={row.name}
+                    objectType="人物"
+                    onDelete={() => deletePersonApi(row.id!)}
+                    onDeleted={() => afterDeletePerson(row)}
+                    label="删除草稿"
+                    buttonProps={{ size: 'small' }}
+                  />
+                ) : null
+              }
             ]}
           />
         </Space>
