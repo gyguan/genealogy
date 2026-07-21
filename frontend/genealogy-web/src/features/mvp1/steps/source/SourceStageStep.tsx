@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Pagination, Select, Space, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
-import { deriveSourceStageState, resetSourceBindingSelection } from '../../domain/sourceStageModel';
+import {
+  SOURCE_BINDING_PAGE_SIZE,
+  deriveSourceStageState,
+  paginateSourceBindings,
+  resetSourceBindingSelection
+} from '../../domain/sourceStageModel';
 import { isOfficial } from '../../domain/status';
 import { loadBranches, type BranchLike } from '../../services/branchService';
 import { loadClans, type ClanLike } from '../../services/clanService';
@@ -32,6 +37,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
   const [persons, setPersons] = useState<PersonLike[]>([]);
   const [relationships, setRelationships] = useState<RelationshipLike[]>([]);
   const [links, setLinks] = useState<SourceLinkLike[]>([]);
+  const [linkPage, setLinkPage] = useState(1);
   const [sourceNameValue, setSourceNameValue] = useState('');
   const [sourceType, setSourceType] = useState('genealogy_book');
   const [targetType, setTargetType] = useState<TargetType>('person');
@@ -44,6 +50,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
   const stage = useMemo(() => deriveSourceStageState(sources, workspace.sourceId), [sources, workspace.sourceId]);
   const selectedSource = stage.selectedSource;
   const officialSources = useMemo(() => sources.filter(isOfficial), [sources]);
+  const pagedLinks = useMemo(() => paginateSourceBindings(links, linkPage), [links, linkPage]);
 
   function toast(text: string, error = false) {
     notify?.({ message: text }, error);
@@ -72,16 +79,36 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function refreshLinks(sourceId = workspace.sourceId) {
-    if (!sourceId) { setLinks([]); setLinksError(''); return; }
-    setLinksLoading(true); setLinksError('');
+    if (!sourceId) {
+      setLinks([]);
+      setLinksError('');
+      setLinkPage(1);
+      return;
+    }
+    setLinksLoading(true);
+    setLinksError('');
     try { setLinks(await loadSourceLinks(sourceId)); }
     catch (error) { setLinksError((error as Error).message || '查询已绑定对象失败'); }
     finally { setLinksLoading(false); }
   }
 
   useEffect(() => { void loadClans().then(rows => { setClans(rows); if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id)); }); }, []);
-  useEffect(() => { setTargetType('person'); setTargetId(''); setLinks([]); void Promise.all([refreshSources(false), refreshCandidates()]); }, [workspace.clanId]);
-  useEffect(() => { setTargetType('person'); setTargetId(''); void refreshLinks(); }, [workspace.sourceId]);
+  useEffect(() => {
+    setTargetType('person');
+    setTargetId('');
+    setLinks([]);
+    setLinkPage(1);
+    void Promise.all([refreshSources(false), refreshCandidates()]);
+  }, [workspace.clanId]);
+  useEffect(() => {
+    setTargetType('person');
+    setTargetId('');
+    setLinkPage(1);
+    void refreshLinks();
+  }, [workspace.sourceId]);
+  useEffect(() => {
+    setLinkPage(previous => Math.min(previous, pagedLinks.pageCount));
+  }, [pagedLinks.pageCount]);
 
   async function createSource(submit: boolean) {
     if (!workspace.clanId || !sourceNameValue.trim()) { toast(!workspace.clanId ? '请选择宗族' : '请填写来源名称', true); return; }
@@ -103,6 +130,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
   function chooseSource(row: SourceLike) {
     const next = String(row.id || '');
     const reset = resetSourceBindingSelection(workspace.sourceId, next);
+    setLinkPage(1);
     workspace.setSourceId(next);
     if (reset) { setTargetType(reset.targetType); setTargetId(reset.targetId); }
   }
@@ -123,6 +151,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
       await bindSourceApi(workspace.clanId, { sourceId: Number(workspace.sourceId), targetType, targetId: Number(actualTarget) });
       toast('来源绑定成功，已刷新当前来源的绑定记录。');
       setTargetId('');
+      setLinkPage(1);
       await refreshLinks();
     } catch (error) { toast((error as Error).message || '绑定来源失败', true); }
     finally { setBinding(false); }
@@ -142,7 +171,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
 
         <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
           <div className="wizard-form-grid source-stage-bind-grid">
-            <Field label="正式来源"><Select value={workspace.sourceId || undefined} onChange={value => { const row = officialSources.find(item => String(item.id) === value); if (row) chooseSource(row); else workspace.setSourceId(''); }} options={officialSources.map(row => ({ value: String(row.id), label: sourceName(row) }))} placeholder="请选择已审核通过的来源" allowClear /></Field>
+            <Field label="正式来源"><Select value={workspace.sourceId || undefined} onChange={value => { const row = officialSources.find(item => String(item.id) === value); if (row) chooseSource(row); else { setLinkPage(1); workspace.setSourceId(''); } }} options={officialSources.map(row => ({ value: String(row.id), label: sourceName(row) }))} placeholder="请选择已审核通过的来源" allowClear /></Field>
           </div>
           {!officialSources.length ? <Alert type="warning" showIcon message="暂无已审核通过的来源" description="请先在阶段一创建来源并提交审核。" /> : !stage.bindingOpen ? <Alert type="info" showIcon message="请选择正式来源后绑定对象" /> : <>
             <Typography.Paragraph>当前正式来源：<strong>{sourceName(selectedSource)}</strong></Typography.Paragraph>
@@ -153,7 +182,24 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
             <Space className="source-stage-actions" wrap><Button type="primary" loading={binding} disabled={!targetOptions.length} onClick={() => void bind()}>绑定来源</Button><Button loading={linksLoading} onClick={() => void refreshLinks()}>刷新已绑定对象</Button></Space>
           </>}
           {linksError ? <Alert type="error" showIcon message={linksError} action={<Button size="small" onClick={() => void refreshLinks()}>重试</Button>} /> : null}
-          <div className="source-stage-links"><h4>已绑定对象（{links.length}）</h4>{links.length ? links.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} />}</div>
+          <div className="source-stage-links">
+            <h4>已绑定对象（{links.length}）</h4>
+            {links.length ? <>
+              {pagedLinks.rows.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>)}
+              {pagedLinks.total > SOURCE_BINDING_PAGE_SIZE ? <div className="source-stage-pagination">
+                <Pagination
+                  size="small"
+                  aria-label="已绑定对象分页"
+                  current={pagedLinks.page}
+                  pageSize={SOURCE_BINDING_PAGE_SIZE}
+                  total={pagedLinks.total}
+                  showSizeChanger={false}
+                  showTotal={total => `共 ${total} 条`}
+                  onChange={setLinkPage}
+                />
+              </div> : null}
+            </> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} />}
+          </div>
         </Card>
       </div>
     </Panel>
