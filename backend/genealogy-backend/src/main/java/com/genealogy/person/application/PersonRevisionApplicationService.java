@@ -2,6 +2,7 @@ package com.genealogy.person.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.person.dto.PersonCreateRequest;
@@ -89,6 +90,11 @@ public class PersonRevisionApplicationService {
     @Transactional
     public void delete(Long id, Long actorId) {
         PersonEntity current = getActiveEntity(id);
+        if (DraftDeletePolicy.isDraft(current.getDataStatus())) {
+            personApplicationService.delete(id, actorId);
+            return;
+        }
+
         authorizationApplicationService.requireBranchPermission(current.getClanId(), actorId, current.getBranchId(), PERSON_DELETE);
         PersonEntity after = copyOf(current);
         after.setDataStatus(STATUS_PENDING_REVIEW);
