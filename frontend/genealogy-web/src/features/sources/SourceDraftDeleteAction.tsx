@@ -30,6 +30,7 @@ export function SourceDraftDeleteAction({ notify }: Props) {
       setLoadError('');
       return () => { active = false; };
     }
+    setDetail(null);
     setLoading(true);
     setLoadError('');
     getSourceDetail(sourceId)
