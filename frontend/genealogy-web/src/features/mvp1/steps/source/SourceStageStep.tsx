@@ -157,35 +157,37 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
   }
 
   return (
-    <Panel title="来源证据" description="先创建或选择来源；仅审核通过的来源可以进入对象绑定阶段。">
+    <Panel title="来源证据" description="先创建并审核来源，再在绑定阶段选择已审核通过的来源。">
       <div className="source-stage-layout">
-        <Card title={<Space><span>阶段一：创建或选择来源</span><Tag color={stage.bindingOpen ? 'success' : 'processing'}>{stage.bindingOpen ? '已完成' : '处理中'}</Tag></Space>}>
+        <Card title={<Space><span>阶段一：创建来源</span><Tag color="processing">创建与审核</Tag></Space>}>
           <div className="wizard-form-grid">
             <Field label="适用宗族 *"><select value={workspace.clanId} onChange={event => workspace.patch({ clanId: event.target.value, sourceId: '' })}><option value="">请选择宗族</option>{clans.map(row => <option key={row.id} value={String(row.id)}>{clanName(row)}</option>)}</select></Field>
-            <Field label="已有正式来源"><select value={workspace.sourceId} onChange={event => { const row = officialSources.find(item => String(item.id) === event.target.value); if (row) chooseSource(row); else workspace.setSourceId(''); }}><option value="">请选择已通过来源</option>{officialSources.map(row => <option key={row.id} value={String(row.id)}>{sourceName(row)}</option>)}</select></Field>
             <Field label="来源名称 *"><input value={sourceNameValue} onChange={event => setSourceNameValue(event.target.value)} placeholder="例如：民国二十年族谱" /></Field>
             <Field label="来源类型"><Select value={sourceType} onChange={setSourceType} options={sourceTypes} /></Field>
           </div>
           <Space className="source-stage-actions" wrap><Button type="primary" loading={saving} onClick={() => void createSource(false)}>保存来源草稿</Button><Button loading={saving} onClick={() => void createSource(true)}>保存并提交审核</Button><Button loading={loading} onClick={() => void refreshSources()}>刷新来源</Button></Space>
           {selectedReviewable.length ? <Alert className="source-stage-batch" type="info" showIcon message={`已选择 ${selectedReviewable.length} 条可提交来源`} action={<Button loading={submitting} onClick={() => void submitBatch()}>批量提交审核</Button>} /> : null}
           <ResultListCard<SourceLike> size="small" rowKey={row => String(row.id || '')} loading={loading} dataSource={sources} pagination={{ pageSize: 8, hideOnSinglePage: true }} rowSelection={{ selectedRowKeys: selectedRows, onChange: setSelectedRows, getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id }) }} columns={[
-            { title: `来源名称（${sources.length}）`, key: 'name', render: (_, row) => <Button type="link" onClick={() => chooseSource(row)}>{sourceName(row)}{String(row.id) === workspace.sourceId ? ' · 已选择' : ''}</Button> },
+            { title: `来源名称（${sources.length}）`, key: 'name', render: (_, row) => sourceName(row) },
             { title: '状态', key: 'status', width: 120, render: (_, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-            { title: '操作', key: 'action', width: 130, render: (_, row) => isReviewable(row) ? <Button size="small" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : <Button size="small" onClick={() => chooseSource(row)} disabled={!isOfficial(row)}>选择</Button> }
+            { title: '操作', key: 'action', width: 130, render: (_, row) => isReviewable(row) ? <Button size="small" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : <Typography.Text type="secondary">已审核通过</Typography.Text> }
           ]} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无来源，先创建来源草稿" /> }} />
         </Card>
 
-        <Card title={<Space><span>阶段二：绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '未开放'}</Tag></Space>}>
-          {!stage.bindingOpen ? <Alert type="warning" showIcon message="绑定阶段暂未开放" description={stage.stageTwoReason} /> : <>
+        <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
+          <div className="wizard-form-grid source-stage-bind-grid">
+            <Field label="正式来源"><Select value={workspace.sourceId || undefined} onChange={value => { const row = officialSources.find(item => String(item.id) === value); if (row) chooseSource(row); else workspace.setSourceId(''); }} options={officialSources.map(row => ({ value: String(row.id), label: sourceName(row) }))} placeholder="请选择已审核通过的来源" allowClear /></Field>
+          </div>
+          {!officialSources.length ? <Alert type="warning" showIcon message="暂无已审核通过的来源" description="请先在阶段一创建来源并提交审核。" /> : !stage.bindingOpen ? <Alert type="info" showIcon message="请选择正式来源后绑定对象" /> : <>
             <Typography.Paragraph>当前正式来源：<strong>{sourceName(selectedSource)}</strong></Typography.Paragraph>
             <div className="wizard-form-grid source-stage-bind-grid">
-              <Field label="绑定对象类型"><Select value={targetType} onChange={value => { setTargetType(value); setTargetId(''); }} options={[['person','人物'],['relationship','关系'],['branch','支派'],['clan','宗族']].map(([value,label]) => ({ value, label }))} /></Field>
+              <Field label="绑定对象类型"><Select value={targetType} onChange={value => { setTargetType(value); setTargetId(''); }} options={[["person","人物"],["relationship","关系"],["branch","支派"],["clan","宗族"]].map(([value,label]) => ({ value, label }))} /></Field>
               <Field label="绑定对象"><Select value={targetId || (targetType === 'clan' ? workspace.clanId : '')} onChange={setTargetId} options={targetOptions} placeholder={`请选择${targetTypeText(targetType)}`} /></Field>
             </div>
             <Space className="source-stage-actions" wrap><Button type="primary" loading={binding} disabled={!targetOptions.length} onClick={() => void bind()}>绑定来源</Button><Button loading={linksLoading} onClick={() => void refreshLinks()}>刷新已绑定对象</Button></Space>
           </>}
           {linksError ? <Alert type="error" showIcon message={linksError} action={<Button size="small" onClick={() => void refreshLinks()}>重试</Button>} /> : null}
-          <div className="source-stage-links"><h4>已绑定对象（{links.length}）</h4>{links.length ? links.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '绑定阶段开放后显示记录'} />}</div>
+          <div className="source-stage-links"><h4>已绑定对象（{links.length}）</h4>{links.length ? links.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} />}</div>
         </Card>
       </div>
     </Panel>
