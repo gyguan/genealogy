@@ -18,8 +18,9 @@ export function allowedActionList(object: DraftDeleteObject | null | undefined) 
 }
 
 export function canDirectDeleteDraft(object: DraftDeleteObject | null | undefined) {
-  const actions = allowedActionList(object);
-  if (actions.length) return actions.includes('delete');
+  if (Array.isArray(object?.allowedActions)) {
+    return allowedActionList(object).includes('delete');
+  }
   return objectLifecycleStatus(object) === 'draft';
 }
 
