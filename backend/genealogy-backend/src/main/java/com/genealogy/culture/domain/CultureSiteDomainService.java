@@ -1,5 +1,6 @@
 package com.genealogy.culture.domain;
 
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.dto.CultureSiteCreateRequest;
 import com.genealogy.culture.dto.CultureSiteSearchCriteria;
@@ -95,6 +96,18 @@ public class CultureSiteDomainService {
             throw new BusinessException("CULTURE_SITE_PENDING_REVIEW", "文化场所正在审核中，不能直接修改");
         }
         throw new BusinessException("CULTURE_SITE_REVIEW_REQUIRED", "正式或归档文化场所不能直接修改，需提交审核变更");
+    }
+
+    public void requireDirectlyDeletable(CultureSiteEntity entity) {
+        DraftDeletePolicy.requireDraft(
+                entity == null ? null : entity.getDataStatus(),
+                "CULTURE_SITE_DELETE_DRAFT_ONLY",
+                "仅草稿文化场所可直接删除"
+        );
+    }
+
+    public boolean isDirectlyDeletable(CultureSiteEntity entity) {
+        return entity != null && DraftDeletePolicy.isDraft(entity.getDataStatus());
     }
 
     public void requireExpectedVersion(CultureSiteEntity entity, Long expectedVersion) {
@@ -258,5 +271,6 @@ public class CultureSiteDomainService {
             String sensitiveLevel,
             boolean featuredOnHome,
             Integer sortOrder
-    ) {}
+    ) {
+    }
 }
