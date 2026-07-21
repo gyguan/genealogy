@@ -1,60 +1,97 @@
-import { Select } from 'antd';
+import type { MouseEvent, ReactNode } from 'react';
+import { Button, Divider, Select, Space } from 'antd';
 import type { SelectProps } from 'antd';
 
-const SELECT_ALL_VALUE = '__query_select_all__';
+export type QueryMultiSelectValue = string | number;
 
-export type QueryMultiSelectOption = {
-  value: string;
-  label: string;
+export type QueryMultiSelectOption<Value extends QueryMultiSelectValue = string> = {
+  value?: Value;
+  label: ReactNode;
   disabled?: boolean;
+  options?: QueryMultiSelectOption<Value>[];
 };
 
-type Props = Omit<SelectProps<string[]>, 'mode' | 'options' | 'value' | 'onChange'> & {
-  value?: string[];
-  options: QueryMultiSelectOption[];
-  onChange?: (value: string[]) => void;
+type Props<Value extends QueryMultiSelectValue = string> = Omit<
+  SelectProps<Value[]>,
+  'mode' | 'options' | 'value' | 'onChange' | 'popupRender'
+> & {
+  value?: Value[];
+  options: QueryMultiSelectOption<Value>[];
+  onChange?: (value: Value[]) => void;
   selectAllLabel?: string;
+  clearLabel?: string;
 };
+
+function selectableValues<Value extends QueryMultiSelectValue>(options: QueryMultiSelectOption<Value>[]): Value[] {
+  const values = options.flatMap(option => {
+    if (option.options?.length) return selectableValues(option.options);
+    if (option.disabled || option.value === undefined) return [];
+    return [option.value];
+  });
+  return Array.from(new Set(values));
+}
 
 /**
- * Standard multi-select for query filters.
+ * Unified Ant Design multi-select for query filters.
  *
- * The synthetic select-all option never leaks into form state or API params.
- * Selecting it toggles between all enabled values and an empty selection.
+ * It keeps page-specific values and serialization outside the component while
+ * standardizing search, clear, responsive tags and select-all interactions.
  */
-export function QueryMultiSelect({
+export function QueryMultiSelect<Value extends QueryMultiSelectValue = string>({
   value = [],
   options,
   onChange,
   selectAllLabel = '全选',
+  clearLabel = '清空',
+  allowClear = true,
+  showSearch = true,
+  optionFilterProp = 'label',
+  maxTagCount = 'responsive',
+  className,
+  style,
   ...props
-}: Props) {
-  const enabledValues = options.filter(option => !option.disabled).map(option => option.value);
-  const selectedValues = value.filter(item => enabledValues.includes(item));
-  const allSelected = enabledValues.length > 0 && enabledValues.every(item => selectedValues.includes(item));
+}: Props<Value>) {
+  const enabledValues = selectableValues(options);
+  const selectedValues = new Set(value);
+  const allSelected = enabledValues.length > 0 && enabledValues.every(optionValue => selectedValues.has(optionValue));
 
-  const mergedOptions: QueryMultiSelectOption[] = [
-    { value: SELECT_ALL_VALUE, label: allSelected ? '取消全选' : selectAllLabel },
-    ...options
-  ];
+  function preventDropdownClose(event: MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
 
   return (
-    <Select<string[]>
+    <Select<Value[]>
       {...props}
+      className={['query-multi-select', className].filter(Boolean).join(' ')}
+      style={{ width: '100%', ...style }}
       mode="multiple"
-      allowClear
-      showSearch
-      optionFilterProp="label"
-      maxTagCount="responsive"
-      value={selectedValues}
-      options={mergedOptions}
-      onChange={nextValue => {
-        if (nextValue.includes(SELECT_ALL_VALUE)) {
-          onChange?.(allSelected ? [] : enabledValues);
-          return;
-        }
-        onChange?.(nextValue.filter(item => item !== SELECT_ALL_VALUE));
-      }}
+      allowClear={allowClear}
+      showSearch={showSearch}
+      optionFilterProp={optionFilterProp}
+      maxTagCount={maxTagCount}
+      value={value}
+      options={options as SelectProps<Value[]>['options']}
+      popupRender={menu => (
+        <div className="query-multi-select-popup">
+          <Space className="query-multi-select-popup-actions" size={4} onMouseDown={preventDropdownClose}>
+            <Button
+              type="text"
+              size="small"
+              disabled={allSelected || enabledValues.length === 0}
+              onClick={() => onChange?.(enabledValues)}
+            >
+              {selectAllLabel}
+            </Button>
+            <Button type="text" size="small" disabled={value.length === 0} onClick={() => onChange?.([])}>
+              {clearLabel}
+            </Button>
+          </Space>
+          <Divider className="query-multi-select-popup-divider" />
+          {menu}
+        </div>
+      )}
+      onChange={nextValue => onChange?.(nextValue as Value[])}
     />
   );
 }

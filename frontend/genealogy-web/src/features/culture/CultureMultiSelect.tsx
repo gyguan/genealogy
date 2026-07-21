@@ -1,5 +1,5 @@
-import type { MouseEvent, ReactNode } from 'react';
-import { Button, Select, Space } from 'antd';
+import type { ReactNode } from 'react';
+import { QueryMultiSelect } from '../../shared/ui/QueryMultiSelect';
 
 export type CultureSelectValue = string | number;
 export type CultureSelectOption = {
@@ -31,21 +31,9 @@ export function CultureMultiSelect({
   onChange,
   'aria-label': ariaLabel
 }: Props) {
-  const selectableValues = options.filter(option => !option.disabled).map(option => option.value);
-  const selectedValues = new Set(value);
-  const allSelected = selectableValues.length > 0 && selectableValues.every(optionValue => selectedValues.has(optionValue));
-
-  function preventDropdownClose(event: MouseEvent<HTMLElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
   return (
-    <Select
+    <QueryMultiSelect<CultureSelectValue>
       aria-label={ariaLabel}
-      mode="multiple"
-      allowClear
-      maxTagCount="responsive"
       value={value}
       options={options}
       placeholder={placeholder}
@@ -53,25 +41,7 @@ export function CultureMultiSelect({
       disabled={disabled}
       showSearch={showSearch}
       optionFilterProp={optionFilterProp}
-      onChange={next => onChange?.(next as CultureSelectValue[])}
-      dropdownRender={menu => (
-        <div className="culture-multi-select-dropdown">
-          <Space className="culture-multi-select-actions" size={4} onMouseDown={preventDropdownClose}>
-            <Button
-              type="text"
-              size="small"
-              disabled={allSelected || selectableValues.length === 0}
-              onClick={() => onChange?.(selectableValues)}
-            >
-              全选
-            </Button>
-            <Button type="text" size="small" disabled={value.length === 0} onClick={() => onChange?.([])}>
-              清空
-            </Button>
-          </Space>
-          {menu}
-        </div>
-      )}
+      onChange={onChange}
     />
   );
 }

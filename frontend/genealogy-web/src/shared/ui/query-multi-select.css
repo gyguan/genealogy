@@ -1,0 +1,57 @@
+/* Unified Ant Design multi-select appearance across query pages. */
+.ant-select-multiple {
+  width: 100%;
+}
+
+.ant-select-multiple:not(.ant-select-sm):not(.ant-select-lg) .ant-select-selector {
+  min-height: 32px;
+  padding: 1px 4px;
+  border-radius: 6px;
+}
+
+.ant-select-multiple .ant-select-selection-overflow {
+  row-gap: 2px;
+}
+
+.ant-select-multiple .ant-select-selection-item {
+  height: 24px;
+  line-height: 22px;
+  margin-block: 2px;
+  border-radius: 4px;
+}
+
+.query-multi-select-popup-actions,
+.import-filter-popup-actions,
+.tracking-multi-popup-actions,
+.culture-multi-select-actions,
+.lineage-select-all-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.query-multi-select-popup-actions .ant-btn,
+.import-filter-popup-actions .ant-btn,
+.tracking-multi-popup-actions .ant-btn,
+.culture-multi-select-actions .ant-btn,
+.lineage-select-all-actions .ant-btn {
+  height: 24px;
+  padding-inline: 8px;
+  color: #1677ff;
+  font-size: 12px;
+}
+
+.query-multi-select-popup-divider,
+.import-filter-popup-divider,
+.tracking-multi-popup-divider,
+.lineage-select-all-divider {
+  margin: 0 0 4px !important;
+}
+
+@media (max-width: 767px) {
+  .ant-select-multiple:not(.ant-select-sm):not(.ant-select-lg) .ant-select-selector {
+    min-height: 36px;
+  }
+}
