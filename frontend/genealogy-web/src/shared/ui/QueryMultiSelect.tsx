@@ -1,6 +1,8 @@
-import type { MouseEvent, ReactNode } from 'react';
-import { Button, Divider, Select, Space } from 'antd';
+import type { ReactNode } from 'react';
+import { Select } from 'antd';
 import type { SelectProps } from 'antd';
+
+const SELECT_ALL_VALUE = '__query_select_all__';
 
 export type QueryMultiSelectValue = string | number;
 
@@ -19,7 +21,6 @@ type Props<Value extends QueryMultiSelectValue = string> = Omit<
   options: QueryMultiSelectOption<Value>[];
   onChange?: (value: Value[]) => void;
   selectAllLabel?: string;
-  clearLabel?: string;
 };
 
 function selectableValues<Value extends QueryMultiSelectValue>(options: QueryMultiSelectOption<Value>[]): Value[] {
@@ -32,17 +33,17 @@ function selectableValues<Value extends QueryMultiSelectValue>(options: QueryMul
 }
 
 /**
- * Unified Ant Design multi-select for query filters.
+ * Unified query multi-select based on the native Ant Design option style.
  *
- * It keeps page-specific values and serialization outside the component while
- * standardizing search, clear, responsive tags and select-all interactions.
+ * Page-specific values and serialization stay outside the component. The
+ * synthetic select-all option is consumed internally and never reaches forms,
+ * URLs or API parameters.
  */
 export function QueryMultiSelect<Value extends QueryMultiSelectValue = string>({
   value = [],
   options,
   onChange,
-  selectAllLabel = '全选',
-  clearLabel = '清空',
+  selectAllLabel = '全选 / 取消全选',
   allowClear = true,
   showSearch = true,
   optionFilterProp = 'label',
@@ -54,11 +55,10 @@ export function QueryMultiSelect<Value extends QueryMultiSelectValue = string>({
   const enabledValues = selectableValues(options);
   const selectedValues = new Set(value);
   const allSelected = enabledValues.length > 0 && enabledValues.every(optionValue => selectedValues.has(optionValue));
-
-  function preventDropdownClose(event: MouseEvent<HTMLElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
+  const mergedOptions = [
+    { value: SELECT_ALL_VALUE, label: selectAllLabel },
+    ...options
+  ] as SelectProps<Value[]>['options'];
 
   return (
     <Select<Value[]>
@@ -71,27 +71,15 @@ export function QueryMultiSelect<Value extends QueryMultiSelectValue = string>({
       optionFilterProp={optionFilterProp}
       maxTagCount={maxTagCount}
       value={value}
-      options={options as SelectProps<Value[]>['options']}
-      popupRender={menu => (
-        <div className="query-multi-select-popup">
-          <Space className="query-multi-select-popup-actions" size={4} onMouseDown={preventDropdownClose}>
-            <Button
-              type="text"
-              size="small"
-              disabled={allSelected || enabledValues.length === 0}
-              onClick={() => onChange?.(enabledValues)}
-            >
-              {selectAllLabel}
-            </Button>
-            <Button type="text" size="small" disabled={value.length === 0} onClick={() => onChange?.([])}>
-              {clearLabel}
-            </Button>
-          </Space>
-          <Divider className="query-multi-select-popup-divider" />
-          {menu}
-        </div>
-      )}
-      onChange={nextValue => onChange?.(nextValue as Value[])}
+      options={mergedOptions}
+      onChange={nextValue => {
+        const rawValues = nextValue as QueryMultiSelectValue[];
+        if (rawValues.includes(SELECT_ALL_VALUE)) {
+          onChange?.(allSelected ? [] : enabledValues);
+          return;
+        }
+        onChange?.(rawValues.filter(item => item !== SELECT_ALL_VALUE) as Value[]);
+      }}
     />
   );
 }
