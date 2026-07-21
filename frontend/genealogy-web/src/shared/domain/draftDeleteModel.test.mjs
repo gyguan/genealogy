@@ -18,6 +18,7 @@ test('draft status enables direct delete when allowedActions are absent', () => 
 
 test('allowedActions remain the source of truth when provided', () => {
   assert.deepEqual(allowedActionList({ allowedActions: ['view', 'delete'] }), ['view', 'delete']);
+  assert.equal(canDirectDeleteDraft({ dataStatus: 'draft', allowedActions: [] }), false);
   assert.equal(canDirectDeleteDraft({ dataStatus: 'draft', allowedActions: ['view'] }), false);
   assert.equal(canDirectDeleteDraft({ dataStatus: 'rejected', allowedActions: ['view', 'delete'] }), true);
   assert.equal(canRequestDelete({ dataStatus: 'official', allowedActions: ['request_delete'] }), true);
