@@ -1,10 +1,12 @@
 package com.genealogy.source.entity;
 
+import com.genealogy.common.domain.DraftDeletePolicy;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PreRemove;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -57,4 +59,13 @@ public class SourceEntity {
     private Long createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @PreRemove
+    void requireDraftForDirectDelete() {
+        DraftDeletePolicy.requireDraft(
+                verificationStatus,
+                "SOURCE_DELETE_DRAFT_ONLY",
+                "仅草稿来源可直接删除"
+        );
+    }
 }
