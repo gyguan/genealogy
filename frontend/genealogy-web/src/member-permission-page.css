@@ -2,6 +2,12 @@
   align-items: flex-end;
 }
 
+.business-page--memberManage .member-role-page > .ant-card:first-child .ant-col > .ant-typography-secondary:first-child {
+  display: block;
+  margin-bottom: 8px;
+  line-height: 22px;
+}
+
 .member-role-page > .ant-alert {
   display: none;
 }
