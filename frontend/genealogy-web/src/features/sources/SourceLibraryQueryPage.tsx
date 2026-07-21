@@ -37,6 +37,7 @@ import {
 import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
+import { QueryMultiSelect, readMultiValue, writeMultiValue } from '../../shared/ui/QueryMultiSelect';
 import {
   createSource,
   deleteSourceAttachment,
@@ -113,8 +114,8 @@ type SourceCreateFormValues = {
 };
 type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {
   clanId?: string;
-  hasAttachment?: string;
-  hasBinding?: string;
+  hasAttachment?: string[];
+  hasBinding?: string[];
 };
 
 const sourceTypeOptions = [
@@ -215,16 +216,12 @@ function formatDateTime(value?: string) {
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
   }).format(date).replaceAll('/', '-');
 }
-function boolFilter(value?: string) {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return undefined;
-}
+
 function hasActiveSearch(value: SourceSearchParams) {
-  return Boolean(value.keyword || value.sourceType || value.verificationStatus || value.privacyLevel || value.hasAttachment !== undefined || value.hasBinding !== undefined);
+  return Boolean(value.keyword || value.sourceType?.length || value.verificationStatus?.length || value.privacyLevel?.length || value.hasAttachment?.length || value.hasBinding?.length);
 }
 function hasAdvancedSearch(value: SourceSearchParams) {
-  return Boolean(value.privacyLevel || value.hasAttachment !== undefined || value.hasBinding !== undefined);
+  return Boolean(value.privacyLevel?.length || value.hasAttachment?.length || value.hasBinding?.length);
 }
 function personOptionLabel(row: PersonOption) {
   const name = row.genealogyName || row.name || '未命名人物';
@@ -268,16 +265,8 @@ function readSearchFromUrl(): SourceSearchParams {
     const parsed = Number(params.get(name));
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
   };
-  const optionValue = (name: string, values: Set<string>) => {
-    const value = params.get(name);
-    return value && values.has(value) ? value : undefined;
-  };
-  const boolValue = (name: string) => {
-    const value = params.get(name);
-    if (value === 'true') return true;
-    if (value === 'false') return false;
-    return undefined;
-  };
+  const optionValues = (name: string, values: Set<string>) => readMultiValue(params, name, values);
+  const boolValues = (name: string) => readMultiValue(params, name, new Set(['true', 'false'])).map(value => value === 'true');
   const rawPageSize = positiveInt('pageSize', 10);
   const rawSort = params.get('sort') || '';
   return {
@@ -285,19 +274,19 @@ function readSearchFromUrl(): SourceSearchParams {
     pageSize: SOURCE_PAGE_SIZES.has(rawPageSize) ? rawPageSize : 10,
     sort: /^[A-Za-z][A-Za-z0-9_]*,(asc|desc)$/.test(rawSort) ? rawSort : 'updatedAt,desc',
     keyword: params.get('keyword') || undefined,
-    sourceType: optionValue('sourceType', typeValues),
-    verificationStatus: optionValue('verificationStatus', statusValues),
-    privacyLevel: optionValue('privacyLevel', privacyValues),
-    hasAttachment: boolValue('hasAttachment'),
-    hasBinding: boolValue('hasBinding')
+    sourceType: optionValues('sourceType', typeValues),
+    verificationStatus: optionValues('verificationStatus', statusValues),
+    privacyLevel: optionValues('privacyLevel', privacyValues),
+    hasAttachment: boolValues('hasAttachment'),
+    hasBinding: boolValues('hasBinding')
   };
 }
 function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {
   return {
     ...value,
     clanId: clanId || undefined,
-    hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),
-    hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)
+    hasAttachment: value.hasAttachment?.map(item => String(item)),
+    hasBinding: value.hasBinding?.map(item => String(item))
   };
 }
 function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
@@ -308,7 +297,9 @@ function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 
   url.searchParams.delete('sourceId');
   ['keyword', 'sourceType', 'verificationStatus', 'privacyLevel', 'hasAttachment', 'hasBinding', 'pageNo', 'pageSize', 'sort'].forEach(key => url.searchParams.delete(key));
   Object.entries(value).forEach(([key, item]) => {
-    if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
+    if (Array.isArray(item)) {
+      writeMultiValue(url.searchParams, key, item.map(value => String(value)));
+    } else if (item !== undefined && item !== null && item !== '') url.searchParams.set(key, String(item));
   });
   const sourceLibraryScrollY = Number(window.history.state?.sourceLibraryScrollY ?? window.scrollY);
   window.history[mode === 'push' ? 'pushState' : 'replaceState']({ ...window.history.state, sourceLibraryScrollY }, '', `${url.pathname}${url.search}`);
@@ -546,8 +537,8 @@ export function SourceLibraryQueryPage({ notify }: Props) {
     const { clanId: nextClanId, hasAttachment, hasBinding, ...filters } = values;
     const next: SourceSearchParams = {
       ...filters,
-      hasAttachment: boolFilter(hasAttachment),
-      hasBinding: boolFilter(hasBinding),
+      hasAttachment: hasAttachment?.map(item => item === 'true'),
+      hasBinding: hasBinding?.map(item => item === 'true'),
       pageNo: 1,
       pageSize: search.pageSize || 10,
       sort: search.sort || 'updatedAt,desc'
@@ -949,8 +940,8 @@ export function SourceLibraryQueryPage({ notify }: Props) {
                 <Select showSearch optionFilterProp="label" loading={clanLoading} placeholder="请选择宗族" options={clans.filter(row => row.id).map(row => ({ value: String(row.id), label: clanOptionLabel(row) }))} />
               </Form.Item>
               <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名称、提供者、书名或摘录" /></Form.Item>
-              <Form.Item name="sourceType" label="来源类型"><Select allowClear placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>
-              <Form.Item name="verificationStatus" label="资料状态"><Select allowClear placeholder="全部状态" options={statusOptions} /></Form.Item>
+              <Form.Item name="sourceType" label="来源类型"><QueryMultiSelect placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>
+              <Form.Item name="verificationStatus" label="资料状态"><QueryMultiSelect placeholder="全部状态" options={statusOptions} /></Form.Item>
             </div>
             <Collapse
               ghost
@@ -962,9 +953,9 @@ export function SourceLibraryQueryPage({ notify }: Props) {
                 label: advancedOpen ? '收起筛选' : '更多筛选',
                 children: (
                   <div className="source-library-query-grid source-library-query-grid--advanced">
-                    <Form.Item name="privacyLevel" label="可见范围"><Select allowClear placeholder="全部范围" options={privacyOptions} /></Form.Item>
-                    <Form.Item name="hasAttachment" label="附件情况"><Select allowClear placeholder="全部" options={booleanOptions.attachment} /></Form.Item>
-                    <Form.Item name="hasBinding" label="引用情况"><Select allowClear placeholder="全部" options={booleanOptions.binding} /></Form.Item>
+                    <Form.Item name="privacyLevel" label="可见范围"><QueryMultiSelect placeholder="全部范围" options={privacyOptions} /></Form.Item>
+                    <Form.Item name="hasAttachment" label="附件情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.attachment} /></Form.Item>
+                    <Form.Item name="hasBinding" label="引用情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.binding} /></Form.Item>
                   </div>
                 )
               }]}
