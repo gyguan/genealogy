@@ -93,3 +93,54 @@
   border-color: #d9d9d9;
   box-shadow: none;
 }
+
+/*
+ * Ant Design Space wraps each button in .ant-space-item. The original direct
+ * child selector therefore missed the person archive query action. Culture
+ * query buttons are default buttons, so the zero-specificity :where() rule was
+ * also overridden by Ant Design. These selectors target only the final submit
+ * action and intentionally carry normal specificity.
+ */
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn,
+.culture-search-actions .ant-space-item:last-child > .ant-btn {
+  color: #fff;
+  background: #1677ff;
+  border-color: #1677ff;
+  box-shadow: 0 2px 0 rgba(5, 145, 255, 0.1);
+}
+
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn:not(.ant-btn-loading)::before,
+.culture-search-actions .ant-space-item:last-child > .ant-btn:not(.ant-btn-loading)::before {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='m16 16 5 5' fill='none' stroke='black' stroke-linecap='round' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='m16 16 5 5' fill='none' stroke='black' stroke-linecap='round' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn:not(:disabled):not(.ant-btn-disabled):hover,
+.culture-search-actions .ant-space-item:last-child > .ant-btn:not(:disabled):not(.ant-btn-disabled):hover {
+  color: #fff;
+  background: #4096ff;
+  border-color: #4096ff;
+}
+
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn:not(:disabled):not(.ant-btn-disabled):active,
+.culture-search-actions .ant-space-item:last-child > .ant-btn:not(:disabled):not(.ant-btn-disabled):active {
+  color: #fff;
+  background: #0958d9;
+  border-color: #0958d9;
+}
+
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn:disabled,
+.person-archive-query-actions > .ant-space-item:last-child > .ant-btn.ant-btn-disabled,
+.culture-search-actions .ant-space-item:last-child > .ant-btn:disabled,
+.culture-search-actions .ant-space-item:last-child > .ant-btn.ant-btn-disabled {
+  color: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: #d9d9d9;
+  box-shadow: none;
+}
