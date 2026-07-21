@@ -8,22 +8,25 @@ const globalStyleEntry = readFileSync(new URL('../../lineage-result-toolbar-refi
 const importWrapper = readFileSync(new URL('../../features/imports/ImportFilterMultiSelect.tsx', import.meta.url), 'utf8');
 const trackingWrapper = readFileSync(new URL('../../features/logs/TrackingMultiSelect.tsx', import.meta.url), 'utf8');
 const cultureWrapper = readFileSync(new URL('../../features/culture/CultureMultiSelect.tsx', import.meta.url), 'utf8');
+const personArchiveSource = readFileSync(new URL('../../features/persons/PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
+const workbenchSource = readFileSync(new URL('../../features/workbench/EditingWorkspacePage.tsx', import.meta.url), 'utf8');
 
 const wrappers = [importWrapper, trackingWrapper, cultureWrapper];
 
-test('shared query multi-select uses the unified Ant Design interaction', () => {
+test('shared query multi-select uses native Ant Design options', () => {
   assert.match(queryMultiSelectSource, /<Select<Value\[\]>/);
   assert.match(queryMultiSelectSource, /mode="multiple"/);
   assert.match(queryMultiSelectSource, /allowClear=\{allowClear\}/);
   assert.match(queryMultiSelectSource, /showSearch=\{showSearch\}/);
   assert.match(queryMultiSelectSource, /maxTagCount=\{maxTagCount\}/);
-  assert.match(queryMultiSelectSource, /popupRender=\{menu =>/);
-  assert.match(queryMultiSelectSource, /query-multi-select-popup-actions/);
-  assert.match(queryMultiSelectSource, /\{selectAllLabel\}/);
-  assert.match(queryMultiSelectSource, /\{clearLabel\}/);
+  assert.match(queryMultiSelectSource, /SELECT_ALL_VALUE/);
+  assert.match(queryMultiSelectSource, /全选 \/ 取消全选/);
+  assert.match(queryMultiSelectSource, /options=\{mergedOptions\}/);
+  assert.doesNotMatch(queryMultiSelectSource, /popupRender|dropdownRender/);
+  assert.doesNotMatch(queryMultiSelectSource, /<Button|<Divider|<Space/);
 });
 
-test('feature-specific multi-selects are thin wrappers over the shared component', () => {
+test('feature-specific multi-selects stay thin wrappers over the shared component', () => {
   wrappers.forEach(source => {
     assert.match(source, /import \{ QueryMultiSelect \}/);
     assert.match(source, /<QueryMultiSelect/);
@@ -32,13 +35,24 @@ test('feature-specific multi-selects are thin wrappers over the shared component
   });
 });
 
-test('global styles normalize all Ant Design multiple selects and legacy popup action rows', () => {
+test('shared and direct query selects expose the same Ant select-all option label', () => {
+  assert.match(queryMultiSelectSource, /全选 \/ 取消全选/);
+  assert.match(personArchiveSource, /全选 \/ 取消全选/);
+  assert.match(workbenchSource, /全选 \/ 取消全选/);
+});
+
+test('global styles preserve Ant-native selector and tag states', () => {
   assert.match(globalStyleEntry, /@import '\.\/shared\/ui\/query-multi-select\.css';/);
   assert.match(unifiedStyles, /\.ant-select-multiple/);
-  assert.match(unifiedStyles, /\.ant-select-selection-item/);
-  assert.match(unifiedStyles, /\.query-multi-select-popup-actions/);
-  assert.match(unifiedStyles, /\.import-filter-popup-actions/);
-  assert.match(unifiedStyles, /\.tracking-multi-popup-actions/);
-  assert.match(unifiedStyles, /\.culture-multi-select-actions/);
+  assert.doesNotMatch(unifiedStyles, /\.ant-select-selector\s*\{/);
+  assert.doesNotMatch(unifiedStyles, /\.ant-select-selection-item\s*\{/);
+  assert.doesNotMatch(unifiedStyles, /query-multi-select-popup-actions/);
+});
+
+test('legacy lineage actions are rendered with Ant option-row dimensions', () => {
   assert.match(unifiedStyles, /\.lineage-select-all-actions/);
+  assert.match(unifiedStyles, /height: 32px/);
+  assert.match(unifiedStyles, /padding: 5px 12px/);
+  assert.match(unifiedStyles, /border-radius: 4px/);
+  assert.match(unifiedStyles, /\.lineage-select-all-divider\s*\{[\s\S]*display: none/);
 });
