@@ -120,7 +120,17 @@ export function eventDateText(event: PersonEvent) {
   return dateByPrecision(event.eventDate, event.eventDatePrecision) || '时间未详';
 }
 
-export function relationshipName(row: any, side: 'from' | 'to') {
+export function relationshipName(row: any, sideOrCurrentPersonId: 'from' | 'to' | string) {
+  let side: 'from' | 'to';
+  if (sideOrCurrentPersonId === 'from' || sideOrCurrentPersonId === 'to') {
+    side = sideOrCurrentPersonId;
+  } else {
+    const currentPersonId = String(sideOrCurrentPersonId || '');
+    const fromPersonId = String(
+      row.fromPersonId || row.fromPerson?.id || row.sourcePersonId || row.sourcePerson?.id || ''
+    );
+    side = currentPersonId && fromPersonId === currentPersonId ? 'to' : 'from';
+  }
   if (side === 'from') return row.fromPersonName || row.fromName || row.sourcePersonName || row.personName || '起点人物待维护';
   return row.toPersonName || row.toName || row.targetPersonName || row.relativeName || '关联人物待维护';
 }
