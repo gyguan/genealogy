@@ -87,16 +87,6 @@
   display: none;
 }
 
-.tracking-more-button:has(.anticon-up) {
-  font-size: 0;
-}
-
-.tracking-more-button:has(.anticon-up)::before {
-  content: '收起筛选';
-  font-size: 14px;
-  font-weight: 400;
-}
-
 .tracking-more-button:hover,
 .tracking-more-button:focus-visible {
   color: #4096ff !important;
