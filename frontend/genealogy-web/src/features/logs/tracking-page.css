@@ -59,7 +59,21 @@
 }
 
 .tracking-more-button {
-  padding-inline: 8px;
+  height: 32px;
+  padding-inline: 4px;
+  margin: 0;
+  color: #1677ff;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.tracking-more-button:hover,
+.tracking-more-button:focus-visible {
+  color: #4096ff !important;
+}
+
+.tracking-more-button:active {
+  color: #0958d9 !important;
 }
 
 .tracking-result-card .ant-card-head-wrapper {
