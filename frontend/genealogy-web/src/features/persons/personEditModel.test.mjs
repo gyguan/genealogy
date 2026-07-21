@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   normalizePersonDate,
   normalizePersonDatePrecision,
@@ -14,6 +15,8 @@ import {
   legalPersonStatusActions,
   visiblePersonStatusActions
 } from '../../../.person-edit-test/features/persons/personStatusActions.js';
+
+const personEditPageSource = readFileSync(new URL('./PersonEditPage.tsx', import.meta.url), 'utf8');
 
 test('infers safe precision without inventing date parts', () => {
   assert.equal(normalizePersonDatePrecision(undefined, '1901'), 'year');
@@ -71,6 +74,16 @@ test('ordinary update payload never carries dataStatus', () => {
   const payload = toPersonUpdatePayload(form);
   assert.equal(Object.hasOwn(payload, 'dataStatus'), false);
   assert.equal(Object.hasOwn(form, 'dataStatus'), false);
+});
+
+test('person edit page hides precision selectors and keeps precision internally', () => {
+  assert.doesNotMatch(personEditPageSource, /label="出生日期精度"/);
+  assert.doesNotMatch(personEditPageSource, /label="逝世日期精度"/);
+  assert.match(personEditPageSource, /name="birthDatePrecision" hidden/);
+  assert.match(personEditPageSource, /name="deathDatePrecision" hidden/);
+  assert.match(personEditPageSource, /form\.setFieldValue\(precisionField, value \? 'day' : 'unknown'\)/);
+  assert.match(personEditPageSource, /placeholder="请选择出生日期"/);
+  assert.match(personEditPageSource, /placeholder="请选择逝世日期"/);
 });
 
 test('renders dates by precision without placeholder day or month', () => {
