@@ -1,0 +1,43 @@
+name: Fix Issue 652 Legacy Source Page
+
+on:
+  push:
+    branches:
+      - agent/issue-652-query-multiselect
+    paths:
+      - .github/workflows/fix-issue-652-legacy-source.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-652-query-multiselect
+      - name: Adapt legacy source page to array query contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx')
+          text = p.read_text()
+          text = text.replace("sourceType: optionValue('sourceType', typeValues),", "sourceType: optionValue('sourceType', typeValues) ? [optionValue('sourceType', typeValues)!] : undefined,")
+          text = text.replace("verificationStatus: optionValue('verificationStatus', statusValues),", "verificationStatus: optionValue('verificationStatus', statusValues) ? [optionValue('verificationStatus', statusValues)!] : undefined,")
+          text = text.replace("privacyLevel: optionValue('privacyLevel', privacyValues),", "privacyLevel: optionValue('privacyLevel', privacyValues) ? [optionValue('privacyLevel', privacyValues)!] : undefined,")
+          text = text.replace("hasAttachment: boolValue('hasAttachment'),", "hasAttachment: boolValue('hasAttachment') === undefined ? undefined : [boolValue('hasAttachment')!],")
+          text = text.replace("hasBinding: boolValue('hasBinding')", "hasBinding: boolValue('hasBinding') === undefined ? undefined : [boolValue('hasBinding')!]")
+          text = text.replace("hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),", "hasAttachment: value.hasAttachment?.[0] === undefined ? undefined : String(value.hasAttachment[0]),")
+          text = text.replace("hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)", "hasBinding: value.hasBinding?.[0] === undefined ? undefined : String(value.hasBinding[0])")
+          text = text.replace("hasAttachment: boolFilter(values.hasAttachment),", "hasAttachment: boolFilter(values.hasAttachment) === undefined ? undefined : [boolFilter(values.hasAttachment)!],")
+          text = text.replace("hasBinding: boolFilter(values.hasBinding),", "hasBinding: boolFilter(values.hasBinding) === undefined ? undefined : [boolFilter(values.hasBinding)!],")
+          p.write_text(text)
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx
+          git commit -m "fix(source): adapt legacy page to multi-value contract"
+          git push
