@@ -112,7 +112,11 @@ type SourceCreateFormValues = {
   privacyLevel?: string;
   sensitiveLevel?: string;
 };
-type SourceSearchFormValues = SourceSearchParams & { clanId?: string };
+type SourceSearchFormValues = Omit<SourceSearchParams, 'hasAttachment' | 'hasBinding'> & {
+  clanId?: string;
+  hasAttachment?: string[];
+  hasBinding?: string[];
+};
 
 const sourceTypeOptions = [
   { value: 'genealogy_book', label: '族谱原文' },
@@ -278,7 +282,12 @@ function readSearchFromUrl(): SourceSearchParams {
   };
 }
 function searchFormValues(value: SourceSearchParams, clanId?: string): SourceSearchFormValues {
-  return { ...value, clanId: clanId || undefined };
+  return {
+    ...value,
+    clanId: clanId || undefined,
+    hasAttachment: value.hasAttachment?.map(item => String(item)),
+    hasBinding: value.hasBinding?.map(item => String(item))
+  };
 }
 function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
   const url = new URL(window.location.href);
@@ -525,9 +534,11 @@ export function SourceLibraryQueryPage({ notify }: Props) {
   }
 
   function submitSearch(values: SourceSearchFormValues) {
-    const { clanId: nextClanId, ...filters } = values;
+    const { clanId: nextClanId, hasAttachment, hasBinding, ...filters } = values;
     const next: SourceSearchParams = {
       ...filters,
+      hasAttachment: hasAttachment?.map(item => item === 'true'),
+      hasBinding: hasBinding?.map(item => item === 'true'),
       pageNo: 1,
       pageSize: search.pageSize || 10,
       sort: search.sort || 'updatedAt,desc'
