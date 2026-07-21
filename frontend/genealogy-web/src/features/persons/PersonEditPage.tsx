@@ -8,7 +8,6 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/utils/records';
 import {
   normalizePersonDate,
-  personDatePrecisionOptions,
   personGenderOptions,
   personLineageStatusOptions,
   personLivingOptions,
@@ -60,12 +59,6 @@ function distinct(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
-function datePickerMode(precision: PersonDatePrecision): 'year' | 'month' | 'date' {
-  if (precision === 'year') return 'year';
-  if (precision === 'month') return 'month';
-  return 'date';
-}
-
 function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {
   if (!value || precision === 'unknown') return { value: null };
   const dateText = precision === 'year' ? `${value}-01-01` : precision === 'month' ? `${value}-01` : value;
@@ -73,11 +66,8 @@ function dateValueProps(value: string | undefined, precision: PersonDatePrecisio
   return { value: parsed.isValid() ? parsed : null };
 }
 
-function normalizePickerDate(value: Dayjs | null, precision: PersonDatePrecision) {
-  if (!value || precision === 'unknown') return '';
-  if (precision === 'year') return value.format('YYYY');
-  if (precision === 'month') return value.format('YYYY-MM');
-  return value.format('YYYY-MM-DD');
+function normalizePickerDate(value: Dayjs | null) {
+  return value ? value.format('YYYY-MM-DD') : '';
 }
 
 export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: Props) {
@@ -238,14 +228,9 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     if (matchingWords.length === 1) form.setFieldValue('generationWord', matchingWords[0]);
   }
 
-  function changePrecision(field: 'birth' | 'death', precision: PersonDatePrecision) {
-    const dateField = field === 'birth' ? 'birthDate' : 'deathDate';
+  function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
     const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
-    const currentDate = form.getFieldValue(dateField);
-    form.setFieldsValue({
-      [precisionField]: precision,
-      [dateField]: normalizePersonDate(currentDate, precision) || ''
-    } as Partial<PersonEditForm>);
+    form.setFieldValue(precisionField, value ? 'day' : 'unknown');
     void form.validateFields(['deathDate']);
   }
 
@@ -387,18 +372,18 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
           </div></Card>
 
           <Card title="生卒与地点"><div className="person-edit-fields">
-            <Form.Item name="birthDatePrecision" label="出生日期精度"><Select options={personDatePrecisionOptions} onChange={value => changePrecision('birth', value)} /></Form.Item>
-            <Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={value => normalizePickerDate(value, birthPrecision)} dependencies={['birthDatePrecision']}>
-              <DatePicker picker={datePickerMode(birthPrecision)} disabled={birthPrecision === 'unknown'} style={{ width: '100%' }} placeholder={birthPrecision === 'unknown' ? '日期不详' : '请选择出生日期'} />
+            <Form.Item name="birthDatePrecision" hidden><Input /></Form.Item>
+            <Form.Item name="deathDatePrecision" hidden><Input /></Form.Item>
+            <Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}>
+              <DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} />
             </Form.Item>
             <Form.Item name="isLiving" label="是否在世"><Select options={personLivingOptions} onChange={changeLiving} /></Form.Item>
-            <Form.Item name="deathDatePrecision" label="逝世日期精度"><Select options={personDatePrecisionOptions} onChange={value => changePrecision('death', value)} /></Form.Item>
             <Form.Item
               name="deathDate"
               label="逝世日期"
               dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']}
               getValueProps={value => dateValueProps(value, deathPrecision)}
-              normalize={value => normalizePickerDate(value, deathPrecision)}
+              normalize={normalizePickerDate}
               rules={[({ getFieldValue }) => ({
                 validator(_, value) {
                   if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期'));
@@ -409,7 +394,7 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
                 }
               })]}
             >
-              <DatePicker picker={datePickerMode(deathPrecision)} disabled={deathPrecision === 'unknown'} style={{ width: '100%' }} placeholder={deathPrecision === 'unknown' ? '日期不详' : '请选择逝世日期'} />
+              <DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} />
             </Form.Item>
             <Form.Item name="birthPlace" label="出生地"><Input /></Form.Item>
             <Form.Item name="residencePlace" label="居住地"><Input /></Form.Item>
