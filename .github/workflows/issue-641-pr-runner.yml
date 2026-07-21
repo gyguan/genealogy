@@ -70,6 +70,32 @@ jobs:
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
+      - name: Normalize actual source library page
+        if: steps.guard.outputs.skip != 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('frontend/genealogy-web/src/features/sources/SourceLibraryPage.tsx')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace('                    <Text type="secondary">来源资料库 / 来源详情</Text>\n', '')
+          text = text.replace(
+              '        <Card className="source-library-result-card" title="查询结果" extra={resultActions}>',
+              '        <Card className="source-library-result-card" title={`查询结果（${sourceTotal}）`} extra={resultActions}>'
+          )
+          text = re.sub(
+              r'(<div className="source-library-result-meta">\s*)<Space wrap size=\{12\}>.*?</Space>\s*(<Select aria-label="排序方式")',
+              r'\1<span />\n            \2',
+              text,
+              count=1,
+              flags=re.S
+          )
+          if '来源资料库 / 来源详情' in text:
+              raise RuntimeError('source detail breadcrumb copy still exists')
+          path.write_text(text, encoding='utf-8')
+          PY
       - name: Record remaining duplicate copy
         if: steps.guard.outputs.skip != 'true'
         shell: bash
