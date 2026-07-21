@@ -52,6 +52,22 @@
   width: 100%;
 }
 
+.tracking-query-grid > .ant-form-item:nth-child(n + 5) {
+  transform-origin: top center;
+  animation: tracking-advanced-filter-enter 360ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes tracking-advanced-filter-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
 .tracking-query-actions {
   display: flex;
   justify-content: flex-end;
@@ -65,6 +81,10 @@
   color: #1677ff;
   font-size: 14px;
   font-weight: 400;
+}
+
+.tracking-more-button .anticon {
+  display: none;
 }
 
 .tracking-more-button:hover,
@@ -107,6 +127,12 @@
 
 .tracking-clickable-row {
   cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tracking-query-grid > .ant-form-item:nth-child(n + 5) {
+    animation: none;
+  }
 }
 
 @media (max-width: 1199px) {
