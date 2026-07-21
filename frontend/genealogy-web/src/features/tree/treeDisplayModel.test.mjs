@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const modulePath = path.resolve('.tree-test/features/tree/treeDisplayModel.js');
+const lineageDoubleCardCss = readFileSync(new URL('./lineage-double-card.css', import.meta.url), 'utf8');
 const {
   dataStatusText,
   graphCompletenessText,
@@ -36,4 +38,11 @@ test('uses non-directional endpoints for spouse relationships', () => {
   const spouse = { relationCategory: 'marriage', relationType: 'spouse' };
   assert.equal(relationshipEndpointText(spouse, '甲', '乙'), '甲 ↔ 乙');
   assert.deepEqual(relationshipEndpointLabels(spouse), ['配偶一', '配偶二']);
+});
+
+test('lineage result controls share the result title row on desktop', () => {
+  assert.match(lineageDoubleCardCss, /\.lineage-double-card-result\s*\{\s*position:\s*relative;/);
+  assert.match(lineageDoubleCardCss, /\.lineage-double-card-result > \.ant-card-head\s*\{\s*padding-right:\s*400px;/);
+  assert.match(lineageDoubleCardCss, /\.lineage-result-toolbar--double-card\s*\{[\s\S]*position:\s*absolute;[\s\S]*top:\s*8px;[\s\S]*right:\s*16px;[\s\S]*width:\s*360px;/);
+  assert.match(lineageDoubleCardCss, /@media \(max-width: 767px\)[\s\S]*\.lineage-result-toolbar--double-card,[\s\S]*position:\s*static;[\s\S]*width:\s*100%;/);
 });
