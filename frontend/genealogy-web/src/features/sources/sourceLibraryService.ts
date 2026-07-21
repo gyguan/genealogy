@@ -151,12 +151,12 @@ export type SourceSearchParams = {
   pageNo?: number;
   pageSize?: number;
   keyword?: string;
-  sourceType?: string;
-  verificationStatus?: string;
-  privacyLevel?: string;
+  sourceType?: string[];
+  verificationStatus?: string[];
+  privacyLevel?: string[];
   targetType?: string;
-  hasAttachment?: boolean;
-  hasBinding?: boolean;
+  hasAttachment?: boolean[];
+  hasBinding?: boolean[];
   sort?: string;
 };
 
@@ -164,6 +164,10 @@ function cleanParams(params: Record<string, unknown>) {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.filter(item => item !== undefined && item !== null && item !== '').forEach(item => search.append(key, String(item)));
+      return;
+    }
     search.set(key, String(value));
   });
   return search.toString();
