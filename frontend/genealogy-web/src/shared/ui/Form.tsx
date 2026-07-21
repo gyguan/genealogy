@@ -185,7 +185,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
       name={context.form ? name : undefined}
       dependencies={CROSS_FIELD_DEPENDENCIES[name]}
       rules={rules}
-      trigger="onBlur"
+      trigger="onChange"
       validateTrigger="onBlur"
       getValueProps={() => ({})}
       initialValue={currentValue}
