@@ -3,7 +3,7 @@ name: Issue 645 Runner
 on:
   pull_request_target:
     branches: ["main"]
-    types: [synchronize]
+    types: [reopened]
 
 permissions:
   contents: write
