@@ -187,11 +187,101 @@ function installMemberListHeaderPlacement() {
   syncPlacement();
 }
 
+function installDetailActionUnification() {
+  const destructiveLabels = ['删除', '删除草稿', '归档', '撤销', '停用'];
+
+  const actionGroupOf = (root: HTMLElement) => (
+    root.matches('.ant-space')
+      ? root
+      : root.querySelector<HTMLElement>(':scope > .ant-space') || root
+  );
+
+  const normalizeActionGroup = (root?: HTMLElement | null) => {
+    if (!root) return;
+    const group = actionGroupOf(root);
+    group.classList.add('entity-detail-actions');
+
+    Array.from(group.children).forEach(child => {
+      if (!(child instanceof HTMLElement)) return;
+      const button = child.matches('button')
+        ? child as HTMLButtonElement
+        : child.querySelector<HTMLButtonElement>('button');
+      const label = child.textContent?.trim() || '';
+      const isPrimary = Boolean(button?.classList.contains('ant-btn-primary'));
+      const isDestructive = Boolean(button?.classList.contains('ant-btn-dangerous'))
+        || label === '更多'
+        || destructiveLabels.some(item => label.includes(item));
+      child.style.order = isPrimary ? '30' : isDestructive ? '20' : '10';
+    });
+  };
+
+  const normalizePageHeaders = () => {
+    document.querySelectorAll<HTMLElement>('.entity-page-header__actions')
+      .forEach(normalizeActionGroup);
+  };
+
+  const normalizeDrawerExtras = () => {
+    document.querySelectorAll<HTMLElement>('.ant-drawer .ant-drawer-extra').forEach(extra => {
+      if (!extra.querySelector('button')) return;
+      extra.closest<HTMLElement>('.ant-drawer')?.classList.add('entity-detail-drawer');
+      normalizeActionGroup(extra);
+    });
+  };
+
+  const normalizeSourceDetail = () => {
+    const page = document.querySelector<HTMLElement>('.source-library-query-page');
+    const headerCard = page?.querySelector<HTMLElement>('.source-library-stack > .ant-space-item:first-child > .ant-card:first-child');
+    const hasDetailTitle = Boolean(headerCard?.querySelector('.source-library-detail-title'));
+    const actionGroup = headerCard?.querySelector<HTMLElement>('.ant-card-body .ant-row > .ant-col:last-child > .ant-space');
+    if (!headerCard || !hasDetailTitle || !actionGroup) return;
+
+    headerCard.classList.add('entity-detail-source-header');
+    normalizeActionGroup(actionGroup);
+
+    let portalHost = actionGroup.querySelector<HTMLElement>(':scope > [data-source-detail-actions="true"]');
+    if (!portalHost) {
+      portalHost = document.createElement('span');
+      portalHost.className = 'ant-space-item entity-detail-source-action-host';
+      portalHost.dataset.sourceDetailActions = 'true';
+      actionGroup.appendChild(portalHost);
+    }
+  };
+
+  const normalizeLineageInspector = () => {
+    const drawer = document.querySelector<HTMLElement>('.lineage-inspector-drawer');
+    const header = drawer?.querySelector<HTMLElement>('.ant-drawer-header');
+    const actionGroup = drawer?.querySelector<HTMLElement>('.lineage-inspector-actions');
+    if (!drawer || !header || !actionGroup) return;
+
+    let extra = header.querySelector<HTMLElement>(':scope > .ant-drawer-extra');
+    if (!extra) {
+      extra = document.createElement('div');
+      extra.className = 'ant-drawer-extra';
+      header.appendChild(extra);
+    }
+    if (actionGroup.parentElement !== extra) extra.appendChild(actionGroup);
+    drawer.classList.add('entity-detail-drawer');
+    normalizeActionGroup(extra);
+  };
+
+  const syncActions = () => {
+    normalizePageHeaders();
+    normalizeDrawerExtras();
+    normalizeSourceDetail();
+    normalizeLineageInspector();
+  };
+
+  const observer = new MutationObserver(syncActions);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  syncActions();
+}
+
 installSourceRouteHistorySync();
 installReviewCenterDefaultPageSize();
 installTrackingMoreFilterTextSync();
 installResultSortHeaderPlacement();
 installMemberListHeaderPlacement();
+installDetailActionUnification();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(

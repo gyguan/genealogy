@@ -1,5 +1,6 @@
-import { Alert, Card, Skeleton } from 'antd';
+import { Alert, Card } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { objectLifecycleStatus } from '../../shared/domain/draftDeleteModel';
 import { DraftDeleteButton } from '../../shared/ui/DraftDeleteButton';
@@ -31,6 +32,7 @@ export function SourceDraftDeleteAction({ notify }: Props) {
   const [detail, setDetail] = useState<SourceDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +49,21 @@ export function SourceDraftDeleteAction({ notify }: Props) {
       .catch(error => { if (active) setLoadError((error as Error).message || '来源删除权限加载失败'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
+  }, [sourceId]);
+
+  useEffect(() => {
+    if (!sourceId) {
+      setPortalTarget(null);
+      return undefined;
+    }
+    const syncTarget = () => {
+      const nextTarget = document.querySelector<HTMLElement>('[data-source-detail-actions="true"]');
+      setPortalTarget(current => current === nextTarget ? current : nextTarget);
+    };
+    const observer = new MutationObserver(syncTarget);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    syncTarget();
+    return () => observer.disconnect();
   }, [sourceId]);
 
   const dependencyCounts = useMemo(() => sourceDependencyCounts(detail), [detail]);
@@ -71,41 +88,38 @@ export function SourceDraftDeleteAction({ notify }: Props) {
   }
 
   if (!sourceId) return null;
-  if (loading && !detail) return <Card size="small" style={{ marginBottom: 12 }}><Skeleton active paragraph={{ rows: 1 }} /></Card>;
   if (loadError) return <Alert type="warning" showIcon message="来源删除操作暂不可用" description={loadError} style={{ marginBottom: 12 }} />;
+  if (loading || !detail) return null;
 
-  const isDraft = objectLifecycleStatus(detail?.source) === 'draft';
-  const canDelete = Boolean(detail?.permissions?.canDelete);
+  const isDraft = objectLifecycleStatus(detail.source) === 'draft';
+  const canDelete = Boolean(detail.permissions?.canDelete);
   const hasDependencies = dependencyCounts.bindingCount > 0 || dependencyCounts.attachmentCount > 0;
   if (!isDraft || !canDelete) return null;
 
-  return (
-    <Card
-      size="small"
-      title="草稿来源操作"
-      extra={deleteObject?.allowedActions.length ? (
-        <DraftDeleteButton
-          object={deleteObject}
-          objectName={sourceName(detail)}
-          objectType="来源资料"
-          onDelete={() => deleteSource(sourceId)}
-          onDeleted={afterDeleted}
-          label="删除草稿"
-          buttonProps={{ size: 'small' }}
-        />
-      ) : null}
-      style={{ marginBottom: 12 }}
-    >
-      {hasDependencies ? (
+  if (hasDependencies) {
+    return (
+      <Card size="small" title="草稿来源操作" style={{ marginBottom: 12 }}>
         <Alert
           type="warning"
           showIcon
           message={`草稿来源“${sourceName(detail)}”暂不能删除`}
           description={`请先处理 ${dependencyCounts.bindingCount} 条引用和 ${dependencyCounts.attachmentCount} 个附件；后端仍会执行最终依赖校验。`}
         />
-      ) : (
-        <Alert type="warning" showIcon message={`当前打开的是草稿来源“${sourceName(detail)}”，可在未提交审核前直接删除。`} />
-      )}
-    </Card>
+      </Card>
+    );
+  }
+
+  if (!portalTarget || !deleteObject?.allowedActions.length) return null;
+
+  return createPortal(
+    <DraftDeleteButton
+      object={deleteObject}
+      objectName={sourceName(detail)}
+      objectType="来源资料"
+      onDelete={() => deleteSource(sourceId)}
+      onDeleted={afterDeleted}
+      label="删除草稿"
+    />,
+    portalTarget
   );
 }

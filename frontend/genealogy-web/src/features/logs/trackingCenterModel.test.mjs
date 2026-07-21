@@ -1,3 +1,4 @@
+import './detailActionPlacement.test.mjs';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_AUDIT_FILTERS,
