@@ -34,9 +34,13 @@ const stepOrder: { key: Mvp1StepKey; title: string; desc: string }[] = [
   { key: 'generation', title: '字辈', desc: '维护字辈方案与明细。' },
   { key: 'person', title: '人物', desc: '录入人物档案。' },
   { key: 'relationship', title: '关系', desc: '建立人物关系。' },
-  { key: 'source', title: '来源', desc: '绑定资料来源。' },
-  { key: 'review', title: '完成', desc: '检查并完成建谱。' }
+  { key: 'source', title: '来源', desc: '绑定资料来源。' }
 ];
+
+function normalizeWizardStep(step?: Mvp1StepKey): Mvp1StepKey {
+  if (!step) return 'clan';
+  return step === 'review' ? 'source' : step;
+}
 
 function clanLabel(clan?: { clanName?: unknown; surname?: unknown }) {
   return String(clan?.clanName || clan?.surname || '已选择宗族');
@@ -69,7 +73,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   const sessionStore = useMemo(() => createLocalWizardSessionStore(), []);
   const [storedSession] = useState<WizardSession | undefined>(() => sessionStore.load());
   const urlStep = useMemo(() => readWizardStepFromUrl(new URL(window.location.href)), []);
-  const [active, setActive] = useState<Mvp1StepKey>(urlStep || storedSession?.activeStep || 'clan');
+  const [active, setActive] = useState<Mvp1StepKey>(normalizeWizardStep(urlStep || storedSession?.activeStep));
   const [result, setResult] = useState<Notice | undefined>();
   const [saveState, setSaveState] = useState<SaveState>(storedSession
     ? { status: 'saved', savedAt: displaySavedAt(storedSession.savedAt) }
@@ -129,7 +133,7 @@ export function Mvp1WizardPage({ notify }: Props) {
       maskClosable: false,
       onOk: () => {
         restoreWorkspace(storedSession);
-        setActive(urlStep || storedSession.activeStep);
+        setActive(normalizeWizardStep(urlStep || storedSession.activeStep));
         setSessionReady(true);
       },
       onCancel: startNewSession
@@ -294,7 +298,7 @@ export function Mvp1WizardPage({ notify }: Props) {
 
   useEffect(() => {
     if (!sessionReady || stateLoading) return;
-    const requested = readWizardStepFromUrl(new URL(window.location.href)) || active;
+    const requested = normalizeWizardStep(readWizardStepFromUrl(new URL(window.location.href)) || active);
     const gate = getWizardStepGate(stepDecisions, requested);
     if (gate.allowed) {
       if (requested !== active) changeStepUnchecked(requested, 'replace');
@@ -324,11 +328,12 @@ export function Mvp1WizardPage({ notify }: Props) {
   useEffect(() => {
     if (!sessionReady) return;
     const popstate = () => {
-      const requested = readWizardStepFromUrl(new URL(window.location.href));
-      if (!requested) {
+      const requestedStep = readWizardStepFromUrl(new URL(window.location.href));
+      if (!requestedStep) {
         window.history.replaceState(window.history.state, '', writeWizardStepToUrl(new URL(window.location.href), active));
         return;
       }
+      const requested = normalizeWizardStep(requestedStep);
       const gate = getWizardStepGate(stepDecisions, requested);
       if (gate.allowed) changeStepUnchecked(requested, 'replace');
       else {
@@ -411,7 +416,7 @@ export function Mvp1WizardPage({ notify }: Props) {
   return (
     <WizardShell
       title="建谱向导"
-      description="按宗族、支派、字辈、人物、关系、来源和完成顺序完成建谱。"
+      description="按宗族、支派、字辈、人物、关系和来源顺序完成建谱。"
       contextLabel={currentClanLabel}
       saveStatus={saveStatus}
       steps={steps}
@@ -427,7 +432,7 @@ export function Mvp1WizardPage({ notify }: Props) {
         saveDisabled: !sessionReady,
         nextDisabled: !sessionReady || Boolean(activeDecision && !activeDecision.canEnter),
         saveLabel: '保存',
-        nextLabel: active === 'review' ? '完成建谱' : '下一步',
+        nextLabel: active === 'source' ? '进入审核中心' : '下一步',
         extra: skipActiveStep,
         onPrevious: goPrevious,
         onSaveDraft: saveWizardProgress,
