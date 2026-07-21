@@ -5,3 +5,39 @@
 .member-role-page > .ant-alert {
   display: none;
 }
+
+.member-list-card > .ant-card-head .ant-card-head-wrapper {
+  gap: 16px;
+}
+
+.member-list-card > .ant-card-head .ant-card-head-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.member-list-card > .ant-card-head .ant-card-head-title [data-member-total-placed='true'] {
+  margin-inline-start: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.member-list-card > .ant-card-head .ant-card-extra {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 575px) {
+  .member-list-card > .ant-card-head .ant-card-head-wrapper {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .member-list-card > .ant-card-head .ant-card-extra {
+    width: 100%;
+  }
+}
