@@ -92,6 +92,22 @@
   margin: 4px 0 !important;
 }
 
+.lineage-double-card-result {
+  position: relative;
+}
+
+.lineage-double-card-result > .ant-card-head {
+  padding-right: 400px;
+}
+
+.lineage-double-card-result .ant-card-body,
+.lineage-double-card-result .ant-tabs,
+.lineage-double-card-result .ant-tabs-content-holder,
+.lineage-double-card-result .ant-tabs-content,
+.lineage-double-card-result .ant-tabs-tabpane {
+  overflow: visible;
+}
+
 .lineage-result-tabs > .ant-tabs-nav {
   margin-bottom: 16px;
 }
@@ -105,12 +121,17 @@
 }
 
 .lineage-result-toolbar--double-card {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  z-index: 1;
   display: grid;
+  width: 360px;
   grid-template-columns: minmax(280px, 360px);
   align-items: start;
   justify-content: end;
   gap: 16px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .lineage-result-toolbar--double-card.is-person {
@@ -185,11 +206,18 @@
     text-align: left;
   }
 
+  .lineage-double-card-result > .ant-card-head {
+    padding-right: 16px;
+  }
+
   .lineage-result-toolbar--double-card,
   .lineage-result-toolbar--double-card.is-person {
+    position: static;
+    width: 100%;
     grid-template-columns: 1fr;
     justify-content: stretch;
     gap: 0;
+    margin-bottom: 4px;
   }
 
   .lineage-double-card-result .lineage-logic-card {
