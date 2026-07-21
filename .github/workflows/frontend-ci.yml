@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
+      - name: Test multi-select unification
+        working-directory: frontend/genealogy-web
+        run: npm run test:multi-select
       - name: Detect Tree-related changes
         id: tree-changes
         shell: bash
