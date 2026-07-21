@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportOutlined, PlusOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Dropdown, Empty, Form, Input, Pagination, Result, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Dropdown, Empty, Form, Input, Pagination, Result, Select, Space, Table, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -290,25 +290,34 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       {branchesError ? <Alert type="warning" showIcon message="支派选项加载失败" description={branchesError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
       {generationError ? <Alert type="warning" showIcon message="字辈与代次选项加载不完整" description={generationError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
       <Form layout="vertical" onFinish={() => void search(1)}>
-        <div className="person-archive-query-row">
-          <div className="person-archive-filter-grid person-archive-filter-grid--primary">
-            <Form.Item label="宗族"><Select aria-label="宗族" showSearch optionFilterProp="label" value={workspace.clanId} onChange={value => void changeClan(value)} options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></Form.Item>
-            <Form.Item label="支派"><Select aria-label="支派" showSearch optionFilterProp="label" value={form.branchId} disabled={!workspace.clanId || !!branchesError} onChange={changeBranch} options={[{ value: '', label: '全部支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
-            <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="请输入姓名" allowClear /></Form.Item>
-            <Form.Item label="关键词"><Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名、别名、谱名、字号、籍贯等" allowClear /></Form.Item>
-          </div>
-          <Space className="person-archive-query-actions">
-            <Button type="link" className="person-archive-more-filter" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-            <Button onClick={reset}>重置</Button>
-            <Button type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
-          </Space>
+        <div className="person-archive-filter-grid person-archive-filter-grid--primary">
+          <Form.Item label="宗族"><Select aria-label="宗族" showSearch optionFilterProp="label" value={workspace.clanId} onChange={value => void changeClan(value)} options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></Form.Item>
+          <Form.Item label="支派"><Select aria-label="支派" showSearch optionFilterProp="label" value={form.branchId} disabled={!workspace.clanId || !!branchesError} onChange={changeBranch} options={[{ value: '', label: '全部支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
+          <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="请输入姓名" allowClear /></Form.Item>
+          <Form.Item label="关键词"><Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名、别名、谱名、字号、籍贯等" allowClear /></Form.Item>
         </div>
-        {advancedOpen ? <div className="person-archive-filter-grid person-archive-filter-grid--advanced">
-          <Form.Item label="档案状态"><Select mode="multiple" maxTagCount="responsive" value={form.dataStatuses} onChange={values => patchMulti('dataStatuses', values, statusOptions.map(item => item.value))} options={withSelectAll(statusOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-          <Form.Item label="性别"><Select mode="multiple" maxTagCount="responsive" value={form.genders} onChange={values => patchMulti('genders', values, genderOptions.map(item => item.value))} options={withSelectAll(genderOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-          <Form.Item label="字辈"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={form.generationWords} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationWords', values, generationWordOptions)} options={withSelectAll(generationWordSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-          <Form.Item label="代次"><Select mode="multiple" maxTagCount="responsive" value={form.generationNos} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationNos', values, generationNoOptions)} options={withSelectAll(generationNoSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-        </div> : null}
+        <Collapse
+          className="person-archive-advanced-collapse"
+          bordered={false}
+          activeKey={advancedOpen ? ['advanced'] : []}
+          items={[{
+            key: 'advanced',
+            label: null,
+            showArrow: false,
+            styles: { header: { display: 'none' }, body: { padding: 0 } },
+            children: <div id="person-archive-advanced-filters" className="person-archive-filter-grid person-archive-filter-grid--advanced">
+              <Form.Item label="档案状态"><Select mode="multiple" maxTagCount="responsive" value={form.dataStatuses} onChange={values => patchMulti('dataStatuses', values, statusOptions.map(item => item.value))} options={withSelectAll(statusOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
+              <Form.Item label="性别"><Select mode="multiple" maxTagCount="responsive" value={form.genders} onChange={values => patchMulti('genders', values, genderOptions.map(item => item.value))} options={withSelectAll(genderOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
+              <Form.Item label="字辈"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={form.generationWords} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationWords', values, generationWordOptions)} options={withSelectAll(generationWordSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
+              <Form.Item label="代次"><Select mode="multiple" maxTagCount="responsive" value={form.generationNos} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationNos', values, generationNoOptions)} options={withSelectAll(generationNoSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
+            </div>
+          }]}
+        />
+        <Space className="person-archive-query-actions">
+          <Button type="link" className="person-archive-more-filter" aria-expanded={advancedOpen} aria-controls="person-archive-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+          <Button onClick={reset}>重置</Button>
+          <Button type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
+        </Space>
       </Form>
     </Card>
     <Card className="person-archive-result-card" title="查询结果" extra={resultActions}>
