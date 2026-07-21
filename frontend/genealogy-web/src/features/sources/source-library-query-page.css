@@ -2,12 +2,20 @@
   width: 100%;
 }
 
+.source-library-query-page .source-library-query-card .ant-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+}
+
 .source-library-query-page .source-library-query-grid {
   display: grid;
   gap: 0 16px;
 }
 
 .source-library-query-page .source-library-query-grid--primary {
+  grid-column: 1 / -1;
+  grid-row: 1;
   grid-template-columns: repeat(4, minmax(180px, 1fr));
   align-items: end;
 }
@@ -17,18 +25,29 @@
 }
 
 .source-library-query-page .source-library-more-filters {
-  margin-top: 4px;
-  background: transparent;
+  display: contents;
 }
 
 .source-library-query-page .source-library-more-filters > .ant-collapse-item {
+  display: contents;
   border-bottom: 0;
 }
 
 .source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-header {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: end;
+  align-self: center;
   width: fit-content;
-  padding: 4px 0 12px;
+  padding: 4px 0;
   color: rgba(0, 0, 0, 0.65);
+}
+
+.source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-content {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  margin-bottom: 8px;
 }
 
 .source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
@@ -37,10 +56,13 @@
 
 .source-library-query-page .source-library-query-actions {
   display: flex;
+  grid-column: 2;
+  grid-row: 3;
   align-items: center;
   justify-content: flex-end;
+  justify-self: end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 0;
   white-space: nowrap;
 }
 
@@ -151,10 +173,6 @@
   .source-library-query-page .source-library-query-grid--primary,
   .source-library-query-page .source-library-query-grid--advanced {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .source-library-query-page .source-library-query-actions {
-    width: 100%;
   }
 
   .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-head-wrapper {
