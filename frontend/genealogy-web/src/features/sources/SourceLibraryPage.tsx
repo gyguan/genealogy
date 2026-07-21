@@ -256,18 +256,18 @@ function readSearchFromUrl(): SourceSearchParams {
     pageSize: SOURCE_PAGE_SIZES.has(rawPageSize) ? rawPageSize : 10,
     sort: /^[A-Za-z][A-Za-z0-9_]*,(asc|desc)$/.test(rawSort) ? rawSort : 'updatedAt,desc',
     keyword: params.get('keyword') || undefined,
-    sourceType: optionValue('sourceType', typeValues),
-    verificationStatus: optionValue('verificationStatus', statusValues),
-    privacyLevel: optionValue('privacyLevel', privacyValues),
-    hasAttachment: boolValue('hasAttachment'),
-    hasBinding: boolValue('hasBinding')
+    sourceType: optionValue('sourceType', typeValues) ? [optionValue('sourceType', typeValues)!] : undefined,
+    verificationStatus: optionValue('verificationStatus', statusValues) ? [optionValue('verificationStatus', statusValues)!] : undefined,
+    privacyLevel: optionValue('privacyLevel', privacyValues) ? [optionValue('privacyLevel', privacyValues)!] : undefined,
+    hasAttachment: boolValue('hasAttachment') === undefined ? undefined : [boolValue('hasAttachment')!],
+    hasBinding: boolValue('hasBinding') === undefined ? undefined : [boolValue('hasBinding')!]
   };
 }
 function searchFormValues(value: SourceSearchParams): SourceSearchFormValues {
   return {
     ...value,
-    hasAttachment: value.hasAttachment === undefined ? undefined : String(value.hasAttachment),
-    hasBinding: value.hasBinding === undefined ? undefined : String(value.hasBinding)
+    hasAttachment: value.hasAttachment?.[0] === undefined ? undefined : String(value.hasAttachment[0]),
+    hasBinding: value.hasBinding?.[0] === undefined ? undefined : String(value.hasBinding[0])
   };
 }
 function writeSearchToUrl(value: SourceSearchParams, mode: 'push' | 'replace' = 'push') {
@@ -502,8 +502,8 @@ export function SourceLibraryPage({ notify }: Props) {
   function submitSearch(values: SourceSearchFormValues) {
     const next: SourceSearchParams = {
       ...values,
-      hasAttachment: boolFilter(values.hasAttachment),
-      hasBinding: boolFilter(values.hasBinding),
+      hasAttachment: boolFilter(values.hasAttachment) === undefined ? undefined : [boolFilter(values.hasAttachment)!],
+      hasBinding: boolFilter(values.hasBinding) === undefined ? undefined : [boolFilter(values.hasBinding)!],
       pageNo: 1,
       pageSize: search.pageSize || 10,
       sort: search.sort || 'updatedAt,desc'
