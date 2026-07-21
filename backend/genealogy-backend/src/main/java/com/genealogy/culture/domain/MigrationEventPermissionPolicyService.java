@@ -2,6 +2,7 @@ package com.genealogy.culture.domain;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.application.RbacAuthorizationApplicationService;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.entity.MigrationEventEntity;
 import com.genealogy.member.enums.MemberRoleScopeType;
@@ -90,7 +91,9 @@ public class MigrationEventPermissionPolicyService {
         String status = normalize(event.getDataStatus());
         if (("draft".equals(status) || "rejected".equals(status)) && !reviewPending) {
             addIf(actions, "update", can(event, actorId, UPDATE));
-            addIf(actions, "delete", can(event, actorId, DELETE));
+            if (DraftDeletePolicy.isDraft(status)) {
+                addIf(actions, "delete", can(event, actorId, DELETE));
+            }
             addIf(actions, "submit_review", can(event, actorId, SUBMIT_REVIEW));
             addIf(actions, "archive", can(event, actorId, ARCHIVE));
         } else if ("official".equals(status) && !reviewPending) {
