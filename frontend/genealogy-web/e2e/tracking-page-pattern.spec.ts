@@ -84,7 +84,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
       borderRadius: style.borderRadius
     };
   });
-  expect(optionStyle).toEqual({ paddingTop: '5px', paddingRight: '12px', borderRadius: '4px' });
+  expect(optionStyle).toEqual({ paddingTop: '5px', paddingRight: '12px', borderRadius: '6px' });
   await page.keyboard.press('Escape');
 
   await page.getByRole('tab', { name: '操作日志' }).click();
