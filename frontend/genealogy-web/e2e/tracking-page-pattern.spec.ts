@@ -72,8 +72,11 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
 
   await page.getByLabel('对象类型').click();
-  await expect(page.getByRole('button', { name: '全选' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '清空' })).toBeVisible();
+  const selectAllOption = page.getByRole('option', { name: '全选 / 取消全选' });
+  await expect(selectAllOption).toBeVisible();
+  await expect(page.locator('.query-multi-select-popup-actions')).toHaveCount(0);
+  expect(await selectAllOption.evaluate(element => getComputedStyle(element).height)).toBe('32px');
+  expect(await selectAllOption.evaluate(element => getComputedStyle(element).padding)).toBe('5px 12px');
   await page.keyboard.press('Escape');
 
   await page.getByRole('tab', { name: '操作日志' }).click();
