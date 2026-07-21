@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Breadcrumb, Button, Card, DatePicker, Dropdown, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Dropdown, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { EMPTY_ENTITY_NAVIGATION_GUARD } from '../../shared/navigation/entityNavigationGuard';
+import type { EntityNavigationGuardState } from '../../shared/navigation/entityNavigationGuard';
+import { EntityPageBackButton, EntityPageHeader } from '../../shared/ui/EntityPageHeader';
 import { toRecordList } from '../../shared/utils/records';
 import {
   normalizePersonDate,
@@ -26,7 +29,7 @@ type Props = {
   personId: string;
   notify: (data: unknown, error?: boolean) => void;
   onCancel: () => void;
-  onSavingChange?: (saving: boolean) => void;
+  onNavigationGuardChange?: (state: EntityNavigationGuardState) => void;
 };
 
 type GenerationOptionItem = {
@@ -70,7 +73,18 @@ function normalizePickerDate(value: Dayjs | null) {
   return value ? value.format('YYYY-MM-DD') : '';
 }
 
-export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: Props) {
+function personEditBackLabel() {
+  const returnUrl = window.history.state?.genealogyPersonEditReturnUrl;
+  if (typeof returnUrl !== 'string' || !returnUrl) return '返回人物档案';
+  try {
+    const pathname = new URL(returnUrl, window.location.origin).pathname;
+    return /^\/persons\/[^/]+\/?$/.test(pathname) ? '返回人物详情' : '返回人物档案';
+  } catch {
+    return '返回人物档案';
+  }
+}
+
+export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardChange }: Props) {
   const workspace = useWorkspace();
   const [form] = Form.useForm<PersonEditForm>();
   const [person, setPerson] = useState<any>();
@@ -84,12 +98,14 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   const [saveError, setSaveError] = useState('');
   const [actionError, setActionError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const birthPrecision = Form.useWatch('birthDatePrecision', form) || 'unknown';
   const deathPrecision = Form.useWatch('deathDatePrecision', form) || 'unknown';
   const selectedBranchId = Form.useWatch('branchId', form) || '';
   const selectedGenerationNo = Form.useWatch('generationNo', form) || '';
   const selectedGenerationWord = Form.useWatch('generationWord', form) || '';
   const busy = saving || actionLoading !== null;
+  const backLabel = personEditBackLabel();
 
   const branchOptions = useMemo(
     () => branches.map(branch => ({ value: String(branch.id), label: branchLabel(branch) })),
@@ -140,18 +156,20 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   useEffect(() => { void loadPerson(); }, [personId]);
 
   useEffect(() => {
-    onSavingChange?.(busy);
+    onNavigationGuardChange?.({ dirty, busy });
+  }, [dirty, busy, onNavigationGuardChange]);
+
+  useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!busy) return;
+      if (!dirty && !busy) return;
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      onSavingChange?.(false);
-    };
-  }, [busy, onSavingChange]);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty, busy]);
+
+  useEffect(() => () => onNavigationGuardChange?.(EMPTY_ENTITY_NAVIGATION_GUARD), [onNavigationGuardChange]);
 
   async function loadGenerationOptions(clanId: string) {
     setLoadingGenerations(true);
@@ -183,12 +201,14 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     setSaveError('');
     setActionError('');
     setSaved(false);
+    setDirty(false);
     setGenerationItems([]);
     try {
       const detail = await apiClient.get<any>(`/persons/${personId}`);
       setPerson(detail);
       workspace.setPersonId(String(personId));
       form.setFieldsValue(toPersonEditForm(detail));
+      setDirty(false);
       const clanId = String(detail?.clanId || detail?.clan?.id || workspace.clanId || '');
       if (clanId) {
         const [branchData] = await Promise.all([
@@ -211,6 +231,8 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   function changeGenerationWord(value?: string) {
     const nextWord = value || '';
     form.setFieldValue('generationWord', nextWord);
+    setDirty(true);
+    setSaved(false);
     if (!nextWord) return;
     const matchingGenerationNos = distinct(
       availableGenerationItems.filter(item => item.word === nextWord).map(item => item.generationNo)
@@ -221,6 +243,8 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   function changeGenerationNo(value?: string) {
     const nextGenerationNo = value || '';
     form.setFieldValue('generationNo', nextGenerationNo);
+    setDirty(true);
+    setSaved(false);
     if (!nextGenerationNo) return;
     const matchingWords = distinct(
       availableGenerationItems.filter(item => item.generationNo === nextGenerationNo).map(item => item.word)
@@ -231,12 +255,37 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
   function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
     const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
     form.setFieldValue(precisionField, value ? 'day' : 'unknown');
+    setDirty(true);
+    setSaved(false);
     void form.validateFields(['deathDate']);
   }
 
   function changeLiving(value: PersonEditForm['isLiving']) {
     form.setFieldValue('isLiving', value);
+    setDirty(true);
+    setSaved(false);
     void form.validateFields(['deathDate']);
+  }
+
+  function leavePage() {
+    if (busy) return;
+    const finishLeave = () => {
+      setDirty(false);
+      onNavigationGuardChange?.(EMPTY_ENTITY_NAVIGATION_GUARD);
+      onCancel();
+    };
+    if (!dirty) {
+      finishLeave();
+      return;
+    }
+    Modal.confirm({
+      title: '放弃未保存的修改？',
+      content: '当前修改尚未保存，返回后将无法恢复。',
+      okText: '放弃修改并返回',
+      okButtonProps: { danger: true },
+      cancelText: '继续编辑',
+      onOk: finishLeave
+    });
   }
 
   async function saveDraft() {
@@ -255,6 +304,7 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
       const updated = await apiClient.put<any>(`/persons/${personId}`, toPersonUpdatePayload(values));
       setPerson(updated);
       form.setFieldsValue(toPersonEditForm(updated));
+      setDirty(false);
       setSaved(true);
       notify({ message: '人物资料已保存' });
     } catch (error) {
@@ -295,10 +345,10 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
     });
   }
 
-  if (loading) return <Card className="person-edit-loading"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在加载人物档案…</Typography.Text></Space></Card>;
+  if (loading) return <div className="person-edit-page"><EntityPageBackButton label={backLabel} onBack={leavePage} disabled={busy} /><Card className="person-edit-loading"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在加载人物档案…</Typography.Text></Space></Card></div>;
 
   if (loadError || !person) {
-    return <Card><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError || '人物档案不存在'}><Space><Button onClick={onCancel}>返回人物档案</Button><Button type="primary" onClick={() => void loadPerson()}>重新加载</Button></Space></Empty></Card>;
+    return <Card><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError || '人物档案不存在'}><Space><EntityPageBackButton label={backLabel} onBack={leavePage} /><Button type="primary" onClick={() => void loadPerson()}>重新加载</Button></Space></Empty></Card>;
   }
 
   const personName = display(person.name || person.personName, '未命名人物');
@@ -316,23 +366,28 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
 
   return (
     <div className="person-edit-page">
-      <div className="person-edit-header">
-        <Breadcrumb items={[{ title: '人物档案' }, { title: personName }, { title: '编辑档案' }]} />
-        <div className="person-edit-header-main">
-          <div>
-            <Space align="center" wrap><Typography.Title level={3}>编辑人物档案</Typography.Title><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag></Space>
-            <Typography.Paragraph type="secondary">{personName} · {display(person.generationWord, '字辈待维护')} · {person.generationNo ? `第${person.generationNo}世` : '代次待维护'}</Typography.Paragraph>
-          </div>
-          <Button disabled={busy} onClick={onCancel}>返回</Button>
-        </div>
-      </div>
+      <EntityPageHeader
+        backLabel={backLabel}
+        onBack={leavePage}
+        backDisabled={busy}
+        title="编辑人物档案"
+        status={<Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag>}
+        subtitle={`${personName} · ${display(person.generationWord, '字辈待维护')} · ${person.generationNo ? `第${person.generationNo}世` : '代次待维护'}`}
+      />
 
       <Alert type="info" showIcon message="档案状态由领域动作管理" description="普通资料保存不会修改档案状态。提交审核、撤回、归档和恢复仅在当前状态与权限允许时执行。" />
       {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
       {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
-      {saved ? <Alert type="success" showIcon message="人物资料已保存" description="档案状态未发生变化，可以继续修改或执行合法状态动作。" action={<Button size="small" onClick={onCancel}>返回人物档案</Button>} /> : null}
+      {saved ? <Alert type="success" showIcon message="人物资料已保存" description="档案状态未发生变化，可以继续修改或执行合法状态动作。" action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
 
-      <Form<PersonEditForm> form={form} layout="vertical" requiredMark="optional" disabled={busy} className="person-edit-form">
+      <Form<PersonEditForm>
+        form={form}
+        layout="vertical"
+        requiredMark="optional"
+        disabled={busy}
+        className="person-edit-form"
+        onValuesChange={() => { setDirty(true); setSaved(false); }}
+      >
         <div className="person-edit-sections">
           <Card title="基本身份"><div className="person-edit-fields">
             <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item>
@@ -345,28 +400,10 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
           <Card title="世系与支派"><div className="person-edit-fields">
             <Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item>
             <Form.Item name="generationNo" label="代次" extra="仅展示已审核通过的字辈方案明细">
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                loading={loadingGenerations}
-                disabled={!loadingGenerations && !generationNoOptions.length}
-                placeholder={loadingGenerations ? '正在加载代次' : '请选择代次'}
-                options={generationNoOptions}
-                onChange={changeGenerationNo}
-              />
+              <Select allowClear showSearch optionFilterProp="label" loading={loadingGenerations} disabled={!loadingGenerations && !generationNoOptions.length} placeholder={loadingGenerations ? '正在加载代次' : '请选择代次'} options={generationNoOptions} onChange={changeGenerationNo} />
             </Form.Item>
             <Form.Item name="generationWord" label="字辈" extra="选择字辈或代次后，唯一匹配项会自动联动">
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                loading={loadingGenerations}
-                disabled={!loadingGenerations && !generationWordOptions.length}
-                placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'}
-                options={generationWordOptions}
-                onChange={changeGenerationWord}
-              />
+              <Select allowClear showSearch optionFilterProp="label" loading={loadingGenerations} disabled={!loadingGenerations && !generationWordOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationWordOptions} onChange={changeGenerationWord} />
             </Form.Item>
             <Form.Item name="rankInFamily" label="排行"><Input /></Form.Item>
           </div></Card>
@@ -417,17 +454,12 @@ export function PersonEditPage({ personId, notify, onCancel, onSavingChange }: P
 
       <div className="person-edit-actions" aria-label="人物档案编辑操作">
         <Space wrap>
-          <Button disabled={busy} onClick={onCancel}>取消</Button>
+          <Button disabled={busy} onClick={leavePage}>取消</Button>
           <Button loading={saving} disabled={actionLoading !== null} onClick={() => void saveDraft()}>保存草稿</Button>
           {primaryStatusAction ? (
             <Tooltip title={primaryStatusAction.enabled ? '' : primaryStatusAction.reason}>
               <span>
-                <Button
-                  type="primary"
-                  disabled={!primaryStatusAction.enabled || busy}
-                  loading={actionLoading === primaryStatusAction.action.key}
-                  onClick={() => confirmStatusAction(primaryStatusAction.action)}
-                >
+                <Button type="primary" disabled={!primaryStatusAction.enabled || busy} loading={actionLoading === primaryStatusAction.action.key} onClick={() => confirmStatusAction(primaryStatusAction.action)}>
                   {primaryStatusAction.action.label}
                 </Button>
               </span>
