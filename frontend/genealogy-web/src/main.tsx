@@ -137,6 +137,14 @@ function installMemberListHeaderPlacement() {
       .find(button => button.textContent?.trim() === label);
   };
 
+  const formatMemberTotal = (element?: HTMLElement | null) => {
+    if (!element) return;
+    const match = element.textContent?.match(/共\s*(\d+)\s*名(?:成员)?/);
+    if (!match) return;
+    const formatted = `（共${match[1]}名）`;
+    if (element.textContent !== formatted) element.textContent = formatted;
+  };
+
   const syncPlacement = () => {
     const page = document.querySelector<HTMLElement>('.member-role-page');
     const cards = page?.querySelectorAll<HTMLElement>(':scope > .ant-card');
@@ -153,12 +161,13 @@ function installMemberListHeaderPlacement() {
     if (!title || !extra) return;
 
     const placedTotal = title.querySelector<HTMLElement>('[data-member-total-placed="true"]');
-    const sourceTotal = Array.from(extra.children).find(child => child.textContent?.trim().startsWith('共 '));
+    const sourceTotal = Array.from(extra.children).find(child => /共\s*\d+\s*名(?:成员)?/.test(child.textContent || ''));
     if (sourceTotal instanceof HTMLElement && sourceTotal !== placedTotal) {
       placedTotal?.remove();
       sourceTotal.dataset.memberTotalPlaced = 'true';
       title.appendChild(sourceTotal);
     }
+    formatMemberTotal(sourceTotal instanceof HTMLElement ? sourceTotal : placedTotal);
 
     const inviteButton = findButton(document.querySelector('.github-like-header'), '邀请新成员')
       || findButton(extra, '邀请新成员');
