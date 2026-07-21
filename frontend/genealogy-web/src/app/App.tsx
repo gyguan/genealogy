@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { ConfigProvider, Layout, Menu, Space, Spin, Typography, theme } from 'antd';
 import { apiClient } from '../shared/api/client';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import {
+  EMPTY_ENTITY_NAVIGATION_GUARD,
+  entityNavigationDecision,
+  entityNavigationPrompt
+} from '../shared/navigation/entityNavigationGuard';
+import type { EntityNavigationGuardState } from '../shared/navigation/entityNavigationGuard';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
 import { ToastStack } from '../shared/ui/ToastStack';
@@ -101,8 +107,8 @@ function AppShell() {
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
-  const navigationLockedRef = useRef(false);
-  const lockedUrlRef = useRef('');
+  const navigationGuardRef = useRef<EntityNavigationGuardState>(EMPTY_ENTITY_NAVIGATION_GUARD);
+  const guardedUrlRef = useRef('');
 
   function closeToast(id: number) { setToasts(prev => prev.filter(item => item.id !== id)); }
   function notify(data?: unknown, error = false) {
@@ -118,9 +124,19 @@ function AppShell() {
   function logout() {
     apiClient.post('/auth/logout').catch(() => undefined).finally(() => { apiClient.clearToken(); setAuthStatus('anonymous'); notify({ message: '已退出登录' }); });
   }
-  function setNavigationLocked(locked: boolean) {
-    navigationLockedRef.current = locked;
-    if (locked) lockedUrlRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  function setNavigationGuard(state: EntityNavigationGuardState) {
+    navigationGuardRef.current = state;
+    if (state.dirty || state.busy) guardedUrlRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  }
+  function allowNavigation() {
+    const decision = entityNavigationDecision(navigationGuardRef.current);
+    if (decision === 'block_busy') {
+      notify({ message: '人物档案正在提交，请稍后再离开。' }, true);
+      return false;
+    }
+    if (decision === 'confirm_dirty' && !window.confirm(entityNavigationPrompt())) return false;
+    navigationGuardRef.current = EMPTY_ENTITY_NAVIGATION_GUARD;
+    return true;
   }
 
   useEffect(() => {
@@ -139,7 +155,10 @@ function AppShell() {
 
   useEffect(() => {
     const onPopState = () => {
-      if (navigationLockedRef.current) { window.history.pushState(window.history.state, '', lockedUrlRef.current); notify({ message: '人物档案正在保存，请稍后再离开。' }, true); return; }
+      if (!allowNavigation()) {
+        window.history.pushState(window.history.state, '', guardedUrlRef.current);
+        return;
+      }
       syncRouteFromUrl();
     };
     window.addEventListener('popstate', onPopState);
@@ -147,12 +166,12 @@ function AppShell() {
   }, []);
 
   function enterPage(key: ViewKey) {
-    if (navigationLockedRef.current) { notify({ message: '人物档案正在保存，请稍后再离开。' }, true); return; }
+    if (!allowNavigation()) return;
     setPersonDetailRoute(null); setPersonEditRoute(null); setActive(key); setPageEntryVersion(prev => prev + 1); writeViewToUrl(key);
   }
 
   function renderPage() {
-    if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} notify={notify} onCancel={navigateBackFromPersonEdit} onSavingChange={setNavigationLocked} />;
+    if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} notify={notify} onCancel={navigateBackFromPersonEdit} onNavigationGuardChange={setNavigationGuard} />;
     if (personDetailRoute) return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
     switch (active) {
       case 'home': return <StatisticsHomePage />;
