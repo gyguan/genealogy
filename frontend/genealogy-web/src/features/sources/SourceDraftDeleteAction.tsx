@@ -87,8 +87,9 @@ export function SourceDraftDeleteAction({ notify }: Props) {
     notify?.({ message: '草稿来源已删除，列表已刷新。' });
   }
 
-  if (!sourceId || loading || !detail) return null;
+  if (!sourceId) return null;
   if (loadError) return <Alert type="warning" showIcon message="来源删除操作暂不可用" description={loadError} style={{ marginBottom: 12 }} />;
+  if (loading || !detail) return null;
 
   const isDraft = objectLifecycleStatus(detail.source) === 'draft';
   const canDelete = Boolean(detail.permissions?.canDelete);
