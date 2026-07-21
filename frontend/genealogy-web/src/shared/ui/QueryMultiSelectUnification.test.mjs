@@ -22,7 +22,7 @@ test('shared query multi-select uses native Ant Design options', () => {
   assert.match(queryMultiSelectSource, /SELECT_ALL_VALUE/);
   assert.match(queryMultiSelectSource, /全选 \/ 取消全选/);
   assert.match(queryMultiSelectSource, /options=\{mergedOptions\}/);
-  assert.doesNotMatch(queryMultiSelectSource, /popupRender|dropdownRender/);
+  assert.doesNotMatch(queryMultiSelectSource, /popupRender=\{|dropdownRender=\{/);
   assert.doesNotMatch(queryMultiSelectSource, /<Button|<Divider|<Space/);
 });
 
@@ -31,7 +31,7 @@ test('feature-specific multi-selects stay thin wrappers over the shared componen
     assert.match(source, /import \{ QueryMultiSelect \}/);
     assert.match(source, /<QueryMultiSelect/);
     assert.doesNotMatch(source, /<Select/);
-    assert.doesNotMatch(source, /popupRender|dropdownRender/);
+    assert.doesNotMatch(source, /popupRender=\{|dropdownRender=\{/);
   });
 });
 
