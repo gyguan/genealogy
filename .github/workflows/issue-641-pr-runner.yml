@@ -46,6 +46,14 @@ jobs:
           end = workflow.index("\n          PY\n", start)
           lines = workflow[start:end].splitlines()
           script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+          script = script.replace(
+              "person_archive = file_by_name('PersonArchivePage.tsx')",
+              "person_archive = next(path for path in src.rglob('*.tsx') if 'person-archive-query-card' in path.read_text(encoding='utf-8'))"
+          )
+          script = script.replace(
+              "source_page = file_by_name('SourceLibraryPage.tsx')",
+              "source_page = next(path for path in src.rglob('*.tsx') if 'source-library-result-card' in path.read_text(encoding='utf-8'))"
+          )
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
