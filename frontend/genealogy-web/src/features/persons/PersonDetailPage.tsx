@@ -125,7 +125,7 @@ export function PersonDetailPage({ personId, onBack }: Props) {
       onBack={onBack}
       title={personName(person)}
       status={<Tag color={personStatusColor(status)}>{personStatusText(status)}</Tag>}
-      subtitle={`人物档案详情与证据追踪 · ${branchText(person)} · ${generationText(person)}`}
+      subtitle={`${branchText(person)} · ${generationText(person)}`}
       actions={<><TrackingLinkButton clanId={clanId} targetType="person" targetId={personId} label="审核追踪" /><DraftDeleteButton object={person} objectName={personName(person)} objectType="人物" onDelete={() => apiClient.delete(`/persons/${personId}`)} onDeleted={() => { workspace.setPersonId(''); onBack(); }} label="删除草稿" /><Button type="primary" onClick={() => navigateToPersonEdit(personId)}>编辑档案</Button></>}
     />
     <Card className="person-detail-summary-card"><div className="person-detail-completeness"><Typography.Text type="secondary">资料完整度</Typography.Text><Progress percent={completeness} /></div><Descriptions column={{ xs: 1, sm: 2, lg: 4 }} size="small"><Descriptions.Item label="支派">{branchText(person)}</Descriptions.Item><Descriptions.Item label="字辈">{display(person.generationWord)}</Descriptions.Item><Descriptions.Item label="代次">{generationText(person)}</Descriptions.Item><Descriptions.Item label="生卒">{lifeText(person)}</Descriptions.Item><Descriptions.Item label="隐私级别">{privacyText(person.privacyLevel)}</Descriptions.Item><Descriptions.Item label="亲属关系">{countText(relationships)}</Descriptions.Item><Descriptions.Item label="来源证据">{countText(sources)}</Descriptions.Item><Descriptions.Item label="更新时间">{updatedText(person)}</Descriptions.Item></Descriptions></Card>

@@ -851,7 +851,6 @@ export function SourceLibraryQueryPage({ notify }: Props) {
                 <Col flex="auto">
                   <Space direction="vertical" size={4}>
                     <Space wrap><Title level={3} className="source-library-detail-title">{sourceTitle(selectedSource)}</Title><Tag color={statusColor(selectedSource.verificationStatus)}>{optionText(statusOptions, selectedSource.verificationStatus)}</Tag></Space>
-                    <Text type="secondary">来源资料库 / 来源详情</Text>
                   </Space>
                 </Col>
                 <Col><Space wrap><TrackingLinkButton clanId={clanId} targetType="source" targetId={selectedSource.id} /><Button onClick={() => void reloadDetail()}>刷新</Button>{canBind ? <Button type="primary" onClick={openCreateReference}>新增引用</Button> : null}</Space></Col>
@@ -977,13 +976,10 @@ export function SourceLibraryQueryPage({ notify }: Props) {
           </Form>
         </Card>
 
-        <Card className="source-library-result-card" title="查询结果" extra={resultActions}>
+        <Card className="source-library-result-card" title={`查询结果（${sourceTotal}）`} extra={resultActions}>
           {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
           <div className="source-library-result-meta">
-            <Space wrap size={12}>
-              <Text strong>共 {sourceTotal} 条记录</Text>
-              <Text type="secondary">当前宗族：{selectedClan ? clanOptionLabel(selectedClan) : '未选择'}</Text>
-            </Space>
+            <span />
             <Select aria-label="排序方式" className="source-library-sort" value={search.sort || 'updatedAt,desc'} options={sortOptions} onChange={changeSort} />
           </div>
 

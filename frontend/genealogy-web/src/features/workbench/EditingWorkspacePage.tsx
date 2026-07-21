@@ -439,8 +439,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       </Form>
     </Card>
 
-    <Card title="查询结果" extra={resultActions}>
-      <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>共找到 {total} 条修谱任务</Typography.Text>
+    <Card title={`查询结果（${total}）`} extra={resultActions}>
       {selectedKeys.length ? <Alert type="info" showIcon message={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
       {bulkFailures.length ? <Alert type="warning" showIcon closable onClose={() => setBulkFailures([])} message={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
       {taskError ? <Alert type="error" showIcon message="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}

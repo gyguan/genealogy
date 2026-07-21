@@ -320,11 +320,10 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         </Space>
       </Form>
     </Card>
-    <Card className="person-archive-result-card" title="查询结果" extra={resultActions}>
+    <Card className="person-archive-result-card" title={hasQueried ? `查询结果（${total}）` : '查询结果'} extra={resultActions}>
       {refreshError ? <Alert type="warning" showIcon message="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
       {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>
         <div className="person-archive-result-toolbar">
-          <Typography.Text type="secondary">{hasQueried ? `已按当前条件查询，共 ${total} 条记录` : '请设置查询条件后开始查询。'}</Typography.Text>
           <Space><Typography.Text type="secondary">排序</Typography.Text><Select aria-label="排序" value={form.sort} onChange={value => { const criteria = { ...form, sort: value }; setForm(criteria); if (hasQueried) void search(1, criteria); }} options={[...PERSON_SORT_OPTIONS]} /></Space>
         </div>
         <div className="person-archive-desktop-list"><Table<any> size="small" bordered rowKey={(row, index) => String(personId(row) || index)} dataSource={rows} pagination={hasQueried ? { current: currentPage, pageSize: form.pageSize, total, showSizeChanger: true, pageSizeOptions: PERSON_PAGE_SIZE_OPTIONS.map(String), showTotal: value => `共 ${value} 条`, onChange: (nextPage, nextSize) => { const criteria = nextSize === form.pageSize ? form : { ...form, pageSize: nextSize }; void search(nextSize === form.pageSize ? nextPage : 1, criteria); } } : false} loading={querying} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '请设置查询条件后开始查询。'} /> }} onRow={row => ({ onClick: () => openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })} columns={[

@@ -517,7 +517,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
 
   return (
     <div className="member-role-page">
-      <Card title="成员与权限" extra={<Space wrap><Typography.Text type="secondary">按角色与数据范围查看成员授权，权限变更由后端执行越级、范围和最后管理员校验。</Typography.Text><Button onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button></Space>}>
+      <Card title="成员与权限" extra={<Button onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>}>
         <Row gutter={[16, 12]}>
           <Col xs={24} md={12} xl={6}>
             <Typography.Text type="secondary">当前宗族</Typography.Text>
