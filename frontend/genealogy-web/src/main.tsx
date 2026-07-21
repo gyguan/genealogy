@@ -22,6 +22,7 @@ import './person-archive-tweaks.css';
 import './person-archive-source.css';
 import './person-edit-page.css';
 import './person-detail-page.css';
+import './entity-page-header.css';
 import './runtime-error.css';
 import './guidance-cleanup.css';
 import './lineage-workbench-overrides.css';
