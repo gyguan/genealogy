@@ -1,6 +1,6 @@
-import { Button, Modal, message } from 'antd';
+import { Button, Popconfirm, message } from 'antd';
 import type { ButtonProps } from 'antd';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   canDirectDeleteDraft,
   draftDeleteConfirmDescription,
@@ -33,34 +33,56 @@ export function DraftDeleteButton({
   label = '删除',
   buttonProps
 }: Props) {
+  const deletingRef = useRef(false);
+  const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   if (!canDirectDeleteDraft(object)) return null;
 
-  function confirmDelete() {
-    Modal.confirm({
-      title: draftDeleteConfirmTitle(objectName, objectType),
-      content: draftDeleteConfirmDescription(objectType),
-      okText: '确认删除',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        if (deleting) return;
-        setDeleting(true);
-        try {
-          await onDelete();
-          message.success(`${objectType}已删除`);
-          await onDeleted?.();
-        } catch (error) {
-          onError?.(error);
-          message.error(errorText(error, `删除${objectType}失败`));
-          throw error;
-        } finally {
-          setDeleting(false);
-        }
-      }
-    });
+  async function confirmDelete() {
+    if (deletingRef.current) return;
+    deletingRef.current = true;
+    setDeleting(true);
+    try {
+      await onDelete();
+      setOpen(false);
+      message.success(`${objectType}已删除`);
+      await onDeleted?.();
+    } catch (error) {
+      onError?.(error);
+      message.error(errorText(error, `删除${objectType}失败`));
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
   }
 
-  return <Button {...buttonProps} danger loading={deleting} onClick={confirmDelete}>{label}</Button>;
+  return (
+    <Popconfirm
+      title={draftDeleteConfirmTitle(objectName, objectType)}
+      description={draftDeleteConfirmDescription(objectType)}
+      open={open}
+      okText="确认删除"
+      cancelText="取消"
+      okButtonProps={{ danger: true, loading: deleting }}
+      cancelButtonProps={{ disabled: deleting }}
+      onOpenChange={nextOpen => {
+        if (!deletingRef.current) setOpen(nextOpen);
+      }}
+      onConfirm={() => void confirmDelete()}
+      onCancel={() => setOpen(false)}
+    >
+      <Button
+        {...buttonProps}
+        danger
+        loading={deleting}
+        onClick={event => {
+          event.stopPropagation();
+          if (!deletingRef.current) setOpen(true);
+        }}
+      >
+        {label}
+      </Button>
+    </Popconfirm>
+  );
 }
