@@ -4,6 +4,7 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
@@ -225,7 +226,11 @@ public class PersonApplicationService {
     public void delete(Long id, Long actorId) {
         PersonEntity entity = getActiveEntity(id);
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, entity.getBranchId(), PERSON_DELETE);
-        requireReviewForOfficialPerson(entity, actorId, "PERSON_OFFICIAL_DELETE_REVIEW_REQUIRED", "正式人物删除需先提交审核");
+        DraftDeletePolicy.requireDraft(
+                entity.getDataStatus(),
+                "PERSON_DELETE_DRAFT_ONLY",
+                "仅草稿人物可直接删除"
+        );
         entity.setDeletedAt(LocalDateTime.now());
         entity.setUpdatedAt(LocalDateTime.now());
         personRepository.save(entity);
