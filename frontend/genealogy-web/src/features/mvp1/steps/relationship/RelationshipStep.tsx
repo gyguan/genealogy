@@ -5,6 +5,7 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
+import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
 import {
   RELATIONSHIP_MODE_LABEL,
   buildRelationshipBody,
@@ -19,7 +20,7 @@ import {
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadClans as queryClans, type ClanLike } from '../../services/clanService';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
-import { createRelationshipApi, loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
+import { createRelationshipApi, deleteRelationshipApi, loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
 
 type Props = {
@@ -235,6 +236,13 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     }
   }
 
+  async function afterDeleteRelationship(row: RelationshipLike) {
+    const relationshipId = String(row.id || '');
+    setSelectedRelationshipRowKeys(prev => prev.filter(key => String(key) !== relationshipId));
+    if (workspace.relationshipId === relationshipId) workspace.setRelationshipId('');
+    await loadRelationships(centerPersonId || workspace.personId);
+  }
+
   function selectRelationship(row: RelationshipLike) {
     workspace.setRelationshipId(String(row.id || ''));
     toast({ message: `已选中关系：${relationTypeText(row, centerPersonId || workspace.personId)}` });
@@ -352,11 +360,24 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
               { key: 'relationType', title: '关系类型', width: 120, render: (_value, row) => relationTypeText(row, centerPersonId || workspace.personId) },
               { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
               {
-                key: 'tracking',
+                key: 'actions',
                 title: '操作',
-                width: 100,
+                width: 220,
                 render: (_value, row) => (
-                  <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="relationship" targetId={row.id} />
+                  <Space size={4} wrap>
+                    <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="relationship" targetId={row.id} />
+                    {row.id ? (
+                      <DraftDeleteButton
+                        object={row}
+                        objectName={relativeName(row, centerPersonId || workspace.personId)}
+                        objectType="关系"
+                        onDelete={() => deleteRelationshipApi(row.id!)}
+                        onDeleted={() => afterDeleteRelationship(row)}
+                        label="删除草稿"
+                        buttonProps={{ size: 'small', type: 'link' }}
+                      />
+                    ) : null}
+                  </Space>
                 )
               }
             ]}
