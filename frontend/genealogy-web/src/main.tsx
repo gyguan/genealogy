@@ -30,6 +30,7 @@ import './member-permission-page.css';
 import './module-title-dedup.css';
 import './page-content-cleanup.css';
 import './query-button-unification.css';
+import './lineage-result-toolbar-refinement.css';
 
 function installSourceRouteHistorySync() {
   const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
