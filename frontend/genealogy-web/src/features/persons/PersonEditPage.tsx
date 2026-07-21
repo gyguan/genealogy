@@ -375,10 +375,9 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
         subtitle={`${personName} · ${display(person.generationWord, '字辈待维护')} · ${person.generationNo ? `第${person.generationNo}世` : '代次待维护'}`}
       />
 
-      <Alert type="info" showIcon message="档案状态由领域动作管理" description="普通资料保存不会修改档案状态。提交审核、撤回、归档和恢复仅在当前状态与权限允许时执行。" />
       {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
       {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
-      {saved ? <Alert type="success" showIcon message="人物资料已保存" description="档案状态未发生变化，可以继续修改或执行合法状态动作。" action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
+      {saved ? <Alert type="success" showIcon message="人物资料已保存" action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
 
       <Form<PersonEditForm>
         form={form}

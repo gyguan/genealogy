@@ -442,14 +442,15 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         ]} />
         {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
       </Card>
-
-      <Card
-        className="tracking-result-card"
-        title={<div className="tracking-result-title"><Title level={4}>查询结果</Title><Text type="secondary">共 {resultTotal} 条</Text></div>}
-        extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-      >
-        {workspace.clanId ? activeResult : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选择宗族后查看审计结果" />}
-      </Card>
+      {workspace.clanId ? (
+        <Card
+          className="tracking-result-card"
+          title={<div className="tracking-result-title"><Title level={4}>查询结果</Title><Text type="secondary">共 {resultTotal} 条</Text></div>}
+          extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
+        >
+          {activeResult}
+        </Card>
+      ) : null}
 
       <OperationLogDrawer log={selectedAuditLog} onClose={() => { setSelectedAuditLog(null); setSelectedAuditLogId(''); }} />
       <OperationLogDrawer log={selectedRiskLog ? asOperationLog(selectedRiskLog) : null} onClose={() => { setSelectedRiskLog(null); setSelectedRiskLogId(''); }} />

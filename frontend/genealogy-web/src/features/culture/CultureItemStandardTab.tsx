@@ -495,7 +495,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {messageContext}
       <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
-        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理族规家训、人物传记、堂号郡望、祭祀礼仪等文化资料。" />
+        <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>

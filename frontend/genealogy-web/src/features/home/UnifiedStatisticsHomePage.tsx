@@ -342,7 +342,6 @@ export function UnifiedStatisticsHomePage() {
       <Card className="public-home-page__hero">
         <div className="public-home-page__hero-layout">
           <div className="public-home-page__hero-copy">
-            <Tag color="blue">宗族公共主页</Tag>
             <Title level={3}>{clanLabel(currentClan)}</Title>
             <Paragraph type="secondary">
               {display(currentClan?.description, '暂未维护宗族简介，可在宗族资料中补充公开的历史沿革与宗族概况。')}
@@ -368,7 +367,6 @@ export function UnifiedStatisticsHomePage() {
         <div className="public-home-page__section-heading">
           <div>
             <Title id="public-home-overview-title" level={4}>宗族概况</Title>
-            <Text type="secondary">公开汇总数据，不包含审核、风险或内部作业状态。</Text>
           </div>
         </div>
         {dashboardState.status === 'loading' && !dashboardState.loaded ? (
@@ -383,7 +381,6 @@ export function UnifiedStatisticsHomePage() {
               <Col key={metric.title} xs={24} sm={12} xl={6}>
                 <Card className="public-home-page__metric-card">
                   <Statistic title={metric.title} value={metric.value} suffix={metric.suffix} />
-                  <Text type="secondary">{metric.hint}</Text>
                 </Card>
               </Col>
             ))}

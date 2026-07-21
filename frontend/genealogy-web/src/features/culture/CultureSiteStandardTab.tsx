@@ -303,7 +303,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     {messageContext}
     <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
-      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} description="管理祠堂、祖居、墓园、纪念设施等宗族文化空间。" />
+      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>

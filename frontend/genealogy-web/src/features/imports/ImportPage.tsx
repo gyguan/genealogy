@@ -185,7 +185,6 @@ export function ImportPage({ notify }: Props) {
   return (
     <div className="import-center-page import-double-card-page">
       <Card className="import-query-card" title="导入任务查询">
-        <Typography.Paragraph type="secondary" className="import-query-description">按导入对象、状态、文件或时间筛选导入任务。</Typography.Paragraph>
         <Form<QueryFormValues> form={queryForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12} xl={6}>
@@ -215,7 +214,7 @@ export function ImportPage({ notify }: Props) {
 
       <Card
         className="import-result-card"
-        title={<div><Typography.Title level={4}>查询结果</Typography.Title><Typography.Text type="secondary">共 {taskTotal} 条</Typography.Text></div>}
+        title={`查询结果（${taskTotal}）`}
         extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setNewImportOpen(true)}>新建导入</Button>}
       >
         <AsyncImportExecutionPanel

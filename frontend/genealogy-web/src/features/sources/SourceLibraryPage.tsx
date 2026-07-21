@@ -778,7 +778,6 @@ export function SourceLibraryPage({ notify }: Props) {
                 <Col flex="auto">
                   <Space direction="vertical" size={4}>
                     <Space wrap><Title level={3} style={{ margin: 0 }}>{sourceTitle(selectedSource)}</Title><Tag color={statusColor(selectedSource.verificationStatus)}>{optionText(statusOptions, selectedSource.verificationStatus)}</Tag></Space>
-                    <Text type="secondary">来源资料库 / 来源详情</Text>
                   </Space>
                 </Col>
                 <Col><Space wrap><TrackingLinkButton clanId={clanId} targetType="source" targetId={selectedSource.id} /><Button onClick={() => void reloadDetail()}>刷新</Button>{canBind ? <Button type="primary" onClick={openCreateReference}>新增引用</Button> : null}</Space></Col>
