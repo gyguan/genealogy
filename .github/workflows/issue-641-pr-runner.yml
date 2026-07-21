@@ -54,6 +54,15 @@ jobs:
               "source_page = file_by_name('SourceLibraryPage.tsx')",
               "source_page = next(path for path in src.rglob('*.tsx') if 'source-library-result-card' in path.read_text(encoding='utf-8'))"
           )
+          script = script.replace(
+              "import { join } from 'node:path';",
+              "import { join } from 'node:path';\\n          import { fileURLToPath } from 'node:url';"
+          )
+          script = script.replace(
+              "const root = new URL('../../', import.meta.url);",
+              "const root = fileURLToPath(new URL('../../', import.meta.url));"
+          )
+          script = script.replace("files(root.pathname)", "files(root)")
           Path('/tmp/issue-641-cleanup.py').write_text(script, encoding='utf-8')
           PY
           python3 /tmp/issue-641-cleanup.py 2>&1 | tee /tmp/issue-641-runner.log
@@ -62,7 +71,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: issue-641-cleanup-diagnostics
-          path: /tmp/issue-641-runner.log
+          path: |
+            /tmp/issue-641-runner.log
+            /tmp/issue-641-test.log
           if-no-files-found: warn
           retention-days: 3
       - name: Install frontend dependencies
@@ -72,7 +83,8 @@ jobs:
       - name: Run focused regression test
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
-        run: npm run test:person-edit
+        shell: bash
+        run: set -o pipefail; npm run test:person-edit 2>&1 | tee /tmp/issue-641-test.log
       - name: Typecheck frontend
         if: steps.guard.outputs.skip != 'true'
         working-directory: frontend/genealogy-web
