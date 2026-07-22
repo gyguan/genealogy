@@ -3,9 +3,15 @@ import type {
   TreeGraphResponse,
   TreeNodeResponse
 } from '../../shared/api/generated/tree-types';
+import type { LineageClientEdge } from './lineageClientRelation';
 
 export type PersonCenteredClientGraph = TreeGraphResponse & {
   clientLayoutMode: 'person-centered';
+};
+
+type InferredSiblingRelation = {
+  biological: boolean;
+  relationCategory: 'blood' | 'ritual';
 };
 
 const PARENT_RELATION_TYPES = new Set<TreeEdgeResponse['relationType']>([
@@ -25,6 +31,12 @@ function isSpouseEdge(edge: TreeEdgeResponse) {
 function isParentEdge(edge: TreeEdgeResponse) {
   if (isSpouseEdge(edge) || edge.relationCategory === 'status') return false;
   return Boolean(edge.isLineageRelation || PARENT_RELATION_TYPES.has(edge.relationType));
+}
+
+function isOrdinaryBiologicalParentEdge(edge: TreeEdgeResponse) {
+  return edge.relationType === 'parent_child'
+    && edge.relationCategory === 'blood'
+    && edge.isBiological !== false;
 }
 
 function otherEndpoint(edge: TreeEdgeResponse, centerNodeId: string) {
@@ -56,8 +68,10 @@ function directRelationLabel(
   centerNodeId: string,
   nodeMap: ReadonlyMap<string, TreeNodeResponse>
 ) {
-  if (isSpouseEdge(edge)) return '配偶';
-  if (!isParentEdge(edge)) return edge.relationLabel;
+  if (isSpouseEdge(edge)) {
+    return edge.relationLabel || (edge.isPrimary === false ? undefined : '配偶');
+  }
+  if (!isOrdinaryBiologicalParentEdge(edge)) return edge.relationLabel;
   if (edge.toNodeId === centerNodeId) return parentRole(nodeMap.get(edge.fromNodeId));
   if (edge.fromNodeId === centerNodeId) return childRole(nodeMap.get(edge.toNodeId));
   return edge.relationLabel;
@@ -76,6 +90,20 @@ function uniqueGraph(graph: TreeGraphResponse) {
     edgeMap.set(edge.edgeId, edge);
   });
   return { nodeMap, edges: [...edgeMap.values()] };
+}
+
+function inferredSiblingRelation(
+  centerParentEdge: TreeEdgeResponse,
+  siblingParentEdge: TreeEdgeResponse
+): InferredSiblingRelation {
+  const biological = centerParentEdge.relationCategory === 'blood'
+    && siblingParentEdge.relationCategory === 'blood'
+    && centerParentEdge.isBiological !== false
+    && siblingParentEdge.isBiological !== false;
+  return {
+    biological,
+    relationCategory: biological ? 'blood' : 'ritual'
+  };
 }
 
 /**
@@ -100,18 +128,21 @@ export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCentered
   const directEdges = edges.filter(edge => edge.fromNodeId === centerNodeId || edge.toNodeId === centerNodeId);
   const directEndpointIds = new Set(directEdges.map(edge => otherEndpoint(edge, centerNodeId)).filter(Boolean));
   const parentEdges = edges.filter(isParentEdge);
-  const parentIds = new Set(
-    parentEdges
-      .filter(edge => edge.toNodeId === centerNodeId)
-      .map(edge => edge.fromNodeId)
-  );
+  const centerParentEdges = parentEdges.filter(edge => edge.toNodeId === centerNodeId);
+  const centerParentById = new Map(centerParentEdges.map(edge => [edge.fromNodeId, edge]));
 
-  const siblingIds = new Set<string>();
+  const siblingRelations = new Map<string, InferredSiblingRelation>();
   parentEdges.forEach(edge => {
-    if (!parentIds.has(edge.fromNodeId) || edge.toNodeId === centerNodeId) return;
-    if (!directEndpointIds.has(edge.toNodeId)) siblingIds.add(edge.toNodeId);
+    const centerParentEdge = centerParentById.get(edge.fromNodeId);
+    if (!centerParentEdge || edge.toNodeId === centerNodeId || directEndpointIds.has(edge.toNodeId)) return;
+    const relation = inferredSiblingRelation(centerParentEdge, edge);
+    const previous = siblingRelations.get(edge.toNodeId);
+    if (!previous || (!previous.biological && relation.biological)) {
+      siblingRelations.set(edge.toNodeId, relation);
+    }
   });
 
+  const siblingIds = new Set(siblingRelations.keys());
   const visibleNodeIds = new Set<string>([
     centerNodeId,
     ...directEndpointIds,
@@ -123,21 +154,23 @@ export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCentered
     ...edge,
     relationLabel: directRelationLabel(edge, centerNodeId, nodeMap)
   }));
-  const syntheticSiblingEdges: TreeEdgeResponse[] = [...siblingIds]
-    .filter(siblingId => !directEdges.some(edge => otherEndpoint(edge, centerNodeId) === siblingId))
-    .map(siblingId => ({
+  const syntheticSiblingEdges: LineageClientEdge[] = [...siblingRelations.entries()]
+    .filter(([siblingId]) => !directEdges.some(edge => otherEndpoint(edge, centerNodeId) === siblingId))
+    .map(([siblingId, relation]) => ({
       edgeId: `client-direct-sibling-${centerNodeId}-${siblingId}`,
       relationshipId: null,
       fromNodeId: centerNodeId,
       toNodeId: siblingId,
       relationType: 'other',
       relationLabel: siblingRole(nodeMap.get(siblingId)),
-      relationCategory: 'blood',
+      relationCategory: relation.relationCategory,
       visibility: 'visible',
       isLineageRelation: false,
-      isBiological: true
+      isBiological: relation.biological,
+      clientRelationKind: 'sibling',
+      clientDerived: true
     }));
-  const visibleEdges = [...roleAwareEdges, ...syntheticSiblingEdges];
+  const visibleEdges: TreeEdgeResponse[] = [...roleAwareEdges, ...syntheticSiblingEdges];
 
   return {
     ...graph,
