@@ -1,0 +1,41 @@
+name: Issue 708 patch diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-708-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-708-approved-dependencies
+      - name: Extract and run patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
+          start = "          cat > /tmp/patch_issue708.py <<'PY'\n"
+          end = "\n          PY\n          python /tmp/patch_issue708.py"
+          body = text.split(start, 1)[1].split(end, 1)[0]
+          body = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
+          Path('/tmp/patch_issue708.py').write_text(body + '\n', encoding='utf-8')
+          PY
+          set +e
+          python /tmp/patch_issue708.py > issue-708-patch-diagnostic.txt 2>&1
+          status=$?
+          echo "exit_status=$status" >> issue-708-patch-diagnostic.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-708-patch-diagnostic
+          path: issue-708-patch-diagnostic.txt
+          retention-days: 1
