@@ -255,8 +255,7 @@ export async function loadBranchLineage(input: {
     includeSubBranches: input.includeSubBranches,
     maxDepth: input.depth,
     maxNodes: 500,
-    maxEdges: 1000,
-    refreshAt: Date.now()
+    maxEdges: 1000
   });
   const graph = await apiClient.get<TreeGraphResponse>(`/tree/clans/${input.clanId}/branches/${input.branchId}/lineage?${query}`);
   return buildBranchDepthGraph(graph, input.depth);
