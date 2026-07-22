@@ -44,6 +44,18 @@ jobs:
               raise SystemExit('unable to normalize listBranches function')
           source.write_text(source_text, encoding='utf-8')
 
+          person_edit = Path('frontend/genealogy-web/src/features/persons/PersonEditPage.tsx')
+          person_text = person_edit.read_text(encoding='utf-8')
+          person_text, count = re.subn(
+              r"function isOfficialGenerationScheme\(scheme: any\) \{\s*const status = String\(scheme\.dataStatus \|\| scheme\.status \|\| scheme\.verificationStatus \|\| ''\)\.toLowerCase\(\);\s*return \['official', 'active', 'approved'\]\.includes\(status\);\s*\}",
+              "function isOfficialGenerationScheme(scheme: any) {\n    const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();\n    return ['official', 'active', 'approved'].includes(status);\n  }",
+              person_text,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit('unable to normalize person edit helper')
+          person_edit.write_text(person_text, encoding='utf-8')
+
           text = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
           start = "          cat > /tmp/patch_issue708.py <<'PY'\n"
           end = "\n          PY\n          python /tmp/patch_issue708.py"
