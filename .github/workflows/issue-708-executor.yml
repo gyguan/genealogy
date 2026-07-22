@@ -1,0 +1,114 @@
+name: Issue 708 resilient executor
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-708-executor.yml
+
+permissions:
+  contents: write
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-708-approved-dependencies
+          fetch-depth: 0
+      - name: Extract and apply patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Normalize the one formatting-sensitive declaration before executing the guarded patch.
+          path = Path('frontend/genealogy-web/src/features/sources/sourceLibraryService.ts')
+          text = path.read_text(encoding='utf-8')
+          pattern = r'export type BranchOption = \{\s*id\?: number;\s*branchName\?: string;\s*branchPath\?: string;\s*\};'
+          replacement = '''export type BranchOption = {
+    id?: number;
+    branchName?: string;
+    branchPath?: string;
+  };'''
+          text, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('unable to normalize BranchOption declaration')
+          path.write_text(text, encoding='utf-8')
+
+          workflow = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
+          start = "          cat > /tmp/patch_issue708.py <<'PY'\n"
+          end = "\n          PY\n          python /tmp/patch_issue708.py"
+          body = workflow.split(start, 1)[1].split(end, 1)[0]
+          body = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
+          Path('/tmp/patch_issue708.py').write_text(body + '\n', encoding='utf-8')
+          PY
+          set +e
+          python /tmp/patch_issue708.py > issue-708-executor.log 2>&1
+          status=$?
+          set -e
+          cat issue-708-executor.log
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+          git diff --check
+      - name: Backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q test
+      - name: Frontend checks
+        working-directory: frontend/genealogy-web
+        run: |
+          npm ci
+          npm run typecheck
+          npm run test:wizard
+          npm run test:wizard-dependencies
+          npm run test:source-stage
+          npm run test:person-edit
+          npm run test:imports
+          npm run test:culture-shell
+          npm run build
+      - name: Commit implementation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tasks/issue-708-execution.md')
+          text = path.read_text(encoding='utf-8')
+          for item in [
+              '建立后端统一依赖审核策略',
+              '接入支派、字辈、人物、关系、来源绑定写接口',
+              '接入宗族文化与导入场景',
+              '收紧前端依赖对象候选过滤',
+              '增加自动化测试',
+              '通过前后端 CI'
+          ]:
+              text = text.replace(f'- [ ] {item}', f'- [x] {item}')
+          path.write_text(text, encoding='utf-8')
+          for workflow in [
+              '.github/workflows/issue-708-implementation.yml',
+              '.github/workflows/issue-708-diagnostic.yml',
+              '.github/workflows/issue-708-executor.yml'
+          ]:
+              candidate = Path(workflow)
+              if candidate.exists():
+                  candidate.unlink()
+          log = Path('issue-708-executor.log')
+          if log.exists():
+              log.unlink()
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: require approved dependency objects'
+          git push origin HEAD:agent/issue-708-approved-dependencies
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-708-executor-diagnostic
+          path: issue-708-executor.log
+          if-no-files-found: ignore
+          retention-days: 1
