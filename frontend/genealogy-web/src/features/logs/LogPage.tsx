@@ -52,7 +52,7 @@ import { TrackingMultiSelect } from './TrackingMultiSelect';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import './tracking-page.css';
-import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -447,12 +447,10 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         <QueryResultCard
           className="tracking-result-card"
           extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}>
-          <BusinessResultCard
-            title={activeTab === TRACKING_TABS.OBJECT ? '业务对象' : activeTab === TRACKING_TABS.AUDIT ? '操作日志' : '风险事件'}
-          >
+         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'} businessTitle={activeTab === TRACKING_TABS.OBJECT ? '业务对象' : activeTab === TRACKING_TABS.AUDIT ? '操作日志' : '风险事件'}>
+          
             {activeResult}
-          </BusinessResultCard>
+          
         </QueryResultCard>
       ) : null}
 

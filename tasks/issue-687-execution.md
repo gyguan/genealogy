@@ -9,17 +9,17 @@
 
 ## 实现
 
-- [ ] `QueryResultCard` 内部强制创建一个 `BusinessResultCard`；
-- [ ] 页面不再直接导入或使用 `BusinessResultCard`；
-- [ ] 外层承载查询结果、总数和页面级按钮；
-- [ ] 内层承载业务标题、业务局部控件和结果内容；
-- [ ] 覆盖 11 处查询结果页面；
-- [ ] 不修改接口和业务逻辑。
+- [x] `QueryResultCard` 内部强制创建一个 `BusinessResultCard`；
+- [x] 页面不再直接导入或使用 `BusinessResultCard`；
+- [x] 外层承载查询结果、总数和页面级按钮；
+- [x] 内层承载业务标题、业务局部控件和结果内容；
+- [x] 覆盖 11 处查询结果页面；
+- [x] 不修改接口和业务逻辑。
 
 ## 验证
 
-- [ ] 源码结构测试；
-- [ ] TypeScript；
-- [ ] 生产构建；
-- [ ] Frontend CI；
-- [ ] Culture / Tracking / Import Page Gate。
+- [x] 源码结构测试；
+- [x] TypeScript；
+- [x] 生产构建；
+- [x] Frontend CI；
+- [x] Culture / Tracking / Import Page Gate。

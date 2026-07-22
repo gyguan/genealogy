@@ -18,7 +18,7 @@ import {
   writePersonArchiveUrl
 } from './personArchiveUrlState';
 import type { PersonArchiveSearchState } from './personArchiveUrlState';
-import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
@@ -321,8 +321,8 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         </Space>
       </Form>
     </Card>
-    <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total}>
-      <BusinessResultCard title="人物档案">
+    <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total} businessTitle="人物档案">
+      
       {refreshError ? <Alert type="warning" showIcon message="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
       {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>
         <div className="person-archive-result-toolbar">
@@ -335,7 +335,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         ]} scroll={{ x: 'max-content' }} /></div>
         <div className="person-archive-mobile-list" aria-label="人物档案卡片列表">{querying ? <Card loading /> : rows.length ? rows.map(row => <Card key={String(personId(row))} className="person-archive-mobile-card" title={<Button id={focusId(row, 'name')} type="link" className="person-archive-mobile-name" onClick={() => openDetail(row, focusId(row, 'name'))}>{display(personName(row), '未命名人物')}</Button>} extra={<Tag color={statusColor(row)}>{statusText(row)}</Tag>}><div className="person-archive-mobile-subtitle">{display(row.genealogyName || row.aliasName, '谱名或别名待维护')}</div><dl className="person-archive-mobile-meta"><div><dt>字辈</dt><dd>{display(personGenerationWord(row))}</dd></div><div><dt>代次</dt><dd>{generationText(row)}</dd></div><div><dt>支派</dt><dd>{branchText(row)}</dd></div><div><dt>生卒</dt><dd>{lifeText(row)}</dd></div></dl><div className="person-archive-mobile-actions"><Button id={focusId(row, 'view')} onClick={() => openDetail(row, focusId(row, 'view'))}>查看</Button><Button id={focusId(row, 'edit')} onClick={() => openEditor(row, focusId(row, 'edit'))}>编辑</Button><DraftDeleteButton object={row} objectName={personName(row)} objectType="人物" onDelete={() => apiClient.delete(`/persons/${personId(row)}`)} onDeleted={() => search(currentPage, form, false)} label="删除草稿" buttonProps={{ size: 'small' }} /><Dropdown menu={moreMenu(row)} trigger={['click']}><Button aria-label={`更多操作：${display(personName(row), '未命名人物')}`}>更多</Button></Dropdown></div></Card>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '请设置查询条件后开始查询。'} />}{hasQueried && total > form.pageSize ? <Pagination current={currentPage} pageSize={form.pageSize} total={total} showSizeChanger pageSizeOptions={PERSON_PAGE_SIZE_OPTIONS.map(String)} onChange={(nextPage, nextSize) => { const criteria = nextSize === form.pageSize ? form : { ...form, pageSize: nextSize }; void search(nextSize === form.pageSize ? nextPage : 1, criteria); }} showTotal={value => `共 ${value} 条`} /> : null}</div>
       </>}
-      </BusinessResultCard>
+      
     </QueryResultCard>
   </div>;
 }

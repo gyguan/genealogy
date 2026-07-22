@@ -73,7 +73,7 @@ import {
 } from './treeDisplayModel';
 import './lineage-workbench-issue376.css';
 import './lineage-double-card.css';
-import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -876,8 +876,8 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         </div>
       </Card>
 
-      <QueryResultCard className="lineage-double-card-result" size="small" total={activeGraph?.nodes.length || 0} totalSuffix="个人物">
-        <BusinessResultCard title="世系图谱">
+      <QueryResultCard className="lineage-double-card-result" size="small" total={activeGraph?.nodes.length || 0} totalSuffix="个人物" businessTitle="世系图谱">
+        
           <Tabs
           className="lineage-result-tabs"
           activeKey={mode}
@@ -895,7 +895,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
             }
           ]}
           />
-        </BusinessResultCard>
+        
       </QueryResultCard>
 
       <Drawer
