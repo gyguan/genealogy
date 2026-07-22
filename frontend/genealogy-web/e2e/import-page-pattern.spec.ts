@@ -145,7 +145,7 @@ test('data import page uses a strict two-layer query result with one new import 
 
   await drawer.getByRole('button', { name: '关系导入' }).click();
   await expect(drawer.getByRole('button', { name: '关系导入' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(drawer.getByText('关系导入', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('人物关系导入', { exact: true })).toBeVisible();
   await expect(page.locator('.ant-drawer:visible')).toHaveCount(1);
 });
 
