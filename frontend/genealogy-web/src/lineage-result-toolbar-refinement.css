@@ -10,47 +10,64 @@
 
 .lineage-result-toolbar--double-card,
 .lineage-result-toolbar--double-card.is-person {
-  position: absolute;
-  top: 13px;
-  right: auto;
-  left: 11px;
+  position: absolute !important;
+  top: 13px !important;
+  right: 11px !important;
+  left: auto !important;
   z-index: 3;
-  display: grid;
-  width: 360px;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  width: min(360px, calc(100% - 22px));
   gap: 0;
   margin: 0;
 }
 
 .lineage-result-pane:not(:has(.lineage-graph-toolbar)) > .lineage-result-toolbar--double-card {
-  position: static;
+  position: static !important;
   width: min(360px, 100%);
-  margin-bottom: 8px;
+  margin: 0 0 8px auto;
 }
 
 .lineage-result-toolbar--double-card.is-person > :nth-child(2) {
   display: none;
 }
 
+.lineage-result-toolbar--double-card > .ant-form-item {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
-  display: grid;
-  grid-template-columns: max-content minmax(180px, 1fr);
-  align-items: center;
-  column-gap: 8px;
+  display: flex !important;
+  flex-flow: row nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end;
+  width: 100%;
 }
 
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label {
-  display: block;
-  padding: 0;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 8px 0 0 !important;
+  overflow: visible;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label {
+  display: inline-flex;
+  align-items: center;
   height: 32px;
+  line-height: 32px;
   white-space: nowrap;
 }
 
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label::after {
   margin-inline-start: 2px;
+  font-size: 14px;
   content: '：';
 }
 
@@ -63,8 +80,13 @@
   content: '圈内定位';
 }
 
-.lineage-result-toolbar--double-card > .ant-form-item,
-.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control,
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control {
+  flex: 0 1 280px !important;
+  width: 280px;
+  max-width: 280px;
+  min-width: 180px;
+}
+
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input,
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input-content {
   min-width: 0;
@@ -82,7 +104,7 @@
 
 .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar {
   min-height: 50px;
-  padding-left: 382px;
+  padding: 8px 382px 8px 10px !important;
   align-items: center;
   justify-content: flex-start;
   flex-direction: row;
@@ -90,11 +112,16 @@
 }
 
 .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .ant-space {
-  flex: 1 1 520px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lineage-result-pane:has(.lineage-graph-shell.is-fullscreen) > .lineage-result-toolbar--double-card {
+  display: none !important;
 }
 
 .lineage-tree-page--standardized .lineage-graph-shell.is-fullscreen .lineage-graph-toolbar {
-  padding-left: 10px;
+  padding: 8px 10px !important;
 }
 
 @media (max-width: 1100px) {
@@ -107,11 +134,17 @@
 @media (max-width: 900px) {
   .lineage-result-toolbar--double-card,
   .lineage-result-toolbar--double-card.is-person {
-    width: 320px;
+    width: min(330px, calc(100% - 22px));
+  }
+
+  .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control {
+    flex-basis: 250px !important;
+    width: 250px;
+    max-width: 250px;
   }
 
   .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar {
-    padding-left: 342px;
+    padding-right: 352px !important;
   }
 }
 
@@ -119,17 +152,25 @@
   .lineage-result-toolbar--double-card,
   .lineage-result-toolbar--double-card.is-person,
   .lineage-result-pane:not(:has(.lineage-graph-toolbar)) > .lineage-result-toolbar--double-card {
-    position: static;
+    position: static !important;
     width: 100%;
-    margin-bottom: 8px;
+    margin: 0 0 8px;
   }
 
   .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
-    grid-template-columns: 72px minmax(0, 1fr);
+    display: flex !important;
+    flex-flow: row nowrap !important;
+  }
+
+  .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control {
+    flex: 1 1 auto !important;
+    width: auto;
+    max-width: none;
+    min-width: 0;
   }
 
   .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar {
-    padding-left: 10px;
+    padding: 8px 10px !important;
     align-items: stretch;
     flex-direction: column;
   }
