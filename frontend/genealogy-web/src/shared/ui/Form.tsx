@@ -1,10 +1,23 @@
-import { Children, cloneElement, isValidElement, useEffect } from 'react';
+import { Children, cloneElement, createContext, isValidElement, useContext, useEffect } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Form, Input, Select, Space } from 'antd';
 import { validateWizardStep, wizardFieldName } from '../../features/mvp1/domain/wizardFormValidation';
 import { useWizardFormContext } from '../../features/mvp1/WizardFormContext';
 
 type AnyProps = Record<string, any>;
+
+export type FieldPortalDescriptor = {
+  target: Element | DocumentFragment | null;
+  className?: string;
+};
+
+export type FieldPortalResolver = (field: {
+  label: string;
+  child: ReactElement<AnyProps> | null;
+}) => FieldPortalDescriptor | null;
+
+const FieldPortalContext = createContext<FieldPortalResolver | null>(null);
 
 const REVIEW_SUBMIT_LABEL = '保存并提交审核';
 const REVIEW_DRAFT_LABEL = '保存草稿继续录入';
@@ -128,13 +141,23 @@ function toAntdAction(child: ReactNode, validateBeforeAction: () => Promise<bool
   return <Button {...rest} onClick={nextOnClick} danger={isDanger} type={isSecondary || isDanger ? 'default' : 'primary'}>{children}</Button>;
 }
 
+export function FieldPortalProvider({ resolve, children }: {
+  resolve: FieldPortalResolver;
+  children: ReactNode;
+}) {
+  return <FieldPortalContext.Provider value={resolve}>{children}</FieldPortalContext.Provider>;
+}
+
 export function Field(props: { label: string; children: ReactNode; hint?: string; name?: string }) {
   const context = useWizardFormContext();
+  const portalResolver = useContext(FieldPortalContext);
   const element = asElement(props.children);
   const name = props.name || wizardFieldName(props.label);
   const currentValue = element?.props.value;
   const isExternallyControlledSearch = element?.props.searchValue !== undefined;
   const originalOnChange = element?.props.onChange;
+  const portal = portalResolver?.({ label: props.label, child: element }) || null;
+  const fieldClassName = ['field', 'antd-field', portal?.className].filter(Boolean).join(' ');
   const syncedChild = element && context.form && name
     ? cloneElement(element, {
         onChange: (eventOrValue: any) => {
@@ -156,10 +179,12 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
   }, [context.form, name, currentValue, isExternallyControlledSearch]);
 
   if (isTechnicalLabel(props.label)) return null;
+
+  let fieldNode: ReactNode;
   if (isExternallyControlledSearch) {
-    return (
+    fieldNode = (
       <Form.Item
-        className="field antd-field"
+        className={fieldClassName}
         label={props.label}
         extra={props.hint}
         colon={false}
@@ -167,32 +192,34 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
         {syncedChild}
       </Form.Item>
     );
+  } else {
+    const rules = context.step ? [{
+      validator: async () => {
+        const errors = validateWizardStep(context.step!, context.form?.getFieldsValue(true) || {});
+        if (errors[name]) throw new Error(errors[name]);
+      }
+    }] : undefined;
+
+    fieldNode = (
+      <Form.Item
+        className={fieldClassName}
+        label={props.label}
+        extra={props.hint}
+        colon={false}
+        name={context.form ? name : undefined}
+        dependencies={CROSS_FIELD_DEPENDENCIES[name]}
+        rules={rules}
+        trigger="onChange"
+        validateTrigger="onBlur"
+        getValueProps={() => ({})}
+        initialValue={currentValue}
+      >
+        {toAntdControl(syncedChild)}
+      </Form.Item>
+    );
   }
 
-  const rules = context.step ? [{
-    validator: async () => {
-      const errors = validateWizardStep(context.step!, context.form?.getFieldsValue(true) || {});
-      if (errors[name]) throw new Error(errors[name]);
-    }
-  }] : undefined;
-
-  return (
-    <Form.Item
-      className="field antd-field"
-      label={props.label}
-      extra={props.hint}
-      colon={false}
-      name={context.form ? name : undefined}
-      dependencies={CROSS_FIELD_DEPENDENCIES[name]}
-      rules={rules}
-      trigger="onChange"
-      validateTrigger="onBlur"
-      getValueProps={() => ({})}
-      initialValue={currentValue}
-    >
-      {toAntdControl(syncedChild)}
-    </Form.Item>
-  );
+  return portal?.target ? createPortal(fieldNode, portal.target) : fieldNode;
 }
 
 export function Actions({ children }: { children: ReactNode }) {

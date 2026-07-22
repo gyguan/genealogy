@@ -33,7 +33,7 @@ import { ReviewCenterPage } from '../features/reviews/ReviewCenterPage';
 import { SourceDraftDeleteAction } from '../features/sources/SourceDraftDeleteAction';
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPage';
-import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPage';
+import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
 import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
 
 const { Sider, Content, Header } = Layout;
