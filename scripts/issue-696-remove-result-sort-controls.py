@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 
 ROOT = Path('frontend/genealogy-web')
 PERSON = ROOT / 'src/features/persons/PersonArchiveSearchPage.tsx'
@@ -7,6 +8,10 @@ SOURCE = ROOT / 'src/features/sources/SourceLibraryQueryPage.tsx'
 PACKAGE = ROOT / 'package.json'
 TEST = ROOT / 'src/shared/ui/resultSortRemoval.test.mjs'
 TASK = Path('tasks/issue-696-execution.md')
+PERSON_CSS = ROOT / 'src/person-archive-tweaks.css'
+SOURCE_CSS = ROOT / 'src/features/sources/source-library-query-page.css'
+MODULE_CSS = ROOT / 'src/module-title-dedup.css'
+CLEANUP_CSS = ROOT / 'src/page-content-cleanup.css'
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -17,11 +22,8 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     raise RuntimeError(f'cannot locate {label}')
 
 
-def remove_pattern(text: str, pattern: str, label: str) -> str:
-    updated, count = re.subn(pattern, '', text, count=1, flags=re.MULTILINE | re.DOTALL)
-    if count:
-        return updated
-    return text
+def remove_pattern(text: str, pattern: str) -> str:
+    return re.sub(pattern, '', text, flags=re.MULTILINE | re.DOTALL)
 
 
 def remove_css_rules(text: str, markers: list[str]) -> str:
@@ -35,12 +37,19 @@ def remove_css_rules(text: str, markers: list[str]) -> str:
     return text
 
 
+def main_version(path: Path) -> str:
+    return subprocess.check_output(
+        ['git', 'show', f'origin/main:{path.as_posix()}'],
+        text=True,
+        encoding='utf-8',
+    )
+
+
 person = PERSON.read_text(encoding='utf-8')
 person = person.replace('  PERSON_SORT_OPTIONS,\n', '')
 person = remove_pattern(
     person,
     r'\n\s*<div className="person-archive-result-toolbar">\s*<Space><Typography\.Text type="secondary">排序</Typography\.Text><Select aria-label="排序"[^\n]*</Space>\s*</div>',
-    'person result sort toolbar',
 )
 if 'Typography.' not in person:
     person = person.replace(', Tag, Typography } from \'antd\';', ', Tag } from \'antd\';')
@@ -50,29 +59,35 @@ source = SOURCE.read_text(encoding='utf-8')
 source = remove_pattern(
     source,
     r'\nconst sortOptions = \[\s*\{ value: \'updatedAt,desc\', label: \'最近更新\' \},\s*\{ value: \'createdAt,desc\', label: \'最近创建\' \},\s*\{ value: \'sourceName,asc\', label: \'来源名称\' \}\s*\];\n',
-    'source sort options',
 )
 source = remove_pattern(
     source,
     r'\n\s*function changeSort\(sort: string\) \{\s*const next = \{ \.\.\.search, pageNo: 1, sort \};\s*setSearch\(next\);\s*writeSearchToUrl\(next\);\s*void loadSources\(next\);\s*\}\n',
-    'source changeSort handler',
 )
 source = remove_pattern(
     source,
     r'\n\s*<div className="source-library-result-meta">\s*<span />\s*<Select aria-label="排序方式"[^\n]*/>\s*</div>\n',
-    'source result sort control',
 )
 SOURCE.write_text(source, encoding='utf-8')
 
-for css_path in ROOT.rglob('*.css'):
-    css = css_path.read_text(encoding='utf-8')
-    updated = remove_css_rules(css, [
-        '.person-archive-result-toolbar',
-        '.source-library-result-meta',
-        '.source-library-sort',
-    ])
-    if updated != css:
-        css_path.write_text(updated, encoding='utf-8')
+person_css = remove_css_rules(main_version(PERSON_CSS), ['.person-archive-result-toolbar'])
+PERSON_CSS.write_text(person_css, encoding='utf-8')
+
+source_css = remove_css_rules(main_version(SOURCE_CSS), [
+    '.source-library-result-meta',
+    '.source-library-sort',
+])
+SOURCE_CSS.write_text(source_css, encoding='utf-8')
+
+cleanup_css = remove_css_rules(main_version(CLEANUP_CSS), ['.person-archive-result-toolbar:empty'])
+cleanup_css = cleanup_css.replace('/* The result sort is moved into the card header; collapse the now-empty body toolbar. */\n', '')
+CLEANUP_CSS.write_text(cleanup_css, encoding='utf-8')
+
+module_css = main_version(MODULE_CSS).replace(
+    '.business-page--personArchive .person-archive-result-toolbar,\n',
+    '',
+)
+MODULE_CSS.write_text(module_css, encoding='utf-8')
 
 TEST.write_text(r"""import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -130,6 +145,6 @@ TASK.write_text("""# Issue #696 执行记录
 - 删除人物档案查询结果排序工具栏。
 - 删除来源资料库查询结果排序下拉、排序选项与事件处理。
 - 保留默认排序字段、URL 兼容及接口请求排序参数。
-- 清理对应 CSS。
+- 精确清理目标 CSS，不影响其他页面共享规则。
 - 新增静态回归测试并纳入 Frontend CI 已有测试链路。
 """, encoding='utf-8')
