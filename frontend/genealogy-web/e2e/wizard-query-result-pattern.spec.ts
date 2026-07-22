@@ -65,6 +65,35 @@ async function mockWizardApi(page: Page) {
   });
 }
 
+async function mockClanDeleteFailureApi(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('genealogy.workspace.clanId', '8');
+    localStorage.removeItem('genealogy.mvp1Wizard.session');
+  });
+
+  await page.route('**/api/v1/**', async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    if (path === '/auth/me') return route.fulfill(ok({ id: 7, username: 'wizard_admin', displayName: '建谱管理员', status: 'active' }));
+    if (path === '/clans' && request.method() === 'GET') {
+      return route.fulfill(ok([{ id: 8, clanName: '受限宗族', surname: '黄', status: 'draft', allowedActions: ['delete'] }]));
+    }
+    if (path === '/clans/8' && request.method() === 'DELETE') {
+      return route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          code: 'CLAN_HAS_BRANCHES',
+          message: '宗族下存在支派，不能删除',
+          timestamp: '2026-07-22T16:01:21.9904462'
+        })
+      });
+    }
+    return route.fulfill(ok([]));
+  });
+}
+
 async function openWizardStep(page: Page, step: string) {
   await page.goto(`/?view=mvp1Wizard&step=${step}`);
   const resumeDialog = page.getByRole('dialog', { name: '继续上次建谱？' });
@@ -108,4 +137,20 @@ test('all active genealogy wizard nodes use query result card plus direct table'
   await expect(modalResult.locator(':scope > .query-result-outer-card__header')).toHaveCount(1);
   await expect(modalResult.locator(':scope > .ant-table-wrapper')).toHaveCount(1);
   await expect(modalResult.locator(':scope > .ant-card-body')).toHaveCount(0);
+});
+
+test('draft clan delete failure shows the backend business message', async ({ page }) => {
+  await mockClanDeleteFailureApi(page);
+  await openWizardStep(page, 'clan');
+
+  await expect(page.getByText('受限宗族', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '删除草稿' }).click();
+  await page.getByRole('button', { name: '确认删除' }).click();
+
+  const errorAlert = page.locator('.clan-step-query-results .ant-alert-error');
+  await expect(errorAlert).toBeVisible();
+  await expect(errorAlert.getByText('宗族删除失败', { exact: true })).toBeVisible();
+  await expect(errorAlert.getByText('宗族下存在支派，不能删除', { exact: true })).toBeVisible();
+  await expect(page.getByText('受限宗族', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '删除草稿' })).toBeVisible();
 });
