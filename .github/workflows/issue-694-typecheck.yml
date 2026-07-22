@@ -1,0 +1,46 @@
+name: Issue 694 Capture Typecheck Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event.pull_request.head.ref == 'agent/issue-694-wizard-strict-two-layer-results' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
+      - name: Capture typecheck output
+        shell: bash
+        run: |
+          set +e
+          cd frontend/genealogy-web
+          npm run typecheck > ../../tasks/issue-694-typecheck.txt 2>&1
+          status=$?
+          echo "exit_code=$status" >> ../../tasks/issue-694-typecheck.txt
+          exit 0
+      - name: Persist diagnostics
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tasks/issue-694-typecheck.txt
+          if git diff --cached --quiet; then
+            echo unchanged
+          else
+            git commit -m 'docs(issue-694): capture typecheck diagnostics'
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
