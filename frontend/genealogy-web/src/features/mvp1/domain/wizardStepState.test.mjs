@@ -8,6 +8,7 @@ import {
 } from '../../../../.wizard-state-test/features/mvp1/domain/wizardStepState.js';
 
 const clanStepSource = readFileSync(new URL('../steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
+const resultListCardSource = readFileSync(new URL('../../../shared/ui/ResultListCard.tsx', import.meta.url), 'utf8');
 
 function completedSnapshot() {
   return {
@@ -133,10 +134,15 @@ test('completion step remains locked until business dependencies are complete', 
   assert.equal(getWizardStepGate(steps, 'review').allowed, false);
 });
 
-test('clan step replaces current clan card with paginated user clan list', () => {
+test('clan step renders paginated clans through the strict two-layer result table', () => {
   assert.doesNotMatch(clanStepSource, /title="当前宗族"/);
   assert.doesNotMatch(clanStepSource, /\/clans\/\$\{workspace\.clanId\}/);
-  assert.match(clanStepSource, /我的宗族（共\$\{clans\.length\}个）/);
+  assert.match(clanStepSource, /<ResultListCard<ClanRecord>/);
+  assert.match(clanStepSource, /cardClassName="clan-step-query-results"/);
+  assert.match(clanStepSource, /totalSuffix="个宗族"/);
+  assert.doesNotMatch(clanStepSource, /我的宗族（共/);
+  assert.match(resultListCardSource, /<QueryResultCard[\s\S]*<Table<RecordType>/);
+  assert.doesNotMatch(resultListCardSource, /<Card\b/);
   assert.match(clanStepSource, /apiClient\.get\('\/clans'\)/);
   assert.match(clanStepSource, /setClanPageSize\] = useState\(10\)/);
   assert.match(clanStepSource, /pageSize:\s*clanPageSize/);
