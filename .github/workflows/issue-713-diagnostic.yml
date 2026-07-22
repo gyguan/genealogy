@@ -1,0 +1,42 @@
+name: Issue 713 patch diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-713-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-713-align-person-edit-fields
+      - name: Extract and run patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/issue-713-apply.yml').read_text(encoding='utf-8')
+          start = "          python - <<'PY'\n"
+          end = "\n          PY\n          git diff --check"
+          body = workflow.split(start, 1)[1].split(end, 1)[0]
+          body = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
+          Path('/tmp/issue-713-patch.py').write_text(body + '\n', encoding='utf-8')
+          PY
+          set +e
+          python /tmp/issue-713-patch.py > issue-713-diagnostic.txt 2>&1
+          status=$?
+          echo "exit_status=$status" >> issue-713-diagnostic.txt
+          git diff --check >> issue-713-diagnostic.txt 2>&1
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-713-patch-diagnostic
+          path: issue-713-diagnostic.txt
+          retention-days: 1
