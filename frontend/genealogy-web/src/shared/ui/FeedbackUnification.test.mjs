@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const component = readFileSync(new URL('./Feedback.tsx', import.meta.url), 'utf8');
+const operationFeedback = readFileSync(new URL('./OperationFeedback.ts', import.meta.url), 'utf8');
 const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'utf8');
+const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
@@ -23,6 +25,18 @@ test('feedback system exposes five standard user-facing forms', () => {
   assert.match(spec, /短暂操作反馈/);
   assert.match(spec, /高风险确认/);
   assert.match(spec, /空状态/);
+});
+
+test('operation feedback exposes one semantic API for transient results', () => {
+  assert.match(operationFeedback, /export const feedback/);
+  assert.match(operationFeedback, /success:/);
+  assert.match(operationFeedback, /info:/);
+  assert.match(operationFeedback, /warning:/);
+  assert.match(operationFeedback, /error:/);
+  assert.match(operationFeedback, /message\.open/);
+  assert.doesNotMatch(draftDeleteButton, /message\.useMessage|messageApi\./);
+  assert.match(draftDeleteButton, /feedback\.success/);
+  assert.match(draftDeleteButton, /feedback\.error/);
 });
 
 test('global toast uses the same semantic feedback primitive', () => {
@@ -64,8 +78,8 @@ test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
   assert.equal(baseline.maxCounts.page_alert, 172);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 109);
-  assert.equal(baseline.maxCounts.confirm_modal, 63);
+  assert.equal(baseline.maxCounts.antd_message, 107);
+  assert.equal(baseline.maxCounts.confirm_modal, 62);
   assert.equal(baseline.maxCounts.empty_state, 160);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
   assert.equal(baseline.maxCounts.custom_notice_class, 30);
