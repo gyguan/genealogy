@@ -67,8 +67,11 @@ async function mockWizardApi(page: Page) {
 
 async function openWizardStep(page: Page, step: string) {
   await page.goto(`/?view=mvp1Wizard&step=${step}`);
-  const resume = page.getByRole('button', { name: '继续', exact: true });
-  if (await resume.isVisible().catch(() => false)) await resume.click();
+  const resumeDialog = page.getByRole('dialog', { name: '继续上次建谱？' });
+  if (await resumeDialog.isVisible().catch(() => false)) {
+    await resumeDialog.getByRole('button', { name: /继\s*续/ }).click();
+    await expect(resumeDialog).toBeHidden();
+  }
   await expect(page.locator('.wizard-step-content')).toHaveAttribute('aria-label', `${stepTitles[step]}步骤内容`);
   await expect(page.locator('.wizard-step-content .wizard-query-result-card').first()).toBeVisible();
 }
