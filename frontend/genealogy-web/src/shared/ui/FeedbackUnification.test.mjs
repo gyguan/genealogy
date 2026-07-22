@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const component = readFileSync(new URL('./Feedback.tsx', import.meta.url), 'utf8');
 const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'utf8');
+const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
@@ -30,6 +31,17 @@ test('global toast uses the same semantic feedback primitive', () => {
   assert.match(toastStack, /FeedbackTone/);
 });
 
+test('async import execution panel uses only standard feedback primitives', () => {
+  assert.match(asyncImportExecutionPanel, /PageFeedback/);
+  assert.match(asyncImportExecutionPanel, /InlineFeedback/);
+  assert.match(asyncImportExecutionPanel, /EmptyState/);
+  assert.match(asyncImportExecutionPanel, /ConfirmAction/);
+  assert.doesNotMatch(asyncImportExecutionPanel, /<Alert\b/);
+  assert.doesNotMatch(asyncImportExecutionPanel, /<Empty\b/);
+  assert.doesNotMatch(asyncImportExecutionPanel, /<Popconfirm\b/);
+  assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
+});
+
 test('feedback styling normalizes alerts, field help, empty states and full-page results', () => {
   assert.match(css, /\.business-page \.ant-alert/);
   assert.match(css, /\.business-page \.ant-form-item-extra/);
@@ -41,9 +53,12 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 180);
+  assert.equal(baseline.maxCounts.page_alert, 174);
   assert.equal(baseline.maxCounts.antd_message, 109);
-  assert.equal(baseline.maxCounts.custom_notice_class, 33);
+  assert.equal(baseline.maxCounts.confirm_modal, 63);
+  assert.equal(baseline.maxCounts.empty_state, 160);
+  assert.equal(baseline.maxCounts.inline_semantic_text, 145);
+  assert.equal(baseline.maxCounts.custom_notice_class, 30);
   assert.match(audit, /--baseline/);
   assert.match(audit, /regressions\.length/);
   assert.match(audit, /process\.exitCode = 1/);
