@@ -225,6 +225,7 @@ export function ClanStep({ onCreated }: Props) {
             onDelete={() => deleteClan(clan)}
             onDeleted={() => afterDeleteClan(clan)}
             onError={handleDeleteClanError}
+            showErrorFeedback={false}
             label="删除草稿"
             buttonProps={{ type: 'link', size: 'small', disabled: Boolean(reviewSubmittingClanId) }}
           />
