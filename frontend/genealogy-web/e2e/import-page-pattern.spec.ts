@@ -121,8 +121,9 @@ test('data import page uses query and nested result cards with new import modal'
   const outerResultHeader = page.locator('.import-result-card > .ant-card-head');
   const businessResultHeader = page.locator('.import-result-card > .ant-card-body > .business-result-card > .ant-card-head');
   await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();
   await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
-  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toBeVisible();
+  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toHaveCount(0);
   await expectDesktopResultHeaderSpacing(page);
   await expectBusinessCardNestedInsideOuterBody(page);
 

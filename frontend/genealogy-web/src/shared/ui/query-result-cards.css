@@ -3,6 +3,18 @@
   overflow: hidden;
 }
 
+
+.query-result-card__title {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.query-result-card__title .ant-typography,
+.business-result-card__title.ant-typography {
+  margin: 0;
+}
+
 .query-result-outer-card > .ant-card-head {
   min-height: 56px;
   padding-inline: 16px;
@@ -55,12 +67,7 @@
 }
 
 .business-result-card__title {
-  display: flex;
-  width: 100%;
-}
-
-.business-result-card__title .ant-typography {
-  margin: 0;
+  display: inline-flex;
 }
 
 @media (max-width: 767px) {

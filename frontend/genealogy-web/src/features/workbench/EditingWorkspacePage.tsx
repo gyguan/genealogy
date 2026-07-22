@@ -15,7 +15,7 @@ import {
   summarizeBulkResults, workbenchEmptyState, workbenchTotalText, writeWorkbenchUrlState
 } from './editingWorkspaceModel';
 import type { WorkbenchFilters, WorkbenchUrlState } from './editingWorkspaceModel';
-import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
+import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -440,8 +440,8 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       </Form>
     </Card>
 
-    <Card className="query-result-outer-card workbench-result-card" title="查询结果" extra={resultActions}>
-      <BusinessResultCard title="修谱任务" total={total}>
+    <QueryResultCard className="workbench-result-card" extra={resultActions} total={total}>
+      <BusinessResultCard title="修谱任务">
       {selectedKeys.length ? <Alert type="info" showIcon message={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
       {bulkFailures.length ? <Alert type="warning" showIcon closable onClose={() => setBulkFailures([])} message={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
       {taskError ? <Alert type="error" showIcon message="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
@@ -480,7 +480,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
         {!taskLoading && total > PAGE_SIZE ? <Row justify="center"><Pagination current={taskPage.pageNo || 1} pageSize={PAGE_SIZE} total={total} showSizeChanger={false} showTotal={workbenchTotalText} onChange={changePage} size="small" /></Row> : null}
       </Space>}
       </BusinessResultCard>
-    </Card>
+    </QueryResultCard>
 
     <Drawer title={selectedTask ? <Space direction="vertical" size={6}><Typography.Text strong>{taskTitle(selectedTask)}</Typography.Text><Space wrap size={4}><Tag>{display(selectedTask.typeText, '-')}</Tag><Tag color={riskColor(selectedTask.risk)}>{riskText(selectedTask.risk)}</Tag><Tag color={statusColor(selectedTask.status)}>{display(selectedTask.statusText, '状态未知')}</Tag></Space></Space> : '修谱任务详情'} width={screens.md ? 720 : '100%'} open={Boolean(selectedTask)} onClose={closeTask} extra={selectedTask ? <Space wrap><Button loading={taskLoading} onClick={() => void refreshTaskStatus()}>刷新状态</Button><Button disabled={!relatedView || !onNavigate} onClick={() => goRelatedEntry()}>{selectedTask.relatedEntryText || '前往相关页面'}</Button><Button type="primary" onClick={() => setActionModalOpen(true)}>{actionLabel(selectedTask)}</Button></Space> : null}>
       {selectedTask ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>

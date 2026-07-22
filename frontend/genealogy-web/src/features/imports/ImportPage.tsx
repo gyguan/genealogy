@@ -25,7 +25,7 @@ import {
 } from './import-task-query-state';
 import { importTypeRegistry, type ImportFileFormat, type ImportTypeKey } from './import-type-registry';
 import './import-workbench.css';
-import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
+import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { RangePicker } = DatePicker;
 type Props = { notify: (data: unknown, error?: boolean) => void };
@@ -213,12 +213,11 @@ export function ImportPage({ notify }: Props) {
         </Form>
       </Card>
 
-      <Card
-        className="import-result-card query-result-outer-card"
-        title="查询结果"
+      <QueryResultCard
+        className="import-result-card"
         extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setNewImportOpen(true)}>新建导入</Button>}
-      >
-        <BusinessResultCard title="导入任务" total={taskTotal} totalSuffix="个任务">
+       total={taskTotal} totalSuffix="个任务">
+        <BusinessResultCard title="导入任务">
           <AsyncImportExecutionPanel
           clanId={workspace.clanId}
           branchId={selectedBranchId}
@@ -232,7 +231,7 @@ export function ImportPage({ notify }: Props) {
           onOpenRecords={() => setRecordsOpen(true)}
           />
         </BusinessResultCard>
-      </Card>
+      </QueryResultCard>
 
       <NewImportModal
         open={newImportOpen}

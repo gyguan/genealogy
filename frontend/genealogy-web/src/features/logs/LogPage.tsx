@@ -52,7 +52,7 @@ import { TrackingMultiSelect } from './TrackingMultiSelect';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import './tracking-page.css';
-import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
+import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -444,19 +444,16 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
       </Card>
       {workspace.clanId ? (
-        <Card
-          className="tracking-result-card query-result-outer-card"
-          title="查询结果"
+        <QueryResultCard
+          className="tracking-result-card"
           extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-        >
+         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}>
           <BusinessResultCard
             title={activeTab === TRACKING_TABS.OBJECT ? '业务对象' : activeTab === TRACKING_TABS.AUDIT ? '操作日志' : '风险事件'}
-            total={resultTotal}
-            totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}
           >
             {activeResult}
           </BusinessResultCard>
-        </Card>
+        </QueryResultCard>
       ) : null}
 
       <OperationLogDrawer log={selectedAuditLog} onClose={() => { setSelectedAuditLog(null); setSelectedAuditLogId(''); }} />
