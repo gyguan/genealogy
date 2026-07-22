@@ -13,13 +13,14 @@ test('result toolbar refinement stylesheet is loaded', () => {
   assert.match(mainSource, /import '\.\/lineage-result-toolbar-refinement\.css';/);
 });
 
-test('center person and in-graph locator stay visible and align label with select', () => {
-  assert.match(pageSource, /<Field label="中心人物"/);
-  assert.match(pageSource, /<Field label="图内定位">/);
-  assert.match(css, /\.lineage-result-toolbar--double-card\.is-person > :nth-child\(2\)\s*\{[\s\S]*?display:\s*block;/);
-  assert.match(css, /grid-template-columns:\s*max-content minmax\(0, 1fr\)/);
-  assert.match(css, /content:\s*'：'/);
-  assert.match(css, /content:\s*'圈内定位'/);
+test('person center keeps only the center selector and branch locator has no visible title', () => {
+  assert.match(pageSource, /aria-label="切换中心人物"/);
+  assert.match(pageSource, /aria-label="图内定位人物"/);
+  assert.match(css, /padding-right:\s*400px/);
+  assert.match(css, /width:\s*360px/);
+  assert.match(css, /\.lineage-result-toolbar--double-card\.is-person > :nth-child\(2\)\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(css, /\.lineage-result-toolbar--double-card > \.ant-form-item \.ant-form-item-label\s*\{[\s\S]*?display:\s*none;/);
+  assert.doesNotMatch(css, /content:\s*'圈内定位'/);
 });
 
 test('graph operation hint is removed from the visible canvas toolbar', () => {
@@ -27,10 +28,10 @@ test('graph operation hint is removed from the visible canvas toolbar', () => {
   assert.match(css, /\.lineage-graph-help\s*\{[\s\S]*?display:\s*none\s*!important;/);
 });
 
-test('responsive layout keeps labels and selects on one line', () => {
+test('responsive layout keeps the single visible selector full width', () => {
   assert.match(css, /@media \(max-width: 1399px\)/);
   assert.match(css, /@media \(max-width: 767px\)/);
-  assert.match(css, /grid-template-columns:\s*72px minmax\(0, 1fr\)/);
+  assert.match(css, /grid-template-columns:\s*1fr/);
 });
 
 void root;
