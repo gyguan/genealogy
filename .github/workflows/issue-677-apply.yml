@@ -1,0 +1,50 @@
+name: Issue 677 Apply Query Result Cards
+
+on:
+  push:
+    branches:
+      - agent/issue-677-query-result-double-card
+    paths:
+      - scripts/issue-677-apply.py
+      - .github/workflows/issue-677-apply.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-677-query-result-double-card
+          fetch-depth: 0
+
+      - name: Apply approved prototype
+        run: python3 scripts/issue-677-apply.py
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+
+      - name: Verify result card structure
+        working-directory: frontend/genealogy-web
+        run: node --test src/shared/ui/QueryResultCards.test.mjs
+
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/22-frontend-query-page-pattern-spec.md tasks/issue-677-execution.md frontend/genealogy-web/src
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: unify query result card hierarchy"
+          git push origin HEAD:agent/issue-677-query-result-double-card
