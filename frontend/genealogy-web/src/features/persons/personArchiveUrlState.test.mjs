@@ -5,7 +5,8 @@ import {
   DEFAULT_PERSON_PAGE_SIZE,
   buildPersonArchiveUrl,
   emptyPersonArchiveSearch,
-  readPersonArchiveSearch
+  readPersonArchiveSearch,
+  writePersonDetailTab
 } from '../../../.person-archive-test/features/persons/personArchiveUrlState.js';
 
 const personArchivePageSource = readFileSync(new URL('./PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
@@ -52,6 +53,49 @@ test('uses official status and ten rows as initial defaults', () => {
   const state = emptyPersonArchiveSearch();
   assert.deepEqual(state.dataStatuses, ['official']);
   assert.equal(state.pageSize, 10);
+});
+
+test('person detail tabs replace the current history entry instead of stacking return steps', () => {
+  const previousWindow = globalThis.window;
+  const returnState = {
+    genealogyPersonDetailReturnUrl: '/?view=personArchive&name=%E5%BC%A0&page=2',
+    genealogyPersonArchiveScrollY: 480
+  };
+  const calls = { push: 0, replace: 0 };
+  const location = { href: 'http://localhost/persons/42?view=personArchive&name=%E5%BC%A0&page=2' };
+
+  globalThis.window = {
+    location,
+    history: {
+      state: returnState,
+      pushState() {
+        calls.push += 1;
+      },
+      replaceState(state, _title, href) {
+        calls.replace += 1;
+        assert.equal(state, returnState);
+        location.href = new URL(href, location.href).href;
+      }
+    }
+  };
+
+  try {
+    writePersonDetailTab('events', 'push');
+    writePersonDetailTab('sources', 'push');
+    writePersonDetailTab('tracking', 'push');
+
+    assert.equal(calls.push, 0);
+    assert.equal(calls.replace, 3);
+    assert.equal(new URL(location.href).searchParams.get('tab'), 'tracking');
+    assert.equal(globalThis.window.history.state.genealogyPersonDetailReturnUrl, returnState.genealogyPersonDetailReturnUrl);
+
+    writePersonDetailTab('basic', 'push');
+    assert.equal(calls.push, 0);
+    assert.equal(calls.replace, 4);
+    assert.equal(new URL(location.href).searchParams.has('tab'), false);
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
 
 test('renders advanced filters with Collapse before the trailing query actions', () => {
