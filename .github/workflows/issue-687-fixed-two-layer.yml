@@ -1,0 +1,339 @@
+name: Issue 687 Fixed Two Layer Query Result
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-and-validate:
+    if: github.event.pull_request.head.ref == 'agent/issue-687-fixed-two-layer-query-result-card' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Enforce fixed two-layer structure
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('frontend/genealogy-web')
+          pages = [
+              root / 'src/features/persons/PersonArchiveSearchPage.tsx',
+              root / 'src/features/sources/SourceLibraryQueryPage.tsx',
+              root / 'src/features/logs/LogPage.tsx',
+              root / 'src/features/tree/LineageTreeProductPage.tsx',
+              root / 'src/features/imports/ImportPage.tsx',
+              root / 'src/features/workbench/EditingWorkspacePage.tsx',
+              root / 'src/features/culture/CultureItemStandardTab.tsx',
+              root / 'src/features/culture/MigrationEventStandardTab.tsx',
+              root / 'src/features/culture/CultureSiteStandardTab.tsx',
+              root / 'src/features/reviews/ReviewCenterPageContent.tsx',
+              root / 'src/features/members/MemberPage.tsx',
+          ]
+
+          def opening_tag_end(source: str, start: int) -> int:
+              depth = 0
+              quote = ''
+              escaped = False
+              for index in range(start, len(source)):
+                  char = source[index]
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = ''
+                      continue
+                  if char in ('"', "'", '`'):
+                      quote = char
+                  elif char == '{':
+                      depth += 1
+                  elif char == '}':
+                      depth -= 1
+                  elif char == '>' and depth == 0:
+                      return index + 1
+              raise AssertionError(f'Unclosed JSX tag at {start}')
+
+          def prop_span(tag: str, name: str):
+              match = re.search(rf'\s+{re.escape(name)}\s*=\s*', tag)
+              if not match:
+                  return None
+              value_start = match.end()
+              if tag[value_start] in ('"', "'"):
+                  quote = tag[value_start]
+                  index = value_start + 1
+                  escaped = False
+                  while index < len(tag):
+                      char = tag[index]
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          return match.start(), index + 1, tag[value_start:index + 1]
+                      index += 1
+              if tag[value_start] == '{':
+                  depth = 0
+                  quote = ''
+                  escaped = False
+                  for index in range(value_start, len(tag)):
+                      char = tag[index]
+                      if quote:
+                          if escaped:
+                              escaped = False
+                          elif char == '\\':
+                              escaped = True
+                          elif char == quote:
+                              quote = ''
+                          continue
+                      if char in ('"', "'", '`'):
+                          quote = char
+                      elif char == '{':
+                          depth += 1
+                      elif char == '}':
+                          depth -= 1
+                          if depth == 0:
+                              return match.start(), index + 1, tag[value_start:index + 1]
+              raise AssertionError(f'Unsupported {name} value in {tag}')
+
+          def add_props(tag: str, props: list[tuple[str, str]]) -> str:
+              insert_at = tag.rfind('>')
+              prefix = tag[:insert_at].rstrip()
+              suffix = tag[insert_at:]
+              addition = ''.join(f' {name}={value}' for name, value in props)
+              return prefix + addition + suffix
+
+          def simplify_imports(source: str) -> str:
+              pattern = re.compile(
+                  r'import\s*\{(?P<names>[^}]*)\}\s*from\s*(?P<quote>[\'\"])(?P<path>[^\'\"]*QueryResultCards)(?P=quote);',
+                  re.MULTILINE,
+              )
+              def replace(match):
+                  names = [item.strip() for item in match.group('names').split(',') if item.strip()]
+                  names = [item for item in names if item != 'BusinessResultCard']
+                  assert 'QueryResultCard' in names
+                  return f"import {{ {', '.join(names)} }} from '{match.group('path')}';"
+              updated, count = pattern.subn(replace, source)
+              assert count == 1, 'QueryResultCards import should be updated exactly once'
+              return updated
+
+          for path in pages:
+              source = path.read_text()
+              if '<BusinessResultCard' not in source:
+                  assert 'businessTitle=' in source
+                  assert 'BusinessResultCard' not in source
+                  continue
+
+              outer_start = source.index('<QueryResultCard')
+              outer_end = opening_tag_end(source, outer_start)
+              outer_tag = source[outer_start:outer_end]
+              inner_start = source.index('<BusinessResultCard', outer_end)
+              inner_end = opening_tag_end(source, inner_start)
+              inner_tag = source[inner_start:inner_end]
+              inner_close = source.index('</BusinessResultCard>', inner_end)
+
+              title = prop_span(inner_tag, 'title')
+              assert title, f'{path}: business title is required'
+              props = [('businessTitle', title[2])]
+              extra = prop_span(inner_tag, 'extra')
+              if extra:
+                  props.append(('businessExtra', extra[2]))
+              class_name = prop_span(inner_tag, 'className')
+              if class_name:
+                  props.append(('businessClassName', class_name[2]))
+
+              new_outer_tag = add_props(outer_tag, props)
+              source = source[:outer_start] + new_outer_tag + source[outer_end:inner_start] + source[inner_end:inner_close] + source[inner_close + len('</BusinessResultCard>'):]
+              source = simplify_imports(source)
+
+              assert '<BusinessResultCard' not in source
+              assert '</BusinessResultCard>' not in source
+              assert 'businessTitle=' in source
+              path.write_text(source)
+
+          shared = root / 'src/shared/ui/QueryResultCards.tsx'
+          shared.write_text("""import type { ReactNode } from 'react';
+          import { Card, Space, Typography } from 'antd';
+          import type { CardProps } from 'antd';
+          import './query-result-cards.css';
+
+          type QueryResultProps = Omit<CardProps, 'title' | 'children'> & {
+            total: number;
+            totalSuffix?: string;
+            businessTitle: ReactNode;
+            businessExtra?: ReactNode;
+            businessClassName?: string;
+            children: ReactNode;
+          };
+
+          type BusinessResultProps = {
+            title: ReactNode;
+            extra?: ReactNode;
+            children: ReactNode;
+            className?: string;
+          };
+
+          function BusinessResultCard({ title, extra, children, className = '' }: BusinessResultProps) {
+            return (
+              <Card
+                size="small"
+                className={`business-result-card ${className}`.trim()}
+                data-query-result-role="business"
+                title={<Typography.Text strong className="business-result-card__title">{title}</Typography.Text>}
+                extra={extra}
+              >
+                {children}
+              </Card>
+            );
+          }
+
+          export function QueryResultCard({
+            total,
+            totalSuffix = '条',
+            businessTitle,
+            businessExtra,
+            businessClassName = '',
+            children,
+            className = '',
+            ...cardProps
+          }: QueryResultProps) {
+            return (
+              <Card
+                {...cardProps}
+                className={`query-result-outer-card ${className}`.trim()}
+                data-query-result-role="outer"
+                title={(
+                  <Space size={8} wrap className="query-result-card__title">
+                    <Typography.Text strong>查询结果</Typography.Text>
+                    <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
+                  </Space>
+                )}
+              >
+                <BusinessResultCard
+                  title={businessTitle}
+                  extra={businessExtra}
+                  className={businessClassName}
+                >
+                  {children}
+                </BusinessResultCard>
+              </Card>
+            );
+          }
+          """.replace('          ', ''))
+
+          test_file = root / 'src/shared/ui/QueryResultCards.test.mjs'
+          test_file.write_text("""import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import test from 'node:test';
+
+          const files = [
+            ['features/persons/PersonArchiveSearchPage.tsx', '人物档案'],
+            ['features/sources/SourceLibraryQueryPage.tsx', '来源资料'],
+            ['features/logs/LogPage.tsx', '业务对象'],
+            ['features/tree/LineageTreeProductPage.tsx', '世系图谱'],
+            ['features/imports/ImportPage.tsx', '导入任务'],
+            ['features/workbench/EditingWorkspacePage.tsx', '修谱任务'],
+            ['features/culture/CultureItemStandardTab.tsx', '文化资料'],
+            ['features/culture/MigrationEventStandardTab.tsx', '迁徙脉络'],
+            ['features/culture/CultureSiteStandardTab.tsx', '文化场所'],
+            ['features/reviews/ReviewCenterPageContent.tsx', '审核任务'],
+            ['features/members/MemberPage.tsx', '成员列表']
+          ];
+
+          test('pages configure one fixed QueryResultCard and never assemble BusinessResultCard themselves', () => {
+            for (const [relativePath, businessTitle] of files) {
+              const source = readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
+              assert.equal((source.match(/<QueryResultCard/g) || []).length, 1, `${relativePath} should render one outer result card`);
+              assert.match(source, /\stotal=\{/);
+              assert.match(source, /\sbusinessTitle=/);
+              assert.ok(source.includes(businessTitle), `${relativePath} should expose ${businessTitle}`);
+              assert.doesNotMatch(source, /BusinessResultCard/, `${relativePath} must not assemble the inner card`);
+            }
+          });
+
+          test('QueryResultCard itself owns exactly one direct BusinessResultCard', () => {
+            const source = readFileSync(new URL('./QueryResultCards.tsx', import.meta.url), 'utf8');
+            const component = source.slice(source.indexOf('export function QueryResultCard'));
+            assert.equal((component.match(/<BusinessResultCard/g) || []).length, 1);
+            assert.match(component, /<Card[\s\S]*data-query-result-role="outer"[\s\S]*>\s*<BusinessResultCard/);
+            assert.match(component, /businessTitle/);
+            assert.match(component, /businessExtra/);
+            assert.doesNotMatch(source, /export function BusinessResultCard/);
+          });
+
+          test('shared styles keep the business card as the direct child of the outer card body', () => {
+            const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
+            assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
+          });
+          """.replace('          ', ''))
+
+          docs = Path('docs/22-frontend-query-page-pattern-spec.md')
+          doc = docs.read_text()
+          marker = '- 页面级业务操作放在外层结果 Card 标题右侧；'
+          addition = marker + '\n- 页面只使用 `QueryResultCard`；内层 `BusinessResultCard` 必须由共享组件内部唯一创建，禁止页面自行拼装两层 Card；'
+          if addition not in doc:
+              doc = doc.replace(marker, addition)
+          docs.write_text(doc)
+
+          for e2e_path in [
+              root / 'e2e/culture-page-pattern.spec.ts',
+              root / 'e2e/tracking-page-pattern.spec.ts',
+              root / 'e2e/import-page-pattern.spec.ts',
+          ]:
+              e2e = e2e_path.read_text()
+              e2e = e2e.replace("resultCard.locator('.business-result-card')", "resultCard.locator(':scope > .ant-card-body > .business-result-card')")
+              e2e = e2e.replace("page.locator('.import-result-card .business-result-card > .ant-card-head')", "page.locator('.import-result-card > .ant-card-body > .business-result-card > .ant-card-head')")
+              e2e_path.write_text(e2e)
+
+          task = Path('tasks/issue-687-execution.md')
+          task.write_text(task.read_text().replace('- [ ]', '- [x]'))
+          PY
+
+      - name: Persist migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/22-frontend-query-page-pattern-spec.md \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.tsx \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs \
+            frontend/genealogy-web/src/features \
+            frontend/genealogy-web/e2e/culture-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/tracking-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/import-page-pattern.spec.ts \
+            tasks/issue-687-execution.md
+          git diff --cached --quiet || git commit -m "fix: enforce fixed two-layer query result cards"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
+
+      - name: Validate fixed two-layer structure
+        working-directory: frontend/genealogy-web
+        run: node --test src/shared/ui/QueryResultCards.test.mjs
+
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
