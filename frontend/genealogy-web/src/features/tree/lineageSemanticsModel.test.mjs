@@ -1,5 +1,5 @@
 import test from 'node:test';
-import assert from 'node:strict';
+import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
