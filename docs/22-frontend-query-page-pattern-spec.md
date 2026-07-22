@@ -56,6 +56,7 @@
 - 外层结果 Card 标题统一使用“查询结果（共 XX 条）”，总数紧随标题展示；
 - 页面级业务操作放在外层结果 Card 标题右侧；
 - 页面只使用 `QueryResultCard`；内层 `BusinessResultCard` 必须由共享组件内部唯一创建，禁止页面自行拼装两层 Card；
+- 外层 `QueryResultCard` 使用自定义语义容器，不使用 Ant Design `Card`，不得生成 `.ant-card-body`；内层业务 Card 必须是 `.query-result-outer-card` 的直接子节点；
 - 内层业务结果 Card 使用具体业务名称，例如“人物档案”“审核任务”“来源资料”，不重复展示总数；
 - Tabs、排序、批量选择、图内定位等结果局部控件放在内层业务结果 Card；
 - 查询条件与结果列表不得混入同一个 Card；

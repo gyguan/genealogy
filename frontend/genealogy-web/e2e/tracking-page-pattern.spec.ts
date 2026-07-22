@@ -42,8 +42,10 @@ async function expectDefaultFourFields(page: Page, labels: string[]) {
 
 async function expectResultHeaders(page: Page, title: string, total: string) {
   const resultCard = page.locator('.tracking-result-card');
-  const outerHeader = resultCard.locator(':scope > .ant-card-head');
-  const businessCard = resultCard.locator(':scope > .ant-card-body > .business-result-card');
+  const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
+  const businessCard = resultCard.locator(':scope > .business-result-card');
+  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
+  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(businessCard).toHaveCount(1);
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
@@ -63,7 +65,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.locator('.tracking-query-card .ant-card')).toHaveCount(0);
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
   await expect(page.locator('.tracking-query-card > .ant-card-head').getByText('审计追踪', { exact: true })).toBeVisible();
-  await expect(page.locator('.tracking-result-card > .ant-card-head').getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(page.locator('.tracking-result-card > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
   await expectResultHeaders(page, '业务对象', '（共 1 个对象）');
 
   await expectDefaultFourFields(page, ['对象类型', '业务关键词', '业务状态', '最近变更时间']);

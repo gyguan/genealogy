@@ -16,10 +16,10 @@ const files = [
   ['features/members/MemberPage.tsx', '成员列表']
 ];
 
-test('pages configure one fixed QueryResultCard and never assemble BusinessResultCard themselves', () => {
+test('pages keep one shared QueryResultCard configuration', () => {
   for (const [relativePath, businessTitle] of files) {
     const source = readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
-    assert.equal((source.match(/<QueryResultCard/g) || []).length, 1, `${relativePath} should render one outer result card`);
+    assert.equal((source.match(/<QueryResultCard/g) || []).length, 1, `${relativePath} should render one result container`);
     assert.match(source, /\stotal=\{/);
     assert.match(source, /\sbusinessTitle=/);
     assert.ok(source.includes(businessTitle), `${relativePath} should expose ${businessTitle}`);
@@ -27,17 +27,17 @@ test('pages configure one fixed QueryResultCard and never assemble BusinessResul
   }
 });
 
-test('QueryResultCard itself owns exactly one direct BusinessResultCard', () => {
+test('QueryResultCard uses a custom outer section and directly owns one BusinessResultCard', () => {
   const source = readFileSync(new URL('./QueryResultCards.tsx', import.meta.url), 'utf8');
   const component = source.slice(source.indexOf('export function QueryResultCard'));
   assert.equal((component.match(/<BusinessResultCard/g) || []).length, 1);
-  assert.match(component, /<Card[\s\S]*data-query-result-role="outer"[\s\S]*>\s*<BusinessResultCard/);
-  assert.match(component, /businessTitle/);
-  assert.match(component, /businessExtra/);
-  assert.doesNotMatch(source, /export function BusinessResultCard/);
+  assert.match(component, /<section[\s\S]*data-query-result-role="outer"[\s\S]*>\s*<div className="query-result-outer-card__header">[\s\S]*<BusinessResultCard/);
+  assert.doesNotMatch(component, /<Card[\s\S]*data-query-result-role="outer"/);
+  assert.doesNotMatch(component, /ant-card-body/);
 });
 
-test('shared styles keep the business card as the direct child of the outer card body', () => {
+test('shared styles make the business card a direct child without an outer card body', () => {
   const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
-  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
+  assert.match(source, /\.query-result-outer-card\s*>\s*\.business-result-card/);
+  assert.doesNotMatch(source, /\.query-result-outer-card\s*>\s*\.ant-card-body/);
 });

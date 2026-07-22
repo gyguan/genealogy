@@ -91,10 +91,11 @@ async function expectDoubleCardShell(page: Page, businessTitle: string, total: s
   await expect(page.locator('.culture-search-card')).toHaveCount(1);
   const resultCard = page.locator('.culture-result-card');
   await expect(resultCard).toHaveCount(1);
-  const outerHeader = resultCard.locator(':scope > .ant-card-head');
+  const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
-  const businessHeader = resultCard.locator('.business-result-card > .ant-card-head');
+  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
+  const businessHeader = resultCard.locator(':scope > .business-result-card > .ant-card-head');
   await expect(businessHeader.getByText(businessTitle, { exact: true })).toBeVisible();
   await expect(businessHeader.getByText(total, { exact: true })).toHaveCount(0);
   await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText('宗族文化');
