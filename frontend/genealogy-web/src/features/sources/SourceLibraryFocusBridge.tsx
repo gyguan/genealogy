@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Space, Steps, Typography, message } from 'antd';
+import { Button, Card, Space, Steps, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type FocusSource = {
   sourceName?: string;
@@ -27,18 +28,28 @@ function clearSourceFocusClasses() {
 export function SourceLibraryFocusBridge() {
   const workspace = useWorkspace();
   const [source, setSource] = useState<FocusSource | null>(null);
+  const [loadError, setLoadError] = useState('');
   const handledSourceIdRef = useRef('');
 
   const isMissingSourceIntent = workspace.sourceFocusReason === 'missing_source';
   const hasFocus = Boolean(workspace.sourceFocusReason);
 
+  async function loadFocusedSource(sourceId: string) {
+    setLoadError('');
+    try {
+      const data = await apiClient.get(`/sources/${sourceId}`);
+      setSource(data as FocusSource);
+    } catch (error) {
+      setSource(null);
+      setLoadError((error as Error).message || '加载工作台定位来源失败');
+    }
+  }
+
   useEffect(() => {
     const sourceId = String(workspace.sourceId || '').trim();
     if (!hasFocus || !sourceId || handledSourceIdRef.current === sourceId) return;
     handledSourceIdRef.current = sourceId;
-    apiClient.get(`/sources/${sourceId}`)
-      .then(data => setSource(data as FocusSource))
-      .catch(error => message.error((error as Error).message || '加载工作台定位来源失败'));
+    void loadFocusedSource(sourceId);
   }, [hasFocus, workspace.sourceId]);
 
   useEffect(() => {
@@ -65,6 +76,7 @@ export function SourceLibraryFocusBridge() {
     workspace.patch({ sourceId: '', sourceFocusReason: '' });
     handledSourceIdRef.current = '';
     setSource(null);
+    setLoadError('');
     clearSourceFocusClasses();
   }
 
@@ -72,10 +84,19 @@ export function SourceLibraryFocusBridge() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%', marginBottom: 12 }}>
-      <Alert
-        type={isMissingSourceIntent ? 'warning' : 'info'}
-        showIcon
-        message={isMissingSourceIntent ? '来自工作台：缺来源处理' : '来自工作台：来源资料定位'}
+      {loadError ? (
+        <PageFeedback
+          tone="error"
+          title="工作台定位来源加载失败"
+          description={loadError}
+          action={workspace.sourceId ? <Button size="small" onClick={() => void loadFocusedSource(String(workspace.sourceId))}>重新加载</Button> : undefined}
+          closable
+          onClose={() => setLoadError('')}
+        />
+      ) : null}
+      <PageFeedback
+        tone={isMissingSourceIntent ? 'warning' : 'info'}
+        title={isMissingSourceIntent ? '来自工作台：缺来源处理' : '来自工作台：来源资料定位'}
         description={workspace.sourceId ? `已带入来源资料定位对象：${source ? sourceTitle(source) : `来源 ${workspace.sourceId}`}。列表命中时会自动高亮。` : '当前任务没有具体来源资料，页面已默认突出“新增资料”和“绑定来源”处理区域。'}
         action={<Button size="small" onClick={clearFocus}>清除定位</Button>}
       />
