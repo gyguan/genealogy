@@ -55,6 +55,10 @@ function clanStatus(status?: string) {
   return { text: status || '状态待确认', color: 'default' };
 }
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 export function ClanStep({ notify, onCreated }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<ClanForm>({ ...defaultClanForm });
@@ -62,6 +66,7 @@ export function ClanStep({ notify, onCreated }: Props) {
   const [clans, setClans] = useState<ClanRecord[]>([]);
   const [clanListLoading, setClanListLoading] = useState(false);
   const [clanListError, setClanListError] = useState('');
+  const [clanDeleteError, setClanDeleteError] = useState('');
   const [clanPageNo, setClanPageNo] = useState(1);
   const [clanPageSize, setClanPageSize] = useState(10);
 
@@ -129,7 +134,20 @@ export function ClanStep({ notify, onCreated }: Props) {
     }
   }
 
+  async function deleteClan(clan: ClanRecord) {
+    setClanDeleteError('');
+    await apiClient.delete(`/clans/${clan.id}`);
+  }
+
+  function handleDeleteClanError(error: unknown) {
+    const text = errorMessage(error, '删除宗族失败');
+    const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
+    setClanDeleteError(text);
+    notify?.({ message: text, code }, true);
+  }
+
   async function afterDeleteClan(clan: ClanRecord) {
+    setClanDeleteError('');
     if (String(clan.id || '') === workspace.clanId) {
       workspace.patch({ clanId: '', branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
     }
@@ -177,8 +195,9 @@ export function ClanStep({ notify, onCreated }: Props) {
             object={clan}
             objectName={clanDisplayName(clan)}
             objectType="宗族"
-            onDelete={() => apiClient.delete(`/clans/${clan.id}`)}
+            onDelete={() => deleteClan(clan)}
             onDeleted={() => afterDeleteClan(clan)}
+            onError={handleDeleteClanError}
             label="删除草稿"
             buttonProps={{ type: 'link', size: 'small' }}
           />
@@ -186,6 +205,30 @@ export function ClanStep({ notify, onCreated }: Props) {
       )
     }
   ];
+
+  const resultNotice = clanDeleteError || clanListError ? (
+    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      {clanDeleteError ? (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          message="宗族删除失败"
+          description={clanDeleteError}
+          onClose={() => setClanDeleteError('')}
+        />
+      ) : null}
+      {clanListError ? (
+        <Alert
+          type="error"
+          showIcon
+          message="宗族列表加载失败"
+          description={clanListError}
+          action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
+        />
+      ) : null}
+    </Space>
+  ) : null;
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -210,15 +253,7 @@ export function ClanStep({ notify, onCreated }: Props) {
         cardClassName="clan-step-query-results"
         totalSuffix="个宗族"
         extra={<Button loading={clanListLoading} onClick={() => void loadClans()}>刷新</Button>}
-        notice={clanListError ? (
-          <Alert
-            type="error"
-            showIcon
-            message="宗族列表加载失败"
-            description={clanListError}
-            action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
-          />
-        ) : null}
+        notice={resultNotice}
         rowKey={clan => String(clan.id)}
         size="small"
         bordered
