@@ -1,0 +1,51 @@
+name: Issue 694 Targeted Wizard Result Inventory
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    if: github.event.pull_request.head.ref == 'agent/issue-694-wizard-strict-two-layer-results' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Build targeted inventory
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('frontend/genealogy-web/src/features/mvp1/steps')
+          patterns = re.compile(r'ResultListCard|QueryResultCard|<Card\b|<Table\b|resultTitle=|title=|className=.*(?:result|list)', re.I)
+          lines = ['# Issue 694 建谱向导结果区域定向清单', '']
+          for path in sorted(root.rglob('*.tsx')):
+              text = path.read_text(encoding='utf-8')
+              matches = [(i, line.rstrip()) for i, line in enumerate(text.splitlines(), 1) if patterns.search(line)]
+              if not matches:
+                  continue
+              lines += [f'## `{path.as_posix()}`', '', f'- ResultListCard: {text.count("ResultListCard")}', f'- QueryResultCard: {text.count("QueryResultCard")}', f'- Card 标签: {len(re.findall(r"<Card\\b", text))}', f'- Table 标签: {len(re.findall(r"<Table\\b", text))}', '', '```text']
+              lines += [f'{i}: {line[:500]}' for i, line in matches]
+              lines += ['```', '']
+          Path('tasks/issue-694-targeted.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+      - name: Persist report
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tasks/issue-694-targeted.md
+          if git diff --cached --quiet; then
+            echo unchanged
+          else
+            git commit -m 'docs(issue-694): add targeted wizard result inventory'
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
