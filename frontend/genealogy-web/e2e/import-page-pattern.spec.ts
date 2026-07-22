@@ -108,8 +108,9 @@ test('data import page uses query and result cards with new import modal', async
   expect(labels).toEqual(['导入对象', '导入状态', '文件名/任务编号', '任务创建时间']);
 
   await page.getByLabel('导入对象').click();
-  await expect(page.getByRole('option', { name: '全选 / 取消全选' })).toBeVisible();
-  await expect(page.getByRole('option', { name: '人物', exact: true })).toBeVisible();
+  const importTypePopup = page.locator('.ant-select-dropdown:visible');
+  await expect(importTypePopup.getByText('全选 / 取消全选', { exact: true })).toBeVisible();
+  await expect(importTypePopup.getByText('人物', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 
   const taskTable = page.locator('.import-execution-table');
