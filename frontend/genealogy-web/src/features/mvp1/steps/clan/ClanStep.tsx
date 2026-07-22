@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
+import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ClanForm = {
   clanName: string;
@@ -50,13 +51,20 @@ function clanDisplayName(clan: ClanRecord) {
 function clanStatus(status?: string) {
   const value = String(status || 'draft').trim().toLowerCase();
   if (value === 'draft') return { text: '草稿', color: 'default' };
+  if (value === 'pending' || value === 'pending_review') return { text: '待审核', color: 'processing' };
   if (value === 'official' || value === 'approved') return { text: '正式', color: 'success' };
+  if (value === 'rejected') return { text: '已驳回', color: 'error' };
   if (value === 'archived') return { text: '已归档', color: 'warning' };
   return { text: status || '状态待确认', color: 'default' };
 }
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function canSubmitClanReview(clan: ClanRecord) {
+  const status = String(clan.status || 'draft').trim().toLowerCase();
+  return status === 'draft' || status === 'rejected';
 }
 
 export function ClanStep({ notify, onCreated }: Props) {
@@ -67,6 +75,8 @@ export function ClanStep({ notify, onCreated }: Props) {
   const [clanListLoading, setClanListLoading] = useState(false);
   const [clanListError, setClanListError] = useState('');
   const [clanDeleteError, setClanDeleteError] = useState('');
+  const [clanReviewError, setClanReviewError] = useState('');
+  const [reviewSubmittingClanId, setReviewSubmittingClanId] = useState('');
   const [clanPageNo, setClanPageNo] = useState(1);
   const [clanPageSize, setClanPageSize] = useState(10);
 
@@ -125,12 +135,30 @@ export function ClanStep({ notify, onCreated }: Props) {
       workspace.patch({ clanId: nextClanId, branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
       setForm({ ...defaultClanForm });
       await loadClans();
-      toast({ message: '宗族创建成功。宗族暂不纳入审核流，可继续创建支派。', id: data?.id });
+      toast({ message: '宗族创建成功，可在下方列表提交审核并继续维护建谱资料。', id: data?.id });
       if (nextClanId) onCreated?.(nextClanId);
     } catch (error) {
       toast({ message: (error as Error).message || '创建宗族失败' }, true);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitClanReview(clan: ClanRecord) {
+    const clanId = String(clan.id || '');
+    if (!clanId || reviewSubmittingClanId) return;
+    setClanReviewError('');
+    setReviewSubmittingClanId(clanId);
+    try {
+      await submitReviewTask({ clanId, targetType: 'clan', targetId: clanId, comment: null });
+      await loadClans();
+      toast({ message: `宗族“${clanDisplayName(clan)}”已提交审核` });
+    } catch (error) {
+      const text = errorMessage(error, '宗族提交审核失败');
+      setClanReviewError(text);
+      toast({ message: text }, true);
+    } finally {
+      setReviewSubmittingClanId('');
     }
   }
 
@@ -185,12 +213,23 @@ export function ClanStep({ notify, onCreated }: Props) {
     {
       title: '操作',
       key: 'actions',
-      width: 220,
+      width: 300,
       render: (_, clan) => (
         <Space size={4}>
           <Button type="link" size="small" onClick={() => selectClan(clan)}>
             {String(clan.id || '') === workspace.clanId ? '继续建谱' : '选择并继续'}
           </Button>
+          {canSubmitClanReview(clan) ? (
+            <Button
+              type="link"
+              size="small"
+              loading={reviewSubmittingClanId === String(clan.id || '')}
+              disabled={Boolean(reviewSubmittingClanId) && reviewSubmittingClanId !== String(clan.id || '')}
+              onClick={() => void submitClanReview(clan)}
+            >
+              提交审核
+            </Button>
+          ) : null}
           <DraftDeleteButton
             object={clan}
             objectName={clanDisplayName(clan)}
@@ -199,15 +238,25 @@ export function ClanStep({ notify, onCreated }: Props) {
             onDeleted={() => afterDeleteClan(clan)}
             onError={handleDeleteClanError}
             label="删除草稿"
-            buttonProps={{ type: 'link', size: 'small' }}
+            buttonProps={{ type: 'link', size: 'small', disabled: Boolean(reviewSubmittingClanId) }}
           />
         </Space>
       )
     }
   ];
 
-  const resultNotice = clanDeleteError || clanListError ? (
+  const resultNotice = clanReviewError || clanDeleteError || clanListError ? (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      {clanReviewError ? (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          message="宗族提交审核失败"
+          description={clanReviewError}
+          onClose={() => setClanReviewError('')}
+        />
+      ) : null}
       {clanDeleteError ? (
         <Alert
           type="error"
@@ -232,7 +281,7 @@ export function ClanStep({ notify, onCreated }: Props) {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
+      <Panel title="创建宗族" description="宗族创建后为草稿，可在下方列表提交审核；审核期间仍可继续完善建谱资料。">
         <div className="wizard-form-grid">
           <Field label="宗族名称 *">
             <input value={form.clanName} onChange={event => patch('clanName', event.target.value)} placeholder="例如：江夏堂黄氏宗族" required />
