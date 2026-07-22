@@ -18,6 +18,7 @@ type Props = {
   onDelete: () => Promise<unknown>;
   onDeleted?: () => void | Promise<void>;
   onError?: (error: unknown) => void;
+  showErrorFeedback?: boolean;
   label?: string;
   buttonProps?: Omit<ButtonProps, 'danger' | 'loading' | 'onClick' | 'children'>;
 };
@@ -33,6 +34,7 @@ export function DraftDeleteButton({
   onDelete,
   onDeleted,
   onError,
+  showErrorFeedback = true,
   label = '删除',
   buttonProps
 }: Props) {
@@ -53,7 +55,7 @@ export function DraftDeleteButton({
     } catch (error) {
       setOpen(false);
       onError?.(error);
-      feedback.error(errorText(error, `删除${objectType}失败`));
+      if (showErrorFeedback) feedback.error(errorText(error, `删除${objectType}失败`));
     } finally {
       setDeleting(false);
     }

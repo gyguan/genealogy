@@ -57,11 +57,19 @@ test('async import execution panel uses only standard feedback primitives', () =
   assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
 });
 
-test('clan review feedback uses only the standard page feedback entry', () => {
+test('clan step separates transient feedback from persistent page errors', () => {
+  assert.match(clanStep, /import \{ feedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
+  assert.match(clanStep, /feedback\.success/);
+  assert.match(clanStep, /feedback\.warning/);
+  assert.match(clanStep, /feedback\.error/);
   assert.match(clanStep, /submitReviewTask/);
   assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族提交审核失败"/);
   assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族删除失败"/);
   assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族列表加载失败"/);
+  assert.match(clanStep, /showErrorFeedback=\{false\}/);
+  assert.doesNotMatch(clanStep, /\bmessage\.(success|info|warning|error|loading)\s*\(/);
+  assert.doesNotMatch(clanStep, /\bnotify\?\.\(/);
+  assert.doesNotMatch(clanStep, /setClanReviewError\([^)]*\);\s*feedback\.error/s);
   assert.doesNotMatch(clanStep, /<Alert\b/);
 });
 
@@ -78,7 +86,7 @@ test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
   assert.equal(baseline.maxCounts.page_alert, 172);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 107);
+  assert.equal(baseline.maxCounts.antd_message, 105);
   assert.equal(baseline.maxCounts.confirm_modal, 62);
   assert.equal(baseline.maxCounts.empty_state, 160);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);

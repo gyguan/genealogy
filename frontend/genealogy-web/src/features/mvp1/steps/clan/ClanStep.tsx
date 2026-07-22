@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Space, Tag, Typography, message } from 'antd';
+import { Button, Space, Tag, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
@@ -8,6 +8,7 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ClanForm = {
@@ -68,7 +69,7 @@ function canSubmitClanReview(clan: ClanRecord) {
   return status === 'draft' || status === 'rejected';
 }
 
-export function ClanStep({ notify, onCreated }: Props) {
+export function ClanStep({ onCreated }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<ClanForm>({ ...defaultClanForm });
   const [loading, setLoading] = useState(false);
@@ -89,7 +90,7 @@ export function ClanStep({ notify, onCreated }: Props) {
       setClans(clanRows(data));
       setClanPageNo(1);
     } catch (error) {
-      setClanListError((error as Error).message || '宗族列表加载失败');
+      setClanListError(errorMessage(error, '宗族列表加载失败'));
     } finally {
       setClanListLoading(false);
     }
@@ -103,30 +104,21 @@ export function ClanStep({ notify, onCreated }: Props) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
-  function toast(data: unknown, error = false) {
-    notify?.(data, error);
-    const text = typeof data === 'string' ? data : (data as any)?.message;
-    if (text) {
-      if (error) message.error(text);
-      else message.success(text);
-    }
-  }
-
   function selectClan(clan: ClanRecord) {
     const clanId = String(clan.id || '');
     if (!clanId) return;
     workspace.patch({ clanId, branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
-    toast({ message: `已选择宗族“${clanDisplayName(clan)}”，继续维护支派。` });
+    feedback.success(`已选择宗族“${clanDisplayName(clan)}”，继续维护支派。`);
     onCreated?.(clanId);
   }
 
   async function createClan() {
     if (!form.clanName.trim()) {
-      toast({ message: '请填写宗族名称' }, true);
+      feedback.warning('请填写宗族名称');
       return;
     }
     if (!form.surname.trim()) {
-      toast({ message: '请填写姓氏' }, true);
+      feedback.warning('请填写姓氏');
       return;
     }
     setLoading(true);
@@ -136,10 +128,10 @@ export function ClanStep({ notify, onCreated }: Props) {
       workspace.patch({ clanId: nextClanId, branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
       setForm({ ...defaultClanForm });
       await loadClans();
-      toast({ message: '宗族创建成功，可在下方列表提交审核并继续维护建谱资料。', id: data?.id });
+      feedback.success('宗族创建成功，可在下方列表提交审核并继续维护建谱资料。');
       if (nextClanId) onCreated?.(nextClanId);
     } catch (error) {
-      toast({ message: (error as Error).message || '创建宗族失败' }, true);
+      feedback.error(errorMessage(error, '创建宗族失败'));
     } finally {
       setLoading(false);
     }
@@ -153,11 +145,9 @@ export function ClanStep({ notify, onCreated }: Props) {
     try {
       await submitReviewTask({ clanId, targetType: 'clan', targetId: clanId, comment: null });
       await loadClans();
-      toast({ message: `宗族“${clanDisplayName(clan)}”已提交审核` });
+      feedback.success(`宗族“${clanDisplayName(clan)}”已提交审核`);
     } catch (error) {
-      const text = errorMessage(error, '宗族提交审核失败');
-      setClanReviewError(text);
-      toast({ message: text }, true);
+      setClanReviewError(errorMessage(error, '宗族提交审核失败'));
     } finally {
       setReviewSubmittingClanId('');
     }
@@ -169,10 +159,7 @@ export function ClanStep({ notify, onCreated }: Props) {
   }
 
   function handleDeleteClanError(error: unknown) {
-    const text = errorMessage(error, '删除宗族失败');
-    const code = error && typeof error === 'object' ? (error as { code?: unknown }).code : undefined;
-    setClanDeleteError(text);
-    notify?.({ message: text, code }, true);
+    setClanDeleteError(errorMessage(error, '删除宗族失败'));
   }
 
   async function afterDeleteClan(clan: ClanRecord) {
@@ -238,6 +225,7 @@ export function ClanStep({ notify, onCreated }: Props) {
             onDelete={() => deleteClan(clan)}
             onDeleted={() => afterDeleteClan(clan)}
             onError={handleDeleteClanError}
+            showErrorFeedback={false}
             label="删除草稿"
             buttonProps={{ type: 'link', size: 'small', disabled: Boolean(reviewSubmittingClanId) }}
           />

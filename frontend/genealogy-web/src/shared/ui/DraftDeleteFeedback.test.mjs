@@ -10,14 +10,16 @@ test('draft delete button uses standard confirmation and operation feedback entr
   assert.match(draftDeleteButtonSource, /import \{ feedback \} from '.\/OperationFeedback'/);
   assert.match(draftDeleteButtonSource, /<ConfirmAction/);
   assert.match(draftDeleteButtonSource, /feedback\.success\(`/);
-  assert.match(draftDeleteButtonSource, /feedback\.error\(/);
+  assert.match(draftDeleteButtonSource, /showErrorFeedback = true/);
+  assert.match(draftDeleteButtonSource, /if \(showErrorFeedback\) feedback\.error\(/);
   assert.doesNotMatch(draftDeleteButtonSource, /message\.useMessage|messageApi\.|<Popconfirm\b/);
-  assert.match(draftDeleteButtonSource, /catch \(error\) \{\s*setOpen\(false\);\s*onError\?\.\(error\);\s*feedback\.error/s);
+  assert.match(draftDeleteButtonSource, /catch \(error\) \{\s*setOpen\(false\);\s*onError\?\.\(error\);\s*if \(showErrorFeedback\)/s);
 });
 
-test('clan step keeps backend delete errors visible in the result area', () => {
+test('clan step keeps backend delete errors visible without duplicate toast', () => {
   assert.match(clanStepSource, /const \[clanDeleteError, setClanDeleteError\] = useState\(''\)/);
   assert.match(clanStepSource, /onError=\{handleDeleteClanError\}/);
+  assert.match(clanStepSource, /showErrorFeedback=\{false\}/);
   assert.match(clanStepSource, /<PageFeedback[\s\S]*title="宗族删除失败"/);
   assert.match(clanStepSource, /description=\{clanDeleteError\}/);
   assert.match(clanStepSource, /setClanDeleteError\(''\);\s*await apiClient\.delete/s);
