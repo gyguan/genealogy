@@ -13,6 +13,14 @@ test('draft clan exposes a real review submission entry', () => {
   assert.match(clanStepSource, /status === 'draft' \|\| status === 'rejected'/);
 });
 
+test('clan review uses a dedicated endpoint instead of generic target dispatch', () => {
+  assert.match(reviewServiceSource, /export function submitClanReviewTask/);
+  assert.match(reviewServiceSource, /`\/clans\/\$\{clanId\}\/submit-review`/);
+  assert.match(reviewServiceSource, /diffSummary: comment/);
+  assert.match(reviewServiceSource, /if \(targetType === 'clan'\)/);
+  assert.match(reviewServiceSource, /submitClanReviewTask\(targetId, comment\)/);
+});
+
 test('clan step no longer claims clans are outside review flow', () => {
   assert.doesNotMatch(clanStepSource, /宗族暂不纳入审核流|宗族作为建谱容器暂不进入审核流/);
   assert.match(clanStepSource, /宗族创建后为草稿，可在下方列表提交审核/);
