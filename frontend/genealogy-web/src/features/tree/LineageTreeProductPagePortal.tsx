@@ -5,6 +5,7 @@ import {
   type FieldPortalResolver
 } from '../../shared/ui/Form';
 import { LineageTreeProductPage as LineageTreeProductPageBase } from './LineageTreeProductPage';
+import './person-centered-direct.css';
 
 const LINEAGE_TOOLBAR_FIELD_KIND: Record<string, 'center' | 'locator'> = {
   切换中心人物: 'center',
