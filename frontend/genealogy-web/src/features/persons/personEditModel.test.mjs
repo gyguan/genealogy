@@ -15,8 +15,14 @@ import {
   legalPersonStatusActions,
   visiblePersonStatusActions
 } from '../../../.person-edit-test/features/persons/personStatusActions.js';
+import {
+  personEducationOptions,
+  personGenerationSelectedValue,
+  selectPersonGeneration
+} from '../../../.person-edit-test/shared/domain/personFormOptions.js';
 
 const personEditPageSource = readFileSync(new URL('./PersonEditPage.tsx', import.meta.url), 'utf8');
+const personCreatePageSource = readFileSync(new URL('../mvp1/steps/person/PersonStep.tsx', import.meta.url), 'utf8');
 
 test('infers safe precision without inventing date parts', () => {
   assert.equal(normalizePersonDatePrecision(undefined, '1901'), 'year');
@@ -117,4 +123,26 @@ test('shows disabled contract reason when backend capability is absent', () => {
   assert.equal(actions[0].enabled, false);
   assert.match(actions[0].reason, /后端尚未提供/);
   assert.match(disabledPersonStatusActionReason('restore', 'official', undefined), /当前档案状态不允许/);
+});
+
+
+test('person create and edit share education options', () => {
+  assert.deepEqual(personEducationOptions.map(item => item.value), [
+    '', '私塾/家学', '小学', '初中', '高中', '中专', '大专', '本科', '硕士', '博士', '其他'
+  ]);
+  assert.match(personCreatePageSource, /options=\{personEducationOptions\}/);
+  assert.match(personEditPageSource, /name="education" label="教育程度"><Select options=\{personEducationOptions\}/);
+});
+
+test('person edit selects generation word and derives generation number', () => {
+  const items = [
+    { word: '永', generationNo: 18 },
+    { word: '世', generationNo: 19 }
+  ];
+  assert.equal(personGenerationSelectedValue('永', '18', items), '永@@18');
+  assert.deepEqual(selectPersonGeneration('世@@19', items), { generationWord: '世', generationNo: '19' });
+  assert.deepEqual(selectPersonGeneration('', items), { generationWord: '', generationNo: '' });
+  assert.doesNotMatch(personEditPageSource, /name="generationNo" label="代次"/);
+  assert.match(personEditPageSource, /<Form.Item label="代次">[\s\S]*disabled readOnly/);
+  assert.match(personEditPageSource, /onChange=\{changeGeneration\}/);
 });

@@ -4,6 +4,7 @@ import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { apiClient } from '../../shared/api/client';
+import { personEducationOptions, personGenerationLabel, personGenerationOptionValue, personGenerationSelectedValue, selectPersonGeneration } from '../../shared/domain/personFormOptions';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { EMPTY_ENTITY_NAVIGATION_GUARD } from '../../shared/navigation/entityNavigationGuard';
 import type { EntityNavigationGuardState } from '../../shared/navigation/entityNavigationGuard';
@@ -63,9 +64,6 @@ function isOfficialGenerationScheme(scheme: any) {
     return ['official', 'active', 'approved'].includes(status);
   }
 
-function distinct(values: string[]) {
-  return [...new Set(values.filter(Boolean))];
-}
 
 function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {
   if (!value || precision === 'unknown') return { value: null };
@@ -122,41 +120,15 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     [generationItems, selectedBranchId]
   );
 
-  const generationWordOptions = useMemo(() => {
-    const grouped = new Map<string, string[]>();
+  const generationOptions = useMemo(() => {
+    const options = new Map<string, { value: string; label: string }>();
     availableGenerationItems.forEach(item => {
-      if (!item.word) return;
-      grouped.set(item.word, distinct([...(grouped.get(item.word) || []), item.generationNo]));
+      const value = personGenerationOptionValue(item);
+      if (value === '@@') return;
+      options.set(value, { value, label: personGenerationLabel(item) });
     });
-    const options = [...grouped.entries()]
-      .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
-      .map(([word, generationNos]) => ({
-        value: word,
-        label: generationNos.length ? `${word} · ${generationNos.map(no => `第${no}世`).join(' / ')}` : word
-      }));
-    if (selectedGenerationWord && !grouped.has(selectedGenerationWord)) {
-      options.unshift({ value: selectedGenerationWord, label: `${selectedGenerationWord}（当前值）` });
-    }
-    return options;
-  }, [availableGenerationItems, selectedGenerationWord]);
-
-  const generationNoOptions = useMemo(() => {
-    const grouped = new Map<string, string[]>();
-    availableGenerationItems.forEach(item => {
-      if (!item.generationNo) return;
-      grouped.set(item.generationNo, distinct([...(grouped.get(item.generationNo) || []), item.word]));
-    });
-    const options = [...grouped.entries()]
-      .sort(([left], [right]) => Number(left) - Number(right))
-      .map(([generationNo, words]) => ({
-        value: generationNo,
-        label: words.length ? `第${generationNo}世 · ${words.join(' / ')}` : `第${generationNo}世`
-      }));
-    if (selectedGenerationNo && !grouped.has(selectedGenerationNo)) {
-      options.unshift({ value: selectedGenerationNo, label: `第${selectedGenerationNo}世（当前值）` });
-    }
-    return options;
-  }, [availableGenerationItems, selectedGenerationNo]);
+    return [...options.values()];
+  }, [availableGenerationItems]);
 
   useEffect(() => { void loadPerson(); }, [personId]);
 
@@ -233,28 +205,10 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     }
   }
 
-  function changeGenerationWord(value?: string) {
-    const nextWord = value || '';
-    form.setFieldValue('generationWord', nextWord);
+  function changeGeneration(value?: string) {
+    form.setFieldsValue(selectPersonGeneration(value, availableGenerationItems));
     setDirty(true);
     setSaved(false);
-    if (!nextWord) return;
-    const matchingGenerationNos = distinct(
-      availableGenerationItems.filter(item => item.word === nextWord).map(item => item.generationNo)
-    );
-    if (matchingGenerationNos.length === 1) form.setFieldValue('generationNo', matchingGenerationNos[0]);
-  }
-
-  function changeGenerationNo(value?: string) {
-    const nextGenerationNo = value || '';
-    form.setFieldValue('generationNo', nextGenerationNo);
-    setDirty(true);
-    setSaved(false);
-    if (!nextGenerationNo) return;
-    const matchingWords = distinct(
-      availableGenerationItems.filter(item => item.generationNo === nextGenerationNo).map(item => item.word)
-    );
-    if (matchingWords.length === 1) form.setFieldValue('generationWord', matchingWords[0]);
   }
 
   function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
@@ -403,11 +357,23 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
 
           <Card title="世系与支派"><div className="person-edit-fields">
             <Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item>
-            <Form.Item name="generationNo" label="代次" extra="仅展示已审核通过的字辈方案明细">
-              <Select allowClear showSearch optionFilterProp="label" loading={loadingGenerations} disabled={!loadingGenerations && !generationNoOptions.length} placeholder={loadingGenerations ? '正在加载代次' : '请选择代次'} options={generationNoOptions} onChange={changeGenerationNo} />
+            <Form.Item name="generationWord" hidden><Input /></Form.Item>
+            <Form.Item name="generationNo" hidden><Input /></Form.Item>
+            <Form.Item label="字辈" extra="选择字辈后自动带出代次，仅展示已审核通过的字辈方案明细">
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)}
+                loading={loadingGenerations}
+                disabled={!loadingGenerations && !generationOptions.length}
+                placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'}
+                options={generationOptions}
+                onChange={changeGeneration}
+              />
             </Form.Item>
-            <Form.Item name="generationWord" label="字辈" extra="选择字辈或代次后，唯一匹配项会自动联动">
-              <Select allowClear showSearch optionFilterProp="label" loading={loadingGenerations} disabled={!loadingGenerations && !generationWordOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationWordOptions} onChange={changeGenerationWord} />
+            <Form.Item label="代次">
+              <Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly />
             </Form.Item>
             <Form.Item name="rankInFamily" label="排行"><Input /></Form.Item>
           </div></Card>
@@ -442,7 +408,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
           </div></Card>
 
           <Card title="生平与墓志"><div className="person-edit-fields">
-            <Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Input /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item>
+            <Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item>
             <Form.Item name="biography" label="人物传记" className="person-edit-field--wide"><Input.TextArea rows={6} placeholder="记录人物生平、主要经历与贡献" /></Form.Item>
             <Form.Item name="tombPlace" label="墓葬地"><Input /></Form.Item><Form.Item name="epitaph" label="墓志铭" className="person-edit-field--wide"><Input.TextArea rows={4} /></Form.Item>
           </div></Card>
