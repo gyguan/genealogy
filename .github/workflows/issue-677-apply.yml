@@ -32,7 +32,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Verify result card structure
         working-directory: frontend/genealogy-web
