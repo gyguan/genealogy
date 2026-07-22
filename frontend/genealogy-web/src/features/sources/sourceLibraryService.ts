@@ -84,10 +84,12 @@ export type PersonOption = {
 };
 
 export type BranchOption = {
-  id?: number;
-  branchName?: string;
-  branchPath?: string;
-};
+    id?: number;
+    branchName?: string;
+    branchPath?: string;
+    status?: string;
+    dataStatus?: string;
+  };
 
 export type GenerationSchemeOption = {
   id?: number;
@@ -246,8 +248,9 @@ export async function listPersons(clanId: string, keyword?: string) {
 }
 
 export async function listBranches(clanId: string) {
-  return toRows<BranchOption>(await apiClient.get(`/clans/${clanId}/branches`));
-}
+    return toRows<BranchOption>(await apiClient.get(`/clans/${clanId}/branches`))
+      .filter(row => ['official', 'approved', 'active'].includes(String(row.status || row.dataStatus || '').trim().toLowerCase()));
+  }
 
 export async function listGenerationSchemes(clanId: string) {
   const rows = toRows<GenerationSchemeOption>(await apiClient.get(`/clans/${clanId}/generation-schemes`));

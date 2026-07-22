@@ -79,6 +79,7 @@ class CultureSiteApplicationServiceTest {
         BranchEntity targetBranch = new BranchEntity();
         targetBranch.setId(20L);
         targetBranch.setClanId(1L);
+        targetBranch.setStatus("official");
 
         when(siteRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(Optional.of(site));
         when(branchRepository.findByIdAndClanId(20L, 1L)).thenReturn(Optional.of(targetBranch));

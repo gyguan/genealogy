@@ -54,9 +54,14 @@ function generationSchemeLabel(scheme: any) {
 }
 
 function isOfficialGenerationScheme(scheme: any) {
-  const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();
-  return ['official', 'active', 'approved'].includes(status);
-}
+    const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();
+    return ['official', 'active', 'approved'].includes(status);
+  }
+
+  function isOfficialBranch(branch: any) {
+    const status = String(branch.status || branch.dataStatus || branch.verificationStatus || '').trim().toLowerCase();
+    return ['official', 'active', 'approved'].includes(status);
+  }
 
 function distinct(values: string[]) {
   return [...new Set(values.filter(Boolean))];
@@ -108,7 +113,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
   const backLabel = personEditBackLabel();
 
   const branchOptions = useMemo(
-    () => branches.map(branch => ({ value: String(branch.id), label: branchLabel(branch) })),
+    () => branches.filter(isOfficialBranch).map(branch => ({ value: String(branch.id), label: branchLabel(branch) })),
     [branches]
   );
 

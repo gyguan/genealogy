@@ -9,6 +9,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.persistence.TargetCountProjection;
 import com.genealogy.culture.domain.CultureSiteDomainService;
 import com.genealogy.culture.domain.CultureSitePermissionPolicyService;
@@ -400,9 +401,10 @@ if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actor
     }
 
     private void requireBranchInClan(Long clanId, Long branchId) {
-        if (branchId != null && branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
-            throw new BusinessException("CULTURE_SITE_BRANCH_INVALID", "支派不属于当前宗族");
-        }
+        if (branchId == null) return;
+        BranchEntity branch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException("CULTURE_SITE_BRANCH_INVALID", "支派不属于当前宗族"));
+        ApprovedStatusPolicy.requireApproved(branch.getStatus(), "CULTURE_SITE_BRANCH_NOT_OFFICIAL", "所属支派审核通过后才能维护文化场所");
     }
 
     private void validateRelatedPerson(Long clanId, Long branchId, Long personId) {
@@ -412,6 +414,7 @@ if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actor
         if (!Objects.equals(person.getClanId(), clanId)) {
             throw new BusinessException("CULTURE_SITE_PERSON_CLAN_MISMATCH", "关联人物不属于当前宗族");
         }
+        ApprovedStatusPolicy.requireApproved(person.getDataStatus(), "CULTURE_SITE_PERSON_NOT_OFFICIAL", "关联人物审核通过后才能用于文化场所");
         if (branchId != null && person.getBranchId() != null
                 && !branchRepository.isDescendantOrSelf(clanId, branchId, person.getBranchId())) {
             throw new BusinessException("CULTURE_SITE_PERSON_BRANCH_MISMATCH", "关联人物不属于场所支派或其下级支派");

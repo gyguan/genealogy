@@ -3,6 +3,7 @@ package com.genealogy.source.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
@@ -67,6 +68,7 @@ public class SourceEvidenceApplicationService {
     public SourceBindingResponse bind(SourceBindingCreateRequest request) {
         String targetType = normalizeTargetType(request.targetType());
         SourceEntity source = getSource(request.sourceId());
+        ApprovedStatusPolicy.requireApproved(source.getVerificationStatus(), "SOURCE_NOT_OFFICIAL", "来源审核通过后才能绑定业务对象");
         authorizationApplicationService.requirePermission(source.getClanId(), request.createdBy(), SOURCE_BIND);
         validateTargetAndScope(source, targetType, request.targetId(), request.createdBy(), SOURCE_BIND);
         if (sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetId(source.getId(), targetType, request.targetId())) {
@@ -189,6 +191,7 @@ public class SourceEvidenceApplicationService {
                 if (!source.getClanId().equals(person.getClanId())) {
                     throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源与目标人物不属于同一宗族");
                 }
+                ApprovedStatusPolicy.requireApproved(person.getDataStatus(), "PERSON_NOT_OFFICIAL", "人物审核通过后才能绑定来源资料");
                 authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, person.getBranchId(), permissionCode);
             }
             case "relationship" -> {
@@ -198,6 +201,7 @@ public class SourceEvidenceApplicationService {
                 if (!source.getClanId().equals(relationship.getClanId())) {
                     throw new BusinessException("SOURCE_BINDING_CLAN_MISMATCH", "来源与目标关系不属于同一宗族");
                 }
+                ApprovedStatusPolicy.requireApproved(relationship.getDataStatus(), "RELATIONSHIP_NOT_OFFICIAL", "关系审核通过后才能绑定来源资料");
                 PersonEntity from = personRepository.findByIdAndDeletedAtIsNull(relationship.getFromPersonId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.PERSON_NOT_FOUND));
                 PersonEntity to = personRepository.findByIdAndDeletedAtIsNull(relationship.getToPersonId())
@@ -208,6 +212,7 @@ public class SourceEvidenceApplicationService {
             case "branch" -> {
                 BranchEntity branch = branchRepository.findByIdAndClanId(targetId, source.getClanId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+                ApprovedStatusPolicy.requireApproved(branch.getStatus(), "BRANCH_NOT_OFFICIAL", "支派审核通过后才能绑定来源资料");
                 authorizationApplicationService.requireBranchPermission(source.getClanId(), actorId, branch.getId(), permissionCode);
             }
             case "clan" -> {

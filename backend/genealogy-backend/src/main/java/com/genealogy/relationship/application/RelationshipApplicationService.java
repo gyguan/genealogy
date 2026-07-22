@@ -2,6 +2,7 @@ package com.genealogy.relationship.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -213,6 +214,8 @@ public class RelationshipApplicationService {
         entity.setDataStatus(request.dataStatus() == null ? entity.getDataStatus() : request.dataStatus());
         PersonEntity from = getActivePerson(entity.getFromPersonId());
         PersonEntity to = getActivePerson(entity.getToPersonId());
+        ApprovedStatusPolicy.requireApproved(from.getDataStatus(), "RELATIONSHIP_PERSON_NOT_OFFICIAL", "关系两端人物审核通过后才能编辑关系");
+        ApprovedStatusPolicy.requireApproved(to.getDataStatus(), "RELATIONSHIP_PERSON_NOT_OFFICIAL", "关系两端人物审核通过后才能编辑关系");
         validateGenerationOrder(from, to, relationType);
         validateRelationshipRules(entity.getClanId(), entity.getFromPersonId(), entity.getToPersonId(), relationType, relationLabel, entity.getId());
         entity.setUpdatedAt(LocalDateTime.now());
@@ -337,6 +340,8 @@ public class RelationshipApplicationService {
         if (!from.getClanId().equals(clanId) || !to.getClanId().equals(clanId)) {
             throw new BusinessException("RELATIONSHIP_CLAN_MISMATCH", "persons must belong to the clan");
         }
+        ApprovedStatusPolicy.requireApproved(from.getDataStatus(), "RELATIONSHIP_PERSON_NOT_OFFICIAL", "关系两端人物审核通过后才能建立关系");
+        ApprovedStatusPolicy.requireApproved(to.getDataStatus(), "RELATIONSHIP_PERSON_NOT_OFFICIAL", "关系两端人物审核通过后才能建立关系");
         String relationLabel = normalizeLabel(request.relationLabel(), relationType, request.fromPersonId());
         validateGenerationOrder(from, to, relationType);
         validateSuccessorBranch(clanId, request.successorBranchId());
@@ -656,9 +661,9 @@ public class RelationshipApplicationService {
         if (successorBranchId == null) {
             return;
         }
-        if (branchRepository.findByIdAndClanId(successorBranchId, clanId).isEmpty()) {
-            throw new BusinessException("SUCCESSOR_BRANCH_NOT_FOUND", "承继房支不存在或不属于当前宗族");
-        }
+        var branch = branchRepository.findByIdAndClanId(successorBranchId, clanId)
+                .orElseThrow(() -> new BusinessException("SUCCESSOR_BRANCH_NOT_FOUND", "承继房支不存在或不属于当前宗族"));
+        ApprovedStatusPolicy.requireApproved(branch.getStatus(), "SUCCESSOR_BRANCH_NOT_OFFICIAL", "承继房支审核通过后才能用于关系维护");
     }
 
     private void ensureReverseSpouse(RelationshipEntity saved, LocalDateTime now) {

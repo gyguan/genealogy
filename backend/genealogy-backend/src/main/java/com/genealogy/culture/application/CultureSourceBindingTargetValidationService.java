@@ -1,10 +1,14 @@
 package com.genealogy.culture.application;
 
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.culture.governance.CultureTargetContext;
 import com.genealogy.culture.governance.CultureTargetGovernanceRegistry;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
+import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.source.application.SourceBindingTargetValidationService;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -19,9 +23,13 @@ public class CultureSourceBindingTargetValidationService extends SourceBindingTa
     public CultureSourceBindingTargetValidationService(
             GenerationWordRepository generationWordRepository,
             GenerationSchemeRepository generationSchemeRepository,
+            PersonRepository personRepository,
+            RelationshipRepository relationshipRepository,
+            BranchRepository branchRepository,
+            ClanRepository clanRepository,
             CultureTargetGovernanceRegistry targetRegistry
     ) {
-        super(generationWordRepository, generationSchemeRepository);
+        super(generationWordRepository, generationSchemeRepository, personRepository, relationshipRepository, branchRepository, clanRepository);
         this.targetRegistry = targetRegistry;
     }
 

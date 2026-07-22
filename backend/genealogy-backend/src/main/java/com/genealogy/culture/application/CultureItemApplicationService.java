@@ -9,6 +9,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.persistence.TargetCountProjection;
 import com.genealogy.culture.domain.CultureItemDomainService;
 import com.genealogy.culture.dto.CultureAttachmentSummaryResponse;
@@ -530,9 +531,10 @@ public class CultureItemApplicationService {
     }
 
     private void requireBranchInClan(Long clanId, Long branchId) {
-        if (branchId != null && branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
-            throw new BusinessException("CULTURE_ITEM_BRANCH_INVALID", "支派不属于当前宗族");
-        }
+        if (branchId == null) return;
+        BranchEntity branch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException("CULTURE_ITEM_BRANCH_INVALID", "支派不属于当前宗族"));
+        ApprovedStatusPolicy.requireApproved(branch.getStatus(), "CULTURE_ITEM_BRANCH_NOT_OFFICIAL", "所属支派审核通过后才能维护文化资料");
     }
 
     private ClanEntity requireClan(Long clanId) {

@@ -8,6 +8,7 @@ import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.mapper.BranchMapper;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -52,6 +53,9 @@ public class BranchApplicationService {
         }
         validateBranchNameForCreate(clanId, request.branchName());
         BranchEntity parent = getParentBranch(clanId, request.parentId());
+        if (parent != null) {
+            ApprovedStatusPolicy.requireApproved(parent.getStatus(), "BRANCH_PARENT_NOT_OFFICIAL", "父支派审核通过后才能创建下级支派");
+        }
         BranchEntity entity = BranchMapper.toEntity(clanId, request);
         applyHierarchy(entity, parent);
         LocalDateTime now = LocalDateTime.now();
@@ -127,6 +131,9 @@ public class BranchApplicationService {
         validateParentIsNotSelf(id, request.parentId());
         validateBranchNameForUpdate(entity.getClanId(), id, request.branchName());
         BranchEntity parent = getParentBranch(entity.getClanId(), request.parentId());
+        if (parent != null) {
+            ApprovedStatusPolicy.requireApproved(parent.getStatus(), "BRANCH_PARENT_NOT_OFFICIAL", "父支派审核通过后才能作为上级支派");
+        }
         validateParentIsNotDescendant(id, parent);
         BranchMapper.updateEntity(entity, request);
         applyHierarchy(entity, parent);

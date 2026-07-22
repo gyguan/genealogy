@@ -1,6 +1,7 @@
 package com.genealogy.auth.application;
 
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.member.entity.ClanMembershipEntity;
 import com.genealogy.member.entity.MemberRoleEntity;
@@ -197,6 +198,12 @@ public class AuthorizationApplicationService {
 
     @Transactional(readOnly = true)
     public ClanMembershipEntity requireBranchWriteScope(Long clanId, Long userId, Long branchId) {
+        if (branchId != null) {
+            String status = branchRepository.findByIdAndClanId(branchId, clanId)
+                    .orElseThrow(() -> new BusinessException("BRANCH_NOT_FOUND", "支派不存在或不属于当前宗族"))
+                    .getStatus();
+            ApprovedStatusPolicy.requireApproved(status, "BRANCH_NOT_OFFICIAL", "支派审核通过后才能作为依赖对象");
+        }
         return requireBranchPermission(clanId, userId, branchId, "person.update");
     }
 
