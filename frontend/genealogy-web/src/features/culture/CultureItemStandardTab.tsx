@@ -527,14 +527,9 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       <Card
         className="culture-result-card query-result-outer-card"
         title="查询结果"
-        extra={(
-          <Space className="culture-result-actions">
-            <Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />
-            <Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>
-          </Space>
-        )}
+        extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>}
       >
-        <BusinessResultCard title="文化资料" total={page.totalElements}>
+        <BusinessResultCard title="文化资料" total={page.totalElements} extra={<Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />}>
         {refreshError ? <Alert type="warning" showIcon closable message="文化资料刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 12 }} /> : null}
         {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化资料'} /> : null}

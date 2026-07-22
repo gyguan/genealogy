@@ -294,8 +294,8 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
         <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
       </Form>
     </Card>
-    <Card className="culture-result-card query-result-outer-card" title="查询结果" extra={<Space className="culture-result-actions"><Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} /><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button></Space>}>
-      <BusinessResultCard title="迁徙脉络" total={total}>
+    <Card className="culture-result-card query-result-outer-card" title="查询结果" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>}>
+      <BusinessResultCard title="迁徙脉络" total={total} extra={<Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} />}>
       {refreshError ? <Alert type="warning" showIcon closable message="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
