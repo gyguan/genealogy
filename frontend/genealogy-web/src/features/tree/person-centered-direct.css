@@ -12,7 +12,7 @@
   font-size: 12px;
   line-height: 20px;
   white-space: nowrap;
-  content: '当前视图仅展示中心人物的直接关联人物（父母、配偶、子女、兄弟姐妹）';
+  content: '当前视图以中心人物为核心，按所选深度展示相关人物';
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -33,10 +33,6 @@
 .lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-status {
   fill: #0958d9;
   font-weight: 700;
-}
-
-.lineage-logic-card--person .lineage-graph-collapse {
-  display: none;
 }
 
 @media (max-width: 767px) {

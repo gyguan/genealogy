@@ -31,12 +31,15 @@ const VIEW_QUERY_KEYS: Record<AppViewKey, readonly string[]> = {
   treeProduct: [
     'clanId',
     'branchId',
+    'personBranchId',
     'personId',
     'mode',
     'personDepth',
     'branchDepth',
     'direction',
     'relations',
+    'personRelations',
+    'branchRelations',
     'includeSubBranches'
   ],
   sourceLibrary: ['clanId', 'sourceId', 'quality'],

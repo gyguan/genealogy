@@ -4,11 +4,10 @@ import {
   FieldPortalProvider,
   type FieldPortalResolver
 } from '../../shared/ui/Form';
-import { LineageTreeProductPage as LineageTreeProductPageBase } from './LineageTreeProductPage';
+import { LineageTreeTabbedPage as LineageTreeProductPageBase } from './LineageTreeTabbedPage';
 import './person-centered-direct.css';
 
-const LINEAGE_TOOLBAR_FIELD_KIND: Record<string, 'center' | 'locator'> = {
-  切换中心人物: 'center',
+const LINEAGE_TOOLBAR_FIELD_KIND: Record<string, 'locator'> = {
   图内定位人物: 'locator'
 };
 
