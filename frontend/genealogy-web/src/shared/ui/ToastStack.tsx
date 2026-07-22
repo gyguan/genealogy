@@ -1,9 +1,11 @@
-import { Alert, Space } from 'antd';
+import { Space } from 'antd';
+import { PageFeedback, type FeedbackTone } from './Feedback';
 
 export type ToastItem = {
   id: number;
   message: string;
-  type?: 'success' | 'error' | 'info';
+  description?: string;
+  type?: FeedbackTone;
 };
 
 export function ToastStack({ items, onClose }: { items: ToastItem[]; onClose: (id: number) => void }) {
@@ -11,12 +13,13 @@ export function ToastStack({ items, onClose }: { items: ToastItem[]; onClose: (i
   return (
     <Space className="toast-stack antd-toast-stack" direction="vertical" size="small">
       {items.map(item => (
-        <Alert
+        <PageFeedback
           key={item.id}
-          showIcon
+          variant="toast"
+          tone={item.type || 'success'}
+          title={item.message}
+          description={item.description}
           closable
-          type={item.type || 'success'}
-          message={item.message}
           onClose={() => onClose(item.id)}
         />
       ))}
