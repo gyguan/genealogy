@@ -65,7 +65,7 @@ jobs:
         working-directory: frontend/genealogy-web
         run: |
           set -o pipefail
-          npm ci 2>&1 | tee ../../issue-708-frontend.log
+          npm install 2>&1 | tee ../../issue-708-frontend.log
           npm run typecheck 2>&1 | tee -a ../../issue-708-frontend.log
           npm run test:wizard 2>&1 | tee -a ../../issue-708-frontend.log
           npm run test:wizard-dependencies 2>&1 | tee -a ../../issue-708-frontend.log
