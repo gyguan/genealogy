@@ -1,5 +1,5 @@
 import test from 'node:test';
-import assert from 'node:assert/strict';
+import assert from 'node:strict';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
@@ -57,6 +57,33 @@ test('relationship matrix exposes accessible Chinese semantics', () => {
   const status = edgeVisual(edge({ relationType: 'no_descendant', relationCategory: 'status' }));
   assert.equal(status.tone, 'status');
   assert.equal(status.label, '无嗣');
+});
+
+test('client-inferred siblings use explicit peer semantics without an arrow', () => {
+  const sibling = edgeVisual(edge({
+    relationType: 'other',
+    relationCategory: 'blood',
+    relationLabel: '姐妹',
+    clientRelationKind: 'sibling',
+    isLineageRelation: false
+  }));
+  assert.deepEqual(sibling, {
+    tone: 'blood',
+    label: '姐妹',
+    description: '姐妹同辈关系，使用无箭头连线表示',
+    marker: 'none'
+  });
+
+  const ritualSibling = edgeVisual(edge({
+    relationType: 'other',
+    relationCategory: 'ritual',
+    relationLabel: '兄弟',
+    clientRelationKind: 'sibling',
+    isBiological: false,
+    isLineageRelation: false
+  }));
+  assert.equal(ritualSibling.tone, 'ritual');
+  assert.equal(ritualSibling.marker, 'none');
 });
 
 test('technical relation codes display as Chinese', () => {
