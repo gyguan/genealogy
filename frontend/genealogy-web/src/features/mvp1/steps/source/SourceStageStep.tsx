@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Pagination, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Select, Space, Tag, Typography, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import {
   SOURCE_BINDING_PAGE_SIZE,
@@ -179,27 +180,34 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
               <Field label="绑定对象类型"><Select value={targetType} onChange={value => { setTargetType(value); setTargetId(''); }} options={[["person","人物"],["relationship","关系"],["branch","支派"],["clan","宗族"]].map(([value,label]) => ({ value, label }))} /></Field>
               <Field label="绑定对象"><Select value={targetId || (targetType === 'clan' ? workspace.clanId : '')} onChange={setTargetId} options={targetOptions} placeholder={`请选择${targetTypeText(targetType)}`} /></Field>
             </div>
-            <Space className="source-stage-actions" wrap><Button type="primary" loading={binding} disabled={!targetOptions.length} onClick={() => void bind()}>绑定来源</Button><Button loading={linksLoading} onClick={() => void refreshLinks()}>刷新已绑定对象</Button></Space>
+            <Space className="source-stage-actions" wrap><Button type="primary" loading={binding} disabled={!targetOptions.length} onClick={() => void bind()}>绑定来源</Button></Space>
           </>}
-          {linksError ? <Alert type="error" showIcon message={linksError} action={<Button size="small" onClick={() => void refreshLinks()}>重试</Button>} /> : null}
-          <div className="source-stage-links">
-            <h4>已绑定对象（{links.length}）</h4>
-            {links.length ? <>
-              {pagedLinks.rows.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>)}
-              {pagedLinks.total > SOURCE_BINDING_PAGE_SIZE ? <div className="source-stage-pagination">
-                <Pagination
-                  size="small"
-                  aria-label="已绑定对象分页"
-                  current={pagedLinks.page}
-                  pageSize={SOURCE_BINDING_PAGE_SIZE}
-                  total={pagedLinks.total}
-                  showSizeChanger={false}
-                  showTotal={total => `共 ${total} 条`}
-                  onChange={setLinkPage}
-                />
-              </div> : null}
-            </> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} />}
-          </div>
+          <ResultListCard<SourceLinkLike>
+            cardClassName="source-stage-links"
+            totalSuffix="条绑定记录"
+            resultTotal={links.length}
+            extra={<Button loading={linksLoading} disabled={!workspace.sourceId} onClick={() => void refreshLinks()}>刷新已绑定对象</Button>}
+            notice={linksError ? <Alert type="error" showIcon message={linksError} action={<Button size="small" onClick={() => void refreshLinks()}>重试</Button>} /> : null}
+            size="small"
+            bordered
+            rowKey={link => String(link.id || `${link.targetType}-${link.targetId}`)}
+            loading={linksLoading}
+            dataSource={pagedLinks.rows}
+            pagination={pagedLinks.total > SOURCE_BINDING_PAGE_SIZE ? {
+              current: pagedLinks.page,
+              pageSize: SOURCE_BINDING_PAGE_SIZE,
+              total: pagedLinks.total,
+              showSizeChanger: false,
+              showTotal: total => `共 ${total} 条`,
+              onChange: setLinkPage
+            } : false}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} /> }}
+            columns={[
+              { key: 'targetType', title: '对象类型', width: 120, render: (_value, link) => <Tag>{targetTypeText(link.targetType)}</Tag> },
+              { key: 'targetId', title: '绑定对象', render: (_value, link) => `对象 #${link.targetId}` },
+              { key: 'createdAt', title: '绑定时间', width: 180, render: (_value, link) => link.createdAt || '-' }
+            ]}
+          />
         </Card>
       </div>
     </Panel>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Popconfirm, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Popconfirm, Space, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Actions, Field } from '../../../../shared/ui/Form';
@@ -233,21 +233,20 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
         <button className="secondary" disabled={submitting || !selectedClanId} onClick={() => void createBranch(true, false)}>追加草稿</button>
       </Actions>
 
-      <section className="branch-step-list-panel">
-        <div className="branch-step-list-header">
-          <div>
-            <Typography.Title level={5}>该宗族下已有支派</Typography.Title>
-            <Typography.Paragraph type="secondary">草稿/已驳回支派可勾选后提交审核；已通过支派可选中后进入后续步骤。</Typography.Paragraph>
-          </div>
+      <ResultListCard<BranchLike>
+        cardClassName="branch-step-query-results"
+        totalSuffix="个支派"
+        description="草稿/已驳回支派可勾选后提交审核；已通过支派可选中后进入后续步骤。"
+        notice={!selectedClanId ? <Alert type="warning" showIcon message="请先选择宗族后查看支派" /> : null}
+        extra={(
           <Space wrap>
             <Button type="primary" size="small" disabled={!selectedReviewableRows.length} loading={submitting} onClick={() => void submitSelected()}>
               批量提交审核（{selectedReviewableRows.length}）
             </Button>
             <Button size="small" loading={loading} disabled={!selectedClanId} onClick={() => void loadBranches(selectedClanId)}>刷新</Button>
           </Space>
-        </div>
-        {!selectedClanId ? <Alert type="warning" showIcon message="请先选择宗族后查看支派" /> : null}
-        <ResultListCard<BranchLike>
+        )}
+
           size="small"
           bordered
           rowKey={row => String(row.id || '')}
@@ -295,8 +294,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
               }
             }
           ]}
-        />
-      </section>
+      />
     </Panel>
   );
 }

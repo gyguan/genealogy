@@ -10,11 +10,13 @@
   white-space: normal;
 }
 
+.result-list-card__notice,
+.result-list-card__description,
 .result-list-card__refresh-error {
   margin-bottom: 12px;
 }
 
-.result-list-card .ant-table-wrapper {
+.result-list-card > .ant-table-wrapper {
   overflow-x: auto;
 }
 
