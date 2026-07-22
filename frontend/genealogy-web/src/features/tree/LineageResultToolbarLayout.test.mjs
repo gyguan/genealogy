@@ -8,30 +8,39 @@ const css = readFileSync(new URL('../../lineage-result-toolbar-refinement.css', 
 const mainSource = readFileSync(new URL('../../main.tsx', import.meta.url), 'utf8');
 const pageSource = readFileSync(new URL('./LineageTreeProductPage.tsx', import.meta.url), 'utf8');
 const canvasSource = readFileSync(new URL('./LineageGraphCanvas.tsx', import.meta.url), 'utf8');
+const placementSource = readFileSync(new URL('./lineageToolbarPlacement.ts', import.meta.url), 'utf8');
 
-test('result toolbar refinement stylesheet is loaded', () => {
-  assert.match(mainSource, /import '\.\/lineage-result-toolbar-refinement\.css';/);
+test('lineage toolbar placement is installed by the application entry', () => {
+  assert.match(mainSource, /import \{ installLineageToolbarPlacement \} from '\.\/features\/tree\/lineageToolbarPlacement';/);
+  assert.match(mainSource, /installLineageToolbarPlacement\(\);/);
+  assert.match(placementSource, /querySelector<HTMLElement>\('\.lineage-result-toolbar--double-card'\)/);
+  assert.match(placementSource, /querySelector<HTMLElement>\('\.lineage-graph-toolbar'\)/);
+  assert.match(placementSource, /graphToolbar\.insertBefore\(resultToolbar, actionGroup \|\| graphToolbar\.firstChild\)/);
 });
 
-test('person center keeps only the center selector and branch locator has no visible title', () => {
+test('person center and branch locator keep their labels inline with the selects', () => {
+  assert.match(pageSource, /<Field label="中心人物"/);
+  assert.match(pageSource, /<Field label="图内定位">/);
   assert.match(pageSource, /aria-label="切换中心人物"/);
   assert.match(pageSource, /aria-label="图内定位人物"/);
-  assert.match(css, /padding-right:\s*400px/);
-  assert.match(css, /width:\s*360px/);
+  assert.match(css, /grid-template-columns:\s*max-content minmax\(180px, 1fr\)/);
+  assert.match(css, /content:\s*'：'/);
+  assert.match(css, /content:\s*'圈内定位'/);
   assert.match(css, /\.lineage-result-toolbar--double-card\.is-person > :nth-child\(2\)\s*\{[\s\S]*?display:\s*none;/);
-  assert.match(css, /\.lineage-result-toolbar--double-card > \.ant-form-item \.ant-form-item-label\s*\{[\s\S]*?display:\s*none;/);
-  assert.doesNotMatch(css, /content:\s*'圈内定位'/);
 });
 
-test('graph operation hint is removed from the visible canvas toolbar', () => {
-  assert.match(canvasSource, /滚轮缩放 · 拖动画布 · 单击查看详情 · 双击设为中心/);
+test('selectors and graph actions share the canvas toolbar row', () => {
+  assert.match(canvasSource, /className="lineage-graph-toolbar"/);
+  assert.match(css, /\.lineage-tree-page--standardized \.lineage-graph-toolbar\s*\{[\s\S]*?flex-direction:\s*row;[\s\S]*?flex-wrap:\s*wrap;/);
+  assert.match(css, /\.lineage-graph-toolbar > \.lineage-result-toolbar--double-card\s*\{[\s\S]*?order:\s*0;/);
+  assert.match(css, /\.lineage-graph-toolbar > \.ant-space\s*\{[\s\S]*?order:\s*1;/);
   assert.match(css, /\.lineage-graph-help\s*\{[\s\S]*?display:\s*none\s*!important;/);
 });
 
-test('responsive layout keeps the single visible selector full width', () => {
-  assert.match(css, /@media \(max-width: 1399px\)/);
+test('narrow screens keep a usable stacked fallback', () => {
+  assert.match(css, /@media \(max-width: 1100px\)/);
   assert.match(css, /@media \(max-width: 767px\)/);
-  assert.match(css, /grid-template-columns:\s*1fr/);
+  assert.match(css, /grid-template-columns:\s*72px minmax\(0, 1fr\)/);
 });
 
 void root;
