@@ -56,8 +56,8 @@ export function QueryResultCard({
     >
       <div className="query-result-outer-card__header">
         <div className="query-result-card__title">
-<Typography.Text strong>查询结果</Typography.Text>
-<Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
+          <Typography.Text strong>查询结果</Typography.Text>
+          <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
         </div>
         {extra ? <div className="query-result-outer-card__extra">{extra}</div> : null}
       </div>
