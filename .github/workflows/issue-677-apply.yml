@@ -40,13 +40,13 @@ jobs:
           path.write_text(text, encoding='utf-8')
           PY
 
-      - name: Install frontend dependencies
-        working-directory: frontend/genealogy-web
-        run: npm install --no-audit --no-fund
-
       - name: Verify result card structure
         working-directory: frontend/genealogy-web
         run: node --test src/shared/ui/QueryResultCards.test.mjs
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
