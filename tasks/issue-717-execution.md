@@ -11,7 +11,7 @@
 - [x] 前端宗族提交切换至独立接口
 - [x] 保留通用 `targetType=clan` 兼容能力
 - [x] 增加 Controller 与前端路由回归测试
-- [ ] 通过 CI
+- [x] 通过 CI
 - [ ] PR Ready 并合入 main
 
 ## 分支
