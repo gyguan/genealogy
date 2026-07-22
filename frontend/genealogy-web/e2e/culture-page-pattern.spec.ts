@@ -85,19 +85,17 @@ async function expectMobilePrimaryAction(page: Page, name: string) {
   expect(box?.width).toBeGreaterThanOrEqual(88);
 }
 
-async function expectDoubleCardShell(page: Page, businessTitle: string, total: string) {
+async function expectStrictTwoLayerShell(page: Page, total: string) {
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.locator('.culture-search-card')).toHaveCount(1);
   const resultCard = page.locator('.culture-result-card');
   await expect(resultCard).toHaveCount(1);
   const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
+  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
+  await expect(resultCard.locator('.business-result-card')).toHaveCount(0);
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
-  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
-  const businessHeader = resultCard.locator(':scope > .business-result-card > .ant-card-head');
-  await expect(businessHeader.getByText(businessTitle, { exact: true })).toBeVisible();
-  await expect(businessHeader.getByText(total, { exact: true })).toHaveCount(0);
   await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText('宗族文化');
   const formBorder = await page.locator('.culture-search-card form').evaluate(element => getComputedStyle(element).borderTopWidth);
   expect(formBorder).toBe('0px');
@@ -126,12 +124,12 @@ async function expectMoreFiltersBeforeReset(page: Page) {
   expect(resetBox.x + resetBox.width).toBeLessThanOrEqual(queryBox.x + 1);
 }
 
-test('culture shell uses double cards and mounts only the active domain', async ({ page }) => {
+test('culture shell uses strict two-layer results and mounts only the active domain', async ({ page }) => {
   const requested: string[] = [];
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
-  await expectDoubleCardShell(page, '文化资料', '（共 1 条）');
+  await expectStrictTwoLayerShell(page, '（共 1 条）');
   const searchCard = page.locator('.culture-search-card');
   await expect(searchCard.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
   await expect(searchCard.getByRole('tab', { name: '迁徙脉络' })).toBeVisible();
@@ -158,14 +156,14 @@ test('culture shell uses double cards and mounts only the active domain', async 
   await page.keyboard.press('Escape');
 
   await searchCard.getByRole('tab', { name: '迁徙脉络' }).click();
-  await expectDoubleCardShell(page, '迁徙脉络', '（共 1 条）');
+  await expectStrictTwoLayerShell(page, '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
   await expect(page.getByRole('button', { name: '新增迁徙事件' })).toHaveCount(1);
   await expect(page.getByText('江西吉安 → 湖南长沙').first()).toBeVisible();
   expect(requested.some(path => path.includes('culture-sites'))).toBeFalsy();
 
   await page.getByRole('tab', { name: '文化场所' }).click();
-  await expectDoubleCardShell(page, '文化场所', '（共 1 条）');
+  await expectStrictTwoLayerShell(page, '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
   await expect(page.getByRole('button', { name: '新增文化场所' })).toHaveCount(1);
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
@@ -178,7 +176,7 @@ test('390px viewport uses responsive record cards without horizontal table scrol
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
-  await expectDoubleCardShell(page, '文化资料', '（共 1 条）');
+  await expectStrictTwoLayerShell(page, '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
   await expectMobileRecordView(page, 'culture-tab-items');
   await expectMobilePrimaryAction(page, '新增文化资料');

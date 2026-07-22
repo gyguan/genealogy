@@ -216,7 +216,7 @@ export function ImportPage({ notify }: Props) {
       <QueryResultCard
         className="import-result-card"
         extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setNewImportOpen(true)}>新建导入</Button>}
-       total={taskTotal} totalSuffix="个任务" businessTitle="导入任务">
+       total={taskTotal} totalSuffix="个任务">
         
           <AsyncImportExecutionPanel
           clanId={workspace.clanId}

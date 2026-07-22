@@ -876,7 +876,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
         </div>
       </Card>
 
-      <QueryResultCard className="lineage-double-card-result" size="small" total={activeGraph?.nodes.length || 0} totalSuffix="个人物" businessTitle="世系图谱">
+      <QueryResultCard className="lineage-double-card-result" size="small" total={activeGraph?.nodes.length || 0} totalSuffix="个人物">
         
           <Tabs
           className="lineage-result-tabs"

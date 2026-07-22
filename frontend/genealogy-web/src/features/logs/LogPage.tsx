@@ -447,7 +447,7 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
         <QueryResultCard
           className="tracking-result-card"
           extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'} businessTitle={activeTab === TRACKING_TABS.OBJECT ? '业务对象' : activeTab === TRACKING_TABS.AUDIT ? '操作日志' : '风险事件'}>
+         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}>
           
             {activeResult}
           

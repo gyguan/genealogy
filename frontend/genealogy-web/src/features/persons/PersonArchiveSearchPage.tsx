@@ -321,7 +321,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
         </Space>
       </Form>
     </Card>
-    <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total} businessTitle="人物档案">
+    <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total}>
       
       {refreshError ? <Alert type="warning" showIcon message="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
       {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>

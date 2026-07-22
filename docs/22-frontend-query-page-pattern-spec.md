@@ -30,7 +30,7 @@
 
 ## 2. 页面标准结构
 
-查询类页面统一采用上下双 Card 结构，不增加无业务价值的顶部介绍 Card。
+查询类页面统一采用“查询 Card + 查询结果容器”的上下两区结构，不增加无业务价值的顶部介绍 Card。
 
 ```text
 查询 Card
@@ -39,15 +39,9 @@
 ├─ 更多筛选条件（按需展开）
 └─ 更多筛选、重置、查询
 
-外层结果 Card
-├─ 标题：查询结果（共 XX 条）
-├─ 页面级业务操作（标题同一行右对齐）
-└─ 内层业务结果 Card
-   ├─ 业务数据标题
-   ├─ Tabs、排序、批量状态等结果局部控件
-   ├─ 查询状态与结果说明
-   ├─ Table / Mobile Card List / Graph Canvas
-   └─ 分页
+查询结果容器
+├─ Header：查询结果（共 XX 条）+ 页面级业务操作
+└─ Table / Mobile Card List / Graph Canvas / Tabs / 分页
 ```
 
 标准原则：
@@ -55,10 +49,10 @@
 - 查询 Card 标题使用具体业务名称，例如“人物档案查询”，不使用模糊的“查询条件”；
 - 外层结果 Card 标题统一使用“查询结果（共 XX 条）”，总数紧随标题展示；
 - 页面级业务操作放在外层结果 Card 标题右侧；
-- 页面只使用 `QueryResultCard`；内层 `BusinessResultCard` 必须由共享组件内部唯一创建，禁止页面自行拼装两层 Card；
-- 外层 `QueryResultCard` 使用自定义语义容器，不使用 Ant Design `Card`，不得生成 `.ant-card-body`；内层业务 Card 必须是 `.query-result-outer-card` 的直接子节点；
-- 内层业务结果 Card 使用具体业务名称，例如“人物档案”“审核任务”“来源资料”，不重复展示总数；
-- Tabs、排序、批量选择、图内定位等结果局部控件放在内层业务结果 Card；
+- 页面只使用一个 `QueryResultCard`，禁止再创建 `BusinessResultCard` 或其他结果 Card；
+- `QueryResultCard` 使用自定义语义容器，不使用 Ant Design `Card`，不得生成 `.ant-card-body`；
+- 查询结果内容直接渲染在 `.query-result-outer-card` 内，不增加 `.business-result-card` 或 `.query-result-content` 包装层；
+- Tabs、排序、批量选择、图内定位等结果局部控件并入外层 Header 或直接置于结果内容中；
 - 查询条件与结果列表不得混入同一个 Card；
 - 基础条件和更多筛选之间不使用横向分割线，通过间距表达层级。
 

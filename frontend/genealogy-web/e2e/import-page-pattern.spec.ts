@@ -88,32 +88,16 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
 }
 
-async function expectBusinessCardDirectChild(page: Page, minimumInset = 15) {
+async function expectStrictTwoLayerResult(page: Page) {
   const outerCard = page.locator('.import-result-card');
   const outerHeader = outerCard.locator(':scope > .query-result-outer-card__header');
-  const businessCard = outerCard.locator(':scope > .business-result-card[data-query-result-role="business"]');
+  await expect(outerHeader).toHaveCount(1);
   await expect(outerCard.locator(':scope > .ant-card-body')).toHaveCount(0);
-  await expect(businessCard).toHaveCount(1);
-
-  const [outerCardBox, outerHeaderBox, businessCardBox, outerBackground] = await Promise.all([
-    outerCard.boundingBox(),
-    outerHeader.boundingBox(),
-    businessCard.boundingBox(),
-    outerCard.evaluate(element => getComputedStyle(element).backgroundColor)
-  ]);
-  expect(outerCardBox).not.toBeNull();
-  expect(outerHeaderBox).not.toBeNull();
-  expect(businessCardBox).not.toBeNull();
-  expect(outerBackground).toBe('rgb(255, 255, 255)');
-  if (!outerCardBox || !outerHeaderBox || !businessCardBox) return;
-
-  expect(businessCardBox.x - outerCardBox.x).toBeGreaterThanOrEqual(minimumInset);
-  expect(businessCardBox.y - outerHeaderBox.y - outerHeaderBox.height).toBeGreaterThanOrEqual(minimumInset);
-  expect(outerCardBox.x + outerCardBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(minimumInset);
-  expect(outerCardBox.y + outerCardBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(minimumInset);
+  await expect(outerCard.locator('.business-result-card')).toHaveCount(0);
+  await expect(page.locator('.import-execution-table')).toHaveCount(1);
 }
 
-test('data import page uses query and nested result cards with new import modal', async ({ page }) => {
+test('data import page uses a strict two-layer query result with new import modal', async ({ page }) => {
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
@@ -123,13 +107,10 @@ test('data import page uses query and nested result cards with new import modal'
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
   const outerResultHeader = page.locator('.import-result-card > .query-result-outer-card__header');
-  const businessResultHeader = page.locator('.import-result-card > .business-result-card > .ant-card-head');
   await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();
-  await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
-  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toHaveCount(0);
   await expectDesktopResultHeaderSpacing(page);
-  await expectBusinessCardDirectChild(page);
+  await expectStrictTwoLayerResult(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
   expect(labels).toEqual(['导入对象', '导入状态', '文件名/任务编号', '任务创建时间']);
@@ -170,7 +151,7 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
     return { top: style.paddingTop, bottom: style.paddingBottom };
   });
   expect(headerPadding).toEqual({ top: '16px', bottom: '16px' });
-  await expectBusinessCardDirectChild(page, 11);
+  await expectStrictTwoLayerResult(page);
 
   await expect(page.locator('.import-execution-table')).toBeHidden();
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();

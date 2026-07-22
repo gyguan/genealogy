@@ -968,7 +968,7 @@ export function SourceLibraryQueryPage({ notify }: Props) {
           </Form>
         </Card>
 
-        <QueryResultCard className="source-library-result-card" extra={resultActions} total={sourceTotal} businessTitle="来源资料">
+        <QueryResultCard className="source-library-result-card" extra={resultActions} total={sourceTotal}>
           
           {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
           <div className="source-library-result-meta">
