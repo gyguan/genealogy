@@ -1,0 +1,19 @@
+
+> genealogy-web@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+src/features/mvp1/steps/person/PersonStep.tsx(623,5): error TS1005: ')' expected.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(252,6): error TS17008: JSX element 'Panel' has no corresponding closing tag.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(377,5): error TS1005: ')' expected.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(377,7): error TS17002: Expected corresponding JSX closing tag for 'Space'.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(378,4): error TS1005: ',' expected.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(380,1): error TS1005: '</' expected.
+src/features/mvp1/steps/relationship/RelationshipStep.tsx(380,1): error TS1005: ']' expected.
+src/features/mvp1/steps/source/SourceStageStep.tsx(210,20): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/features/mvp1/steps/source/SourceStageStep.tsx(211,15): error TS1003: Identifier expected.
+src/features/mvp1/steps/source/SourceStageStep.tsx(211,130): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/features/mvp1/steps/source/SourceStageStep.tsx(213,11): error TS17002: Expected corresponding JSX closing tag for 'Panel'.
+src/features/mvp1/steps/source/SourceStageStep.tsx(214,7): error TS1005: ')' expected.
+src/features/mvp1/steps/source/SourceStageStep.tsx(215,5): error TS1109: Expression expected.
+src/features/mvp1/steps/source/SourceStageStep.tsx(216,3): error TS1109: Expression expected.
+exit_code=1
