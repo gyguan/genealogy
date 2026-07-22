@@ -36,7 +36,10 @@ jobs:
         run: npm install
       - name: Audit frontend feedback patterns
         working-directory: frontend/genealogy-web
-        run: node scripts/audit-ui-feedback.mjs --json=ui-feedback-audit.json --markdown=ui-feedback-audit.md
+        run: node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json --json=ui-feedback-audit.json --markdown=ui-feedback-audit.md
+      - name: Test feedback system
+        working-directory: frontend/genealogy-web
+        run: npm run test:feedback
       - name: Test multi-select unification
         working-directory: frontend/genealogy-web
         run: npm run test:multi-select
