@@ -324,22 +324,20 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
         </Space>
       </section>
 
-      <section className="relationship-step-list-panel step-object-result-panel">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <div className="step-draft-review-header">
-            <div>
-              <Typography.Title level={5}>当前中心人物已有关系</Typography.Title>
-              <Typography.Paragraph type="secondary">草稿/已驳回关系可勾选后批量提交审批。</Typography.Paragraph>
-            </div>
-            <Space wrap>
-              <Button type="primary" disabled={!selectedReviewableRelationships.length} loading={submittingRelationships} onClick={() => void submitSelectedRelationships()}>
-                批量提交审核（{selectedReviewableRelationships.length}）
-              </Button>
-              <Button loading={loadingRelationships} disabled={!centerPersonId} onClick={() => void loadRelationships(centerPersonId)}>刷新</Button>
-            </Space>
-          </div>
-          {!centerPersonId ? <Alert type="info" showIcon message="关系按当前中心人物加载，请先选择中心人物。" /> : null}
-          <ResultListCard<RelationshipLike>
+      <ResultListCard<RelationshipLike>
+        cardClassName="relationship-step-query-results"
+        totalSuffix="条关系"
+        description="草稿/已驳回关系可勾选后批量提交审批。"
+        notice={!centerPersonId ? <Alert type="info" showIcon message="关系按当前中心人物加载，请先选择中心人物。" /> : null}
+        extra={(
+          <Space wrap>
+            <Button type="primary" disabled={!selectedReviewableRelationships.length} loading={submittingRelationships} onClick={() => void submitSelectedRelationships()}>
+              批量提交审核（{selectedReviewableRelationships.length}）
+            </Button>
+            <Button loading={loadingRelationships} disabled={!centerPersonId} onClick={() => void loadRelationships(centerPersonId)}>刷新</Button>
+          </Space>
+        )}
+
             size="small"
             bordered
             loading={loadingRelationships}
@@ -375,15 +373,7 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
                         onDeleted={() => afterDeleteRelationship(row)}
                         label="删除草稿"
                         buttonProps={{ size: 'small', type: 'link' }}
-                      />
-                    ) : null}
-                  </Space>
-                )
-              }
-            ]}
-          />
-        </Space>
-      </section>
+      />
     </Panel>
   );
 }

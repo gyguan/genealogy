@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Input, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Empty, Input, Modal, Select, Space, Tag, message } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -336,18 +336,19 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
         </Actions>
       </section>
 
-      <section className="wizard-branch-list wizard-generation-inline-list">
-        <div className="wizard-inline-list-header">
-          <h4>该宗族下已有字辈方案</h4>
+      <ResultListCard<GenerationSchemeLike>
+        cardClassName="generation-step-query-results"
+        totalSuffix="个方案"
+        notice={<Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" />}
+        extra={(
           <Space wrap>
             <Button type="primary" size="small" disabled={!selectedReviewableSchemes.length} loading={submittingSchemes} onClick={() => void submitSelectedSchemes()}>
               批量提交审核（{selectedReviewableSchemes.length}）
             </Button>
             <Button size="small" loading={loadingSchemes} disabled={!workspace.clanId} onClick={() => void loadSchemes()}>刷新</Button>
           </Space>
-        </div>
-        <Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" style={{ marginBottom: 10 }} />
-        <ResultListCard<GenerationSchemeLike>
+        )}
+
           size="small"
           bordered
           loading={loadingSchemes}
@@ -380,8 +381,7 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
               )
             }
           ]}
-        />
-      </section>
+      />
 
       <Modal
         title="维护字辈"
@@ -411,12 +411,12 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
               <Button type="primary" disabled={!selectedSchemeId} loading={addingItem} onClick={() => void addGenerationItem()}>追加字辈</Button>
             </label>
           </div>
-          <div className="wizard-inline-list-header">
-            <h4>字辈明细查询列表</h4>
-            <Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadGenerationItems()}>刷新</Button>
-          </div>
-          <Typography.Paragraph type="secondary">字辈明细会随字辈方案整体提交审批；正式方案不可在此直接维护。</Typography.Paragraph>
           <ResultListCard<GenerationItemLike>
+            cardClassName="generation-item-query-results"
+            totalSuffix="条字辈明细"
+            description="字辈明细会随字辈方案整体提交审批；正式方案不可在此直接维护。"
+            extra={<Button size="small" disabled={!selectedSchemeId} loading={loadingItems} onClick={() => void loadGenerationItems()}>刷新</Button>}
+
             size="small"
             bordered
             loading={loadingItems}

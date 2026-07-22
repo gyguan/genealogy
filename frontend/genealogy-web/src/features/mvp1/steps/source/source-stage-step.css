@@ -1,11 +1,9 @@
 .source-stage-layout { display: grid; gap: 16px; }
 .source-stage-actions { margin-top: 12px; }
 .source-stage-batch { margin: 12px 0; }
-.source-stage-links { margin-top: 16px; display: grid; gap: 8px; }
-.source-stage-links > h4 { margin: 0; }
-.source-stage-pagination { display: flex; justify-content: flex-end; padding-top: 4px; }
+.source-stage-links { margin-top: 16px; }
 .source-stage-bind-grid { margin-bottom: 8px; }
-.source-stage-layout .ant-table-wrapper { margin-top: 12px; overflow-x: auto; }
+.source-stage-layout .ant-table-wrapper { overflow-x: auto; }
 .source-stage-layout .ant-btn { min-height: 32px; }
 @media (max-width: 767px) {
   .source-stage-layout { grid-template-columns: minmax(0, 1fr); }
@@ -13,5 +11,4 @@
   .source-stage-layout .ant-btn { min-height: 44px; }
   .source-stage-layout .ant-table { min-width: 620px; }
   .source-stage-actions { width: 100%; }
-  .source-stage-pagination { justify-content: center; overflow-x: auto; }
 }

@@ -571,22 +571,20 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
         </Space>
       </Form>
 
-      <section className="person-step-list-panel step-object-result-panel">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <div className="step-draft-review-header">
-            <div>
-              <h4>该宗族下已录入人物</h4>
-              <p>草稿/已驳回人物可勾选后批量提交审批；已通过人物可选中后用于建立关系。</p>
-            </div>
-            <Space wrap>
-              <Button type="primary" disabled={!selectedReviewablePersons.length} loading={submittingPersons} onClick={() => void submitSelectedPersons()}>
-                批量提交审核（{selectedReviewablePersons.length}）
-              </Button>
-              <Button loading={loadingPersons} disabled={!workspace.clanId} onClick={() => void loadPersons()}>刷新</Button>
-            </Space>
-          </div>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
-          <ResultListCard<PersonLike>
+      <ResultListCard<PersonLike>
+        cardClassName="person-step-query-results"
+        totalSuffix="个人物"
+        description="草稿/已驳回人物可勾选后批量提交审批；已通过人物可选中后用于建立关系。"
+        notice={!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+        extra={(
+          <Space wrap>
+            <Button type="primary" disabled={!selectedReviewablePersons.length} loading={submittingPersons} onClick={() => void submitSelectedPersons()}>
+              批量提交审核（{selectedReviewablePersons.length}）
+            </Button>
+            <Button loading={loadingPersons} disabled={!workspace.clanId} onClick={() => void loadPersons()}>刷新</Button>
+          </Space>
+        )}
+
             size="small"
             bordered
             loading={loadingPersons}
@@ -621,13 +619,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
                     onDeleted={() => afterDeletePerson(row)}
                     label="删除草稿"
                     buttonProps={{ size: 'small' }}
-                  />
-                ) : null
-              }
-            ]}
-          />
-        </Space>
-      </section>
+      />
     </Panel>
   );
 }

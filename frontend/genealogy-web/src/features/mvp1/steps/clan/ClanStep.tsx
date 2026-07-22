@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Space, Tag, Typography, message } from 'antd';
 import type { TableProps } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
+import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
 
 type ClanForm = {
@@ -205,42 +206,39 @@ export function ClanStep({ notify, onCreated }: Props) {
         </Actions>
       </Panel>
 
-      <Card
-        size="small"
-        title={`我的宗族（共${clans.length}个）`}
+      <ResultListCard<ClanRecord>
+        cardClassName="clan-step-query-results"
+        totalSuffix="个宗族"
         extra={<Button loading={clanListLoading} onClick={() => void loadClans()}>刷新</Button>}
-      >
-        {clanListError ? (
+        notice={clanListError ? (
           <Alert
             type="error"
             showIcon
             message="宗族列表加载失败"
             description={clanListError}
             action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
-            style={{ marginBottom: 12 }}
           />
         ) : null}
-        <Table<ClanRecord>
-          rowKey={clan => String(clan.id)}
-          size="small"
-          loading={clanListLoading}
-          columns={columns}
-          dataSource={clans}
-          locale={{ emptyText: '当前账号暂无宗族，可在上方创建' }}
-          pagination={{
-            current: clanPageNo,
-            pageSize: clanPageSize,
-            total: clans.length,
-            showSizeChanger: true,
-            pageSizeOptions: [10, 20, 50],
-            showTotal: total => `共 ${total} 个宗族`,
-            onChange: (pageNo, pageSize) => {
-              setClanPageNo(pageNo);
-              setClanPageSize(pageSize);
-            }
-          }}
-        />
-      </Card>
+        rowKey={clan => String(clan.id)}
+        size="small"
+        bordered
+        loading={clanListLoading}
+        columns={columns}
+        dataSource={clans}
+        locale={{ emptyText: '当前账号暂无宗族，可在上方创建' }}
+        pagination={{
+          current: clanPageNo,
+          pageSize: clanPageSize,
+          total: clans.length,
+          showSizeChanger: true,
+          pageSizeOptions: [10, 20, 50],
+          showTotal: total => `共 ${total} 个宗族`,
+          onChange: (pageNo, pageSize) => {
+            setClanPageNo(pageNo);
+            setClanPageSize(pageSize);
+          }
+        }}
+      />
     </Space>
   );
 }

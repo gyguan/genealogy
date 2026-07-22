@@ -1,26 +1,25 @@
 import type { Key, ReactNode } from 'react';
-import { Alert, Button, Card, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Space, Table, Tag, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { WIZARD_RESULT_PAGE_SIZE, wizardBatchToolbarVisible, wizardSelectionLabel } from '../../features/mvp1/domain/wizardResultListModel';
+import { QueryResultCard } from './QueryResultCards';
 import './result-list-card.css';
 
 type ResultListCardProps<RecordType extends object> = TableProps<RecordType> & {
-  resultTitle?: ReactNode;
   description?: ReactNode;
+  notice?: ReactNode;
   initialError?: string;
   refreshError?: string;
   stale?: boolean;
   onRetry?: () => void;
   selectedKey?: Key;
   selectionLabel?: (record: RecordType) => string;
+  extra?: ReactNode;
+  resultExtra?: ReactNode;
+  resultTotal?: number;
+  totalSuffix?: string;
+  cardClassName?: string;
 };
-
-function titleText<RecordType extends object>(props: ResultListCardProps<RecordType>) {
-  if (props.resultTitle) return props.resultTitle;
-  const first = (props.columns || []).find(column => String((column as any).key || '') !== 'actions');
-  const title = (first as any)?.title;
-  return typeof title === 'string' ? title : '查询结果';
-}
 
 function rowKeyValue<RecordType extends object>(props: ResultListCardProps<RecordType>, record: RecordType, index: number): Key {
   if (typeof props.rowKey === 'function') return props.rowKey(record);
@@ -30,14 +29,19 @@ function rowKeyValue<RecordType extends object>(props: ResultListCardProps<Recor
 
 export function ResultListCard<RecordType extends object>(props: ResultListCardProps<RecordType>) {
   const {
-    resultTitle,
     description,
+    notice,
     initialError,
     refreshError,
     stale,
     onRetry,
     selectedKey,
     selectionLabel,
+    extra,
+    resultExtra,
+    resultTotal,
+    totalSuffix = '条',
+    cardClassName = '',
     dataSource = [],
     columns = [],
     pagination,
@@ -83,21 +87,26 @@ export function ResultListCard<RecordType extends object>(props: ResultListCardP
       ? { pageSize: WIZARD_RESULT_PAGE_SIZE, showSizeChanger: false, showTotal: (total: number) => `共 ${total} 条` }
       : false
     : pagination;
-  const cardTitle = <span>{titleText(props)}（{rows.length}）</span>;
+  const summaryExtra = resultExtra || stale || wizardBatchToolbarVisible(selectedCount)
+    ? (
+      <Space size={8} wrap>
+        {resultExtra}
+        {stale ? <Tag color="warning">数据可能已过期</Tag> : null}
+        {wizardBatchToolbarVisible(selectedCount) ? <Tag color="processing">已选择 {selectedCount} 项</Tag> : null}
+      </Space>
+    )
+    : undefined;
 
   return (
-    <Card
-      size="small"
-      className="result-list-card"
-      title={cardTitle}
-      extra={(
-        <Space size={8} wrap>
-          {stale ? <Tag color="warning">数据可能已过期</Tag> : null}
-          {wizardBatchToolbarVisible(selectedCount) ? <Tag color="processing">已选择 {selectedCount} 项</Tag> : null}
-        </Space>
-      )}
+    <QueryResultCard
+      className={`result-list-card wizard-query-result-card ${cardClassName}`.trim()}
+      total={resultTotal ?? rows.length}
+      totalSuffix={totalSuffix}
+      extra={extra}
+      resultExtra={summaryExtra}
     >
-      {description ? <Typography.Paragraph type="secondary">{description}</Typography.Paragraph> : null}
+      {notice ? <div className="result-list-card__notice">{notice}</div> : null}
+      {description ? <Typography.Paragraph className="result-list-card__description" type="secondary">{description}</Typography.Paragraph> : null}
       {initialError && !rows.length ? (
         <Alert type="error" showIcon message={initialError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
       ) : null}
@@ -114,6 +123,6 @@ export function ResultListCard<RecordType extends object>(props: ResultListCardP
         pagination={resolvedPagination}
         scroll={{ x: 760, ...scroll }}
       />
-    </Card>
+    </QueryResultCard>
   );
 }
