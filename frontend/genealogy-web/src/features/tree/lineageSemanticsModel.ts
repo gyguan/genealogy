@@ -1,5 +1,5 @@
 import type { TreeEdgeResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
-import { isClientSiblingEdge } from './lineageClientRelation';
+import { isClientSiblingEdge } from './lineageClientRelation.js';
 import { riskLevelText } from './treeDisplayModel.js';
 
 export type LineageSemanticTone = 'blood' | 'marriage' | 'ritual' | 'status' | 'other';
