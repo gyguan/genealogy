@@ -10,6 +10,7 @@ import {
 import type { EntityNavigationGuardState } from '../shared/navigation/entityNavigationGuard';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
+import type { FeedbackTone } from '../shared/ui/Feedback';
 import { ToastStack } from '../shared/ui/ToastStack';
 import type { ToastItem } from '../shared/ui/ToastStack';
 import { AuthPage } from '../features/auth/AuthPage';
@@ -65,13 +66,27 @@ function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
   navigateToView(key as AppViewKey, window.location.href, { mode });
 }
 
+function feedbackRecord(data: unknown) {
+  return data && typeof data === 'object' ? data as Record<string, unknown> : null;
+}
+
 function getMessage(data: unknown, fallback: string) {
   if (typeof data === 'string') return data;
-  if (data && typeof data === 'object') {
-    const record = data as Record<string, any>;
-    return record.message || record.errorMessage || record.status || fallback;
-  }
-  return fallback;
+  const record = feedbackRecord(data);
+  return String(record?.message || record?.errorMessage || record?.status || fallback);
+}
+
+function getDescription(data: unknown) {
+  const value = feedbackRecord(data)?.description;
+  return value === null || value === undefined ? undefined : String(value);
+}
+
+function getFeedbackTone(data: unknown, error: boolean): FeedbackTone {
+  if (error) return 'error';
+  const type = feedbackRecord(data)?.type;
+  return type === 'success' || type === 'info' || type === 'warning' || type === 'error'
+    ? type
+    : 'success';
 }
 
 export function App() {
@@ -91,7 +106,7 @@ export function App() {
           Menu: { itemBorderRadius: 8, itemHeight: 40, itemMarginBlock: 4, itemMarginInline: 8 },
           Card: { borderRadiusLG: 12, headerHeight: 48, paddingLG: 16 },
           Table: { headerBg: '#fafafa', rowHoverBg: '#f5faff', cellPaddingBlockSM: 8, cellPaddingInlineSM: 12 },
-          Form: { itemMarginBottom: 12, labelColor: 'rgba(0, 0, 0, 0.65)' }
+          Form: { itemMarginBottom: 12, labelColor: 'rgba(0,0,0,.65)' }
         }
       }}
     >
@@ -113,7 +128,12 @@ function AppShell() {
   function closeToast(id: number) { setToasts(prev => prev.filter(item => item.id !== id)); }
   function notify(data?: unknown, error = false) {
     const id = Date.now() + Math.floor(Math.random() * 1000);
-    const item: ToastItem = { id, message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'), type: error ? 'error' : 'success' };
+    const item: ToastItem = {
+      id,
+      message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'),
+      description: getDescription(data),
+      type: getFeedbackTone(data, error)
+    };
     setToasts(prev => [...prev.slice(-3), item]);
     window.setTimeout(() => closeToast(id), 3200);
   }
