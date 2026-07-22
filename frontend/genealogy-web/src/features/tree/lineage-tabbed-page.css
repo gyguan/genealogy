@@ -74,6 +74,14 @@
   background: #fafafa;
 }
 
+.lineage-tab-query-note > .ant-typography-secondary:first-child {
+  display: none;
+}
+
+.lineage-tab-query-note:not(:has(.ant-typography-warning)) {
+  display: none;
+}
+
 .lineage-tabbed-result-card .lineage-result-pane {
   min-width: 0;
 }
