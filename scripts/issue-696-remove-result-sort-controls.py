@@ -74,7 +74,7 @@ for css_path in ROOT.rglob('*.css'):
     if updated != css:
         css_path.write_text(updated, encoding='utf-8')
 
-TEST.write_text("""import assert from 'node:assert/strict';
+TEST.write_text(r"""import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
