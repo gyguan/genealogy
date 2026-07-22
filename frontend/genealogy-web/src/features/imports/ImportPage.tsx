@@ -41,7 +41,6 @@ const availableImportTypes = importTypeRegistry
   .filter(item => item.availability === 'available')
   .map(item => ({ value: item.key, label: item.title.replace('导入', '') }));
 
-
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
   const initialPageState = useMemo(() => readImportPageUrl(window.location.search), []);
@@ -160,7 +159,6 @@ export function ImportPage({ notify }: Props) {
     writeImportPageUrl({ type: value });
   }
 
-
   function handleBatchCreated() {
     setImportDrawerOpen(false);
     refreshJobs();
@@ -207,9 +205,10 @@ export function ImportPage({ notify }: Props) {
       <QueryResultCard
         className="import-result-card"
         extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setImportDrawerOpen(true)}>新建导入</Button>}
-       total={taskTotal} totalSuffix="个任务">
-        
-          <AsyncImportExecutionPanel
+        total={taskTotal}
+        totalSuffix="个任务"
+      >
+        <AsyncImportExecutionPanel
           clanId={workspace.clanId}
           branchId={selectedBranchId}
           branchName={selectedBranch?.branchName}
@@ -220,10 +219,8 @@ export function ImportPage({ notify }: Props) {
           onTotalChange={setTaskTotal}
           onPageChange={changePage}
           onOpenRecords={() => setRecordsOpen(true)}
-          />
-        
+        />
       </QueryResultCard>
-
 
       <Drawer
         open={importDrawerOpen}
@@ -257,9 +254,11 @@ export function ImportPage({ notify }: Props) {
               />
             </Space>
           </Card>
-          {activeType === 'person' ? <PersonImportWorkspace {...workspaceProps} /> : null}
-          {activeType === 'relationship' ? <RelationshipImportWorkspace {...workspaceProps} /> : null}
-          {activeType === 'source' ? <SourceImportWorkspace {...workspaceProps} /> : null}
+          <div key={activeType} className="import-active-workspace">
+            {activeType === 'person' ? <PersonImportWorkspace {...workspaceProps} /> : null}
+            {activeType === 'relationship' ? <RelationshipImportWorkspace {...workspaceProps} /> : null}
+            {activeType === 'source' ? <SourceImportWorkspace {...workspaceProps} /> : null}
+          </div>
         </Space>
       </Drawer>
 
