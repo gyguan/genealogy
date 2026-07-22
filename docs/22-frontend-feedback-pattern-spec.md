@@ -12,7 +12,7 @@
 - 技术实现机制：10 类
 - 历史机制使用点：994 处
 - 涉及文件：90 个
-- 标准组件使用：`PageFeedback` 8 处、`InlineFeedback` 2 处、`EmptyState` 2 处、`ConfirmAction` 1 处
+- 标准组件使用：`PageFeedback` 9 处、`InlineFeedback` 2 处、`EmptyState` 2 处、`ConfirmAction` 1 处
 
 | 当前技术机制 | 使用点 | 文件数 | 处理方向 |
 |---|---:|---:|---|
@@ -155,8 +155,9 @@
 已完成的首批迁移：
 
 - `AsyncImportExecutionPanel.tsx`：页面状态、错误摘要、空状态和取消确认统一到标准组件。
-- 删除该面板自定义 `import-panel-alert` 提示样式入口。
-- 增加契约测试，防止该页面重新引入 `Alert`、`Empty`、`Popconfirm` 或自定义提示条。
+- `ClanStep.tsx`：新增的宗族提交审核失败状态直接使用 `PageFeedback`，避免新功能扩大历史 `Alert` 存量。
+- 删除数据导入面板自定义 `import-panel-alert` 提示样式入口。
+- 增加契约测试，防止已迁移页面重新引入历史反馈形式。
 
 ## 7. 标准组件
 
