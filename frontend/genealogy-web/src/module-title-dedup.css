@@ -297,20 +297,6 @@
   color: var(--query-page-muted);
   font-weight: 400;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Result toolbars and batch bars                                               */
-/* -------------------------------------------------------------------------- */
-
-.business-page--personArchive .person-archive-result-toolbar,
-.business-page--treeProduct .lineage-scope-summary,
-.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] > .ant-card-body > .ant-alert,
-.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-body > .ant-alert,
-.business-page--reviewCenter .review-center-page .ant-card > .ant-card-body > .ant-space > .ant-alert,
-.business-page--memberManage .ant-card[title='成员列表'] > .ant-card-body > .ant-alert {
-  margin-bottom: 12px;
-}
-
 /* Secondary/help content should not dominate the main query-result hierarchy. */
 .business-page--memberManage .member-role-page > .ant-alert {
   border-style: dashed;

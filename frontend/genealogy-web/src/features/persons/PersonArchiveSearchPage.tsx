@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportOutlined, PlusOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Collapse, Dropdown, Empty, Form, Input, Pagination, Result, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Dropdown, Empty, Form, Input, Pagination, Result, Select, Space, Table, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -11,7 +11,6 @@ import { navigateToPersonEdit } from './personEditNavigation';
 import { getPersonCreateEntryError } from './personCreateEntryModel';
 import {
   PERSON_PAGE_SIZE_OPTIONS,
-  PERSON_SORT_OPTIONS,
   emptyPersonArchiveSearch,
   hasPersonArchiveQuery,
   readPersonArchiveSearch,
@@ -325,9 +324,6 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       
       {refreshError ? <Alert type="warning" showIcon message="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
       {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>
-        <div className="person-archive-result-toolbar">
-          <Space><Typography.Text type="secondary">排序</Typography.Text><Select aria-label="排序" value={form.sort} onChange={value => { const criteria = { ...form, sort: value }; setForm(criteria); if (hasQueried) void search(1, criteria); }} options={[...PERSON_SORT_OPTIONS]} /></Space>
-        </div>
         <div className="person-archive-desktop-list"><Table<any> size="small" bordered rowKey={(row, index) => String(personId(row) || index)} dataSource={rows} pagination={hasQueried ? { current: currentPage, pageSize: form.pageSize, total, showSizeChanger: true, pageSizeOptions: PERSON_PAGE_SIZE_OPTIONS.map(String), showTotal: value => `共 ${value} 条`, onChange: (nextPage, nextSize) => { const criteria = nextSize === form.pageSize ? form : { ...form, pageSize: nextSize }; void search(nextSize === form.pageSize ? nextPage : 1, criteria); } } : false} loading={querying} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={hasQueried ? '未找到符合当前条件的人物档案，请调整筛选条件。' : '请设置查询条件后开始查询。'} /> }} onRow={row => ({ onClick: () => openDetail(row), style: { cursor: 'pointer' }, title: '点击查看人物档案' })} columns={[
           { key: 'name', title: '姓名', render: (_value, row) => <Button id={focusId(row, 'name')} type="link" className="archive-person-name-link person-archive-text-action" onClick={event => { event.stopPropagation(); openDetail(row, focusId(row, 'name')); }}>{display(personName(row), '未命名人物')}</Button> },
           { key: 'aliasName', title: '别名', render: (_value, row) => display(row.aliasName) }, { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(personGender(row)) }, { key: 'generationWord', title: '字辈', width: 90, render: (_value, row) => display(personGenerationWord(row)) }, { key: 'generationNo', title: '代次', width: 90, render: (_value, row) => generationText(row) }, { key: 'branchName', title: '支派', render: (_value, row) => branchText(row) }, { key: 'life', title: '生卒', render: (_value, row) => lifeText(row) }, { key: 'isLiving', title: '是否在世', width: 110, render: (_value, row) => livingText(row.isLiving) }, { key: 'spouseName', title: '配偶', render: (_value, row) => spouseText(row) }, { key: 'dataStatus', title: '档案状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },

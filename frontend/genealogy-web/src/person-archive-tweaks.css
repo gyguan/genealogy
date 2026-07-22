@@ -74,20 +74,6 @@
   display: flex;
   align-items: center;
 }
-
-.person-archive-result-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 20px;
-  min-height: 32px;
-  margin-bottom: 12px;
-}
-
-.person-archive-result-toolbar .ant-select {
-  min-width: 132px;
-}
-
 .person-archive-text-action {
   min-height: 32px;
   min-width: 44px;
@@ -271,13 +257,7 @@
     flex: 1;
     min-height: 44px;
   }
-
-  .person-archive-result-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .person-archive-desktop-list {
+.person-archive-desktop-list {
     display: none;
   }
 

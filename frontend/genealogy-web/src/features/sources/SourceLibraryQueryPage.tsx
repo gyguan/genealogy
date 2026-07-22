@@ -164,12 +164,6 @@ const booleanOptions = {
   attachment: [{ value: 'true', label: '有附件' }, { value: 'false', label: '无附件' }],
   binding: [{ value: 'true', label: '有引用' }, { value: 'false', label: '无引用' }]
 };
-const sortOptions = [
-  { value: 'updatedAt,desc', label: '最近更新' },
-  { value: 'createdAt,desc', label: '最近创建' },
-  { value: 'sourceName,asc', label: '来源名称' }
-];
-
 function optionText(options: Array<{ value: string; label: string }>, value?: string) {
   return options.find(item => item.value === value)?.label || value || '待维护';
 }
@@ -558,14 +552,6 @@ export function SourceLibraryQueryPage({ notify }: Props) {
     writeSearchToUrl(next);
     void loadSources(next);
   }
-
-  function changeSort(sort: string) {
-    const next = { ...search, pageNo: 1, sort };
-    setSearch(next);
-    writeSearchToUrl(next);
-    void loadSources(next);
-  }
-
   function changePage(pageNo: number, pageSize: number) {
     const next = { ...search, pageNo, pageSize };
     setSearch(next);
@@ -971,11 +957,6 @@ export function SourceLibraryQueryPage({ notify }: Props) {
         <QueryResultCard className="source-library-result-card" extra={resultActions} total={sourceTotal}>
           
           {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
-          <div className="source-library-result-meta">
-            <span />
-            <Select aria-label="排序方式" className="source-library-sort" value={search.sort || 'updatedAt,desc'} options={sortOptions} onChange={changeSort} />
-          </div>
-
           {!listLoaded && loading ? (
             <Space direction="vertical" align="center" className="source-library-loading"><Spin /><Text type="secondary">正在加载来源资料…</Text></Space>
           ) : isMobile ? (
