@@ -37,6 +37,7 @@ jobs:
           path = Path('frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs')
           text = path.read_text(encoding='utf-8')
           text = text.replace("new URL(`../${relativePath}`", "new URL(`../../${relativePath}`")
+          text = text.replace("new URL('../features/", "new URL('../../features/")
           path.write_text(text, encoding='utf-8')
           PY
 
@@ -46,7 +47,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
-        run: npm install --no-audit --no-fund
+        run: npm install --silent --no-audit --no-fund
 
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
