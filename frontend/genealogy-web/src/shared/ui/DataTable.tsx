@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
-import { Button, Empty, Popconfirm, Table, Tag, Typography, message } from 'antd';
+import { Button, Table, Tag, Typography } from 'antd';
 import { apiClient } from '../api/client';
+import { ConfirmAction, EmptyState } from './Feedback';
+import { feedback } from './OperationFeedback';
 
 export type Column<T> = {
   key: string;
@@ -148,7 +150,14 @@ type DataTableProps<T extends Record<string, any>> = {
   reviewTargetType?: ReviewTargetType;
 };
 
-export function DataTable<T extends Record<string, any>>({ data, columns, empty = '暂无数据，请先查询或新建记录', onSelect, normalizeReviewColumns = true, reviewTargetType }: DataTableProps<T>) {
+export function DataTable<T extends Record<string, any>>({
+  data,
+  columns,
+  empty = '暂无数据，请先查询或新建记录',
+  onSelect,
+  normalizeReviewColumns = true,
+  reviewTargetType
+}: DataTableProps<T>) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [deletedRowKeys, setDeletedRowKeys] = useState<Key[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -162,56 +171,60 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
   const reviewableRows = useMemo(() => rows.filter(isReviewable), [rows]);
   const reviewableKeySet = useMemo(() => new Set(reviewableRows.map(row => rowKey(row))), [reviewableRows]);
   const effectiveSelectedKeys = targetType ? selectedRowKeys.filter(key => reviewableKeySet.has(String(key))) : [];
-  if (!rows.length) return <Empty className="empty antd-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
 
   async function submitSelectedReview() {
     if (!targetType) return;
     const clanId = workspaceClanId();
     if (!clanId) {
-      message.warning('请先选择宗族');
+      feedback.warning('请先选择宗族');
       return;
     }
     const selectedRows = rows.filter(row => effectiveSelectedKeys.includes(rowKey(row)) && isReviewable(row));
     if (!selectedRows.length) {
-      message.warning('请先勾选草稿/已驳回版本');
+      feedback.warning('请先勾选草稿/已驳回版本');
       return;
     }
     setSubmitting(true);
-    const results = await Promise.allSettled(selectedRows.map(row => apiClient.post(`/clans/${clanId}/review-tasks`, {
-      targetType,
-      targetId: Number(row.id),
-      comment: `${REVIEW_TARGET_LABEL[targetType]}批量提交审批`
-    })));
-    const successCount = results.filter(result => result.status === 'fulfilled').length;
-    const failedCount = results.length - successCount;
-    if (successCount) {
-      message.success(`已提交 ${successCount} 条审批任务，列表将自动刷新`);
-      window.dispatchEvent(new CustomEvent('genealogy:review-submitted', { detail: { targetType, successCount } }));
+    try {
+      const results = await Promise.allSettled(selectedRows.map(row => apiClient.post(`/clans/${clanId}/review-tasks`, {
+        targetType,
+        targetId: Number(row.id),
+        comment: `${REVIEW_TARGET_LABEL[targetType]}批量提交审批`
+      })));
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      if (successCount) {
+        feedback.success(`已提交 ${successCount} 条审批任务，列表将自动刷新`);
+        window.dispatchEvent(new CustomEvent('genealogy:review-submitted', { detail: { targetType, successCount } }));
+      }
+      if (failedCount) feedback.error(`${failedCount} 条提交失败，请刷新后重试`);
+      setSelectedRowKeys([]);
+    } finally {
+      setSubmitting(false);
     }
-    if (failedCount) message.error(`${failedCount} 条提交失败，请刷新后重试`);
-    setSelectedRowKeys([]);
-    setSubmitting(false);
   }
 
   async function deleteBranchDraft(row: T) {
     if (!isDraft(row)) {
-      message.warning('仅草稿支派可以删除');
+      feedback.warning('仅草稿支派可以删除');
       return;
     }
     const key = rowKey(row);
     setDeletingRowKey(key);
     try {
       await apiClient.delete(`/branches/${row.id}`);
-      setDeletedRowKeys(prev => [...prev, key]);
-      setSelectedRowKeys(prev => prev.filter(item => String(item) !== key));
-      message.success('草稿支派已删除');
+      setDeletedRowKeys(previous => [...previous, key]);
+      setSelectedRowKeys(previous => previous.filter(item => String(item) !== key));
+      feedback.success('草稿支派已删除');
       window.dispatchEvent(new CustomEvent('genealogy:object-changed', { detail: { targetType: 'branch' } }));
     } catch (error) {
-      message.error((error as Error).message || '删除草稿支派失败');
+      feedback.error((error as Error).message || '删除草稿支派失败');
     } finally {
       setDeletingRowKey(null);
     }
   }
+
+  if (!rows.length) return <EmptyState title={empty} compact />;
 
   const reviewRowSelection = targetType && reviewableRows.length ? {
     selectedRowKeys: effectiveSelectedKeys,
@@ -250,11 +263,11 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
       title: '操作',
       width: 96,
       render: (_value: unknown, row: T) => isDraft(row) ? (
-        <Popconfirm
+        <ConfirmAction
           title="删除草稿支派"
           description={`确认删除草稿支派“${row.branchName || '未命名支派'}”吗？`}
           okText="删除"
-          cancelText="取消"
+          danger
           onConfirm={() => void deleteBranchDraft(row)}
         >
           <Button
@@ -265,7 +278,7 @@ export function DataTable<T extends Record<string, any>>({ data, columns, empty 
           >
             删除草稿
           </Button>
-        </Popconfirm>
+        </ConfirmAction>
       ) : '-'
     }] : [])
   ];
