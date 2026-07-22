@@ -50,8 +50,8 @@ export function QueryResultCard({
       data-query-result-role="outer"
       title={(
         <Space size={8} wrap className="query-result-card__title">
-<Typography.Text strong>查询结果</Typography.Text>
-<Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
+          <Typography.Text strong>查询结果</Typography.Text>
+          <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
         </Space>
       )}
     >
