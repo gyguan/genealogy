@@ -70,6 +70,7 @@ import type {
   SourceSearchParams
 } from './sourceLibraryService';
 import './source-library-query-page.css';
+import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Text, Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -967,7 +968,8 @@ export function SourceLibraryQueryPage({ notify }: Props) {
           </Form>
         </Card>
 
-        <Card className="source-library-result-card" title={`查询结果（${sourceTotal}）`} extra={resultActions}>
+        <Card className="source-library-result-card query-result-outer-card" title="查询结果" extra={resultActions}>
+          <BusinessResultCard title="来源资料" total={sourceTotal}>
           {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
           <div className="source-library-result-meta">
             <span />
@@ -1026,6 +1028,7 @@ export function SourceLibraryQueryPage({ notify }: Props) {
               ]}
             />
           )}
+          </BusinessResultCard>
         </Card>
       </Space>
 

@@ -52,6 +52,7 @@ import { TrackingMultiSelect } from './TrackingMultiSelect';
 import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import './tracking-page.css';
+import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -444,11 +445,17 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       </Card>
       {workspace.clanId ? (
         <Card
-          className="tracking-result-card"
-          title={<div className="tracking-result-title"><Title level={4}>查询结果</Title><Text type="secondary">共 {resultTotal} 条</Text></div>}
+          className="tracking-result-card query-result-outer-card"
+          title="查询结果"
           extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
         >
-          {activeResult}
+          <BusinessResultCard
+            title={activeTab === TRACKING_TABS.OBJECT ? '业务对象' : activeTab === TRACKING_TABS.AUDIT ? '操作日志' : '风险事件'}
+            total={resultTotal}
+            totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}
+          >
+            {activeResult}
+          </BusinessResultCard>
         </Card>
       ) : null}
 

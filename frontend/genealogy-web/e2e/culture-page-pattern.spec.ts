@@ -89,7 +89,10 @@ async function expectDoubleCardShell(page: Page) {
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.locator('.culture-search-card')).toHaveCount(1);
-  await expect(page.locator('.culture-result-card')).toHaveCount(1);
+  const resultCard = page.locator('.culture-result-card');
+  await expect(resultCard).toHaveCount(1);
+  await expect(resultCard.locator(':scope > .ant-card-head').getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(resultCard.locator('.business-result-card')).toHaveCount(1);
   await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText('宗族文化');
   const formBorder = await page.locator('.culture-search-card form').evaluate(element => getComputedStyle(element).borderTopWidth);
   expect(formBorder).toBe('0px');
@@ -144,8 +147,9 @@ test('culture shell uses double cards and mounts only the active domain', async 
   await expect(searchCard.getByLabel('首页精选')).toBeVisible();
 
   await searchCard.getByLabel('分类').click();
-  await expect(page.getByRole('button', { name: '全选' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '清空' })).toBeVisible();
+  const categoryPopup = page.locator('.ant-select-dropdown:visible');
+  await expect(categoryPopup.getByText('全选 / 取消全选', { exact: true })).toBeVisible();
+  await expect(categoryPopup.getByText('堂号', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 
   await searchCard.getByRole('tab', { name: '迁徙脉络' }).click();
