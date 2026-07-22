@@ -48,6 +48,29 @@
 63: await expect(page.locator('.tracking-result-card > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
 ```
 
+## `frontend/genealogy-web/e2e/wizard-query-result-pattern.spec.ts`
+
+- Card: 0
+- Table: 0
+- QueryResultCard: 0
+- 查询结果文本: 1
+
+```text
+21: async function mockWizardApi(page: Page) {
+24: localStorage.setItem('genealogy.mvp1Wizard.session', JSON.stringify({
+44: if (path === '/auth/me') return route.fulfill(ok({ id: 7, username: 'wizard_admin', displayName: '建谱管理员', status: 'active' }));
+59: async function openWizardStep(page: Page, step: string) {
+60: await page.goto(`/?view=mvp1Wizard&step=${step}`);
+63: await expect(page.locator('.wizard-step-content')).toHaveAttribute('data-step-state', 'ready');
+67: const cards = page.locator('.wizard-step-content .wizard-query-result-card');
+75: await expect(card.locator(':scope > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
+79: test('all active genealogy wizard nodes use query result card plus direct table', async ({ page }) => {
+80: await mockWizardApi(page);
+83: await openWizardStep(page, step);
+87: await openWizardStep(page, 'generation');
+89: const modalResult = page.locator('.ant-modal .wizard-query-result-card');
+```
+
 ## `frontend/genealogy-web/src/app/App.tsx`
 
 - Card: 0
