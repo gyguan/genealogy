@@ -14,7 +14,7 @@ import type {
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
-import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -698,8 +698,8 @@ export function ReviewCenterPage({ notify }: Props) {
         <QueryResultCard
           className="review-result-card"
           extra={workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
-         total={total}>
-          <BusinessResultCard title="审核任务">
+         total={total} businessTitle="审核任务">
+          
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
               <Tabs activeKey={activeTab} onChange={switchTab} items={[
@@ -719,7 +719,7 @@ export function ReviewCenterPage({ notify }: Props) {
             ) : null}
             {renderResultContent()}
             </Space>
-          </BusinessResultCard>
+          
         </QueryResultCard>
       </Space>
 

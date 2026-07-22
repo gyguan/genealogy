@@ -43,7 +43,7 @@ async function expectDefaultFourFields(page: Page, labels: string[]) {
 async function expectResultHeaders(page: Page, title: string, total: string) {
   const resultCard = page.locator('.tracking-result-card');
   const outerHeader = resultCard.locator(':scope > .ant-card-head');
-  const businessCard = resultCard.locator('.business-result-card');
+  const businessCard = resultCard.locator(':scope > .ant-card-body > .business-result-card');
   await expect(businessCard).toHaveCount(1);
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
