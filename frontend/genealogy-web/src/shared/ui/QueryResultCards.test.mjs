@@ -16,42 +16,52 @@ const files = [
   ['features/members/MemberPage.tsx', '成员列表']
 ];
 
-function assertNestedBusinessCard(source, relativePath) {
-  const outerIndex = source.indexOf('query-result-outer-card');
-  const innerIndex = source.indexOf('<BusinessResultCard', outerIndex);
-  const innerCloseIndex = source.indexOf('</BusinessResultCard>', innerIndex);
-  const outerCloseIndex = source.indexOf('</Card>', innerCloseIndex);
-
-  assert.ok(outerIndex >= 0, `${relativePath} should mark the outer result card`);
-  assert.ok(innerIndex > outerIndex, `${relativePath} should render the business card after the outer card opens`);
-  assert.equal(
-    source.slice(outerIndex, innerIndex).includes('</Card>'),
-    false,
-    `${relativePath} must not close the 查询结果 card before rendering the business card`
-  );
-  assert.ok(innerCloseIndex > innerIndex, `${relativePath} should close the business result card`);
-  assert.ok(outerCloseIndex > innerCloseIndex, `${relativePath} should close the outer result card after the business card`);
+function openingTag(source, token, start = 0) {
+  const index = source.indexOf(token, start);
+  assert.ok(index >= 0, `${token} should exist`);
+  let depth = 0;
+  let quote = '';
+  for (let cursor = index; cursor < source.length; cursor += 1) {
+    const char = source[cursor];
+    if (quote) {
+      if (char === quote && source[cursor - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') quote = char;
+    else if (char === '{') depth += 1;
+    else if (char === '}') depth -= 1;
+    else if (char === '>' && depth === 0) return { index, end: cursor + 1, text: source.slice(index, cursor + 1) };
+  }
+  assert.fail(`${token} opening tag should close`);
 }
 
-test('all query result pages nest the business card inside the 查询结果 card', () => {
+test('all query pages put total on QueryResultCard and keep BusinessResultCard inside it', () => {
   for (const [relativePath, businessTitle] of files) {
     const source = readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
-    assert.match(source, /title="查询结果"/, `${relativePath} should use 查询结果 as outer title`);
+    const outer = openingTag(source, '<QueryResultCard');
+    const inner = openingTag(source, '<BusinessResultCard', outer.end);
+    const innerClose = source.indexOf('</BusinessResultCard>', inner.end);
+    const outerClose = source.indexOf('</QueryResultCard>', innerClose);
+
+    assert.match(outer.text, /\stotal=\{/, `${relativePath} should put total on the outer card`);
+    assert.doesNotMatch(inner.text, /\stotal=/, `${relativePath} should not repeat total on the business card`);
     assert.ok(source.includes(businessTitle), `${relativePath} should expose business title ${businessTitle}`);
-    assertNestedBusinessCard(source, relativePath);
+    assert.ok(inner.index > outer.end, `${relativePath} should nest the business card inside the outer card`);
+    assert.ok(innerClose > inner.end, `${relativePath} should close the business card`);
+    assert.ok(outerClose > innerClose, `${relativePath} should close the outer card after the business card`);
   }
 });
 
-test('shared styles keep the business card as a direct child of the outer card body', () => {
-  const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
-  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
-  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*\{[\s\S]*background:\s*#fff/);
-  assert.doesNotMatch(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*\{[\s\S]*background:\s*#f5f7fa/);
+test('shared components render total beside 查询结果 and business title without a duplicate count', () => {
+  const source = readFileSync(new URL('./QueryResultCards.tsx', import.meta.url), 'utf8');
+  assert.match(source, /<Typography\.Text strong>查询结果<\/Typography\.Text>/);
+  assert.match(source, /（共 \{total\} \{totalSuffix\}）/);
+  const businessFunction = source.slice(source.indexOf('export function BusinessResultCard'));
+  assert.doesNotMatch(businessFunction, /共 \{total\}/);
 });
 
-test('member create action and review refresh action stay in outer card headers', () => {
-  const member = readFileSync(new URL('../../features/members/MemberPage.tsx', import.meta.url), 'utf8');
-  const review = readFileSync(new URL('../../features/reviews/ReviewCenterPageContent.tsx', import.meta.url), 'utf8');
-  assert.match(member, /title="查询结果" extra=\{<Button type="primary"[^>]*>新增成员授权<\/Button>\}/);
-  assert.match(review, /title="查询结果"[\s\S]*extra=\{workspace\.clanId[\s\S]*>刷新<\/Button>/);
+test('shared styles retain true nested cards and align the outer title count', () => {
+  const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
+  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
+  assert.match(source, /\.query-result-card__title\s*\{[\s\S]*align-items:\s*baseline/);
 });

@@ -41,7 +41,7 @@ import {
   scopePreview,
   type MemberQuery
 } from './memberPageModel.js';
-import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
+import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
@@ -616,8 +616,8 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       />
 
 
-      <Card className="query-result-outer-card member-result-card" title="查询结果" extra={<Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>} style={{ marginTop: 16 }}>
-        <BusinessResultCard title="成员列表" total={total} totalSuffix="名成员">
+      <QueryResultCard className="member-result-card" extra={<Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>} style={{ marginTop: 16 }} total={total} totalSuffix="名成员">
+        <BusinessResultCard title="成员列表">
         {queryError ? <Alert type="error" showIcon message={queryError} action={<Button size="small" onClick={() => void loadMembers(selectedClanId, query)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
         {isMobile ? (
           <List
@@ -662,7 +662,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           />
         )}
         </BusinessResultCard>
-      </Card>
+      </QueryResultCard>
 
       <Modal
         title={editingGrant ? '编辑成员授权' : '新增成员授权'}

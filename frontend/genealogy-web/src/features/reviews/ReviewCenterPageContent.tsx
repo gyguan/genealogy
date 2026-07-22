@@ -14,7 +14,7 @@ import type {
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
-import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
+import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -695,12 +695,11 @@ export function ReviewCenterPage({ notify }: Props) {
           </Form></Space>
         </Card>
 
-        <Card
-          className="query-result-outer-card review-result-card"
-          title="查询结果"
+        <QueryResultCard
+          className="review-result-card"
           extra={workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
-        >
-          <BusinessResultCard title="审核任务" total={total}>
+         total={total}>
+          <BusinessResultCard title="审核任务">
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
               <Tabs activeKey={activeTab} onChange={switchTab} items={[
@@ -721,7 +720,7 @@ export function ReviewCenterPage({ notify }: Props) {
             {renderResultContent()}
             </Space>
           </BusinessResultCard>
-        </Card>
+        </QueryResultCard>
       </Space>
 
       <Drawer
