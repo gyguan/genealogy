@@ -1,5 +1,6 @@
 package com.genealogy.person.event.application;
 
+import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.person.entity.PersonEntity;
@@ -20,30 +21,55 @@ import java.util.List;
 @Service
 public class PersonEventApplicationService {
 
+    private static final String PERSON_VIEW = "person:view";
+    private static final String PERSON_UPDATE = "person:update";
+    private static final String STATUS_OFFICIAL = "official";
+
     private final PersonRepository personRepository;
     private final PersonEventRepository personEventRepository;
+    private final AuthorizationApplicationService authorizationApplicationService;
 
-    public PersonEventApplicationService(PersonRepository personRepository, PersonEventRepository personEventRepository) {
+    public PersonEventApplicationService(
+            PersonRepository personRepository,
+            PersonEventRepository personEventRepository,
+            AuthorizationApplicationService authorizationApplicationService
+    ) {
         this.personRepository = personRepository;
         this.personEventRepository = personEventRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @Transactional(readOnly = true)
-    public List<PersonEventResponse> listByPerson(Long personId) {
-        requirePerson(personId);
-        return personEventRepository.findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(personId)
-                .stream()
+    public List<PersonEventResponse> listByPerson(Long personId, Long actorId) {
+        PersonEntity person = requirePerson(personId);
+        authorizationApplicationService.requireBranchPermission(
+                person.getClanId(), actorId, person.getBranchId(), PERSON_VIEW
+        );
+        return loadEvents(personId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional
-    public List<PersonEventResponse> replaceByPerson(Long personId, ReplacePersonEventsRequest request) {
+    public List<PersonEventResponse> replaceByPerson(
+            Long personId,
+            ReplacePersonEventsRequest request,
+            Long actorId
+    ) {
         PersonEntity person = requirePerson(personId);
-        LocalDateTime now = LocalDateTime.now();
+        authorizationApplicationService.requireBranchPermission(
+                person.getClanId(), actorId, person.getBranchId(), PERSON_UPDATE
+        );
+        if (STATUS_OFFICIAL.equals(person.getDataStatus())) {
+            throw new BusinessException(
+                    "PERSON_EVENT_REVIEW_REQUIRED",
+                    "正式人物关键事件变更必须随人物资料提交审核"
+            );
+        }
 
-        List<PersonEventEntity> existing = personEventRepository
-                .findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(personId);
+        List<ReplacePersonEventsRequest.PersonEventItem> normalized = normalizeAndValidate(request);
+        LocalDateTime now = LocalDateTime.now();
+        List<PersonEventEntity> existing = loadEvents(personId);
         existing.forEach(event -> {
             event.setDeletedAt(now);
             event.setUpdatedAt(now);
@@ -52,19 +78,9 @@ public class PersonEventApplicationService {
             personEventRepository.saveAll(existing);
         }
 
-        List<ReplacePersonEventsRequest.PersonEventItem> normalized = new ArrayList<>(request.events());
-        normalized.sort(Comparator
-                .comparing(ReplacePersonEventsRequest.PersonEventItem::eventDate,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(item -> item.sortOrder() == null ? Integer.MAX_VALUE : item.sortOrder())
-                .thenComparing(ReplacePersonEventsRequest.PersonEventItem::eventTitle));
-
         List<PersonEventEntity> replacements = new ArrayList<>(normalized.size());
         for (int index = 0; index < normalized.size(); index++) {
             ReplacePersonEventsRequest.PersonEventItem item = normalized.get(index);
-            if (item.eventDate() != null && item.eventDate().isAfter(LocalDate.now())) {
-                throw new IllegalArgumentException("Person event date cannot be later than today");
-            }
             PersonEventEntity entity = new PersonEventEntity();
             entity.setClanId(person.getClanId());
             entity.setPersonId(personId);
@@ -76,19 +92,48 @@ public class PersonEventApplicationService {
             entity.setEventDescription(trimToNull(item.eventDescription()));
             entity.setSortOrder(item.sortOrder() == null ? index : item.sortOrder());
             entity.setDataStatus(person.getDataStatus());
-            entity.setCreatedBy(person.getCreatedBy());
+            entity.setCreatedBy(actorId);
             entity.setCreatedAt(now);
             entity.setUpdatedAt(now);
             replacements.add(entity);
         }
 
         return personEventRepository.saveAll(replacements).stream()
-                .sorted(Comparator
-                        .comparing(PersonEventEntity::getEventDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(PersonEventEntity::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(PersonEventEntity::getId))
+                .sorted(eventComparator())
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private List<ReplacePersonEventsRequest.PersonEventItem> normalizeAndValidate(
+            ReplacePersonEventsRequest request
+    ) {
+        List<ReplacePersonEventsRequest.PersonEventItem> normalized = new ArrayList<>(request.events());
+        for (ReplacePersonEventsRequest.PersonEventItem item : normalized) {
+            if (item.eventTitle() == null || item.eventTitle().isBlank()) {
+                throw new BusinessException("PERSON_EVENT_TITLE_REQUIRED", "关键事件标题不能为空");
+            }
+            if (item.eventDate() != null && item.eventDate().isAfter(LocalDate.now())) {
+                throw new BusinessException("PERSON_EVENT_DATE_IN_FUTURE", "关键事件日期不能晚于今天");
+            }
+        }
+        normalized.sort(Comparator
+                .comparing(ReplacePersonEventsRequest.PersonEventItem::eventDate,
+                        Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(item -> item.sortOrder() == null ? Integer.MAX_VALUE : item.sortOrder())
+                .thenComparing(item -> item.eventTitle().trim()));
+        return normalized;
+    }
+
+    private List<PersonEventEntity> loadEvents(Long personId) {
+        return personEventRepository
+                .findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(personId);
+    }
+
+    private Comparator<PersonEventEntity> eventComparator() {
+        return Comparator
+                .comparing(PersonEventEntity::getEventDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(PersonEventEntity::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(PersonEventEntity::getId, Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
     private PersonEntity requirePerson(Long personId) {
