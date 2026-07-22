@@ -9,6 +9,7 @@ const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const sourceDraftDeleteAction = readFileSync(new URL('../../features/sources/SourceDraftDeleteAction.tsx', import.meta.url), 'utf8');
+const sourceLibraryFocusBridge = readFileSync(new URL('../../features/sources/SourceLibraryFocusBridge.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
@@ -83,6 +84,16 @@ test('source draft deletion uses page feedback without duplicate success notific
   assert.doesNotMatch(sourceDraftDeleteAction, /notify\?\.\(\{ message: '草稿来源已删除/);
 });
 
+test('source focus bridge keeps loading errors visible through page feedback', () => {
+  assert.match(sourceLibraryFocusBridge, /import \{ PageFeedback \} from '\.\.\/\.\.\/shared\/ui\/Feedback'/);
+  assert.match(sourceLibraryFocusBridge, /const \[loadError, setLoadError\] = useState\(''\)/);
+  assert.match(sourceLibraryFocusBridge, /title="工作台定位来源加载失败"/);
+  assert.match(sourceLibraryFocusBridge, /title=\{isMissingSourceIntent \? '来自工作台：缺来源处理' : '来自工作台：来源资料定位'\}/);
+  assert.match(sourceLibraryFocusBridge, /重新加载/);
+  assert.doesNotMatch(sourceLibraryFocusBridge, /<Alert\b/);
+  assert.doesNotMatch(sourceLibraryFocusBridge, /\bmessage\.(success|info|warning|error|loading)\s*\(/);
+});
+
 test('feedback styling normalizes alerts, field help, empty states and full-page results', () => {
   assert.match(css, /\.business-page \.ant-alert/);
   assert.match(css, /\.business-page \.ant-form-item-extra/);
@@ -94,9 +105,9 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 170);
+  assert.equal(baseline.maxCounts.page_alert, 169);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 105);
+  assert.equal(baseline.maxCounts.antd_message, 104);
   assert.equal(baseline.maxCounts.confirm_modal, 62);
   assert.equal(baseline.maxCounts.empty_state, 160);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
