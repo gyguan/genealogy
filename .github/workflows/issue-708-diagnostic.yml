@@ -68,7 +68,17 @@ jobs:
           git diff --check
       - name: Backend tests
         working-directory: backend/genealogy-backend
-        run: mvn -q test
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -q test 2>&1 | tee ../../backend-test.log
+      - name: Upload backend diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-708-backend-test-log
+          path: backend-test.log
+          retention-days: 1
       - name: Frontend checks
         working-directory: frontend/genealogy-web
         run: |
@@ -106,6 +116,9 @@ jobs:
               path = Path(name)
               if path.exists():
                   path.unlink()
+          log = Path('backend-test.log')
+          if log.exists():
+              log.unlink()
           PY
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
