@@ -7,7 +7,7 @@ const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'u
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
-const spec = readFileSync(new URL('../../../../docs/22-frontend-feedback-pattern-spec.md', import.meta.url), 'utf8');
+const spec = readFileSync(new URL('../../../../../docs/22-frontend-feedback-pattern-spec.md', import.meta.url), 'utf8');
 
 test('feedback system exposes five standard user-facing forms', () => {
   assert.match(component, /export function PageFeedback/);
