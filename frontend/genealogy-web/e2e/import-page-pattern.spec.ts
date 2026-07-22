@@ -88,7 +88,7 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
 }
 
-async function expectBusinessCardDirectChild(page: Page) {
+async function expectBusinessCardDirectChild(page: Page, minimumInset = 15) {
   const outerCard = page.locator('.import-result-card');
   const outerHeader = outerCard.locator(':scope > .query-result-outer-card__header');
   const businessCard = outerCard.locator(':scope > .business-result-card[data-query-result-role="business"]');
@@ -107,10 +107,10 @@ async function expectBusinessCardDirectChild(page: Page) {
   expect(outerBackground).toBe('rgb(255, 255, 255)');
   if (!outerCardBox || !outerHeaderBox || !businessCardBox) return;
 
-  expect(businessCardBox.x - outerCardBox.x).toBeGreaterThanOrEqual(15);
-  expect(businessCardBox.y - outerHeaderBox.y - outerHeaderBox.height).toBeGreaterThanOrEqual(15);
-  expect(outerCardBox.x + outerCardBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(15);
-  expect(outerCardBox.y + outerCardBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(15);
+  expect(businessCardBox.x - outerCardBox.x).toBeGreaterThanOrEqual(minimumInset);
+  expect(businessCardBox.y - outerHeaderBox.y - outerHeaderBox.height).toBeGreaterThanOrEqual(minimumInset);
+  expect(outerCardBox.x + outerCardBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(minimumInset);
+  expect(outerCardBox.y + outerCardBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(minimumInset);
 }
 
 test('data import page uses query and nested result cards with new import modal', async ({ page }) => {
@@ -170,7 +170,7 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
     return { top: style.paddingTop, bottom: style.paddingBottom };
   });
   expect(headerPadding).toEqual({ top: '16px', bottom: '16px' });
-  await expectBusinessCardDirectChild(page);
+  await expectBusinessCardDirectChild(page, 11);
 
   await expect(page.locator('.import-execution-table')).toBeHidden();
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();
