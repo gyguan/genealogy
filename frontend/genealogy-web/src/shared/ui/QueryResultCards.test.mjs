@@ -24,7 +24,7 @@ function openingTag(source, token, start = 0) {
   for (let cursor = index; cursor < source.length; cursor += 1) {
     const char = source[cursor];
     if (quote) {
-      if (char === quote && source[cursor - 1] !== '\') quote = '';
+      if (char === quote && source[cursor - 1] !== '\\') quote = '';
       continue;
     }
     if (char === '"' || char === "'" || char === '`') quote = char;
