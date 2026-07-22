@@ -8,7 +8,7 @@ on:
       - .github/workflows/issue-708-finalize.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -75,13 +75,11 @@ jobs:
           npm run test:culture-shell 2>&1 | tee -a ../../issue-708-frontend.log
           npm run build 2>&1 | tee -a ../../issue-708-frontend.log
       - name: Package changes
-        if: always()
         run: |
           git diff --binary > issue-708.patch
           git diff --name-only > issue-708-files.txt
           tar -czf issue-708-files.tar.gz -T issue-708-files.txt
       - name: Upload validation output
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: issue-708-validation-output
@@ -91,5 +89,46 @@ jobs:
             issue-708-files.tar.gz
             issue-708-backend.log
             issue-708-frontend.log
-          if-no-files-found: ignore
           retention-days: 1
+      - name: Commit validated changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          task = Path('tasks/issue-708-execution.md')
+          text = task.read_text(encoding='utf-8')
+          for item in [
+              '建立后端统一依赖审核策略',
+              '接入支派、字辈、人物、关系、来源绑定写接口',
+              '接入宗族文化与导入场景',
+              '收紧前端依赖对象候选过滤',
+              '增加自动化测试',
+              '通过前后端 CI'
+          ]:
+              text = text.replace(f'- [ ] {item}', f'- [x] {item}')
+          task.write_text(text, encoding='utf-8')
+
+          for name in [
+              '.github/workflows/issue-708-implementation.yml',
+              '.github/workflows/issue-708-diagnostic.yml',
+              '.github/workflows/issue-708-executor.yml',
+              '.github/workflows/issue-708-finalize.yml',
+              'scripts/issue-708-apply.py',
+              'tasks/issue-708-failure.log',
+              'frontend/genealogy-web/package-lock.json',
+              'issue-708.patch',
+              'issue-708-files.txt',
+              'issue-708-files.tar.gz',
+              'issue-708-backend.log',
+              'issue-708-frontend.log',
+              'backend-test.log'
+          ]:
+              path = Path(name)
+              if path.exists():
+                  path.unlink()
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: require approved dependency objects'
+          git push origin HEAD:agent/issue-708-approved-dependencies
