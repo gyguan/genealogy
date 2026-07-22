@@ -18,5 +18,5 @@
 - [x] 查询结果源码结构测试；
 - [x] TypeScript；
 - [x] 生产构建；
-- [ ] Frontend CI；
-- [ ] Culture / Tracking / Import Page Gate。
+- [x] Frontend CI；
+- [x] Culture / Tracking / Import Page Gate。
