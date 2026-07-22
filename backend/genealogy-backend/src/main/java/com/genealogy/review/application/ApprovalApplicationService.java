@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
@@ -31,6 +33,7 @@ import com.genealogy.review.repository.AuditRecordRepository;
 import com.genealogy.review.repository.CheckTaskRepository;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +54,7 @@ public class ApprovalApplicationService {
     private static final String TARGET_SOURCE = "source";
     private static final String TARGET_BRANCH = "branch";
     private static final String TARGET_GENERATION_SCHEME = "generation_scheme";
+    private static final String TARGET_CLAN = "clan";
     private static final String CHANGE_SUBMIT_REVIEW = "submit_review";
     private static final String STATUS_PENDING = "pending";
     private static final String STATUS_APPROVED = "approved";
@@ -66,12 +70,14 @@ public class ApprovalApplicationService {
     private static final String PERSON_SUBMIT_REVIEW = "person:submit_review";
     private static final String RELATIONSHIP_SUBMIT_REVIEW = "relationship:submit_review";
     private static final String SOURCE_UPDATE = "source:update";
+    private static final String CLAN_UPDATE = "clan:update";
     private static final String BRANCH_UPDATE = "branch:update";
 
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
     private final SourceRepository sourceRepository;
     private final BranchRepository branchRepository;
+    private ClanRepository clanRepository;
     private final GenSchemeRepository genSchemeRepository;
     private final GenWordRepository genWordRepository;
     private final AuditRecordRepository auditRecordRepository;
@@ -107,6 +113,29 @@ public class ApprovalApplicationService {
         this.authorizationApplicationService = authorizationApplicationService;
         this.revisionApplyService = revisionApplyService;
         this.objectMapper = objectMapper;
+    }
+
+    @Autowired
+    void setClanRepository(ClanRepository clanRepository) {
+        this.clanRepository = clanRepository;
+    }
+
+    @Transactional
+    public CheckTaskResponse submitClan(Long clanId, TargetSubmitRequest request) {
+        ClanEntity clan = clanRepository.findById(clanId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CLAN_NOT_FOUND));
+        authorizationApplicationService.requirePermission(clanId, request.submitterId(), CLAN_UPDATE);
+        ensureReviewSubmitAllowed(TARGET_CLAN, clanId, clan.getStatus());
+        String beforePayload = toJson(clan);
+        clan.setStatus(OBJECT_STATUS_PENDING_REVIEW);
+        clan.setUpdatedAt(LocalDateTime.now());
+        String afterPayload = toJson(clan);
+        CheckTaskResponse response = submitTarget(
+                clanId, TARGET_CLAN, clanId, null, request.submitterId(), request.diffSummary(),
+                "submit clan review: " + clan.getClanName(), beforePayload, afterPayload
+        );
+        clanRepository.save(clan);
+        return response;
     }
 
     @Transactional
@@ -192,6 +221,12 @@ public class ApprovalApplicationService {
     public CheckTaskResponse submitGeneric(Long clanId, ReviewSubmitRequest request, Long submitterId) {
         TargetSubmitRequest targetRequest = new TargetSubmitRequest(submitterId, request.comment());
         return switch (normalize(request.targetType())) {
+            case TARGET_CLAN -> {
+                if (!Objects.equals(clanId, request.targetId())) {
+                    throw new BusinessException("REVIEW_TARGET_SCOPE_MISMATCH", "宗族审核目标与当前宗族不一致");
+                }
+                yield submitClan(request.targetId(), targetRequest);
+            }
             case TARGET_PERSON -> submitPerson(request.targetId(), new PersonSubmitReviewRequest(submitterId, request.comment()));
             case TARGET_RELATIONSHIP -> submitRelationship(request.targetId(), targetRequest);
             case TARGET_SOURCE -> submitSource(request.targetId(), targetRequest);
@@ -432,6 +467,7 @@ public class ApprovalApplicationService {
             case "source_binding" -> "来源绑定审核";
             case "branch" -> "支派变更审核";
             case "generation_scheme" -> "字辈方案审核";
+            case "clan" -> "宗族变更审核";
             case "import_job" -> "导入批次审核";
             default -> "业务变更审核";
         };

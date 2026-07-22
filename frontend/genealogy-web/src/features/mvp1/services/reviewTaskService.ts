@@ -6,7 +6,7 @@ import {
 } from '../domain/generationValidation';
 import { loadGenerationItems } from './generationService';
 
-export type ReviewTaskTargetType = 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
+export type ReviewTaskTargetType = 'clan' | 'person' | 'relationship' | 'source' | 'branch' | 'generation_scheme';
 
 export type SubmitReviewTaskInput = {
   clanId: string | number;

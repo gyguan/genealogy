@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
@@ -18,6 +20,7 @@ import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,7 @@ public class RevisionApplyService {
     private static final String TARGET_SOURCE = "source";
     private static final String TARGET_BRANCH = "branch";
     private static final String TARGET_GENERATION_SCHEME = "generation_scheme";
+    private static final String TARGET_CLAN = "clan";
     private static final String TARGET_IMPORT_JOB = "import_job";
     private static final String STATUS_OFFICIAL = "official";
     private static final String STATUS_REJECTED = "rejected";
@@ -45,6 +49,7 @@ public class RevisionApplyService {
     private final RelationshipRepository relationshipRepository;
     private final SourceRepository sourceRepository;
     private final BranchRepository branchRepository;
+    private ClanRepository clanRepository;
     private final GenSchemeRepository genSchemeRepository;
     private final ImportJobRepository importJobRepository;
     private final ImportJobRowRepository importJobRowRepository;
@@ -70,9 +75,15 @@ public class RevisionApplyService {
         this.objectMapper = objectMapper;
     }
 
+    @Autowired
+    void setClanRepository(ClanRepository clanRepository) {
+        this.clanRepository = clanRepository;
+    }
+
     @Transactional
     public void apply(AuditRecordEntity revision, LocalDateTime applyTime) {
         String targetType = normalize(revision.getTargetType());
+        if (TARGET_CLAN.equals(targetType)) { applyClan(revision, applyTime); return; }
         if (TARGET_PERSON.equals(targetType)) { applyPerson(revision, applyTime); return; }
         if (TARGET_RELATIONSHIP.equals(targetType)) { applyRelationship(revision, applyTime); return; }
         if (TARGET_SOURCE.equals(targetType)) { applySource(revision); return; }
@@ -85,12 +96,37 @@ public class RevisionApplyService {
     @Transactional
     public void reject(AuditRecordEntity revision, LocalDateTime rejectTime) {
         String targetType = normalize(revision.getTargetType());
+        if (TARGET_CLAN.equals(targetType)) { rejectClan(revision, rejectTime); return; }
         if (TARGET_PERSON.equals(targetType)) { rejectPerson(revision, rejectTime); return; }
         if (TARGET_RELATIONSHIP.equals(targetType)) { rejectRelationship(revision, rejectTime); return; }
         if (TARGET_SOURCE.equals(targetType)) { rejectSource(revision); return; }
         if (TARGET_BRANCH.equals(targetType)) { rejectBranch(revision, rejectTime); return; }
         if (TARGET_GENERATION_SCHEME.equals(targetType)) { rejectGenerationScheme(revision); return; }
         if (TARGET_IMPORT_JOB.equals(targetType)) rejectImportJob(revision, rejectTime);
+    }
+
+    private void applyClan(AuditRecordEntity revision, LocalDateTime applyTime) {
+        ClanEntity snapshot = readPayload(revision.getNewPayload(), ClanEntity.class);
+        if (snapshot == null) {
+            clanRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+                entity.setStatus(STATUS_OFFICIAL);
+                entity.setUpdatedAt(applyTime);
+                clanRepository.save(entity);
+            });
+            return;
+        }
+        snapshot.setId(revision.getTargetId());
+        snapshot.setStatus(STATUS_OFFICIAL);
+        snapshot.setUpdatedAt(applyTime);
+        clanRepository.save(snapshot);
+    }
+
+    private void rejectClan(AuditRecordEntity revision, LocalDateTime rejectTime) {
+        clanRepository.findById(revision.getTargetId()).ifPresent(entity -> {
+            entity.setStatus(STATUS_REJECTED);
+            entity.setUpdatedAt(rejectTime);
+            clanRepository.save(entity);
+        });
     }
 
     private void applyPerson(AuditRecordEntity revision, LocalDateTime applyTime) {
