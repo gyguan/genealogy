@@ -61,15 +61,16 @@
 53: if (path === '/auth/me') return route.fulfill(ok({ id: 7, username: 'wizard_admin', displayName: '建谱管理员', status: 'active' }));
 68: async function openWizardStep(page: Page, step: string) {
 69: await page.goto(`/?view=mvp1Wizard&step=${step}`);
-72: await expect(page.locator('.wizard-step-content')).toHaveAttribute('aria-label', `${stepTitles[step]}步骤内容`);
-73: await expect(page.locator('.wizard-step-content .wizard-query-result-card').first()).toBeVisible();
-77: const cards = page.locator('.wizard-step-content .wizard-query-result-card');
-86: await expect(card.locator(':scope > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
-90: test('all active genealogy wizard nodes use query result card plus direct table', async ({ page }) => {
-91: await mockWizardApi(page);
-94: await openWizardStep(page, step);
-98: await openWizardStep(page, 'generation');
-100: const modalResult = page.locator('.ant-modal .wizard-query-result-card');
+70: const resumeDialog = page.getByRole('dialog', { name: '继续上次建谱？' });
+75: await expect(page.locator('.wizard-step-content')).toHaveAttribute('aria-label', `${stepTitles[step]}步骤内容`);
+76: await expect(page.locator('.wizard-step-content .wizard-query-result-card').first()).toBeVisible();
+80: const cards = page.locator('.wizard-step-content .wizard-query-result-card');
+89: await expect(card.locator(':scope > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
+93: test('all active genealogy wizard nodes use query result card plus direct table', async ({ page }) => {
+94: await mockWizardApi(page);
+97: await openWizardStep(page, step);
+101: await openWizardStep(page, 'generation');
+103: const modalResult = page.locator('.ant-modal .wizard-query-result-card');
 ```
 
 ## `frontend/genealogy-web/src/app/App.tsx`
