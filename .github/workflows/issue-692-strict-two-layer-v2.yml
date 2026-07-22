@@ -1,0 +1,62 @@
+name: Issue 692 Strict Two Layer Query Results V2
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-and-validate:
+    if: github.event.pull_request.head.ref == 'agent/issue-692-strict-two-layer-query-results' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Apply strict two-layer migration
+        run: python .github/scripts/issue692_migrate.py
+
+      - name: Persist implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/22-frontend-query-page-pattern-spec.md \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.tsx \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs \
+            frontend/genealogy-web/src/shared/ui/query-result-cards.css \
+            frontend/genealogy-web/src/features \
+            frontend/genealogy-web/e2e/culture-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/tracking-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/import-page-pattern.spec.ts \
+            tasks/issue-692-execution.md
+          git diff --cached --quiet || git commit -m "fix: remove third query result layer"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
+
+      - name: Validate strict two-layer structure
+        working-directory: frontend/genealogy-web
+        run: |
+          node --test src/shared/ui/QueryResultCards.test.mjs
+          ! grep -R -n -E 'BusinessResultCard|business-result-card|businessTitle|businessExtra|businessClassName|query-result-content' src e2e
+
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
