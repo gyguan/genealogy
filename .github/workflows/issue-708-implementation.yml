@@ -24,13 +24,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== import backend files ==='
-          find backend/genealogy-backend/src/main/java -type f | grep -Ei 'import|batch' | sort || true
-          echo '=== branchId validation in import backend ==='
-          grep -RInE 'branchId|BranchRepository|findByIdAndClanId' backend/genealogy-backend/src/main/java/com/genealogy/importexport 2>/dev/null | head -n 240 || true
-          echo '=== source binding revision paths ==='
-          grep -RInE 'submit(Create|Replace)Binding|SourceBindingCreateRequest|source_binding' backend/genealogy-backend/src/main/java/com/genealogy/source backend/genealogy-backend/src/main/java/com/genealogy/review | head -n 260 || true
-          echo '=== review apply paths ==='
-          grep -RInE 'RevisionApply|applyRevision|apply\(' backend/genealogy-backend/src/main/java/com/genealogy/review | head -n 240 || true
-          echo '=== constructors ==='
-          grep -RIn 'public .*ApplicationService(' backend/genealogy-backend/src/main/java/com/genealogy/{branch,generation,person,relationship,source,culture}/application | head -n 180 || true
+          {
+            echo '=== import backend files ==='
+            find backend/genealogy-backend/src/main/java -type f | grep -Ei 'import|batch' | sort || true
+            echo '=== branchId validation in import backend ==='
+            grep -RInE 'branchId|BranchRepository|findByIdAndClanId' backend/genealogy-backend/src/main/java/com/genealogy/importexport 2>/dev/null | head -n 320 || true
+            echo '=== source binding revision paths ==='
+            grep -RInE 'submit(Create|Replace)Binding|SourceBindingCreateRequest|source_binding' backend/genealogy-backend/src/main/java/com/genealogy/source backend/genealogy-backend/src/main/java/com/genealogy/review | head -n 320 || true
+            echo '=== review apply paths ==='
+            grep -RInE 'RevisionApply|applyRevision|apply\(' backend/genealogy-backend/src/main/java/com/genealogy/review | head -n 320 || true
+            echo '=== constructors ==='
+            grep -RIn 'public .*ApplicationService(' backend/genealogy-backend/src/main/java/com/genealogy/{branch,generation,person,relationship,source,culture}/application | head -n 240 || true
+          } > issue-708-inventory.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-708-inventory
+          path: issue-708-inventory.txt
+          retention-days: 1
