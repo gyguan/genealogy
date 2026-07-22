@@ -101,12 +101,38 @@ test('person center graph keeps only the center and first-degree relatives', () 
   assert.equal(result.edges.find(item => item.edgeId === 'mother-center')?.relationLabel, '母亲');
   assert.equal(result.edges.find(item => item.edgeId === 'center-spouse')?.relationLabel, '配偶');
   assert.equal(result.edges.find(item => item.edgeId === 'center-son')?.relationLabel, '儿子');
-  assert.equal(result.edges.find(item => item.edgeId.includes('sibling'))?.relationLabel, '姐妹');
+  const siblingEdge = result.edges.find(item => item.edgeId.includes('sibling'));
+  assert.equal(siblingEdge?.relationLabel, '姐妹');
+  assert.equal(siblingEdge?.clientRelationKind, 'sibling');
+  assert.equal(siblingEdge?.isBiological, true);
   assert.equal(result.rootNodeId, 'center');
   assert.equal(result.clientLayoutMode, 'person-centered');
   assert.equal(result.meta.appliedDepth, 1);
   assert.equal(result.meta.nodeCount, 6);
   assert.equal(result.meta.edgeCount, 5);
+});
+
+test('ritual parent subtypes retain their business label and infer non-biological peers', () => {
+  const centerSuccession = edge('ritual-center', 'ritual-parent', 'center', 'successor', 'ritual');
+  centerSuccession.relationLabel = '承嗣';
+  centerSuccession.ritualRelationType = 'successor';
+  centerSuccession.isBiological = false;
+  const siblingSuccession = edge('ritual-sibling', 'ritual-parent', 'ritual-sibling-person', 'successor', 'ritual');
+  siblingSuccession.relationLabel = '承嗣';
+  siblingSuccession.ritualRelationType = 'successor';
+  siblingSuccession.isBiological = false;
+
+  const result = buildDirectPersonGraph(graph(
+    [node('ritual-parent', 1), node('center', 2), node('ritual-sibling-person', 2, 'male')],
+    [centerSuccession, siblingSuccession]
+  ));
+
+  assert.equal(result.edges.find(item => item.edgeId === 'ritual-center')?.relationLabel, '承嗣');
+  const siblingEdge = result.edges.find(item => item.edgeId.includes('client-direct-sibling'));
+  assert.equal(siblingEdge?.relationLabel, '兄弟');
+  assert.equal(siblingEdge?.clientRelationKind, 'sibling');
+  assert.equal(siblingEdge?.relationCategory, 'ritual');
+  assert.equal(siblingEdge?.isBiological, false);
 });
 
 test('explicit direct custom relations remain visible while unrelated peers are removed', () => {
