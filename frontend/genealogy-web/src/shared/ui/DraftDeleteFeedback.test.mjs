@@ -5,10 +5,14 @@ import test from 'node:test';
 const draftDeleteButtonSource = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
 const clanStepSource = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 
-test('draft delete button uses a mounted message holder and closes confirmation on error', () => {
-  assert.match(draftDeleteButtonSource, /const \[messageApi, contextHolder\] = message\.useMessage\(\)/);
-  assert.match(draftDeleteButtonSource, /\{contextHolder\}/);
-  assert.match(draftDeleteButtonSource, /catch \(error\) \{\s*setOpen\(false\);\s*onError\?\.\(error\);\s*messageApi\.error/s);
+test('draft delete button uses standard confirmation and operation feedback entries', () => {
+  assert.match(draftDeleteButtonSource, /import \{ ConfirmAction \} from '.\/Feedback'/);
+  assert.match(draftDeleteButtonSource, /import \{ feedback \} from '.\/OperationFeedback'/);
+  assert.match(draftDeleteButtonSource, /<ConfirmAction/);
+  assert.match(draftDeleteButtonSource, /feedback\.success\(`/);
+  assert.match(draftDeleteButtonSource, /feedback\.error\(/);
+  assert.doesNotMatch(draftDeleteButtonSource, /message\.useMessage|messageApi\.|<Popconfirm\b/);
+  assert.match(draftDeleteButtonSource, /catch \(error\) \{\s*setOpen\(false\);\s*onError\?\.\(error\);\s*feedback\.error/s);
 });
 
 test('clan step keeps backend delete errors visible in the result area', () => {
