@@ -18,6 +18,15 @@ const relationships = [{ id: 5, personId: 4, relativePersonId: 8, relationType: 
 const sources = [{ id: 6, clanId: 1, sourceName: '民国族谱', sourceType: 'genealogy_book', dataStatus: 'official' }];
 const links = [{ id: 9, sourceId: 6, targetType: 'person', targetId: 4, createdAt: '2026-07-22 10:00' }];
 
+const stepTitles: Record<string, string> = {
+  clan: '宗族',
+  branch: '支派',
+  generation: '字辈',
+  person: '人物',
+  relationship: '关系',
+  source: '来源'
+};
+
 async function mockWizardApi(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('genealogy.workspace.clanId', '1');
@@ -60,13 +69,15 @@ async function openWizardStep(page: Page, step: string) {
   await page.goto(`/?view=mvp1Wizard&step=${step}`);
   const resume = page.getByRole('button', { name: '继续', exact: true });
   if (await resume.isVisible().catch(() => false)) await resume.click();
-  await expect(page.locator('.wizard-step-content')).toHaveAttribute('data-step-state', 'ready');
+  await expect(page.locator('.wizard-step-content')).toHaveAttribute('aria-label', `${stepTitles[step]}步骤内容`);
+  await expect(page.locator('.wizard-step-content .wizard-query-result-card').first()).toBeVisible();
 }
 
 async function expectStrictResultTables(page: Page, minimumCount = 1) {
   const cards = page.locator('.wizard-step-content .wizard-query-result-card');
-  expect(await cards.count()).toBeGreaterThanOrEqual(minimumCount);
-  for (let index = 0; index < await cards.count(); index += 1) {
+  await expect.poll(() => cards.count()).toBeGreaterThanOrEqual(minimumCount);
+  const count = await cards.count();
+  for (let index = 0; index < count; index += 1) {
     const card = cards.nth(index);
     await expect(card.locator(':scope > .query-result-outer-card__header')).toHaveCount(1);
     await expect(card.locator(':scope > .ant-table-wrapper')).toHaveCount(1);
