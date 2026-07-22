@@ -19,7 +19,7 @@ test('new import uses one drawer without modal-to-drawer transition', () => {
 });
 
 test('drawer embeds all import type choices and no modal wrapper', () => {
-  assert.doesNotMatch(selector, /Modal/);
+  assert.doesNotMatch(selector, /Modal/);
   assert.match(selector, /title="1\. 选择导入对象"/);
   assert.match(selector, /value: 'person'/);
   assert.match(selector, /value: 'relationship'/);
