@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import 'antd/dist/reset.css';
 import { App } from './app/App';
-import { installLineageToolbarPlacement } from './features/tree/lineageToolbarPlacement';
 import { RuntimeErrorBoundary } from './shared/ui/RuntimeErrorBoundary';
 import './auth-commercial.css';
 import './styles.css';
@@ -282,7 +281,6 @@ installReviewCenterDefaultPageSize();
 installTrackingMoreFilterTextSync();
 installResultSortHeaderPlacement();
 installMemberListHeaderPlacement();
-installLineageToolbarPlacement();
 installDetailActionUnification();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
