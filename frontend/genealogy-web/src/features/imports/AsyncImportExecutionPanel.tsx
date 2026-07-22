@@ -1,10 +1,11 @@
 import { ApartmentOutlined, FolderOpenOutlined, UserOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Descriptions, Drawer, Empty, Popconfirm, Progress, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Descriptions, Drawer, Progress, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import type { ImportExecutionAction } from '../../shared/api/generated/import-execution-types';
+import { ConfirmAction, EmptyState, InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 import {
   allowedImportTaskActions,
   importTaskNumber,
@@ -154,16 +155,16 @@ export function AsyncImportExecutionPanel({
           <Button key={action} type="link" loading={actionKey === `${job.id}-${action}`} onClick={() => void execute(job, action)}>{actionLabels[action]}</Button>
         ))}
         {actions.includes('cancel') ? (
-          <Popconfirm
-            title="确认取消该导入任务？"
+          <ConfirmAction
+            title="取消该导入任务？"
             description="取消仅适用于尚未产生草稿或发布数据的任务，取消后需要重新创建批次。"
             okText="确认取消"
             cancelText="保留任务"
-            okButtonProps={{ danger: true }}
+            danger
             onConfirm={() => void execute(job, 'cancel')}
           >
             <Button type="link" danger loading={actionKey === `${job.id}-cancel`}>取消</Button>
-          </Popconfirm>
+          </ConfirmAction>
         ) : null}
         {status === 'completed' || status === 'partial_completed' ? <Button type="link" onClick={onOpenRecords}>查看导入记录</Button> : null}
       </Space>
@@ -204,7 +205,7 @@ export function AsyncImportExecutionPanel({
       key: 'result', title: '处理结果', width: 280, render: (_value, job) => {
         const status = importTaskStatus(job);
         if ((status === 'failed' || status === 'dead_letter') && job.errorSummary) {
-          return <Space direction="vertical" size={2}><Typography.Text type="danger">执行失败</Typography.Text><Typography.Text type="secondary" ellipsis={{ tooltip: job.errorSummary }}>{job.errorSummary}</Typography.Text></Space>;
+          return <InlineFeedback tone="error" title="执行失败" description={job.errorSummary} />;
         }
         return (
           <Space direction="vertical" size={2} className="import-task-result">
@@ -221,10 +222,35 @@ export function AsyncImportExecutionPanel({
 
   return (
     <>
-      {!clanId ? <Alert type="warning" showIcon message="请先选择所属宗族后查看导入任务。" /> : null}
-      {errorMessage ? <Alert type="error" showIcon message={errorMessage} className="import-panel-alert" /> : null}
-      {records.some(job => job.manualInterventionRequired) ? <Alert type="warning" showIcon message="存在超过自动重试上限的任务，请查看失败摘要并人工重试。" className="import-panel-alert" /> : null}
-      {serverTotal > records.length ? <Alert type="info" showIcon message={`当前展示最近 ${records.length} 条任务，请使用查询条件缩小范围。`} className="import-panel-alert" /> : null}
+      {!clanId ? (
+        <PageFeedback
+          tone="warning"
+          title="请先选择所属宗族"
+          description="选择宗族后可查看对应的导入任务。"
+        />
+      ) : null}
+      {errorMessage ? (
+        <PageFeedback
+          tone="error"
+          title="导入任务加载失败"
+          description={errorMessage}
+          action={<Button size="small" onClick={() => void load()}>重新加载</Button>}
+        />
+      ) : null}
+      {records.some(job => job.manualInterventionRequired) ? (
+        <PageFeedback
+          tone="warning"
+          title="部分任务需要人工处理"
+          description="任务已超过自动重试上限，请查看失败摘要后重试。"
+        />
+      ) : null}
+      {serverTotal > records.length ? (
+        <PageFeedback
+          tone="info"
+          title={`当前展示最近 ${records.length} 条任务`}
+          description="请使用查询条件缩小范围。"
+        />
+      ) : null}
 
       <div className="import-execution-table">
         <Table<ImportTaskRecord>
@@ -234,7 +260,7 @@ export function AsyncImportExecutionPanel({
           dataSource={visibleJobs}
           columns={columns}
           scroll={{ x: 1310 }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有符合当前条件的导入任务" /> }}
+          locale={{ emptyText: <EmptyState compact title="未找到符合条件的导入任务" description="请调整查询条件后重试。" /> }}
           pagination={{
             current: query.pageNo,
             pageSize: query.pageSize,
@@ -261,12 +287,12 @@ export function AsyncImportExecutionPanel({
                 <Progress percent={importTaskProgress(job)} size="small" status={status === 'failed' || status === 'dead_letter' ? 'exception' : undefined} />
                 <Typography.Text type="secondary">成功 {job.successCount || 0} · 失败 {job.failureCount || 0}</Typography.Text>
                 <Typography.Text type="secondary">创建时间：{formatDateTime(job.createdAt || job.updatedAt)}</Typography.Text>
-                {job.errorSummary ? <Typography.Text type="danger">{job.errorSummary}</Typography.Text> : null}
+                {job.errorSummary ? <InlineFeedback tone="error" title="任务执行失败" description={job.errorSummary} /> : null}
                 {renderActions(job)}
               </Space>
             </Card>
           );
-        }) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有符合当前条件的导入任务" />}
+        }) : <EmptyState title="未找到符合条件的导入任务" description="请调整查询条件后重试。" />}
       </div>
 
       <Drawer width={720} title={selectedJob ? `${typePresentation(selectedJob).label}导入任务` : '导入任务详情'} open={Boolean(selectedJob)} onClose={() => setSelectedJob(undefined)}>
@@ -282,13 +308,20 @@ export function AsyncImportExecutionPanel({
             { key: 'updated', label: '最近更新', children: formatDateTime(selectedJob.updatedAt || selectedJob.heartbeatAt) },
             { key: 'retry', label: '恢复信息', children: `已重试 ${selectedJob.executionRetryCount || 0}/${selectedJob.executionMaxRetries || 0}${selectedJob.nextRetryAt ? `，下次重试 ${formatDateTime(selectedJob.nextRetryAt)}` : ''}` }
           ]} />
-          {selectedJob.errorSummary ? <Alert type="error" showIcon message="失败摘要" description={selectedJob.errorSummary} /> : null}
+          {selectedJob.errorSummary ? <PageFeedback tone="error" title="失败摘要" description={selectedJob.errorSummary} /> : null}
           <Card size="small" title="技术执行信息"><Descriptions column={1} size="small" items={[
             { key: 'chunk', label: '分片大小', children: selectedJob.chunkSize || '-' },
             { key: 'heartbeat', label: '最近心跳', children: formatDateTime(selectedJob.heartbeatAt) },
             { key: 'intervention', label: '人工介入', children: selectedJob.manualInterventionRequired ? '需要' : '不需要' }
           ]} /></Card>
-          {(selectedJob.failureCount || 0) > 0 ? <Alert type="info" showIcon message="失败明细处理" description="可进入导入记录查看批次级和行级错误，并修正失败数据。" action={<Button type="link" onClick={onOpenRecords}>查看导入记录</Button>} /> : null}
+          {(selectedJob.failureCount || 0) > 0 ? (
+            <PageFeedback
+              tone="info"
+              title="可查看失败明细"
+              description="进入导入记录查看批次级和行级错误，并修正失败数据。"
+              action={<Button type="link" onClick={onOpenRecords}>查看导入记录</Button>}
+            />
+          ) : null}
         </Space> : null}
       </Drawer>
     </>
