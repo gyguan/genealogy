@@ -216,11 +216,14 @@ export function buildPersonCenteredGraph(
   const warnings = (graph.warnings || []).filter(warning => warning.code !== 'isolated_nodes');
   if (visible.limited) {
     warnings.push({
-      code: 'client_person_center_limit',
+      code: 'node_limit_reached',
       message: `人物中心图谱已限制为前 ${MAX_PERSON_CENTER_NODES} 个人物，请缩小关系范围或展开深度`,
       count: visibleNodes.length
     });
   }
+  const truncationReasons = visible.limited && !graph.meta.truncationReasons.includes('max_nodes')
+    ? [...graph.meta.truncationReasons, 'max_nodes' as const]
+    : graph.meta.truncationReasons;
 
   return {
     ...graph,
@@ -233,7 +236,7 @@ export function buildPersonCenteredGraph(
       nodeCount: visibleNodes.length,
       edgeCount: visibleEdges.length,
       truncated: graph.meta.truncated || visible.limited,
-      truncationReasons: graph.meta.truncationReasons
+      truncationReasons
     },
     warnings,
     clientLayoutMode: 'person-centered'
