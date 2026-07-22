@@ -16,14 +16,37 @@ const files = [
   ['features/members/MemberPage.tsx', '成员列表']
 ];
 
-test('all query result pages use the approved outer and inner card structure', () => {
+function assertNestedBusinessCard(source, relativePath) {
+  const outerIndex = source.indexOf('query-result-outer-card');
+  const innerIndex = source.indexOf('<BusinessResultCard', outerIndex);
+  const innerCloseIndex = source.indexOf('</BusinessResultCard>', innerIndex);
+  const outerCloseIndex = source.indexOf('</Card>', innerCloseIndex);
+
+  assert.ok(outerIndex >= 0, `${relativePath} should mark the outer result card`);
+  assert.ok(innerIndex > outerIndex, `${relativePath} should render the business card after the outer card opens`);
+  assert.equal(
+    source.slice(outerIndex, innerIndex).includes('</Card>'),
+    false,
+    `${relativePath} must not close the 查询结果 card before rendering the business card`
+  );
+  assert.ok(innerCloseIndex > innerIndex, `${relativePath} should close the business result card`);
+  assert.ok(outerCloseIndex > innerCloseIndex, `${relativePath} should close the outer result card after the business card`);
+}
+
+test('all query result pages nest the business card inside the 查询结果 card', () => {
   for (const [relativePath, businessTitle] of files) {
     const source = readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
-    assert.match(source, /query-result-outer-card/, `${relativePath} should mark the outer result card`);
     assert.match(source, /title="查询结果"/, `${relativePath} should use 查询结果 as outer title`);
-    assert.match(source, /<BusinessResultCard/, `${relativePath} should render an inner business result card`);
     assert.ok(source.includes(businessTitle), `${relativePath} should expose business title ${businessTitle}`);
+    assertNestedBusinessCard(source, relativePath);
   }
+});
+
+test('shared styles keep the business card as a direct child of the outer card body', () => {
+  const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
+  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
+  assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*\{[\s\S]*background:\s*#fff/);
+  assert.doesNotMatch(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*\{[\s\S]*background:\s*#f5f7fa/);
 });
 
 test('member create action and review refresh action stay in outer card headers', () => {
