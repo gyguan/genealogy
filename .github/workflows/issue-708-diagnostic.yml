@@ -65,6 +65,37 @@ jobs:
           Path('/tmp/patch_issue708.py').write_text(body + '\n', encoding='utf-8')
           PY
           python /tmp/patch_issue708.py
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/genealogy-backend/src/main/java/com/genealogy/culture/application/CultureSourceBindingTargetValidationService.java')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'import com.genealogy.common.exception.BusinessException;',
+              'import com.genealogy.branch.repository.BranchRepository;\nimport com.genealogy.clan.repository.ClanRepository;\nimport com.genealogy.common.exception.BusinessException;'
+          )
+          text = text.replace(
+              'import com.genealogy.generation.repository.GenerationWordRepository;',
+              'import com.genealogy.generation.repository.GenerationWordRepository;\nimport com.genealogy.person.repository.PersonRepository;\nimport com.genealogy.relationship.repository.RelationshipRepository;'
+          )
+          old = '''            GenerationWordRepository generationWordRepository,
+              GenerationSchemeRepository generationSchemeRepository,
+              CultureTargetGovernanceRegistry targetRegistry
+      ) {
+          super(generationWordRepository, generationSchemeRepository);'''
+          new = '''            GenerationWordRepository generationWordRepository,
+              GenerationSchemeRepository generationSchemeRepository,
+              PersonRepository personRepository,
+              RelationshipRepository relationshipRepository,
+              BranchRepository branchRepository,
+              ClanRepository clanRepository,
+              CultureTargetGovernanceRegistry targetRegistry
+      ) {
+          super(generationWordRepository, generationSchemeRepository, personRepository, relationshipRepository, branchRepository, clanRepository);'''
+          if old not in text:
+              raise SystemExit('culture source validation constructor anchor missing')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           git diff --check
       - name: Backend tests
         working-directory: backend/genealogy-backend
