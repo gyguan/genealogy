@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Popconfirm, Space, Tag, message } from 'antd';
+import { Button, Space, Tag } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Actions, Field } from '../../../../shared/ui/Form';
+import { ConfirmAction, EmptyState, PageFeedback } from '../../../../shared/ui/Feedback';
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { isOfficial, isReviewable, statusColor, statusOf, statusText } from '../../domain/status';
@@ -35,7 +37,11 @@ function clanLabel(clan: ClanLike) {
   return clan.clanName || clan.surname || `宗族#${clan.id || '-'}`;
 }
 
-export function BranchStep({ notify, onSubmittedReview }: Props) {
+function errorText(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+export function BranchStep({ onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<BranchForm>({ branchName: '', parentId: '' });
   const [selectedClanId, setSelectedClanId] = useState(workspace.clanId);
@@ -44,6 +50,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [listError, setListError] = useState('');
 
   const officialBranches = useMemo(() => branches.filter(isOfficial), [branches]);
   const selectedReviewableRows = useMemo(
@@ -55,15 +62,6 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
-  function toast(data: unknown, error = false) {
-    notify?.(data, error);
-    const text = typeof data === 'string' ? data : (data as any)?.message;
-    if (text) {
-      if (error) message.error(text);
-      else message.success(text);
-    }
-  }
-
   function validateBranchForm() {
     if (!selectedClanId) return clans.length > 1 ? '请选择宗族' : '请先创建或选择宗族';
     if (!form.branchName.trim()) return '请填写支派名称';
@@ -71,12 +69,16 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
   }
 
   async function loadClans() {
-    const rows = await queryClans();
-    setClans(rows);
-    if (!selectedClanId && rows[0]?.id) {
-      const defaultClanId = String(rows[0].id);
-      setSelectedClanId(defaultClanId);
-      workspace.setClanId(defaultClanId);
+    try {
+      const rows = await queryClans();
+      setClans(rows);
+      if (!selectedClanId && rows[0]?.id) {
+        const defaultClanId = String(rows[0].id);
+        setSelectedClanId(defaultClanId);
+        workspace.setClanId(defaultClanId);
+      }
+    } catch (error) {
+      feedback.error(errorText(error, '查询宗族失败'));
     }
   }
 
@@ -84,16 +86,18 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     if (!sourceClanId) {
       setBranches([]);
       setSelectedRowKeys([]);
+      setListError('');
       return;
     }
     setLoading(true);
+    setListError('');
     try {
       const rows = await queryBranches(sourceClanId);
       setBranches(rows);
       setSelectedRowKeys([]);
     } catch (error) {
-      toast({ message: (error as Error).message || '查询支派失败' }, true);
       setBranches([]);
+      setListError(errorText(error, '查询支派失败'));
     } finally {
       setLoading(false);
     }
@@ -107,24 +111,25 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
 
   function selectBranch(row: BranchLike) {
     if (!isOfficial(row)) {
-      toast({ message: '该支派未审核通过，暂不能进入下一步关联' }, true);
+      feedback.warning('该支派未审核通过，暂不能进入下一步关联');
       return;
     }
     const id = String(row.id || '');
     workspace.setBranchId(id);
-    toast({ message: `已选中支派：${branchName(row)}` });
+    feedback.success(`已选中支派：${branchName(row)}`);
   }
 
   function selectClan(value: string) {
     setSelectedClanId(value);
     setForm(current => ({ ...current, parentId: '' }));
+    setListError('');
     workspace.patch({ clanId: value, branchId: '' });
   }
 
   async function createBranch(append = false, submit = false) {
-    const errorMessage = validateBranchForm();
-    if (errorMessage) {
-      toast({ message: errorMessage }, true);
+    const validationMessage = validateBranchForm();
+    if (validationMessage) {
+      feedback.warning(validationMessage);
       return;
     }
     setSubmitting(true);
@@ -142,13 +147,13 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
           comment: '提交支派审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
-        toast({ message: '支派已保存并提交审核，审核通过后才能用于维护字辈和录入人物。' });
+        feedback.success('支派已保存并提交审核，审核通过后才能用于维护字辈和录入人物。');
       } else {
-        toast({ message: '支派已保存为草稿，提交并审核通过后才能进入下一步关联。' });
+        feedback.success('支派已保存为草稿，提交并审核通过后才能进入下一步关联。');
       }
       await loadBranches(selectedClanId);
     } catch (error) {
-      toast({ message: (error as Error).message || '保存支派失败' }, true);
+      feedback.error(errorText(error, '保存支派失败'));
     } finally {
       setSubmitting(false);
     }
@@ -165,10 +170,10 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
         comment: '提交支派审核'
       });
       if (task?.id) onSubmittedReview?.(String(task.id));
-      toast({ message: '支派已提交审核' });
+      feedback.success('支派已提交审核');
       await loadBranches(selectedClanId);
     } catch (error) {
-      toast({ message: (error as Error).message || '提交支派审核失败' }, true);
+      feedback.error(errorText(error, '提交支派审核失败'));
     } finally {
       setSubmitting(false);
     }
@@ -185,8 +190,8 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
         comment: '提交支派审核'
       })));
       const { successCount, failedCount } = countSettledResults(results);
-      if (successCount) toast({ message: `已提交 ${successCount} 个支派审核` });
-      if (failedCount) toast({ message: `${failedCount} 个支派提交失败` }, true);
+      if (successCount) feedback.success(`已提交 ${successCount} 个支派审核`);
+      if (failedCount) feedback.error(`${failedCount} 个支派提交失败`);
       await loadBranches(selectedClanId);
     } finally {
       setSubmitting(false);
@@ -198,14 +203,32 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
     setSubmitting(true);
     try {
       await deleteBranchApi(row.id);
-      toast({ message: '支派草稿已删除' });
+      feedback.success('支派草稿已删除');
       await loadBranches(selectedClanId);
     } catch (error) {
-      toast({ message: (error as Error).message || '删除支派草稿失败' }, true);
+      feedback.error(errorText(error, '删除支派草稿失败'));
     } finally {
       setSubmitting(false);
     }
   }
+
+  const resultNotice = listError || !selectedClanId ? (
+    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+      {!selectedClanId ? (
+        <PageFeedback tone="warning" title="请先选择宗族后查看支派" />
+      ) : null}
+      {listError ? (
+        <PageFeedback
+          tone="error"
+          title="支派列表加载失败"
+          description={listError}
+          action={<Button type="link" onClick={() => void loadBranches(selectedClanId)}>重新加载</Button>}
+          closable
+          onClose={() => setListError('')}
+        />
+      ) : null}
+    </Space>
+  ) : null;
 
   return (
     <Panel title="建立支派" description="支派保存后默认为草稿；审核通过后才能用于字辈、人物和来源关联。">
@@ -237,7 +260,7 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
         cardClassName="branch-step-query-results"
         totalSuffix="个支派"
         description="草稿/已驳回支派可勾选后提交审核；已通过支派可选中后进入后续步骤。"
-        notice={!selectedClanId ? <Alert type="warning" showIcon message="请先选择宗族后查看支派" /> : null}
+        notice={resultNotice}
         extra={(
           <Space wrap>
             <Button type="primary" size="small" disabled={!selectedReviewableRows.length} loading={submitting} onClick={() => void submitSelected()}>
@@ -246,54 +269,68 @@ export function BranchStep({ notify, onSubmittedReview }: Props) {
             <Button size="small" loading={loading} disabled={!selectedClanId} onClick={() => void loadBranches(selectedClanId)}>刷新</Button>
           </Space>
         )}
-
-          size="small"
-          bordered
-          rowKey={row => String(row.id || '')}
-          loading={loading}
-          dataSource={branches}
-          pagination={false}
-          rowSelection={{
-            selectedRowKeys,
-            columnTitle: '勾选',
-            columnWidth: 72,
-            onChange: keys => setSelectedRowKeys(keys),
-            getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
-          }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedClanId ? '暂无支派，创建后会显示在这里' : '请选择宗族后查看支派'} /> }}
-          onRow={row => {
-            const selected = String(workspace.branchId || '') === String(row.id || '');
-            return {
-              onClick: () => selectBranch(row),
-              style: selected ? { background: '#e6f4ff', cursor: 'pointer' } : { cursor: 'pointer' }
-            };
-          }}
-          columns={[
-            { key: 'name', title: '支派名称', render: (_value, row) => <Space><span>{branchName(row)}</span>{String(workspace.branchId || '') === String(row.id || '') ? <Tag color="processing">已选择</Tag> : null}</Space> },
-            { key: 'parentId', title: '父支派', render: (_value, row) => parentName(row, branches) },
-            { key: 'level', title: '层级', width: 88, render: (_value, row) => row.level ?? '-' },
-            { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row, '已通过')}</Tag> },
-            {
-              key: 'actions',
-              title: '操作',
-              width: 290,
-              render: (_value, row) => {
-                const selected = String(workspace.branchId || '') === String(row.id || '');
-                return (
-                  <Space size="small" wrap onClick={event => event.stopPropagation()}>
-                    <TrackingLinkButton size="small" type="link" clanId={selectedClanId} targetType="branch" targetId={row.id} />
-                    <Button size="small" type={selected ? 'primary' : 'default'} disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>{selected ? '已选中' : '选中支派'}</Button>
-                    {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
-                    {statusOf(row) === 'draft' ? (
-                      <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
-                        <Button size="small" danger loading={submitting}>删除草稿</Button>
-                      </Popconfirm>
-                    ) : null}
-                  </Space>
-                );
-              }
+        size="small"
+        bordered
+        rowKey={row => String(row.id || '')}
+        loading={loading}
+        dataSource={branches}
+        pagination={false}
+        rowSelection={{
+          selectedRowKeys,
+          columnTitle: '勾选',
+          columnWidth: 72,
+          onChange: keys => setSelectedRowKeys(keys),
+          getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
+        }}
+        locale={{
+          emptyText: (
+            <EmptyState
+              compact
+              title={selectedClanId ? '暂无支派' : '尚未选择宗族'}
+              description={selectedClanId ? '创建支派后会显示在这里。' : '请选择宗族后查看支派。'}
+            />
+          )
+        }}
+        onRow={row => {
+          const selected = String(workspace.branchId || '') === String(row.id || '');
+          return {
+            onClick: () => selectBranch(row),
+            style: selected ? { background: '#e6f4ff', cursor: 'pointer' } : { cursor: 'pointer' }
+          };
+        }}
+        columns={[
+          { key: 'name', title: '支派名称', render: (_value, row) => <Space><span>{branchName(row)}</span>{String(workspace.branchId || '') === String(row.id || '') ? <Tag color="processing">已选择</Tag> : null}</Space> },
+          { key: 'parentId', title: '父支派', render: (_value, row) => parentName(row, branches) },
+          { key: 'level', title: '层级', width: 88, render: (_value, row) => row.level ?? '-' },
+          { key: 'status', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row, '已通过')}</Tag> },
+          {
+            key: 'actions',
+            title: '操作',
+            width: 290,
+            render: (_value, row) => {
+              const selected = String(workspace.branchId || '') === String(row.id || '');
+              return (
+                <Space size="small" wrap onClick={event => event.stopPropagation()}>
+                  <TrackingLinkButton size="small" type="link" clanId={selectedClanId} targetType="branch" targetId={row.id} />
+                  <Button size="small" type={selected ? 'primary' : 'default'} disabled={!isOfficial(row)} onClick={() => selectBranch(row)}>{selected ? '已选中' : '选中支派'}</Button>
+                  {isReviewable(row) ? <Button size="small" type="primary" loading={submitting} onClick={() => void submitOne(row)}>提交审核</Button> : null}
+                  {statusOf(row) === 'draft' ? (
+                    <ConfirmAction
+                      title="确认删除该支派草稿？"
+                      description="删除后不可恢复。"
+                      okText="删除"
+                      cancelText="取消"
+                      danger
+                      onConfirm={() => void deleteDraft(row)}
+                    >
+                      <Button size="small" danger loading={submitting}>删除草稿</Button>
+                    </ConfirmAction>
+                  ) : null}
+                </Space>
+              );
             }
-          ]}
+          }
+        ]}
       />
     </Panel>
   );

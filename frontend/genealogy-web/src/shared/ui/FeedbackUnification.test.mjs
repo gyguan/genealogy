@@ -8,6 +8,7 @@ const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'u
 const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
+const branchStep = readFileSync(new URL('../../features/mvp1/steps/branch/BranchStep.tsx', import.meta.url), 'utf8');
 const sourceDraftDeleteAction = readFileSync(new URL('../../features/sources/SourceDraftDeleteAction.tsx', import.meta.url), 'utf8');
 const sourceLibraryFocusBridge = readFileSync(new URL('../../features/sources/SourceLibraryFocusBridge.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
@@ -75,6 +76,20 @@ test('clan step separates transient feedback from persistent page errors', () =>
   assert.doesNotMatch(clanStep, /<Alert\b/);
 });
 
+test('branch step uses standard transient, page, confirmation and empty feedback', () => {
+  assert.match(branchStep, /import \{ ConfirmAction, EmptyState, PageFeedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/Feedback'/);
+  assert.match(branchStep, /import \{ feedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
+  assert.match(branchStep, /title="支派列表加载失败"/);
+  assert.match(branchStep, /<ConfirmAction/);
+  assert.match(branchStep, /<EmptyState/);
+  assert.match(branchStep, /feedback\.success/);
+  assert.match(branchStep, /feedback\.warning/);
+  assert.match(branchStep, /feedback\.error/);
+  assert.doesNotMatch(branchStep, /<Alert\b|<Empty\b|<Popconfirm\b/);
+  assert.doesNotMatch(branchStep, /\bmessage\.(success|info|warning|error|loading)\s*\(/);
+  assert.doesNotMatch(branchStep, /\bnotify\?\.\(/);
+});
+
 test('source draft deletion uses page feedback without duplicate success notification', () => {
   assert.match(sourceDraftDeleteAction, /import \{ PageFeedback \} from '\.\.\/\.\.\/shared\/ui\/Feedback'/);
   assert.match(sourceDraftDeleteAction, /title="来源删除操作暂不可用"/);
@@ -105,11 +120,11 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 169);
+  assert.equal(baseline.maxCounts.page_alert, 168);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 104);
-  assert.equal(baseline.maxCounts.confirm_modal, 62);
-  assert.equal(baseline.maxCounts.empty_state, 160);
+  assert.equal(baseline.maxCounts.antd_message, 102);
+  assert.equal(baseline.maxCounts.confirm_modal, 61);
+  assert.equal(baseline.maxCounts.empty_state, 159);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
   assert.equal(baseline.maxCounts.custom_notice_class, 30);
   assert.match(audit, /--baseline/);
