@@ -584,41 +584,44 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
             <Button loading={loadingPersons} disabled={!workspace.clanId} onClick={() => void loadPersons()}>刷新</Button>
           </Space>
         )}
-
-            size="small"
-            bordered
-            loading={loadingPersons}
-            rowKey={row => String(row.id || '')}
-            dataSource={persons}
-            pagination={false}
-            rowSelection={{
-              selectedRowKeys: selectedPersonRowKeys,
-              columnTitle: '勾选',
-              columnWidth: 72,
-              onChange: keys => setSelectedPersonRowKeys(keys),
-              getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
-            }}
-            onRow={row => ({ onClick: () => selectPerson(row) })}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无人物数据' : '请选择宗族后查看人物'} /> }}
-            columns={[
-              { key: 'name', title: '姓名', render: (_value, row) => row.name || '未命名人物' },
-              { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(row.gender) },
-              { key: 'generationNo', title: '代次', width: 100, render: (_value, row) => row.generationNo ? `第${row.generationNo}世` : '-' },
-              { key: 'generationWord', title: '字辈', width: 100, render: (_value, row) => row.generationWord || '-' },
-              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-              {
-                key: 'actions',
-                title: '操作',
-                width: 120,
-                render: (_value, row) => row.id ? (
-                  <DraftDeleteButton
-                    object={row}
-                    objectName={row.name}
-                    objectType="人物"
-                    onDelete={() => deletePersonApi(row.id!)}
-                    onDeleted={() => afterDeletePerson(row)}
-                    label="删除草稿"
-                    buttonProps={{ size: 'small' }}
+        size="small"
+        bordered
+        loading={loadingPersons}
+        rowKey={row => String(row.id || '')}
+        dataSource={persons}
+        pagination={false}
+        rowSelection={{
+          selectedRowKeys: selectedPersonRowKeys,
+          columnTitle: '勾选',
+          columnWidth: 72,
+          onChange: keys => setSelectedPersonRowKeys(keys),
+          getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
+        }}
+        onRow={row => ({ onClick: () => selectPerson(row) })}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无人物数据' : '请选择宗族后查看人物'} /> }}
+        columns={[
+          { key: 'name', title: '姓名', render: (_value, row) => row.name || '未命名人物' },
+          { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(row.gender) },
+          { key: 'generationNo', title: '代次', width: 100, render: (_value, row) => row.generationNo ? `第${row.generationNo}世` : '-' },
+          { key: 'generationWord', title: '字辈', width: 100, render: (_value, row) => row.generationWord || '-' },
+          { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+          {
+            key: 'actions',
+            title: '操作',
+            width: 120,
+            render: (_value, row) => row.id ? (
+              <DraftDeleteButton
+                object={row}
+                objectName={row.name}
+                objectType="人物"
+                onDelete={() => deletePersonApi(row.id!)}
+                onDeleted={() => afterDeletePerson(row)}
+                label="删除草稿"
+                buttonProps={{ size: 'small' }}
+              />
+            ) : null
+          }
+        ]}
       />
     </Panel>
   );

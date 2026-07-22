@@ -207,9 +207,7 @@ export function SourceStageStep({ notify, onSubmittedReview }: Props) {
               { key: 'targetId', title: '绑定对象', render: (_value, link) => `对象 #${link.targetId}` },
               { key: 'createdAt', title: '绑定时间', width: 180, render: (_value, link) => link.createdAt || '-' }
             ]}
-          /> : null}
-            </> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={stage.bindingOpen ? '当前来源暂无绑定记录' : '选择正式来源后显示绑定记录'} />}
-          </div>
+          />
         </Card>
       </div>
     </Panel>

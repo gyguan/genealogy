@@ -337,42 +337,47 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
             <Button loading={loadingRelationships} disabled={!centerPersonId} onClick={() => void loadRelationships(centerPersonId)}>刷新</Button>
           </Space>
         )}
-
-            size="small"
-            bordered
-            loading={loadingRelationships}
-            rowKey={row => String(row.id || '')}
-            dataSource={relationships}
-            pagination={false}
-            rowSelection={{
-              selectedRowKeys: selectedRelationshipRowKeys,
-              columnTitle: '勾选',
-              columnWidth: 72,
-              onChange: keys => setSelectedRelationshipRowKeys(keys),
-              getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
-            }}
-            onRow={row => ({ onClick: () => selectRelationship(row) })}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={centerPersonId ? '暂无关系数据' : '请选择中心人物后查看关系'} /> }}
-            columns={[
-              { key: 'name', title: '姓名', render: (_value, row) => relativeName(row, centerPersonId || workspace.personId) },
-              { key: 'relationType', title: '关系类型', width: 120, render: (_value, row) => relationTypeText(row, centerPersonId || workspace.personId) },
-              { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
-              {
-                key: 'actions',
-                title: '操作',
-                width: 220,
-                render: (_value, row) => (
-                  <Space size={4} wrap>
-                    <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="relationship" targetId={row.id} />
-                    {row.id ? (
-                      <DraftDeleteButton
-                        object={row}
-                        objectName={relativeName(row, centerPersonId || workspace.personId)}
-                        objectType="关系"
-                        onDelete={() => deleteRelationshipApi(row.id!)}
-                        onDeleted={() => afterDeleteRelationship(row)}
-                        label="删除草稿"
-                        buttonProps={{ size: 'small', type: 'link' }}
+        size="small"
+        bordered
+        loading={loadingRelationships}
+        rowKey={row => String(row.id || '')}
+        dataSource={relationships}
+        pagination={false}
+        rowSelection={{
+          selectedRowKeys: selectedRelationshipRowKeys,
+          columnTitle: '勾选',
+          columnWidth: 72,
+          onChange: keys => setSelectedRelationshipRowKeys(keys),
+          getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
+        }}
+        onRow={row => ({ onClick: () => selectRelationship(row) })}
+        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={centerPersonId ? '暂无关系数据' : '请选择中心人物后查看关系'} /> }}
+        columns={[
+          { key: 'name', title: '姓名', render: (_value, row) => relativeName(row, centerPersonId || workspace.personId) },
+          { key: 'relationType', title: '关系类型', width: 120, render: (_value, row) => relationTypeText(row, centerPersonId || workspace.personId) },
+          { key: 'dataStatus', title: '状态', width: 110, render: (_value, row) => <Tag color={statusColor(row)}>{statusText(row)}</Tag> },
+          {
+            key: 'actions',
+            title: '操作',
+            width: 220,
+            render: (_value, row) => (
+              <Space size={4} wrap>
+                <TrackingLinkButton size="small" type="link" clanId={workspace.clanId} targetType="relationship" targetId={row.id} />
+                {row.id ? (
+                  <DraftDeleteButton
+                    object={row}
+                    objectName={relativeName(row, centerPersonId || workspace.personId)}
+                    objectType="关系"
+                    onDelete={() => deleteRelationshipApi(row.id!)}
+                    onDeleted={() => afterDeleteRelationship(row)}
+                    label="删除草稿"
+                    buttonProps={{ size: 'small', type: 'link' }}
+                  />
+                ) : null}
+              </Space>
+            )
+          }
+        ]}
       />
     </Panel>
   );
