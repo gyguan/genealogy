@@ -1,14 +1,26 @@
 @import './shared/ui/query-multi-select.css';
 
 .lineage-double-card-result > .ant-card-head {
-  padding-right: 400px;
+  padding-right: 16px;
 }
 
 .lineage-result-toolbar--double-card,
 .lineage-result-toolbar--double-card.is-person {
-  width: 360px;
-  grid-template-columns: minmax(280px, 360px);
+  position: static;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: auto;
+  display: grid;
+  flex: 0 1 360px;
+  width: min(360px, 100%);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
+  margin: 0;
+}
+
+.lineage-result-pane > .lineage-result-toolbar--double-card {
+  margin-bottom: 8px;
 }
 
 .lineage-result-toolbar--double-card.is-person > :nth-child(2) {
@@ -16,42 +28,93 @@
 }
 
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
-  display: block;
+  display: grid;
+  grid-template-columns: max-content minmax(180px, 1fr);
+  align-items: center;
+  column-gap: 8px;
 }
 
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label {
-  display: none;
+  display: block;
+  padding: 0;
 }
 
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label {
+  height: 32px;
+  white-space: nowrap;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label::after {
+  margin-inline-start: 2px;
+  content: '：';
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item:has(.ant-select[aria-label='图内定位人物']) .ant-form-item-label > label {
+  font-size: 0;
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item:has(.ant-select[aria-label='图内定位人物']) .ant-form-item-label > label::before {
+  font-size: 14px;
+  content: '圈内定位';
+}
+
+.lineage-result-toolbar--double-card > .ant-form-item,
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control,
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input,
 .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control-input-content {
   min-width: 0;
+  margin-bottom: 0;
 }
 
+.lineage-result-toolbar--double-card .ant-select {
+  width: 100%;
+}
+
+.lineage-result-toolbar--double-card .ant-form-item-extra,
 .lineage-graph-help {
   display: none !important;
 }
 
-@media (max-width: 1399px) {
-  .lineage-double-card-result > .ant-card-head {
-    padding-right: 16px;
-  }
+.lineage-tree-page--standardized .lineage-graph-toolbar {
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
 
-  .lineage-result-toolbar--double-card,
-  .lineage-result-toolbar--double-card.is-person {
-    position: static;
-    width: 100%;
-    grid-template-columns: 1fr;
-    justify-content: stretch;
-    margin-bottom: 8px;
+.lineage-tree-page--standardized .lineage-graph-toolbar > .lineage-result-toolbar--double-card {
+  order: 0;
+}
+
+.lineage-tree-page--standardized .lineage-graph-toolbar > .ant-space {
+  order: 1;
+  flex: 1 1 560px;
+}
+
+@media (max-width: 1100px) {
+  .lineage-tree-page--standardized .lineage-graph-toolbar {
+    align-items: center;
+    flex-direction: row;
   }
 }
 
 @media (max-width: 767px) {
+  .lineage-tree-page--standardized .lineage-graph-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .lineage-result-toolbar--double-card,
   .lineage-result-toolbar--double-card.is-person {
-    grid-template-columns: 1fr;
-    gap: 0;
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .lineage-tree-page--standardized .lineage-graph-toolbar > .ant-space {
+    width: 100%;
   }
 }
