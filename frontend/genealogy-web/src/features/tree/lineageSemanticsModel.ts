@@ -1,4 +1,5 @@
 import type { TreeEdgeResponse, TreeNodeResponse } from '../../shared/api/generated/tree-types';
+import { isClientSiblingEdge } from './lineageClientRelation';
 import { riskLevelText } from './treeDisplayModel.js';
 
 export type LineageSemanticTone = 'blood' | 'marriage' | 'ritual' | 'status' | 'other';
@@ -78,6 +79,10 @@ export function relationshipDisplayLabel(edge: TreeEdgeResponse) {
 
 export function edgeVisual(edge: TreeEdgeResponse): LineageEdgeVisual {
   const label = relationshipDisplayLabel(edge);
+  if (isClientSiblingEdge(edge)) {
+    const tone = edge.relationCategory === 'ritual' ? 'ritual' : 'blood';
+    return { tone, label, description: `${label}同辈关系，使用无箭头连线表示`, marker: 'none' };
+  }
   if (edge.relationCategory === 'marriage' || edge.relationType === 'spouse') {
     return { tone: 'marriage', label, description: `${label}关系，使用无箭头实线表示`, marker: 'none' };
   }
