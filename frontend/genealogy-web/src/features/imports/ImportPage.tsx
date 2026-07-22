@@ -99,7 +99,7 @@ export function ImportPage({ notify }: Props) {
     void apiClient.get<BranchOption[]>(`/clans/${workspace.clanId}/branches`)
       .then(data => {
         if (!active) return;
-        const records = Array.isArray(data) ? data : [];
+        const records = (Array.isArray(data) ? data : []).filter(branch => ['official', 'approved', 'active'].includes(String(branch.status || '').trim().toLowerCase()));
         setBranches(records);
         const preferred = records.some(branch => String(branch.id) === selectedBranchId)
           ? selectedBranchId

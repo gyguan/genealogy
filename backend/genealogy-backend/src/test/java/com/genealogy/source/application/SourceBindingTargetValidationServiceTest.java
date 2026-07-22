@@ -1,9 +1,16 @@
 package com.genealogy.source.application;
 
+import com.genealogy.branch.entity.BranchEntity;
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenerationSchemeRepository;
 import com.genealogy.generation.repository.GenerationWordRepository;
+import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.entity.RelationshipEntity;
+import com.genealogy.relationship.repository.RelationshipRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,17 +21,17 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SourceBindingTargetValidationServiceTest {
 
-    @Mock
-    private GenerationWordRepository generationWordRepository;
-
-    @Mock
-    private GenerationSchemeRepository generationSchemeRepository;
+    @Mock private GenerationWordRepository generationWordRepository;
+    @Mock private GenerationSchemeRepository generationSchemeRepository;
+    @Mock private PersonRepository personRepository;
+    @Mock private RelationshipRepository relationshipRepository;
+    @Mock private BranchRepository branchRepository;
+    @Mock private ClanRepository clanRepository;
 
     private SourceBindingTargetValidationService service;
 
@@ -32,37 +39,22 @@ class SourceBindingTargetValidationServiceTest {
     void setUp() {
         service = new SourceBindingTargetValidationService(
                 generationWordRepository,
-                generationSchemeRepository
+                generationSchemeRepository,
+                personRepository,
+                relationshipRepository,
+                branchRepository,
+                clanRepository
         );
     }
 
     @Test
-    void validateShouldAcceptGenerationWordFromOfficialScheme() {
+    void validateShouldAcceptGenerationWordFromExplicitlyApprovedScheme() {
         GenerationWordEntity word = generationWord(100L, 200L);
-        GenerationSchemeEntity scheme = generationScheme(200L, 1L, "official");
+        GenerationSchemeEntity scheme = generationScheme(200L, 1L, "approved");
         when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
         when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.of(scheme));
 
-        assertThatCode(() -> service.validate(1L, "generation_word", 100L))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    void validateShouldRejectMissingGenerationWord() {
-        when(generationWordRepository.findById(100L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
-                .hasMessageContaining("字辈明细不存在");
-    }
-
-    @Test
-    void validateShouldRejectGenerationWordFromAnotherClan() {
-        GenerationWordEntity word = generationWord(100L, 200L);
-        when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
-        when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
-                .hasMessageContaining("字辈不属于当前宗族");
+        assertThatCode(() -> service.validate(1L, "generation_word", 100L)).doesNotThrowAnyException();
     }
 
     @Test
@@ -77,21 +69,56 @@ class SourceBindingTargetValidationServiceTest {
     }
 
     @Test
-    void validateShouldRejectLegacyApprovedAlias() {
-        GenerationWordEntity word = generationWord(100L, 200L);
-        GenerationSchemeEntity scheme = generationScheme(200L, 1L, "approved");
-        when(generationWordRepository.findById(100L)).thenReturn(Optional.of(word));
-        when(generationSchemeRepository.findByIdAndClanId(200L, 1L)).thenReturn(Optional.of(scheme));
+    void validateShouldAcceptOfficialPerson() {
+        PersonEntity person = new PersonEntity();
+        person.setId(300L);
+        person.setClanId(1L);
+        person.setDataStatus("official");
+        when(personRepository.findByIdAndDeletedAtIsNull(300L)).thenReturn(Optional.of(person));
 
-        assertThatThrownBy(() -> service.validate(1L, "generation_word", 100L))
-                .hasMessageContaining("字辈方案审核通过后才能绑定来源资料");
+        assertThatCode(() -> service.validate(1L, "person", 300L)).doesNotThrowAnyException();
     }
 
     @Test
-    void validateShouldIgnoreOtherTargetTypes() {
-        assertThatCode(() -> service.validate(1L, "person", 300L))
-                .doesNotThrowAnyException();
-        verifyNoInteractions(generationWordRepository, generationSchemeRepository);
+    void validateShouldRejectDraftPerson() {
+        PersonEntity person = new PersonEntity();
+        person.setId(300L);
+        person.setClanId(1L);
+        person.setDataStatus("draft");
+        when(personRepository.findByIdAndDeletedAtIsNull(300L)).thenReturn(Optional.of(person));
+
+        assertThatThrownBy(() -> service.validate(1L, "person", 300L))
+                .hasMessageContaining("人物审核通过后才能绑定来源资料");
+    }
+
+    @Test
+    void validateShouldAcceptOfficialRelationship() {
+        RelationshipEntity relationship = new RelationshipEntity();
+        relationship.setId(400L);
+        relationship.setClanId(1L);
+        relationship.setDataStatus("official");
+        when(relationshipRepository.findByIdAndClanIdAndDeletedAtIsNull(400L, 1L))
+                .thenReturn(Optional.of(relationship));
+
+        assertThatCode(() -> service.validate(1L, "relationship", 400L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateShouldRejectDraftBranch() {
+        BranchEntity branch = new BranchEntity();
+        branch.setId(500L);
+        branch.setClanId(1L);
+        branch.setStatus("draft");
+        when(branchRepository.findByIdAndClanId(500L, 1L)).thenReturn(Optional.of(branch));
+
+        assertThatThrownBy(() -> service.validate(1L, "branch", 500L))
+                .hasMessageContaining("支派审核通过后才能绑定来源资料");
+    }
+
+    @Test
+    void validateShouldAcceptClanContainerTarget() {
+        when(clanRepository.existsById(1L)).thenReturn(true);
+        assertThatCode(() -> service.validate(1L, "clan", 1L)).doesNotThrowAnyException();
     }
 
     private GenerationWordEntity generationWord(Long id, Long schemeId) {

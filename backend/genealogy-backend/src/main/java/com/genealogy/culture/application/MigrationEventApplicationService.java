@@ -9,6 +9,7 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.persistence.TargetCountProjection;
 import com.genealogy.culture.domain.MigrationEventDomainService;
 import com.genealogy.culture.domain.MigrationEventPermissionPolicyService;
@@ -565,11 +566,10 @@ public class MigrationEventApplicationService {
     }
 
     private BranchEntity requireBranch(Long clanId, Long branchId) {
-        return branchRepository.findByIdAndClanId(branchId, clanId)
-                .orElseThrow(() -> new BusinessException(
-                        "MIGRATION_EVENT_BRANCH_INVALID",
-                        "支派不属于当前宗族"
-                ));
+        BranchEntity branch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException("MIGRATION_EVENT_BRANCH_INVALID", "支派不属于当前宗族"));
+        ApprovedStatusPolicy.requireApproved(branch.getStatus(), "MIGRATION_EVENT_BRANCH_NOT_OFFICIAL", "所属支派审核通过后才能维护迁徙事件");
+        return branch;
     }
 
     private void validateFounder(Long clanId, Long branchId, Long founderPersonId) {
@@ -587,6 +587,7 @@ public class MigrationEventApplicationService {
                     "始迁祖不属于当前宗族"
             );
         }
+        ApprovedStatusPolicy.requireApproved(founder.getDataStatus(), "MIGRATION_EVENT_FOUNDER_NOT_OFFICIAL", "始迁祖审核通过后才能用于迁徙事件");
         if (founder.getBranchId() != null
                 && !branchRepository.isDescendantOrSelf(clanId, branchId, founder.getBranchId())) {
             throw new BusinessException(

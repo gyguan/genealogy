@@ -45,9 +45,8 @@ public class SourceBindingCommandApplicationService {
 
     @Transactional
     public SourceBindingResponse bind(Long clanId, SourceBindingCreateRequest request, Long actorId) {
-        SourceBindingResponse response = sourceApplicationService.bind(clanId, request, actorId);
         validateTarget(clanId, request);
-        return response;
+        return sourceApplicationService.bind(clanId, request, actorId);
     }
 
     @Transactional
@@ -99,11 +98,10 @@ public class SourceBindingCommandApplicationService {
             String requestId,
             String clientIp
     ) {
-        SourceBindingRevisionResponse response = sourceBindingReviewApplicationService.approve(
+        validateRevisionTarget(revisionId);
+        return sourceBindingReviewApplicationService.approve(
                 revisionId, request, actorId, requestId, clientIp
         );
-        validateRevisionTarget(revisionId);
-        return response;
     }
 
     @Transactional

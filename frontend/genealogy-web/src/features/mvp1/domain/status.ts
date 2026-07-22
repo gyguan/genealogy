@@ -17,7 +17,7 @@ export function statusOf(row: StatusLike | undefined | null) {
 
 export function isOfficial(row: StatusLike | undefined | null) {
   const status = statusOf(row);
-  return !status || OFFICIAL_STATUSES.includes(status);
+  return OFFICIAL_STATUSES.includes(status);
 }
 
 export function isReviewable(row: StatusLike | undefined | null) {

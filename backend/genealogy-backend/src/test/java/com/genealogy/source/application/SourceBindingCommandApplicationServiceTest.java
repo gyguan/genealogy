@@ -55,9 +55,9 @@ class SourceBindingCommandApplicationServiceTest {
 
         service.bind(1L, request, 2L);
 
-        InOrder order = inOrder(sourceApplicationService, targetValidationService);
-        order.verify(sourceApplicationService).bind(1L, request, 2L);
+        InOrder order = inOrder(targetValidationService, sourceApplicationService);
         order.verify(targetValidationService).validate(1L, "generation_word", 100L);
+        order.verify(sourceApplicationService).bind(1L, request, 2L);
     }
 
     @Test
@@ -101,9 +101,9 @@ class SourceBindingCommandApplicationServiceTest {
 
         service.approve(9L, request, 3L, "req-3", "127.0.0.1");
 
-        InOrder order = inOrder(sourceBindingReviewApplicationService, targetValidationService);
-        order.verify(sourceBindingReviewApplicationService).approve(9L, request, 3L, "req-3", "127.0.0.1");
+        InOrder order = inOrder(targetValidationService, sourceBindingReviewApplicationService);
         order.verify(targetValidationService).validate(1L, "generation_word", 100L);
+        order.verify(sourceBindingReviewApplicationService).approve(9L, request, 3L, "req-3", "127.0.0.1");
     }
 
     @Test

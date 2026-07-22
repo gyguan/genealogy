@@ -1,9 +1,11 @@
 package com.genealogy.person.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
@@ -103,6 +105,7 @@ public class PersonApplicationService {
         }
         authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
         ensureBranchBelongsToClan(clanId, request.branchId());
+        requireApprovedBranch(clanId, request.branchId());
         validatePersonCodeForCreate(clanId, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
         validateGenerationWord(clanId, request.branchId(), request.generationNo(), request.generationWord());
@@ -205,7 +208,8 @@ public class PersonApplicationService {
         Long effectiveBranchId = request.branchId() == null ? entity.getBranchId() : request.branchId();
         authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, effectiveBranchId, PERSON_UPDATE);
         requireReviewForOfficialPerson(entity, actorId, "PERSON_OFFICIAL_UPDATE_REVIEW_REQUIRED", "正式人物变更需先提交审核");
-        ensureBranchBelongsToClan(entity.getClanId(), request.branchId());
+        ensureBranchBelongsToClan(entity.getClanId(), effectiveBranchId);
+        requireApprovedBranch(entity.getClanId(), effectiveBranchId);
         validatePersonCodeForUpdate(entity.getClanId(), id, request.personCode());
         validateLifeDates(request.birthDate(), request.deathDate());
         validateGenerationWord(entity.getClanId(), effectiveBranchId, request.generationNo(), request.generationWord());
@@ -408,6 +412,15 @@ public class PersonApplicationService {
         }
     }
 
+    private void requireApprovedBranch(Long clanId, Long branchId) {
+        if (branchId == null) {
+            return;
+        }
+        BranchEntity branch = branchRepository.findByIdAndClanId(branchId, clanId)
+                .orElseThrow(() -> new BusinessException("BRANCH_CLAN_MISMATCH", "支派不存在或不属于当前宗族"));
+        ApprovedStatusPolicy.requireApproved(branch.getStatus(), "BRANCH_NOT_OFFICIAL", "所属支派审核通过后才能录入或编辑人物");
+    }
+
     private void ensureBranchBelongsToClan(Long clanId, Long branchId) {
         if (branchId == null) {
             return;
@@ -466,7 +479,9 @@ public class PersonApplicationService {
     }
 
     private Optional<GenerationSchemeEntity> findEffectiveScheme(Long clanId, Long branchId) {
-        List<GenerationSchemeEntity> schemes = genSchemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId);
+        List<GenerationSchemeEntity> schemes = genSchemeRepository.findByClanIdOrderByIsDefaultDescIdAsc(clanId).stream()
+                .filter(item -> ApprovedStatusPolicy.isApproved(item.getStatus()))
+                .toList();
         if (schemes.isEmpty()) {
             return Optional.empty();
         }

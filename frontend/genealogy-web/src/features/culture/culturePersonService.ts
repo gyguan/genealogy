@@ -55,7 +55,8 @@ export async function searchCulturePersons(clanId: string, keyword: string, bran
     clanId,
     keyword: keyword.trim(),
     pageNo: '1',
-    pageSize: '20'
+    pageSize: '20',
+    dataStatus: 'official'
   });
   if (branchId) params.set('branchId', String(branchId));
   const data = await apiClient.get<unknown>(`/persons/search?${params.toString()}`);
