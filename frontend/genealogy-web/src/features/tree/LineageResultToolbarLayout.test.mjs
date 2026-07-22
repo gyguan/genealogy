@@ -33,14 +33,15 @@ test('person center and branch locator labels stay inline with their selects', (
   assert.match(pageSource, /<Field label="图内定位">/);
   assert.match(pageSource, /aria-label="切换中心人物"/);
   assert.match(pageSource, /aria-label="图内定位人物"/);
-  assert.match(css, /\.lineage-graph-toolbar-field \.ant-form-item-row\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-flow:\s*row nowrap\s*!important;/);
+  assert.match(css, /\.lineage-graph-toolbar-field \.ant-form-item-row\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-flow:\s*row nowrap\s*!important;[\s\S]*?align-items:\s*center\s*!important;/);
   assert.match(css, /\.lineage-graph-toolbar-field \.ant-form-item-label\s*\{[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?white-space:\s*nowrap;/);
   assert.match(css, /content:\s*'：'/);
   assert.match(css, /content:\s*'圈内定位'/);
 });
 
-test('selector is a direct toolbar child and aligned to the right', () => {
-  assert.match(css, /\.lineage-graph-toolbar > \.lineage-graph-toolbar-field\s*\{[\s\S]*?margin:\s*0 0 0 auto;/);
+test('selector is centered vertically and aligned right inside the graph toolbar', () => {
+  assert.match(css, /\.lineage-tree-page--standardized \.lineage-result-pane \.lineage-graph-toolbar\s*\{[\s\S]*?align-items:\s*center;[\s\S]*?flex-direction:\s*row;[\s\S]*?flex-wrap:\s*nowrap;/);
+  assert.match(css, /\.lineage-graph-toolbar > \.lineage-graph-toolbar-field\s*\{[\s\S]*?align-self:\s*center;[\s\S]*?margin:\s*0 0 0 auto\s*!important;/);
   assert.match(css, /\.lineage-result-pane:has\(> \.lineage-result-toolbar--double-card\.is-person\)[\s\S]*?\.lineage-graph-toolbar > \.lineage-graph-toolbar-field--locator\s*\{[\s\S]*?display:\s*none;/);
   assert.match(css, /\.lineage-result-toolbar--double-card:empty\s*\{[\s\S]*?display:\s*none;/);
   assert.doesNotMatch(css, /position:\s*absolute\s*!important/);
@@ -52,7 +53,8 @@ test('narrow screens keep the toolbar field usable', () => {
   assert.match(css, /@media \(max-width: 900px\)/);
   assert.match(css, /@media \(max-width: 767px\)/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?flex-direction:\s*column;/);
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?margin-left:\s*0;/);
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?align-self:\s*stretch;/);
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?margin-left:\s*0\s*!important;/);
 });
 
 void root;
