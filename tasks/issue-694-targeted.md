@@ -10,24 +10,23 @@
 ```text
 8: import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 211:     <Panel title="建立支派" description="支派保存后默认为草稿；审核通过后才能用于字辈、人物和来源关联。">
-236:       <section className="branch-step-list-panel">
-237:         <div className="branch-step-list-header">
-250:         <ResultListCard<BranchLike>
-289:                       <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
+236:       <ResultListCard<BranchLike>
+237:         cardClassName="branch-step-query-results"
+288:                       <Popconfirm title="确认删除该支派草稿？" okText="删除" cancelText="取消" onConfirm={() => void deleteDraft(row)}>
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/clan/ClanStep.tsx`
 
-- ResultListCard: 0
+- ResultListCard: 3
 - QueryResultCard: 0
 - Card 标签: 0
 - Table 标签: 0
 
 ```text
-191:       <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
-208:       <Card
-210:         title={`我的宗族（共${clans.length}个）`}
-223:         <Table<ClanRecord>
+8: import { ResultListCard } from '../../../../shared/ui/ResultListCard';
+192:       <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
+209:       <ResultListCard<ClanRecord>
+210:         cardClassName="clan-step-query-results"
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/generation/GenerationStep.tsx`
@@ -40,12 +39,11 @@
 ```text
 7: import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 312:     <Panel title="维护字辈" description="字辈方案保存后默认为草稿；审核通过后才能用于人物录入。">
-339:       <section className="wizard-branch-list wizard-generation-inline-list">
-340:         <div className="wizard-inline-list-header">
-350:         <ResultListCard<GenerationSchemeLike>
+339:       <ResultListCard<GenerationSchemeLike>
+340:         cardClassName="generation-step-query-results"
 387:         title="维护字辈"
-414:           <div className="wizard-inline-list-header">
-419:           <ResultListCard<GenerationItemLike>
+414:           <ResultListCard<GenerationItemLike>
+415:             cardClassName="generation-item-query-results"
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/person/PersonStep.tsx`
@@ -63,8 +61,8 @@
 504:         <Card size="small" title="世系信息" className="person-step-form-card">
 523:         <Card size="small" title="生卒与居住" className="person-step-form-card">
 552:         <Card size="small" title="传记与隐私" className="person-step-form-card">
-574:       <section className="person-step-list-panel step-object-result-panel">
-589:           <ResultListCard<PersonLike>
+574:       <ResultListCard<PersonLike>
+575:         cardClassName="person-step-query-results"
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/relationship/RelationshipStep.tsx`
@@ -77,8 +75,8 @@
 ```text
 7: import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 252:     <Panel title="建立亲属关系" description="只能选择已审核通过的人物建立关系；新关系审核通过后才能绑定来源。">
-327:       <section className="relationship-step-list-panel step-object-result-panel">
-342:           <ResultListCard<RelationshipLike>
+327:       <ResultListCard<RelationshipLike>
+328:         cardClassName="relationship-step-query-results"
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/review/ReviewProgressStep.tsx`
@@ -116,16 +114,17 @@
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/source/SourceStageStep.tsx`
 
-- ResultListCard: 0
+- ResultListCard: 3
 - QueryResultCard: 0
 - Card 标签: 0
 - Table 标签: 0
 
 ```text
-161:     <Panel title="来源证据" description="先创建并审核来源，再在绑定阶段选择已审核通过的来源。">
-163:         <Card title={<Space><span>阶段一：创建来源</span><Tag color="processing">创建与审核</Tag></Space>}>
-172:         <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
-188:               {pagedLinks.rows.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>)}
+6: import { ResultListCard } from '../../../../shared/ui/ResultListCard';
+162:     <Panel title="来源证据" description="先创建并审核来源，再在绑定阶段选择已审核通过的来源。">
+164:         <Card title={<Space><span>阶段一：创建来源</span><Tag color="processing">创建与审核</Tag></Space>}>
+173:         <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
+185:           <ResultListCard<SourceLinkLike>
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/source/SourceStep.tsx`
