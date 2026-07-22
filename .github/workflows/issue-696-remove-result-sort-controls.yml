@@ -20,7 +20,10 @@ jobs:
           fetch-depth: 0
 
       - name: Apply result sort control removal
-        run: python scripts/issue-696-remove-result-sort-controls.py
+        shell: bash
+        run: |
+          python scripts/issue-696-remove-result-sort-controls.py
+          sed -i 's/^\.person-archive-desktop-list {/  .person-archive-desktop-list {/' frontend/genealogy-web/src/person-archive-tweaks.css
 
       - name: Persist implementation
         shell: bash
