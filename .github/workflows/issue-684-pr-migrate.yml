@@ -1,0 +1,75 @@
+name: Issue 684 PR Migration
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Extract and run migration
+        shell: bash
+        run: |
+          if grep -q 'export function QueryResultCard' frontend/genealogy-web/src/shared/ui/QueryResultCards.tsx; then
+            echo 'Issue 684 migration already applied.'
+            exit 0
+          fi
+          awk '
+            /python - <<.PY./ { capture=1; next }
+            capture && /^          PY$/ { capture=0; exit }
+            capture { sub(/^          /, ""); print }
+          ' .github/workflows/issue-684-move-query-total.yml > /tmp/issue684_migrate.py
+          test -s /tmp/issue684_migrate.py
+          python /tmp/issue684_migrate.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
+
+      - name: Validate query result structure
+        working-directory: frontend/genealogy-web
+        run: node --test src/shared/ui/QueryResultCards.test.mjs
+
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/22-frontend-query-page-pattern-spec.md \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.tsx \
+            frontend/genealogy-web/src/shared/ui/query-result-cards.css \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs \
+            frontend/genealogy-web/src/features \
+            frontend/genealogy-web/e2e/culture-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/tracking-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/import-page-pattern.spec.ts \
+            tasks/issue-684-execution.md
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: move query totals to outer result headers"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
