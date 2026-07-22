@@ -34,6 +34,14 @@ jobs:
           )
           if count != 1:
               raise SystemExit('unable to normalize BranchOption declaration')
+          source_text, count = re.subn(
+              r'export async function listBranches\(clanId: string\) \{\s*return toRows<BranchOption>\(await apiClient\.get\(`/clans/\$\{clanId\}/branches`\)\);\s*\}',
+              'export async function listBranches(clanId: string) {\n    return toRows<BranchOption>(await apiClient.get(`/clans/${clanId}/branches`));\n  }',
+              source_text,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit('unable to normalize listBranches function')
           source.write_text(source_text, encoding='utf-8')
 
           text = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
