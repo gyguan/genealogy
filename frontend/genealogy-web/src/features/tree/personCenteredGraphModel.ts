@@ -3,7 +3,7 @@ import type {
   TreeGraphResponse,
   TreeNodeResponse
 } from '../../shared/api/generated/tree-types';
-import type { LineageClientEdge } from './lineageClientRelation';
+import type { LineageClientEdge } from './lineageClientRelation.js';
 
 export type PersonCenteredClientGraph = TreeGraphResponse & {
   clientLayoutMode: 'person-centered';
@@ -14,6 +14,7 @@ type InferredSiblingRelation = {
   relationCategory: 'blood' | 'ritual';
 };
 
+const MAX_PERSON_CENTER_NODES = 160;
 const PARENT_RELATION_TYPES = new Set<TreeEdgeResponse['relationType']>([
   'parent_child',
   'adoptive',
@@ -106,13 +107,56 @@ function inferredSiblingRelation(
   };
 }
 
+function normalizedDepth(value: number | string) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.min(3, Math.max(1, Math.trunc(parsed)));
+}
+
+function visibleWithinDepth(
+  centerNodeId: string,
+  edges: TreeEdgeResponse[],
+  depth: number
+) {
+  const neighbors = new Map<string, string[]>();
+  edges.forEach(edge => {
+    neighbors.set(edge.fromNodeId, [...(neighbors.get(edge.fromNodeId) || []), edge.toNodeId]);
+    neighbors.set(edge.toNodeId, [...(neighbors.get(edge.toNodeId) || []), edge.fromNodeId]);
+  });
+
+  const distance = new Map<string, number>([[centerNodeId, 0]]);
+  const queue = [centerNodeId];
+  let limited = false;
+
+  while (queue.length) {
+    const current = queue.shift() as string;
+    const currentDepth = distance.get(current) || 0;
+    if (currentDepth >= depth) continue;
+    for (const next of neighbors.get(current) || []) {
+      if (distance.has(next)) continue;
+      if (distance.size >= MAX_PERSON_CENTER_NODES) {
+        limited = true;
+        continue;
+      }
+      distance.set(next, currentDepth + 1);
+      queue.push(next);
+    }
+  }
+
+  return { nodeIds: new Set(distance.keys()), limited };
+}
+
 /**
- * 将人物中心接口返回的多层图收敛为“一跳关系图”：
- * 中心人物 + 父母、配偶、子女、显式直接关系，以及由共同父母推导出的兄弟姐妹。
+ * 将人物接口返回的图谱裁剪为以中心人物为原点的 1～3 代关系图。
+ * 一代额外将共同父母推导出的兄弟姐妹视为中心人物的直接同辈关系。
  */
-export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCenteredClientGraph {
+export function buildPersonCenteredGraph(
+  graph: TreeGraphResponse,
+  requestedDepth: number | string = 1
+): PersonCenteredClientGraph {
   const { nodeMap, edges } = uniqueGraph(graph);
   const center = (graph.rootNodeId && nodeMap.get(graph.rootNodeId)) || nodeMap.values().next().value;
+  const depth = normalizedDepth(requestedDepth);
   if (!center) {
     return {
       ...graph,
@@ -142,18 +186,13 @@ export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCentered
     }
   });
 
-  const siblingIds = new Set(siblingRelations.keys());
-  const visibleNodeIds = new Set<string>([
-    centerNodeId,
-    ...directEndpointIds,
-    ...siblingIds
-  ]);
-  const visibleNodes = graph.nodes.filter(node => visibleNodeIds.has(node.nodeId));
-
-  const roleAwareEdges = directEdges.map(edge => ({
-    ...edge,
-    relationLabel: directRelationLabel(edge, centerNodeId, nodeMap)
-  }));
+  const roleAwareEdges = edges.map(edge => {
+    if (edge.fromNodeId !== centerNodeId && edge.toNodeId !== centerNodeId) return edge;
+    return {
+      ...edge,
+      relationLabel: directRelationLabel(edge, centerNodeId, nodeMap)
+    };
+  });
   const syntheticSiblingEdges: LineageClientEdge[] = [...siblingRelations.entries()]
     .filter(([siblingId]) => !directEdges.some(edge => otherEndpoint(edge, centerNodeId) === siblingId))
     .map(([siblingId, relation]) => ({
@@ -170,7 +209,18 @@ export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCentered
       clientRelationKind: 'sibling',
       clientDerived: true
     }));
-  const visibleEdges: TreeEdgeResponse[] = [...roleAwareEdges, ...syntheticSiblingEdges];
+  const allEdges: TreeEdgeResponse[] = [...roleAwareEdges, ...syntheticSiblingEdges];
+  const visible = visibleWithinDepth(centerNodeId, allEdges, depth);
+  const visibleNodes = graph.nodes.filter(node => visible.nodeIds.has(node.nodeId));
+  const visibleEdges = allEdges.filter(edge => visible.nodeIds.has(edge.fromNodeId) && visible.nodeIds.has(edge.toNodeId));
+  const warnings = (graph.warnings || []).filter(warning => warning.code !== 'isolated_nodes');
+  if (visible.limited) {
+    warnings.push({
+      code: 'client_person_center_limit',
+      message: `人物中心图谱已限制为前 ${MAX_PERSON_CENTER_NODES} 个人物，请缩小关系范围或展开深度`,
+      count: visibleNodes.length
+    });
+  }
 
   return {
     ...graph,
@@ -179,11 +229,17 @@ export function buildDirectPersonGraph(graph: TreeGraphResponse): PersonCentered
     edges: visibleEdges,
     meta: {
       ...graph.meta,
-      appliedDepth: Math.min(graph.meta.appliedDepth, 1),
+      appliedDepth: Math.min(graph.meta.appliedDepth, depth),
       nodeCount: visibleNodes.length,
-      edgeCount: visibleEdges.length
+      edgeCount: visibleEdges.length,
+      truncated: graph.meta.truncated || visible.limited,
+      truncationReasons: graph.meta.truncationReasons
     },
-    warnings: (graph.warnings || []).filter(warning => warning.code !== 'isolated_nodes'),
+    warnings,
     clientLayoutMode: 'person-centered'
   };
+}
+
+export function buildDirectPersonGraph(graph: TreeGraphResponse) {
+  return buildPersonCenteredGraph(graph, 1);
 }
