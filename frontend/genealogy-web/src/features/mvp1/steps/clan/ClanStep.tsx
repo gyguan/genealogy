@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
+import { PageFeedback } from '../../../../shared/ui/Feedback';
 import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ClanForm = {
@@ -248,12 +249,11 @@ export function ClanStep({ notify, onCreated }: Props) {
   const resultNotice = clanReviewError || clanDeleteError || clanListError ? (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       {clanReviewError ? (
-        <Alert
-          type="error"
-          showIcon
-          closable
-          message="宗族提交审核失败"
+        <PageFeedback
+          tone="error"
+          title="宗族提交审核失败"
           description={clanReviewError}
+          closable
           onClose={() => setClanReviewError('')}
         />
       ) : null}
