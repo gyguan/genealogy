@@ -6,6 +6,7 @@ import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
+import { personEducationOptions } from '../../../../shared/domain/personFormOptions';
 import { nullableBoolean, nullableNumber, nullableString } from '../../domain/normalize';
 import { isOfficial, isReviewable, statusColor, statusText } from '../../domain/status';
 import { loadBranches as queryBranches, type BranchLike } from '../../services/branchService';
@@ -89,20 +90,6 @@ const livingOptions = [
   { value: 'true', label: '在世' },
   { value: 'false', label: '已故' },
   { value: '', label: '未知' }
-];
-
-const educationOptions = [
-  { value: '', label: '请选择教育程度' },
-  { value: '私塾/家学', label: '私塾/家学' },
-  { value: '小学', label: '小学' },
-  { value: '初中', label: '初中' },
-  { value: '高中', label: '高中' },
-  { value: '中专', label: '中专' },
-  { value: '大专', label: '大专' },
-  { value: '本科', label: '本科' },
-  { value: '硕士', label: '硕士' },
-  { value: '博士', label: '博士' },
-  { value: '其他', label: '其他' }
 ];
 
 const lineageStatusOptions = [
@@ -541,7 +528,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
               <Input value={personForm.occupation} onChange={event => patchPerson('occupation', event.target.value)} />
             </Form.Item>
             <Form.Item label="教育程度">
-              <Select value={personForm.education} onChange={value => patchPerson('education', value)} options={educationOptions} />
+              <Select value={personForm.education} onChange={value => patchPerson('education', value)} options={personEducationOptions} />
             </Form.Item>
             <Form.Item label="荣誉称号">
               <Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} />
