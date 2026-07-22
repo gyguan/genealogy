@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Alert, Empty, Popconfirm, Result } from 'antd';
 import type { AlertProps, PopconfirmProps, ResultProps } from 'antd';
+import '../../feedback-system.css';
 
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
 export type FeedbackVariant = 'page' | 'section' | 'inline' | 'toast';
