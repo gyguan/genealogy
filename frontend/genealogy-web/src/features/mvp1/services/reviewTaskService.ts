@@ -32,9 +32,18 @@ function reportBlockedGeneration(error: unknown) {
   }));
 }
 
+export function submitClanReviewTask(clanId: string | number, comment: string | null) {
+  return apiClient.post(`/clans/${clanId}/submit-review`, {
+    diffSummary: comment
+  });
+}
+
 export async function submitReviewTask({ clanId, targetType, targetId, comment }: SubmitReviewTaskInput) {
   try {
     await validateReviewTarget(targetType, targetId);
+    if (targetType === 'clan') {
+      return await submitClanReviewTask(targetId, comment);
+    }
     return await apiClient.post(`/clans/${clanId}/review-tasks`, {
       targetType,
       targetId: Number(targetId),
