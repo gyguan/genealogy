@@ -35,10 +35,6 @@
   font-weight: 700;
 }
 
-.lineage-logic-card--person[data-depth='1'] .lineage-graph-collapse {
-  display: none;
-}
-
 @media (max-width: 767px) {
   .lineage-logic-card--person .lineage-graph-viewport::before {
     top: 10px;
