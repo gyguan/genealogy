@@ -1,6 +1,11 @@
 name: Issue 708 resilient executor
 
 on:
+  push:
+    branches:
+      - agent/issue-708-approved-dependencies
+    paths:
+      - .github/workflows/issue-708-executor.yml
   pull_request:
     branches:
       - main
@@ -25,7 +30,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Normalize the one formatting-sensitive declaration before executing the guarded patch.
           path = Path('frontend/genealogy-web/src/features/sources/sourceLibraryService.ts')
           text = path.read_text(encoding='utf-8')
           pattern = r'export type BranchOption = \{\s*id\?: number;\s*branchName\?: string;\s*branchPath\?: string;\s*\};'
