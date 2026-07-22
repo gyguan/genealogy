@@ -20,13 +20,6 @@
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-
-/* The result sort is moved into the card header; collapse the now-empty body toolbar. */
-.business-page--personArchive .person-archive-result-toolbar:empty {
-  min-height: 0;
-  margin-bottom: 0;
-}
-
 /* Match the audit result heading to the standard query-result card title pattern. */
 .business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
   min-height: unset;

@@ -302,7 +302,6 @@
 /* Result toolbars and batch bars                                               */
 /* -------------------------------------------------------------------------- */
 
-.business-page--personArchive .person-archive-result-toolbar,
 .business-page--treeProduct .lineage-scope-summary,
 .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] > .ant-card-body > .ant-alert,
 .business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-body > .ant-alert,

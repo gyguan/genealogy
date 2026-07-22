@@ -71,20 +71,6 @@
 .source-library-query-page .source-library-form-alert {
   margin-bottom: 16px;
 }
-
-.source-library-query-page .source-library-result-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-}
-
-.source-library-query-page .source-library-sort {
-  width: 144px;
-  flex: 0 0 auto;
-}
-
 .source-library-query-page .source-library-name-link {
   height: auto;
   padding: 0;
@@ -192,14 +178,5 @@
 
   .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-extra .ant-btn:not([aria-label]) {
     flex: 1;
-  }
-
-  .source-library-query-page .source-library-result-meta {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .source-library-query-page .source-library-sort {
-    width: 100%;
   }
 }
