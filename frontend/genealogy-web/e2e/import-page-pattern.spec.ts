@@ -82,13 +82,34 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   expect(titleGroupBox).not.toBeNull();
   expect(actionBox).not.toBeNull();
   if (!headerBox || !titleGroupBox || !actionBox) return;
-  expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(16);
+  expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(12);
   const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
   const actionCenter = actionBox.y + actionBox.height / 2;
   expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
 }
 
-test('data import page uses query and result cards with new import modal', async ({ page }) => {
+async function expectBusinessCardNestedInsideOuterBody(page: Page) {
+  const outerBody = page.locator('.import-result-card > .ant-card-body');
+  const businessCard = outerBody.locator(':scope > .business-result-card[data-query-result-role="business"]');
+  await expect(businessCard).toHaveCount(1);
+
+  const [outerBodyBox, businessCardBox, outerBodyBackground] = await Promise.all([
+    outerBody.boundingBox(),
+    businessCard.boundingBox(),
+    outerBody.evaluate(element => getComputedStyle(element).backgroundColor)
+  ]);
+  expect(outerBodyBox).not.toBeNull();
+  expect(businessCardBox).not.toBeNull();
+  expect(outerBodyBackground).toBe('rgb(255, 255, 255)');
+  if (!outerBodyBox || !businessCardBox) return;
+
+  expect(businessCardBox.x - outerBodyBox.x).toBeGreaterThanOrEqual(15);
+  expect(businessCardBox.y - outerBodyBox.y).toBeGreaterThanOrEqual(15);
+  expect(outerBodyBox.x + outerBodyBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(15);
+  expect(outerBodyBox.y + outerBodyBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(15);
+}
+
+test('data import page uses query and nested result cards with new import modal', async ({ page }) => {
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
@@ -98,11 +119,12 @@ test('data import page uses query and result cards with new import modal', async
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
   const outerResultHeader = page.locator('.import-result-card > .ant-card-head');
-  const businessResultHeader = page.locator('.import-result-card .business-result-card > .ant-card-head');
+  const businessResultHeader = page.locator('.import-result-card > .ant-card-body > .business-result-card > .ant-card-head');
   await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
   await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toBeVisible();
   await expectDesktopResultHeaderSpacing(page);
+  await expectBusinessCardNestedInsideOuterBody(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
   expect(labels).toEqual(['导入对象', '导入状态', '文件名/任务编号', '任务创建时间']);
@@ -143,6 +165,7 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
     return { top: style.paddingTop, bottom: style.paddingBottom };
   });
   expect(headerPadding).toEqual({ top: '16px', bottom: '16px' });
+  await expectBusinessCardNestedInsideOuterBody(page);
 
   await expect(page.locator('.import-execution-table')).toBeHidden();
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();

@@ -1,35 +1,48 @@
 .query-result-outer-card {
   min-width: 0;
+  overflow: hidden;
 }
 
 .query-result-outer-card > .ant-card-head {
+  min-height: 56px;
   padding-inline: 16px;
 }
 
 .query-result-outer-card > .ant-card-head .ant-card-head-wrapper {
-  min-height: 76px;
+  min-height: 56px;
   align-items: center;
 }
 
 .query-result-outer-card > .ant-card-head .ant-card-head-title,
 .query-result-outer-card > .ant-card-head .ant-card-extra {
-  padding-block: 16px;
+  padding-block: 12px;
 }
 
+/*
+ * 外层“查询结果”Card 必须是完整容器：业务结果 Card 位于其 Body 内，
+ * 使用连续白色背景和明确内边距，避免视觉上被理解为上下两个同级 Card。
+ */
 .query-result-outer-card > .ant-card-body {
   padding: 16px;
-  background: #f5f7fa;
+  background: #fff;
+}
+
+.query-result-outer-card > .ant-card-body > .business-result-card {
+  width: 100%;
+  margin: 0;
 }
 
 .business-result-card {
   min-width: 0;
   border-color: #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  background: #fafbfc;
+  box-shadow: none;
 }
 
 .business-result-card > .ant-card-head {
   min-height: 56px;
   padding-inline: 16px;
+  background: #fff;
 }
 
 .business-result-card > .ant-card-head .ant-card-head-wrapper {
@@ -38,6 +51,7 @@
 
 .business-result-card > .ant-card-body {
   padding: 16px;
+  background: #fff;
 }
 
 .business-result-card__title {
