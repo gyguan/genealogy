@@ -1,12 +1,27 @@
 .query-result-outer-card {
   min-width: 0;
   overflow: hidden;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+}
+
+.query-result-outer-card__header {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .query-result-card__title {
   display: flex;
-  align-items: baseline;
   min-width: 0;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .query-result-card__title .ant-typography,
@@ -14,33 +29,14 @@
   margin: 0;
 }
 
-.query-result-outer-card > .ant-card-head {
-  min-height: 56px;
-  padding-inline: 16px;
+.query-result-outer-card__extra {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
-.query-result-outer-card > .ant-card-head .ant-card-head-wrapper {
-  min-height: 56px;
-  align-items: center;
-}
-
-.query-result-outer-card > .ant-card-head .ant-card-head-title,
-.query-result-outer-card > .ant-card-head .ant-card-extra {
-  padding-block: 12px;
-}
-
-/*
- * 外层“查询结果”Card 必须是完整容器：业务结果 Card 位于其 Body 内，
- * 使用连续白色背景和明确内边距，避免视觉上被理解为上下两个同级 Card。
- */
-.query-result-outer-card > .ant-card-body {
-  padding: 16px;
-  background: #fff;
-}
-
-.query-result-outer-card > .ant-card-body > .business-result-card {
-  width: 100%;
-  margin: 0;
+.query-result-outer-card > .business-result-card {
+  width: calc(100% - 32px);
+  margin: 16px;
 }
 
 .business-result-card {
@@ -70,7 +66,30 @@
 }
 
 @media (max-width: 767px) {
-  .query-result-outer-card > .ant-card-head .ant-card-head-wrapper,
+  .query-result-outer-card__header {
+    min-height: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .query-result-card__title,
+  .query-result-outer-card__extra {
+    width: 100%;
+    margin: 0;
+  }
+
+  .query-result-outer-card__extra .ant-btn,
+  .business-result-card > .ant-card-head .ant-card-extra .ant-btn {
+    min-height: 44px;
+  }
+
+  .query-result-outer-card > .business-result-card {
+    width: calc(100% - 24px);
+    margin: 12px;
+  }
+
   .business-result-card > .ant-card-head .ant-card-head-wrapper {
     min-height: 0;
     align-items: stretch;
@@ -79,22 +98,11 @@
     padding-block: 16px;
   }
 
-  .query-result-outer-card > .ant-card-head .ant-card-head-title,
-  .query-result-outer-card > .ant-card-head .ant-card-extra,
   .business-result-card > .ant-card-head .ant-card-head-title,
   .business-result-card > .ant-card-head .ant-card-extra {
     width: 100%;
     margin: 0;
     padding: 0;
-  }
-
-  .query-result-outer-card > .ant-card-head .ant-card-extra .ant-btn,
-  .business-result-card > .ant-card-head .ant-card-extra .ant-btn {
-    min-height: 44px;
-  }
-
-  .query-result-outer-card > .ant-card-body {
-    padding: 12px;
   }
 
   .business-result-card > .ant-card-body {

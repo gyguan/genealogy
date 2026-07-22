@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Card, Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import type { CardProps } from 'antd';
 import './query-result-cards.css';
 
@@ -41,20 +41,26 @@ export function QueryResultCard({
   businessClassName = '',
   children,
   className = '',
-  ...cardProps
+  extra,
+  size = 'small',
+  style,
+  id
 }: QueryResultProps) {
   return (
-    <Card
-      {...cardProps}
+    <section
+      id={id}
+      style={style}
       className={`query-result-outer-card ${className}`.trim()}
       data-query-result-role="outer"
-      title={(
-        <Space size={8} wrap className="query-result-card__title">
+      data-query-result-size={size}
+    >
+      <div className="query-result-outer-card__header">
+        <div className="query-result-card__title">
 <Typography.Text strong>查询结果</Typography.Text>
 <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
-        </Space>
-      )}
-    >
+        </div>
+        {extra ? <div className="query-result-outer-card__extra">{extra}</div> : null}
+      </div>
       <BusinessResultCard
         title={businessTitle}
         extra={businessExtra}
@@ -62,6 +68,6 @@ export function QueryResultCard({
       >
         {children}
       </BusinessResultCard>
-    </Card>
+    </section>
   );
 }

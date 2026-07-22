@@ -70,8 +70,8 @@ async function mockImportApi(page: Page) {
 
 async function expectDesktopResultHeaderSpacing(page: Page) {
   const resultCard = page.locator('.import-result-card');
-  const header = resultCard.locator(':scope > .ant-card-head');
-  const titleGroup = resultCard.locator(':scope > .ant-card-head .ant-card-head-title');
+  const header = resultCard.locator(':scope > .query-result-outer-card__header');
+  const titleGroup = resultCard.locator(':scope > .query-result-outer-card__header > .query-result-card__title');
   const action = resultCard.getByRole('button', { name: '新建导入' });
   const [headerBox, titleGroupBox, actionBox] = await Promise.all([
     header.boundingBox(),
@@ -88,25 +88,29 @@ async function expectDesktopResultHeaderSpacing(page: Page) {
   expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
 }
 
-async function expectBusinessCardNestedInsideOuterBody(page: Page) {
-  const outerBody = page.locator('.import-result-card > .ant-card-body');
-  const businessCard = outerBody.locator(':scope > .business-result-card[data-query-result-role="business"]');
+async function expectBusinessCardDirectChild(page: Page) {
+  const outerCard = page.locator('.import-result-card');
+  const outerHeader = outerCard.locator(':scope > .query-result-outer-card__header');
+  const businessCard = outerCard.locator(':scope > .business-result-card[data-query-result-role="business"]');
+  await expect(outerCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(businessCard).toHaveCount(1);
 
-  const [outerBodyBox, businessCardBox, outerBodyBackground] = await Promise.all([
-    outerBody.boundingBox(),
+  const [outerCardBox, outerHeaderBox, businessCardBox, outerBackground] = await Promise.all([
+    outerCard.boundingBox(),
+    outerHeader.boundingBox(),
     businessCard.boundingBox(),
-    outerBody.evaluate(element => getComputedStyle(element).backgroundColor)
+    outerCard.evaluate(element => getComputedStyle(element).backgroundColor)
   ]);
-  expect(outerBodyBox).not.toBeNull();
+  expect(outerCardBox).not.toBeNull();
+  expect(outerHeaderBox).not.toBeNull();
   expect(businessCardBox).not.toBeNull();
-  expect(outerBodyBackground).toBe('rgb(255, 255, 255)');
-  if (!outerBodyBox || !businessCardBox) return;
+  expect(outerBackground).toBe('rgb(255, 255, 255)');
+  if (!outerCardBox || !outerHeaderBox || !businessCardBox) return;
 
-  expect(businessCardBox.x - outerBodyBox.x).toBeGreaterThanOrEqual(15);
-  expect(businessCardBox.y - outerBodyBox.y).toBeGreaterThanOrEqual(15);
-  expect(outerBodyBox.x + outerBodyBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(15);
-  expect(outerBodyBox.y + outerBodyBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(15);
+  expect(businessCardBox.x - outerCardBox.x).toBeGreaterThanOrEqual(15);
+  expect(businessCardBox.y - outerHeaderBox.y - outerHeaderBox.height).toBeGreaterThanOrEqual(15);
+  expect(outerCardBox.x + outerCardBox.width - businessCardBox.x - businessCardBox.width).toBeGreaterThanOrEqual(15);
+  expect(outerCardBox.y + outerCardBox.height - businessCardBox.y - businessCardBox.height).toBeGreaterThanOrEqual(15);
 }
 
 test('data import page uses query and nested result cards with new import modal', async ({ page }) => {
@@ -118,14 +122,14 @@ test('data import page uses query and nested result cards with new import modal'
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
-  const outerResultHeader = page.locator('.import-result-card > .ant-card-head');
-  const businessResultHeader = page.locator('.import-result-card > .ant-card-body > .business-result-card > .ant-card-head');
+  const outerResultHeader = page.locator('.import-result-card > .query-result-outer-card__header');
+  const businessResultHeader = page.locator('.import-result-card > .business-result-card > .ant-card-head');
   await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();
   await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
   await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toHaveCount(0);
   await expectDesktopResultHeaderSpacing(page);
-  await expectBusinessCardNestedInsideOuterBody(page);
+  await expectBusinessCardDirectChild(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
   expect(labels).toEqual(['导入对象', '导入状态', '文件名/任务编号', '任务创建时间']);
@@ -160,13 +164,13 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
-  const headerWrapper = page.locator('.import-result-card > .ant-card-head > .ant-card-head-wrapper');
+  const headerWrapper = page.locator('.import-result-card > .query-result-outer-card__header');
   const headerPadding = await headerWrapper.evaluate(element => {
     const style = getComputedStyle(element);
     return { top: style.paddingTop, bottom: style.paddingBottom };
   });
   expect(headerPadding).toEqual({ top: '16px', bottom: '16px' });
-  await expectBusinessCardNestedInsideOuterBody(page);
+  await expectBusinessCardDirectChild(page);
 
   await expect(page.locator('.import-execution-table')).toBeHidden();
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();
