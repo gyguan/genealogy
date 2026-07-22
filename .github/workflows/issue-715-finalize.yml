@@ -1,0 +1,44 @@
+name: Issue 715 final validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-715-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-715-clan-review-entry
+          fetch-depth: 0
+      - name: Apply implementation
+        run: |
+          python scripts/issue-715-apply.py
+          git diff --check
+      - name: Backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q test
+      - name: Frontend checks
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install --no-package-lock
+          npm run typecheck
+          npm run test:wizard
+          npm run build
+      - name: Commit validated changes
+        run: |
+          rm -f .github/workflows/issue-715-discovery.yml
+          rm -f .github/workflows/issue-715-finalize.yml
+          rm -f scripts/issue-715-apply.py
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "feat: add clan review submission flow"
+          git push origin HEAD:agent/issue-715-clan-review-entry
