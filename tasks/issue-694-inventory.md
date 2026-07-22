@@ -720,7 +720,7 @@
 - 查询结果文本: 0
 
 ```text
-65: assert.doesNotMatch(activeSourceStageSource, /links\.map\(link => <Card/);
+64: assert.doesNotMatch(activeSourceStageSource, /pagedLinks\.rows\.map\([\s\S]*?<Card/);
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/domain/wizardCompletionModel.test.mjs`
@@ -849,6 +849,21 @@
 102: export function firstWizardFieldError(errors: WizardFieldErrors) {
 107: export function mergeWizardFieldErrors(...groups: Array<WizardFieldErrors | undefined>) {
 108: return Object.assign({}, ...groups.filter(Boolean).map(mapWizardServerFieldErrors));
+```
+
+## `frontend/genealogy-web/src/features/mvp1/domain/wizardQueryResultStructure.test.mjs`
+
+- Card: 1
+- Table: 0
+- QueryResultCard: 1
+- 查询结果文本: 0
+
+```text
+14: test('wizard ResultListCard renders one query result card with a direct table and no nested card', () => {
+16: assert.match(source, /<QueryResultCard[\s\S]*<Table<RecordType>/);
+17: assert.doesNotMatch(source, /<Card\b/);
+21: test('all active wizard nodes use the shared strict two-layer result implementation', () => {
+33: assert.doesNotMatch(source, /pagedLinks\.rows\.map\([\s\S]*?<Card/);
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/domain/wizardResultListModel.test.mjs`
@@ -1142,11 +1157,9 @@
 - 查询结果文本: 0
 
 ```text
-173: {String(clan.id || '') === workspace.clanId ? '继续建谱' : '选择并继续'}
-191: <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
-192: <div className="wizard-form-grid">
-208: <Card
-223: <Table<ClanRecord>
+174: {String(clan.id || '') === workspace.clanId ? '继续建谱' : '选择并继续'}
+192: <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
+193: <div className="wizard-form-grid">
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/generation/GenerationStep.tsx`
@@ -1159,13 +1172,10 @@
 ```text
 313: <section className="wizard-generation-section">
 315: <div className="wizard-form-grid wizard-generation-scheme-grid">
-339: <section className="wizard-branch-list wizard-generation-inline-list">
-340: <div className="wizard-inline-list-header">
 400: <div className="wizard-generation-detail-form wizard-generation-word-grid">
 401: <label className="wizard-inline-form-field">
 405: <label className="wizard-inline-form-field">
 409: <label className="wizard-inline-form-field wizard-generation-modal-action">
-414: <div className="wizard-inline-list-header">
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/person/PersonStep.tsx`
@@ -1297,12 +1307,11 @@
 - 查询结果文本: 0
 
 ```text
-163: <Card title={<Space><span>阶段一：创建来源</span><Tag color="processing">创建与审核</Tag></Space>}>
-164: <div className="wizard-form-grid">
-172: <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
-173: <div className="wizard-form-grid source-stage-bind-grid">
-178: <div className="wizard-form-grid source-stage-bind-grid">
-188: {pagedLinks.rows.map(link => <Card size="small" key={String(link.id || `${link.targetType}-${link.targetId}`)}><Space wrap><Tag>{targetTypeText(link.targetType)}</Tag><span>对象 #{link.targetId}</span><Typography.Text type="secondary">{link.createdAt || ''}</Typography.Text></Space></Card>)}
+164: <Card title={<Space><span>阶段一：创建来源</span><Tag color="processing">创建与审核</Tag></Space>}>
+165: <div className="wizard-form-grid">
+173: <Card title={<Space><span>阶段二：选择正式来源并绑定对象</span><Tag color={stage.bindingOpen ? 'success' : 'default'}>{stage.bindingOpen ? '已开放' : '待选择'}</Tag></Space>}>
+174: <div className="wizard-form-grid source-stage-bind-grid">
+179: <div className="wizard-form-grid source-stage-bind-grid">
 ```
 
 ## `frontend/genealogy-web/src/features/mvp1/steps/source/SourceStep.tsx`
@@ -2135,18 +2144,21 @@
 
 - Card: 0
 - Table: 0
-- QueryResultCard: 0
-- 查询结果文本: 1
+- QueryResultCard: 4
+- 查询结果文本: 0
 
 ```text
 4: import { WIZARD_RESULT_PAGE_SIZE, wizardBatchToolbarVisible, wizardSelectionLabel } from '../../features/mvp1/domain/wizardResultListModel';
-22: return typeof title === 'string' ? title : '查询结果';
-69: aria-label={wizardSelectionLabel(label, selected)}
-82: ? rows.length > WIZARD_RESULT_PAGE_SIZE
-83: ? { pageSize: WIZARD_RESULT_PAGE_SIZE, showSizeChanger: false, showTotal: (total: number) => `共 ${total} 条` }
-89: <Card
-96: {wizardBatchToolbarVisible(selectedCount) ? <Tag color="processing">已选择 {selectedCount} 项</Tag> : null}
-107: <Table<RecordType>
+5: import { QueryResultCard } from './QueryResultCards';
+73: aria-label={wizardSelectionLabel(label, selected)}
+86: ? rows.length > WIZARD_RESULT_PAGE_SIZE
+87: ? { pageSize: WIZARD_RESULT_PAGE_SIZE, showSizeChanger: false, showTotal: (total: number) => `共 ${total} 条` }
+90: const summaryExtra = resultExtra || stale || wizardBatchToolbarVisible(selectedCount)
+95: {wizardBatchToolbarVisible(selectedCount) ? <Tag color="processing">已选择 {selectedCount} 项</Tag> : null}
+101: <QueryResultCard
+102: className={`result-list-card wizard-query-result-card ${cardClassName}`.trim()}
+116: <Table<RecordType>
+126: </QueryResultCard>
 ```
 
 ## `frontend/genealogy-web/src/shared/ui/page-patterns/dashboard.tsx`
