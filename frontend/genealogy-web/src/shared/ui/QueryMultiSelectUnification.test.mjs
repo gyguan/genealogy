@@ -10,6 +10,11 @@ const trackingWrapper = readFileSync(new URL('../../features/logs/TrackingMultiS
 const cultureWrapper = readFileSync(new URL('../../features/culture/CultureMultiSelect.tsx', import.meta.url), 'utf8');
 const personArchiveSource = readFileSync(new URL('../../features/persons/PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
 const workbenchSource = readFileSync(new URL('../../features/workbench/EditingWorkspacePage.tsx', import.meta.url), 'utf8');
+const memberPageSource = readFileSync(new URL('../../features/members/MemberPage.tsx', import.meta.url), 'utf8');
+const memberPermissionFilterContract = JSON.parse(readFileSync(
+  new URL('../../../../../docs/api/openapi.member-permission.multiselect.json', import.meta.url),
+  'utf8'
+));
 
 const wrappers = [importWrapper, trackingWrapper, cultureWrapper];
 
@@ -39,6 +44,29 @@ test('shared and direct query selects expose the same Ant select-all option labe
   assert.match(queryMultiSelectSource, /全选 \/ 取消全选/);
   assert.match(personArchiveSource, /全选 \/ 取消全选/);
   assert.match(workbenchSource, /全选 \/ 取消全选/);
+});
+
+test('member permission filters reuse the shared multi-select', () => {
+  assert.equal((memberPageSource.match(/<QueryMultiSelect/g) || []).length, 3);
+  assert.match(memberPageSource, /value=\{roleFilter\}/);
+  assert.match(memberPageSource, /value=\{scopeFilter\}/);
+  assert.match(memberPageSource, /value=\{statusFilter\}/);
+});
+
+test('member permission OpenAPI serializes multi-value filters as CSV arrays', () => {
+  const parameters = memberPermissionFilterContract.paths['/clans/{clanId}/members'].get.parameters;
+  const parameterByName = Object.fromEntries(parameters.map(parameter => [parameter.name, parameter]));
+
+  for (const name of ['roleCode', 'scopeType', 'status']) {
+    const parameter = parameterByName[name];
+    assert.equal(parameter.style, 'form');
+    assert.equal(parameter.explode, false);
+    assert.equal(parameter.schema.type, 'array');
+    assert.equal(parameter.schema.uniqueItems, true);
+  }
+  assert.equal(parameterByName.roleCode.schema.items.type, 'string');
+  assert.equal(parameterByName.scopeType.schema.items.$ref, '#/components/schemas/MemberScopeType');
+  assert.equal(parameterByName.status.schema.items.$ref, '#/components/schemas/MembershipStatus');
 });
 
 test('global styles preserve Ant-native selector and tag states', () => {

@@ -1,7 +1,6 @@
 package com.genealogy.member.repository;
 
 import com.genealogy.member.enums.MemberRoleScopeType;
-import com.genealogy.member.enums.MemberStatus;
 import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -19,14 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ClanMembershipRepositoryQueryContractTest {
 
     @Test
-    void memberPageMustCastNullableKeywordAndApplyActorScopeBeforePagination() throws NoSuchMethodException {
+    void memberPageMustSupportMultiValueFiltersCastKeywordAndApplyActorScopeBeforePagination() throws NoSuchMethodException {
         Method method = ClanMembershipRepository.class.getMethod(
                 "searchMembers",
                 Long.class,
                 String.class,
-                String.class,
-                MemberRoleScopeType.class,
-                MemberStatus.class,
+                boolean.class,
+                Collection.class,
+                boolean.class,
+                Collection.class,
+                boolean.class,
+                Collection.class,
                 boolean.class,
                 MemberRoleScopeType.class,
                 MemberRoleScopeType.class,
@@ -61,5 +63,10 @@ class ClanMembershipRepositoryQueryContractTest {
         assertTrue(compact.contains(":fullClanAccess = true or exists"));
         assertTrue(compact.contains("visibleRole.scopeId in :visibleBranchIds"));
         assertTrue(compact.contains("visibleRole.scopeId in :visibleSubtreeIds"));
+        assertTrue(compact.contains(":filterByMemberStatuses = false or membership.memberStatus in :memberStatuses"));
+        assertTrue(compact.contains(":filterByRoleCodes = false or exists"));
+        assertTrue(compact.contains("role.roleCode in :roleCodes"));
+        assertTrue(compact.contains(":filterByScopeTypes = false or exists"));
+        assertTrue(compact.contains("scopedRole.scopeType in :scopeTypes"));
     }
 }
