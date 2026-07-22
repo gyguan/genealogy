@@ -14,7 +14,8 @@ function cssText(root) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) return cssText(path);
     return entry.name.endsWith('.css') ? readFileSync(path, 'utf8') : '';
-  }).join('\n');
+  }).join('
+');
 }
 
 const allCss = cssText(srcRoot);
