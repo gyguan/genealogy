@@ -6,7 +6,7 @@ import type {
   TreeRiskLevel,
   TreeTruncationReason
 } from '../../shared/api/generated/tree-types';
-import { isClientSiblingEdge } from './lineageClientRelation';
+import { isClientSiblingEdge } from './lineageClientRelation.js';
 
 const DATA_STATUS_LABELS: Record<TreeDataStatus, string> = {
   draft: '草稿',
