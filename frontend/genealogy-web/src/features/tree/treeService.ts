@@ -6,6 +6,7 @@ import type {
   TreeRelationScope
 } from '../../shared/api/generated/tree-types';
 import { readSearchPage, toPersonSearchItem, type PersonSearchItem, type SearchPage } from './lineageRequestState';
+import { buildDirectPersonGraph } from './personCenteredGraphModel';
 
 export type GenericRow = Record<string, unknown>;
 export type BranchRow = GenericRow & { id?: string | number; branchName?: string; parentId?: string | number };
@@ -85,7 +86,7 @@ export async function loadPersonLineage(input: {
     refreshAt: Date.now()
   });
   const graph = await apiClient.get<TreeGraphResponse>(`/tree/person/${input.personId}?${query}`);
-  return { ...graph, clientLayoutMode: 'person-centered' };
+  return buildDirectPersonGraph(graph);
 }
 
 export async function loadBranchLineage(input: {
