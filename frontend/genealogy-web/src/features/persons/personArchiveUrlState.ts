@@ -138,8 +138,9 @@ export function readPersonDetailTab(url = new URL(window.location.href)): Person
   return allowedTabs.has(value) ? value : 'basic';
 }
 
-export function writePersonDetailTab(tab: PersonDetailTab, mode: 'push' | 'replace' = 'push') {
+export function writePersonDetailTab(tab: PersonDetailTab, _mode: 'push' | 'replace' = 'replace') {
   const url = new URL(window.location.href);
   if (tab === 'basic') url.searchParams.delete('tab'); else url.searchParams.set('tab', tab);
-  window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  // TAB 属于同一详情页的内部状态，必须替换当前记录，避免返回按钮逐个回退 TAB 历史。
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
