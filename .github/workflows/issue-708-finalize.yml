@@ -21,6 +21,40 @@ jobs:
       - name: Apply changes
         run: |
           python scripts/issue-708-apply.py
+          python - <<'PY'
+          from pathlib import Path
+
+          command_test = Path('backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceBindingCommandApplicationServiceTest.java')
+          text = command_test.read_text(encoding='utf-8')
+          text = text.replace(
+              '''        InOrder order = inOrder(sourceApplicationService, targetValidationService);
+                  order.verify(sourceApplicationService).bind(1L, request, 2L);
+                  order.verify(targetValidationService).validate(1L, "generation_word", 100L);''',
+              '''        InOrder order = inOrder(targetValidationService, sourceApplicationService);
+                  order.verify(targetValidationService).validate(1L, "generation_word", 100L);
+                  order.verify(sourceApplicationService).bind(1L, request, 2L);''',
+              1,
+          )
+          text = text.replace(
+              '''        InOrder order = inOrder(sourceBindingReviewApplicationService, targetValidationService);
+                  order.verify(sourceBindingReviewApplicationService).approve(9L, request, 3L, "req-3", "127.0.0.1");
+                  order.verify(targetValidationService).validate(1L, "generation_word", 100L);''',
+              '''        InOrder order = inOrder(targetValidationService, sourceBindingReviewApplicationService);
+                  order.verify(targetValidationService).validate(1L, "generation_word", 100L);
+                  order.verify(sourceBindingReviewApplicationService).approve(9L, request, 3L, "req-3", "127.0.0.1");''',
+              1,
+          )
+          command_test.write_text(text, encoding='utf-8')
+
+          site_test = Path('backend/genealogy-backend/src/test/java/com/genealogy/culture/application/CultureSiteApplicationServiceTest.java')
+          text = site_test.read_text(encoding='utf-8')
+          text = text.replace(
+              '        targetBranch.setClanId(1L);',
+              '        targetBranch.setClanId(1L);\n        targetBranch.setStatus("official");',
+              1,
+          )
+          site_test.write_text(text, encoding='utf-8')
+          PY
           git diff --check
       - name: Backend tests
         working-directory: backend/genealogy-backend
