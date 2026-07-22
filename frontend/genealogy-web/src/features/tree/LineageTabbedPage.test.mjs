@@ -20,6 +20,8 @@ test('lineage page follows the culture-style query card plus result card pattern
   assert.match(pageSource, /人物中心图谱/);
   assert.match(pageSource, /支派全局图谱/);
   assert.match(pageSource, /className="lineage-query-tabs"/);
+  assert.match(pageSource, /查询只刷新人物中心图谱/);
+  assert.match(pageSource, /不受中心人物影响/);
   assert.match(css, /\.lineage-tabbed-page\s*\{[\s\S]*?flex-direction:\s*column;/);
   assert.match(css, /\.lineage-tab-query-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
 });
