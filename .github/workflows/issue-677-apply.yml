@@ -30,6 +30,16 @@ jobs:
       - name: Apply approved prototype
         run: python3 scripts/issue-677-apply.py
 
+      - name: Correct generated regression test paths
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace("new URL(`../${relativePath}`", "new URL(`../../${relativePath}`")
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
         run: npm install --no-audit --no-fund
