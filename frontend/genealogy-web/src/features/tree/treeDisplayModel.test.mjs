@@ -40,6 +40,16 @@ test('uses non-directional endpoints for spouse relationships', () => {
   assert.deepEqual(relationshipEndpointLabels(spouse), ['配偶一', '配偶二']);
 });
 
+test('uses peer endpoints for client-inferred sibling relationships', () => {
+  const sibling = {
+    relationCategory: 'blood',
+    relationType: 'other',
+    clientRelationKind: 'sibling'
+  };
+  assert.equal(relationshipEndpointText(sibling, '中心人物', '姐妹'), '中心人物 — 姐妹');
+  assert.deepEqual(relationshipEndpointLabels(sibling), ['中心人物', '同辈人物']);
+});
+
 test('lineage result controls share the result title row on desktop', () => {
   assert.match(lineageDoubleCardCss, /\.lineage-double-card-result\s*\{\s*position:\s*relative;/);
   assert.match(lineageDoubleCardCss, /\.lineage-double-card-result > \.ant-card-head\s*\{\s*padding-right:\s*400px;/);
