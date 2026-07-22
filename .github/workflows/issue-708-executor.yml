@@ -1,14 +1,9 @@
-name: Issue 708 resilient executor
+name: Issue 708 branch executor
 
 on:
   push:
     branches:
       - agent/issue-708-approved-dependencies
-    paths:
-      - .github/workflows/issue-708-executor.yml
-  pull_request:
-    branches:
-      - main
     paths:
       - .github/workflows/issue-708-executor.yml
 
@@ -23,64 +18,67 @@ jobs:
         with:
           ref: agent/issue-708-approved-dependencies
           fetch-depth: 0
-      - name: Extract and apply patch
+      - name: Implement validate and persist result
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path('frontend/genealogy-web/src/features/sources/sourceLibraryService.ts')
-          text = path.read_text(encoding='utf-8')
-          pattern = r'export type BranchOption = \{\s*id\?: number;\s*branchName\?: string;\s*branchPath\?: string;\s*\};'
-          replacement = '''export type BranchOption = {
-    id?: number;
-    branchName?: string;
-    branchPath?: string;
-  };'''
-          text, count = re.subn(pattern, replacement, text, count=1)
-          if count != 1:
-              raise SystemExit('unable to normalize BranchOption declaration')
-          path.write_text(text, encoding='utf-8')
-
-          workflow = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
-          start = "          cat > /tmp/patch_issue708.py <<'PY'\n"
-          end = "\n          PY\n          python /tmp/patch_issue708.py"
-          body = workflow.split(start, 1)[1].split(end, 1)[0]
-          body = '\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
-          Path('/tmp/patch_issue708.py').write_text(body + '\n', encoding='utf-8')
-          PY
           set +e
-          python /tmp/patch_issue708.py > issue-708-executor.log 2>&1
+          LOG=issue-708-execution.log
+          : > "$LOG"
+
+          echo '=== apply patch ===' >> "$LOG"
+          python scripts/issue-708-apply.py >> "$LOG" 2>&1
           status=$?
-          set -e
-          cat issue-708-executor.log
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== git diff check ===' >> "$LOG"
+            git diff --check >> "$LOG" 2>&1
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== backend tests ===' >> "$LOG"
+            (cd backend/genealogy-backend && mvn -q test) >> "$LOG" 2>&1
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== frontend install ===' >> "$LOG"
+            (cd frontend/genealogy-web && npm ci) >> "$LOG" 2>&1
+            status=$?
+          fi
+
+          if [ "$status" -eq 0 ]; then
+            echo '=== frontend typecheck ===' >> "$LOG"
+            (cd frontend/genealogy-web && npm run typecheck) >> "$LOG" 2>&1
+            status=$?
+          fi
+
+          for command in test:wizard test:wizard-dependencies test:source-stage test:person-edit test:imports test:culture-shell build; do
+            if [ "$status" -eq 0 ]; then
+              echo "=== frontend $command ===" >> "$LOG"
+              (cd frontend/genealogy-web && npm run "$command") >> "$LOG" 2>&1
+              status=$?
+            fi
+          done
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
           if [ "$status" -ne 0 ]; then
+            mkdir -p tasks
+            cp "$LOG" tasks/issue-708-failure.log
+            git add tasks/issue-708-failure.log
+            git commit -m 'chore: record issue 708 validation failure' || true
+            git push origin HEAD:agent/issue-708-approved-dependencies
+            cat "$LOG"
             exit "$status"
           fi
-          git diff --check
-      - name: Backend tests
-        working-directory: backend/genealogy-backend
-        run: mvn -q test
-      - name: Frontend checks
-        working-directory: frontend/genealogy-web
-        run: |
-          npm ci
-          npm run typecheck
-          npm run test:wizard
-          npm run test:wizard-dependencies
-          npm run test:source-stage
-          npm run test:person-edit
-          npm run test:imports
-          npm run test:culture-shell
-          npm run build
-      - name: Commit implementation
-        shell: bash
-        run: |
+
           python - <<'PY'
           from pathlib import Path
-          path = Path('tasks/issue-708-execution.md')
-          text = path.read_text(encoding='utf-8')
+
+          task = Path('tasks/issue-708-execution.md')
+          text = task.read_text(encoding='utf-8')
           for item in [
               '建立后端统一依赖审核策略',
               '接入支派、字辈、人物、关系、来源绑定写接口',
@@ -90,29 +88,21 @@ jobs:
               '通过前后端 CI'
           ]:
               text = text.replace(f'- [ ] {item}', f'- [x] {item}')
-          path.write_text(text, encoding='utf-8')
-          for workflow in [
+          task.write_text(text, encoding='utf-8')
+
+          for name in [
               '.github/workflows/issue-708-implementation.yml',
               '.github/workflows/issue-708-diagnostic.yml',
-              '.github/workflows/issue-708-executor.yml'
+              '.github/workflows/issue-708-executor.yml',
+              'scripts/issue-708-apply.py',
+              'tasks/issue-708-failure.log'
           ]:
-              candidate = Path(workflow)
-              if candidate.exists():
-                  candidate.unlink()
-          log = Path('issue-708-executor.log')
-          if log.exists():
-              log.unlink()
+              path = Path(name)
+              if path.exists():
+                  path.unlink()
           PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          rm -f "$LOG" backend-test.log
           git add -A
           git commit -m 'feat: require approved dependency objects'
           git push origin HEAD:agent/issue-708-approved-dependencies
-      - name: Upload diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-708-executor-diagnostic
-          path: issue-708-executor.log
-          if-no-files-found: ignore
-          retention-days: 1
