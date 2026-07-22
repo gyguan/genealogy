@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
 import {
   Alert,
   Button,
@@ -33,6 +32,7 @@ import type {
 } from '../../shared/api/generated/tree-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Field } from '../../shared/ui/Form';
+import { QueryMultiSelect } from '../../shared/ui/QueryMultiSelect';
 import { LineageGraphCanvas } from './LineageGraphCanvas';
 import { findLineagePath } from './lineageGraphModel';
 import {
@@ -109,7 +109,6 @@ const RELATION_OPTIONS: Array<{ value: TreeRelationScope; label: string }> = [
   { value: 'marriage', label: '婚配' },
   { value: 'status', label: '状态' }
 ];
-const ALL_RELATION_SCOPES = RELATION_OPTIONS.map(item => item.value);
 
 function text(value: unknown) {
   return value === null || value === undefined ? '' : String(value);
@@ -230,32 +229,13 @@ function RelationScopeSelect({ value, onChange }: {
   value: TreeRelationScope[];
   onChange: (value: TreeRelationScope[]) => void;
 }) {
-  function renderPopup(menu: ReactNode) {
-    return (
-      <div>
-        <div className="lineage-select-all-actions" onMouseDown={event => event.preventDefault()}>
-          <Button type="link" size="small" onClick={() => onChange([...ALL_RELATION_SCOPES])}>全选</Button>
-          <Button type="link" size="small" onClick={() => onChange([])}>清空</Button>
-        </div>
-        <Divider className="lineage-select-all-divider" />
-        {menu}
-      </div>
-    );
-  }
-
   return (
-    <Select<TreeRelationScope[]>
+    <QueryMultiSelect<TreeRelationScope>
       aria-label="关系范围"
-      mode="multiple"
-      allowClear
-      showSearch
-      optionFilterProp="label"
       value={value}
-      maxTagCount="responsive"
       options={RELATION_OPTIONS}
       placeholder="请选择关系范围"
-      popupRender={renderPopup}
-      onChange={values => onChange(values as TreeRelationScope[])}
+      onChange={onChange}
     />
   );
 }
