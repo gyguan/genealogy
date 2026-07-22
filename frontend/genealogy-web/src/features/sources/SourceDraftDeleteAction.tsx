@@ -1,9 +1,10 @@
-import { Alert, Card } from 'antd';
+import { Card } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { objectLifecycleStatus } from '../../shared/domain/draftDeleteModel';
 import { DraftDeleteButton } from '../../shared/ui/DraftDeleteButton';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import { deleteSource, getSourceDetail, type SourceDetail } from './sourceLibraryService';
 
 type Props = { notify?: (data: unknown, error?: boolean) => void };
@@ -26,7 +27,7 @@ function sourceDependencyCounts(detail: SourceDetail | null) {
   };
 }
 
-export function SourceDraftDeleteAction({ notify }: Props) {
+export function SourceDraftDeleteAction({ notify: _notify }: Props) {
   const workspace = useWorkspace();
   const sourceId = Number(workspace.sourceId || sourceIdFromLocation() || 0) || undefined;
   const [detail, setDetail] = useState<SourceDetail | null>(null);
@@ -84,11 +85,18 @@ export function SourceDraftDeleteAction({ notify }: Props) {
     setDetail(null);
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
     window.dispatchEvent(new PopStateEvent('popstate'));
-    notify?.({ message: '草稿来源已删除，列表已刷新。' });
   }
 
   if (!sourceId) return null;
-  if (loadError) return <Alert type="warning" showIcon message="来源删除操作暂不可用" description={loadError} style={{ marginBottom: 12 }} />;
+  if (loadError) {
+    return (
+      <PageFeedback
+        tone="warning"
+        title="来源删除操作暂不可用"
+        description={loadError}
+      />
+    );
+  }
   if (loading || !detail) return null;
 
   const isDraft = objectLifecycleStatus(detail.source) === 'draft';
@@ -99,10 +107,9 @@ export function SourceDraftDeleteAction({ notify }: Props) {
   if (hasDependencies) {
     return (
       <Card size="small" title="草稿来源操作" style={{ marginBottom: 12 }}>
-        <Alert
-          type="warning"
-          showIcon
-          message={`草稿来源“${sourceName(detail)}”暂不能删除`}
+        <PageFeedback
+          tone="warning"
+          title={`草稿来源“${sourceName(detail)}”暂不能删除`}
           description={`请先处理 ${dependencyCounts.bindingCount} 条引用和 ${dependencyCounts.attachmentCount} 个附件；后端仍会执行最终依赖校验。`}
         />
       </Card>
