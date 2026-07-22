@@ -170,7 +170,7 @@ test('ritual direct relations retain their business labels', () => {
 test('prototype treatment is loaded and service applies selected depth', () => {
   assert.match(serviceSource, /return buildPersonCenteredGraph\(graph, input\.depth\);/);
   assert.match(portalSource, /import '\.\/person-centered-direct\.css';/);
-  assert.match(css, /当前视图仅展示中心人物的直接关联人物/);
+  assert.match(css, /按所选深度展示相关人物/);
   assert.match(css, /\.lineage-logic-card--person \.lineage-graph-node\.is-active > rect/);
-  assert.match(css, /\.lineage-logic-card--person \.lineage-graph-collapse\s*\{[\s\S]*?display:\s*none;/);
+  assert.doesNotMatch(css, /\.lineage-graph-collapse\s*\{[\s\S]*?display:\s*none;/);
 });
