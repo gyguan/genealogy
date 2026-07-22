@@ -1,0 +1,61 @@
+name: Issue 708 final validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/issue-708-finalize.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-708-approved-dependencies
+          fetch-depth: 0
+      - name: Apply changes
+        run: |
+          python scripts/issue-708-apply.py
+          git diff --check
+      - name: Backend tests
+        working-directory: backend/genealogy-backend
+        run: |
+          set -o pipefail
+          mvn -q test 2>&1 | tee ../../issue-708-backend.log
+      - name: Frontend checks
+        working-directory: frontend/genealogy-web
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee ../../issue-708-frontend.log
+          npm run typecheck 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:wizard 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:wizard-dependencies 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:source-stage 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:person-edit 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:imports 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run test:culture-shell 2>&1 | tee -a ../../issue-708-frontend.log
+          npm run build 2>&1 | tee -a ../../issue-708-frontend.log
+      - name: Package changes
+        if: always()
+        run: |
+          git diff --binary > issue-708.patch
+          git diff --name-only > issue-708-files.txt
+          tar -czf issue-708-files.tar.gz -T issue-708-files.txt
+      - name: Upload validation output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-708-validation-output
+          path: |
+            issue-708.patch
+            issue-708-files.txt
+            issue-708-files.tar.gz
+            issue-708-backend.log
+            issue-708-frontend.log
+          if-no-files-found: ignore
+          retention-days: 1
