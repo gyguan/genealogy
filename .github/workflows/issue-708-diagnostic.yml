@@ -22,6 +22,20 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
+
+          source = Path('frontend/genealogy-web/src/features/sources/sourceLibraryService.ts')
+          source_text = source.read_text(encoding='utf-8')
+          source_text, count = re.subn(
+              r'export type BranchOption = \{\s*id\?: number;\s*branchName\?: string;\s*branchPath\?: string;\s*\};',
+              'export type BranchOption = {\n    id?: number;\n    branchName?: string;\n    branchPath?: string;\n  };',
+              source_text,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit('unable to normalize BranchOption declaration')
+          source.write_text(source_text, encoding='utf-8')
+
           text = Path('.github/workflows/issue-708-implementation.yml').read_text(encoding='utf-8')
           start = "          cat > /tmp/patch_issue708.py <<'PY'\n"
           end = "\n          PY\n          python /tmp/patch_issue708.py"
@@ -33,6 +47,7 @@ jobs:
           python /tmp/patch_issue708.py > issue-708-patch-diagnostic.txt 2>&1
           status=$?
           echo "exit_status=$status" >> issue-708-patch-diagnostic.txt
+          git diff --check >> issue-708-patch-diagnostic.txt 2>&1
           exit 0
       - uses: actions/upload-artifact@v4
         with:
