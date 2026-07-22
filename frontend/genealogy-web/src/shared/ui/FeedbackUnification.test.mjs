@@ -6,6 +6,7 @@ const component = readFileSync(new URL('./Feedback.tsx', import.meta.url), 'utf8
 const operationFeedback = readFileSync(new URL('./OperationFeedback.ts', import.meta.url), 'utf8');
 const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'utf8');
 const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
+const dataTable = readFileSync(new URL('./DataTable.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const branchStep = readFileSync(new URL('../../features/mvp1/steps/branch/BranchStep.tsx', import.meta.url), 'utf8');
@@ -90,6 +91,18 @@ test('branch step uses standard transient, page, confirmation and empty feedback
   assert.doesNotMatch(branchStep, /\bnotify\?\.\(/);
 });
 
+test('shared data table uses standard operation, confirmation and empty feedback', () => {
+  assert.match(dataTable, /import \{ ConfirmAction, EmptyState \} from '\.\/Feedback'/);
+  assert.match(dataTable, /import \{ feedback \} from '\.\/OperationFeedback'/);
+  assert.match(dataTable, /feedback\.success/);
+  assert.match(dataTable, /feedback\.warning/);
+  assert.match(dataTable, /feedback\.error/);
+  assert.match(dataTable, /<ConfirmAction/);
+  assert.match(dataTable, /<EmptyState/);
+  assert.doesNotMatch(dataTable, /<Empty\b|<Popconfirm\b/);
+  assert.doesNotMatch(dataTable, /\bmessage\.(success|info|warning|error|loading)\s*\(/);
+});
+
 test('source draft deletion uses page feedback without duplicate success notification', () => {
   assert.match(sourceDraftDeleteAction, /import \{ PageFeedback \} from '\.\.\/\.\.\/shared\/ui\/Feedback'/);
   assert.match(sourceDraftDeleteAction, /title="来源删除操作暂不可用"/);
@@ -122,9 +135,9 @@ test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
   assert.equal(baseline.maxCounts.page_alert, 168);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 102);
-  assert.equal(baseline.maxCounts.confirm_modal, 61);
-  assert.equal(baseline.maxCounts.empty_state, 159);
+  assert.equal(baseline.maxCounts.antd_message, 95);
+  assert.equal(baseline.maxCounts.confirm_modal, 60);
+  assert.equal(baseline.maxCounts.empty_state, 158);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
   assert.equal(baseline.maxCounts.custom_notice_class, 30);
   assert.match(audit, /--baseline/);
