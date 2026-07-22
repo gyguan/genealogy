@@ -126,15 +126,23 @@ export function buildBranchDepthGraph(
     const preferredRoot = graph.rootNodeId && component.includes(graph.rootNodeId)
       ? graph.rootNodeId
       : '';
-    const rootCandidates = component
+    const rootIds = component
       .filter(id => (incomingLineage.get(id) || 0) === 0)
       .map(id => nodeMap.get(id) as TreeNodeResponse)
-      .sort(nodeCompare);
-    const seed = preferredRoot || rootCandidates[0]?.nodeId
+      .sort(nodeCompare)
+      .map(node => node.nodeId);
+    if (preferredRoot && rootIds.includes(preferredRoot)) {
+      rootIds.splice(rootIds.indexOf(preferredRoot), 1);
+      rootIds.unshift(preferredRoot);
+    }
+    const fallbackSeed = preferredRoot
       || component.map(id => nodeMap.get(id) as TreeNodeResponse).sort(nodeCompare)[0]?.nodeId;
-    if (!seed) return;
-    distances.set(seed, 0);
-    queue.push({ id: seed, distance: 0 });
+    const seeds = rootIds.length ? rootIds : fallbackSeed ? [fallbackSeed] : [];
+    seeds.forEach(seed => {
+      if (distances.has(seed)) return;
+      distances.set(seed, 0);
+      queue.push({ id: seed, distance: 0 });
+    });
   });
 
   while (queue.length) {
