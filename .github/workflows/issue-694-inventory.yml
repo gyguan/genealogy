@@ -1,0 +1,82 @@
+name: Issue 694 Inventory Wizard Results
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    if: github.event.pull_request.head.ref == 'agent/issue-694-wizard-strict-two-layer-results' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Locate wizard result implementations
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('frontend/genealogy-web')
+          candidates = []
+          name_pattern = re.compile(r'(wizard|genealogy|build|create|谱|向导)', re.I)
+          content_pattern = re.compile(r'(建谱向导|建谱|Wizard|wizard|查询结果|QueryResult|<Table|<Card)', re.I)
+
+          for base in [root / 'src', root / 'e2e']:
+              for path in base.rglob('*'):
+                  if not path.is_file() or path.suffix not in {'.ts', '.tsx', '.js', '.mjs', '.css'}:
+                      continue
+                  try:
+                      text = path.read_text(encoding='utf-8')
+                  except UnicodeDecodeError:
+                      continue
+                  if name_pattern.search(path.as_posix()) or ('建谱' in text) or ('wizard' in text.lower()):
+                      candidates.append((path, text))
+
+          lines = ['# Issue 694 建谱向导查询结果结构清单', '']
+          for path, text in sorted(candidates, key=lambda item: item[0].as_posix()):
+              hits = []
+              raw_lines = text.splitlines()
+              for index, line in enumerate(raw_lines, 1):
+                  if content_pattern.search(line):
+                      hits.append((index, line.strip()))
+              if not hits:
+                  continue
+              lines.append(f'## `{path.as_posix()}`')
+              lines.append('')
+              lines.append(f'- Card: {len(re.findall(r"<Card\\b", text))}')
+              lines.append(f'- Table: {len(re.findall(r"<Table\\b", text))}')
+              lines.append(f'- QueryResultCard: {text.count("QueryResultCard")}')
+              lines.append(f'- 查询结果文本: {text.count("查询结果")}')
+              lines.append('')
+              lines.append('```text')
+              for index, line in hits[:120]:
+                  lines.append(f'{index}: {line[:300]}')
+              lines.append('```')
+              lines.append('')
+
+          report = Path('tasks/issue-694-inventory.md')
+          report.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+      - name: Persist inventory
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tasks/issue-694-inventory.md
+          if git diff --cached --quiet; then
+            echo 'Inventory unchanged'
+          else
+            git commit -m 'docs(issue-694): inventory wizard result structures'
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          fi
