@@ -616,7 +616,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
       />
 
 
-      <QueryResultCard className="member-result-card" extra={<Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>} style={{ marginTop: 16 }} total={total} totalSuffix="名成员" businessTitle="成员列表">
+      <QueryResultCard className="member-result-card" extra={<Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>} style={{ marginTop: 16 }} total={total} totalSuffix="名成员">
         
         {queryError ? <Alert type="error" showIcon message={queryError} action={<Button size="small" onClick={() => void loadMembers(selectedClanId, query)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
         {isMobile ? (

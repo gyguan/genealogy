@@ -527,7 +527,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       <QueryResultCard
         className="culture-result-card"
         extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>}
-       total={page.totalElements} businessTitle="文化资料" businessExtra={<Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />} businessClassName="culture-result-sort">
+       total={page.totalElements} resultExtra={<Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />}>
         
         {refreshError ? <Alert type="warning" showIcon closable message="文化资料刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 12 }} /> : null}
         {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}

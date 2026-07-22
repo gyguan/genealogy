@@ -698,7 +698,7 @@ export function ReviewCenterPage({ notify }: Props) {
         <QueryResultCard
           className="review-result-card"
           extra={workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
-         total={total} businessTitle="审核任务">
+         total={total}>
           
             <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>

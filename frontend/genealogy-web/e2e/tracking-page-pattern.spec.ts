@@ -40,21 +40,16 @@ async function expectDefaultFourFields(page: Page, labels: string[]) {
   expect(await fields.locator('.ant-form-item-label label').allTextContents()).toEqual(labels);
 }
 
-async function expectResultHeaders(page: Page, title: string, total: string) {
+async function expectResultHeader(page: Page, total: string) {
   const resultCard = page.locator('.tracking-result-card');
   const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
-  const businessCard = resultCard.locator(':scope > .business-result-card');
   await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
-  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
-  await expect(businessCard).toHaveCount(1);
+  await expect(resultCard.locator('.business-result-card')).toHaveCount(0);
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
-  const businessHeader = businessCard.locator(':scope > .ant-card-head');
-  await expect(businessHeader.getByText(title, { exact: true })).toBeVisible();
-  await expect(businessHeader.getByText(total, { exact: true })).toHaveCount(0);
 }
 
-test('audit tracking uses two cards and consistent expandable filters', async ({ page }) => {
+test('audit tracking uses strict two-layer results and consistent expandable filters', async ({ page }) => {
   await mockTrackingApi(page);
   await page.goto('/?view=auditTrace&clanId=1');
 
@@ -66,7 +61,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
   await expect(page.locator('.tracking-query-card > .ant-card-head').getByText('审计追踪', { exact: true })).toBeVisible();
   await expect(page.locator('.tracking-result-card > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
-  await expectResultHeaders(page, '业务对象', '（共 1 个对象）');
+  await expectResultHeader(page, '（共 1 个对象）');
 
   await expectDefaultFourFields(page, ['对象类型', '业务关键词', '业务状态', '最近变更时间']);
   const actionButtons = page.locator('.tracking-query-actions button');
@@ -99,7 +94,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
 
   await page.getByRole('tab', { name: '操作日志' }).click();
   await expectDefaultFourFields(page, ['时间范围', '操作者', '动作分类', '对象类型']);
-  await expectResultHeaders(page, '操作日志', '（共 1 条记录）');
+  await expectResultHeader(page, '（共 1 条记录）');
   await expect(page.getByText('更新人物资料')).toBeVisible();
   await page.getByRole('button', { name: '更多筛选' }).click();
   await expect(page.locator('.tracking-query-grid > .ant-form-item')).toHaveCount(6);
@@ -107,7 +102,7 @@ test('audit tracking uses two cards and consistent expandable filters', async ({
 
   await page.getByRole('tab', { name: '风险事件' }).click();
   await expectDefaultFourFields(page, ['时间范围', '风险等级', '事件类型', '处置状态']);
-  await expectResultHeaders(page, '风险事件', '（共 1 条风险事件）');
+  await expectResultHeader(page, '（共 1 条风险事件）');
   await expect(page.getByText('批量导出在世人员数据')).toBeVisible();
 });
 

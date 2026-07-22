@@ -12,18 +12,18 @@
 
 ## 实现
 
-- [ ] 删除 `BusinessResultCard`；
-- [ ] 删除业务结果 Card Header / Body；
-- [ ] 删除 11 个页面的 `businessTitle` / `businessClassName`；
-- [ ] 结果局部操作合并到外层 Header；
-- [ ] 结果内容直接渲染为外层容器子节点；
-- [ ] 删除 `.business-result-card` 相关样式；
-- [ ] 更新专项规范和自动化测试。
+- [x] 删除 `BusinessResultCard`；
+- [x] 删除业务结果 Card Header / Body；
+- [x] 删除 11 个页面的 `businessTitle` / `businessClassName`；
+- [x] 结果局部操作合并到外层 Header；
+- [x] 结果内容直接渲染为外层容器子节点；
+- [x] 删除 `.business-result-card` 相关样式；
+- [x] 更新专项规范和自动化测试。
 
 ## 验证
 
-- [ ] 结构测试；
-- [ ] TypeScript；
-- [ ] 生产构建；
-- [ ] Frontend CI；
-- [ ] Culture / Tracking / Import Page Gate。
+- [x] 结构测试；
+- [x] TypeScript；
+- [x] 生产构建；
+- [x] Frontend CI；
+- [x] Culture / Tracking / Import Page Gate。
