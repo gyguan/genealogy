@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Space, Tag, Typography, message } from 'antd';
+import { Button, Space, Tag, Typography, message } from 'antd';
 import type { TableProps } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
@@ -7,6 +7,7 @@ import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
 import { DraftDeleteButton } from '../../../../shared/ui/DraftDeleteButton';
+import { PageFeedback } from '../../../../shared/ui/Feedback';
 import { submitReviewTask } from '../../services/reviewTaskService';
 
 type ClanForm = {
@@ -248,30 +249,27 @@ export function ClanStep({ notify, onCreated }: Props) {
   const resultNotice = clanReviewError || clanDeleteError || clanListError ? (
     <Space direction="vertical" size={8} style={{ width: '100%' }}>
       {clanReviewError ? (
-        <Alert
-          type="error"
-          showIcon
-          closable
-          message="宗族提交审核失败"
+        <PageFeedback
+          tone="error"
+          title="宗族提交审核失败"
           description={clanReviewError}
+          closable
           onClose={() => setClanReviewError('')}
         />
       ) : null}
       {clanDeleteError ? (
-        <Alert
-          type="error"
-          showIcon
-          closable
-          message="宗族删除失败"
+        <PageFeedback
+          tone="error"
+          title="宗族删除失败"
           description={clanDeleteError}
+          closable
           onClose={() => setClanDeleteError('')}
         />
       ) : null}
       {clanListError ? (
-        <Alert
-          type="error"
-          showIcon
-          message="宗族列表加载失败"
+        <PageFeedback
+          tone="error"
+          title="宗族列表加载失败"
           description={clanListError}
           action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
         />

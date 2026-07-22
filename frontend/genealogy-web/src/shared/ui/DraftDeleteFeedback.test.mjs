@@ -14,7 +14,8 @@ test('draft delete button uses a mounted message holder and closes confirmation 
 test('clan step keeps backend delete errors visible in the result area', () => {
   assert.match(clanStepSource, /const \[clanDeleteError, setClanDeleteError\] = useState\(''\)/);
   assert.match(clanStepSource, /onError=\{handleDeleteClanError\}/);
-  assert.match(clanStepSource, /message="宗族删除失败"/);
+  assert.match(clanStepSource, /<PageFeedback[\s\S]*title="宗族删除失败"/);
   assert.match(clanStepSource, /description=\{clanDeleteError\}/);
   assert.match(clanStepSource, /setClanDeleteError\(''\);\s*await apiClient\.delete/s);
+  assert.doesNotMatch(clanStepSource, /<Alert\b/);
 });
