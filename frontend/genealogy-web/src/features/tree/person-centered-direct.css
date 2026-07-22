@@ -1,0 +1,49 @@
+.lineage-logic-card--person .lineage-graph-viewport::before {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 2;
+  max-width: calc(100% - 32px);
+  padding: 5px 12px;
+  border: 1px solid #91caff;
+  border-radius: 999px;
+  background: rgba(230, 244, 255, 0.94);
+  color: #0958d9;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
+  content: '当前视图仅展示中心人物的直接关联人物（父母、配偶、子女、兄弟姐妹）';
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.lineage-logic-card--person .lineage-graph-node > rect {
+  fill: #ffffff;
+  stroke: #adc6ff;
+}
+
+.lineage-logic-card--person .lineage-graph-node.is-active > rect {
+  fill: #e6f4ff;
+  stroke: #1677ff;
+  stroke-width: 3;
+  filter: drop-shadow(0 7px 16px rgba(22, 119, 255, 0.2));
+}
+
+.lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-name,
+.lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-status {
+  fill: #0958d9;
+  font-weight: 700;
+}
+
+.lineage-logic-card--person .lineage-graph-collapse {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .lineage-logic-card--person .lineage-graph-viewport::before {
+    top: 10px;
+    max-width: calc(100% - 20px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

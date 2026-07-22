@@ -6,6 +6,7 @@ import type {
   TreeRiskLevel,
   TreeTruncationReason
 } from '../../shared/api/generated/tree-types';
+import { isClientSiblingEdge } from './lineageClientRelation.js';
 
 const DATA_STATUS_LABELS: Record<TreeDataStatus, string> = {
   draft: '草稿',
@@ -58,6 +59,9 @@ export function graphCompletenessText(meta?: TreeGraphMeta | null) {
 }
 
 export function relationshipEndpointText(edge: TreeEdgeResponse, fromName: string, toName: string) {
+  if (isClientSiblingEdge(edge)) {
+    return `${fromName} — ${toName}`;
+  }
   if (edge.relationCategory === 'marriage' || edge.relationType === 'spouse') {
     return `${fromName} ↔ ${toName}`;
   }
@@ -68,6 +72,9 @@ export function relationshipEndpointText(edge: TreeEdgeResponse, fromName: strin
 }
 
 export function relationshipEndpointLabels(edge: TreeEdgeResponse) {
+  if (isClientSiblingEdge(edge)) {
+    return ['中心人物', '同辈人物'] as const;
+  }
   if (edge.relationCategory === 'marriage' || edge.relationType === 'spouse') {
     return ['配偶一', '配偶二'] as const;
   }

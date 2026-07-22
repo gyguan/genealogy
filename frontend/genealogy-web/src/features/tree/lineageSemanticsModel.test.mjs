@@ -59,6 +59,33 @@ test('relationship matrix exposes accessible Chinese semantics', () => {
   assert.equal(status.label, '无嗣');
 });
 
+test('client-inferred siblings use explicit peer semantics without an arrow', () => {
+  const sibling = edgeVisual(edge({
+    relationType: 'other',
+    relationCategory: 'blood',
+    relationLabel: '姐妹',
+    clientRelationKind: 'sibling',
+    isLineageRelation: false
+  }));
+  assert.deepEqual(sibling, {
+    tone: 'blood',
+    label: '姐妹',
+    description: '姐妹同辈关系，使用无箭头连线表示',
+    marker: 'none'
+  });
+
+  const ritualSibling = edgeVisual(edge({
+    relationType: 'other',
+    relationCategory: 'ritual',
+    relationLabel: '兄弟',
+    clientRelationKind: 'sibling',
+    isBiological: false,
+    isLineageRelation: false
+  }));
+  assert.equal(ritualSibling.tone, 'ritual');
+  assert.equal(ritualSibling.marker, 'none');
+});
+
 test('technical relation codes display as Chinese', () => {
   const values = [
     [104, 101, 105, 114, 95, 115, 111, 110],
