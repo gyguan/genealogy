@@ -5,6 +5,7 @@ import test from 'node:test';
 const component = readFileSync(new URL('./Feedback.tsx', import.meta.url), 'utf8');
 const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
+const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
@@ -40,6 +41,12 @@ test('async import execution panel uses only standard feedback primitives', () =
   assert.doesNotMatch(asyncImportExecutionPanel, /<Empty\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /<Popconfirm\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
+});
+
+test('new clan review feedback does not expand legacy page alerts', () => {
+  assert.match(clanStep, /submitReviewTask/);
+  assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族提交审核失败"/);
+  assert.equal([...clanStep.matchAll(/<Alert\b/g)].length, 2);
 });
 
 test('feedback styling normalizes alerts, field help, empty states and full-page results', () => {
