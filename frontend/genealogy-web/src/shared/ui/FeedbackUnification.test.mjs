@@ -8,6 +8,7 @@ const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'u
 const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
+const sourceDraftDeleteAction = readFileSync(new URL('../../features/sources/SourceDraftDeleteAction.tsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
@@ -73,6 +74,15 @@ test('clan step separates transient feedback from persistent page errors', () =>
   assert.doesNotMatch(clanStep, /<Alert\b/);
 });
 
+test('source draft deletion uses page feedback without duplicate success notification', () => {
+  assert.match(sourceDraftDeleteAction, /import \{ PageFeedback \} from '\.\.\/\.\.\/shared\/ui\/Feedback'/);
+  assert.match(sourceDraftDeleteAction, /title="来源删除操作暂不可用"/);
+  assert.match(sourceDraftDeleteAction, /title=\{`草稿来源“\$\{sourceName\(detail\)\}”暂不能删除`\}/);
+  assert.match(sourceDraftDeleteAction, /<DraftDeleteButton/);
+  assert.doesNotMatch(sourceDraftDeleteAction, /<Alert\b/);
+  assert.doesNotMatch(sourceDraftDeleteAction, /notify\?\.\(\{ message: '草稿来源已删除/);
+});
+
 test('feedback styling normalizes alerts, field help, empty states and full-page results', () => {
   assert.match(css, /\.business-page \.ant-alert/);
   assert.match(css, /\.business-page \.ant-form-item-extra/);
@@ -84,7 +94,7 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 172);
+  assert.equal(baseline.maxCounts.page_alert, 170);
   assert.equal(baseline.maxCounts.field_help, 104);
   assert.equal(baseline.maxCounts.antd_message, 105);
   assert.equal(baseline.maxCounts.confirm_modal, 62);
