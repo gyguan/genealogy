@@ -1,0 +1,487 @@
+name: Issue 684 Move Query Total
+
+on:
+  push:
+    branches:
+      - agent/issue-684-query-total-in-outer-card
+    paths:
+      - .github/workflows/issue-684-move-query-total.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-684-query-total-in-outer-card
+          fetch-depth: 0
+
+      - name: Move totals to outer query result cards
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('frontend/genealogy-web')
+          page_paths = [
+              root / 'src/features/persons/PersonArchiveSearchPage.tsx',
+              root / 'src/features/sources/SourceLibraryQueryPage.tsx',
+              root / 'src/features/logs/LogPage.tsx',
+              root / 'src/features/tree/LineageTreeProductPage.tsx',
+              root / 'src/features/imports/ImportPage.tsx',
+              root / 'src/features/workbench/EditingWorkspacePage.tsx',
+              root / 'src/features/culture/CultureItemStandardTab.tsx',
+              root / 'src/features/culture/MigrationEventStandardTab.tsx',
+              root / 'src/features/culture/CultureSiteStandardTab.tsx',
+              root / 'src/features/reviews/ReviewCenterPageContent.tsx',
+              root / 'src/features/members/MemberPage.tsx',
+          ]
+
+          def opening_tag_end(source: str, start: int) -> int:
+              brace_depth = 0
+              quote = None
+              escaped = False
+              index = start
+              while index < len(source):
+                  char = source[index]
+                  if quote:
+                      if escaped:
+                          escaped = False
+                      elif char == '\\':
+                          escaped = True
+                      elif char == quote:
+                          quote = None
+                  else:
+                      if char in ('"', "'", '`'):
+                          quote = char
+                      elif char == '{':
+                          brace_depth += 1
+                      elif char == '}':
+                          brace_depth -= 1
+                      elif char == '>' and brace_depth == 0:
+                          return index + 1
+                  index += 1
+              raise AssertionError(f'Unclosed JSX tag from offset {start}')
+
+          def find_outer_open(source: str):
+              for match in re.finditer(r'<Card(?=[\s>])', source):
+                  end = opening_tag_end(source, match.start())
+                  tag = source[match.start():end]
+                  if 'query-result-outer-card' in tag and re.search(r'title\s*=\s*"查询结果"', tag):
+                      return match.start(), end, tag
+              raise AssertionError('Outer 查询结果 Card not found')
+
+          def find_business_open(source: str, start: int):
+              match = re.search(r'<BusinessResultCard(?=[\s>])', source[start:])
+              if not match:
+                  raise AssertionError('BusinessResultCard not found inside outer card')
+              absolute = start + match.start()
+              end = opening_tag_end(source, absolute)
+              return absolute, end, source[absolute:end]
+
+          def remove_prop(tag: str, name: str):
+              match = re.search(rf'\s+{name}\s*=\s*', tag)
+              if not match:
+                  return tag, None
+              value_start = match.end()
+              if value_start >= len(tag):
+                  raise AssertionError(f'Missing value for {name}')
+              char = tag[value_start]
+              if char == '{':
+                  depth = 0
+                  quote = None
+                  escaped = False
+                  index = value_start
+                  while index < len(tag):
+                      current = tag[index]
+                      if quote:
+                          if escaped:
+                              escaped = False
+                          elif current == '\\':
+                              escaped = True
+                          elif current == quote:
+                              quote = None
+                      else:
+                          if current in ('"', "'", '`'):
+                              quote = current
+                          elif current == '{':
+                              depth += 1
+                          elif current == '}':
+                              depth -= 1
+                              if depth == 0:
+                                  value_end = index + 1
+                                  break
+                      index += 1
+                  else:
+                      raise AssertionError(f'Unclosed expression for {name}')
+              elif char in ('"', "'", '`'):
+                  quote = char
+                  index = value_start + 1
+                  escaped = False
+                  while index < len(tag):
+                      current = tag[index]
+                      if escaped:
+                          escaped = False
+                      elif current == '\\':
+                          escaped = True
+                      elif current == quote:
+                          value_end = index + 1
+                          break
+                      index += 1
+                  else:
+                      raise AssertionError(f'Unclosed string for {name}')
+              else:
+                  index = value_start
+                  while index < len(tag) and not tag[index].isspace() and tag[index] not in '/>':
+                      index += 1
+                  value_end = index
+              raw_value = tag[value_start:value_end]
+              return tag[:match.start()] + tag[value_end:], raw_value
+
+          def find_matching_card_close(source: str, outer_start: int):
+              token = re.compile(r'</?Card(?![\w.])')
+              depth = 0
+              for match in token.finditer(source, outer_start):
+                  if source.startswith('</Card', match.start()):
+                      depth -= 1
+                      if depth == 0:
+                          close_end = source.find('>', match.start()) + 1
+                          return match.start(), close_end
+                      continue
+                  tag_end = opening_tag_end(source, match.start())
+                  tag = source[match.start():tag_end]
+                  if not tag.rstrip().endswith('/>'):
+                      depth += 1
+              raise AssertionError('Matching outer </Card> not found')
+
+          def clean_outer_class(tag: str):
+              class_match = re.search(r'className\s*=\s*"([^"]*)"', tag)
+              if not class_match:
+                  return tag
+              classes = [item for item in class_match.group(1).split() if item != 'query-result-outer-card']
+              replacement = f'className="{" ".join(classes)}"'
+              return tag[:class_match.start()] + replacement + tag[class_match.end():]
+
+          def migrate_page(path: Path):
+              source = path.read_text(encoding='utf-8')
+              source, import_count = re.subn(
+                  r"import\s*\{\s*BusinessResultCard\s*\}\s*from\s*'../../shared/ui/QueryResultCards';",
+                  "import { BusinessResultCard, QueryResultCard } from '../../shared/ui/QueryResultCards';",
+                  source,
+                  count=1,
+              )
+              if import_count != 1:
+                  raise AssertionError(f'{path}: BusinessResultCard import not uniquely found')
+
+              outer_start, outer_end, outer_tag = find_outer_open(source)
+              business_start, business_end, business_tag = find_business_open(source, outer_end)
+              close_start, close_end = find_matching_card_close(source, outer_start)
+
+              business_tag, total_value = remove_prop(business_tag, 'total')
+              business_tag, suffix_value = remove_prop(business_tag, 'totalSuffix')
+              if total_value is None:
+                  raise AssertionError(f'{path}: inner business card must expose a total before migration')
+
+              new_outer = outer_tag.replace('<Card', '<QueryResultCard', 1)
+              new_outer, title_count = re.subn(r'\s+title\s*=\s*"查询结果"', '', new_outer, count=1)
+              if title_count != 1:
+                  raise AssertionError(f'{path}: outer title prop not found')
+              new_outer = clean_outer_class(new_outer)
+              props = f' total={total_value}'
+              if suffix_value is not None:
+                  props += f' totalSuffix={suffix_value}'
+              new_outer = new_outer[:-1] + props + '>'
+
+              source = source[:close_start] + '</QueryResultCard>' + source[close_end:]
+              source = source[:business_start] + business_tag + source[business_end:]
+              source = source[:outer_start] + new_outer + source[outer_end:]
+
+              if 'query-result-outer-card' in new_outer:
+                  raise AssertionError(f'{path}: duplicate outer class remains')
+              path.write_text(source, encoding='utf-8')
+              print(f'migrated {path}: total={total_value}, suffix={suffix_value or "条"}')
+
+          for page_path in page_paths:
+              migrate_page(page_path)
+
+          component = root / 'src/shared/ui/QueryResultCards.tsx'
+          component.write_text("""import type { ReactNode } from 'react';
+          import { Card, Space, Typography } from 'antd';
+          import type { CardProps } from 'antd';
+          import './query-result-cards.css';
+
+          type QueryResultProps = Omit<CardProps, 'title' | 'children'> & {
+            total: number;
+            totalSuffix?: string;
+            children: ReactNode;
+          };
+
+          type BusinessResultProps = {
+            title: ReactNode;
+            extra?: ReactNode;
+            children: ReactNode;
+            className?: string;
+          };
+
+          export function QueryResultCard({
+            total,
+            totalSuffix = '条',
+            children,
+            className = '',
+            ...cardProps
+          }: QueryResultProps) {
+            return (
+              <Card
+                {...cardProps}
+                className={`query-result-outer-card ${className}`.trim()}
+                title={(
+                  <Space size={8} wrap className="query-result-card__title">
+                    <Typography.Text strong>查询结果</Typography.Text>
+                    <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text>
+                  </Space>
+                )}
+              >
+                {children}
+              </Card>
+            );
+          }
+
+          export function BusinessResultCard({ title, extra, children, className = '' }: BusinessResultProps) {
+            return (
+              <Card
+                size="small"
+                className={`business-result-card ${className}`.trim()}
+                data-query-result-role="business"
+                title={<Typography.Text strong className="business-result-card__title">{title}</Typography.Text>}
+                extra={extra}
+              >
+                {children}
+              </Card>
+            );
+          }
+          """.replace('          ', ''), encoding='utf-8')
+
+          css_path = root / 'src/shared/ui/query-result-cards.css'
+          css = css_path.read_text(encoding='utf-8')
+          title_css = """
+          .query-result-card__title {
+            display: flex;
+            align-items: baseline;
+            min-width: 0;
+          }
+
+          .query-result-card__title .ant-typography,
+          .business-result-card__title.ant-typography {
+            margin: 0;
+          }
+
+          """.replace('          ', '')
+          if '.query-result-card__title {' not in css:
+              css = css.replace('.query-result-outer-card > .ant-card-head {', title_css + '.query-result-outer-card > .ant-card-head {')
+          css = re.sub(
+              r'\.business-result-card__title \{[\s\S]*?\.business-result-card__title \.ant-typography \{[\s\S]*?\}\n',
+              '.business-result-card__title {\n  display: inline-flex;\n}\n',
+              css,
+              count=1,
+          )
+          css_path.write_text(css, encoding='utf-8')
+
+          test_path = root / 'src/shared/ui/QueryResultCards.test.mjs'
+          test_path.write_text("""import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import test from 'node:test';
+
+          const files = [
+            ['features/persons/PersonArchiveSearchPage.tsx', '人物档案'],
+            ['features/sources/SourceLibraryQueryPage.tsx', '来源资料'],
+            ['features/logs/LogPage.tsx', '业务对象'],
+            ['features/tree/LineageTreeProductPage.tsx', '世系图谱'],
+            ['features/imports/ImportPage.tsx', '导入任务'],
+            ['features/workbench/EditingWorkspacePage.tsx', '修谱任务'],
+            ['features/culture/CultureItemStandardTab.tsx', '文化资料'],
+            ['features/culture/MigrationEventStandardTab.tsx', '迁徙脉络'],
+            ['features/culture/CultureSiteStandardTab.tsx', '文化场所'],
+            ['features/reviews/ReviewCenterPageContent.tsx', '审核任务'],
+            ['features/members/MemberPage.tsx', '成员列表']
+          ];
+
+          function openingTag(source, token, start = 0) {
+            const index = source.indexOf(token, start);
+            assert.ok(index >= 0, `${token} should exist`);
+            let depth = 0;
+            let quote = '';
+            for (let cursor = index; cursor < source.length; cursor += 1) {
+              const char = source[cursor];
+              if (quote) {
+                if (char === quote && source[cursor - 1] !== '\\') quote = '';
+                continue;
+              }
+              if (char === '"' || char === "'" || char === '`') quote = char;
+              else if (char === '{') depth += 1;
+              else if (char === '}') depth -= 1;
+              else if (char === '>' && depth === 0) return { index, end: cursor + 1, text: source.slice(index, cursor + 1) };
+            }
+            assert.fail(`${token} opening tag should close`);
+          }
+
+          test('all query pages put total on QueryResultCard and keep BusinessResultCard inside it', () => {
+            for (const [relativePath, businessTitle] of files) {
+              const source = readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8');
+              const outer = openingTag(source, '<QueryResultCard');
+              const inner = openingTag(source, '<BusinessResultCard', outer.end);
+              const innerClose = source.indexOf('</BusinessResultCard>', inner.end);
+              const outerClose = source.indexOf('</QueryResultCard>', innerClose);
+
+              assert.match(outer.text, /\stotal=\{/, `${relativePath} should put total on the outer card`);
+              assert.doesNotMatch(inner.text, /\stotal=/, `${relativePath} should not repeat total on the business card`);
+              assert.ok(source.includes(businessTitle), `${relativePath} should expose business title ${businessTitle}`);
+              assert.ok(inner.index > outer.end, `${relativePath} should nest the business card inside the outer card`);
+              assert.ok(innerClose > inner.end, `${relativePath} should close the business card`);
+              assert.ok(outerClose > innerClose, `${relativePath} should close the outer card after the business card`);
+            }
+          });
+
+          test('shared components render total beside 查询结果 and business title without a duplicate count', () => {
+            const source = readFileSync(new URL('./QueryResultCards.tsx', import.meta.url), 'utf8');
+            assert.match(source, /<Typography\.Text strong>查询结果<\/Typography\.Text>/);
+            assert.match(source, /（共 \{total\} \{totalSuffix\}）/);
+            const businessFunction = source.slice(source.indexOf('export function BusinessResultCard'));
+            assert.doesNotMatch(businessFunction, /共 \{total\}/);
+          });
+
+          test('shared styles retain true nested cards and align the outer title count', () => {
+            const source = readFileSync(new URL('./query-result-cards.css', import.meta.url), 'utf8');
+            assert.match(source, /\.query-result-outer-card\s*>\s*\.ant-card-body\s*>\s*\.business-result-card/);
+            assert.match(source, /\.query-result-card__title\s*\{[\s\S]*align-items:\s*baseline/);
+          });
+          """.replace('          ', ''), encoding='utf-8')
+
+          import_e2e = root / 'e2e/import-page-pattern.spec.ts'
+          source = import_e2e.read_text(encoding='utf-8')
+          source = source.replace(
+              "  await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();\n  await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();\n  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toBeVisible();",
+              "  await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();\n  await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();\n  await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();\n  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toHaveCount(0);",
+          )
+          import_e2e.write_text(source, encoding='utf-8')
+
+          tracking_e2e = root / 'e2e/tracking-page-pattern.spec.ts'
+          source = tracking_e2e.read_text(encoding='utf-8')
+          source = re.sub(
+              r"async function expectBusinessResultHeader\(page: Page, title: string, total: string\) \{[\s\S]*?\n\}",
+              """async function expectResultHeaders(page: Page, title: string, total: string) {
+            const resultCard = page.locator('.tracking-result-card');
+            const outerHeader = resultCard.locator(':scope > .ant-card-head');
+            const businessCard = resultCard.locator('.business-result-card');
+            await expect(businessCard).toHaveCount(1);
+            await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
+            await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
+            const businessHeader = businessCard.locator(':scope > .ant-card-head');
+            await expect(businessHeader.getByText(title, { exact: true })).toBeVisible();
+            await expect(businessHeader.getByText(total, { exact: true })).toHaveCount(0);
+          }""".replace('          ', ''),
+              source,
+              count=1,
+          )
+          source = source.replace("await expectBusinessResultHeader(page, '业务对象', '共 1 个对象');", "await expectResultHeaders(page, '业务对象', '（共 1 个对象）');")
+          source = source.replace("await expectBusinessResultHeader(page, '操作日志', '共 1 条记录');", "await expectResultHeaders(page, '操作日志', '（共 1 条记录）');")
+          source = source.replace("await expectBusinessResultHeader(page, '风险事件', '共 1 条风险事件');", "await expectResultHeaders(page, '风险事件', '（共 1 条风险事件）');")
+          tracking_e2e.write_text(source, encoding='utf-8')
+
+          culture_e2e = root / 'e2e/culture-page-pattern.spec.ts'
+          source = culture_e2e.read_text(encoding='utf-8')
+          source = source.replace(
+              'async function expectDoubleCardShell(page: Page) {',
+              'async function expectDoubleCardShell(page: Page, businessTitle: string, total: string) {',
+          )
+          source = source.replace(
+              "  await expect(resultCard.locator(':scope > .ant-card-head').getByText('查询结果', { exact: true })).toBeVisible();\n  await expect(resultCard.locator('.business-result-card')).toHaveCount(1);",
+              "  const outerHeader = resultCard.locator(':scope > .ant-card-head');\n  await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();\n  await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();\n  const businessHeader = resultCard.locator('.business-result-card > .ant-card-head');\n  await expect(businessHeader.getByText(businessTitle, { exact: true })).toBeVisible();\n  await expect(businessHeader.getByText(total, { exact: true })).toHaveCount(0);",
+          )
+          replacements = [
+              ("await expectDoubleCardShell(page);", "await expectDoubleCardShell(page, '文化资料', '（共 1 条）');", 1),
+              ("await expectDoubleCardShell(page);", "await expectDoubleCardShell(page, '迁徙脉络', '（共 1 条）');", 1),
+              ("await expectDoubleCardShell(page);", "await expectDoubleCardShell(page, '文化场所', '（共 1 条）');", 1),
+              ("await expectDoubleCardShell(page);", "await expectDoubleCardShell(page, '文化资料', '（共 1 条）');", 1),
+          ]
+          for old, new, count in replacements:
+              source = source.replace(old, new, count)
+          culture_e2e.write_text(source, encoding='utf-8')
+
+          docs = Path('docs/22-frontend-query-page-pattern-spec.md')
+          source = docs.read_text(encoding='utf-8')
+          source = source.replace('├─ 标题：查询结果\n', '├─ 标题：查询结果（共 XX 条）\n')
+          source = source.replace('   ├─ 业务数据标题与总数\n', '   ├─ 业务数据标题\n')
+          source = source.replace('   └─ 总数与分页\n', '   └─ 分页\n')
+          source = source.replace('- 外层结果 Card 标题统一使用“查询结果”；\n', '- 外层结果 Card 标题统一使用“查询结果（共 XX 条）”，总数紧随标题展示；\n')
+          source = source.replace('- 内层业务结果 Card 使用具体业务名称，例如“人物档案”“审核任务”“来源资料”；\n', '- 内层业务结果 Card 使用具体业务名称，例如“人物档案”“审核任务”“来源资料”，不重复展示总数；\n')
+          docs.write_text(source, encoding='utf-8')
+
+          task = Path('tasks/issue-684-execution.md')
+          task.write_text("""# Issue #684 执行看板：查询总数移至外层结果 Card
+
+          ## 目标
+
+          - [x] 外层标题显示“查询结果（共 XX 条）”；
+          - [x] 页面级按钮保留在外层 Header 右侧；
+          - [x] 内层业务 Card 不再重复显示总数；
+          - [x] 保留业务 Card 在外层 Body 内的真实嵌套关系。
+
+          ## 覆盖范围
+
+          - [x] 人物档案、来源资料库、审计追踪、世系图谱；
+          - [x] 数据导入、修谱工作台、审核中心、成员与权限；
+          - [x] 宗族文化三个 TAB。
+
+          ## 验证
+
+          - [x] 查询结果源码结构测试；
+          - [x] TypeScript；
+          - [x] 生产构建；
+          - [ ] Frontend CI；
+          - [ ] Culture / Tracking / Import Page Gate。
+          """.replace('          ', ''), encoding='utf-8')
+          PY
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install --no-audit --no-fund
+
+      - name: Validate query result structure
+        working-directory: frontend/genealogy-web
+        run: node --test src/shared/ui/QueryResultCards.test.mjs
+
+      - name: Typecheck
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend/genealogy-web
+        run: npm run build
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/22-frontend-query-page-pattern-spec.md \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.tsx \
+            frontend/genealogy-web/src/shared/ui/query-result-cards.css \
+            frontend/genealogy-web/src/shared/ui/QueryResultCards.test.mjs \
+            frontend/genealogy-web/src/features \
+            frontend/genealogy-web/e2e/culture-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/tracking-page-pattern.spec.ts \
+            frontend/genealogy-web/e2e/import-page-pattern.spec.ts \
+            tasks/issue-684-execution.md
+          git diff --cached --quiet && exit 1
+          git commit -m "fix: move query totals to outer result headers"
+          git push origin HEAD:agent/issue-684-query-total-in-outer-card
