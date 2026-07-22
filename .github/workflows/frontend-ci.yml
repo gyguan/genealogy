@@ -34,6 +34,12 @@ jobs:
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
+      - name: Audit frontend feedback patterns
+        working-directory: frontend/genealogy-web
+        run: node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json --json=ui-feedback-audit.json --markdown=ui-feedback-audit.md
+      - name: Test feedback system
+        working-directory: frontend/genealogy-web
+        run: npm run test:feedback
       - name: Test multi-select unification
         working-directory: frontend/genealogy-web
         run: npm run test:multi-select
@@ -118,6 +124,16 @@ jobs:
       - name: Build production frontend
         working-directory: frontend/genealogy-web
         run: npm run build
+      - name: Upload frontend feedback audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-feedback-audit
+          path: |
+            frontend/genealogy-web/ui-feedback-audit.json
+            frontend/genealogy-web/ui-feedback-audit.md
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload frontend diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
