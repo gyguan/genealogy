@@ -1,47 +1,4 @@
-/*
- * Keep every query multi-select on the native Ant Design visual system.
- * Only layout width and the legacy lineage popup actions are normalized here;
- * selector, tag, option, hover, focus and disabled states stay Ant-native.
- */
+/* Keep all query multi-selects on the native Ant Design visual system. */
 .ant-select-multiple {
   width: 100%;
-}
-
-/*
- * The lineage relation selector still renders two legacy action buttons in its
- * popup. Present them as standard Ant Design option rows so the dropdown no
- * longer looks different from the shared select-all option used elsewhere.
- */
-.lineage-select-all-actions {
-  display: grid;
-  gap: 0;
-  padding: 4px;
-}
-
-.lineage-select-all-actions .ant-btn {
-  display: flex;
-  justify-content: flex-start;
-  width: 100%;
-  height: 32px;
-  padding: 5px 12px;
-  color: rgba(0, 0, 0, 0.88);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 22px;
-  text-align: left;
-  border-radius: 6px;
-}
-
-.lineage-select-all-actions .ant-btn:not(:disabled):hover,
-.lineage-select-all-actions .ant-btn:not(:disabled):focus-visible {
-  color: rgba(0, 0, 0, 0.88);
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.lineage-select-all-actions .ant-btn:disabled {
-  color: rgba(0, 0, 0, 0.25);
-}
-
-.lineage-select-all-divider {
-  display: none;
 }
