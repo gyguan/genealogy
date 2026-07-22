@@ -97,7 +97,11 @@ test('data import page uses query and result cards with new import modal', async
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
-  await expect(page.getByText(/^查询结果（\d+）$/)).toBeVisible();
+  const outerResultHeader = page.locator('.import-result-card > .ant-card-head');
+  const businessResultHeader = page.locator('.import-result-card .business-result-card > .ant-card-head');
+  await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(businessResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
+  await expect(businessResultHeader.getByText('共 3 个任务', { exact: true })).toBeVisible();
   await expectDesktopResultHeaderSpacing(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
@@ -132,7 +136,7 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
-  const headerWrapper = page.locator('.import-result-card .ant-card-head-wrapper');
+  const headerWrapper = page.locator('.import-result-card > .ant-card-head > .ant-card-head-wrapper');
   const headerPadding = await headerWrapper.evaluate(element => {
     const style = getComputedStyle(element);
     return { top: style.paddingTop, bottom: style.paddingBottom };
