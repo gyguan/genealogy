@@ -8,16 +8,16 @@
 
 基于 `scripts/audit-ui-feedback.mjs` 对非测试、非生成源码进行全量扫描，并完成数据导入执行面板的首批迁移：
 
-- 扫描源码文件：197 个
+- 扫描源码文件：198 个
 - 技术实现机制：10 类
-- 历史机制使用点：995 处
+- 历史机制使用点：994 处
 - 涉及文件：90 个
 - 标准组件使用：`PageFeedback` 8 处、`InlineFeedback` 2 处、`EmptyState` 2 处、`ConfirmAction` 1 处
 
 | 当前技术机制 | 使用点 | 文件数 | 处理方向 |
 |---|---:|---:|---|
 | 页面 `Alert` | 174 | 58 | 统一通过 `PageFeedback` 使用 |
-| 字段 hint/help/extra | 105 | 46 | 保留，仅承载填写规则与即时校验 |
+| 字段 hint/help/extra | 104 | 46 | 保留，仅承载填写规则与即时校验 |
 | 应用 `notify` | 141 | 29 | 统一作为短暂操作反馈 |
 | Ant Design Message | 109 | 28 | 逐步迁移到统一 Toast API |
 | 确认弹窗 | 63 | 30 | 统一通过 `ConfirmAction` 使用 |
