@@ -257,7 +257,7 @@
     flex: 1;
     min-height: 44px;
   }
-.person-archive-desktop-list {
+  .person-archive-desktop-list {
     display: none;
   }
 
