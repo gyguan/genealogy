@@ -15,6 +15,12 @@
 - [x] 通过前后端 CI
 - [ ] PR Ready 并合入 main
 
+## 验证证据
+
+- 后端：`mvn -q test` 全量通过。
+- 前端：类型检查、向导、依赖规则、来源阶段、人物编辑、导入、宗族文化专项测试全部通过。
+- 构建：Vite 生产构建通过。
+
 ## 分支
 
 `agent/issue-708-approved-dependencies`
