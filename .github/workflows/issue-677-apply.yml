@@ -1,6 +1,12 @@
 name: Issue 677 Apply Query Result Cards
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/issue-677-apply.py
+      - .github/workflows/issue-677-apply.yml
   push:
     branches:
       - agent/issue-677-query-result-double-card
@@ -48,5 +54,3 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "feat: unify query result card hierarchy"
           git push origin HEAD:agent/issue-677-query-result-double-card
-
-# Triggered through the contents API so the transformation runs on the connected branch.
