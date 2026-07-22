@@ -14,6 +14,7 @@ import type {
 } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
+import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -694,17 +695,19 @@ export function ReviewCenterPage({ notify }: Props) {
           </Form></Space>
         </Card>
 
-        <Card>
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Card
+          className="query-result-outer-card review-result-card"
+          title="查询结果"
+          extra={workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
+        >
+          <BusinessResultCard title="审核任务" total={total}>
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
               <Tabs activeKey={activeTab} onChange={switchTab} items={[
                 { key: 'pending', label: activeTab === 'pending' && hasLoaded ? `待我审核（${total}）` : '待我审核' },
                 { key: 'submitted', label: activeTab === 'submitted' && hasLoaded ? `我提交的（${total}）` : '我提交的' },
                 { key: 'processed', label: activeTab === 'processed' && hasLoaded ? `已处理（${total}）` : '已处理' }
               ]} />
-              <Space wrap>
-                {workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
-              </Space>
             </Space>
             {staleFailure ? <Alert type="warning" showIcon message="刷新失败，当前展示的是上次成功数据" description={staleFailure} action={<Button size="small" onClick={() => void loadTasks()}>重试</Button>} /> : null}
             {activeTab === 'pending' && selectedTasks.length > 0 ? (
@@ -716,7 +719,8 @@ export function ReviewCenterPage({ notify }: Props) {
               />
             ) : null}
             {renderResultContent()}
-          </Space>
+            </Space>
+          </BusinessResultCard>
         </Card>
       </Space>
 

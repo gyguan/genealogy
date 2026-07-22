@@ -45,6 +45,7 @@ import { culturePrimaryAction } from './culturePagePattern';
 import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, readMigrationLocation } from './migrationEventUrlState';
 import type { MigrationSearchState } from './migrationEventUrlState';
 import type { CultureTabKey } from './cultureTabState';
+import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -293,12 +294,14 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
         <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
       </Form>
     </Card>
-    <Card className="culture-result-card" title={`迁徙脉络（${total}）`} extra={<Space className="culture-result-actions"><Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} /><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button></Space>}>
+    <Card className="culture-result-card query-result-outer-card" title="查询结果" extra={<Space className="culture-result-actions"><Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} /><Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button></Space>}>
+      <BusinessResultCard title="迁徙脉络" total={total}>
       {refreshError ? <Alert type="warning" showIcon closable message="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="迁徙事件首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
       {clanId && !listForbidden && !listError ? <Table<MigrationEventSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <Empty description="没有符合当前条件的迁徙事件"><Button onClick={resetSearch}>重置筛选</Button></Empty> }} /> : null}
+      </BusinessResultCard>
     </Card>
     <Drawer open={Boolean(selectedId)} width={720} title={<Space><Title level={4} style={{ margin: 0 }}>{detail ? routeText(detail) : selectedSummary ? routeText(selectedSummary) : '迁徙事件详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>} extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'migration', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null} onClose={closeDetail} destroyOnHidden>
       {detailLoading && !detail ? <Skeleton active paragraph={{ rows: 9 }} /> : null}

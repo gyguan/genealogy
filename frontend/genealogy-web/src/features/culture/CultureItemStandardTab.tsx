@@ -80,6 +80,7 @@ import { culturePrimaryAction } from './culturePagePattern';
 import { buildCultureLocation, cultureSearchKey, defaultCultureSearch, readCultureLocation } from './cultureUrlState';
 import type { CultureSearchState } from './cultureUrlState';
 import type { CultureTabKey } from './cultureTabState';
+import { BusinessResultCard } from '../../shared/ui/QueryResultCards';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -524,8 +525,8 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       </Card>
 
       <Card
-        className="culture-result-card"
-        title={`文化资料（${page.totalElements}）`}
+        className="culture-result-card query-result-outer-card"
+        title="查询结果"
         extra={(
           <Space className="culture-result-actions">
             <Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />
@@ -533,6 +534,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
           </Space>
         )}
       >
+        <BusinessResultCard title="文化资料" total={page.totalElements}>
         {refreshError ? <Alert type="warning" showIcon closable message="文化资料刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 12 }} /> : null}
         {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化资料'} /> : null}
@@ -550,6 +552,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
             locale={{ emptyText: <Empty description="没有符合当前条件的文化资料"><Button onClick={resetSearch}>重置筛选</Button></Empty> }}
           />
         ) : null}
+        </BusinessResultCard>
       </Card>
 
       <Drawer
