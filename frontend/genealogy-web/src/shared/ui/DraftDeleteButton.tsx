@@ -37,6 +37,7 @@ export function DraftDeleteButton({
   const executionLock = useRef(new DraftDeleteExecutionLock());
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   if (!canDirectDeleteDraft(object)) return null;
 
@@ -47,43 +48,47 @@ export function DraftDeleteButton({
       const executed = await executionLock.current.run(onDelete, onDeleted);
       if (!executed) return;
       setOpen(false);
-      message.success(`${objectType}已删除`);
+      messageApi.success(`${objectType}已删除`);
     } catch (error) {
+      setOpen(false);
       onError?.(error);
-      message.error(errorText(error, `删除${objectType}失败`));
+      messageApi.error(errorText(error, `删除${objectType}失败`));
     } finally {
       setDeleting(false);
     }
   }
 
   return (
-    <span onClick={event => event.stopPropagation()}>
-      <Popconfirm
-        title={draftDeleteConfirmTitle(objectName, objectType)}
-        description={draftDeleteConfirmDescription(objectType)}
-        open={open}
-        okText="确认删除"
-        cancelText="取消"
-        okButtonProps={{ danger: true, loading: deleting }}
-        cancelButtonProps={{ disabled: deleting }}
-        onOpenChange={nextOpen => {
-          if (!executionLock.current.isRunning()) setOpen(nextOpen);
-        }}
-        onConfirm={() => void confirmDelete()}
-        onCancel={() => setOpen(false)}
-      >
-        <Button
-          {...buttonProps}
-          danger
-          loading={deleting}
-          onClick={event => {
-            event.stopPropagation();
-            if (!executionLock.current.isRunning()) setOpen(true);
+    <>
+      {contextHolder}
+      <span onClick={event => event.stopPropagation()}>
+        <Popconfirm
+          title={draftDeleteConfirmTitle(objectName, objectType)}
+          description={draftDeleteConfirmDescription(objectType)}
+          open={open}
+          okText="确认删除"
+          cancelText="取消"
+          okButtonProps={{ danger: true, loading: deleting }}
+          cancelButtonProps={{ disabled: deleting }}
+          onOpenChange={nextOpen => {
+            if (!executionLock.current.isRunning()) setOpen(nextOpen);
           }}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setOpen(false)}
         >
-          {label}
-        </Button>
-      </Popconfirm>
-    </span>
+          <Button
+            {...buttonProps}
+            danger
+            loading={deleting}
+            onClick={event => {
+              event.stopPropagation();
+              if (!executionLock.current.isRunning()) setOpen(true);
+            }}
+          >
+            {label}
+          </Button>
+        </Popconfirm>
+      </span>
+    </>
   );
 }
