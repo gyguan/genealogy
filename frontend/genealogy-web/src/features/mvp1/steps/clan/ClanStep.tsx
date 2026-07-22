@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Card, message } from 'antd';
+import { Alert, Button, Card, Space, Table, Tag, Typography, message } from 'antd';
+import type { TableProps } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
@@ -18,6 +19,7 @@ type ClanRecord = {
   clanName?: string;
   surname?: string;
   status?: string;
+  allowedActions?: string[];
 };
 
 type Props = {
@@ -32,23 +34,53 @@ const defaultClanForm: ClanForm = {
   originPlace: ''
 };
 
+function clanRows(data: unknown): ClanRecord[] {
+  if (Array.isArray(data)) return data as ClanRecord[];
+  if (!data || typeof data !== 'object') return [];
+  const record = data as Record<string, unknown>;
+  const rows = [record.records, record.items, record.content].find(Array.isArray);
+  return Array.isArray(rows) ? rows as ClanRecord[] : [];
+}
+
+function clanDisplayName(clan: ClanRecord) {
+  return clan.clanName || clan.surname || '未命名宗族';
+}
+
+function clanStatus(status?: string) {
+  const value = String(status || 'draft').trim().toLowerCase();
+  if (value === 'draft') return { text: '草稿', color: 'default' };
+  if (value === 'official' || value === 'approved') return { text: '正式', color: 'success' };
+  if (value === 'archived') return { text: '已归档', color: 'warning' };
+  return { text: status || '状态待确认', color: 'default' };
+}
+
 export function ClanStep({ notify, onCreated }: Props) {
   const workspace = useWorkspace();
   const [form, setForm] = useState<ClanForm>({ ...defaultClanForm });
   const [loading, setLoading] = useState(false);
-  const [currentClan, setCurrentClan] = useState<ClanRecord | null>(null);
+  const [clans, setClans] = useState<ClanRecord[]>([]);
+  const [clanListLoading, setClanListLoading] = useState(false);
+  const [clanListError, setClanListError] = useState('');
+  const [clanPageNo, setClanPageNo] = useState(1);
+  const [clanPageSize, setClanPageSize] = useState(10);
+
+  async function loadClans() {
+    setClanListLoading(true);
+    setClanListError('');
+    try {
+      const data = await apiClient.get('/clans');
+      setClans(clanRows(data));
+      setClanPageNo(1);
+    } catch (error) {
+      setClanListError((error as Error).message || '宗族列表加载失败');
+    } finally {
+      setClanListLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-    if (!workspace.clanId) {
-      setCurrentClan(null);
-      return () => { active = false; };
-    }
-    apiClient.get<ClanRecord>(`/clans/${workspace.clanId}`)
-      .then(value => { if (active) setCurrentClan(value); })
-      .catch(() => { if (active) setCurrentClan(null); });
-    return () => { active = false; };
-  }, [workspace.clanId]);
+    void loadClans();
+  }, []);
 
   function patch(key: keyof ClanForm, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -61,6 +93,14 @@ export function ClanStep({ notify, onCreated }: Props) {
       if (error) message.error(text);
       else message.success(text);
     }
+  }
+
+  function selectClan(clan: ClanRecord) {
+    const clanId = String(clan.id || '');
+    if (!clanId) return;
+    workspace.patch({ clanId, branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
+    toast({ message: `已选择宗族“${clanDisplayName(clan)}”，继续维护支派。` });
+    onCreated?.(clanId);
   }
 
   async function createClan() {
@@ -77,8 +117,8 @@ export function ClanStep({ notify, onCreated }: Props) {
       const data: any = await apiClient.post('/clans', form);
       const nextClanId = String(data?.id || '');
       workspace.patch({ clanId: nextClanId, branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
-      setCurrentClan(data || null);
       setForm({ ...defaultClanForm });
+      await loadClans();
       toast({ message: '宗族创建成功。宗族暂不纳入审核流，可继续创建支派。', id: data?.id });
       if (nextClanId) onCreated?.(nextClanId);
     } catch (error) {
@@ -88,52 +128,119 @@ export function ClanStep({ notify, onCreated }: Props) {
     }
   }
 
-  async function afterDeleteClan() {
-    setCurrentClan(null);
-    workspace.patch({ clanId: '', branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
-    toast({ message: '空草稿宗族已删除，可重新创建。' });
+  async function afterDeleteClan(clan: ClanRecord) {
+    if (String(clan.id || '') === workspace.clanId) {
+      workspace.patch({ clanId: '', branchId: '', personId: '', sourceId: '', reviewTaskId: '', relationshipId: '' });
+    }
+    await loadClans();
   }
 
-  return (
-    <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
-      {currentClan ? (
-        <Card
-          size="small"
-          title="当前宗族"
-          extra={currentClan.id ? (
-            <DraftDeleteButton
-              object={currentClan}
-              objectName={currentClan.clanName || currentClan.surname}
-              objectType="宗族"
-              onDelete={() => apiClient.delete(`/clans/${currentClan.id}`)}
-              onDeleted={afterDeleteClan}
-              label="删除空草稿宗族"
-              buttonProps={{ size: 'small' }}
-            />
-          ) : null}
-          style={{ marginBottom: 16 }}
-        >
-          <Alert
-            type="info"
-            showIcon
-            message={`${currentClan.clanName || currentClan.surname || '当前宗族'} · ${String(currentClan.status || 'draft') === 'draft' ? '草稿' : currentClan.status || '状态待确认'}`}
+  const columns: TableProps<ClanRecord>['columns'] = [
+    {
+      title: '宗族名称',
+      key: 'clanName',
+      render: (_, clan) => (
+        <Space size={8} wrap>
+          <Typography.Text strong>{clanDisplayName(clan)}</Typography.Text>
+          {String(clan.id || '') === workspace.clanId ? <Tag color="blue">当前</Tag> : null}
+        </Space>
+      )
+    },
+    {
+      title: '姓氏',
+      dataIndex: 'surname',
+      key: 'surname',
+      width: 120,
+      render: value => value || '-'
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 120,
+      render: value => {
+        const status = clanStatus(value);
+        return <Tag color={status.color}>{status.text}</Tag>;
+      }
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 220,
+      render: (_, clan) => (
+        <Space size={4}>
+          <Button type="link" size="small" onClick={() => selectClan(clan)}>
+            {String(clan.id || '') === workspace.clanId ? '继续建谱' : '选择并继续'}
+          </Button>
+          <DraftDeleteButton
+            object={clan}
+            objectName={clanDisplayName(clan)}
+            objectType="宗族"
+            onDelete={() => apiClient.delete(`/clans/${clan.id}`)}
+            onDeleted={() => afterDeleteClan(clan)}
+            label="删除草稿"
+            buttonProps={{ type: 'link', size: 'small' }}
           />
-        </Card>
-      ) : null}
-      <div className="wizard-form-grid">
-        <Field label="宗族名称 *">
-          <input value={form.clanName} onChange={event => patch('clanName', event.target.value)} placeholder="例如：江夏堂黄氏宗族" required />
-        </Field>
-        <Field label="姓氏 *">
-          <input value={form.surname} onChange={event => patch('surname', event.target.value)} placeholder="例如：黄" required />
-        </Field>
-        <Field label="系统生成编码"><input value="保存后自动生成" disabled readOnly /></Field>
-        <Field label="堂号"><input value={form.hallName} onChange={event => patch('hallName', event.target.value)} /></Field>
-        <Field label="祖籍/发源地"><input value={form.originPlace} onChange={event => patch('originPlace', event.target.value)} /></Field>
-      </div>
-      <Actions>
-        <button disabled={loading} onClick={() => void createClan()}>创建宗族</button>
-      </Actions>
-    </Panel>
+        </Space>
+      )
+    }
+  ];
+
+  return (
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
+        <div className="wizard-form-grid">
+          <Field label="宗族名称 *">
+            <input value={form.clanName} onChange={event => patch('clanName', event.target.value)} placeholder="例如：江夏堂黄氏宗族" required />
+          </Field>
+          <Field label="姓氏 *">
+            <input value={form.surname} onChange={event => patch('surname', event.target.value)} placeholder="例如：黄" required />
+          </Field>
+          <Field label="系统生成编码"><input value="保存后自动生成" disabled readOnly /></Field>
+          <Field label="堂号"><input value={form.hallName} onChange={event => patch('hallName', event.target.value)} /></Field>
+          <Field label="祖籍/发源地"><input value={form.originPlace} onChange={event => patch('originPlace', event.target.value)} /></Field>
+        </div>
+        <Actions>
+          <button disabled={loading} onClick={() => void createClan()}>创建宗族</button>
+        </Actions>
+      </Panel>
+
+      <Card
+        size="small"
+        title={`我的宗族（共${clans.length}个）`}
+        extra={<Button loading={clanListLoading} onClick={() => void loadClans()}>刷新</Button>}
+      >
+        {clanListError ? (
+          <Alert
+            type="error"
+            showIcon
+            message="宗族列表加载失败"
+            description={clanListError}
+            action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
+            style={{ marginBottom: 12 }}
+          />
+        ) : null}
+        <Table<ClanRecord>
+          rowKey={clan => String(clan.id)}
+          size="small"
+          loading={clanListLoading}
+          columns={columns}
+          dataSource={clans}
+          locale={{ emptyText: '当前账号暂无宗族，可在上方创建' }}
+          pagination={{
+            current: clanPageNo,
+            pageSize: clanPageSize,
+            total: clans.length,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 20, 50],
+            showTotal: total => `共 ${total} 个宗族`,
+            onChange: (pageNo, pageSize) => {
+              setClanPageNo(pageNo);
+              setClanPageSize(pageSize);
+            }
+          }}
+        />
+      </Card>
+    </Space>
   );
 }
