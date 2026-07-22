@@ -16,6 +16,7 @@ export function BusinessResultCard({ title, total, totalSuffix = '条', extra, c
     <Card
       size="small"
       className={`business-result-card ${className}`.trim()}
+      data-query-result-role="business"
       title={(
         <Space direction="vertical" size={0} className="business-result-card__title">
           <Typography.Text strong>{title}</Typography.Text>
