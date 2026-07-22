@@ -43,10 +43,12 @@ test('async import execution panel uses only standard feedback primitives', () =
   assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
 });
 
-test('new clan review feedback does not expand legacy page alerts', () => {
+test('clan review feedback uses only the standard page feedback entry', () => {
   assert.match(clanStep, /submitReviewTask/);
   assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族提交审核失败"/);
-  assert.equal([...clanStep.matchAll(/<Alert\b/g)].length, 2);
+  assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族删除失败"/);
+  assert.match(clanStep, /<PageFeedback[\s\S]*title="宗族列表加载失败"/);
+  assert.doesNotMatch(clanStep, /<Alert\b/);
 });
 
 test('feedback styling normalizes alerts, field help, empty states and full-page results', () => {
@@ -60,7 +62,7 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 174);
+  assert.equal(baseline.maxCounts.page_alert, 172);
   assert.equal(baseline.maxCounts.field_help, 104);
   assert.equal(baseline.maxCounts.antd_message, 109);
   assert.equal(baseline.maxCounts.confirm_modal, 63);
