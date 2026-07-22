@@ -187,27 +187,28 @@ export function ClanStep({ notify, onCreated }: Props) {
   ];
 
   return (
-    <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
-      <div className="wizard-form-grid">
-        <Field label="宗族名称 *">
-          <input value={form.clanName} onChange={event => patch('clanName', event.target.value)} placeholder="例如：江夏堂黄氏宗族" required />
-        </Field>
-        <Field label="姓氏 *">
-          <input value={form.surname} onChange={event => patch('surname', event.target.value)} placeholder="例如：黄" required />
-        </Field>
-        <Field label="系统生成编码"><input value="保存后自动生成" disabled readOnly /></Field>
-        <Field label="堂号"><input value={form.hallName} onChange={event => patch('hallName', event.target.value)} /></Field>
-        <Field label="祖籍/发源地"><input value={form.originPlace} onChange={event => patch('originPlace', event.target.value)} /></Field>
-      </div>
-      <Actions>
-        <button disabled={loading} onClick={() => void createClan()}>创建宗族</button>
-      </Actions>
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Panel title="创建宗族" description="宗族作为建谱容器暂不进入审核流；创建后继续维护支派。">
+        <div className="wizard-form-grid">
+          <Field label="宗族名称 *">
+            <input value={form.clanName} onChange={event => patch('clanName', event.target.value)} placeholder="例如：江夏堂黄氏宗族" required />
+          </Field>
+          <Field label="姓氏 *">
+            <input value={form.surname} onChange={event => patch('surname', event.target.value)} placeholder="例如：黄" required />
+          </Field>
+          <Field label="系统生成编码"><input value="保存后自动生成" disabled readOnly /></Field>
+          <Field label="堂号"><input value={form.hallName} onChange={event => patch('hallName', event.target.value)} /></Field>
+          <Field label="祖籍/发源地"><input value={form.originPlace} onChange={event => patch('originPlace', event.target.value)} /></Field>
+        </div>
+        <Actions>
+          <button disabled={loading} onClick={() => void createClan()}>创建宗族</button>
+        </Actions>
+      </Panel>
 
       <Card
         size="small"
         title={`我的宗族（共${clans.length}个）`}
         extra={<Button loading={clanListLoading} onClick={() => void loadClans()}>刷新</Button>}
-        style={{ marginTop: 16 }}
       >
         {clanListError ? (
           <Alert
@@ -240,6 +241,6 @@ export function ClanStep({ notify, onCreated }: Props) {
           }}
         />
       </Card>
-    </Panel>
+    </Space>
   );
 }
