@@ -30,6 +30,28 @@ function edge(id, from, to, relationType = 'parent_child', relationCategory = 'b
   };
 }
 
+function graph(nodes, edges, rootNodeId) {
+  return {
+    rootNodeId,
+    direction: 'descendants',
+    dataView: 'official',
+    nodes,
+    edges,
+    meta: {
+      requestedDepth: 12,
+      appliedDepth: 12,
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      truncated: false,
+      truncationReasons: [],
+      cycleDetected: false,
+      duplicateEdgeCount: 0,
+      generatedAt: '2026-07-22T00:00:00Z'
+    },
+    warnings: []
+  };
+}
+
 function branchGraph() {
   const nodes = [
     node('founder-1', 1, 'male'),
@@ -56,25 +78,7 @@ function branchGraph() {
     edge('father-fifth-5', 'great-grandchild-4', 'fifth-5'),
     edge('mother-fifth-5', 'spouse-4', 'fifth-5')
   ];
-  return {
-    rootNodeId: 'founder-1',
-    direction: 'descendants',
-    dataView: 'official',
-    nodes,
-    edges,
-    meta: {
-      requestedDepth: 12,
-      appliedDepth: 12,
-      nodeCount: nodes.length,
-      edgeCount: edges.length,
-      truncated: false,
-      truncationReasons: [],
-      cycleDetected: false,
-      duplicateEdgeCount: 0,
-      generatedAt: '2026-07-22T00:00:00Z'
-    },
-    warnings: []
-  };
+  return graph(nodes, edges, 'founder-1');
 }
 
 test('three generations exclude fourth generation even when every spouse is a lineage seed candidate', () => {
@@ -109,4 +113,30 @@ test('one generation keeps the founder and same-generation spouse only', () => {
   );
   assert.equal(result.edges.length, 1);
   assert.equal(result.edges[0].relationType, 'spouse');
+});
+
+test('all zero-incoming parents remain visible without a spouse edge between them', () => {
+  const nodes = [
+    node('father-1', 1, 'male'),
+    node('mother-2', 1, 'female'),
+    node('child-3', 2, 'male'),
+    node('grandchild-4', 3, 'female')
+  ];
+  const edges = [
+    edge('father-child', 'father-1', 'child-3'),
+    edge('mother-child', 'mother-2', 'child-3'),
+    edge('child-grandchild', 'child-3', 'grandchild-4')
+  ];
+
+  const result = buildBranchDepthGraph(graph(nodes, edges, 'father-1'), 2);
+
+  assert.deepEqual(
+    new Set(result.nodes.map(item => item.nodeId)),
+    new Set(['father-1', 'mother-2', 'child-3'])
+  );
+  assert.deepEqual(
+    new Set(result.edges.map(item => item.edgeId)),
+    new Set(['father-child', 'mother-child'])
+  );
+  assert.ok(!result.nodes.some(item => item.nodeId === 'grandchild-4'));
 });
