@@ -45,6 +45,7 @@ async function expectResultHeaders(page: Page, title: string, total: string) {
   const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
   const businessCard = resultCard.locator(':scope > .business-result-card');
   await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
+  await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(businessCard).toHaveCount(1);
   await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
