@@ -105,12 +105,9 @@
   max-width: 100%;
 }
 
-.import-new-modal-content {
-  width: 100%;
-}
 
-.import-new-modal-content .ant-typography {
-  margin-bottom: 10px;
+.import-type-selector-card {
+  width: 100%;
 }
 
 .import-new-type-grid {

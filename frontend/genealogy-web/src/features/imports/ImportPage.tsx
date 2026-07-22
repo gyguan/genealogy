@@ -10,7 +10,7 @@ import { ImportFilterMultiSelect } from './ImportFilterMultiSelect';
 import { ImportHistoryOverviewPanel } from './ImportHistoryOverviewPanel';
 import { ImportJobManagementPanel } from './ImportJobManagementPanel';
 import { ImportReviewHistoryPanel } from './ImportReviewHistoryPanel';
-import { NewImportModal } from './NewImportModal';
+import { ImportTypeSelector } from './ImportTypeSelector';
 import { PersonImportWorkspace } from './PersonImportWorkspace';
 import { RelationshipImportWorkspace } from './RelationshipImportWorkspace';
 import { SourceImportWorkspace } from './SourceImportWorkspace';
@@ -23,7 +23,7 @@ import {
   type ImportTaskQueryState,
   type ImportTaskStatusFilter
 } from './import-task-query-state';
-import { importTypeRegistry, type ImportFileFormat, type ImportTypeKey } from './import-type-registry';
+import { importTypeRegistry, type ImportTypeKey } from './import-type-registry';
 import './import-workbench.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
@@ -41,9 +41,6 @@ const availableImportTypes = importTypeRegistry
   .filter(item => item.availability === 'available')
   .map(item => ({ value: item.key, label: item.title.replace('导入', '') }));
 
-function typeTitle(type: ImportTypeKey) {
-  return availableImportTypes.find(option => option.value === type)?.label || '数据';
-}
 
 export function ImportPage({ notify }: Props) {
   const workspace = useWorkspace();
@@ -56,10 +53,8 @@ export function ImportPage({ notify }: Props) {
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchError, setBranchError] = useState('');
   const [activeType, setActiveType] = useState<ImportTypeKey>(initialPageState.type);
-  const [newImportOpen, setNewImportOpen] = useState(false);
-  const [uploadWorkspaceOpen, setUploadWorkspaceOpen] = useState(false);
+  const [importDrawerOpen, setImportDrawerOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
-  const [templateDownloading, setTemplateDownloading] = useState<ImportFileFormat>();
   const [jobRefreshKey, setJobRefreshKey] = useState(0);
   const [taskTotal, setTaskTotal] = useState(0);
 
@@ -165,13 +160,9 @@ export function ImportPage({ notify }: Props) {
     writeImportPageUrl({ type: value });
   }
 
-  function continueToUpload() {
-    setNewImportOpen(false);
-    setUploadWorkspaceOpen(true);
-  }
 
   function handleBatchCreated() {
-    setUploadWorkspaceOpen(false);
+    setImportDrawerOpen(false);
     refreshJobs();
   }
 
@@ -215,7 +206,7 @@ export function ImportPage({ notify }: Props) {
 
       <QueryResultCard
         className="import-result-card"
-        extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setNewImportOpen(true)}>新建导入</Button>}
+        extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setImportDrawerOpen(true)}>新建导入</Button>}
        total={taskTotal} totalSuffix="个任务">
         
           <AsyncImportExecutionPanel
@@ -233,27 +224,18 @@ export function ImportPage({ notify }: Props) {
         
       </QueryResultCard>
 
-      <NewImportModal
-        open={newImportOpen}
-        activeType={activeType}
-        downloading={templateDownloading}
-        onTypeChange={changeType}
-        onDownloadingChange={setTemplateDownloading}
-        onCancel={() => setNewImportOpen(false)}
-        onContinue={continueToUpload}
-        notify={notify}
-      />
 
       <Drawer
-        open={uploadWorkspaceOpen}
+        open={importDrawerOpen}
         width={960}
-        title={`新建${typeTitle(activeType)}导入`}
+        title="新建导入"
         className="import-upload-workspace-drawer"
         destroyOnHidden
-        onClose={() => setUploadWorkspaceOpen(false)}
+        onClose={() => setImportDrawerOpen(false)}
       >
         <Space direction="vertical" size={16} className="import-workbench-stack">
-          <Card size="small" title="导入目标">
+          <ImportTypeSelector activeType={activeType} onTypeChange={changeType} />
+          <Card size="small" title="2. 选择导入目标">
             <Space direction="vertical" size={12} className="import-workbench-stack">
               {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择所属宗族。" /> : null}
               {branchError ? <Alert type="error" showIcon message={branchError} /> : null}

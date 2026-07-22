@@ -97,7 +97,7 @@ async function expectStrictTwoLayerResult(page: Page) {
   await expect(page.locator('.import-execution-table')).toHaveCount(1);
 }
 
-test('data import page uses a strict two-layer query result with new import modal', async ({ page }) => {
+test('data import page uses a strict two-layer query result with one new import drawer', async ({ page }) => {
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
@@ -127,17 +127,26 @@ test('data import page uses a strict two-layer query result with new import moda
   await expect(taskTable.getByText('部分成功')).toBeVisible();
 
   await page.getByRole('button', { name: '新建导入' }).click();
-  const modal = page.getByRole('dialog', { name: '新建导入' });
-  await expect(modal).toBeVisible();
-  await expect(modal.getByText('人物', { exact: true })).toBeVisible();
-  await expect(modal.getByRole('button', { name: '下载 XLSX 模板' })).toBeVisible();
-  await expect(modal.getByRole('button', { name: '下载 CSV 模板' })).toBeVisible();
-  await expect(modal.getByRole('button', { name: '上传文件并预检' })).toBeVisible();
+  const drawer = page.locator('.import-upload-workspace-drawer');
+  await expect(drawer).toBeVisible();
+  await expect(page.locator('.ant-drawer:visible')).toHaveCount(1);
+  await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
+  await expect(drawer.getByText('新建导入', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('1. 选择导入对象', { exact: true })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '人物导入' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawer.getByRole('button', { name: '关系导入' })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '来源导入' })).toBeVisible();
+  await expect(drawer.getByText('2. 选择导入目标', { exact: true })).toBeVisible();
+  await expect(drawer.getByLabel('目标支派')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '下载 XLSX 模板' })).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '下载 CSV 模板' })).toBeVisible();
+  await expect(drawer.getByText('拖拽文件到此处，或点击选择文件')).toBeVisible();
+  await expect(drawer.getByRole('button', { name: '上传文件并预检' })).toHaveCount(0);
 
-  await modal.getByRole('button', { name: '上传文件并预检' }).click();
-  await expect(page.getByText('新建人物导入', { exact: true })).toBeVisible();
-  await expect(page.getByLabel('目标支派')).toBeVisible();
-  await expect(page.getByText('拖拽文件到此处，或点击选择文件')).toBeVisible();
+  await drawer.getByRole('button', { name: '关系导入' }).click();
+  await expect(drawer.getByRole('button', { name: '关系导入' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawer.getByText('关系导入', { exact: true })).toBeVisible();
+  await expect(page.locator('.ant-drawer:visible')).toHaveCount(1);
 });
 
 test('390px viewport uses task cards without horizontal scrolling', async ({ page }) => {
