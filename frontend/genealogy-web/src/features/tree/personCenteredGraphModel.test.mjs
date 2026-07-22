@@ -167,8 +167,18 @@ test('ritual direct relations retain their business labels', () => {
   assert.equal(result.edges[0].relationCategory, 'ritual');
 });
 
-test('prototype treatment is loaded and service applies selected depth', () => {
+test('person center service loads a controlled relation closure before depth pruning', () => {
+  assert.match(serviceSource, /async function loadPersonRelationClosure/);
+  assert.match(serviceSource, /maxDepth:\s*1/);
+  assert.match(serviceSource, /for \(let layer = 2; layer <= requestedDepth/);
+  assert.match(serviceSource, /Promise\.allSettled/);
+  assert.match(serviceSource, /MAX_PERSON_CENTER_FETCHES = 36/);
+  assert.match(serviceSource, /PERSON_CENTER_FETCH_CONCURRENCY = 6/);
+  assert.match(serviceSource, /const graph = await loadPersonRelationClosure\(input\);/);
   assert.match(serviceSource, /return buildPersonCenteredGraph\(graph, input\.depth\);/);
+});
+
+test('prototype treatment is loaded and supports selected depth', () => {
   assert.match(portalSource, /import '\.\/person-centered-direct\.css';/);
   assert.match(css, /按所选深度展示相关人物/);
   assert.match(css, /\.lineage-logic-card--person \.lineage-graph-node\.is-active > rect/);
