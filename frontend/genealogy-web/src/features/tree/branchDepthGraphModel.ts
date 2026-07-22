@@ -77,6 +77,25 @@ function connectedComponents(nodeIds: string[], edges: TreeEdgeResponse[]) {
   return components;
 }
 
+function isSameGenerationAttachment(
+  start: string,
+  sameGeneration: Map<string, string[]>,
+  incomingLineage: Map<string, number>
+) {
+  const visited = new Set([start]);
+  const queue = [start];
+  while (queue.length) {
+    const current = queue.shift() as string;
+    if (current !== start && (incomingLineage.get(current) || 0) > 0) return true;
+    for (const next of sameGeneration.get(current) || []) {
+      if (visited.has(next)) continue;
+      visited.add(next);
+      queue.push(next);
+    }
+  }
+  return false;
+}
+
 /**
  * 支派全局图谱按“代（含本代）”进行客户端兜底裁剪。
  *
@@ -108,7 +127,8 @@ export function buildBranchDepthGraph(
   }
 
   const incomingLineage = new Map([...nodeMap.keys()].map(id => [id, 0]));
-  const weighted = new Map([...nodeMap.keys()].map(id => [id, [] as Array<{ id: string; cost: 0 | 1 }>]));
+  const weighted = new Map([...nodeMap.keys()].map(id => [id, [] as Array<{ id: string; cost: 0 | 1 }> ]));
+  const sameGeneration = new Map([...nodeMap.keys()].map(id => [id, [] as string[]]));
   edges.forEach(edge => {
     if (isLineageEdge(edge)) {
       incomingLineage.set(edge.toNodeId, (incomingLineage.get(edge.toNodeId) || 0) + 1);
@@ -117,6 +137,8 @@ export function buildBranchDepthGraph(
     }
     weighted.get(edge.fromNodeId)?.push({ id: edge.toNodeId, cost: 0 });
     weighted.get(edge.toNodeId)?.push({ id: edge.fromNodeId, cost: 0 });
+    sameGeneration.get(edge.fromNodeId)?.push(edge.toNodeId);
+    sameGeneration.get(edge.toNodeId)?.push(edge.fromNodeId);
   });
 
   const components = connectedComponents([...nodeMap.keys()], edges);
@@ -128,6 +150,7 @@ export function buildBranchDepthGraph(
       : '';
     const rootIds = component
       .filter(id => (incomingLineage.get(id) || 0) === 0)
+      .filter(id => !isSameGenerationAttachment(id, sameGeneration, incomingLineage))
       .map(id => nodeMap.get(id) as TreeNodeResponse)
       .sort(nodeCompare)
       .map(node => node.nodeId);
