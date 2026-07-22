@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Space, Tag, Typography, message } from 'antd';
+import { Button, Space, Tag, Typography, message } from 'antd';
 import type { TableProps } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
@@ -258,20 +258,18 @@ export function ClanStep({ notify, onCreated }: Props) {
         />
       ) : null}
       {clanDeleteError ? (
-        <Alert
-          type="error"
-          showIcon
-          closable
-          message="宗族删除失败"
+        <PageFeedback
+          tone="error"
+          title="宗族删除失败"
           description={clanDeleteError}
+          closable
           onClose={() => setClanDeleteError('')}
         />
       ) : null}
       {clanListError ? (
-        <Alert
-          type="error"
-          showIcon
-          message="宗族列表加载失败"
+        <PageFeedback
+          tone="error"
+          title="宗族列表加载失败"
           description={clanListError}
           action={<Button type="link" onClick={() => void loadClans()}>重新加载</Button>}
         />
