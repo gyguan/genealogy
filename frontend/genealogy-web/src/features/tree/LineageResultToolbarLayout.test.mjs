@@ -24,8 +24,8 @@ test('lineage page follows the culture-style query card plus result card pattern
   assert.match(pageSource, /<Card className="lineage-tabbed-query-card" title="世系图谱"/);
   assert.match(pageSource, /<QueryResultCard[\s\S]*className="lineage-tabbed-result-card"/);
   assert.match(pageSource, /className="lineage-query-tabs"/);
-  assert.match(pageSource, /查询只刷新人物中心图谱/);
-  assert.match(pageSource, /不受中心人物影响/);
+  assert.match(pageCss, /\.lineage-tab-query-note > \.ant-typography-secondary:first-child\s*\{[\s\S]*?display:\s*none;/);
+  assert.match(pageCss, /\.lineage-tab-query-note:not\(:has\(\.ant-typography-warning\)\)\s*\{[\s\S]*?display:\s*none;/);
   assert.match(pageCss, /\.lineage-tabbed-page\s*\{[\s\S]*?flex-direction:\s*column;/);
   assert.match(pageCss, /\.lineage-tab-query-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
 });
