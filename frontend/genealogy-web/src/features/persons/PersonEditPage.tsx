@@ -12,7 +12,7 @@ import { EntityPageBackButton, EntityPageHeader } from '../../shared/ui/EntityPa
 import { toRecordList } from '../../shared/utils/records';
 import { PersonEventEditor } from './PersonEventEditor';
 import type { PersonEventDraft } from './personEventEditorModel';
-import { loadPersonEvents, replacePersonEvents } from './personEventService';
+import { loadPersonEvents, replacePersonEvents, submitPersonRevisionWithEvents } from './personEventService';
 import { savePersonWithEvents } from './personEventSaveFlow';
 import {
   normalizePersonDate,
@@ -68,8 +68,16 @@ function isOfficialBranch(branch: any) {
   return ['official', 'active', 'approved'].includes(status);
 }
 
+function normalizedStatus(status: unknown) {
+  return String(status || '').trim().toLowerCase();
+}
+
 function allowsDirectEventSave(status: unknown) {
-  return String(status || '').trim().toLowerCase() === 'draft';
+  return normalizedStatus(status) === 'draft';
+}
+
+function allowsRevisionSubmit(status: unknown) {
+  return ['official', 'rejected'].includes(normalizedStatus(status));
 }
 
 function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {
@@ -278,23 +286,30 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     } catch {
       return;
     }
-    if (!allowsDirectEventSave(person?.dataStatus || person?.status)) {
-      setSaveError('正式人物的关键事件需随人物资料提交审核，当前审核快照能力正在接入。');
+
+    const status = person?.dataStatus || person?.status;
+    if (!allowsDirectEventSave(status) && !allowsRevisionSubmit(status)) {
+      setSaveError('人物资料已处于待审核或不可编辑状态，不能重复提交。');
       return;
     }
+
     setSaving(true);
     try {
-      const updated = await savePersonWithEvents({
-        events,
-        savePerson: () => apiClient.put<any>(`/persons/${personId}`, toPersonUpdatePayload(values)),
-        saveEvents: async () => replacePersonEvents(personId, events)
-      });
+      const updated = allowsDirectEventSave(status)
+        ? await savePersonWithEvents({
+            events,
+            savePerson: () => apiClient.put<any>(`/persons/${personId}`, toPersonUpdatePayload(values)),
+            saveEvents: async () => replacePersonEvents(personId, events)
+          })
+        : await submitPersonRevisionWithEvents(personId, toPersonUpdatePayload(values), events);
       setPerson(updated);
-      setEvents(await loadPersonEvents(personId));
+      if (allowsDirectEventSave(status)) {
+        setEvents(await loadPersonEvents(personId));
+      }
       form.setFieldsValue(toPersonEditForm(updated));
       setDirty(false);
       setSaved(true);
-      notify({ message: '人物资料及关键事件已保存' });
+      notify({ message: allowsDirectEventSave(status) ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核' });
     } catch (error) {
       setDirty(true);
       setSaveError((error as Error).message || '人物资料及关键事件保存失败');
@@ -343,6 +358,8 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
   const personName = display(person.name || person.personName, '未命名人物');
   const personStatus = person.dataStatus || person.status;
   const directEventSave = allowsDirectEventSave(personStatus);
+  const revisionSubmit = allowsRevisionSubmit(personStatus);
+  const eventEditingDisabled = busy || (!directEventSave && !revisionSubmit);
   const statusActions = visiblePersonStatusActions(personStatus, person.allowedActions);
   const primaryStatusAction = statusActions.find(item => item.action.primary);
   const secondaryStatusActions = statusActions.filter(item => !item.action.primary);
@@ -367,8 +384,8 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
 
       {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
       {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
-      {saved ? <Alert type="success" showIcon message="人物资料及关键事件已保存" action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
-      {!directEventSave ? <Alert type="info" showIcon message="关键事件将随人物资料审核" description="当前正式人物的事件仅支持查看；完成审核快照接入后可在此统一编辑并提交审核。" /> : null}
+      {saved ? <Alert type="success" showIcon message={directEventSave ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核'} action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
+      {revisionSubmit ? <Alert type="info" showIcon message="关键事件将随人物资料审核" description="保存后生成包含人物资料和关键事件的审核快照；审核通过后统一生效，驳回不会改变现有正式事件。" /> : null}
 
       <Form<PersonEditForm>
         form={form}
@@ -408,7 +425,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
             <Form.Item name="residencePlace" label="居住地"><Input /></Form.Item>
           </div></Card>
 
-          <PersonEventEditor value={events} disabled={busy || !directEventSave} onChange={changeEvents} />
+          <PersonEventEditor value={events} disabled={eventEditingDisabled} onChange={changeEvents} />
 
           <Card title="生平与墓志"><div className="person-edit-fields">
             <Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item>
@@ -428,7 +445,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
       <div className="person-edit-actions" aria-label="人物档案编辑操作">
         <Space wrap>
           <Button disabled={busy} onClick={leavePage}>取消</Button>
-          <Button loading={saving} disabled={actionLoading !== null} onClick={() => void saveDraft()}>保存草稿</Button>
+          <Button loading={saving} disabled={actionLoading !== null || eventEditingDisabled} onClick={() => void saveDraft()}>{directEventSave ? '保存草稿' : '提交审核'}</Button>
           {primaryStatusAction ? <Tooltip title={primaryStatusAction.enabled ? '' : primaryStatusAction.reason}><span><Button type="primary" disabled={!primaryStatusAction.enabled || busy} loading={actionLoading === primaryStatusAction.action.key} onClick={() => confirmStatusAction(primaryStatusAction.action)}>{primaryStatusAction.action.label}</Button></span></Tooltip> : null}
           {secondaryStatusActions.length ? <Dropdown menu={{ items: moreItems, onClick: info => { const selected = secondaryStatusActions.find(item => item.action.key === info.key); if (selected?.enabled) confirmStatusAction(selected.action); } }} disabled={busy}><Button>更多</Button></Dropdown> : null}
         </Space>
