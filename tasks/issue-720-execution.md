@@ -3,7 +3,7 @@
 - Issue：https://github.com/gyguan/genealogy/issues/720
 - 目标：人物创建与编辑支持 0~N 条关键事件维护，并纳入人物审核快照与一致性生效链路。
 - 当前分支：`agent/issue-720-person-events`
-- PR：#726
+- PR：#726（Ready for review）
 - 最后更新时间：2026-07-23（北京时间）
 
 ## 原子任务看板
