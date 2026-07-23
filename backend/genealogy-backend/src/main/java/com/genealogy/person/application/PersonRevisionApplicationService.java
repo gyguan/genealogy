@@ -16,6 +16,7 @@ import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.review.application.PersonRevisionSnapshot;
 import com.genealogy.review.application.RevisionWorkflowApplicationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class PersonRevisionApplicationService {
     private final RevisionWorkflowApplicationService revisionWorkflowApplicationService;
     private final PersonEventApplicationService personEventApplicationService;
 
+    @Autowired
     public PersonRevisionApplicationService(
             PersonApplicationService personApplicationService,
             PersonRepository personRepository,
@@ -54,6 +56,23 @@ public class PersonRevisionApplicationService {
         this.personEventApplicationService = personEventApplicationService;
     }
 
+    public PersonRevisionApplicationService(
+            PersonApplicationService personApplicationService,
+            PersonRepository personRepository,
+            BranchRepository branchRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            RevisionWorkflowApplicationService revisionWorkflowApplicationService
+    ) {
+        this(
+                personApplicationService,
+                personRepository,
+                branchRepository,
+                authorizationApplicationService,
+                revisionWorkflowApplicationService,
+                null
+        );
+    }
+
     @Transactional
     public PersonResponse create(Long clanId, PersonCreateRequest request, Long actorId) {
         authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
@@ -62,8 +81,7 @@ public class PersonRevisionApplicationService {
 
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
-        List<ReplacePersonEventsRequest.PersonEventItem> currentEvents = personEventApplicationService.snapshotItems(id);
-        return updateInternal(id, request, currentEvents, actorId);
+        return updateInternal(id, request, snapshotItems(id), actorId);
     }
 
     @Transactional
@@ -83,7 +101,7 @@ public class PersonRevisionApplicationService {
         ensureBranchBelongsToClan(current.getClanId(), effectiveBranchId);
 
         PersonEntity before = copyOf(current);
-        List<ReplacePersonEventsRequest.PersonEventItem> beforeEvents = personEventApplicationService.snapshotItems(id);
+        List<ReplacePersonEventsRequest.PersonEventItem> beforeEvents = snapshotItems(id);
         PersonEntity after = copyOf(current);
         PersonMapper.updateEntity(after, request);
         after.setId(current.getId());
@@ -144,6 +162,12 @@ public class PersonRevisionApplicationService {
         current.setUpdatedBy(actorId);
         current.setUpdatedAt(LocalDateTime.now());
         personRepository.save(current);
+    }
+
+    private List<ReplacePersonEventsRequest.PersonEventItem> snapshotItems(Long personId) {
+        return personEventApplicationService == null
+                ? List.of()
+                : personEventApplicationService.snapshotItems(personId);
     }
 
     private PersonEntity getActiveEntity(Long id) {
