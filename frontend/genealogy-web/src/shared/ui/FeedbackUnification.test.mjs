@@ -10,6 +10,7 @@ const dataTable = readFileSync(new URL('./DataTable.tsx', import.meta.url), 'utf
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const branchStep = readFileSync(new URL('../../features/mvp1/steps/branch/BranchStep.tsx', import.meta.url), 'utf8');
+const sourceStep = readFileSync(new URL('../../features/mvp1/steps/source/SourceStep.tsx', import.meta.url), 'utf8');
 const sourceStageStep = readFileSync(new URL('../../features/mvp1/steps/source/SourceStageStep.tsx', import.meta.url), 'utf8');
 const sourceDraftDeleteAction = readFileSync(new URL('../../features/sources/SourceDraftDeleteAction.tsx', import.meta.url), 'utf8');
 const sourceLibraryFocusBridge = readFileSync(new URL('../../features/sources/SourceLibraryFocusBridge.tsx', import.meta.url), 'utf8');
@@ -92,6 +93,20 @@ test('branch step uses standard transient, page, confirmation and empty feedback
   assert.doesNotMatch(branchStep, /\bnotify\?\.\(/);
 });
 
+test('source step uses standard transient, page and empty feedback', () => {
+  assert.match(sourceStep, /import \{ EmptyState, PageFeedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/Feedback'/);
+  assert.match(sourceStep, /import \{ feedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
+  assert.match(sourceStep, /title="来源列表加载失败"/);
+  assert.match(sourceStep, /title="绑定记录加载失败"/);
+  assert.match(sourceStep, /<EmptyState/);
+  assert.match(sourceStep, /feedback\.success/);
+  assert.match(sourceStep, /feedback\.warning/);
+  assert.match(sourceStep, /feedback\.error/);
+  assert.doesNotMatch(sourceStep, /<Alert\b|<Empty\b/);
+  assert.doesNotMatch(sourceStep, /\bmessage\.(success|info|warning|error|loading)\s*\(/);
+  assert.doesNotMatch(sourceStep, /\bnotify\?\.\(/);
+});
+
 test('source stage uses standard transient, page and empty feedback', () => {
   assert.match(sourceStageStep, /import \{ EmptyState, PageFeedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/Feedback'/);
   assert.match(sourceStageStep, /import \{ feedback \} from '\.\.\/\.\.\/\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
@@ -149,11 +164,12 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 165);
+  assert.equal(baseline.maxCounts.page_alert, 162);
   assert.equal(baseline.maxCounts.field_help, 104);
-  assert.equal(baseline.maxCounts.antd_message, 93);
+  assert.equal(baseline.maxCounts.app_notify, 140);
+  assert.equal(baseline.maxCounts.antd_message, 91);
   assert.equal(baseline.maxCounts.confirm_modal, 60);
-  assert.equal(baseline.maxCounts.empty_state, 157);
+  assert.equal(baseline.maxCounts.empty_state, 155);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
   assert.equal(baseline.maxCounts.custom_notice_class, 30);
   assert.match(audit, /--baseline/);
