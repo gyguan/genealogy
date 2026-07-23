@@ -8,6 +8,7 @@ const toastStack = readFileSync(new URL('./ToastStack.tsx', import.meta.url), 'u
 const draftDeleteButton = readFileSync(new URL('./DraftDeleteButton.tsx', import.meta.url), 'utf8');
 const dataTable = readFileSync(new URL('./DataTable.tsx', import.meta.url), 'utf8');
 const asyncImportExecutionPanel = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
+const importFailureBulkActions = readFileSync(new URL('../../features/imports/ImportFailureBulkActions.tsx', import.meta.url), 'utf8');
 const clanStep = readFileSync(new URL('../../features/mvp1/steps/clan/ClanStep.tsx', import.meta.url), 'utf8');
 const branchStep = readFileSync(new URL('../../features/mvp1/steps/branch/BranchStep.tsx', import.meta.url), 'utf8');
 const sourceStep = readFileSync(new URL('../../features/mvp1/steps/source/SourceStep.tsx', import.meta.url), 'utf8');
@@ -61,6 +62,18 @@ test('async import execution panel uses only standard feedback primitives', () =
   assert.doesNotMatch(asyncImportExecutionPanel, /<Empty\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /<Popconfirm\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
+});
+
+test('import failure bulk actions use standard operation and page feedback', () => {
+  assert.match(importFailureBulkActions, /import \{ PageFeedback \} from '\.\.\/\.\.\/shared\/ui\/Feedback'/);
+  assert.match(importFailureBulkActions, /import \{ feedback \} from '\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
+  assert.match(importFailureBulkActions, /feedback\.success/);
+  assert.match(importFailureBulkActions, /feedback\.warning/);
+  assert.match(importFailureBulkActions, /feedback\.error/);
+  assert.match(importFailureBulkActions, /title="当前批次不可修改"/);
+  assert.match(importFailureBulkActions, /title="排除后不会删除原始数据"/);
+  assert.doesNotMatch(importFailureBulkActions, /<Alert\b/);
+  assert.doesNotMatch(importFailureBulkActions, /\bnotify\s*\(/);
 });
 
 test('clan step separates transient feedback from persistent page errors', () => {
@@ -164,7 +177,7 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 162);
+  assert.equal(baseline.maxCounts.page_alert, 159);
   assert.equal(baseline.maxCounts.field_help, 104);
   assert.equal(baseline.maxCounts.app_notify, 141);
   assert.equal(baseline.maxCounts.antd_message, 91);

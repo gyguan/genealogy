@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Input, Modal, Space, Table, Typography, Upload } from 'antd';
+import { Button, Card, Input, Modal, Space, Table, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import type {
   ImportRowBulkItemResult,
@@ -7,6 +7,8 @@ import type {
   ImportRowBulkSelectionRequest
 } from '../../shared/api/generated/import-failure-types';
 import { apiClient } from '../../shared/api/client';
+import { PageFeedback } from '../../shared/ui/Feedback';
+import { feedback } from '../../shared/ui/OperationFeedback';
 import { saveDownloadedBlob } from '../../shared/utils/download';
 
 type SelectedRow = {
@@ -47,7 +49,7 @@ export function ImportFailureBulkActions({
   selectedRows,
   totalFailures,
   editable,
-  notify,
+  notify: _notify,
   onChanged
 }: Props) {
   const [loadingAction, setLoadingAction] = useState('');
@@ -60,7 +62,9 @@ export function ImportFailureBulkActions({
 
   async function finish(nextResult: ImportRowBulkOperationResponse) {
     setResult(nextResult);
-    notify({ message: actionSummary(nextResult) }, nextResult.failureCount > 0);
+    const summary = actionSummary(nextResult);
+    if (nextResult.failureCount > 0) feedback.warning(summary);
+    else feedback.success(summary);
     await onChanged();
   }
 
@@ -73,7 +77,7 @@ export function ImportFailureBulkActions({
       );
       await finish(nextResult);
     } catch (error) {
-      notify({ message: (error as Error).message || '批量重试失败' }, true);
+      feedback.error((error as Error).message || '批量重试失败');
     } finally {
       setLoadingAction('');
     }
@@ -91,7 +95,7 @@ export function ImportFailureBulkActions({
       setExcludeReason('');
       await finish(nextResult);
     } catch (error) {
-      notify({ message: (error as Error).message || '批量排除失败' }, true);
+      feedback.error((error as Error).message || '批量排除失败');
     } finally {
       setLoadingAction('');
     }
@@ -102,9 +106,9 @@ export function ImportFailureBulkActions({
     try {
       const blob = await apiClient.download(`/clans/${clanId}/imports/${jobId}/rows/failures.xlsx`);
       saveDownloadedBlob(blob, `import-failures-${jobId}.xlsx`);
-      notify({ message: `已导出 ${totalFailures} 条失败行，可离线修改“当前修正数据(JSON)”后回传` });
+      feedback.success(`已导出 ${totalFailures} 条失败行，可离线修改“当前修正数据(JSON)”后回传`);
     } catch (error) {
-      notify({ message: (error as Error).message || '失败行导出失败' }, true);
+      feedback.error((error as Error).message || '失败行导出失败');
     } finally {
       setLoadingAction('');
     }
@@ -121,7 +125,7 @@ export function ImportFailureBulkActions({
       );
       await finish(nextResult);
     } catch (error) {
-      notify({ message: (error as Error).message || '修正文件回传失败' }, true);
+      feedback.error((error as Error).message || '修正文件回传失败');
     } finally {
       setLoadingAction('');
     }
@@ -144,7 +148,13 @@ export function ImportFailureBulkActions({
         <Typography.Text type="secondary">
           已选择当前页 {selectedCount} 条；“全部失败行”作用于该批次当前所有失败行，单次最多 500 条。所有修改都会进行版本冲突检测。
         </Typography.Text>
-        {!editable ? <Alert type="info" showIcon message="当前批次不可修改，仅可导出失败行。" /> : null}
+        {!editable ? (
+          <PageFeedback
+            tone="info"
+            title="当前批次不可修改"
+            description="当前仅支持导出失败行，无法执行重试、排除或回传修正文件。"
+          />
+        ) : null}
         <Space wrap>
           <Button
             disabled={!editable || selectedCount === 0}
@@ -194,10 +204,10 @@ export function ImportFailureBulkActions({
         destroyOnHidden
       >
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Alert
-            type="warning"
-            showIcon
-            message={`排除后不会删除原始数据，审核摘要会保留排除数量。${excludeScope === 'filtered' ? `本次最多处理当前 ${totalFailures} 条失败行。` : `本次处理 ${selectedCount} 条选中行。`}`}
+          <PageFeedback
+            tone="warning"
+            title="排除后不会删除原始数据"
+            description={`审核摘要会保留排除数量。${excludeScope === 'filtered' ? `本次最多处理当前 ${totalFailures} 条失败行。` : `本次处理 ${selectedCount} 条选中行。`}`}
           />
           <Input.TextArea
             rows={4}
@@ -220,10 +230,9 @@ export function ImportFailureBulkActions({
       >
         {result ? (
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Alert
-              type={result.failureCount > 0 ? 'warning' : 'success'}
-              showIcon
-              message={actionSummary(result)}
+            <PageFeedback
+              tone={result.failureCount > 0 ? 'warning' : 'success'}
+              title={actionSummary(result)}
               description={`已排除 ${result.excludedCount} 条；批次状态：${result.processingStatus}`}
             />
             {failedItems.length > 0 ? (
