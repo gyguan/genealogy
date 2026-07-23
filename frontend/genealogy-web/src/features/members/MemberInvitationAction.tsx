@@ -3,6 +3,7 @@ import { Button } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
+import { feedback } from '../../shared/ui/OperationFeedback';
 import { memberPermissionApi, type GrantableRole } from './memberPermissionApi';
 import { MemberInvitationModal } from './MemberInvitationModal';
 
@@ -33,7 +34,7 @@ export function MemberInvitationAction({ notify }: { notify: (data: unknown, err
       setBranches(toRecordList(branchResult) as Branch[]);
       return nextRoles;
     } catch (error) {
-      notify({ message: error instanceof Error ? error.message : '邀请上下文加载失败' }, true);
+      feedback.error(error instanceof Error ? error.message : '邀请上下文加载失败');
       setRoles([]);
       setBranches([]);
       return [] as GrantableRole[];
