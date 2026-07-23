@@ -1,5 +1,6 @@
 package com.genealogy.generation.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity
 @Table(name = "generation_scheme")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GenerationSchemeEntity {
 
     @Id
