@@ -22,12 +22,12 @@ type StepRendererProps = {
 export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedReview }: StepRendererProps) {
   let content: ReactNode;
   switch (activeStep) {
-    case 'clan': content = <ClanStep notify={notify} onCreated={() => onStepChange('branch')} />; break;
-    case 'branch': content = <BranchStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'clan': content = <ClanStep onCreated={() => onStepChange('branch')} />; break;
+    case 'branch': content = <BranchStep onSubmittedReview={onSubmittedReview} />; break;
     case 'generation': content = <GenerationStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
     case 'person': content = <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
     case 'relationship': content = <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
-    case 'source': content = <SourceStageStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'source': content = <SourceStageStep onSubmittedReview={onSubmittedReview} />; break;
     default: content = null;
   }
   return (
