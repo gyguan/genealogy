@@ -9,7 +9,9 @@ import { MemberInvitationModal } from './MemberInvitationModal';
 
 type Branch = { id: number; branchName: string };
 
-export function MemberInvitationAction({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+type Props = { notify: (data: unknown, error?: boolean) => void };
+
+export function MemberInvitationAction(_props: Props) {
   const workspace = useWorkspace();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,6 @@ export function MemberInvitationAction({ notify }: { notify: (data: unknown, err
         roles={roles}
         branches={branches}
         onClose={() => setOpen(false)}
-        notify={notify}
       />
     </>
   );
