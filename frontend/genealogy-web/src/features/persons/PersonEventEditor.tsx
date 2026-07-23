@@ -28,6 +28,12 @@ const eventTypeOptions = [
   { value: 'other', label: '其他' }
 ];
 
+const eventDatePrecisionOptions = [
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' }
+];
+
 export function PersonEventEditor({ value = [], onChange, disabled = false }: Props) {
   const events = normalizePersonEvents(value);
 
@@ -57,7 +63,7 @@ export function PersonEventEditor({ value = [], onChange, disabled = false }: Pr
       )}
     >
       <Typography.Paragraph type="secondary">
-        可维护人物一生中的重要节点。事件按日期和人工排序稳定展示，标题必填，日期不能晚于今天。
+        可维护人物一生中的重要节点。事件按人工顺序稳定展示，日期支持年、月、日精度，标题必填且日期不能晚于今天。
       </Typography.Paragraph>
       {!events.length ? (
         <EmptyState
@@ -99,7 +105,19 @@ export function PersonEventEditor({ value = [], onChange, disabled = false }: Pr
                       value={event.eventDate ? dayjs(event.eventDate) : null}
                       disabled={disabled}
                       disabledDate={(current: Dayjs) => current.startOf('day').isAfter(dayjs().startOf('day'))}
-                      onChange={date => update(index, { eventDate: date ? date.format('YYYY-MM-DD') : undefined, eventDatePrecision: date ? 'day' : undefined })}
+                      onChange={date => update(index, {
+                        eventDate: date ? date.format('YYYY-MM-DD') : undefined,
+                        eventDatePrecision: date ? event.eventDatePrecision || 'day' : undefined
+                      })}
+                    />
+                  </Form.Item>
+                  <Form.Item label="日期精度">
+                    <Select
+                      options={eventDatePrecisionOptions}
+                      value={event.eventDate ? event.eventDatePrecision || 'day' : undefined}
+                      disabled={disabled || !event.eventDate}
+                      placeholder="请先选择日期"
+                      onChange={eventDatePrecision => update(index, { eventDatePrecision })}
                     />
                   </Form.Item>
                   <Form.Item label="地点">
