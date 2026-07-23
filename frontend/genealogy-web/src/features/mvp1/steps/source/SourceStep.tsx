@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Pagination, Space, Table, Tag, message } from 'antd';
+import { Button, Pagination, Space, Table, Tag } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
+import { EmptyState, PageFeedback } from '../../../../shared/ui/Feedback';
 import { Actions, Field } from '../../../../shared/ui/Form';
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 import { Panel } from '../../../../shared/ui/Panel';
 import { relationshipName, relationTypeText } from '../../domain/relationship';
 import { paginateSourceBindings, SOURCE_BINDING_PAGE_SIZE } from '../../domain/sourceStageModel';
@@ -85,7 +87,7 @@ function dedupeRelationships(rows: RelationshipLike[]) {
   return Array.from(new Map(rows.map(row => [String(row.id || `${row.fromPersonId}-${row.toPersonId}-${row.relationLabel}`), row])).values());
 }
 
-export function SourceStep({ notify, onSubmittedReview }: Props) {
+export function SourceStep({ onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [sourceForm, setSourceForm] = useState<SourceForm>({ ...defaultSourceForm });
   const [clans, setClans] = useState<ClanLike[]>([]);
@@ -100,6 +102,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [loadingSources, setLoadingSources] = useState(false);
   const [loadingSourceLinks, setLoadingSourceLinks] = useState(false);
+  const [sourcesError, setSourcesError] = useState('');
   const [sourceLinksError, setSourceLinksError] = useState('');
   const [savingSource, setSavingSource] = useState(false);
   const [bindingSource, setBindingSource] = useState(false);
@@ -114,15 +117,6 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     [sources, selectedSourceRowKeys]
   );
   const selectedClan = useMemo(() => clans.find(clan => String(clan.id) === workspace.clanId), [clans, workspace.clanId]);
-
-  function toast(data: unknown, error = false) {
-    notify?.(data, error);
-    const text = typeof data === 'string' ? data : (data as any)?.message;
-    if (text) {
-      if (error) message.error(text);
-      else message.success(text);
-    }
-  }
 
   function patchSource(key: keyof SourceForm, value: string) {
     setSourceForm(prev => ({ ...prev, [key]: value }));
@@ -195,6 +189,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
       setPersons([]);
       setRelationships([]);
       setSources([]);
+      setSourcesError('');
       setSelectedSourceRowKeys([]);
       return;
     }
@@ -207,17 +202,19 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   async function loadSources(sourceClanId = workspace.clanId) {
     if (!sourceClanId) {
       setSources([]);
+      setSourcesError('');
       setSelectedSourceRowKeys([]);
       return;
     }
     setLoadingSources(true);
+    setSourcesError('');
     try {
       const rows = await querySources(sourceClanId);
       setSources(rows);
       setSelectedSourceRowKeys([]);
     } catch (error) {
       setSources([]);
-      toast({ message: (error as Error).message || '查询来源失败' }, true);
+      setSourcesError((error as Error).message || '查询来源失败');
     } finally {
       setLoadingSources(false);
     }
@@ -269,6 +266,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
     setPersons([]);
     setRelationships([]);
     setSources([]);
+    setSourcesError('');
     setSourceLinks([]);
     setSourceLinksError('');
     setSourceLinkPage(1);
@@ -349,7 +347,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   async function createSource(submit = false) {
     const errorMessage = validateSourceForm();
     if (errorMessage) {
-      toast({ message: errorMessage }, true);
+      feedback.warning(errorMessage);
       return;
     }
     setSavingSource(true);
@@ -369,13 +367,13 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
           comment: '提交来源审核'
         });
         if (task?.id) onSubmittedReview?.(String(task.id));
-        toast({ message: '来源已保存并提交审核，审核通过后才能绑定到对象。' });
+        feedback.success('来源已保存并提交审核，审核通过后才能绑定到对象。');
       } else {
-        toast({ message: '来源已保存为草稿，审核通过后才能绑定到对象。' });
+        feedback.success('来源已保存为草稿，审核通过后才能绑定到对象。');
       }
       await loadSources();
     } catch (error) {
-      toast({ message: (error as Error).message || '保存来源失败' }, true);
+      feedback.error((error as Error).message || '保存来源失败');
     } finally {
       setSavingSource(false);
     }
@@ -384,22 +382,22 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
   async function bindSource() {
     const { errorMessage, targetId } = validateBindSourceForm();
     if (errorMessage) {
-      toast({ message: errorMessage }, true);
+      feedback.warning(errorMessage);
       return;
     }
     setBindingSource(true);
     try {
-      const data = await bindSourceApi(workspace.clanId, {
+      await bindSourceApi(workspace.clanId, {
         sourceId: Number(workspace.sourceId),
         targetType: sourceForm.targetType,
         targetId: Number(targetId)
       });
       setSourceForm(prev => ({ ...prev, targetId }));
       setSourceLinkPage(1);
-      toast({ message: '来源绑定成功。', id: data?.id });
+      feedback.success('来源绑定成功。');
       await loadSourceLinks(workspace.sourceId);
     } catch (error) {
-      toast({ message: (error as Error).message || '绑定来源失败' }, true);
+      feedback.error((error as Error).message || '绑定来源失败');
     } finally {
       setBindingSource(false);
     }
@@ -416,10 +414,10 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         comment: '提交来源审核'
       });
       if (task?.id) onSubmittedReview?.(String(task.id));
-      toast({ message: '来源已提交审核' });
+      feedback.success('来源已提交审核');
       await loadSources();
     } catch (error) {
-      toast({ message: (error as Error).message || '提交来源审核失败' }, true);
+      feedback.error((error as Error).message || '提交来源审核失败');
     } finally {
       setSubmittingSources(false);
     }
@@ -436,8 +434,8 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
         comment: '提交来源审核'
       })));
       const { successCount, failedCount } = countSettledResults(results);
-      if (successCount) toast({ message: `已提交 ${successCount} 个来源审核` });
-      if (failedCount) toast({ message: `${failedCount} 个来源提交失败` }, true);
+      if (successCount) feedback.success(`已提交 ${successCount} 个来源审核`);
+      if (failedCount) feedback.error(`${failedCount} 个来源提交失败`);
       await loadSources();
     } finally {
       setSubmittingSources(false);
@@ -446,11 +444,11 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
 
   function selectSource(row: SourceLike) {
     if (!isOfficial(row)) {
-      toast({ message: '该来源未审核通过，暂不能绑定到对象' }, true);
+      feedback.warning('该来源未审核通过，暂不能绑定到对象');
       return;
     }
     workspace.setSourceId(String(row.id || ''));
-    toast({ message: `已选中来源：${sourceName(row)}` });
+    feedback.success(`已选中来源：${sourceName(row)}`);
   }
 
   const sourceBindDisabledReason = bindSourceDisabledReason();
@@ -515,8 +513,19 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
             </div>
             <Button loading={loadingSourceLinks} disabled={!workspace.sourceId} onClick={() => void loadSourceLinks()}>刷新已绑定对象</Button>
           </div>
-          {!workspace.sourceId ? <Alert type="info" showIcon message="请先选择已审核通过的来源，再查看已绑定对象。" /> : null}
-          {sourceLinksError ? <Alert type="error" showIcon message={sourceLinksError} /> : null}
+          {!workspace.sourceId ? (
+            <PageFeedback tone="info" title="请先选择已审核通过的来源" description="选择正式来源后可查看已绑定对象。" />
+          ) : null}
+          {sourceLinksError ? (
+            <PageFeedback
+              tone="error"
+              title="绑定记录加载失败"
+              description={sourceLinksError}
+              closable
+              onClose={() => setSourceLinksError('')}
+              action={<Button size="small" onClick={() => void loadSourceLinks()}>重新加载</Button>}
+            />
+          ) : null}
           {sourceLinkViews.length ? (
             <>
               <div className="source-step-bound-list">
@@ -550,7 +559,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
               ) : null}
             </>
           ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadingSourceLinks ? '正在查询已绑定对象' : '暂无已绑定来源对象'} />
+            <EmptyState compact title={loadingSourceLinks ? '正在查询已绑定对象' : '暂无已绑定来源对象'} />
           )}
         </Space>
       </section>
@@ -569,7 +578,17 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
               <Button loading={loadingSources} disabled={!workspace.clanId} onClick={() => void loadSources()}>刷新</Button>
             </Space>
           </div>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+          {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" /> : null}
+          {sourcesError ? (
+            <PageFeedback
+              tone="error"
+              title="来源列表加载失败"
+              description={sourcesError}
+              closable
+              onClose={() => setSourcesError('')}
+              action={<Button size="small" onClick={() => void loadSources()}>重新加载</Button>}
+            />
+          ) : null}
           <Table<SourceLike>
             size="small"
             bordered
@@ -585,7 +604,7 @@ export function SourceStep({ notify, onSubmittedReview }: Props) {
               getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
             }}
             onRow={row => ({ onClick: () => selectSource(row) })}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无来源数据' : '请选择宗族后查看来源'} /> }}
+            locale={{ emptyText: <EmptyState compact title={workspace.clanId ? '暂无来源数据' : '请选择宗族后查看来源'} /> }}
             columns={[
               { key: 'sourceName', title: '来源名称', render: (_value, row) => sourceName(row) },
               { key: 'sourceType', title: '来源类型', width: 140, render: (_value, row) => sourceTypeText(row.sourceType) },
