@@ -1,5 +1,5 @@
 import type { PersonEventDraft } from './personEventEditorModel.js';
-import { savePersonWithEvents } from './personEventSaveFlow.js';
+import { validatePersonEvents } from './personEventSaveFlow.js';
 
 export type CreatedPerson = {
   id?: string | number | null;
@@ -16,16 +16,14 @@ export async function createPersonWithEvents<TPerson extends CreatedPerson>({
   saveEvents: (personId: string, events: PersonEventDraft[]) => Promise<unknown>;
   submitReview?: (personId: string) => Promise<unknown>;
 }): Promise<TPerson> {
-  const created = await savePersonWithEvents({
-    events,
-    savePerson: createPerson,
-    saveEvents: async () => {
-      const personId = String(createdPersonId(created));
-      await saveEvents(personId, events);
-    }
-  });
+  const validationErrors = validatePersonEvents(events);
+  if (validationErrors.length) {
+    throw new Error(validationErrors[0].message);
+  }
 
+  const created = await createPerson();
   const personId = String(createdPersonId(created));
+  await saveEvents(personId, events);
   if (submitReview) {
     await submitReview(personId);
   }
