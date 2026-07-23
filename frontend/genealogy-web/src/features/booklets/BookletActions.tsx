@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { feedback } from '../../shared/ui/OperationFeedback';
 import { saveDownloadedBlob } from '../../shared/utils/download';
 import './booklet-actions-issue473.css';
 
@@ -11,7 +12,7 @@ type Props = { notify: (data: unknown, error?: boolean) => void };
 
 type BookletScope = 'clan' | 'branch';
 
-export function BookletActions({ notify }: Props) {
+export function BookletActions(_props: Props) {
   const workspace = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
@@ -30,11 +31,11 @@ export function BookletActions({ notify }: Props) {
   async function generateBooklet(scope: BookletScope) {
     if (loading) return;
     if (!workspace.clanId) {
-      notify({ message: '请先选择宗族' }, true);
+      feedback.warning('请先选择宗族');
       return;
     }
     if (scope === 'branch' && !workspace.branchId) {
-      notify({ message: '请先选择支派' }, true);
+      feedback.warning('请先选择支派');
       return;
     }
 
@@ -47,9 +48,9 @@ export function BookletActions({ notify }: Props) {
     try {
       const blob = await apiClient.download(path);
       saveDownloadedBlob(blob, filename);
-      notify({ message: `谱册已生成：${filename}` });
+      feedback.success(`谱册已生成：${filename}`);
     } catch (error) {
-      notify({ message: (error as Error).message || '谱册生成失败' }, true);
+      feedback.error((error as Error).message || '谱册生成失败');
     } finally {
       setLoading(false);
     }
