@@ -35,11 +35,11 @@
 | 任务 | 状态 | 验收条件 | Commit | 活跃耗时 |
 |---|---|---|---|---|
 | T1 读取规则、现有模型与审核链路 | 已完成 | 已定位人物事件实体、查询/写入服务、人物 Revision 提交与通用快照序列化入口 | `ed0d196` | 已记录 |
-| T2 更新 OpenAPI 与契约模型 | 进行中 | 已新增 `openapi.person-events.json` Overlay，覆盖事件列表/替换和复合 Revision；等待生成文件与 API Contract 收口 | `b672d91` | 记录中 |
+| T2 更新 OpenAPI 与契约模型 | 进行中 | 已新增 `openapi.person-events.json` Overlay，覆盖事件列表/替换和复合 Revision；等待生成文件回写 | `b672d91`、`6517aae` | 记录中 |
 | T3 后端事件批量替换与校验 | 已完成 | 事务替换、权限校验、正式数据审核边界、字段校验和聚焦测试均已通过 Backend CI | `fa5bcf3`、`7ba675c`、`d034342`、`25bd914`、`1b1c99b` | 已记录 |
 | T4 审核快照与应用链路联动 | 已完成 | 人物 before/after 复合快照、复合更新 API、旧快照兼容、审核通过事件原子替换和聚焦测试均已通过 Backend CI | `1815a59`、`8817907`、`ca01b00`、`eb789e1`、`bd78182`、`13481d0` | 已记录 |
 | T5 前端事件编辑器与保存联动 | 已完成 | 编辑页支持草稿直存与正式 Revision；创建页支持事件编辑、创建后保存、可选提交审核和重置 | `1de80a9`、`ac9634e`、`4ae21a3`、`c1886d4` | 已记录 |
-| T6 回归测试与 CI 验证 | 进行中 | 创建页契约测试已纳入 Frontend CI；最新 Frontend/Backend/API/Culture 四项门禁运行中 | `990fdc4` | 记录中 |
+| T6 回归测试与 CI 验证 | 进行中 | 创建页契约测试已纳入 Frontend CI；Frontend/Backend 已通过，API Contract 等待生成文件同步 | `990fdc4` | 记录中 |
 
 ## 当前修改
 
@@ -61,7 +61,8 @@
 - 创建事件保存失败时不提交审核，事件校验失败时不创建人物；
 - `PersonStep` 已渲染关键事件编辑器，并在继续录入、切换宗族和重置时清空事件草稿；
 - 创建页源码契约测试已进入 Frontend CI；
-- 新增 OpenAPI Overlay，描述人物事件和复合 Revision 路径、请求及响应结构。
+- 新增 OpenAPI Overlay，描述人物事件和复合 Revision 路径、请求及响应结构；
+- API Contract 失败时上传生成后的 `api-contract.ts`，用于可靠回写自动生成结果。
 
 ## 影响模块
 
@@ -76,7 +77,7 @@
 
 ## 已知风险
 
-- OpenAPI Overlay 已提交，但生成文件尚需根据 API Contract 差异同步；
+- OpenAPI Overlay 已提交，但生成文件尚需根据 API Contract 产物同步；
 - 日期精度和空日期语义需与现有只读时间轴保持一致；
 - 最终合入前需确认 PR diff 中无临时诊断文件与构建产物。
 
@@ -89,8 +90,10 @@
 
 ## 外部等待
 
-- 最新 Frontend CI、Backend CI、API Contract 和 Culture Page Gate：运行中。
+- Frontend CI、Backend CI：最新功能轮次已通过；
+- API Contract：等待生成文件产物回写；
+- Culture Page Gate：等待最终轮次结果。
 
 ## 恢复检查点
 
-人物创建、编辑、正式审核和审批生效链路已贯通；创建页接入与页面契约门禁已完成。下一步最小任务：处理 OpenAPI Overlay 触发的生成文件差异，确认四项 CI 全绿，更新 PR 描述并进行最终 diff 审查。
+人物创建、编辑、正式审核和审批生效链路已贯通；OpenAPI Overlay 已完成。下一步最小任务：下载 API Contract 失败产物中的 `api-contract.ts` 并回写，确认四项 CI 全绿，更新 PR 描述并进行最终 diff 审查。
