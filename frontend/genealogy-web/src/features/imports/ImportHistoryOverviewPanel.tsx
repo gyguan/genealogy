@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Select, Space, Table, Tag, Typography } from 'antd';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { EmptyState, PageFeedback } from '../../shared/ui/Feedback';
 import { readImportHistoryUrl, writeImportHistoryUrl } from './import-history-state';
 import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
 
@@ -116,6 +117,8 @@ export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
     setPageNo(1);
   }
 
+  const emptyState = <EmptyState compact title="暂无导入记录" description="当前筛选条件下没有可展示的导入批次。" />;
+
   return (
     <Card title="导入记录概览" extra={<Button loading={loading} onClick={() => void load()}>刷新</Button>}>
       <Space wrap className="import-history-filters">
@@ -124,14 +127,23 @@ export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
         <Select allowClear placeholder="全部文件格式" value={fileFormat} options={[...importFileFormatOptions]} onChange={value => resetPage(() => setFileFormat(value))} />
         <Typography.Text type="secondary">筛选和分页已写入 URL，可刷新或通过浏览器前进、后退恢复。</Typography.Text>
       </Space>
-      {errorMessage ? <Alert type="error" showIcon message={errorMessage} className="import-panel-alert" /> : null}
+      {errorMessage ? (
+        <PageFeedback
+          tone="error"
+          title="导入记录加载失败"
+          description={errorMessage}
+          action={<Button size="small" loading={loading} onClick={() => void load()}>重新加载</Button>}
+          closable
+          onClose={() => setErrorMessage('')}
+        />
+      ) : null}
       <div className="import-history-table">
         <Table<ImportJobSummary>
           size="middle"
           loading={loading}
           rowKey="id"
           dataSource={jobs}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入记录" /> }}
+          locale={{ emptyText: emptyState }}
           pagination={{ current: pageNo, pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 个批次`, onChange: (nextPage, nextSize) => { setPageNo(nextSize === pageSize ? nextPage : 1); setPageSize(nextSize); } }}
           columns={[
             { key: 'type', title: '导入对象', render: (_value, row) => importTypeText(row.importType || row.legacyImportType) },
@@ -154,7 +166,7 @@ export function ImportHistoryOverviewPanel({ refreshKey }: Props) {
               <Typography.Text type="secondary">创建时间：{formatDateTime(job.createdAt)}</Typography.Text>
             </Space>
           </Card>
-        )) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入记录" />}
+        )) : emptyState}
         {total > pageSize ? <Space wrap><Button disabled={pageNo <= 1} onClick={() => setPageNo(value => Math.max(1, value - 1))}>上一页</Button><Typography.Text>第 {pageNo} 页</Typography.Text><Button disabled={pageNo * pageSize >= total} onClick={() => setPageNo(value => value + 1)}>下一页</Button></Space> : null}
       </div>
     </Card>
