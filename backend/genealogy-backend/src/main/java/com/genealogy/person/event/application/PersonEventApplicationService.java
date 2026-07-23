@@ -17,13 +17,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class PersonEventApplicationService {
 
     private static final String PERSON_VIEW = "person:view";
     private static final String PERSON_UPDATE = "person:update";
-    private static final String STATUS_OFFICIAL = "official";
+    private static final String STATUS_DRAFT = "draft";
+    private static final Set<String> REVIEW_PENDING_STATUSES = Set.of("pending_review", "submitted");
 
     private final PersonRepository personRepository;
     private final PersonEventRepository personEventRepository;
@@ -67,12 +69,7 @@ public class PersonEventApplicationService {
         authorizationApplicationService.requireBranchPermission(
                 person.getClanId(), actorId, person.getBranchId(), PERSON_UPDATE
         );
-        if (STATUS_OFFICIAL.equals(person.getDataStatus())) {
-            throw new BusinessException(
-                    "PERSON_EVENT_REVIEW_REQUIRED",
-                    "正式人物关键事件变更必须随人物资料提交审核"
-            );
-        }
+        requireDirectReplacementAllowed(person.getDataStatus());
         return replaceInternal(
                 personId,
                 person.getClanId(),
@@ -93,6 +90,23 @@ public class PersonEventApplicationService {
             LocalDateTime applyTime
     ) {
         replaceInternal(personId, clanId, dataStatus, events, actorId, applyTime);
+    }
+
+    private void requireDirectReplacementAllowed(String dataStatus) {
+        String normalizedStatus = dataStatus == null ? "" : dataStatus.trim().toLowerCase();
+        if (STATUS_DRAFT.equals(normalizedStatus)) {
+            return;
+        }
+        if (REVIEW_PENDING_STATUSES.contains(normalizedStatus)) {
+            throw new BusinessException(
+                    "PERSON_EVENT_NOT_EDITABLE",
+                    "人物资料处于待审核状态，关键事件暂不可修改"
+            );
+        }
+        throw new BusinessException(
+                "PERSON_EVENT_REVIEW_REQUIRED",
+                "非草稿人物关键事件变更必须随人物资料提交审核"
+        );
     }
 
     private List<PersonEventEntity> replaceInternal(
