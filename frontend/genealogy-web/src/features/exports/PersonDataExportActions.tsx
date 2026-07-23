@@ -2,24 +2,25 @@ import { Button, Dropdown } from 'antd';
 import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { feedback } from '../../shared/ui/OperationFeedback';
 import { saveDownloadedBlob } from '../../shared/utils/download';
 
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
 type ExportScope = 'clan' | 'branch';
 
-export function PersonDataExportActions({ notify }: Props) {
+export function PersonDataExportActions({ notify: _notify }: Props) {
   const workspace = useWorkspace();
   const [loading, setLoading] = useState(false);
 
   async function exportPersons(scope: ExportScope) {
     if (loading) return;
     if (!workspace.clanId) {
-      notify({ message: '请先选择宗族' }, true);
+      feedback.warning('请先选择宗族');
       return;
     }
     if (scope === 'branch' && !workspace.branchId) {
-      notify({ message: '请先选择支派' }, true);
+      feedback.warning('请先选择支派');
       return;
     }
 
@@ -32,9 +33,9 @@ export function PersonDataExportActions({ notify }: Props) {
     try {
       const blob = await apiClient.download(path);
       saveDownloadedBlob(blob, filename);
-      notify({ message: `人物数据已导出：${filename}` });
+      feedback.success(`人物数据已导出：${filename}`);
     } catch (error) {
-      notify({ message: (error as Error).message || '人物数据导出失败' }, true);
+      feedback.error((error as Error).message || '人物数据导出失败');
     } finally {
       setLoading(false);
     }
