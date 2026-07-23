@@ -177,12 +177,12 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 159);
+  assert.equal(baseline.maxCounts.page_alert, 158);
   assert.equal(baseline.maxCounts.field_help, 104);
   assert.equal(baseline.maxCounts.app_notify, 141);
   assert.equal(baseline.maxCounts.antd_message, 91);
   assert.equal(baseline.maxCounts.confirm_modal, 60);
-  assert.equal(baseline.maxCounts.empty_state, 155);
+  assert.equal(baseline.maxCounts.empty_state, 153);
   assert.equal(baseline.maxCounts.inline_semantic_text, 145);
   assert.equal(baseline.maxCounts.custom_notice_class, 30);
   assert.match(audit, /--baseline/);
