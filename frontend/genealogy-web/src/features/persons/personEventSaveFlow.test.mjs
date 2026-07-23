@@ -25,12 +25,12 @@ test('validates title and future date before saving person', async () => {
   assert.equal(personSaved, false);
 });
 
-test('saves person first and then replaces events', async () => {
+test('saves person first and preserves manual event order across dates', async () => {
   const calls = [];
   const person = await savePersonWithEvents({
     events: [
-      { eventTitle: '入学', eventType: 'education', eventDate: '2001-09-01', sortOrder: 1 },
-      { eventTitle: '出生', eventType: 'birth', eventDate: '1990-01-01', sortOrder: 0 }
+      { eventTitle: '先展示但后发生', eventType: 'education', eventDate: '2001-09-01', sortOrder: 0 },
+      { eventTitle: '后展示但先发生', eventType: 'birth', eventDate: '1990-01-01', sortOrder: 1 }
     ],
     savePerson: async () => {
       calls.push('person');
@@ -38,7 +38,7 @@ test('saves person first and then replaces events', async () => {
     },
     saveEvents: async payload => {
       calls.push('events');
-      assert.deepEqual(payload.events.map(event => event.eventTitle), ['出生', '入学']);
+      assert.deepEqual(payload.events.map(event => event.eventTitle), ['先展示但后发生', '后展示但先发生']);
       assert.deepEqual(payload.events.map(event => event.sortOrder), [0, 1]);
     }
   });
