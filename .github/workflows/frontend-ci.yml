@@ -109,10 +109,10 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf .person-event-test
-          npx tsc src/features/persons/personEventEditorModel.ts src/features/persons/personEventSaveFlow.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-event-test --skipLibCheck
+          npx tsc src/features/persons/personEventEditorModel.ts src/features/persons/personEventSaveFlow.ts src/features/persons/personCreateWithEventsFlow.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-event-test --skipLibCheck
       - name: Test person event save flow
         working-directory: frontend/genealogy-web
-        run: node --experimental-specifier-resolution=node --test src/features/persons/personEventSaveFlow.test.mjs
+        run: node --experimental-specifier-resolution=node --test src/features/persons/personEventSaveFlow.test.mjs src/features/persons/personCreateWithEventsFlow.test.mjs
       - name: Test person page contracts
         working-directory: frontend/genealogy-web
         run: node --test src/features/persons/personEventEditor.test.mjs src/features/persons/PersonEditPageEvents.test.mjs src/shared/ui/promptCopyCleanup.test.mjs src/shared/ui/resultSortRemoval.test.mjs
