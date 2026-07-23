@@ -10,6 +10,10 @@ import { EMPTY_ENTITY_NAVIGATION_GUARD } from '../../shared/navigation/entityNav
 import type { EntityNavigationGuardState } from '../../shared/navigation/entityNavigationGuard';
 import { EntityPageBackButton, EntityPageHeader } from '../../shared/ui/EntityPageHeader';
 import { toRecordList } from '../../shared/utils/records';
+import { PersonEventEditor } from './PersonEventEditor';
+import type { PersonEventDraft } from './personEventEditorModel';
+import { loadPersonEvents, replacePersonEvents, submitPersonRevisionWithEvents } from './personEventService';
+import { savePersonWithEvents } from './personEventSaveFlow';
 import {
   normalizePersonDate,
   personGenderOptions,
@@ -55,15 +59,26 @@ function generationSchemeLabel(scheme: any) {
 }
 
 function isOfficialGenerationScheme(scheme: any) {
-    const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();
-    return ['official', 'active', 'approved'].includes(status);
-  }
+  const status = String(scheme.dataStatus || scheme.status || scheme.verificationStatus || '').toLowerCase();
+  return ['official', 'active', 'approved'].includes(status);
+}
 
-  function isOfficialBranch(branch: any) {
-    const status = String(branch.status || branch.dataStatus || branch.verificationStatus || '').trim().toLowerCase();
-    return ['official', 'active', 'approved'].includes(status);
-  }
+function isOfficialBranch(branch: any) {
+  const status = String(branch.status || branch.dataStatus || branch.verificationStatus || '').trim().toLowerCase();
+  return ['official', 'active', 'approved'].includes(status);
+}
 
+function normalizedStatus(status: unknown) {
+  return String(status || '').trim().toLowerCase();
+}
+
+function allowsDirectEventSave(status: unknown) {
+  return normalizedStatus(status) === 'draft';
+}
+
+function allowsRevisionSubmit(status: unknown) {
+  return ['official', 'rejected'].includes(normalizedStatus(status));
+}
 
 function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {
   if (!value || precision === 'unknown') return { value: null };
@@ -91,6 +106,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
   const workspace = useWorkspace();
   const [form] = Form.useForm<PersonEditForm>();
   const [person, setPerson] = useState<any>();
+  const [events, setEvents] = useState<PersonEventDraft[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [generationItems, setGenerationItems] = useState<GenerationOptionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,11 +197,14 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     setDirty(false);
     setGenerationItems([]);
     try {
-      const detail = await apiClient.get<any>(`/persons/${personId}`);
+      const [detail, loadedEvents] = await Promise.all([
+        apiClient.get<any>(`/persons/${personId}`),
+        loadPersonEvents(personId)
+      ]);
       setPerson(detail);
+      setEvents(loadedEvents);
       workspace.setPersonId(String(personId));
       form.setFieldsValue(toPersonEditForm(detail));
-      setDirty(false);
       const clanId = String(detail?.clanId || detail?.clan?.id || workspace.clanId || '');
       if (clanId) {
         const [branchData] = await Promise.all([
@@ -197,32 +216,41 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
         setBranches([]);
         setGenerationItems([]);
       }
+      setDirty(false);
     } catch (error) {
       setPerson(undefined);
+      setEvents([]);
       setLoadError((error as Error).message || '人物档案加载失败');
     } finally {
       setLoading(false);
     }
   }
 
-  function changeGeneration(value?: string) {
-    form.setFieldsValue(selectPersonGeneration(value, availableGenerationItems));
+  function markChanged() {
     setDirty(true);
     setSaved(false);
+  }
+
+  function changeEvents(nextEvents: PersonEventDraft[]) {
+    setEvents(nextEvents);
+    markChanged();
+  }
+
+  function changeGeneration(value?: string) {
+    form.setFieldsValue(selectPersonGeneration(value, availableGenerationItems));
+    markChanged();
   }
 
   function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
     const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
     form.setFieldValue(precisionField, value ? 'day' : 'unknown');
-    setDirty(true);
-    setSaved(false);
+    markChanged();
     void form.validateFields(['deathDate']);
   }
 
   function changeLiving(value: PersonEditForm['isLiving']) {
     form.setFieldValue('isLiving', value);
-    setDirty(true);
-    setSaved(false);
+    markChanged();
     void form.validateFields(['deathDate']);
   }
 
@@ -258,16 +286,33 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     } catch {
       return;
     }
+
+    const status = person?.dataStatus || person?.status;
+    if (!allowsDirectEventSave(status) && !allowsRevisionSubmit(status)) {
+      setSaveError('人物资料已处于待审核或不可编辑状态，不能重复提交。');
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await apiClient.put<any>(`/persons/${personId}`, toPersonUpdatePayload(values));
+      const updated = allowsDirectEventSave(status)
+        ? await savePersonWithEvents({
+            events,
+            savePerson: () => apiClient.put<any>(`/persons/${personId}`, toPersonUpdatePayload(values)),
+            saveEvents: async () => replacePersonEvents(personId, events)
+          })
+        : await submitPersonRevisionWithEvents(personId, toPersonUpdatePayload(values), events);
       setPerson(updated);
+      if (allowsDirectEventSave(status)) {
+        setEvents(await loadPersonEvents(personId));
+      }
       form.setFieldsValue(toPersonEditForm(updated));
       setDirty(false);
       setSaved(true);
-      notify({ message: '人物资料已保存' });
+      notify({ message: allowsDirectEventSave(status) ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核' });
     } catch (error) {
-      setSaveError((error as Error).message || '人物资料保存失败');
+      setDirty(true);
+      setSaveError((error as Error).message || '人物资料及关键事件保存失败');
     } finally {
       setSaving(false);
     }
@@ -312,6 +357,9 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
 
   const personName = display(person.name || person.personName, '未命名人物');
   const personStatus = person.dataStatus || person.status;
+  const directEventSave = allowsDirectEventSave(personStatus);
+  const revisionSubmit = allowsRevisionSubmit(personStatus);
+  const eventEditingDisabled = busy || (!directEventSave && !revisionSubmit);
   const statusActions = visiblePersonStatusActions(personStatus, person.allowedActions);
   const primaryStatusAction = statusActions.find(item => item.action.primary);
   const secondaryStatusActions = statusActions.filter(item => !item.action.primary);
@@ -336,7 +384,8 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
 
       {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
       {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
-      {saved ? <Alert type="success" showIcon message="人物资料已保存" action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
+      {saved ? <Alert type="success" showIcon message={directEventSave ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核'} action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
+      {revisionSubmit ? <Alert type="info" showIcon message="关键事件将随人物资料审核" description="保存后生成包含人物资料和关键事件的审核快照；审核通过后统一生效，驳回不会改变现有正式事件。" /> : null}
 
       <Form<PersonEditForm>
         form={form}
@@ -344,7 +393,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
         requiredMark="optional"
         disabled={busy}
         className="person-edit-form"
-        onValuesChange={() => { setDirty(true); setSaved(false); }}
+        onValuesChange={markChanged}
       >
         <div className="person-edit-sections">
           <Card title="基本身份"><div className="person-edit-fields">
@@ -360,52 +409,23 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
             <Form.Item name="generationWord" hidden><Input /></Form.Item>
             <Form.Item name="generationNo" hidden><Input /></Form.Item>
             <Form.Item label="字辈" extra="选择字辈后自动带出代次，仅展示已审核通过的字辈方案明细">
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)}
-                loading={loadingGenerations}
-                disabled={!loadingGenerations && !generationOptions.length}
-                placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'}
-                options={generationOptions}
-                onChange={changeGeneration}
-              />
+              <Select allowClear showSearch optionFilterProp="label" value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)} loading={loadingGenerations} disabled={!loadingGenerations && !generationOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationOptions} onChange={changeGeneration} />
             </Form.Item>
-            <Form.Item label="代次">
-              <Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly />
-            </Form.Item>
+            <Form.Item label="代次"><Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item>
             <Form.Item name="rankInFamily" label="排行"><Input /></Form.Item>
           </div></Card>
 
           <Card title="生卒与地点"><div className="person-edit-fields">
             <Form.Item name="birthDatePrecision" hidden><Input /></Form.Item>
             <Form.Item name="deathDatePrecision" hidden><Input /></Form.Item>
-            <Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}>
-              <DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} />
-            </Form.Item>
+            <Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}><DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} /></Form.Item>
             <Form.Item name="isLiving" label="是否在世"><Select options={personLivingOptions} onChange={changeLiving} /></Form.Item>
-            <Form.Item
-              name="deathDate"
-              label="逝世日期"
-              dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']}
-              getValueProps={value => dateValueProps(value, deathPrecision)}
-              normalize={normalizePickerDate}
-              rules={[({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期'));
-                  const birth = normalizePersonDate(getFieldValue('birthDate'), getFieldValue('birthDatePrecision'));
-                  const death = normalizePersonDate(value, getFieldValue('deathDatePrecision'));
-                  if (birth && death && death < birth.slice(0, death.length)) return Promise.reject(new Error('逝世日期不能早于出生日期'));
-                  return Promise.resolve();
-                }
-              })]}
-            >
-              <DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} />
-            </Form.Item>
+            <Form.Item name="deathDate" label="逝世日期" dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']} getValueProps={value => dateValueProps(value, deathPrecision)} normalize={normalizePickerDate} rules={[({ getFieldValue }) => ({ validator(_, value) { if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期')); const birth = normalizePersonDate(getFieldValue('birthDate'), getFieldValue('birthDatePrecision')); const death = normalizePersonDate(value, getFieldValue('deathDatePrecision')); if (birth && death && death < birth.slice(0, death.length)) return Promise.reject(new Error('逝世日期不能早于出生日期')); return Promise.resolve(); } })]}><DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} /></Form.Item>
             <Form.Item name="birthPlace" label="出生地"><Input /></Form.Item>
             <Form.Item name="residencePlace" label="居住地"><Input /></Form.Item>
           </div></Card>
+
+          <PersonEventEditor value={events} disabled={eventEditingDisabled} onChange={changeEvents} />
 
           <Card title="生平与墓志"><div className="person-edit-fields">
             <Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item>
@@ -425,30 +445,9 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
       <div className="person-edit-actions" aria-label="人物档案编辑操作">
         <Space wrap>
           <Button disabled={busy} onClick={leavePage}>取消</Button>
-          <Button loading={saving} disabled={actionLoading !== null} onClick={() => void saveDraft()}>保存草稿</Button>
-          {primaryStatusAction ? (
-            <Tooltip title={primaryStatusAction.enabled ? '' : primaryStatusAction.reason}>
-              <span>
-                <Button type="primary" disabled={!primaryStatusAction.enabled || busy} loading={actionLoading === primaryStatusAction.action.key} onClick={() => confirmStatusAction(primaryStatusAction.action)}>
-                  {primaryStatusAction.action.label}
-                </Button>
-              </span>
-            </Tooltip>
-          ) : null}
-          {secondaryStatusActions.length ? (
-            <Dropdown
-              menu={{
-                items: moreItems,
-                onClick: info => {
-                  const selected = secondaryStatusActions.find(item => item.action.key === info.key);
-                  if (selected?.enabled) confirmStatusAction(selected.action);
-                }
-              }}
-              disabled={busy}
-            >
-              <Button>更多</Button>
-            </Dropdown>
-          ) : null}
+          <Button loading={saving} disabled={actionLoading !== null || eventEditingDisabled} onClick={() => void saveDraft()}>{directEventSave ? '保存草稿' : '提交审核'}</Button>
+          {primaryStatusAction ? <Tooltip title={primaryStatusAction.enabled ? '' : primaryStatusAction.reason}><span><Button type="primary" disabled={!primaryStatusAction.enabled || busy} loading={actionLoading === primaryStatusAction.action.key} onClick={() => confirmStatusAction(primaryStatusAction.action)}>{primaryStatusAction.action.label}</Button></span></Tooltip> : null}
+          {secondaryStatusActions.length ? <Dropdown menu={{ items: moreItems, onClick: info => { const selected = secondaryStatusActions.find(item => item.action.key === info.key); if (selected?.enabled) confirmStatusAction(selected.action); } }} disabled={busy}><Button>更多</Button></Dropdown> : null}
         </Space>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Alert, Form } from 'antd';
+import { Form } from 'antd';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import type { Mvp1StepKey } from './domain/wizardStepState';
 import { mapWizardServerFieldErrors, type WizardFieldErrors } from './domain/wizardFormValidation';
 import { WizardFormProvider } from './WizardFormContext';
@@ -53,11 +54,10 @@ export function WizardValidationBoundary({ step, children }: Props) {
       >
         <div className="wizard-validation-boundary">
           {businessError ? (
-            <Alert
+            <PageFeedback
               className="wizard-step-local-error"
-              type="error"
-              showIcon
-              message={businessError}
+              tone="error"
+              title={businessError}
               closable
               onClose={() => setBusinessError('')}
             />

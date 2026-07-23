@@ -1,0 +1,174 @@
+{
+  "paths": {
+    "/api/v1/persons/{personId}/events": {
+      "get": {
+        "operationId": "listPersonEvents",
+        "tags": ["PersonEvent"],
+        "parameters": [
+          {
+            "name": "personId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponsePersonEventList" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "replacePersonEvents",
+        "tags": ["PersonEvent"],
+        "parameters": [
+          {
+            "name": "personId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReplacePersonEventsRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponsePersonEventList" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/persons/{id}/revision": {
+      "put": {
+        "operationId": "updatePersonRevisionWithEvents",
+        "tags": ["Person"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64", "minimum": 1 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PersonRevisionUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponsePersonRevision" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PersonEventItem": {
+        "type": "object",
+        "required": ["eventTitle"],
+        "properties": {
+          "eventType": { "type": "string", "maxLength": 64, "nullable": true },
+          "eventTitle": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "eventDate": { "type": "string", "format": "date", "nullable": true },
+          "eventDatePrecision": { "type": "string", "maxLength": 32, "nullable": true },
+          "eventPlace": { "type": "string", "maxLength": 255, "nullable": true },
+          "eventDescription": { "type": "string", "maxLength": 4000, "nullable": true },
+          "sortOrder": { "type": "integer", "minimum": 0, "nullable": true }
+        }
+      },
+      "ReplacePersonEventsRequest": {
+        "type": "object",
+        "required": ["events"],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PersonEventItem" }
+          }
+        }
+      },
+      "PersonRevisionUpdateRequest": {
+        "type": "object",
+        "required": ["person", "events"],
+        "properties": {
+          "person": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "PersonUpdateRequest payload"
+          },
+          "events": { "$ref": "#/components/schemas/ReplacePersonEventsRequest" }
+        }
+      },
+      "PersonEventResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "clanId": { "type": "integer", "format": "int64" },
+          "personId": { "type": "integer", "format": "int64" },
+          "eventType": { "type": "string", "nullable": true },
+          "eventTitle": { "type": "string" },
+          "eventDate": { "type": "string", "format": "date", "nullable": true },
+          "eventDatePrecision": { "type": "string", "nullable": true },
+          "eventPlace": { "type": "string", "nullable": true },
+          "eventDescription": { "type": "string", "nullable": true },
+          "sourceType": { "type": "string", "nullable": true },
+          "sourceId": { "type": "integer", "format": "int64", "nullable": true },
+          "sortOrder": { "type": "integer" },
+          "dataStatus": { "type": "string" },
+          "createdBy": { "type": "integer", "format": "int64", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time", "nullable": true },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "PersonRevisionResponse": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "PersonResponse returned after draft save or revision submission"
+      },
+      "ApiResponsePersonEventList": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PersonEventResponse" }
+          }
+        }
+      },
+      "ApiResponsePersonRevision": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PersonRevisionResponse" }
+        }
+      }
+    }
+  }
+}

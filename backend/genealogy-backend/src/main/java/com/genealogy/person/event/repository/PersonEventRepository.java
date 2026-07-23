@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface PersonEventRepository extends JpaRepository<PersonEventEntity, Long> {
 
-    List<PersonEventEntity> findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(Long personId);
+    List<PersonEventEntity> findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(Long personId);
 }

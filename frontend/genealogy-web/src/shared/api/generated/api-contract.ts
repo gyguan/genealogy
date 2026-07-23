@@ -551,6 +551,39 @@ export const API_OPERATIONS = {
     "requestBody": null,
     "response": "ApiResponseMemberPermissionSummaryResponse"
   },
+  "PUT /api/v1/persons/{id}/revision": {
+    "operationId": "updatePersonRevisionWithEvents",
+    "method": "PUT",
+    "path": "/api/v1/persons/{id}/revision",
+    "pathParams": [
+      "id"
+    ],
+    "queryParams": [],
+    "requestBody": "PersonRevisionUpdateRequest",
+    "response": "ApiResponsePersonRevision"
+  },
+  "GET /api/v1/persons/{personId}/events": {
+    "operationId": "listPersonEvents",
+    "method": "GET",
+    "path": "/api/v1/persons/{personId}/events",
+    "pathParams": [
+      "personId"
+    ],
+    "queryParams": [],
+    "requestBody": null,
+    "response": "ApiResponsePersonEventList"
+  },
+  "PUT /api/v1/persons/{personId}/events": {
+    "operationId": "replacePersonEvents",
+    "method": "PUT",
+    "path": "/api/v1/persons/{personId}/events",
+    "pathParams": [
+      "personId"
+    ],
+    "queryParams": [],
+    "requestBody": "ReplacePersonEventsRequest",
+    "response": "ApiResponsePersonEventList"
+  },
   "GET /api/v1/review-tasks/my-submissions": {
     "operationId": "listMyReviewSubmissions",
     "method": "GET",

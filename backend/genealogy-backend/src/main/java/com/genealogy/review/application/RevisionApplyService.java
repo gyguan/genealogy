@@ -1,6 +1,7 @@
 package com.genealogy.review.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
@@ -14,6 +15,7 @@ import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.event.application.PersonEventApplicationService;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.relationship.repository.RelationshipRepository;
@@ -54,6 +56,7 @@ public class RevisionApplyService {
     private final ImportJobRepository importJobRepository;
     private final ImportJobRowRepository importJobRowRepository;
     private final ObjectMapper objectMapper;
+    private PersonEventApplicationService personEventApplicationService;
 
     public RevisionApplyService(
             PersonRepository personRepository,
@@ -78,6 +81,11 @@ public class RevisionApplyService {
     @Autowired
     void setClanRepository(ClanRepository clanRepository) {
         this.clanRepository = clanRepository;
+    }
+
+    @Autowired
+    void setPersonEventApplicationService(PersonEventApplicationService personEventApplicationService) {
+        this.personEventApplicationService = personEventApplicationService;
     }
 
     @Transactional
@@ -138,7 +146,11 @@ public class RevisionApplyService {
             personRepository.save(person);
             return;
         }
-        PersonEntity snapshot = readPayload(revision.getNewPayload(), PersonEntity.class);
+
+        PersonRevisionSnapshot composite = readPersonRevisionSnapshot(revision.getNewPayload());
+        PersonEntity snapshot = composite == null
+                ? readPayload(revision.getNewPayload(), PersonEntity.class)
+                : composite.person();
         if (snapshot == null) {
             personRepository.findByIdAndDeletedAtIsNull(revision.getTargetId()).ifPresent(person -> {
                 person.setDataStatus(STATUS_OFFICIAL);
@@ -153,6 +165,20 @@ public class RevisionApplyService {
         snapshot.setDeletedAt(null);
         snapshot.setUpdatedAt(applyTime);
         personRepository.save(snapshot);
+
+        if (composite != null) {
+            if (personEventApplicationService == null) {
+                throw new BusinessException("PERSON_EVENT_APPLY_SERVICE_MISSING", "人物关键事件审核生效服务不可用");
+            }
+            personEventApplicationService.replaceFromRevision(
+                    revision.getTargetId(),
+                    revision.getClanId(),
+                    STATUS_OFFICIAL,
+                    composite.events(),
+                    revision.getSubmitterId(),
+                    applyTime
+            );
+        }
     }
 
     private void rejectPerson(AuditRecordEntity revision, LocalDateTime rejectTime) {
@@ -392,6 +418,17 @@ public class RevisionApplyService {
             source.setUpdatedAt(time);
         }
         sourceRepository.saveAll(sources);
+    }
+
+    private PersonRevisionSnapshot readPersonRevisionSnapshot(String payload) {
+        if (payload == null || payload.isBlank()) return null;
+        try {
+            JsonNode root = objectMapper.readTree(payload);
+            if (root == null || !root.isObject() || !root.has("person")) return null;
+            return objectMapper.treeToValue(root, PersonRevisionSnapshot.class);
+        } catch (JsonProcessingException ex) {
+            throw new BusinessException("REVISION_PAYLOAD_INVALID", "revision payload invalid");
+        }
     }
 
     private <T> T readPayload(String payload, Class<T> type) {

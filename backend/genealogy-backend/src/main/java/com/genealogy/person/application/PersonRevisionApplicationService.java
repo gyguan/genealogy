@@ -7,15 +7,21 @@ import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
+import com.genealogy.person.dto.PersonRevisionUpdateRequest;
 import com.genealogy.person.dto.PersonUpdateRequest;
 import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.event.application.PersonEventApplicationService;
+import com.genealogy.person.event.dto.ReplacePersonEventsRequest;
 import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.review.application.PersonRevisionSnapshot;
 import com.genealogy.review.application.RevisionWorkflowApplicationService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class PersonRevisionApplicationService {
@@ -31,6 +37,24 @@ public class PersonRevisionApplicationService {
     private final BranchRepository branchRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final RevisionWorkflowApplicationService revisionWorkflowApplicationService;
+    private final PersonEventApplicationService personEventApplicationService;
+
+    @Autowired
+    public PersonRevisionApplicationService(
+            PersonApplicationService personApplicationService,
+            PersonRepository personRepository,
+            BranchRepository branchRepository,
+            AuthorizationApplicationService authorizationApplicationService,
+            RevisionWorkflowApplicationService revisionWorkflowApplicationService,
+            PersonEventApplicationService personEventApplicationService
+    ) {
+        this.personApplicationService = personApplicationService;
+        this.personRepository = personRepository;
+        this.branchRepository = branchRepository;
+        this.authorizationApplicationService = authorizationApplicationService;
+        this.revisionWorkflowApplicationService = revisionWorkflowApplicationService;
+        this.personEventApplicationService = personEventApplicationService;
+    }
 
     public PersonRevisionApplicationService(
             PersonApplicationService personApplicationService,
@@ -39,11 +63,14 @@ public class PersonRevisionApplicationService {
             AuthorizationApplicationService authorizationApplicationService,
             RevisionWorkflowApplicationService revisionWorkflowApplicationService
     ) {
-        this.personApplicationService = personApplicationService;
-        this.personRepository = personRepository;
-        this.branchRepository = branchRepository;
-        this.authorizationApplicationService = authorizationApplicationService;
-        this.revisionWorkflowApplicationService = revisionWorkflowApplicationService;
+        this(
+                personApplicationService,
+                personRepository,
+                branchRepository,
+                authorizationApplicationService,
+                revisionWorkflowApplicationService,
+                null
+        );
     }
 
     @Transactional
@@ -54,11 +81,27 @@ public class PersonRevisionApplicationService {
 
     @Transactional
     public PersonResponse update(Long id, PersonUpdateRequest request, Long actorId) {
+        return updateInternal(id, request, snapshotItems(id), actorId);
+    }
+
+    @Transactional
+    public PersonResponse updateWithEvents(Long id, PersonRevisionUpdateRequest request, Long actorId) {
+        return updateInternal(id, request.person(), request.events().events(), actorId);
+    }
+
+    private PersonResponse updateInternal(
+            Long id,
+            PersonUpdateRequest request,
+            List<ReplacePersonEventsRequest.PersonEventItem> afterEvents,
+            Long actorId
+    ) {
         PersonEntity current = getActiveEntity(id);
         Long effectiveBranchId = request.branchId() == null ? current.getBranchId() : request.branchId();
         authorizationApplicationService.requireBranchPermission(current.getClanId(), actorId, effectiveBranchId, PERSON_UPDATE);
         ensureBranchBelongsToClan(current.getClanId(), effectiveBranchId);
 
+        PersonEntity before = copyOf(current);
+        List<ReplacePersonEventsRequest.PersonEventItem> beforeEvents = snapshotItems(id);
         PersonEntity after = copyOf(current);
         PersonMapper.updateEntity(after, request);
         after.setId(current.getId());
@@ -74,10 +117,10 @@ public class PersonRevisionApplicationService {
                 after.getBranchId(),
                 actorId,
                 RevisionWorkflowApplicationService.CHANGE_PERSON_UPDATE,
-                current,
-                after,
-                "修改人物待审核：" + after.getName(),
-                "submit person update revision: " + after.getName()
+                new PersonRevisionSnapshot(before, beforeEvents),
+                new PersonRevisionSnapshot(after, afterEvents),
+                "修改人物及关键事件待审核：" + after.getName(),
+                "submit person update revision with events: " + after.getName()
         );
 
         current.setDataStatus(STATUS_PENDING_REVIEW);
@@ -119,6 +162,12 @@ public class PersonRevisionApplicationService {
         current.setUpdatedBy(actorId);
         current.setUpdatedAt(LocalDateTime.now());
         personRepository.save(current);
+    }
+
+    private List<ReplacePersonEventsRequest.PersonEventItem> snapshotItems(Long personId) {
+        return personEventApplicationService == null
+                ? List.of()
+                : personEventApplicationService.snapshotItems(personId);
     }
 
     private PersonEntity getActiveEntity(Long id) {

@@ -14,6 +14,10 @@ import { loadClans as queryClans, type ClanLike } from '../../services/clanServi
 import { loadGenerationItems as queryGenerationItems, loadGenerationSchemes as queryGenerationSchemes, type GenerationItemLike, type GenerationSchemeLike } from '../../services/generationService';
 import { createPersonApi, deletePersonApi, loadPersons as queryPersons, type CreatePersonPayload, type PersonLike } from '../../services/personService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
+import { PersonEventEditor } from '../../../persons/PersonEventEditor';
+import type { PersonEventDraft } from '../../../persons/personEventEditorModel';
+import { createPersonWithEvents } from '../../../persons/personEventCreateFlow';
+import { replacePersonEvents } from '../../../persons/personEventService';
 
 type PersonForm = {
   branchId: string;
@@ -152,6 +156,7 @@ function normalizeDateString(value: string | string[]) {
 export function PersonStep({ notify, onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [personForm, setPersonForm] = useState<PersonForm>({ ...defaultPersonForm });
+  const [personEvents, setPersonEvents] = useState<PersonEventDraft[]>([]);
   const [clans, setClans] = useState<ClanLike[]>([]);
   const [branches, setBranches] = useState<BranchLike[]>([]);
   const [schemes, setSchemes] = useState<GenerationSchemeLike[]>([]);
@@ -269,6 +274,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
   function changeClan(nextClanId: string) {
     workspace.patch({ clanId: nextClanId, branchId: '', personId: '' });
     setPersonForm({ ...defaultPersonForm });
+    setPersonEvents([]);
     setBranches([]);
     setSchemes([]);
     setGenerationItems([]);
@@ -355,6 +361,12 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
       privacyLevel: prev.privacyLevel,
       dataStatus: prev.dataStatus
     }));
+    setPersonEvents([]);
+  }
+
+  function resetPersonForm() {
+    setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId });
+    setPersonEvents([]);
   }
 
   async function createPerson(continueAdding = false, submit = false) {
@@ -365,24 +377,29 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     }
     setSavingPerson(true);
     try {
-      const data = await createPersonApi(workspace.clanId, buildPersonPayload());
-      const nextPersonId = String(data?.id || '');
+      await createPersonWithEvents({
+        events: personEvents,
+        createPerson: () => createPersonApi(workspace.clanId, buildPersonPayload()),
+        saveEvents: (personId, events) => replacePersonEvents(personId, events),
+        submitReview: submit ? async personId => {
+          const task: any = await submitReviewTask({
+            clanId: workspace.clanId,
+            targetType: 'person',
+            targetId: personId,
+            comment: '提交人物审核'
+          });
+          if (task?.id) onSubmittedReview?.(String(task.id));
+        } : undefined
+      });
       if (continueAdding) resetPersonFormForNext();
-      if (submit && nextPersonId) {
-        const task: any = await submitReviewTask({
-          clanId: workspace.clanId,
-          targetType: 'person',
-          targetId: nextPersonId,
-          comment: '提交人物审核'
-        });
-        if (task?.id) onSubmittedReview?.(String(task.id));
-        toast({ message: '人物已保存并提交审核，审核通过后才能建立关系。' });
+      if (submit) {
+        toast({ message: '人物及关键事件已保存并提交审核，审核通过后才能建立关系。' });
       } else {
-        toast({ message: continueAdding ? '人物已保存为草稿，可继续录入；审核通过后才能建立关系。' : '人物已保存为草稿，审核通过后才能建立关系。' });
+        toast({ message: continueAdding ? '人物及关键事件已保存为草稿，可继续录入；审核通过后才能建立关系。' : '人物及关键事件已保存为草稿，审核通过后才能建立关系。' });
       }
       await loadPersons();
     } catch (error) {
-      toast({ message: (error as Error).message || '保存人物失败' }, true);
+      toast({ message: (error as Error).message || '保存人物及关键事件失败' }, true);
     } finally {
       setSavingPerson(false);
     }
@@ -467,24 +484,12 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
 
         <Card size="small" title="基础信息" className="person-step-form-card">
           <div className="wizard-form-grid">
-            <Form.Item label="姓名" required>
-              <Input value={personForm.name} onChange={event => patchPerson('name', event.target.value)} placeholder="请输入人物姓名" />
-            </Form.Item>
-            <Form.Item label="性别" required>
-              <Select value={personForm.gender} onChange={value => patchPerson('gender', value)} options={genderOptions} />
-            </Form.Item>
-            <Form.Item label="谱名">
-              <Input value={personForm.genealogyName} onChange={event => patchPerson('genealogyName', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="字号">
-              <Input value={personForm.courtesyName} onChange={event => patchPerson('courtesyName', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="别名">
-              <Input value={personForm.aliasName} onChange={event => patchPerson('aliasName', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="排行">
-              <Input value={personForm.rankInFamily} onChange={event => patchPerson('rankInFamily', event.target.value)} />
-            </Form.Item>
+            <Form.Item label="姓名" required><Input value={personForm.name} onChange={event => patchPerson('name', event.target.value)} placeholder="请输入人物姓名" /></Form.Item>
+            <Form.Item label="性别" required><Select value={personForm.gender} onChange={value => patchPerson('gender', value)} options={genderOptions} /></Form.Item>
+            <Form.Item label="谱名"><Input value={personForm.genealogyName} onChange={event => patchPerson('genealogyName', event.target.value)} /></Form.Item>
+            <Form.Item label="字号"><Input value={personForm.courtesyName} onChange={event => patchPerson('courtesyName', event.target.value)} /></Form.Item>
+            <Form.Item label="别名"><Input value={personForm.aliasName} onChange={event => patchPerson('aliasName', event.target.value)} /></Form.Item>
+            <Form.Item label="排行"><Input value={personForm.rankInFamily} onChange={event => patchPerson('rankInFamily', event.target.value)} /></Form.Item>
           </div>
         </Card>
 
@@ -498,63 +503,41 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
                 options={[{ value: '', label: generationItems.length ? '请选择字辈' : '无字辈明细，可先保存人物' }, ...generationItems.map(item => ({ value: generationOptionValue(item), label: generationLabel(item) }))]}
               />
             </Form.Item>
-            <Form.Item label="代次">
-              <Input value={personForm.generationNo ? `第${personForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly />
-            </Form.Item>
-            <Form.Item label="世系状态">
-              <Select value={personForm.lineageStatus} onChange={value => patchPerson('lineageStatus', value)} options={lineageStatusOptions} />
-            </Form.Item>
+            <Form.Item label="代次"><Input value={personForm.generationNo ? `第${personForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item>
+            <Form.Item label="世系状态"><Select value={personForm.lineageStatus} onChange={value => patchPerson('lineageStatus', value)} options={lineageStatusOptions} /></Form.Item>
           </div>
         </Card>
 
         <Card size="small" title="生卒与居住" className="person-step-form-card">
           <div className="wizard-form-grid">
-            <Form.Item label="出生日期">
-              <DatePicker value={dateValue(personForm.birthDate)} onChange={(_date, value) => patchPerson('birthDate', normalizeDateString(value))} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="逝世日期">
-              <DatePicker value={dateValue(personForm.deathDate)} onChange={(_date, value) => patchPerson('deathDate', normalizeDateString(value))} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item label="是否在世">
-              <Select value={personForm.isLiving} onChange={value => patchPerson('isLiving', value)} options={livingOptions} />
-            </Form.Item>
-            <Form.Item label="出生地">
-              <Input value={personForm.birthPlace} onChange={event => patchPerson('birthPlace', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="居住地">
-              <Input value={personForm.residencePlace} onChange={event => patchPerson('residencePlace', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="职业">
-              <Input value={personForm.occupation} onChange={event => patchPerson('occupation', event.target.value)} />
-            </Form.Item>
-            <Form.Item label="教育程度">
-              <Select value={personForm.education} onChange={value => patchPerson('education', value)} options={personEducationOptions} />
-            </Form.Item>
-            <Form.Item label="荣誉称号">
-              <Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} />
-            </Form.Item>
+            <Form.Item label="出生日期"><DatePicker value={dateValue(personForm.birthDate)} onChange={(_date, value) => patchPerson('birthDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="逝世日期"><DatePicker value={dateValue(personForm.deathDate)} onChange={(_date, value) => patchPerson('deathDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="是否在世"><Select value={personForm.isLiving} onChange={value => patchPerson('isLiving', value)} options={livingOptions} /></Form.Item>
+            <Form.Item label="出生地"><Input value={personForm.birthPlace} onChange={event => patchPerson('birthPlace', event.target.value)} /></Form.Item>
+            <Form.Item label="居住地"><Input value={personForm.residencePlace} onChange={event => patchPerson('residencePlace', event.target.value)} /></Form.Item>
+            <Form.Item label="职业"><Input value={personForm.occupation} onChange={event => patchPerson('occupation', event.target.value)} /></Form.Item>
+            <Form.Item label="教育程度"><Select value={personForm.education} onChange={value => patchPerson('education', value)} options={personEducationOptions} /></Form.Item>
+            <Form.Item label="荣誉称号"><Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} /></Form.Item>
           </div>
+        </Card>
+
+        <Card size="small" title="关键事件" className="person-step-form-card">
+          <PersonEventEditor value={personEvents} onChange={setPersonEvents} disabled={savingPerson} />
         </Card>
 
         <Card size="small" title="传记与隐私" className="person-step-form-card">
           <div className="wizard-form-grid">
-            <Form.Item label="隐私级别">
-              <Select value={personForm.privacyLevel} onChange={value => patchPerson('privacyLevel', value)} options={privacyLevelOptions} />
-            </Form.Item>
+            <Form.Item label="隐私级别"><Select value={personForm.privacyLevel} onChange={value => patchPerson('privacyLevel', value)} options={privacyLevelOptions} /></Form.Item>
           </div>
-          <Form.Item label="人物传记">
-            <Input.TextArea value={personForm.biography} onChange={event => patchPerson('biography', event.target.value)} rows={4} placeholder="记录生平、迁徙、功名、事迹等" />
-          </Form.Item>
-          <Form.Item label="墓志铭">
-            <Input.TextArea value={personForm.epitaph} onChange={event => patchPerson('epitaph', event.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" />
-          </Form.Item>
+          <Form.Item label="人物传记"><Input.TextArea value={personForm.biography} onChange={event => patchPerson('biography', event.target.value)} rows={4} placeholder="记录生平、迁徙、功名、事迹等" /></Form.Item>
+          <Form.Item label="墓志铭"><Input.TextArea value={personForm.epitaph} onChange={event => patchPerson('epitaph', event.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Form.Item>
         </Card>
 
         <Space className="actions antd-actions" wrap>
           <Button type="primary" disabled={savingPerson} loading={savingPerson} onClick={() => void createPerson(true, false)}>保存草稿继续录入</Button>
           <Button disabled={savingPerson} onClick={() => void createPerson(false, false)}>保存草稿</Button>
           <Button disabled={savingPerson} onClick={() => void createPerson(false, true)}>保存并提交审核</Button>
-          <Button onClick={() => setPersonForm({ ...defaultPersonForm, branchId: workspace.branchId })}>重置</Button>
+          <Button disabled={savingPerson} onClick={resetPersonForm}>重置</Button>
         </Space>
       </Form>
 
@@ -565,9 +548,7 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
         notice={!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
         extra={(
           <Space wrap>
-            <Button type="primary" disabled={!selectedReviewablePersons.length} loading={submittingPersons} onClick={() => void submitSelectedPersons()}>
-              批量提交审核（{selectedReviewablePersons.length}）
-            </Button>
+            <Button type="primary" disabled={!selectedReviewablePersons.length} loading={submittingPersons} onClick={() => void submitSelectedPersons()}>批量提交审核（{selectedReviewablePersons.length}）</Button>
             <Button loading={loadingPersons} disabled={!workspace.clanId} onClick={() => void loadPersons()}>刷新</Button>
           </Space>
         )}
