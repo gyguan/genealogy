@@ -115,7 +115,7 @@ jobs:
         run: node --experimental-specifier-resolution=node --test src/features/persons/personEventSaveFlow.test.mjs src/features/persons/personCreateWithEventsFlow.test.mjs
       - name: Test person page contracts
         working-directory: frontend/genealogy-web
-        run: node --test src/features/persons/personEventEditor.test.mjs src/features/persons/PersonEditPageEvents.test.mjs src/shared/ui/promptCopyCleanup.test.mjs src/shared/ui/resultSortRemoval.test.mjs
+        run: node --test src/features/persons/personEventEditor.test.mjs src/features/persons/PersonEditPageEvents.test.mjs src/features/mvp1/steps/person/PersonStepEvents.test.mjs src/shared/ui/promptCopyCleanup.test.mjs src/shared/ui/resultSortRemoval.test.mjs
       - name: Clean person test outputs
         if: always()
         working-directory: frontend/genealogy-web
