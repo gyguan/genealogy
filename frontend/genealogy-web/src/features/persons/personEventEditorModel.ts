@@ -66,8 +66,8 @@ export function isFuturePersonEventDate(value?: string, today = new Date()): boo
 function comparePersonEvents(left: PersonEventDraft, right: PersonEventDraft) {
   const leftDate = left.eventDate || '9999-12-31';
   const rightDate = right.eventDate || '9999-12-31';
-  return leftDate.localeCompare(rightDate)
-    || left.sortOrder - right.sortOrder
+  return left.sortOrder - right.sortOrder
+    || leftDate.localeCompare(rightDate)
     || left.eventTitle.localeCompare(right.eventTitle);
 }
 
