@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Avatar, Button, Descriptions, Dropdown, List, Modal, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
+import { ConfirmAction, EmptyState, PageFeedback } from '../../shared/ui/Feedback';
+import { feedback } from '../../shared/ui/OperationFeedback';
 
  type CurrentUser = {
   id?: number;
@@ -44,6 +46,9 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [sessions, setSessions] = useState<AuthSession[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const [revokingSessionId, setRevokingSessionId] = useState<number>();
+  const [revokingOthers, setRevokingOthers] = useState(false);
 
   async function loadCurrentUser() {
     try {
@@ -56,9 +61,13 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
 
   async function loadSessions() {
     setSessionLoading(true);
+    setSessionError('');
     try {
       const data = await apiClient.get('/auth/sessions');
       setSessions(Array.isArray(data) ? data as AuthSession[] : []);
+    } catch (error) {
+      setSessions([]);
+      setSessionError((error as Error).message || '登录设备加载失败');
     } finally {
       setSessionLoading(false);
     }
@@ -98,13 +107,29 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   }
 
   async function revokeSession(sessionId: number) {
-    await apiClient.delete(`/auth/sessions/${sessionId}`);
-    await loadSessions();
+    setRevokingSessionId(sessionId);
+    try {
+      await apiClient.delete(`/auth/sessions/${sessionId}`);
+      await loadSessions();
+      feedback.success('该设备已退出登录');
+    } catch (error) {
+      feedback.error((error as Error).message || '退出该设备失败');
+    } finally {
+      setRevokingSessionId(undefined);
+    }
   }
 
   async function revokeOthers() {
-    await apiClient.post('/auth/sessions/revoke-others');
-    await loadSessions();
+    setRevokingOthers(true);
+    try {
+      await apiClient.post('/auth/sessions/revoke-others');
+      await loadSessions();
+      feedback.success('其他设备已全部退出登录');
+    } catch (error) {
+      feedback.error((error as Error).message || '退出其他设备失败');
+    } finally {
+      setRevokingOthers(false);
+    }
   }
 
   return (
@@ -148,7 +173,14 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
         width={680}
         footer={(
           <Space>
-            <Button onClick={() => void revokeOthers()} disabled={!sessions.some(item => !item.current)}>退出其他设备</Button>
+            <ConfirmAction
+              title="确认退出其他设备？"
+              description="除当前设备外的所有有效登录会话都将失效。"
+              danger
+              onConfirm={() => revokeOthers()}
+            >
+              <Button loading={revokingOthers} disabled={!sessions.some(item => !item.current)}>退出其他设备</Button>
+            </ConfirmAction>
             <Button type="primary" onClick={() => setSessionsOpen(false)}>完成</Button>
           </Space>
         )}
@@ -156,14 +188,30 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
         <Typography.Paragraph type="secondary">
           可查看和撤销当前账号的有效登录会话。IP 地址已脱敏展示。
         </Typography.Paragraph>
+        {sessionError ? (
+          <PageFeedback
+            tone="error"
+            title="登录设备加载失败"
+            description={sessionError}
+            action={<Button size="small" loading={sessionLoading} onClick={() => void loadSessions()}>重新加载</Button>}
+          />
+        ) : null}
         <List
           loading={sessionLoading}
           dataSource={sessions}
-          locale={{ emptyText: '暂无有效登录会话' }}
+          locale={{ emptyText: <EmptyState compact title="暂无有效登录会话" description="当前账号没有可展示的有效设备会话。" /> }}
           renderItem={session => (
             <List.Item
               actions={session.current ? [] : [
-                <Button key="revoke" danger type="link" onClick={() => void revokeSession(session.sessionId)}>退出该设备</Button>
+                <ConfirmAction
+                  key="revoke"
+                  title="确认退出该设备？"
+                  description="该设备上的登录会话将立即失效。"
+                  danger
+                  onConfirm={() => revokeSession(session.sessionId)}
+                >
+                  <Button danger type="link" loading={revokingSessionId === session.sessionId}>退出该设备</Button>
+                </ConfirmAction>
               ]}
             >
               <List.Item.Meta
