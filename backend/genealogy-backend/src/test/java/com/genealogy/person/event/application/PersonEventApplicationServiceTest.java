@@ -3,6 +3,7 @@ package com.genealogy.person.event.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.person.entity.PersonEntity;
+import com.genealogy.person.event.dto.PersonEventResponse;
 import com.genealogy.person.event.dto.ReplacePersonEventsRequest;
 import com.genealogy.person.event.entity.PersonEventEntity;
 import com.genealogy.person.event.repository.PersonEventRepository;
@@ -55,12 +56,48 @@ class PersonEventApplicationServiceTest {
         assertThatThrownBy(() -> service.replaceByPerson(11L, new ReplacePersonEventsRequest(List.of()), 9L))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getCode()).isEqualTo("PERSON_EVENT_REVIEW_REQUIRED"))
-                .hasMessage("正式人物关键事件变更必须随人物资料提交审核");
+                .hasMessage("非草稿人物关键事件变更必须随人物资料提交审核");
 
-        verify(authorizationApplicationService).requireBranchPermission(1L, 9L, 7L, "person:update");
-        verify(personEventRepository, never())
-                .findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(11L);
-        verify(personEventRepository, never()).saveAll(anyList());
+        verifyNoEventMutation();
+    }
+
+    @Test
+    void rejectedPersonEventsMustUsePersonReviewWorkflow() {
+        PersonEntity person = person("rejected");
+        when(personRepository.findByIdAndDeletedAtIsNull(11L)).thenReturn(Optional.of(person));
+
+        assertThatThrownBy(() -> service.replaceByPerson(11L, new ReplacePersonEventsRequest(List.of()), 9L))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getCode()).isEqualTo("PERSON_EVENT_REVIEW_REQUIRED"))
+                .hasMessage("非草稿人物关键事件变更必须随人物资料提交审核");
+
+        verifyNoEventMutation();
+    }
+
+    @Test
+    void pendingReviewPersonEventsCannotBeChanged() {
+        PersonEntity person = person("pending_review");
+        when(personRepository.findByIdAndDeletedAtIsNull(11L)).thenReturn(Optional.of(person));
+
+        assertThatThrownBy(() -> service.replaceByPerson(11L, new ReplacePersonEventsRequest(List.of()), 9L))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getCode()).isEqualTo("PERSON_EVENT_NOT_EDITABLE"))
+                .hasMessage("人物资料处于待审核状态，关键事件暂不可修改");
+
+        verifyNoEventMutation();
+    }
+
+    @Test
+    void submittedPersonEventsCannotBeChanged() {
+        PersonEntity person = person("submitted");
+        when(personRepository.findByIdAndDeletedAtIsNull(11L)).thenReturn(Optional.of(person));
+
+        assertThatThrownBy(() -> service.replaceByPerson(11L, new ReplacePersonEventsRequest(List.of()), 9L))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getCode()).isEqualTo("PERSON_EVENT_NOT_EDITABLE"))
+                .hasMessage("人物资料处于待审核状态，关键事件暂不可修改");
+
+        verifyNoEventMutation();
     }
 
     @Test
@@ -101,9 +138,9 @@ class PersonEventApplicationServiceTest {
 
         var responses = service.replaceByPerson(11L, request, 9L);
 
-        assertThat(responses).extracting(PersonEventResponse -> PersonEventResponse.eventTitle())
+        assertThat(responses).extracting(PersonEventResponse::eventTitle)
                 .containsExactly("先展示但后发生", "后展示但先发生");
-        assertThat(responses).extracting(PersonEventResponse -> PersonEventResponse.sortOrder())
+        assertThat(responses).extracting(PersonEventResponse::sortOrder)
                 .containsExactly(0, 1);
         ArgumentCaptor<List<PersonEventEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(personEventRepository).saveAll(captor.capture());
@@ -114,6 +151,13 @@ class PersonEventApplicationServiceTest {
                     assertThat(event.getCreatedBy()).isEqualTo(9L);
                     assertThat(event.getDataStatus()).isEqualTo("draft");
                 });
+    }
+
+    private void verifyNoEventMutation() {
+        verify(authorizationApplicationService).requireBranchPermission(1L, 9L, 7L, "person:update");
+        verify(personEventRepository, never())
+                .findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(11L);
+        verify(personEventRepository, never()).saveAll(anyList());
     }
 
     private PersonEntity person(String status) {
