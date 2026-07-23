@@ -1,4 +1,4 @@
-import { isFuturePersonEventDate, normalizePersonEvents, toReplacePersonEventsPayload } from './personEventEditorModel';
+import { isFuturePersonEventDate, toReplacePersonEventsPayload } from './personEventEditorModel';
 import type { PersonEventDraft } from './personEventEditorModel';
 
 export type PersonEventValidationError = {
@@ -8,9 +8,9 @@ export type PersonEventValidationError = {
 };
 
 export function validatePersonEvents(events: PersonEventDraft[]): PersonEventValidationError[] {
-  return normalizePersonEvents(events).flatMap((event, index) => {
+  return events.flatMap((event, index) => {
     const errors: PersonEventValidationError[] = [];
-    if (!event.eventTitle.trim()) {
+    if (!String(event.eventTitle || '').trim()) {
       errors.push({ index, field: 'eventTitle', message: `第 ${index + 1} 条事件标题不能为空` });
     }
     if (isFuturePersonEventDate(event.eventDate)) {
