@@ -71,3 +71,5 @@ jobs:
           fi
           git commit --no-edit
           git push origin HEAD:agent/issue-720-person-events
+
+# trigger: 2026-07-23
