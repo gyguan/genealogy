@@ -16,8 +16,10 @@ test('person event editor exposes add delete and ordering actions', () => {
 
 test('person event editor validates required title and future date', () => {
   assert.match(editorSource, /请输入事件标题/);
-  assert.match(editorSource, /事件日期不能晚于今天/);
+  assert.match(editorSource, /status=\{futureDate \? 'error'/);
+  assert.match(editorSource, /aria-invalid=\{futureDate\}/);
   assert.match(editorSource, /disabledDate/);
+  assert.match(editorSource, /isAfter\(dayjs\(\)\.startOf\('day'\)\)/);
   assert.match(modelSource, /isFuturePersonEventDate/);
 });
 
