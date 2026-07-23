@@ -1,0 +1,73 @@
+name: Issue 720 Sync Main
+
+on:
+  push:
+    branches:
+      - agent/issue-720-person-events
+    paths:
+      - '.github/workflows/issue-720-sync-main.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-720-sync-main
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-720-person-events
+          fetch-depth: 0
+
+      - name: Merge latest main and resolve package scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo 'Feature branch already contains latest main.'
+            exit 0
+          fi
+          git merge --no-ff origin/main -m 'merge: sync latest main before issue 720' || true
+
+          PACKAGE='frontend/genealogy-web/package.json'
+          if git diff --name-only --diff-filter=U | grep -Fxq "$PACKAGE"; then
+            git show ":2:$PACKAGE" > /tmp/package-ours.json
+            git show ":3:$PACKAGE" > /tmp/package-main.json
+            node <<'NODE'
+          const fs = require('node:fs');
+          const ours = JSON.parse(fs.readFileSync('/tmp/package-ours.json', 'utf8'));
+          const main = JSON.parse(fs.readFileSync('/tmp/package-main.json', 'utf8'));
+          const merged = {
+            ...main,
+            scripts: {
+              ...main.scripts,
+              'test:person-edit': ours.scripts['test:person-edit']
+            }
+          };
+          fs.writeFileSync('frontend/genealogy-web/package.json', `${JSON.stringify(merged, null, 2)}\n`);
+          NODE
+            git add "$PACKAGE"
+          fi
+
+          unresolved="$(git diff --name-only --diff-filter=U)"
+          if [ -n "$unresolved" ]; then
+            echo 'Unresolved merge conflicts:'
+            echo "$unresolved"
+            exit 1
+          fi
+
+          if git diff --cached --quiet; then
+            echo 'No merge commit required.'
+            exit 0
+          fi
+          git commit --no-edit
+          git push origin HEAD:agent/issue-720-person-events
