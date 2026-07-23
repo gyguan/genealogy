@@ -1,0 +1,54 @@
+name: API Contract Sync
+
+on:
+  push:
+    branches:
+      - agent/issue-720-person-events
+    paths:
+      - 'docs/api/openapi.person-events.json'
+      - '.github/workflows/api-contract-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: api-contract-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-720-person-events
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Generate API contracts
+        run: |
+          node scripts/api/generate-all-api-contracts.mjs
+          node scripts/api/generate-import-execution-types.mjs
+          node scripts/api/generate-import-failure-types.mjs
+
+      - name: Commit generated contract
+        run: |
+          if git diff --quiet -- frontend/genealogy-web/src/shared/api/generated/api-contract.ts; then
+            echo 'Generated API contract is already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/genealogy-web/src/shared/api/generated/api-contract.ts
+          git commit -m 'chore(api): sync generated person event contract'
+          git push origin HEAD:agent/issue-720-person-events
