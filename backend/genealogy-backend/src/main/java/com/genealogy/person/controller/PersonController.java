@@ -9,6 +9,7 @@ import com.genealogy.person.application.PersonApplicationService;
 import com.genealogy.person.application.PersonRevisionApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
+import com.genealogy.person.dto.PersonRevisionUpdateRequest;
 import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.dto.PersonUpdateRequest;
 import com.genealogy.person.entity.PersonEntity;
@@ -156,6 +157,16 @@ public class PersonController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(personRevisionApplicationService.update(id, request, actorId));
+    }
+
+    @PutMapping("/persons/{id}/revision")
+    public ApiResponse<PersonResponse> updateWithEvents(
+            @Positive @PathVariable Long id,
+            @Valid @RequestBody PersonRevisionUpdateRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization
+    ) {
+        Long actorId = authorizationApplicationService.requireLogin(authorization);
+        return ApiResponse.success(personRevisionApplicationService.updateWithEvents(id, request, actorId));
     }
 
     @DeleteMapping("/persons/{id}")
