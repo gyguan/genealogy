@@ -59,7 +59,7 @@ class PersonEventApplicationServiceTest {
 
         verify(authorizationApplicationService).requireBranchPermission(1L, 9L, 7L, "person:update");
         verify(personEventRepository, never())
-                .findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(11L);
+                .findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(11L);
         verify(personEventRepository, never()).saveAll(anyList());
     }
 
@@ -77,15 +77,15 @@ class PersonEventApplicationServiceTest {
                 .hasMessage("关键事件日期不能晚于今天");
 
         verify(personEventRepository, never())
-                .findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(11L);
+                .findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(11L);
         verify(personEventRepository, never()).saveAll(anyList());
     }
 
     @Test
-    void replacementUsesActorAndStableDateOrder() {
+    void replacementUsesActorAndPreservesManualOrderAcrossDates() {
         PersonEntity person = person("draft");
         when(personRepository.findByIdAndDeletedAtIsNull(11L)).thenReturn(Optional.of(person));
-        when(personEventRepository.findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(11L))
+        when(personEventRepository.findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(11L))
                 .thenReturn(List.of());
         when(personEventRepository.saveAll(anyList())).thenAnswer(invocation -> {
             List<PersonEventEntity> saved = new ArrayList<>(invocation.getArgument(0));
@@ -95,14 +95,16 @@ class PersonEventApplicationServiceTest {
             return saved;
         });
         ReplacePersonEventsRequest request = new ReplacePersonEventsRequest(List.of(
-                item("后发生", LocalDate.of(2020, 2, 1), 0),
-                item("先发生", LocalDate.of(2020, 1, 1), 1)
+                item("先展示但后发生", LocalDate.of(2020, 2, 1), 0),
+                item("后展示但先发生", LocalDate.of(2020, 1, 1), 1)
         ));
 
         var responses = service.replaceByPerson(11L, request, 9L);
 
-        assertThat(responses).extracting(response -> response.eventTitle())
-                .containsExactly("先发生", "后发生");
+        assertThat(responses).extracting(PersonEventResponse -> PersonEventResponse.eventTitle())
+                .containsExactly("先展示但后发生", "后展示但先发生");
+        assertThat(responses).extracting(PersonEventResponse -> PersonEventResponse.sortOrder())
+                .containsExactly(0, 1);
         ArgumentCaptor<List<PersonEventEntity>> captor = ArgumentCaptor.forClass(List.class);
         verify(personEventRepository).saveAll(captor.capture());
         assertThat(captor.getValue())
