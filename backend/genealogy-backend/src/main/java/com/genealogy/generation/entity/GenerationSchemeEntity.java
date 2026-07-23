@@ -1,5 +1,6 @@
 package com.genealogy.generation.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -30,4 +31,22 @@ public class GenerationSchemeEntity {
     private Boolean strictMode;
     private String status;
     private LocalDateTime createdAt;
+
+    @JsonProperty(value = "scheme", access = JsonProperty.Access.WRITE_ONLY)
+    public void applyWrappedReviewSnapshot(GenerationSchemeEntity scheme) {
+        if (scheme == null) {
+            return;
+        }
+        this.id = scheme.id;
+        this.clanId = scheme.clanId;
+        this.branchId = scheme.branchId;
+        this.schemeName = scheme.schemeName;
+        this.poemText = scheme.poemText;
+        this.startGeneration = scheme.startGeneration;
+        this.isDefault = scheme.isDefault;
+        this.validationEnabled = scheme.validationEnabled;
+        this.strictMode = scheme.strictMode;
+        this.status = scheme.status;
+        this.createdAt = scheme.createdAt;
+    }
 }
