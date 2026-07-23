@@ -1,5 +1,5 @@
-import { isFuturePersonEventDate, toReplacePersonEventsPayload } from './personEventEditorModel';
-import type { PersonEventDraft } from './personEventEditorModel';
+import { isFuturePersonEventDate, toReplacePersonEventsPayload } from './personEventEditorModel.js';
+import type { PersonEventDraft } from './personEventEditorModel.js';
 
 export type PersonEventValidationError = {
   index: number;
