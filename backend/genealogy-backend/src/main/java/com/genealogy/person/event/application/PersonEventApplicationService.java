@@ -127,7 +127,7 @@ public class PersonEventApplicationService {
             entity.setEventDatePrecision(trimToNull(item.eventDatePrecision()));
             entity.setEventPlace(trimToNull(item.eventPlace()));
             entity.setEventDescription(trimToNull(item.eventDescription()));
-            entity.setSortOrder(item.sortOrder() == null ? index : item.sortOrder());
+            entity.setSortOrder(index);
             entity.setDataStatus(dataStatus);
             entity.setCreatedBy(actorId);
             entity.setCreatedAt(now);
@@ -153,22 +153,23 @@ public class PersonEventApplicationService {
             }
         }
         normalized.sort(Comparator
-                .comparing(ReplacePersonEventsRequest.PersonEventItem::eventDate,
+                .comparing((ReplacePersonEventsRequest.PersonEventItem item) ->
+                        item.sortOrder() == null ? Integer.MAX_VALUE : item.sortOrder())
+                .thenComparing(ReplacePersonEventsRequest.PersonEventItem::eventDate,
                         Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(item -> item.sortOrder() == null ? Integer.MAX_VALUE : item.sortOrder())
                 .thenComparing(item -> item.eventTitle().trim()));
         return normalized;
     }
 
     private List<PersonEventEntity> loadEvents(Long personId) {
         return personEventRepository
-                .findByPersonIdAndDeletedAtIsNullOrderByEventDateAscSortOrderAscIdAsc(personId);
+                .findByPersonIdAndDeletedAtIsNullOrderBySortOrderAscEventDateAscIdAsc(personId);
     }
 
     private Comparator<PersonEventEntity> eventComparator() {
         return Comparator
-                .comparing(PersonEventEntity::getEventDate, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(PersonEventEntity::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder()))
+                .comparing(PersonEventEntity::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(PersonEventEntity::getEventDate, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(PersonEventEntity::getId, Comparator.nullsLast(Comparator.naturalOrder()));
     }
 
