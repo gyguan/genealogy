@@ -17,3 +17,14 @@ export async function replacePersonEvents(
   );
   return normalizePersonEvents(response);
 }
+
+export async function submitPersonRevisionWithEvents<TPerson>(
+  personId: string | number,
+  person: unknown,
+  events: PersonEventDraft[]
+): Promise<TPerson> {
+  return apiClient.put<TPerson>(`/persons/${personId}/revision`, {
+    person,
+    events: toReplacePersonEventsPayload(events)
+  });
+}
