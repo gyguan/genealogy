@@ -50,6 +50,13 @@ public class PersonEventApplicationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ReplacePersonEventsRequest.PersonEventItem> snapshotItems(Long personId) {
+        return loadEvents(personId).stream()
+                .map(this::toSnapshotItem)
+                .toList();
+    }
+
     @Transactional
     public List<PersonEventResponse> replaceByPerson(
             Long personId,
@@ -66,9 +73,39 @@ public class PersonEventApplicationService {
                     "正式人物关键事件变更必须随人物资料提交审核"
             );
         }
+        return replaceInternal(
+                personId,
+                person.getClanId(),
+                person.getDataStatus(),
+                request.events(),
+                actorId,
+                LocalDateTime.now()
+        ).stream().map(this::toResponse).toList();
+    }
 
-        List<ReplacePersonEventsRequest.PersonEventItem> normalized = normalizeAndValidate(request);
-        LocalDateTime now = LocalDateTime.now();
+    @Transactional
+    public void replaceFromRevision(
+            Long personId,
+            Long clanId,
+            String dataStatus,
+            List<ReplacePersonEventsRequest.PersonEventItem> events,
+            Long actorId,
+            LocalDateTime applyTime
+    ) {
+        replaceInternal(personId, clanId, dataStatus, events, actorId, applyTime);
+    }
+
+    private List<PersonEventEntity> replaceInternal(
+            Long personId,
+            Long clanId,
+            String dataStatus,
+            List<ReplacePersonEventsRequest.PersonEventItem> events,
+            Long actorId,
+            LocalDateTime now
+    ) {
+        List<ReplacePersonEventsRequest.PersonEventItem> normalized = normalizeAndValidate(
+                new ReplacePersonEventsRequest(events)
+        );
         List<PersonEventEntity> existing = loadEvents(personId);
         existing.forEach(event -> {
             event.setDeletedAt(now);
@@ -82,7 +119,7 @@ public class PersonEventApplicationService {
         for (int index = 0; index < normalized.size(); index++) {
             ReplacePersonEventsRequest.PersonEventItem item = normalized.get(index);
             PersonEventEntity entity = new PersonEventEntity();
-            entity.setClanId(person.getClanId());
+            entity.setClanId(clanId);
             entity.setPersonId(personId);
             entity.setEventType(trimToNull(item.eventType()));
             entity.setEventTitle(item.eventTitle().trim());
@@ -91,7 +128,7 @@ public class PersonEventApplicationService {
             entity.setEventPlace(trimToNull(item.eventPlace()));
             entity.setEventDescription(trimToNull(item.eventDescription()));
             entity.setSortOrder(item.sortOrder() == null ? index : item.sortOrder());
-            entity.setDataStatus(person.getDataStatus());
+            entity.setDataStatus(dataStatus);
             entity.setCreatedBy(actorId);
             entity.setCreatedAt(now);
             entity.setUpdatedAt(now);
@@ -100,7 +137,6 @@ public class PersonEventApplicationService {
 
         return personEventRepository.saveAll(replacements).stream()
                 .sorted(eventComparator())
-                .map(this::toResponse)
                 .toList();
     }
 
@@ -147,6 +183,18 @@ public class PersonEventApplicationService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private ReplacePersonEventsRequest.PersonEventItem toSnapshotItem(PersonEventEntity entity) {
+        return new ReplacePersonEventsRequest.PersonEventItem(
+                entity.getEventType(),
+                entity.getEventTitle(),
+                entity.getEventDate(),
+                entity.getEventDatePrecision(),
+                entity.getEventPlace(),
+                entity.getEventDescription(),
+                entity.getSortOrder()
+        );
     }
 
     private PersonEventResponse toResponse(PersonEventEntity entity) {
