@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Form, Input, Modal, Select, Space } from 'antd';
 import { apiClient } from '../../shared/api/client';
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type Role = {
   roleCode: string;
@@ -24,14 +25,13 @@ type Props = {
   roles: Role[];
   branches: Branch[];
   onClose: () => void;
-  notify: (data: unknown, error?: boolean) => void;
 };
 
 function dateTime(value?: string) {
   return value ? value.replace('T', ' ').slice(0, 16) : '-';
 }
 
-export function MemberInvitationModal({ open, clanId, roles, branches, onClose, notify }: Props) {
+export function MemberInvitationModal({ open, clanId, roles, branches, onClose }: Props) {
   const [form] = Form.useForm<InvitationValues>();
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState('');
@@ -71,9 +71,9 @@ export function MemberInvitationModal({ open, clanId, roles, branches, onClose, 
       });
       setToken(result.invitationToken || '');
       setExpiresAt(result.expiresAt || '');
-      notify({ message: '成员邀请已生成，请通过安全渠道发送给受邀人' });
+      feedback.success('成员邀请已生成，请通过安全渠道发送给受邀人');
     } catch (error) {
-      notify({ message: error instanceof Error ? error.message : '邀请生成失败' }, true);
+      feedback.error(error instanceof Error ? error.message : '邀请生成失败');
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export function MemberInvitationModal({ open, clanId, roles, branches, onClose, 
   async function copyLink() {
     const link = `${window.location.origin}/?auth=invite&invitationToken=${encodeURIComponent(token)}`;
     await navigator.clipboard.writeText(link);
-    notify({ message: '邀请链接已复制' });
+    feedback.success('邀请链接已复制');
   }
 
   const link = token
