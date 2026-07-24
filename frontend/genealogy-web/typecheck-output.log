@@ -1,0 +1,19 @@
+
+> genealogy-web@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+src/features/imports/ImportFailureBulkActions.tsx(53,9): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(53,67): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(54,9): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(54,57): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(55,9): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(55,73): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(57,9): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(57,44): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(58,9): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(58,74): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(60,9): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(60,18): error TS1005: ':' expected.
+src/features/imports/ImportFailureBulkActions.tsx(60,24): error TS1005: ',' expected.
+src/features/imports/ImportFailureBulkActions.tsx(60,69): error TS1005: '=>' expected.
+src/features/imports/ImportFailureBulkActions.tsx(253,1): error TS1128: Declaration or statement expected.
