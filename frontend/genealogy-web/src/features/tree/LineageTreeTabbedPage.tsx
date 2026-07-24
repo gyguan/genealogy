@@ -880,7 +880,7 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
             <PageFeedback
               tone="error"
               title={`${mode === 'person' ? '人物中心图谱' : '支派全局图谱'}加载失败：${activeLoadState.error}`}
-              action={<Button tone="link" onClick={() => mode === 'person' ? void loadPersonGraph(personApplied) : void loadBranchGraph(branchApplied)}>重试</Button>}
+              action={<Button type="link" onClick={() => mode === 'person' ? void loadPersonGraph(personApplied) : void loadBranchGraph(branchApplied)}>重试</Button>}
             />
           ) : null}
           <section className={`lineage-logic-card lineage-logic-card--${mode}`}>

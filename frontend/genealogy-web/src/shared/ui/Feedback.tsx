@@ -6,7 +6,7 @@ import '../../feedback-system.css';
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
 export type FeedbackVariant = 'page' | 'section' | 'inline' | 'toast';
 
-export type PageFeedbackProps = Omit<AlertProps, 'type' | 'message' | 'description' | 'action' | 'showIcon'> & {
+export type PageFeedbackProps = Omit<AlertProps, 'type' | 'message' | 'description' | 'action' | 'showIcon' | 'variant'> & {
   tone?: FeedbackTone;
   title: ReactNode;
   description?: ReactNode;

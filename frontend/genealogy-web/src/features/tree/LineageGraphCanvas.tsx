@@ -272,7 +272,7 @@ export function LineageGraphCanvas({
           <PageFeedback
             tone={noticeType(layout.notices[0].code)}
             title={`${layout.notices[0].message}${layout.notices[0].count > 1 ? `（${layout.notices[0].count}）` : ''}`}
-            action={layout.notices.length > 1 ? <Popover trigger="click" placement="bottomRight" content={noticeContent}><Button tone="link" size="small">查看全部 {layout.notices.length} 项</Button></Popover> : null}
+            action={layout.notices.length > 1 ? <Popover trigger="click" placement="bottomRight" content={noticeContent}><Button type="link" size="small">查看全部 {layout.notices.length} 项</Button></Popover> : null}
           />
         </div>
       ) : null}

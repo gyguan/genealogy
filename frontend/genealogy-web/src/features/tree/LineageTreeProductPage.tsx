@@ -763,7 +763,7 @@ export function LineageTreeProductPage({ onNavigate }: Props) {
           title={`${mode === 'person' ? '人物中心图' : '支派全局图'}加载失败：${activeLoadState.error}`}
           action={(
             <Button
-              tone="link"
+              type="link"
               onClick={() => mode === 'person'
                 ? void loadPersonGraph(workspace.personId, {
                   branchId: appliedBranchId,
