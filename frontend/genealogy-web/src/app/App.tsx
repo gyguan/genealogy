@@ -35,6 +35,8 @@ import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPa
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
 import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
 
+import { InlineFeedback } from '../shared/ui/Feedback';
+
 const { Sider, Content, Header } = Layout;
 
 const navItems = [
@@ -179,7 +181,7 @@ function AppShell() {
     return null;
   }
 
-  if (authStatus === 'checking') return <div className="commercial-auth-shell" aria-label="正在检查登录状态"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在安全验证登录状态…</Typography.Text></Space></div>;
+  if (authStatus === 'checking') return <div className="commercial-auth-shell" aria-label="正在检查登录状态"><Space direction="vertical" align="center" size={16}><Spin size="large" /><InlineFeedback tone="info" title="正在安全验证登录状态…" /></Space></div>;
   if (authStatus === 'anonymous') return <AuthPage onChanged={onLoginChanged} standalone />;
 
   const routeKey = personEditRoute?.personId ? `edit-${personEditRoute.personId}` : personDetailRoute?.personId ? `detail-${personDetailRoute.personId}` : 'list';

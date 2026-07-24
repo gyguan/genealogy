@@ -86,7 +86,7 @@ const mechanisms = [
     id: 'inline_semantic_text',
     name: '内联语义文本',
     target: '避免承担页面状态提示',
-    patterns: [/<Typography\.Text\b[^>]*\btype\s*=\s*['"](warning|danger|secondary)['"]/g, /<Text\b[^>]*\btype\s*=\s*['"](warning|danger|secondary)['"]/g]
+    patterns: [/<Typography\.Text\b[^>]*\btype\s*=\s*['"](warning|danger)['"]/g, /<Text\b[^>]*\btype\s*=\s*['"](warning|danger)['"]/g]
   },
   {
     id: 'custom_notice_class',

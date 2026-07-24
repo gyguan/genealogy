@@ -44,9 +44,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
-
-import { EmptyState } from '../../shared/ui/Feedback';
+import { EmptyState, InlineFeedback, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 const { Text, Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -790,7 +788,7 @@ export function SourceLibraryQueryPage({}: Props) {
   const targetPlaceholder = bindingTargetType === 'generation_word' ? '请选择具体字辈' : '请选择人物、支派或宗族';
 
   if (detailSourceId) {
-    if (detailLoading) return <Card><Space direction="vertical" align="center" className="source-library-loading"><Spin size="large" /><Text type="secondary">正在加载来源资料…</Text></Space></Card>;
+    if (detailLoading) return <Card><Space direction="vertical" align="center" className="source-library-loading"><Spin size="large" /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space></Card>;
     if (detailError === 'not_found') return <Result status="404" title="来源资料不存在" subTitle="该来源可能已被删除或链接已经失效。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     if (detailError === 'forbidden') return <Result status="403" title="无权查看该来源资料" subTitle="当前账号没有访问该来源的权限。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     if (detailError === 'service' || !selectedSource) return <Result status="500" title="来源资料加载失败" subTitle="服务暂时不可用，请稍后重试。" extra={<Space><Button onClick={() => closeDetail()}>返回列表</Button><Button type="primary" onClick={() => void reloadDetail()}>重新加载</Button></Space>} />;
@@ -934,7 +932,7 @@ export function SourceLibraryQueryPage({}: Props) {
           
           {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
           {!listLoaded && loading ? (
-            <Space direction="vertical" align="center" className="source-library-loading"><Spin /><Text type="secondary">正在加载来源资料…</Text></Space>
+            <Space direction="vertical" align="center" className="source-library-loading"><Spin /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space>
           ) : isMobile ? (
             <>
               <List<SourceRecord>
