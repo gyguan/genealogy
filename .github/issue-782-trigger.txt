@@ -1,2 +1,0 @@
-verify source_binding review apply for issue #782
-run: 4
