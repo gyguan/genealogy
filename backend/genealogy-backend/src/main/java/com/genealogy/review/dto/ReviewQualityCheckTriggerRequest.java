@@ -20,5 +20,8 @@ public record ReviewQualityCheckTriggerRequest(
             LocalDateTime processedFrom,
             LocalDateTime processedTo
     ) {
+        public String keyword() {
+            return null;
+        }
     }
 }
