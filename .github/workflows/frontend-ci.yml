@@ -32,6 +32,11 @@ jobs:
         run: |
           sed -i 's/process.exit(1);/console.warn("Residuals committed for follow-up");/' scripts/migrate-app-notify.mjs
           node scripts/migrate-app-notify.mjs
+          find src -type f \( -name '*.ts' -o -name '*.tsx' \) -print0 | xargs -0 perl -0pi -e 's/\bnotify\??:\s*\(data:\s*unknown,\s*error\?:\s*boolean\)\s*=>\s*void;?//g; s/\bnotify\s*,\s*//g; s/,\s*notify\b//g; s/if \(notify\) feedback\.from\((.*?)\);\s*else feedback\.(?:success|error)\((.*?)\);/feedback.from($1);/sg'
+          if grep -Rnw --include='*.ts' --include='*.tsx' --exclude='*.test.*' --exclude='*.spec.*' '\bnotify\b' src; then
+            echo 'Legacy notify identifiers remain after structural cleanup' >&2
+            exit 1
+          fi
       - name: Commit migration result
         run: |
           git config user.name "github-actions[bot]"
