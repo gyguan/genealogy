@@ -25,3 +25,15 @@ test('large pages use standard feedback primitives for persistent status', () =>
   }).join('\n');
   assert.match(combined, /InlineFeedback|PageFeedback/);
 });
+
+
+test('loading states use standard inline feedback on large pages', () => {
+  const violations = [];
+  for (const relative of targets) {
+    const file = path.join(src, relative);
+    if (!fs.existsSync(file)) continue;
+    const source = fs.readFileSync(file, 'utf8');
+    if (/<(?:Typography\.Text|Text)\s+type=['"]secondary['"]>[^<]*(?:正在|加载中|处理中)/.test(source)) violations.push(relative);
+  }
+  assert.deepEqual(violations, []);
+});

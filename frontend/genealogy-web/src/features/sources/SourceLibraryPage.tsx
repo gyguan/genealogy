@@ -39,9 +39,7 @@ import type {
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
-
-import { EmptyState } from '../../shared/ui/Feedback';
+import { EmptyState, InlineFeedback, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
@@ -747,7 +745,7 @@ export function SourceLibraryPage({}: Props) {
   const targetPlaceholder = bindingTargetType === 'generation_word' ? '请选择具体字辈' : '请选择人物、支派或宗族';
 
   if (detailSourceId) {
-    if (detailLoading) return <Card><Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin size="large" /><Text type="secondary">正在加载来源资料…</Text></Space></Card>;
+    if (detailLoading) return <Card><Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin size="large" /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space></Card>;
     if (detailError === 'not_found') return <Result status="404" title="来源资料不存在" subTitle="该来源可能已被删除或链接已经失效。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     if (detailError === 'forbidden') return <Result status="403" title="无权查看该来源资料" subTitle="当前账号没有访问该来源的权限。" extra={<Button type="primary" onClick={() => closeDetail()}>返回来源资料库</Button>} />;
     if (detailError === 'service' || !selectedSource) return <Result status="500" title="来源资料加载失败" subTitle="服务暂时不可用，请稍后重试。" extra={<Space><Button onClick={() => closeDetail()}>返回列表</Button><Button type="primary" onClick={() => void reloadDetail()}>重新加载</Button></Space>} />;
@@ -847,7 +845,7 @@ export function SourceLibraryPage({}: Props) {
         </Card>
         <Card title={`来源资料（共 ${sourceTotal} 条）`} extra={<Space><Tooltip title={!clanId ? '请先选择宗族' : '新增来源草稿'}><span><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button></span></Tooltip><Tooltip title="刷新"><Button icon={<ReloadOutlined />} aria-label="刷新来源列表" loading={loading} onClick={() => void loadSources(search, true)} /></Tooltip></Space>}>
           {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
-          {!listLoaded && loading ? <Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin /><Text type="secondary">正在加载来源资料…</Text></Space> : (
+          {!listLoaded && loading ? <Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space> : (
             <Table<SourceRecord>
               rowKey={(row, index) => String(row.id || index)}
               size="small"

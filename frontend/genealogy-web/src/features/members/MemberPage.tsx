@@ -27,9 +27,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
-
-import { EmptyState } from '../../shared/ui/Feedback';
+import { EmptyState, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
