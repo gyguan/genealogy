@@ -1,0 +1,21 @@
+
+> genealogy-web@0.1.0 typecheck
+> tsc -p tsconfig.json --noEmit
+
+src/features/reviews/ReviewCenterPageContent.tsx(746,45): error TS2322: Type '{ tone: string; onClick: () => void; children: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/features/reviews/ReviewCenterPageContent.tsx(746,213): error TS2322: Type '{ tone: string; disabled: boolean; onClick: () => void; children: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/features/reviews/ReviewCenterPageContent.tsx(791,124): error TS2339: Property 'tone' does not exist on type 'BatchDecision'.
+src/features/reviews/ReviewCenterPageContent.tsx(791,248): error TS2339: Property 'tone' does not exist on type 'BatchDecision'.
+src/features/tree/LineageGraphCanvas.tsx(275,130): error TS2322: Type '{ tone: string; size: "small"; children: (string | number)[]; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/features/tree/LineageTreeProductPage.tsx(766,15): error TS2322: Type '{ tone: string; onClick: () => any; children: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/features/tree/LineageTreeTabbedPage.tsx(883,31): error TS2322: Type '{ tone: string; onClick: () => any; children: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/features/workbench/EditingWorkspacePage.tsx(475,222): error TS2322: Type '{ tone: string; loading: boolean; onClick: () => void; children: string; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+  Property 'tone' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLAnchorElement | HTMLButtonElement>'.
+src/shared/ui/Feedback.tsx(35,3): error TS2322: Type '"section"' is not assignable to type 'never'.
+src/shared/ui/Feedback.tsx(57,35): error TS2322: Type 'string' is not assignable to type 'never'.
+src/shared/ui/ToastStack.tsx(18,11): error TS2322: Type 'string' is not assignable to type 'never'.
