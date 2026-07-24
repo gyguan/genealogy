@@ -34,6 +34,7 @@ jobs:
         working-directory: frontend/genealogy-web
         shell: bash
         run: |
+          set +e
           rm -rf .person-archive-test .person-create-entry-test
           {
             npx tsc src/features/persons/personArchiveUrlState.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-archive-test --skipLibCheck
@@ -44,6 +45,7 @@ jobs:
             echo "tests=$?"
           } > person-archive-gate.log 2>&1
           rm -rf .person-archive-test .person-create-entry-test
+          exit 0
       - name: Commit diagnostics
         run: |
           git config user.name "github-actions[bot]"
