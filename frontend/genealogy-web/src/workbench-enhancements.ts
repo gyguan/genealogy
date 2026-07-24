@@ -9,13 +9,15 @@ type WorkbenchMetrics = {
   completionRate: number;
 };
 
+type NavigationItem = { label: string; view: string; primary: boolean };
+
 const PAGE_MARKER = 'data-workbench-enhanced';
-const NAV_ITEMS = [
+const NAV_ITEMS: readonly NavigationItem[] = [
   { label: '新建修谱', view: 'mvp1Wizard', primary: true },
-  { label: '人物档案', view: 'personArchive' },
-  { label: '来源资料', view: 'sourceLibrary' },
-  { label: '世系图谱', view: 'treeProduct' }
-] as const;
+  { label: '人物档案', view: 'personArchive', primary: false },
+  { label: '来源资料', view: 'sourceLibrary', primary: false },
+  { label: '世系图谱', view: 'treeProduct', primary: false }
+];
 
 function textCount(root: ParentNode, text: string) {
   return Array.from(root.querySelectorAll('.ant-tag')).filter(tag => tag.textContent?.trim() === text).length;
