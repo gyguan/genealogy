@@ -1,7 +1,23 @@
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, DatePicker, Form, Input, Select, Space, Typography } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Form,
+  Grid,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography
+} from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
+import { useState } from 'react';
 import { EmptyState } from '../../shared/ui/Feedback';
 import {
   emptyPersonEvent,
@@ -35,104 +51,198 @@ const eventDatePrecisionOptions = [
   { value: 'day', label: '日' }
 ];
 
-export function PersonEventEditor({ value = [], onChange, disabled = false, title = '关键事件' }: Props) {
-  const events = normalizePersonEvents(value);
+function eventTypeText(value?: string) {
+  return eventTypeOptions.find(item => item.value === value)?.label || '其他';
+}
 
-  function update(index: number, patch: Partial<PersonEventDraft>) {
-    onChange?.(events.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+function eventDateText(event: PersonEventDraft) {
+  if (!event.eventDate) return '—';
+  const date = dayjs(event.eventDate);
+  if (!date.isValid()) return event.eventDate;
+  if (event.eventDatePrecision === 'year') return date.format('YYYY年');
+  if (event.eventDatePrecision === 'month') return date.format('YYYY年MM月');
+  return date.format('YYYY年MM月DD日');
+}
+
+export function PersonEventEditor({ value = [], onChange, disabled = false, title = '关键事件' }: Props) {
+  const screens = Grid.useBreakpoint();
+  const events = normalizePersonEvents(value);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draft, setDraft] = useState<PersonEventDraft | null>(null);
+  const [titleError, setTitleError] = useState(false);
+
+  function openCreate() {
+    setEditingIndex(null);
+    setDraft(emptyPersonEvent(events.length));
+    setTitleError(false);
   }
 
-  function add() {
-    onChange?.([...events, emptyPersonEvent(events.length)]);
+  function openEdit(index: number) {
+    setEditingIndex(index);
+    setDraft({ ...events[index] });
+    setTitleError(false);
+  }
+
+  function closeEditor() {
+    setDraft(null);
+    setEditingIndex(null);
+    setTitleError(false);
+  }
+
+  function patchDraft(patch: Partial<PersonEventDraft>) {
+    setDraft(current => current ? { ...current, ...patch } : current);
+  }
+
+  function confirmEditor() {
+    if (!draft) return;
+    const eventTitle = draft.eventTitle.trim();
+    if (!eventTitle) {
+      setTitleError(true);
+      return;
+    }
+    if (isFuturePersonEventDate(draft.eventDate)) return;
+    const normalized = { ...draft, eventTitle };
+    const next = editingIndex === null
+      ? [...events, normalized]
+      : events.map((item, index) => index === editingIndex ? normalized : item);
+    onChange?.(normalizePersonEvents(next));
+    closeEditor();
   }
 
   function remove(index: number) {
-    onChange?.(events.filter((_item, itemIndex) => itemIndex !== index).map((item, itemIndex) => ({ ...item, sortOrder: itemIndex })));
+    onChange?.(events.filter((_item, itemIndex) => itemIndex !== index)
+      .map((item, itemIndex) => ({ ...item, sortOrder: itemIndex })));
   }
 
   function move(index: number, offset: number) {
     onChange?.(movePersonEvent(events, index, index + offset));
   }
 
+  function actionButtons(index: number, compact = false) {
+    const event = events[index];
+    return (
+      <Space size="small" wrap={!compact}>
+        <Button aria-label="上移事件" size="small" icon={<ArrowUpOutlined />} disabled={disabled || index === 0} onClick={() => move(index, -1)} />
+        <Button aria-label="下移事件" size="small" icon={<ArrowDownOutlined />} disabled={disabled || index === events.length - 1} onClick={() => move(index, 1)} />
+        <Button aria-label="编辑事件" size="small" icon={<EditOutlined />} disabled={disabled} onClick={() => openEdit(index)}>{compact ? null : '编辑'}</Button>
+        <Popconfirm title={`确认删除“${event.eventTitle}”这条生平事迹吗？`} okText="删除" cancelText="取消" onConfirm={() => remove(index)} disabled={disabled}>
+          <Button danger aria-label="删除事件" size="small" icon={<DeleteOutlined />} disabled={disabled}>{compact ? null : '删除'}</Button>
+        </Popconfirm>
+      </Space>
+    );
+  }
+
+  const columns: ColumnsType<PersonEventDraft> = [
+    { title: '顺序', width: 72, render: (_value, _record, index) => index + 1 },
+    { title: '日期', width: 140, render: (_value, event) => eventDateText(event) },
+    { title: '类型', width: 88, render: (_value, event) => <Tag>{eventTypeText(event.eventType)}</Tag> },
+    {
+      title: '事件',
+      render: (_value, event, index) => (
+        <Button type="link" style={{ padding: 0, height: 'auto', textAlign: 'left' }} disabled={disabled} onClick={() => openEdit(index)}>
+          <Space direction="vertical" size={2} align="start">
+            <Typography.Text strong>{event.eventTitle}</Typography.Text>
+            {event.eventDescription ? <Typography.Text type="secondary" ellipsis style={{ maxWidth: 360 }}>{event.eventDescription}</Typography.Text> : null}
+          </Space>
+        </Button>
+      )
+    },
+    { title: '地点', width: 160, render: (_value, event) => event.eventPlace || '—' },
+    { title: '操作', width: 250, fixed: 'right', render: (_value, _event, index) => actionButtons(index) }
+  ];
+
   return (
     <Card
       title={(
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <span>{title}</span>
-          <Button type="dashed" icon={<PlusOutlined />} disabled={disabled} onClick={add}>新增事件</Button>
+          <Button type="primary" icon={<PlusOutlined />} disabled={disabled} onClick={openCreate}>新增事迹</Button>
         </Space>
       )}
     >
       <Typography.Paragraph type="secondary">
-        可维护人物一生中的重要节点。事件按人工顺序稳定展示，日期支持年、月、日精度，标题必填且日期不能晚于今天。
+        记录人物一生中的重要经历。新增和编辑在弹窗中完成，列表按人工顺序稳定展示。
       </Typography.Paragraph>
+
       {!events.length ? (
         <EmptyState
-          title="暂未录入关键事件"
-          action={<Button type="primary" icon={<PlusOutlined />} disabled={disabled} onClick={add}>新增第一条事件</Button>}
+          title="暂未录入生平事迹"
+          action={<Button type="primary" icon={<PlusOutlined />} disabled={disabled} onClick={openCreate}>新增第一条生平事迹</Button>}
+        />
+      ) : screens.md ? (
+        <Table<PersonEventDraft>
+          rowKey={(event, index) => String(event.id || `event-${index}`)}
+          columns={columns}
+          dataSource={events}
+          pagination={false}
+          size="small"
+          scroll={{ x: 920 }}
         />
       ) : (
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          {events.map((event, index) => {
-            const titleMissing = !event.eventTitle.trim();
-            const futureDate = isFuturePersonEventDate(event.eventDate);
-            return (
-              <Card
-                key={String(event.id || `event-${index}`)}
-                size="small"
-                title={(
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <span>{`事件 ${index + 1}`}</span>
-                    <Space size="small">
-                      <Button aria-label="上移事件" icon={<ArrowUpOutlined />} disabled={disabled || index === 0} onClick={() => move(index, -1)} />
-                      <Button aria-label="下移事件" icon={<ArrowDownOutlined />} disabled={disabled || index === events.length - 1} onClick={() => move(index, 1)} />
-                      <Button danger aria-label="删除事件" icon={<DeleteOutlined />} disabled={disabled} onClick={() => remove(index)} />
-                    </Space>
-                  </Space>
-                )}
-              >
-                <div className="person-edit-fields">
-                  <Form.Item label="事件类型">
-                    <Select allowClear options={eventTypeOptions} value={event.eventType} disabled={disabled} onChange={eventType => update(index, { eventType })} />
-                  </Form.Item>
-                  <Form.Item label="事件标题" required>
-                    <Input status={titleMissing ? 'error' : undefined} aria-invalid={titleMissing} placeholder="请输入事件标题" value={event.eventTitle} disabled={disabled} maxLength={200} onChange={e => update(index, { eventTitle: e.target.value })} />
-                  </Form.Item>
-                  <Form.Item label="事件日期">
-                    <DatePicker
-                      style={{ width: '100%' }}
-                      status={futureDate ? 'error' : undefined}
-                      aria-invalid={futureDate}
-                      value={event.eventDate ? dayjs(event.eventDate) : null}
-                      disabled={disabled}
-                      disabledDate={(current: Dayjs) => current.startOf('day').isAfter(dayjs().startOf('day'))}
-                      onChange={date => update(index, {
-                        eventDate: date ? date.format('YYYY-MM-DD') : undefined,
-                        eventDatePrecision: date ? event.eventDatePrecision || 'day' : undefined
-                      })}
-                    />
-                  </Form.Item>
-                  <Form.Item label="日期精度">
-                    <Select
-                      options={eventDatePrecisionOptions}
-                      value={event.eventDate ? event.eventDatePrecision || 'day' : undefined}
-                      disabled={disabled || !event.eventDate}
-                      placeholder="请先选择日期"
-                      onChange={eventDatePrecision => update(index, { eventDatePrecision })}
-                    />
-                  </Form.Item>
-                  <Form.Item label="地点">
-                    <Input value={event.eventPlace} disabled={disabled} maxLength={255} onChange={e => update(index, { eventPlace: e.target.value })} />
-                  </Form.Item>
-                  <Form.Item label="事件描述" className="person-edit-field--wide">
-                    <Input.TextArea rows={3} value={event.eventDescription} disabled={disabled} maxLength={4000} showCount onChange={e => update(index, { eventDescription: e.target.value })} />
-                  </Form.Item>
-                </div>
-              </Card>
-            );
-          })}
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {events.map((event, index) => (
+            <Card key={String(event.id || `event-${index}`)} size="small">
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                <Space wrap>
+                  <Typography.Text type="secondary">{eventDateText(event)}</Typography.Text>
+                  <Tag>{eventTypeText(event.eventType)}</Tag>
+                </Space>
+                <Button type="link" style={{ padding: 0, height: 'auto', textAlign: 'left' }} disabled={disabled} onClick={() => openEdit(index)}>
+                  <Typography.Text strong>{event.eventTitle}</Typography.Text>
+                </Button>
+                {event.eventPlace ? <Typography.Text type="secondary">地点：{event.eventPlace}</Typography.Text> : null}
+                {event.eventDescription ? <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>{event.eventDescription}</Typography.Paragraph> : null}
+                {actionButtons(index, true)}
+              </Space>
+            </Card>
+          ))}
         </Space>
       )}
+
+      <Modal
+        open={Boolean(draft)}
+        title={editingIndex === null ? '新增生平事迹' : '编辑生平事迹'}
+        okText={editingIndex === null ? '确认新增' : '保存修改'}
+        cancelText="取消"
+        width={640}
+        destroyOnHidden
+        onCancel={closeEditor}
+        onOk={confirmEditor}
+        okButtonProps={{ disabled: Boolean(draft && isFuturePersonEventDate(draft.eventDate)) }}
+      >
+        {draft ? (
+          <Form layout="vertical" requiredMark="optional">
+            <Form.Item label="事件标题" required validateStatus={titleError ? 'error' : undefined} help={titleError ? '请输入事件标题' : undefined}>
+              <Input autoFocus maxLength={200} placeholder="请输入事件标题" value={draft.eventTitle} onChange={event => { setTitleError(false); patchDraft({ eventTitle: event.target.value }); }} />
+            </Form.Item>
+            <div className="person-edit-fields">
+              <Form.Item label="事件类型">
+                <Select allowClear options={eventTypeOptions} value={draft.eventType} onChange={eventType => patchDraft({ eventType })} />
+              </Form.Item>
+              <Form.Item label="事件日期" validateStatus={isFuturePersonEventDate(draft.eventDate) ? 'error' : undefined} help={isFuturePersonEventDate(draft.eventDate) ? '事件日期不能晚于今天' : undefined}>
+                <DatePicker
+                  style={{ width: '100%' }}
+                  value={draft.eventDate ? dayjs(draft.eventDate) : null}
+                  disabledDate={(current: Dayjs) => current.startOf('day').isAfter(dayjs().startOf('day'))}
+                  onChange={date => patchDraft({
+                    eventDate: date ? date.format('YYYY-MM-DD') : undefined,
+                    eventDatePrecision: date ? draft.eventDatePrecision || 'day' : undefined
+                  })}
+                />
+              </Form.Item>
+              <Form.Item label="日期精度">
+                <Select options={eventDatePrecisionOptions} value={draft.eventDate ? draft.eventDatePrecision || 'day' : undefined} disabled={!draft.eventDate} placeholder="请先选择日期" onChange={eventDatePrecision => patchDraft({ eventDatePrecision })} />
+              </Form.Item>
+              <Form.Item label="地点">
+                <Input maxLength={255} value={draft.eventPlace} onChange={event => patchDraft({ eventPlace: event.target.value })} />
+              </Form.Item>
+              <Form.Item label="事件描述" className="person-edit-field--wide">
+                <Input.TextArea rows={5} maxLength={4000} showCount value={draft.eventDescription} onChange={event => patchDraft({ eventDescription: event.target.value })} />
+              </Form.Item>
+            </div>
+          </Form>
+        ) : null}
+      </Modal>
     </Card>
   );
 }
