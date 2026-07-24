@@ -9,9 +9,7 @@ import { MemberInvitationModal } from './MemberInvitationModal';
 
 type Branch = { id: number; branchName: string };
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
-
-export function MemberInvitationAction(_props: Props) {
+export function MemberInvitationAction() {
   const workspace = useWorkspace();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
