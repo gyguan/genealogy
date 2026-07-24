@@ -1,5 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, DatePicker, Dropdown, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  DatePicker,
+  Dropdown,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Tag,
+  Tooltip,
+  Typography
+} from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -31,6 +49,8 @@ import { visiblePersonStatusActions } from './personStatusActions';
 import type { PersonStatusAction, PersonStatusActionKey } from './personStatusActions';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {
   personId: string;
@@ -392,10 +412,10 @@ export function PersonEditPage({ personId, onCancel, onNavigationGuardChange }: 
         subtitle={`${personName} · ${display(person.generationWord, '字辈待维护')} · ${person.generationNo ? `第${person.generationNo}世` : '代次待维护'}`}
       />
 
-      {saveError ? <Alert type="error" showIcon message="保存失败" description={saveError} /> : null}
-      {actionError ? <Alert type="error" showIcon message="状态操作失败" description={actionError} /> : null}
-      {saved ? <Alert type="success" showIcon message={directEventSave ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核'} action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
-      {revisionSubmit ? <Alert type="info" showIcon message="关键事件将随人物资料审核" description="保存后生成包含人物资料和关键事件的审核快照；审核通过后统一生效，驳回不会改变现有正式事件。" /> : null}
+      {saveError ? <PageFeedback tone="error" title="保存失败" description={saveError} /> : null}
+      {actionError ? <PageFeedback tone="error" title="状态操作失败" description={actionError} /> : null}
+      {saved ? <PageFeedback tone="success" title={directEventSave ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核'} action={<Button size="small" onClick={leavePage}>返回人物档案</Button>} /> : null}
+      {revisionSubmit ? <PageFeedback tone="info" title="关键事件将随人物资料审核" description="保存后生成包含人物资料和关键事件的审核快照；审核通过后统一生效，驳回不会改变现有正式事件。" /> : null}
 
       <Form<PersonEditForm>
         form={form}

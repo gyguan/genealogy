@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -44,6 +47,8 @@ import {
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
@@ -609,18 +614,17 @@ export function MemberPage({}: {  }) {
         </div>
       </Card>
 
-      <Alert
+      <PageFeedback
         style={{ marginTop: 16 }}
-        type="info"
-        showIcon
-        message="成员与权限按角色与数据范围共同生效"
+        tone="info"
+        title="成员与权限按角色与数据范围共同生效"
         description="支派管理员只能查看和管理授权支派及下级支派；高风险授权和成员停用均需填写原因，后端会执行越级、范围和最后管理员校验。"
       />
 
 
       <QueryResultCard className="member-result-card" extra={<Button type="primary" onClick={openCreateGrant} disabled={!selectedClanId || !roles.length}>新增成员授权</Button>} style={{ marginTop: 16 }} total={total} totalSuffix="名成员">
         
-        {queryError ? <Alert type="error" showIcon message={queryError} action={<Button size="small" onClick={() => void loadMembers(selectedClanId, query)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
+        {queryError ? <PageFeedback tone="error" title={queryError} action={<Button size="small" onClick={() => void loadMembers(selectedClanId, query)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
         {isMobile ? (
           <List
             loading={initializing || queryLoading}
@@ -675,7 +679,7 @@ export function MemberPage({}: {  }) {
         confirmLoading={grantSubmitting}
         destroyOnClose
       >
-        {grantError ? <Alert type="error" showIcon message={grantError} style={{ marginBottom: 16 }} /> : null}
+        {grantError ? <PageFeedback tone="error" title={grantError} style={{ marginBottom: 16 }} /> : null}
         <Form form={grantForm} layout="vertical">
           {!editingGrant ? (
             <Form.Item name="userId" label="选择成员" rules={[{ required: true, message: '请搜索并选择成员' }]}>
@@ -698,7 +702,7 @@ export function MemberPage({}: {  }) {
           <Form.Item name="reason" label="变更原因" rules={[{ required: true, whitespace: true, message: '请填写权限变更原因' }]}>
             <TextArea rows={3} maxLength={500} showCount placeholder="用于安全校验和审计追溯" />
           </Form.Item>
-          {selectedRole ? <Alert type={selectedRole.riskLevel === 'high' ? 'warning' : 'info'} showIcon message={`${selectedRole.roleName}${selectedRole.riskLevel === 'high' ? ' · 高风险角色' : ''}`} description={<Space direction="vertical" size={2}><span>{roleCapabilityText(selectedRole)}</span><span>{scopePreview(selectedScopeType, selectedScopeId, selectedClanName, branches)}</span></Space>} /> : null}
+          {selectedRole ? <PageFeedback tone={selectedRole.riskLevel === 'high' ? 'warning' : 'info'} title={`${selectedRole.roleName}${selectedRole.riskLevel === 'high' ? ' · 高风险角色' : ''}`} description={<Space direction="vertical" size={2}><span>{roleCapabilityText(selectedRole)}</span><span>{scopePreview(selectedScopeType, selectedScopeId, selectedClanName, branches)}</span></Space>} /> : null}
         </Form>
       </Modal>
 
@@ -745,7 +749,7 @@ export function MemberPage({}: {  }) {
             {selectedMember.allowedActions?.canViewHistory ? (
               <>
                 <Typography.Title level={5} style={{ marginTop: 24 }}>权限变更记录</Typography.Title>
-                {auditError ? <Alert type="error" showIcon message={auditError} action={<Button size="small" onClick={() => void loadMemberAudits(selectedClanId, selectedMember.membershipId)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
+                {auditError ? <PageFeedback tone="error" title={auditError} action={<Button size="small" onClick={() => void loadMemberAudits(selectedClanId, selectedMember.membershipId)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
                 <Table<MemberPermissionAudit>
                   size="small"
                   rowKey="auditId"
@@ -775,17 +779,17 @@ export function MemberPage({}: {  }) {
       </Drawer>
 
       <Modal title={statusTarget?.membershipStatus === 'active' ? '停用成员' : '恢复成员'} open={statusModalOpen} onCancel={() => setStatusModalOpen(false)} onOk={() => void submitStatus()} okText={statusTarget?.membershipStatus === 'active' ? '确认停用' : '确认恢复'} okButtonProps={{ danger: statusTarget?.membershipStatus === 'active' }} confirmLoading={statusSubmitting}>
-        {statusError ? <Alert type="error" showIcon message={statusError} style={{ marginBottom: 16 }} /> : null}
+        {statusError ? <PageFeedback tone="error" title={statusError} style={{ marginBottom: 16 }} /> : null}
         <Form form={statusForm} layout="vertical">
           <Form.Item name="status" hidden><Input /></Form.Item>
-          <Alert type="warning" showIcon message={statusTarget?.membershipStatus === 'active' ? '停用后该成员不能继续访问宗族数据，但成员关系和授权记录仍会保留' : '恢复后该成员重新获得有效授权范围内的访问能力'} />
+          <PageFeedback tone="warning" title={statusTarget?.membershipStatus === 'active' ? '停用后该成员不能继续访问宗族数据，但成员关系和授权记录仍会保留' : '恢复后该成员重新获得有效授权范围内的访问能力'} />
           <Form.Item name="reason" label="操作原因" style={{ marginTop: 16 }} rules={[{ required: true, whitespace: true, message: '请填写操作原因' }]}><TextArea rows={3} maxLength={500} showCount /></Form.Item>
         </Form>
       </Modal>
 
       <Modal title="撤销成员授权" open={revokeModalOpen} onCancel={() => setRevokeModalOpen(false)} onOk={() => void submitRevoke()} okText="确认撤销" okButtonProps={{ danger: true }} confirmLoading={revokeSubmitting}>
-        {revokeError ? <Alert type="error" showIcon message={revokeError} style={{ marginBottom: 16 }} /> : null}
-        <Alert type="warning" showIcon message={`将仅撤销“${revokeTarget?.roleName || ''}”这一条授权，成员的其他授权不受影响；最后管理员保护由后端强制执行。`} />
+        {revokeError ? <PageFeedback tone="error" title={revokeError} style={{ marginBottom: 16 }} /> : null}
+        <PageFeedback tone="warning" title={`将仅撤销“${revokeTarget?.roleName || ''}”这一条授权，成员的其他授权不受影响；最后管理员保护由后端强制执行。`} />
         <Form form={revokeForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="reason" label="撤销原因" rules={[{ required: true, whitespace: true, message: '请填写撤销原因' }]}><TextArea rows={3} maxLength={500} showCount /></Form.Item>
         </Form>

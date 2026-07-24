@@ -1,4 +1,6 @@
-import { Alert, Input, Modal, Space, Typography } from 'antd';
+import { Input, Modal, Space, Typography } from 'antd';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Text } = Typography;
 
@@ -74,8 +76,8 @@ export function CultureGovernanceModal(props: Props) {
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Text>影响对象：{target.name}</Text>
-        <Alert type={text.danger ? 'error' : target.kind === 'archive' ? 'warning' : 'info'} showIcon message={text.consequence} />
-        {props.error ? <Alert type="error" showIcon message="操作失败，当前输入已保留" description={props.error} /> : null}
+        <PageFeedback tone={text.danger ? 'error' : target.kind === 'archive' ? 'warning' : 'info'} title={text.consequence} />
+        {props.error ? <PageFeedback tone="error" title="操作失败，当前输入已保留" description={props.error} /> : null}
         <Input.TextArea
           value={props.reason}
           onChange={event => props.onReasonChange(event.target.value)}

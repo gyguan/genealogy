@@ -1,5 +1,4 @@
 import {
-  Alert,
   Collapse,
   Descriptions,
   Drawer,
@@ -32,6 +31,8 @@ import {
   traceEventColor,
   traceSourceText
 } from './trackingCenterLabels';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Text, Title } = Typography;
 
@@ -68,10 +69,9 @@ function TraceOverview({ detail }: { detail: TrackingTraceDetailResponse }) {
           <Tag color={detail.traceCoverage.complete ? 'success' : 'warning'}>{coverageText(detail.traceCoverage.level)}</Tag>
         </Descriptions.Item>
       </Descriptions>
-      <Alert
-        showIcon
-        type={detail.traceCoverage.complete ? 'success' : 'warning'}
-        message={detail.traceCoverage.complete ? '当前可见历史已完整加载' : '当前历史存在范围说明'}
+      <PageFeedback
+        tone={detail.traceCoverage.complete ? 'success' : 'warning'}
+        title={detail.traceCoverage.complete ? '当前可见历史已完整加载' : '当前历史存在范围说明'}
         description={detail.traceCoverage.notes.join('；') || '未发现需要补充说明的历史缺口'}
       />
     </Space>
@@ -273,7 +273,7 @@ export function TrackingTraceDrawer({
       )}
     >
       {loading ? <Skeleton active paragraph={{ rows: 10 }} /> : null}
-      {!loading && error ? <Alert type="error" showIcon message="追踪详情加载失败" description={error} /> : null}
+      {!loading && error ? <PageFeedback tone="error" title="追踪详情加载失败" description={error} /> : null}
       {!loading && !error && detail ? (
         <Tabs
           defaultActiveKey="timeline"
@@ -328,7 +328,7 @@ export function OperationLogDrawer({
               }]}
             />
           ) : (
-            <Alert type="info" showIcon message="当前权限未返回技术信息" description="技术详情仅向具备审计导出权限的用户披露。" />
+            <PageFeedback tone="info" title="当前权限未返回技术信息" description="技术详情仅向具备审计导出权限的用户披露。" />
           )}
         </Space>
       ) : null}

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, Button, Card, Grid, Steps, Tooltip, Typography } from 'antd';
+import { Button, Card, Grid, Steps, Tooltip, Typography } from 'antd';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 import type { WizardBusinessState } from './domain/wizardStepState';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 export type WizardStepMeta<TKey extends string = string> = {
   key: TKey;
@@ -104,11 +106,10 @@ export function WizardShell<TKey extends string = string>({
       </Card>
 
       {gateNotice ? (
-        <Alert
+        <PageFeedback
           className="wizard-gate-alert"
-          type="warning"
-          showIcon
-          message={gateNotice.title}
+          tone="warning"
+          title={gateNotice.title}
           description={gateNotice.reason}
           action={gateNotice.blockingStep && onGateAction
             ? <Button size="small" onClick={() => onGateAction(gateNotice.blockingStep as TKey)}>去处理</Button>

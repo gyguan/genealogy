@@ -53,6 +53,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
   { value: 'sequenceNo,asc', label: '迁徙顺序' },
@@ -302,7 +304,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
     </Card>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} />}>
       
-      {refreshError ? <Alert type="warning" showIcon closable message="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
+      {refreshError ? <PageFeedback tone="warning" closable title="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="迁徙事件首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
@@ -315,7 +317,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
       {detail ? <Tabs items={[
         { key: 'basic', label: '基本信息', children: <Space direction="vertical" size="middle" style={{ width: '100%' }}><Descriptions bordered size="small" column={{ xs: 1, sm: 2 }}><Descriptions.Item label="所属支派">{detail.scope.branchName || '未命名支派'}</Descriptions.Item><Descriptions.Item label="迁徙顺序">{detail.sequenceNo}</Descriptions.Item><Descriptions.Item label="历史时期">{detail.migrationTimeText || '待补充'}</Descriptions.Item><Descriptions.Item label="始迁祖">{detail.founderPersonName || '未关联或姓名不可见'}</Descriptions.Item><Descriptions.Item label="迁徙原因" span={2}>{detail.reason || '待补充'}</Descriptions.Item><Descriptions.Item label="可信度">{optionLabel(confidenceOptions, detail.confidenceLevel)}</Descriptions.Item><Descriptions.Item label="可见范围">{optionLabel(privacyOptions, detail.privacyLevel)}</Descriptions.Item><Descriptions.Item label="最近更新">{formatDateTime(detail.updatedAt)}</Descriptions.Item></Descriptions><Card size="small" title="详细说明"><Paragraph>{detail.description || '暂无详细说明'}</Paragraph></Card></Space> },
         { key: 'sources', label: '来源证据', children: <List bordered dataSource={detail.sources} locale={{ emptyText: '尚未绑定来源' }} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} /> },
-        { key: 'history', label: '审核与追踪', children: <Space direction="vertical" size="middle" style={{ width: '100%' }}><Descriptions bordered size="small" column={1}><Descriptions.Item label="审核状态">{detail.review.status || '尚未提交'}</Descriptions.Item><Descriptions.Item label="驳回原因">{detail.review.rejectedReason || '-'}</Descriptions.Item></Descriptions>{traceError ? <Alert type="warning" showIcon message="追踪局部加载失败" description={traceError} /> : null}{trace ? <Timeline items={trace.timeline.slice(0, 8).map(event => ({ children: `${event.title} · ${formatDateTime(event.occurredAt)}` }))} /> : !traceError ? <Skeleton active paragraph={{ rows: 4 }} /> : null}<Button onClick={openTracking}>打开完整追踪</Button></Space> }
+        { key: 'history', label: '审核与追踪', children: <Space direction="vertical" size="middle" style={{ width: '100%' }}><Descriptions bordered size="small" column={1}><Descriptions.Item label="审核状态">{detail.review.status || '尚未提交'}</Descriptions.Item><Descriptions.Item label="驳回原因">{detail.review.rejectedReason || '-'}</Descriptions.Item></Descriptions>{traceError ? <PageFeedback tone="warning" title="追踪局部加载失败" description={traceError} /> : null}{trace ? <Timeline items={trace.timeline.slice(0, 8).map(event => ({ children: `${event.title} · ${formatDateTime(event.occurredAt)}` }))} /> : !traceError ? <Skeleton active paragraph={{ rows: 4 }} /> : null}<Button onClick={openTracking}>打开完整追踪</Button></Space> }
       ]} /> : null}
     </Drawer>
     {editor?.mode === 'create' && clanId ? <Drawer open width={720} title="新增迁徙事件" className="culture-create-drawer" onClose={closeEditor} destroyOnHidden><MigrationEventEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></Drawer> : null}

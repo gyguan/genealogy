@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { Alert, Button, Card, Drawer, Empty, Skeleton, Space, Typography } from 'antd';
+import { Button, Card, Drawer, Empty, Skeleton, Space, Typography } from 'antd';
+
+import { PageFeedback } from '../Feedback';
 
 const { Text, Title } = Typography;
 
@@ -33,11 +35,10 @@ export function DashboardAsyncState({
   if ((status === 'error' || status === 'forbidden') && !loaded) {
     const forbidden = status === 'forbidden';
     return (
-      <Alert
+      <PageFeedback
         role="status"
-        showIcon
-        type={forbidden ? 'warning' : 'error'}
-        message={forbidden ? `暂无权限查看${title}` : `${title}加载失败`}
+        tone={forbidden ? 'warning' : 'error'}
+        title={forbidden ? `暂无权限查看${title}` : `${title}加载失败`}
         description={error || (forbidden ? '当前账号暂无权限查看该区域数据。' : '请稍后重试。')}
         action={forbidden || !retry ? undefined : <Button size="small" onClick={retry}>重试</Button>}
       />
@@ -47,11 +48,10 @@ export function DashboardAsyncState({
   return (
     <Space direction="vertical" size="small" style={{ width: '100%' }}>
       {stale ? (
-        <Alert
+        <PageFeedback
           role="status"
-          showIcon
-          type="warning"
-          message={`${title}刷新失败，当前展示上次成功数据`}
+          tone="warning"
+          title={`${title}刷新失败，当前展示上次成功数据`}
           description="数据可能不是最新，请稍后重试。"
           action={retry ? <Button size="small" onClick={retry}>重试</Button> : undefined}
         />

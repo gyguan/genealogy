@@ -33,6 +33,8 @@ import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../../../shared/ui/Feedback';
+
 type SchemeForm = {
   schemeName: string;
   branchId: string;
@@ -350,7 +352,7 @@ export function GenerationStep({ onSubmittedReview }: Props) {
       <ResultListCard<GenerationSchemeLike>
         cardClassName="generation-step-query-results"
         totalSuffix="个方案"
-        notice={<Alert type="info" showIcon message="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" />}
+        notice={<PageFeedback tone="info" title="字辈方案与字辈明细作为一个整体提交审批：先保存草稿方案，再从列表点击“维护字辈”补充明细，最后勾选方案提交审批。" />}
         extra={(
           <Space wrap>
             <Button type="primary" size="small" disabled={!selectedReviewableSchemes.length} loading={submittingSchemes} onClick={() => void submitSelectedSchemes()}>
@@ -403,10 +405,9 @@ export function GenerationStep({ onSubmittedReview }: Props) {
         onCancel={() => setWordsModalOpen(false)}
       >
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message={selectedScheme ? `当前维护方案：${schemeName(selectedScheme)}（${statusText(selectedScheme)}）` : '请选择草稿/已驳回字辈方案'}
+          <PageFeedback
+            tone="info"
+            title={selectedScheme ? `当前维护方案：${schemeName(selectedScheme)}（${statusText(selectedScheme)}）` : '请选择草稿/已驳回字辈方案'}
           />
           <div className="wizard-generation-detail-form wizard-generation-word-grid">
             <label className="wizard-inline-form-field">

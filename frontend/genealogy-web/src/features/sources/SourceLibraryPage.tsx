@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeftOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
+import { ArrowLeftOutlined,
+  MoreOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  UploadOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -60,6 +68,8 @@ import type {
 } from './sourceLibraryService';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
@@ -786,7 +796,7 @@ export function SourceLibraryPage({}: Props) {
               </Row>
             </Space>
           </Card>
-          {lastRevision ? <Alert type="success" showIcon message="引用变更已提交审核" description={lastRevision.diffSummary || '请在审核中心处理该变更。'} /> : null}
+          {lastRevision ? <PageFeedback tone="success" title="引用变更已提交审核" description={lastRevision.diffSummary || '请在审核中心处理该变更。'} /> : null}
           <Card>
             <Descriptions bordered size="small" column={2}>
               <Descriptions.Item label="来源类型"><Tag>{optionText(sourceTypeOptions, selectedSource.sourceType)}</Tag></Descriptions.Item>
@@ -806,12 +816,12 @@ export function SourceLibraryPage({}: Props) {
               {
                 key: 'bindings',
                 label: `引用关系（${bindingTotal || bindings.length}）`,
-                children: <Space direction="vertical" style={{ width: '100%' }}>{!canBind ? <Alert type="info" showIcon message="当前账号仅可查看引用关系" /> : null}{bindingError ? <Alert type="error" showIcon message="引用关系加载失败" description={bindingError} action={<Button size="small" onClick={() => selectedSource.id && void loadBindings(selectedSource.id, bindingPage.pageNo, bindingPage.pageSize)}>重新加载</Button>} /> : null}<BindingTable clanId={clanId} rows={bindings} total={bindingTotal} pageNo={bindingPage.pageNo} pageSize={bindingPage.pageSize} loading={bindingLoading} canBind={canBind} onPageChange={(pageNo, pageSize) => selectedSource.id && void loadBindings(selectedSource.id, pageNo, pageSize)} onReplace={openReplaceReference} onDelete={submitDeleteReference} /></Space>
+                children: <Space direction="vertical" style={{ width: '100%' }}>{!canBind ? <PageFeedback tone="info" title="当前账号仅可查看引用关系" /> : null}{bindingError ? <PageFeedback tone="error" title="引用关系加载失败" description={bindingError} action={<Button size="small" onClick={() => selectedSource.id && void loadBindings(selectedSource.id, bindingPage.pageNo, bindingPage.pageSize)}>重新加载</Button>} /> : null}<BindingTable clanId={clanId} rows={bindings} total={bindingTotal} pageNo={bindingPage.pageNo} pageSize={bindingPage.pageSize} loading={bindingLoading} canBind={canBind} onPageChange={(pageNo, pageSize) => selectedSource.id && void loadBindings(selectedSource.id, pageNo, pageSize)} onReplace={openReplaceReference} onDelete={submitDeleteReference} /></Space>
               },
               {
                 key: 'attachments',
                 label: `来源附件（${attachmentTotal}）`,
-                children: <Space direction="vertical" style={{ width: '100%' }}>{attachmentError ? <Alert type="error" showIcon message="附件列表加载失败" description={attachmentError} action={<Button size="small" onClick={() => selectedSource.id && void loadAttachments(selectedSource.id, attachmentPage.pageNo, attachmentPage.pageSize)}>重新加载</Button>} /> : null}<Row justify="end"><Button type="primary" icon={<UploadOutlined />} disabled={!canUploadAttachment} onClick={openAttachmentModal}>上传附件</Button></Row>{!canUploadAttachment ? <Alert type="info" showIcon message="当前账号暂无附件上传权限" /> : null}<AttachmentTable rows={attachments} total={attachmentTotal} pageNo={attachmentPage.pageNo} pageSize={attachmentPage.pageSize} loading={attachmentLoading} canManage={canUploadAttachment} onPageChange={(pageNo, pageSize) => selectedSource.id && void loadAttachments(selectedSource.id, pageNo, pageSize)} onPreview={preview} onDownload={download} onDelete={removeAttachment} /></Space>
+                children: <Space direction="vertical" style={{ width: '100%' }}>{attachmentError ? <PageFeedback tone="error" title="附件列表加载失败" description={attachmentError} action={<Button size="small" onClick={() => selectedSource.id && void loadAttachments(selectedSource.id, attachmentPage.pageNo, attachmentPage.pageSize)}>重新加载</Button>} /> : null}<Row justify="end"><Button type="primary" icon={<UploadOutlined />} disabled={!canUploadAttachment} onClick={openAttachmentModal}>上传附件</Button></Row>{!canUploadAttachment ? <PageFeedback tone="info" title="当前账号暂无附件上传权限" /> : null}<AttachmentTable rows={attachments} total={attachmentTotal} pageNo={attachmentPage.pageNo} pageSize={attachmentPage.pageSize} loading={attachmentLoading} canManage={canUploadAttachment} onPageChange={(pageNo, pageSize) => selectedSource.id && void loadAttachments(selectedSource.id, pageNo, pageSize)} onPreview={preview} onDownload={download} onDelete={removeAttachment} /></Space>
               }
             ]} />
           </Card>
@@ -819,7 +829,7 @@ export function SourceLibraryPage({}: Props) {
 
         <Modal open={attachmentModalOpen} title="上传附件" width={600} confirmLoading={attachmentSubmitLoading} okText="上传" onOk={() => void uploadAttachment()} onCancel={() => !attachmentSubmitLoading && setAttachmentModalOpen(false)}>
           <Form form={attachmentForm} layout="vertical" initialValues={{ privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
-            {attachmentSubmitError ? <Alert type="error" showIcon message="附件上传失败" description={attachmentSubmitError} style={{ marginBottom: 16 }} /> : null}
+            {attachmentSubmitError ? <PageFeedback tone="error" title="附件上传失败" description={attachmentSubmitError} style={{ marginBottom: 16 }} /> : null}
             <Form.Item label="附件" required><Upload {...uploadProps}><Button icon={<UploadOutlined />}>选择文件</Button></Upload></Form.Item>
             <Form.Item name="privacyLevel" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}><Select options={privacyOptions} /></Form.Item>
             <Form.Item name="sensitiveLevel" label="敏感级别" rules={[{ required: true, message: '请选择敏感级别' }]}><Select options={sensitiveOptions} /></Form.Item>
@@ -828,8 +838,8 @@ export function SourceLibraryPage({}: Props) {
 
         <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '变更引用' : '新增引用'} confirmLoading={bindingSubmitLoading} onCancel={() => !bindingSubmitLoading && setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
           <Form form={bindingForm} layout="vertical" onFinish={submitReferenceRevision}>
-            {bindingSubmitError ? <Alert type="error" showIcon message="引用提交失败" description={bindingSubmitError} style={{ marginBottom: 12 }} /> : null}
-            <Alert type="info" showIcon style={{ marginBottom: 12 }} message={bindingMode === 'replace' ? '变更引用提交后需审核通过才会生效，审核期间原引用继续有效。' : '新增引用提交后需审核通过才会正式生效。'} />
+            {bindingSubmitError ? <PageFeedback tone="error" title="引用提交失败" description={bindingSubmitError} style={{ marginBottom: 12 }} /> : null}
+            <PageFeedback tone="info" style={{ marginBottom: 12 }} title={bindingMode === 'replace' ? '变更引用提交后需审核通过才会生效，审核期间原引用继续有效。' : '新增引用提交后需审核通过才会正式生效。'} />
             <Form.Item name="targetType" label="引用对象类型" rules={[{ required: true, message: '请选择引用对象类型' }]}><Select options={bindingTargetTypeOptions} onChange={changeBindingTargetType} /></Form.Item>
             {bindingTargetType === 'generation_word' ? <Form.Item name="generationSchemeId" label="字辈方案"><Select allowClear showSearch optionFilterProp="label" loading={generationSchemeLoading} options={generationSchemeOptions.filter(item => item.value)} placeholder={generationSchemes.length ? '请选择已生效字辈方案' : '暂无已生效字辈方案'} onChange={changeGenerationScheme} /></Form.Item> : null}
             <Form.Item name="targetId" label="引用对象" rules={[{ required: true, message: '请选择引用对象' }]}><Select showSearch optionFilterProp="label" loading={bindingTargetType === 'generation_word' && generationWordLoading} options={targetOptions.filter(item => item.value)} placeholder={targetPlaceholder} disabled={bindingTargetType === 'generation_word' && !generationWordLoading && !generationWords.length} notFoundContent={bindingTargetType === 'generation_word' ? '请选择字辈方案后加载字辈明细' : '暂无可选对象'} /></Form.Item>
@@ -864,7 +874,7 @@ export function SourceLibraryPage({}: Props) {
           </Form>
         </Card>
         <Card title={`来源资料（共 ${sourceTotal} 条）`} extra={<Space><Tooltip title={!clanId ? '请先选择宗族' : '新增来源草稿'}><span><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button></span></Tooltip><Tooltip title="刷新"><Button icon={<ReloadOutlined />} aria-label="刷新来源列表" loading={loading} onClick={() => void loadSources(search, true)} /></Tooltip></Space>}>
-          {listError ? <Alert type="error" showIcon message={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
+          {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} style={{ marginBottom: 12 }} /> : null}
           {!listLoaded && loading ? <Space direction="vertical" align="center" style={{ width: '100%', padding: 48 }}><Spin /><Text type="secondary">正在加载来源资料…</Text></Space> : (
             <Table<SourceRecord>
               rowKey={(row, index) => String(row.id || index)}
@@ -911,8 +921,8 @@ export function SourceLibraryPage({}: Props) {
         extra={<Space><Button disabled={createSubmitLoading} onClick={() => setCreateDrawerOpen(false)}>取消</Button><Button loading={createSubmitLoading} onClick={() => void submitCreateSource(false)}>保存草稿</Button><Button type="primary" loading={createSubmitLoading} onClick={() => void submitCreateSource(true)}>保存并提交审核</Button></Space>}
       >
         <Form form={createForm} layout="vertical" initialValues={{ sourceType: 'genealogy_book', confidenceLevel: 'unknown', privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
-          {createSubmitError ? <Alert type="error" showIcon message="来源创建失败" description={createSubmitError} style={{ marginBottom: 16 }} /> : null}
-          <Alert type="info" showIcon message="新增来源默认保存为草稿；提交审核通过后才能作为正式证据。" style={{ marginBottom: 16 }} />
+          {createSubmitError ? <PageFeedback tone="error" title="来源创建失败" description={createSubmitError} style={{ marginBottom: 16 }} /> : null}
+          <PageFeedback tone="info" title="新增来源默认保存为草稿；提交审核通过后才能作为正式证据。" style={{ marginBottom: 16 }} />
           <Row gutter={16}>
             <Col xs={24} md={12}><Form.Item name="sourceName" label="来源名称" rules={[{ required: true, whitespace: true, message: '请输入来源名称' }]}><Input maxLength={200} placeholder="例如：张氏族谱卷一" /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="sourceType" label="来源类型" rules={[{ required: true, message: '请选择来源类型' }]}><Select options={sourceTypeOptions} /></Form.Item></Col>

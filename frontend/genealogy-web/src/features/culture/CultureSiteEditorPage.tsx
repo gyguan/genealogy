@@ -29,6 +29,8 @@ import { createCultureSite, getCultureSite, updateCultureSite } from './cultureS
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 type CultureSiteFormValues = CultureSiteCreateRequest;
 
 type Props = {
@@ -198,9 +200,9 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
   const title = editor.mode === 'create' ? '新增文化场所' : official ? '提交正式场所变更申请' : '编辑文化场所';
   const primaryText = editor.mode === 'create' ? '保存草稿' : official ? '提交变更申请' : '保存修改';
   const statusAlert = official ? (
-    <Alert type="warning" showIcon message="正式场所不会被直接覆盖" description="本次修改将创建审核任务，审核通过后才会更新正式内容。" />
+    <PageFeedback tone="warning" title="正式场所不会被直接覆盖" description="本次修改将创建审核任务，审核通过后才会更新正式内容。" />
   ) : rejected ? (
-    <Alert type="info" showIcon message="请根据驳回意见修订" description={detail?.review.rejectedReason || '审核方未返回具体驳回说明。'} />
+    <PageFeedback tone="info" title="请根据驳回意见修订" description={detail?.review.rejectedReason || '审核方未返回具体驳回说明。'} />
   ) : null;
 
   return (
@@ -285,7 +287,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
           </Card>
 
           <Card title="坐标信息">
-            <Alert type="info" showIcon message="坐标为可选信息" description="仅填写已核实且允许披露的坐标；本页面不提供地图选点。" style={{ marginBottom: 16 }} />
+            <PageFeedback tone="info" title="坐标为可选信息" description="仅填写已核实且允许披露的坐标；本页面不提供地图选点。" style={{ marginBottom: 16 }} />
             <Row gutter={[16, 0]}>
               <Col xs={24} md={12}>
                 <Form.Item name="latitude" label="纬度" rules={[{ type: 'number', min: -90, max: 90, message: '纬度必须在 -90 到 90 之间' }]}>

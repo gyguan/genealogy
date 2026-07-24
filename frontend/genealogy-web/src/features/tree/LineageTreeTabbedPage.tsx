@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -78,6 +82,8 @@ import './lineage-double-card.css';
 import './lineage-tabbed-page.css';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -826,7 +832,7 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
   return (
     <div className="lineage-page lineage-tree-page lineage-tabbed-page">
       <Card className="lineage-tabbed-query-card" title="世系图谱" size="small">
-        {loadState.clan.error ? <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
+        {loadState.clan.error ? <PageFeedback tone="error" title={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
         <Tabs
           className="lineage-query-tabs"
           activeKey={mode}
@@ -871,11 +877,10 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
             </Field>
           </div>
           {activeLoadState.error ? (
-            <Alert
-              type="error"
-              showIcon
-              message={`${mode === 'person' ? '人物中心图谱' : '支派全局图谱'}加载失败：${activeLoadState.error}`}
-              action={<Button type="link" onClick={() => mode === 'person' ? void loadPersonGraph(personApplied) : void loadBranchGraph(branchApplied)}>重试</Button>}
+            <PageFeedback
+              tone="error"
+              title={`${mode === 'person' ? '人物中心图谱' : '支派全局图谱'}加载失败：${activeLoadState.error}`}
+              action={<Button tone="link" onClick={() => mode === 'person' ? void loadPersonGraph(personApplied) : void loadBranchGraph(branchApplied)}>重试</Button>}
             />
           ) : null}
           <section className={`lineage-logic-card lineage-logic-card--${mode}`}>

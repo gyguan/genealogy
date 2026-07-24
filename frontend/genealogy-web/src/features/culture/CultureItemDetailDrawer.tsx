@@ -1,4 +1,4 @@
-import { Alert, Button, Descriptions, Drawer, Empty, List, Skeleton, Space, Tabs, Tag, Timeline, Typography } from 'antd';
+import { Button, Descriptions, Drawer, Empty, List, Skeleton, Space, Tabs, Tag, Timeline, Typography } from 'antd';
 import type { CultureItemDetailResponse } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
@@ -15,6 +15,8 @@ import {
   statusColor,
   statusOptions
 } from './cultureOptions';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -157,13 +159,13 @@ export function CultureItemDetailDrawer(props: Props) {
                     <Descriptions.Item label="处理时间">{formatDateTime(item.review.reviewedAt)}</Descriptions.Item>
                     <Descriptions.Item label="驳回原因" span={2}>{item.review.rejectedReason || '-'}</Descriptions.Item>
                   </Descriptions>
-                  {props.traceError ? <Alert type="warning" showIcon message="追踪时间线暂不可用" description={props.traceError} /> : null}
+                  {props.traceError ? <PageFeedback tone="warning" title="追踪时间线暂不可用" description={props.traceError} /> : null}
                   {props.trace ? (
                     <>
                       <Timeline items={props.trace.timeline.map(event => ({
                         children: <Space direction="vertical" size={2}><Text strong>{event.title}</Text>{event.summary ? <Text>{event.summary}</Text> : null}<Text type="secondary">{event.actorDisplayName || '系统'} · {formatDateTime(event.occurredAt)}</Text></Space>
                       }))} />
-                      {props.trace.traceCoverage.notes.length ? <Alert type="info" showIcon message="追踪覆盖说明" description={props.trace.traceCoverage.notes.join('；')} /> : null}
+                      {props.trace.traceCoverage.notes.length ? <PageFeedback tone="info" title="追踪覆盖说明" description={props.trace.traceCoverage.notes.join('；')} /> : null}
                     </>
                   ) : !props.traceError ? <Skeleton active paragraph={{ rows: 4 }} /> : null}
                 </Space>

@@ -74,6 +74,8 @@ import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 const siteTypes: Array<{ value: CultureSiteType; label: string }> = [
@@ -516,11 +518,11 @@ export function CultureSiteTab() {
       </Form>
     </Card>
 
-    {refreshError ? <Alert type="warning" showIcon message="刷新失败，已保留上次结果" description={refreshError} closable onClose={() => setRefreshError('')} /> : null}
+    {refreshError ? <PageFeedback tone="warning" title="刷新失败，已保留上次结果" description={refreshError} closable onClose={() => setRefreshError('')} /> : null}
     <Card title="文化场所列表">
       {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化场所'} /> : null}
-      {clanId && listError && !listForbidden ? <Alert type="error" showIcon message="文化场所加载失败" description={listError} style={{ marginBottom: 12 }} /> : null}
+      {clanId && listError && !listForbidden ? <PageFeedback tone="error" title="文化场所加载失败" description={listError} style={{ marginBottom: 12 }} /> : null}
       {clanId && !listForbidden ? <Table<CultureSiteSummaryResponse>
         rowKey="id"
         size="middle"
@@ -546,7 +548,7 @@ export function CultureSiteTab() {
     </Card>
 
     <Drawer open={Boolean(selectedId)} width={720} title={<Title level={4} style={{ margin: 0 }}>文化场所详情</Title>} loading={detailLoading} onClose={closeDetail}>
-      {detailError ? <Alert type="error" showIcon message="详情加载失败" description={detailError} /> : null}
+      {detailError ? <PageFeedback tone="error" title="详情加载失败" description={detailError} /> : null}
       {detail ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         <Descriptions bordered size="small" column={1}>
           <Descriptions.Item label="场所名称">{detail.name}</Descriptions.Item>
@@ -574,8 +576,8 @@ export function CultureSiteTab() {
         <Card size="small" title="审核与追踪">
           <Space direction="vertical" style={{ width: '100%' }}>
             <Text>审核状态：{detail.review.status || '尚未提交'}</Text>
-            {detail.review.rejectedReason ? <Alert type="warning" showIcon message="驳回原因" description={detail.review.rejectedReason} /> : null}
-            {traceError ? <Alert type="warning" showIcon message="完整追踪暂不可用" description={traceError} /> : null}
+            {detail.review.rejectedReason ? <PageFeedback tone="warning" title="驳回原因" description={detail.review.rejectedReason} /> : null}
+            {traceError ? <PageFeedback tone="warning" title="完整追踪暂不可用" description={traceError} /> : null}
             <Text>可见历史事件：{trace?.timeline.length || 0}</Text>
             <Button onClick={openTracking}>打开完整追踪</Button>
           </Space>
@@ -591,7 +593,7 @@ export function CultureSiteTab() {
     </Drawer>
 
     <Modal open={formOpen} width={780} title={editing ? (editing.dataStatus === 'official' ? '提交正式场所变更申请' : '编辑文化场所') : '新增文化场所'} okText={editing?.dataStatus === 'official' ? '提交变更审核' : '保存草稿'} cancelText="取消" confirmLoading={saving} onOk={() => void save()} onCancel={() => { if (!saving) { setFormOpen(false); setEditing(null); } }}>
-      {editing?.dataStatus === 'official' ? <Alert type="info" showIcon message="正式场所不会被直接覆盖" description="本次修改将生成审核任务，审核通过后才生效。" style={{ marginBottom: 16 }} /> : null}
+      {editing?.dataStatus === 'official' ? <PageFeedback tone="info" title="正式场所不会被直接覆盖" description="本次修改将生成审核任务，审核通过后才生效。" style={{ marginBottom: 16 }} /> : null}
       <Form form={editForm} layout="vertical">
         <Row gutter={12}>
           <Col xs={24} md={12}><Form.Item name="siteType" label="场所类型" rules={[{ required: true }]}><Select options={siteTypes} /></Form.Item></Col>

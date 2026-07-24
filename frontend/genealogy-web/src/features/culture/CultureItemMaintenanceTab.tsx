@@ -1,9 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Alert, Space } from 'antd';
+import {
+  useEffect,
+  useState } from 'react';
+import { Alert,
+  Space
+} from 'antd';
 import { CultureItemStandardTab } from './CultureItemStandardTab';
 import type { CultureClanOption } from './cultureLibraryService';
 import type { CultureTabKey } from './cultureTabState';
 import { subscribeCultureItemRefresh } from './cultureLibraryService';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {
   clanId?: string;
@@ -26,10 +32,9 @@ export function CultureItemMaintenanceTab({ clanId, clans, clansLoading, onClanC
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {refreshError ? (
-        <Alert
-          type="warning"
-          showIcon
-          message="文化资料刷新失败，仍显示上次查询结果"
+        <PageFeedback
+          tone="warning"
+          title="文化资料刷新失败，仍显示上次查询结果"
           description={refreshError}
           closable
           onClose={() => setRefreshError('')}

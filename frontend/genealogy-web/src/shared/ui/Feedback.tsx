@@ -6,7 +6,7 @@ import '../../feedback-system.css';
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
 export type FeedbackVariant = 'page' | 'section' | 'inline' | 'toast';
 
-export type PageFeedbackProps = {
+export type PageFeedbackProps = Omit<AlertProps, 'type' | 'message' | 'description' | 'action' | 'showIcon'> & {
   tone?: FeedbackTone;
   title: ReactNode;
   description?: ReactNode;
@@ -35,10 +35,12 @@ export function PageFeedback({
   variant = 'section',
   closable = false,
   className,
-  onClose
+  onClose,
+  ...alertProps
 }: PageFeedbackProps) {
   return (
     <Alert
+      {...alertProps}
       className={classNames('ui-feedback', `ui-feedback--${variant}`, className)}
       type={tone}
       showIcon

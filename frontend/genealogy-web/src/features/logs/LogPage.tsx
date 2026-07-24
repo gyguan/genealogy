@@ -1,8 +1,26 @@
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DownOutlined,
+  UpOutlined } from '@ant-design/icons';
+import { useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  Alert, Button, Card, DatePicker, Empty, Form, Input, Result, Select, Space, Table, Tabs, Tag, Typography
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  Result,
+  Select,
+  Space,
+  Table,
+  Tabs,
+  Tag,
+  Typography
 } from 'antd';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
@@ -55,6 +73,8 @@ import './tracking-page.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -393,7 +413,7 @@ export function LogPage({}: {  }) {
     </Form>
   );
 
-  const objectResult = objectForbidden ? <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" /> : objectError ? <Alert type="error" showIcon message="对象查询失败" description={objectError} action={<Button onClick={() => void loadObjects(objectFilters)}>重试</Button>} /> : (
+  const objectResult = objectForbidden ? <Result status="403" title="无权查看对象追踪" subTitle="当前账号缺少追踪查看权限，或当前宗族没有可见支派范围。" /> : objectError ? <PageFeedback tone="error" title="对象查询失败" description={objectError} action={<Button onClick={() => void loadObjects(objectFilters)}>重试</Button>} /> : (
     <Table<TrackingObjectResponse> size="small" rowKey={row => `${row.objectType}-${row.objectId}`} dataSource={objectRows} loading={objectLoading} scroll={{ x: 900 }} onRow={row => ({ onClick: () => openTrace(row) })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合条件的业务对象" /> }} pagination={{ current: objectPage?.pageNo || objectFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: objectPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 个对象`, onChange: pageNo => { const next = { ...objectFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setObjectFilters(next); void loadObjects(next); } }} columns={[
       { key: 'name', title: '业务对象', render: (_value, row) => <div><Text strong>{row.displayName}</Text>{row.secondaryLabel ? <div><Text type="secondary">{row.secondaryLabel}</Text></div> : null}</div> },
       { key: 'type', title: '类型', width: 120, render: (_value, row) => targetTypeText(row.objectType) },
@@ -405,7 +425,7 @@ export function LogPage({}: {  }) {
     ]} />
   );
 
-  const auditResult = auditForbidden ? <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" /> : auditError ? <Alert type="error" showIcon message="审计记录查询失败" description={auditError} action={<Button onClick={() => void loadAudit(auditFilters)}>重试</Button>} /> : (
+  const auditResult = auditForbidden ? <Result status="403" title="无权查看操作审计" subTitle="当前账号缺少操作日志查看权限。" /> : auditError ? <PageFeedback tone="error" title="审计记录查询失败" description={auditError} action={<Button onClick={() => void loadAudit(auditFilters)}>重试</Button>} /> : (
     <Table<OperationLogResponse> size="small" rowKey={row => String(row.id)} dataSource={auditRows} loading={auditLoading} scroll={{ x: 980 }} onRow={row => ({ onClick: () => { setSelectedAuditLog(row); setSelectedAuditLogId(String(row.id)); } })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无操作审计记录" /> }} pagination={{ current: auditPage?.pageNo || auditFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: auditPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条记录`, onChange: pageNo => { const next = { ...auditFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setAuditFilters(next); void loadAudit(next, ''); } }} columns={[
       { key: 'time', title: '操作时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
       { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
@@ -417,7 +437,7 @@ export function LogPage({}: {  }) {
     ]} />
   );
 
-  const riskResult = riskForbidden ? <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" /> : riskError ? <Alert type="error" showIcon message="风险审计查询失败" description={riskError} action={<Button onClick={() => void loadRisk(riskFilters)}>重试</Button>} /> : (
+  const riskResult = riskForbidden ? <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" /> : riskError ? <PageFeedback tone="error" title="风险审计查询失败" description={riskError} action={<Button onClick={() => void loadRisk(riskFilters)}>重试</Button>} /> : (
     <Table<RiskAuditEventResponse> size="small" rowKey={row => String(row.id)} dataSource={riskRows} loading={riskLoading} scroll={{ x: 1180 }} onRow={row => ({ onClick: () => { setSelectedRiskLog(row); setSelectedRiskLogId(String(row.id)); } })} rowClassName="tracking-clickable-row" locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }} pagination={{ current: riskPage?.pageNo || riskFilters.pageNo, pageSize: TRACKING_PAGE_SIZE, total: riskPage?.total || 0, showSizeChanger: false, showTotal: total => `共 ${total} 条风险事件`, onChange: pageNo => { const next = { ...riskFilters, pageNo, pageSize: TRACKING_PAGE_SIZE }; setRiskFilters(next); void loadRisk(next, ''); } }} columns={[
       { key: 'time', title: '发生时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
       { key: 'level', title: '风险等级', width: 100, render: (_value, row) => <Tag color={riskLevelColor(row.riskLevel)}>{riskLevelText(row.riskLevel)}</Tag> },
@@ -443,7 +463,7 @@ export function LogPage({}: {  }) {
           { key: TRACKING_TABS.AUDIT, label: '操作日志' },
           { key: TRACKING_TABS.RISK, label: '风险事件' }
         ]} />
-        {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
+        {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
       </Card>
       {workspace.clanId ? (
         <QueryResultCard

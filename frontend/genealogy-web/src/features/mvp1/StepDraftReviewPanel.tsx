@@ -14,6 +14,8 @@ import { DataTable, type Column } from '../../shared/ui/DataTable';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 type StepReviewTargetType = 'person' | 'relationship' | 'source';
 
 type StepConfig = {
@@ -256,8 +258,8 @@ export function StepDraftReviewPanel() {
           </div>
           <Button loading={loading} onClick={() => void loadObjects()}>刷新</Button>
         </div>
-        {!clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
-        {warning ? <Alert type="info" showIcon message={warning} /> : null}
+        {!clanId ? <PageFeedback tone="warning" title="请先选择宗族" /> : null}
+        {warning ? <PageFeedback tone="info" title={warning} /> : null}
         {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
           <DataTable
             data={rows}

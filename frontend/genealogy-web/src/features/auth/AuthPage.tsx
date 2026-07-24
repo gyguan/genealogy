@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import {
+  useMemo,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -20,6 +22,8 @@ import {
 } from './authPageModel.js';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -344,8 +348,8 @@ export function AuthPage({ onChanged, standalone = false }: Props) {
 
       <section className="commercial-auth-panel" aria-label="账号认证">
         <div className="commercial-auth-card">
-          {notice ? <Alert type={notice.type} showIcon message={notice.message} description={notice.description} closable onClose={() => setNotice(null)} /> : null}
-          {inlineError ? <Alert type="error" showIcon message="操作未完成" description={inlineError} closable onClose={() => setInlineError('')} /> : null}
+          {notice ? <PageFeedback tone={notice.type} title={notice.message} description={notice.description} closable onClose={() => setNotice(null)} /> : null}
+          {inlineError ? <PageFeedback tone="error" title="操作未完成" description={inlineError} closable onClose={() => setInlineError('')} /> : null}
           {mode === 'login' ? renderLogin() : null}
           {mode === 'forgot' ? renderForgot() : null}
           {mode === 'reset' ? renderReset() : null}

@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import dayjs from 'dayjs';
 import {
   Alert,
@@ -37,6 +41,8 @@ import {
   riskLevelText,
   targetTypeText
 } from './trackingCenterLabels';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -236,7 +242,7 @@ export function RiskAuditPanel({
       {forbidden ? (
         <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" />
       ) : error ? (
-        <Alert type="error" showIcon message="风险审计查询失败" description={error} action={<Button size="small" onClick={() => void load()}>重试</Button>} />
+        <PageFeedback tone="error" title="风险审计查询失败" description={error} action={<Button size="small" onClick={() => void load()}>重试</Button>} />
       ) : (
         <>
           <Card title="高风险操作事件" extra={<Text type="secondary">点击记录查看原始日志；可追踪对象可直接跳转</Text>}>

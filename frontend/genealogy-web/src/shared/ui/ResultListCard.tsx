@@ -1,9 +1,11 @@
 import type { Key, ReactNode } from 'react';
-import { Alert, Button, Space, Table, Tag, Typography } from 'antd';
+import { Button, Space, Table, Tag, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import { WIZARD_RESULT_PAGE_SIZE, wizardBatchToolbarVisible, wizardSelectionLabel } from '../../features/mvp1/domain/wizardResultListModel';
 import { QueryResultCard } from './QueryResultCards';
 import './result-list-card.css';
+
+import { PageFeedback } from './Feedback';
 
 type ResultListCardProps<RecordType extends object> = TableProps<RecordType> & {
   description?: ReactNode;
@@ -108,10 +110,10 @@ export function ResultListCard<RecordType extends object>(props: ResultListCardP
       {notice ? <div className="result-list-card__notice">{notice}</div> : null}
       {description ? <Typography.Paragraph className="result-list-card__description" type="secondary">{description}</Typography.Paragraph> : null}
       {initialError && !rows.length ? (
-        <Alert type="error" showIcon message={initialError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
+        <PageFeedback tone="error" title={initialError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
       ) : null}
       {refreshError && rows.length ? (
-        <Alert className="result-list-card__refresh-error" type="warning" showIcon message={refreshError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
+        <PageFeedback className="result-list-card__refresh-error" tone="warning" title={refreshError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
       ) : null}
       <Table<RecordType>
         {...tableProps}

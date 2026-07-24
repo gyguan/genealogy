@@ -1,8 +1,34 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import type { Key } from 'react';
 import {
-  Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Empty, Form, Grid, Input,
-  List, Modal, Pagination, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Timeline, Typography
+  Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Descriptions,
+  Drawer,
+  Empty,
+  Form,
+  Grid,
+  Input,
+  List,
+  Modal,
+  Pagination,
+  Result,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tabs,
+  Tag,
+  Timeline,
+  Typography
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { PageResponse } from '../../shared/api/client';
@@ -17,6 +43,8 @@ import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {  };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -710,13 +738,12 @@ export function ReviewCenterPage({}: Props) {
                 { key: 'processed', label: activeTab === 'processed' && hasLoaded ? `已处理（${total}）` : '已处理' }
               ]} />
             </Space>
-            {staleFailure ? <Alert type="warning" showIcon message="刷新失败，当前展示的是上次成功数据" description={staleFailure} action={<Button size="small" onClick={() => void loadTasks()}>重试</Button>} /> : null}
+            {staleFailure ? <PageFeedback tone="warning" title="刷新失败，当前展示的是上次成功数据" description={staleFailure} action={<Button size="small" onClick={() => void loadTasks()}>重试</Button>} /> : null}
             {activeTab === 'pending' && selectedTasks.length > 0 ? (
-              <Alert
-                type="info"
-                showIcon
-                message={`已选择 ${selectedTasks.length} 条（仅当前页）`}
-                action={<Space wrap><Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button><Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button><Button type="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button></Space>}
+              <PageFeedback
+                tone="info"
+                title={`已选择 ${selectedTasks.length} 条（仅当前页）`}
+                action={<Space wrap><Button tone="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button><Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button><Button tone="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button></Space>}
               />
             ) : null}
             {renderResultContent()}
@@ -735,7 +762,7 @@ export function ReviewCenterPage({}: Props) {
       >
         {currentDetail ? (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {detailNotice ? <Alert type="warning" showIcon message={detailNotice} /> : null}
+            {detailNotice ? <PageFeedback tone="warning" title={detailNotice} /> : null}
             <div><Typography.Title level={5}>审核摘要</Typography.Title><Descriptions column={1} size="small" bordered>
               <Descriptions.Item label="审核事项">{currentDetail.title}</Descriptions.Item>
               <Descriptions.Item label="审核对象">{targetTypeText(currentDetail.targetType)}</Descriptions.Item>
@@ -748,7 +775,7 @@ export function ReviewCenterPage({}: Props) {
               <Descriptions.Item label="变更摘要">{currentDetail.diffSummary || '暂无摘要'}</Descriptions.Item>
             </Descriptions></div>
             <div><Typography.Title level={5}>字段变更</Typography.Title>{reviewDiff?.fields?.length ? <Table size="small" pagination={false} rowKey={row => `${row.fieldName}-${row.changeType}`} dataSource={reviewDiff.fields} columns={[{ title: '字段', dataIndex: 'fieldName', width: 140 }, { title: '变更前', dataIndex: 'beforeValue', render: value => value || '-' }, { title: '变更后', dataIndex: 'afterValue', render: value => value || '-' }]} scroll={{ x: 520 }} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前详情接口未返回字段级变更" />}</div>
-            <div><Typography.Title level={5}>来源与证据</Typography.Title>{currentDetail.targetSummary?.fileName ? <Alert type="info" showIcon message={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}</div>
+            <div><Typography.Title level={5}>来源与证据</Typography.Title>{currentDetail.targetSummary?.fileName ? <PageFeedback tone="info" title={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}</div>
             <div><Typography.Title level={5}>风险与冲突</Typography.Title><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回风险或冲突项；最终校验以服务端提交结果为准" /></div>
             <div><Typography.Title level={5}>影响范围</Typography.Title>{currentDetail.targetSummary?.draftCount !== undefined || currentDetail.targetSummary?.excludedCount !== undefined ? <Descriptions column={1} size="small" bordered><Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item><Descriptions.Item label="涉及草稿">{currentDetail.targetSummary?.draftCount ?? 0} 条</Descriptions.Item><Descriptions.Item label="排除记录">{currentDetail.targetSummary?.excludedCount ?? 0} 条</Descriptions.Item></Descriptions> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回可量化的影响范围" />}</div>
             <div><Typography.Title level={5}>历史审核轮次</Typography.Title><Timeline items={historyItems} /></div>
@@ -757,11 +784,11 @@ export function ReviewCenterPage({}: Props) {
       </Drawer>
 
       <Modal title="审核决策" open={Boolean(decisionTask)} confirmLoading={decisionLoading} okText="确认提交" cancelButtonProps={{ disabled: decisionLoading }} closable={!decisionLoading} maskClosable={!decisionLoading} onOk={() => void submitDecision()} onCancel={() => { if (!decisionLoading) { setDecisionTask(null); decisionForm.resetFields(); } }} destroyOnHidden>
-        {decisionTask ? <Space direction="vertical" size={16} style={{ width: '100%' }}><Alert type="info" showIcon message={decisionTask.title} description={`${targetTypeText(decisionTask.targetType)} · ${decisionTask.branchName || '全宗族'}`} /><Form form={decisionForm} layout="vertical"><Form.Item name="decisionType" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}><Select options={[{ value: 'approve', label: '通过' }, { value: 'reject', label: '驳回' }]} /></Form.Item><Form.Item noStyle shouldUpdate={(previous, current) => previous.decisionType !== current.decisionType}>{({ getFieldValue }) => { const type = getFieldValue('decisionType') as DecisionType; return <Form.Item name="comment" label={type === 'reject' ? '驳回原因' : '审核意见'} rules={type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={type === 'reject' ? '说明需要补充或修正的内容' : '填写审核意见（可选）'} /></Form.Item>; }}</Form.Item></Form></Space> : null}
+        {decisionTask ? <Space direction="vertical" size={16} style={{ width: '100%' }}><PageFeedback tone="info" title={decisionTask.title} description={`${targetTypeText(decisionTask.targetType)} · ${decisionTask.branchName || '全宗族'}`} /><Form form={decisionForm} layout="vertical"><Form.Item name="decisionType" label="审核结论" rules={[{ required: true, message: '请选择审核结论' }]}><Select options={[{ value: 'approve', label: '通过' }, { value: 'reject', label: '驳回' }]} /></Form.Item><Form.Item noStyle shouldUpdate={(previous, current) => previous.decisionType !== current.decisionType}>{({ getFieldValue }) => { const type = getFieldValue('decisionType') as DecisionType; return <Form.Item name="comment" label={type === 'reject' ? '驳回原因' : '审核意见'} rules={type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={type === 'reject' ? '说明需要补充或修正的内容' : '填写审核意见（可选）'} /></Form.Item>; }}</Form.Item></Form></Space> : null}
       </Modal>
 
       <Modal title={`${batchDecision?.retry ? '重试' : '批量'}${batchDecision?.type === 'reject' ? '驳回' : '通过'}审核`} open={Boolean(batchDecision)} confirmLoading={batchLoading} okText={batchDecision?.type === 'reject' ? '确认驳回' : '确认通过'} okButtonProps={{ danger: batchDecision?.type === 'reject' }} cancelButtonProps={{ disabled: batchLoading }} closable={!batchLoading} maskClosable={!batchLoading} onCancel={() => { if (!batchLoading) { setBatchDecision(null); batchForm.resetFields(); } }} onOk={() => void submitBatchDecision()} destroyOnHidden>
-        {batchDecision ? <Space direction="vertical" size={16} style={{ width: '100%' }}><Alert type={batchDecision.type === 'reject' ? 'warning' : 'info'} showIcon message={`本次操作仅影响当前页选中的 ${batchDecision.tasks.length} 条任务`} description={batchDecision.type === 'reject' ? '驳回后任务将退回提交人处理，请填写明确、可执行的驳回原因。' : '通过后相关变更将按服务端审核流程生效，请确认已完成必要核验。'} /><Descriptions size="small" column={1} bordered><Descriptions.Item label="选中数量">{batchDecision.tasks.length} 条</Descriptions.Item><Descriptions.Item label="对象类型"><Space wrap>{batchTypeSummary.map(item => <Tag key={item.label}>{item.label} {item.count}</Tag>)}</Space></Descriptions.Item></Descriptions><Form form={batchForm} layout="vertical"><Form.Item name="comment" label={batchDecision.type === 'reject' ? '驳回原因' : '审核意见'} rules={batchDecision.type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={batchDecision.type === 'reject' ? '说明需要补充或修正的内容' : '填写统一审核意见（可选）'} /></Form.Item></Form></Space> : null}
+        {batchDecision ? <Space direction="vertical" size={16} style={{ width: '100%' }}><PageFeedback tone={batchDecision.tone=== 'reject' ? 'warning' : 'info'} title={`本次操作仅影响当前页选中的 ${batchDecision.tasks.length} 条任务`} description={batchDecision.tone=== 'reject' ? '驳回后任务将退回提交人处理，请填写明确、可执行的驳回原因。' : '通过后相关变更将按服务端审核流程生效，请确认已完成必要核验。'} /><Descriptions size="small" column={1} bordered><Descriptions.Item label="选中数量">{batchDecision.tasks.length} 条</Descriptions.Item><Descriptions.Item label="对象类型"><Space wrap>{batchTypeSummary.map(item => <Tag key={item.label}>{item.label} {item.count}</Tag>)}</Space></Descriptions.Item></Descriptions><Form form={batchForm} layout="vertical"><Form.Item name="comment" label={batchDecision.type === 'reject' ? '驳回原因' : '审核意见'} rules={batchDecision.type === 'reject' ? [{ required: true, whitespace: true, message: '请填写驳回原因' }, { max: 500, message: '最多输入 500 个字符' }] : [{ max: 500, message: '最多输入 500 个字符' }]}><Input.TextArea rows={4} maxLength={500} showCount placeholder={batchDecision.type === 'reject' ? '说明需要补充或修正的内容' : '填写统一审核意见（可选）'} /></Form.Item></Form></Space> : null}
       </Modal>
 
       <Modal title="批量审核结果" open={Boolean(batchResult)} width={720} destroyOnHidden footer={batchResult?.failures.length ? <Space><Button onClick={() => setBatchResult(null)}>关闭</Button><Button type="primary" onClick={retryBatchFailures}>仅重试失败项</Button></Space> : null} onCancel={() => setBatchResult(null)}>

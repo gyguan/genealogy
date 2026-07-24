@@ -45,6 +45,8 @@ import type { MigrationSearchState } from './migrationEventService';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 const initialSearch: MigrationSearchState = { pageNo: 1, pageSize: 10 };
@@ -246,7 +248,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
       <Select allowClear placeholder="筛选支派" style={{ width: 180 }} options={branches.map(branch => ({ label: branch.name, value: Number(branch.id) }))} onChange={branchId => setSearch({ ...search, branchId, pageNo: 1 })} />
       <Select allowClear placeholder="状态" style={{ width: 140 }} options={['draft', 'pending_review', 'official', 'rejected', 'archived'].map(value => ({ value, label: statusLabel(value) }))} onChange={dataStatus => setSearch({ ...search, dataStatus, pageNo: 1 })} />
     </Space>
-    {error && <Alert type="error" showIcon message="迁徙事件加载失败" description={error} style={{ marginBottom: 16 }} />}
+    {error && <PageFeedback tone="error" title="迁徙事件加载失败" description={error} style={{ marginBottom: 16 }} />}
     {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : <>
       <Timeline items={items.filter(item => item.dataStatus === 'official').map(item => ({
         children: <Space direction="vertical" size={0}>
@@ -271,9 +273,9 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
         </Descriptions>
         <Card size="small" title="说明"><Paragraph>{detail.description || '暂无说明'}</Paragraph></Card>
         <Card size="small" title={`来源证据（${detail.sources.length}）`}>
-          {detail.sources.length ? detail.sources.map(source => <Paragraph key={source.sourceId}><Text strong>{source.sourceName}</Text>{source.excerpt ? `：${source.excerpt}` : ''}</Paragraph>) : <Alert type="warning" showIcon message="尚未绑定来源，不能形成可信正式迁徙结论" />}
+          {detail.sources.length ? detail.sources.map(source => <Paragraph key={source.sourceId}><Text strong>{source.sourceName}</Text>{source.excerpt ? `：${source.excerpt}` : ''}</Paragraph>) : <PageFeedback tone="warning" title="尚未绑定来源，不能形成可信正式迁徙结论" />}
         </Card>
-        {detail.review.status && <Alert type="info" showIcon message={`审核状态：${detail.review.status}`} description={detail.review.rejectedReason || undefined} />}
+        {detail.review.status && <PageFeedback tone="info" title={`审核状态：${detail.review.status}`} description={detail.review.rejectedReason || undefined} />}
       </Space> : <Empty description="暂无可见详情" />}
     </Drawer>
 

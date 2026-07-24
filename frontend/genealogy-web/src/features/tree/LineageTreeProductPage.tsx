@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -76,6 +80,8 @@ import './lineage-double-card.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -752,13 +758,12 @@ export function LineageTreeProductPage({ onNavigate }: Props) {
         </Field>
       </div>
       {activeLoadState.error ? (
-        <Alert
-          type="error"
-          showIcon
-          message={`${mode === 'person' ? '人物中心图' : '支派全局图'}加载失败：${activeLoadState.error}`}
+        <PageFeedback
+          tone="error"
+          title={`${mode === 'person' ? '人物中心图' : '支派全局图'}加载失败：${activeLoadState.error}`}
           action={(
             <Button
-              type="link"
+              tone="link"
               onClick={() => mode === 'person'
                 ? void loadPersonGraph(workspace.personId, {
                   branchId: appliedBranchId,
@@ -809,7 +814,7 @@ export function LineageTreeProductPage({ onNavigate }: Props) {
     <div className="lineage-page lineage-tree-page lineage-tree-page--standardized lineage-double-card-page">
       <Card className="lineage-double-card-query" title="图谱查询" size="small">
         {loadState.clan.error ? (
-          <Alert type="error" showIcon message={`宗族范围加载失败：${loadState.clan.error}`} />
+          <PageFeedback tone="error" title={`宗族范围加载失败：${loadState.clan.error}`} />
         ) : null}
         <div className="lineage-double-card-form">
           <div className="lineage-double-card-grid">

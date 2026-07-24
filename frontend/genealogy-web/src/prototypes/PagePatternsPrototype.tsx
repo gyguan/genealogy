@@ -54,6 +54,8 @@ import './page-patterns.css';
 
 import { feedback } from '../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../shared/ui/Feedback';
+
 const { Content, Header, Sider } = Layout;
 const { Paragraph, Text, Title } = Typography;
 
@@ -509,11 +511,10 @@ function ListPattern() {
         }
       >
         {previewState === 'normal' ? (
-          <Alert
-            type="info"
-            showIcon
+          <PageFeedback
+            tone="info"
             closable
-            message="当前展示黄氏宗族全部可见文化资料"
+            title="当前展示黄氏宗族全部可见文化资料"
             description="正式资料变更、归档和删除将进入审核流程。"
             className="pp-list-alert"
           />
@@ -639,10 +640,9 @@ function EditPattern() {
         secondaryAction={<Button icon={<ArrowLeftOutlined />}>返回详情</Button>}
       />
 
-      <Alert
-        type="warning"
-        showIcon
-        message="正式资料不会被直接覆盖"
+      <PageFeedback
+        tone="warning"
+        title="正式资料不会被直接覆盖"
         description="本次保存将创建变更审核申请，审核通过前当前正式内容保持不变。"
       />
 
@@ -821,7 +821,7 @@ function GovernanceDialog({
             <Descriptions.Item label="影响对象">敦本堂堂号源流</Descriptions.Item>
             <Descriptions.Item label="当前状态">正式</Descriptions.Item>
           </Descriptions>
-          <Alert type={configuration.alertType} showIcon message={configuration.alert} />
+          <PageFeedback tone={configuration.alertType} title={configuration.alert} />
           <Form form={form} layout="vertical">
             <Form.Item
               name="reason"
@@ -871,10 +871,9 @@ function ActionPattern() {
         description="所有状态变更操作使用统一结构，明确影响对象、操作后果、必要输入和确认层级。"
       />
 
-      <Alert
-        type="info"
-        showIcon
-        message="统一原则"
+      <PageFeedback
+        tone="info"
+        title="统一原则"
         description="业务校验错误显示在当前弹窗；权限、状态冲突和网络错误使用 message 或 Alert，不通过未处理 Promise 触发全局错误。"
       />
 
