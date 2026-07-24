@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert, Button, Descriptions, Form, List, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Button, Descriptions, Form, List, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import type {
   ReviewQualityCheckAcceptedResponse,
@@ -12,6 +12,7 @@ import type {
   ReviewQualityRuleResult
 } from '../../shared/api/generated/review-quality-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import { feedback } from '../../shared/ui/OperationFeedback';
 import { ReviewCenterPage as ReviewCenterPageContent } from './ReviewCenterPageContent';
 import { hasValidReviewPageSize, withDefaultReviewPageSize } from './reviewCenterPagination';
@@ -95,16 +96,16 @@ function currentQueryScope(): ReviewQualityCheckQueryScope {
 function QualityResultPanel({ result, loading }: { result: ReviewQualityCheckResponse | null; loading: boolean }) {
   if (loading) return <div style={{ paddingBlock: 16, textAlign: 'center' }}><Spin size="small" /> 正在加载质量检查结果</div>;
   if (!result || result.status === 'NOT_CHECKED') {
-    return <Alert type="info" showIcon message="尚未执行质量检查" description="质量检查需从审核列表工具栏触发，详情页仅展示最近一次检查结果。" />;
+    return <PageFeedback tone="info" title="尚未执行质量检查" description="质量检查需从审核列表工具栏触发，详情页仅展示最近一次检查结果。" />;
   }
   const meta = statusMeta(result.status);
   const rules = result.rules || [];
+  const tone = result.reviewBlocked || result.status === 'FAILED' ? 'error' : result.status === 'ISSUES_FOUND' ? 'warning' : 'success';
   return (
     <Space direction="vertical" size={12} style={{ width: '100%' }}>
-      <Alert
-        type={result.reviewBlocked ? 'error' : result.status === 'FAILED' ? 'error' : result.status === 'ISSUES_FOUND' ? 'warning' : 'success'}
-        showIcon
-        message={<Space wrap><span>质量检查</span><Tag color={meta.color}>{meta.text}</Tag>{result.reviewBlocked ? <Tag color="error">禁止审核通过</Tag> : null}</Space>}
+      <PageFeedback
+        tone={tone}
+        title={`质量检查：${meta.text}${result.reviewBlocked ? '（禁止审核通过）' : ''}`}
         description={result.failureMessage || (result.reviewBlocked ? '存在阻断性问题，审核通过时后端将拒绝提交。' : '检查结果已由服务端记录。')}
       />
       {result.summary ? (
@@ -187,11 +188,7 @@ export function ReviewCenterPage(props: Props) {
   function openQualityModal() {
     const ids = selectedTaskIdsFromTable();
     setSelectedTaskIds(ids);
-    qualityForm.setFieldsValue({
-      scopeType: ids.length ? 'TASK_IDS' : 'QUERY',
-      mode: 'INCREMENTAL',
-      ruleCodes: undefined
-    });
+    qualityForm.setFieldsValue({ scopeType: ids.length ? 'TASK_IDS' : 'QUERY', mode: 'INCREMENTAL', ruleCodes: undefined });
     setQualityModalOpen(true);
   }
 
@@ -254,7 +251,7 @@ export function ReviewCenterPage(props: Props) {
         destroyOnHidden
       >
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Alert type="info" showIcon message={selectedTaskIds.length ? `默认检查已选择的 ${selectedTaskIds.length} 条审核任务` : '当前未选择任务，默认检查当前查询结果'} description="检查只发现并报告问题，不会直接修改正式谱库。" />
+          <PageFeedback tone="info" title={selectedTaskIds.length ? `默认检查已选择的 ${selectedTaskIds.length} 条审核任务` : '当前未选择任务，默认检查当前查询结果'} description="检查只发现并报告问题，不会直接修改正式谱库。" />
           <Form form={qualityForm} layout="vertical">
             <Form.Item name="scopeType" label="检查范围" rules={[{ required: true }]}>
               <Select options={[
