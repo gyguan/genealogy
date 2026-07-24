@@ -4,12 +4,11 @@ import test from 'node:test';
 
 const source = readFileSync(new URL('./MemberInvitationAction.tsx', import.meta.url), 'utf8');
 
-test('member invitation entry uses semantic feedback without modal notify wiring', () => {
+test('member invitation entry uses semantic feedback without legacy notify props', () => {
   assert.match(source, /import \{ feedback \} from '\.\.\/\.\.\/shared\/ui\/OperationFeedback'/);
   assert.match(source, /feedback\.error/);
-  assert.match(source, /type Props = \{ notify: \(data: unknown, error\?: boolean\) => void \}/);
-  assert.match(source, /export function MemberInvitationAction\(_props: Props\)/);
+  assert.match(source, /export function MemberInvitationAction\(\)/);
   assert.match(source, /<MemberInvitationModal/);
-  assert.doesNotMatch(source, /<MemberInvitationModal[\s\S]*notify=/);
-  assert.doesNotMatch(source, /\bnotify\s*\(/);
+  assert.doesNotMatch(source, /type Props/);
+  assert.doesNotMatch(source, /\bnotify\b/);
 });

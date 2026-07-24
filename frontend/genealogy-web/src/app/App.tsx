@@ -212,7 +212,7 @@ function AppShell() {
   function renderModuleActions() {
     if (personDetailRoute || personEditRoute) return null;
     if (active === 'treeProduct') return <BookletActions notify={notify} />;
-    if (active === 'memberManage') return <MemberInvitationAction notify={notify} />;
+    if (active === 'memberManage') return <MemberInvitationAction />;
     return null;
   }
 
