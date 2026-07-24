@@ -33,7 +33,7 @@ import { SourceDraftDeleteAction } from '../features/sources/SourceDraftDeleteAc
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
-import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
+import { EditingWorkspacePrototypePage } from '../features/workbench/EditingWorkspacePrototypePage';
 
 import { InlineFeedback } from '../shared/ui/Feedback';
 
@@ -65,7 +65,6 @@ function readViewFromUrl(): ViewKey {
 function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
   navigateToView(key as AppViewKey, window.location.href, { mode });
 }
-
 
 export function App() {
   return (
@@ -164,7 +163,7 @@ function AppShell() {
       case 'treeProduct': return <LineageTreeProductPage onNavigate={enterPage} />;
       case 'personArchive': return <PersonArchiveSearchPage />;
       case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceDraftDeleteAction /><SourceLibraryQueryPage /></>;
-      case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
+      case 'editingWorkspace': return <EditingWorkspacePrototypePage onNavigate={enterPage} />;
       case 'imports': return <ImportPage />;
       case 'reviewCenter': return <ReviewCenterPage />;
       case 'memberManage': return <MemberPage />;
