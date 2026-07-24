@@ -1,0 +1,222 @@
+name: Issue 782 Build Patch
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/issue-782-build-patch.yml"
+  workflow_dispatch:
+
+jobs:
+  build-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Apply source binding review patch
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java')
+          s = p.read_text()
+          s = s.replace('import com.genealogy.source.entity.SourceEntity;\nimport com.genealogy.source.repository.SourceRepository;', 'import com.genealogy.source.entity.SourceBindingEntity;\nimport com.genealogy.source.entity.SourceEntity;\nimport com.genealogy.source.repository.SourceBindingRepository;\nimport com.genealogy.source.repository.SourceRepository;')
+          s = s.replace('private static final String TARGET_SOURCE = "source";', 'private static final String TARGET_SOURCE = "source";\n    private static final String TARGET_SOURCE_BINDING = "source_binding";')
+          s = s.replace('private static final String CHANGE_PERSON_DELETE = "person_delete";', 'private static final String CHANGE_PERSON_DELETE = "person_delete";\n    private static final String CHANGE_CREATE = "create";\n    private static final String CHANGE_REPLACE = "replace";\n    private static final String CHANGE_DELETE = "delete";\n    private static final String STATUS_ARCHIVED = "archived";')
+          s = s.replace('private PersonEventApplicationService personEventApplicationService;', 'private PersonEventApplicationService personEventApplicationService;\n    private SourceBindingRepository sourceBindingRepository;')
+          marker = '''    @Autowired
+    void setPersonEventApplicationService(PersonEventApplicationService personEventApplicationService) {
+        this.personEventApplicationService = personEventApplicationService;
+    }
+'''
+          replacement = marker + '''
+    @Autowired
+    void setSourceBindingRepository(SourceBindingRepository sourceBindingRepository) {
+        this.sourceBindingRepository = sourceBindingRepository;
+    }
+'''
+          s = s.replace(marker, replacement)
+          s = s.replace('if (TARGET_SOURCE.equals(targetType)) { applySource(revision); return; }', 'if (TARGET_SOURCE.equals(targetType)) { applySource(revision); return; }\n        if (TARGET_SOURCE_BINDING.equals(targetType)) { applySourceBinding(revision, applyTime); return; }')
+          s = s.replace('if (TARGET_SOURCE.equals(targetType)) { rejectSource(revision); return; }', 'if (TARGET_SOURCE.equals(targetType)) { rejectSource(revision); return; }\n        if (TARGET_SOURCE_BINDING.equals(targetType)) { return; }')
+          insert = '''
+    private void applySourceBinding(AuditRecordEntity revision, LocalDateTime applyTime) {
+        if (sourceBindingRepository == null) {
+            throw new BusinessException("SOURCE_BINDING_APPLY_REPOSITORY_MISSING", "来源绑定审核生效服务不可用");
+        }
+        String changeType = normalize(revision.getChangeType());
+        if (CHANGE_DELETE.equals(changeType)) {
+            SourceBindingEntity entity = requireSourceBinding(revision.getTargetId(), revision.getClanId());
+            entity.setBindingStatus(STATUS_ARCHIVED);
+            entity.setUpdatedAt(applyTime);
+            sourceBindingRepository.save(entity);
+            return;
+        }
+        if (!CHANGE_CREATE.equals(changeType) && !CHANGE_REPLACE.equals(changeType)) {
+            throw new BusinessException("SOURCE_BINDING_CHANGE_TYPE_INVALID", "来源绑定变更类型不合法");
+        }
+        SourceBindingEntity snapshot = readPayload(revision.getNewPayload(), SourceBindingEntity.class);
+        if (snapshot == null) {
+            throw new BusinessException("SOURCE_BINDING_REVISION_PAYLOAD_MISSING", "来源绑定审核快照缺失");
+        }
+        if (CHANGE_CREATE.equals(changeType)) {
+            ensureNoActiveSourceBinding(snapshot, null);
+            snapshot.setId(null);
+            snapshot.setCreatedBy(revision.getSubmitterId());
+            if (snapshot.getCreatedAt() == null) snapshot.setCreatedAt(applyTime);
+        } else {
+            SourceBindingEntity current = requireSourceBinding(revision.getTargetId(), revision.getClanId());
+            ensureNoActiveSourceBinding(snapshot, current.getId());
+            snapshot.setId(current.getId());
+            snapshot.setCreatedBy(current.getCreatedBy());
+            snapshot.setCreatedAt(current.getCreatedAt());
+        }
+        snapshot.setClanId(revision.getClanId());
+        snapshot.setBindingStatus(STATUS_OFFICIAL);
+        snapshot.setUpdatedAt(applyTime);
+        sourceBindingRepository.save(snapshot);
+    }
+
+    private SourceBindingEntity requireSourceBinding(Long bindingId, Long clanId) {
+        SourceBindingEntity entity = sourceBindingRepository.findById(bindingId)
+                .orElseThrow(() -> new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在"));
+        if (!Objects.equals(entity.getClanId(), clanId) || STATUS_ARCHIVED.equals(normalize(entity.getBindingStatus()))) {
+            throw new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在");
+        }
+        return entity;
+    }
+
+    private void ensureNoActiveSourceBinding(SourceBindingEntity snapshot, Long currentId) {
+        boolean exists = sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(
+                snapshot.getSourceId(), snapshot.getTargetType(), snapshot.getTargetId(), STATUS_ARCHIVED);
+        if (!exists) return;
+        if (currentId != null) {
+            SourceBindingEntity current = sourceBindingRepository.findById(currentId).orElse(null);
+            if (current != null
+                    && Objects.equals(current.getSourceId(), snapshot.getSourceId())
+                    && Objects.equals(current.getTargetType(), snapshot.getTargetType())
+                    && Objects.equals(current.getTargetId(), snapshot.getTargetId())) return;
+        }
+        throw new BusinessException("SOURCE_BINDING_ALREADY_EXISTS", "来源与目标对象已存在有效绑定");
+    }
+
+'''
+          s = s.replace('    private void applyImportJob(AuditRecordEntity revision, LocalDateTime applyTime) {', insert + '    private void applyImportJob(AuditRecordEntity revision, LocalDateTime applyTime) {')
+          p.write_text(s)
+
+          t = Path('backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java')
+          t.write_text('''package com.genealogy.review.application;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.generation.repository.GenSchemeRepository;
+import com.genealogy.imports.repository.ImportJobRepository;
+import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.repository.RelationshipRepository;
+import com.genealogy.review.entity.AuditRecordEntity;
+import com.genealogy.source.entity.SourceBindingEntity;
+import com.genealogy.source.repository.SourceBindingRepository;
+import com.genealogy.source.repository.SourceRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class RevisionApplyServiceSourceBindingTest {
+    @Mock PersonRepository personRepository;
+    @Mock RelationshipRepository relationshipRepository;
+    @Mock SourceRepository sourceRepository;
+    @Mock BranchRepository branchRepository;
+    @Mock GenSchemeRepository genSchemeRepository;
+    @Mock ImportJobRepository importJobRepository;
+    @Mock ImportJobRowRepository importJobRowRepository;
+    @Mock SourceBindingRepository sourceBindingRepository;
+
+    private RevisionApplyService service(ObjectMapper mapper) {
+        RevisionApplyService service = new RevisionApplyService(personRepository, relationshipRepository, sourceRepository,
+                branchRepository, genSchemeRepository, importJobRepository, importJobRowRepository, mapper);
+        service.setSourceBindingRepository(sourceBindingRepository);
+        return service;
+    }
+
+    @Test
+    void appliesSourceBindingCreateFromUnifiedReviewTask() throws Exception {
+        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        SourceBindingEntity payload = new SourceBindingEntity();
+        payload.setSourceId(31L); payload.setTargetType("person"); payload.setTargetId(186L);
+        payload.setBindingReason("族谱记载"); payload.setExcerpt("人物条目"); payload.setConfidenceLevel("high");
+        when(sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(31L, "person", 186L, "archived")).thenReturn(false);
+        AuditRecordEntity revision = new AuditRecordEntity();
+        revision.setTargetType("source_binding"); revision.setTargetId(31L); revision.setClanId(4L);
+        revision.setChangeType("create"); revision.setSubmitterId(9L); revision.setNewPayload(mapper.writeValueAsString(payload));
+        LocalDateTime time = LocalDateTime.of(2026, 7, 24, 14, 10);
+        service(mapper).apply(revision, time);
+        ArgumentCaptor<SourceBindingEntity> captor = ArgumentCaptor.forClass(SourceBindingEntity.class);
+        verify(sourceBindingRepository).save(captor.capture());
+        SourceBindingEntity saved = captor.getValue();
+        assertThat(saved.getId()).isNull(); assertThat(saved.getClanId()).isEqualTo(4L);
+        assertThat(saved.getBindingStatus()).isEqualTo("official"); assertThat(saved.getCreatedBy()).isEqualTo(9L);
+        assertThat(saved.getUpdatedAt()).isEqualTo(time);
+    }
+
+    @Test
+    void appliesSourceBindingReplaceAndPreservesCreationMetadata() throws Exception {
+        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 20, 9, 0);
+        SourceBindingEntity current = new SourceBindingEntity();
+        current.setId(44L); current.setClanId(4L); current.setSourceId(31L); current.setTargetType("person"); current.setTargetId(186L);
+        current.setBindingStatus("official"); current.setCreatedBy(7L); current.setCreatedAt(createdAt);
+        SourceBindingEntity payload = new SourceBindingEntity();
+        payload.setSourceId(32L); payload.setTargetType("person"); payload.setTargetId(186L); payload.setConfidenceLevel("medium");
+        when(sourceBindingRepository.findById(44L)).thenReturn(Optional.of(current));
+        when(sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(32L, "person", 186L, "archived")).thenReturn(false);
+        AuditRecordEntity revision = new AuditRecordEntity();
+        revision.setTargetType("source_binding"); revision.setTargetId(44L); revision.setClanId(4L);
+        revision.setChangeType("replace"); revision.setNewPayload(mapper.writeValueAsString(payload));
+        service(mapper).apply(revision, LocalDateTime.of(2026, 7, 24, 14, 15));
+        ArgumentCaptor<SourceBindingEntity> captor = ArgumentCaptor.forClass(SourceBindingEntity.class);
+        verify(sourceBindingRepository).save(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(44L);
+        assertThat(captor.getValue().getCreatedBy()).isEqualTo(7L);
+        assertThat(captor.getValue().getCreatedAt()).isEqualTo(createdAt);
+        assertThat(captor.getValue().getBindingStatus()).isEqualTo("official");
+    }
+
+    @Test
+    void archivesSourceBindingOnDelete() {
+        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+        SourceBindingEntity current = new SourceBindingEntity();
+        current.setId(44L); current.setClanId(4L); current.setBindingStatus("official");
+        when(sourceBindingRepository.findById(44L)).thenReturn(Optional.of(current));
+        AuditRecordEntity revision = new AuditRecordEntity();
+        revision.setTargetType("source_binding"); revision.setTargetId(44L); revision.setClanId(4L); revision.setChangeType("delete");
+        LocalDateTime time = LocalDateTime.of(2026, 7, 24, 14, 20);
+        service(mapper).apply(revision, time);
+        assertThat(current.getBindingStatus()).isEqualTo("archived"); assertThat(current.getUpdatedAt()).isEqualTo(time);
+        verify(sourceBindingRepository).save(current);
+    }
+}
+''')
+      - name: Run targeted backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test
+      - name: Upload verified files
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-782-verified-files
+          path: |
+            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+            backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
+          retention-days: 3
