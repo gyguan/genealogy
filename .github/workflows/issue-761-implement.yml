@@ -26,7 +26,7 @@ jobs:
         run: python scripts/issue-761-implement.py
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
-        run: npm ci
+        run: npm install
       - name: Run person tests
         working-directory: frontend/genealogy-web
         run: npm run test:person-edit
