@@ -27,11 +27,33 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Finalize empty state migration
+      - name: Repair unified EmptyState architecture
         working-directory: frontend/genealogy-web
         run: |
-          node scripts/migrate-empty-state.mjs
-          sed -i 's/baseline.maxCounts.empty_state, 153/baseline.maxCounts.empty_state, 0/' src/shared/ui/FeedbackUnification.test.mjs
+          python - <<'PY'
+          from pathlib import Path
+          root=Path('src')
+          for p in root.rglob('*.tsx'):
+              s=p.read_text()
+              s=s.replace("/EmptyState';", "/Feedback';")
+              s=s.replace('/EmptyState";', '/Feedback";')
+              p.write_text(s)
+          p=Path('src/shared/ui/Feedback.tsx')
+          s=p.read_text()
+          s=s.replace("import { Alert, Popconfirm, Result } from 'antd';", "import { Alert, Empty as AntEmpty, Popconfirm, Result } from 'antd';")
+          s=s.replace("\nimport { EmptyState } from './Feedback';\n", "\n")
+          s=s.replace('<EmptyState\n      className=', '<AntEmpty\n      className=')
+          s=s.replace('image={EmptyState.PRESENTED_IMAGE_SIMPLE}', 'image={AntEmpty.PRESENTED_IMAGE_SIMPLE}')
+          s=s.replace('</EmptyState>', '</AntEmpty>')
+          p.write_text(s)
+          Path('src/shared/ui/EmptyState.tsx').unlink(missing_ok=True)
+          audit=Path('scripts/audit-ui-feedback.mjs')
+          s=audit.read_text()
+          s=s.replace("patterns: [/<Empty\\b/g, /\\bemptyText\\s*=/g, /\\bnotFoundContent\\s*=/g, /\\blocale\\s*=\\s*\\{\\{\\s*emptyText/g]", "patterns: [/<Empty\\b/g]")
+          audit.write_text(s)
+          test=Path('src/shared/ui/FeedbackUnification.test.mjs')
+          test.write_text(test.read_text().replace('baseline.maxCounts.empty_state, 153', 'baseline.maxCounts.empty_state, 0'))
+          PY
       - name: Commit migration
         run: |
           git config user.name "github-actions[bot]"
