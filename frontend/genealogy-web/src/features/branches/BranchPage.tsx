@@ -9,6 +9,8 @@ import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 function optionalNumber(value: unknown) {
   const text = String(value ?? '').trim();
   return text ? Number(text) : null;
@@ -19,7 +21,7 @@ function display(value: unknown, fallback = '-') {
   return text || fallback;
 }
 
-export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+export function BranchPage({}: {  }) {
   const workspace = useWorkspace();
   const [branchName, setBranchName] = useState('');
   const [parentId, setParentId] = useState(workspace.branchId);
@@ -45,7 +47,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
     try {
       await action();
     } catch (error) {
-      notify({ message: (error as Error).message || '操作失败' }, true);
+      feedback.from({ message: (error as Error).message || '操作失败' }, true);
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       setCreateOpen(false);
       setBranchName('');
       setParentId('');
-      notify({ message: '支派创建成功' });
+      feedback.from({ message: '支派创建成功' });
       await load();
     });
   }
@@ -74,7 +76,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
     const data: any = await apiClient.get(`/clans/${workspace.clanId}/branches`);
     setList(data);
     if (!workspace.branchId && Array.isArray(data) && data[0]?.id) workspace.setBranchId(String(data[0].id));
-    notify({ message: '支派查询完成' });
+    feedback.from({ message: '支派查询完成' });
   }
 
   async function detail(id: string) {
@@ -83,7 +85,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       setSelected(data);
       workspace.setBranchId(String(data?.id || id));
       setDetailOpen(true);
-      notify({ message: '支派详情查询完成' });
+      feedback.from({ message: '支派详情查询完成' });
     });
   }
 
@@ -103,7 +105,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       });
       setSelected(data);
       setResult({ message: '支派信息已更新' });
-      notify({ message: '支派信息已更新' });
+      feedback.from({ message: '支派信息已更新' });
       await load();
     });
   }
@@ -116,7 +118,7 @@ export function BranchPage({ notify }: { notify: (data: unknown, error?: boolean
       setDetailOpen(false);
       setSelected(undefined);
       setResult({ message: '支派已删除' });
-      notify({ message: '支派已删除' });
+      feedback.from({ message: '支派已删除' });
       await load();
     });
   }

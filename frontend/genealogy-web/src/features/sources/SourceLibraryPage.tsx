@@ -59,6 +59,8 @@ import type {
   SourceSearchParams
 } from './sourceLibraryService';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
 const BINDING_PAGE_SIZE = 10;
@@ -68,7 +70,7 @@ const typeValues = new Set(['genealogy_book', 'local_chronicle', 'tombstone', 'p
 const statusValues = new Set(['draft', 'pending_review', 'official', 'rejected', 'archived']);
 const privacyValues = new Set(['public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed']);
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type BindingMode = 'create' | 'replace';
 type BindingTargetType = 'person' | 'branch' | 'clan' | 'generation_word';
 type DetailErrorKind = 'not_found' | 'forbidden' | 'service';
@@ -300,7 +302,7 @@ function detailErrorKind(error: unknown): DetailErrorKind {
   return 'service';
 }
 
-export function SourceLibraryPage({ notify }: Props) {
+export function SourceLibraryPage({}: Props) {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<Array<{ id?: number; clanName?: string; surname?: string }>>([]);
   const [sources, setSources] = useState<SourceRecord[]>([]);
@@ -361,7 +363,7 @@ export function SourceLibraryPage({ notify }: Props) {
       setClans(rows);
       if (!workspace.clanId && rows[0]?.id) workspace.setClanId(String(rows[0].id));
     } catch (error) {
-      notify({ message: (error as Error).message || '宗族信息加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '宗族信息加载失败' }, true);
     }
   }
 
@@ -407,7 +409,7 @@ export function SourceLibraryPage({ notify }: Props) {
       setGenerationSchemes(rows.filter(isOfficialGenerationScheme));
     } catch (error) {
       setGenerationSchemes([]);
-      notify({ message: (error as Error).message || '字辈方案加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '字辈方案加载失败' }, true);
     } finally {
       setGenerationSchemeLoading(false);
     }
@@ -423,7 +425,7 @@ export function SourceLibraryPage({ notify }: Props) {
       setGenerationWords(await listGenerationWords(schemeId));
     } catch (error) {
       setGenerationWords([]);
-      notify({ message: (error as Error).message || '字辈明细加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '字辈明细加载失败' }, true);
     } finally {
       setGenerationWordLoading(false);
     }
@@ -558,7 +560,7 @@ export function SourceLibraryPage({ notify }: Props) {
         sensitiveLevel: values.sensitiveLevel,
         submitReview
       });
-      notify({ message: submitReview ? '来源已保存并提交审核' : '来源已保存为草稿', id: created?.id });
+      feedback.from({ message: submitReview ? '来源已保存并提交审核' : '来源已保存为草稿', id: created?.id });
       setCreateDrawerOpen(false);
       createForm.resetFields();
       const nextSearch = { ...search, pageNo: 1 };
@@ -643,7 +645,7 @@ export function SourceLibraryPage({ notify }: Props) {
       attachmentForm.resetFields();
       setAttachmentModalOpen(false);
       await loadAttachments(selectedSource.id, 1, attachmentPage.pageSize);
-      notify({ message: '附件上传成功' });
+      feedback.from({ message: '附件上传成功' });
     } catch (error) {
       setAttachmentSubmitError((error as Error).message || '附件上传失败');
     } finally {
@@ -657,7 +659,7 @@ export function SourceLibraryPage({ notify }: Props) {
       const blob = await previewAttachment(row.id);
       window.open(URL.createObjectURL(blob), '_blank', 'noopener,noreferrer');
     } catch (error) {
-      notify({ message: (error as Error).message || '附件预览失败' }, true);
+      feedback.from({ message: (error as Error).message || '附件预览失败' }, true);
     }
   }
 
@@ -672,7 +674,7 @@ export function SourceLibraryPage({ notify }: Props) {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      notify({ message: (error as Error).message || '附件下载失败' }, true);
+      feedback.from({ message: (error as Error).message || '附件下载失败' }, true);
     }
   }
 
@@ -681,9 +683,9 @@ export function SourceLibraryPage({ notify }: Props) {
     try {
       await deleteSourceAttachment(row.id);
       await loadAttachments(selectedSource.id, attachmentPage.pageNo, attachmentPage.pageSize);
-      notify({ message: '附件已删除' });
+      feedback.from({ message: '附件已删除' });
     } catch (error) {
-      notify({ message: (error as Error).message || '附件删除失败' }, true);
+      feedback.from({ message: (error as Error).message || '附件删除失败' }, true);
     }
   }
 
@@ -709,7 +711,7 @@ export function SourceLibraryPage({ notify }: Props) {
       setLastRevision(response);
       setBindingModalOpen(false);
       await loadBindings(selectedSource.id, bindingMode === 'create' ? 1 : bindingPage.pageNo, bindingPage.pageSize);
-      notify({ message: '引用变更已提交审核' });
+      feedback.from({ message: '引用变更已提交审核' });
     } catch (error) {
       setBindingSubmitError((error as Error).message || '引用审核提交失败');
     } finally {
@@ -723,9 +725,9 @@ export function SourceLibraryPage({ notify }: Props) {
       const response = await submitDeleteBindingRevision(row.id, '来源引用解除申请');
       setLastRevision(response);
       await loadBindings(selectedSource.id, bindingPage.pageNo, bindingPage.pageSize);
-      notify({ message: '解除引用申请已提交审核' });
+      feedback.from({ message: '解除引用申请已提交审核' });
     } catch (error) {
-      notify({ message: (error as Error).message || '解除引用审核提交失败' }, true);
+      feedback.from({ message: (error as Error).message || '解除引用审核提交失败' }, true);
     }
   }
 

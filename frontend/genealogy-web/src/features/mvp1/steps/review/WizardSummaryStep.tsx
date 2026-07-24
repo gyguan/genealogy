@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Result, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 import type { Mvp1StepKey } from '../../domain/wizardStepState';
 import type { SummarySection } from '../../domain/wizardSummaryModel';
 import { loadWizardSummary } from '../../services/wizardSummaryService';
@@ -9,7 +10,7 @@ import { useWizardCompletion } from '../../WizardCompletionContext';
 import './wizard-summary-step.css';
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
   onStepChange: (step: Mvp1StepKey) => void;
 };
 
@@ -47,7 +48,7 @@ function SectionCard({ section, onRetry }: { section: SummarySection; onRetry: (
   );
 }
 
-export function WizardSummaryStep({ notify, onStepChange }: Props) {
+export function WizardSummaryStep({ onStepChange }: Props) {
   const workspace = useWorkspace();
   const completion = useWizardCompletion();
   const [summary, setSummary] = useState<SummaryData>();
@@ -92,7 +93,7 @@ export function WizardSummaryStep({ notify, onStepChange }: Props) {
     if (!summary?.complete || completed) return;
     setCompleted(true);
     completion.reportStatus({ ready: true, completed: true, blockerCount: 0, reason: '本次建谱已完成。' });
-    notify?.({ message: '本次建谱已完成' });
+    feedback.success('本次建谱已完成');
   }, [completion.requestVersion, summary, completed]);
 
   if (completed) {

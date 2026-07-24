@@ -22,8 +22,10 @@ import {
 import { loadWizardStateSnapshot } from './services/wizardStepStateService';
 import { WizardShell, type WizardGateNotice } from './WizardShell';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type Notice = { message: string; id?: string | number };
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type SaveState = { status: 'unsaved' | 'saved' | 'error'; savedAt?: string };
 type SkipState = { relationship: boolean; source: boolean };
 type DraftState = Partial<Record<Mvp1StepKey, WizardStepDraft>>;
@@ -68,7 +70,7 @@ function displaySavedAt(value?: string) {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function Mvp1WizardPage({ notify }: Props) {
+export function Mvp1WizardPage({}: Props) {
   const workspace = useWorkspace();
   const sessionStore = useMemo(() => createLocalWizardSessionStore(), []);
   const [storedSession] = useState<WizardSession | undefined>(() => sessionStore.load());
@@ -245,12 +247,12 @@ export function Mvp1WizardPage({ notify }: Props) {
       setSaveState({ status: 'saved', savedAt });
       if (showNotice) {
         setResult({ message: '草稿已保存。' });
-        notify({ message: '建谱草稿已保存' });
+        feedback.from({ message: '建谱草稿已保存' });
       }
     } catch (error) {
       setSaveState({ status: 'error' });
       setResult({ message: (error as Error).message || '草稿保存失败。' });
-      if (showNotice) notify({ message: '草稿保存失败' }, true);
+      if (showNotice) feedback.from({ message: '草稿保存失败' }, true);
     }
   }
 

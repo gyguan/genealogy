@@ -19,7 +19,7 @@ type BranchForm = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
   onSubmittedReview?: (taskId: string) => void;
 };
 

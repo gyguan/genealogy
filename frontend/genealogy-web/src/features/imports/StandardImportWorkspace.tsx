@@ -15,6 +15,8 @@ import {
   type ImportValidationStatus
 } from './import-preview-model';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { Dragger } = Upload;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const TEMPLATE_VERSION = '2026.07';
@@ -26,7 +28,7 @@ type PreviewFilter = 'all' | ImportValidationStatus;
 type ImportJobResult = { successCount?: number; failureCount?: number; executionMode?: string; executionStatus?: string };
 
 export type StandardImportWorkspaceProps<Row extends ImportPreviewRowBase> = {
-  notify: (data: unknown, error?: boolean) => void;
+
   clanId: string;
   branchId: string;
   branchName: string;
@@ -58,9 +60,7 @@ function mobileEntries<Row extends ImportPreviewRowBase>(row: Row) {
     .slice(0, 4);
 }
 
-export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({
-  notify,
-  clanId,
+export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({ clanId,
   branchId,
   branchName,
   onBatchCreated,
@@ -108,9 +108,9 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({
     try {
       const blob = await apiClient.download(`/imports/templates/${templateSlug}.${format}`);
       saveDownloadedBlob(blob, `${templateSlug}-import-template-${TEMPLATE_VERSION}.${format}`);
-      notify({ message: `${title} ${format.toUpperCase()} 模板已下载` });
+      feedback.from({ message: `${title} ${format.toUpperCase()} 模板已下载` });
     } catch (error) {
-      notify({ message: (error as Error).message || `${title}模板下载失败` }, true);
+      feedback.from({ message: (error as Error).message || `${title}模板下载失败` }, true);
     } finally {
       setTemplateDownloading(undefined);
     }
@@ -150,7 +150,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({
       setDuplicatesConfirmed(false);
       setPreviewFilter(nextCounts.error ? 'error' : nextCounts.duplicate ? 'duplicate' : nextCounts.warning ? 'warning' : 'all');
       publishProgress(file, result);
-      notify({ message: `预检完成：有效 ${nextCounts.valid} 行，警告 ${nextCounts.warning} 行，疑似重复 ${nextCounts.duplicate} 行，错误 ${nextCounts.error} 行` });
+      feedback.from({ message: `预检完成：有效 ${nextCounts.valid} 行，警告 ${nextCounts.warning} 行，疑似重复 ${nextCounts.duplicate} 行，错误 ${nextCounts.error} 行` });
       return result;
     } catch (error) {
       setValidationMessage((error as Error).message || `${title}预检失败，请检查模板版本和内容后重试。`);
@@ -185,7 +185,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({
       const result = await apiClient.upload<ImportJobResult>(`${createPath(clanId)}?${query(true)}`, formData);
       const asyncQueued = result.executionMode === 'async'
         || ['queued', 'running', 'retry_wait'].includes(String(result.executionStatus || '').toLowerCase());
-      notify({ message: asyncQueued ? '导入批次已创建，可在“执行任务”中查看后台进度。' : (result.failureCount || 0) > 0 ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${result.failureCount || 0} 行` : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核` });
+      feedback.from({ message: asyncQueued ? '导入批次已创建，可在“执行任务”中查看后台进度。' : (result.failureCount || 0) > 0 ? `导入批次已创建：成功 ${result.successCount || 0} 行，待修正 ${result.failureCount || 0} 行` : `导入完成：${result.successCount || 0} 行已生成草稿，等待提交审核` });
       resetSelection();
       onBatchCreated();
     } catch (error) {

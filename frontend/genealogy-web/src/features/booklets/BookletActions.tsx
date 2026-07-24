@@ -8,7 +8,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { saveDownloadedBlob } from '../../shared/utils/download';
 import './booklet-actions-issue473.css';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 
 type BookletScope = 'clan' | 'branch';
 

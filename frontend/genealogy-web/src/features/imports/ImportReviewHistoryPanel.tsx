@@ -5,7 +5,9 @@ import { apiClient } from '../../shared/api/client';
 import type { ReviewTaskListItemResponse } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
-type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
+import { feedback } from '../../shared/ui/OperationFeedback';
+
+type Props = {  refreshKey: number };
 
 function statusText(value?: string) {
   const status = String(value || '').toLowerCase();
@@ -32,7 +34,7 @@ function formatDateTime(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
 }
 
-export function ImportReviewHistoryPanel({ notify, refreshKey }: Props) {
+export function ImportReviewHistoryPanel({ refreshKey }: Props) {
   const workspace = useWorkspace();
   const [records, setRecords] = useState<ReviewTaskListItemResponse[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,7 @@ export function ImportReviewHistoryPanel({ notify, refreshKey }: Props) {
       setRecords(page.records || []);
     } catch (error) {
       setRecords([]);
-      notify({ message: (error as Error).message || '导入审核记录加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '导入审核记录加载失败' }, true);
     } finally {
       setLoading(false);
     }

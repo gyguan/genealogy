@@ -16,7 +16,9 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+import { feedback } from '../../shared/ui/OperationFeedback';
+
+type Props = {  };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
 type DecisionType = 'approve' | 'reject';
 type BranchOption = { id: number | string; branchName?: string };
@@ -261,7 +263,7 @@ function filtersForTab(filters: ReviewFilters, tab: ReviewTabKey): ReviewFilters
   return { ...filters, submittedRange: null };
 }
 
-export function ReviewCenterPage({ notify }: Props) {
+export function ReviewCenterPage({}: Props) {
   const workspace = useWorkspace();
   const screens = Grid.useBreakpoint();
   const mobile = !screens.md;
@@ -385,7 +387,7 @@ export function ReviewCenterPage({ notify }: Props) {
       setDetail(viewResult.value);
       setReviewDiff(diffResult.status === 'fulfilled' ? diffResult.value : null);
     } catch (error) {
-      notify({ message: errorMessage(error) || '审核详情加载失败' }, true);
+      feedback.from({ message: errorMessage(error) || '审核详情加载失败' }, true);
     } finally {
       setDetailLoading(false);
     }
@@ -458,7 +460,7 @@ export function ReviewCenterPage({ notify }: Props) {
       await apiClient.post(`/review-tasks/${decisionTask.id}/${values.decisionType}`, {
         comment: values.comment?.trim() || undefined
       });
-      notify({ message: values.decisionType === 'approve' ? '审核已通过' : '审核已驳回' });
+      feedback.from({ message: values.decisionType === 'approve' ? '审核已通过' : '审核已驳回' });
       setDecisionTask(null);
       decisionForm.resetFields();
       setDetail(null);
@@ -466,10 +468,10 @@ export function ReviewCenterPage({ notify }: Props) {
       await loadTasks();
     } catch (error) {
       if (isConflictError(error)) {
-        notify({ message: '任务状态已变化，正在刷新最新审核结果' }, true);
+        feedback.from({ message: '任务状态已变化，正在刷新最新审核结果' }, true);
         await refreshAfterConflict(decisionTask.id);
       } else {
-        notify({ message: errorMessage(error) || '审核处理失败' }, true);
+        feedback.from({ message: errorMessage(error) || '审核处理失败' }, true);
       }
     } finally {
       setDecisionLoading(false);
@@ -518,7 +520,7 @@ export function ReviewCenterPage({ notify }: Props) {
       await loadTasks();
       setSelectedRowKeys(result.failures.map(item => rowKey(item.task)));
       if (result.failures.length) setBatchResult(result);
-      else notify({ message: `已成功处理 ${result.successCount} 条审核任务` });
+      else feedback.from({ message: `已成功处理 ${result.successCount} 条审核任务` });
     } finally {
       setBatchLoading(false);
     }

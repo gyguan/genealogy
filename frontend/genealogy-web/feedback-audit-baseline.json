@@ -4,7 +4,7 @@
   "maxCounts": {
     "page_alert": 158,
     "field_help": 104,
-    "app_notify": 141,
+    "app_notify": 0,
     "antd_message": 0,
     "antd_notification": 0,
     "confirm_modal": 60,

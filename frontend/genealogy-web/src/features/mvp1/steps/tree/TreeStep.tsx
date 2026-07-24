@@ -36,7 +36,7 @@ type TreeEdgeLike = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
 };
 
 function personOptionLabel(person: PersonLike) {
@@ -46,7 +46,7 @@ function personOptionLabel(person: PersonLike) {
   return `${name} · ${generation}${word}`;
 }
 
-export function TreeStep({ notify }: Props) {
+export function TreeStep({}: Props) {
   const workspace = useWorkspace();
   const [treeMode, setTreeMode] = useState<TreeMode>('family');
   const [depth, setDepth] = useState('5');
@@ -60,7 +60,6 @@ export function TreeStep({ notify }: Props) {
   const nodeNameByPersonId = useMemo(() => new Map(nodes.map(node => [String(node.personId || node.id || ''), node.name || '未命名人物'])), [nodes]);
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);

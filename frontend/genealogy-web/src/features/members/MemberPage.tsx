@@ -43,6 +43,8 @@ import {
 } from './memberPageModel.js';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
 const DEFAULT_PAGE_SIZE = 10;
@@ -114,7 +116,7 @@ function writeUrlState(query: MemberQuery, memberId?: number, replace = false) {
   window.history[replace ? 'replaceState' : 'pushState']({}, '', next);
 }
 
-export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+export function MemberPage({}: {  }) {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const workspace = useWorkspace();
@@ -388,7 +390,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           scopeId: Number(values.scopeId),
           reason: values.reason.trim()
         });
-        notify({ message: '成员授权已更新' });
+        feedback.from({ message: '成员授权已更新' });
       } else {
         await memberPermissionApi.createGrant(selectedClanId, {
           userId: Number(values.userId),
@@ -397,7 +399,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
           scopeId: Number(values.scopeId),
           reason: values.reason.trim()
         });
-        notify({ message: '成员授权已创建' });
+        feedback.from({ message: '成员授权已创建' });
       }
       setGrantModalOpen(false);
       const refreshQuery = createMemberQuery(query, editingGrant ? query.pageNo : 1, query.pageSize);
@@ -439,7 +441,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     setStatusError('');
     try {
       await memberPermissionApi.updateMemberStatus(selectedClanId, statusTarget.membershipId, values.status, values.reason.trim());
-      notify({ message: values.status === 'active' ? '成员已恢复' : '成员已停用' });
+      feedback.from({ message: values.status === 'active' ? '成员已恢复' : '成员已停用' });
       setStatusModalOpen(false);
       await loadMembers(selectedClanId, query, statusTarget.membershipId);
     } catch (error) {
@@ -463,7 +465,7 @@ export function MemberPage({ notify }: { notify: (data: unknown, error?: boolean
     setRevokeError('');
     try {
       await memberPermissionApi.revokeGrant(selectedClanId, revokeTarget.grantId, values.reason.trim());
-      notify({ message: '成员授权已撤销' });
+      feedback.from({ message: '成员授权已撤销' });
       setRevokeModalOpen(false);
       await loadMembers(selectedClanId, query, selectedMember?.membershipId);
     } catch (error) {

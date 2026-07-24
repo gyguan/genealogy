@@ -51,7 +51,7 @@ type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
 type WorkbenchTaskType = 'review_follow_up' | 'missing_source' | 'generation_mismatch' | 'relationship_check' | 'import_follow_up';
 type WorkbenchNavigateKey = 'reviewCenter' | 'personArchive' | 'sourceLibrary' | 'treeProduct' | 'mvp1Wizard';
-type Props = { onNavigate?: (view: WorkbenchNavigateKey) => void; notify?: (data: unknown, error?: boolean) => void };
+type Props = { onNavigate?: (view: WorkbenchNavigateKey) => void;  };
 type ClanLike = { id?: number | string; clanName?: string; name?: string; surname?: string };
 type WorkbenchTask = {
   key: string; taskName?: string; bookName?: string; creatorName?: string; createdAt?: string;
@@ -154,7 +154,7 @@ function downloadCsv(rows: WorkbenchTask[]) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function EditingWorkspacePage({ onNavigate, notify }: Props) {
+export function EditingWorkspacePage({ onNavigate }: Props) {
   const workspace = useWorkspace();
   const screens = Grid.useBreakpoint();
   const initialUrlState = useMemo(() => readWorkbenchUrlState(window.location.search), []);
@@ -333,12 +333,10 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       const page = unwrapData<WorkbenchTaskPage>(payload, EMPTY_TASK_PAGE);
       const rows = toRecordList<WorkbenchTask>(page.records || []);
       downloadCsv(rows);
-      if (notify) notify({ message: `已导出当前查询条件下的 ${rows.length} 条修谱任务。` });
-      else feedback.success(`已导出 ${rows.length} 条修谱任务`);
+      feedback.from({ message: `已导出当前查询条件下的 ${rows.length} 条修谱任务。` });
     } catch (error) {
       const text = errorMessage(error, '导出任务失败，请稍后重试。');
-      if (notify) notify({ message: text }, true);
-      else feedback.error(text);
+      feedback.from({ message: text }, true);
     } finally {
       setExporting(false);
     }

@@ -19,11 +19,13 @@ import {
   type AuthMode
 } from './authPageModel.js';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 type Props = {
   onChanged: () => void;
-  notify: (data: unknown, error?: boolean) => void;
+
   standalone?: boolean;
 };
 
@@ -61,7 +63,7 @@ function showPolicy(title: string, content: string) {
   Modal.info({ title, content, okText: '我知道了', width: 520 });
 }
 
-export function AuthPage({ onChanged, notify, standalone = false }: Props) {
+export function AuthPage({ onChanged, standalone = false }: Props) {
   const initialMode = useMemo(() => authModeFromLocation(window.location.search), []);
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
@@ -103,7 +105,7 @@ export function AuthPage({ onChanged, notify, standalone = false }: Props) {
       } else {
         localStorage.removeItem(AUTH_REMEMBERED_USERNAME_KEY);
       }
-      notify({ message: `欢迎回来，${data?.user?.displayName || username}` });
+      feedback.from({ message: `欢迎回来，${data?.user?.displayName || username}` });
       onChanged();
     });
   }

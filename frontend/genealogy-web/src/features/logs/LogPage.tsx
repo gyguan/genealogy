@@ -54,6 +54,8 @@ import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import './tracking-page.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
 const TRACEABLE_TYPES = new Set(['person', 'relationship', 'source', 'branch', 'review_task', 'culture_item', 'migration_event', 'culture_site']);
@@ -110,7 +112,7 @@ function asOperationLog(row: RiskAuditEventResponse): OperationLogResponse {
   };
 }
 
-export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+export function LogPage({}: {  }) {
   const workspace = useWorkspace();
   const initial = useRef(readTrackingCenterState(window.location.search)).current;
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
@@ -304,9 +306,9 @@ export function LogPage({ notify }: { notify: (data: unknown, error?: boolean) =
       link.download = `operation-audit-${dayjs().format('YYYYMMDD-HHmm')}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
-      notify({ message: '操作审计已导出' });
+      feedback.from({ message: '操作审计已导出' });
     } catch (error) {
-      notify({ message: (error as Error)?.message || '操作审计导出失败' }, true);
+      feedback.from({ message: (error as Error)?.message || '操作审计导出失败' }, true);
     } finally {
       setAuditExporting(false);
     }

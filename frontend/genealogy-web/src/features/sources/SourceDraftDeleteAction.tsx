@@ -7,7 +7,7 @@ import { DraftDeleteButton } from '../../shared/ui/DraftDeleteButton';
 import { PageFeedback } from '../../shared/ui/Feedback';
 import { deleteSource, getSourceDetail, type SourceDetail } from './sourceLibraryService';
 
-type Props = { notify?: (data: unknown, error?: boolean) => void };
+type Props = {  };
 
 function sourceIdFromLocation() {
   const value = Number(new URLSearchParams(window.location.search).get('sourceId'));
@@ -27,7 +27,7 @@ function sourceDependencyCounts(detail: SourceDetail | null) {
   };
 }
 
-export function SourceDraftDeleteAction({ notify: _notify }: Props) {
+export function SourceDraftDeleteAction() {
   const workspace = useWorkspace();
   const sourceId = Number(workspace.sourceId || sourceIdFromLocation() || 0) || undefined;
   const [detail, setDetail] = useState<SourceDetail | null>(null);

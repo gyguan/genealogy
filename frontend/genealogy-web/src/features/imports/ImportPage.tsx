@@ -28,7 +28,7 @@ import './import-workbench.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { RangePicker } = DatePicker;
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type BranchOption = { id: number | string; branchName?: string; status?: string };
 type QueryFormValues = {
   importTypes?: ImportTypeKey[];
@@ -41,7 +41,7 @@ const availableImportTypes = importTypeRegistry
   .filter(item => item.availability === 'available')
   .map(item => ({ value: item.key, label: item.title.replace('导入', '') }));
 
-export function ImportPage({ notify }: Props) {
+export function ImportPage({}: Props) {
   const workspace = useWorkspace();
   const initialPageState = useMemo(() => readImportPageUrl(window.location.search), []);
   const initialQuery = useMemo(() => readImportTaskQuery(window.location.search), []);
@@ -164,9 +164,7 @@ export function ImportPage({ notify }: Props) {
     refreshJobs();
   }
 
-  const workspaceProps = {
-    notify,
-    clanId: workspace.clanId,
+  const workspaceProps = { clanId: workspace.clanId,
     branchId: selectedBranchId,
     branchName: selectedBranch?.branchName || '',
     onBatchCreated: handleBatchCreated
@@ -214,7 +212,6 @@ export function ImportPage({ notify }: Props) {
           branchName={selectedBranch?.branchName}
           refreshKey={jobRefreshKey}
           query={query}
-          notify={notify}
           onChanged={refreshJobs}
           onTotalChange={setTaskTotal}
           onPageChange={changePage}
@@ -265,8 +262,8 @@ export function ImportPage({ notify }: Props) {
       <Drawer open={recordsOpen} width={1080} title="导入记录" destroyOnHidden onClose={() => setRecordsOpen(false)}>
         <Tabs items={[
           { key: 'overview', label: '导入记录', children: <ImportHistoryOverviewPanel refreshKey={jobRefreshKey} /> },
-          { key: 'processing', label: '失败修正与审核提交', children: <ImportJobManagementPanel notify={notify} refreshKey={jobRefreshKey} /> },
-          { key: 'review', label: '审核历史', children: <ImportReviewHistoryPanel notify={notify} refreshKey={jobRefreshKey} /> }
+          { key: 'processing', label: '失败修正与审核提交', children: <ImportJobManagementPanel refreshKey={jobRefreshKey} /> },
+          { key: 'review', label: '审核历史', children: <ImportReviewHistoryPanel refreshKey={jobRefreshKey} /> }
         ]} />
       </Drawer>
     </div>

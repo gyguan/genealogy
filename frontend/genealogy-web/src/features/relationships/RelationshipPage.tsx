@@ -10,6 +10,8 @@ import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type RelationshipPreset = {
   title: string;
   group: '基础关系' | '收养关系' | '承嗣关系';
@@ -90,7 +92,7 @@ function relationshipPersonId(row: any, side: 'from' | 'to') {
   return String(side === 'from' ? row.fromPersonId || row.sourcePersonId || '' : row.toPersonId || row.targetPersonId || '');
 }
 
-export function RelationshipPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+export function RelationshipPage({}: {  }) {
   const workspace = useWorkspace();
   const [people, setPeople] = useState<PersonOption[]>([]);
   const [fromPersonId, setFromPersonId] = useState(workspace.personId);
@@ -149,7 +151,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
     try {
       await action();
     } catch (error) {
-      notify({ message: (error as Error).message || '操作失败' }, true);
+      feedback.from({ message: (error as Error).message || '操作失败' }, true);
     } finally {
       setLoading(false);
     }
@@ -160,7 +162,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       if (!fromPersonId || !toPersonId) throw new Error('请选择关系两端的人物');
       const res: any = await apiClient.post(`/clans/${workspace.clanId}/relationships/check-conflict`, body());
       setResult({ message: res.conflict ? res.message || '存在关系冲突，请检查后再创建' : '预检通过，可以创建关系' });
-      notify({ message: res.conflict ? '关系预检发现冲突' : '关系预检通过' }, Boolean(res.conflict));
+      feedback.from({ message: res.conflict ? '关系预检发现冲突' : '关系预检通过' }, Boolean(res.conflict));
     });
   }
 
@@ -171,7 +173,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       if (res?.id) workspace.patch({ relationshipId: String(res.id), personId: toPersonId || fromPersonId });
       setResult({ message: '关系创建成功' });
       setCreateOpen(false);
-      notify({ message: '关系创建成功' });
+      feedback.from({ message: '关系创建成功' });
       await list();
     });
   }
@@ -181,7 +183,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
     await loadPeople();
     const res = await apiClient.get(`/persons/${workspace.personId}/relationships`);
     setData(res);
-    notify({ message: '关系查询完成' });
+    feedback.from({ message: '关系查询完成' });
   }
 
   async function detail(id: string) {
@@ -190,7 +192,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       setSelected(res);
       workspace.setRelationshipId(String(res?.id || id));
       setDetailOpen(true);
-      notify({ message: '关系详情查询完成' });
+      feedback.from({ message: '关系详情查询完成' });
     });
   }
 
@@ -208,7 +210,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       });
       setSelected(res);
       setResult({ message: '关系信息已更新' });
-      notify({ message: '关系信息已更新' });
+      feedback.from({ message: '关系信息已更新' });
       await list();
     });
   }
@@ -221,7 +223,7 @@ export function RelationshipPage({ notify }: { notify: (data: unknown, error?: b
       setDetailOpen(false);
       setSelected(undefined);
       setResult({ message: '关系已删除' });
-      notify({ message: '关系已删除' });
+      feedback.from({ message: '关系已删除' });
       await list();
     });
   }
