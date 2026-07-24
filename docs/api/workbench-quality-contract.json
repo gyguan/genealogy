@@ -1,0 +1,66 @@
+{
+  "name": "workbench-quality-check",
+  "version": "1.0.0",
+  "description": "修谱工作台质量检查契约。检查只读取草稿和任务数据，不修改正式谱库。",
+  "scopeTypes": ["WORKBENCH_SESSION", "DRAFT_IDS", "QUERY"],
+  "modes": ["INCREMENTAL", "FULL", "REVIEW_GATE"],
+  "statuses": ["QUEUED", "RUNNING", "PASSED", "ISSUES_FOUND", "FAILED"],
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/v1/workbench/quality-checks?clanId={clanId}",
+      "operationId": "triggerWorkbenchQualityCheck",
+      "request": "WorkbenchQualityCheckRequest",
+      "response": "WorkbenchQualityCheckResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/workbench/quality-checks/{checkId}?clanId={clanId}",
+      "operationId": "getWorkbenchQualityCheck",
+      "response": "WorkbenchQualityCheckResponse"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/workbench/quality-checks/latest?clanId={clanId}",
+      "operationId": "getLatestWorkbenchQualityCheck",
+      "response": "WorkbenchQualityCheckResponse|null"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/workbench/quality-checks/submission-gate?clanId={clanId}",
+      "operationId": "checkWorkbenchSubmissionGate",
+      "description": "服务端重新执行 REVIEW_GATE 阻断规则；存在阻断问题时拒绝提交。",
+      "request": "WorkbenchQualityCheckRequest",
+      "response": "WorkbenchQualityCheckResponse"
+    }
+  ],
+  "requestSchema": {
+    "scopeType": "WORKBENCH_SESSION|DRAFT_IDS|QUERY",
+    "mode": "INCREMENTAL|FULL|REVIEW_GATE",
+    "subjectIds": "string[]",
+    "query": "object",
+    "ruleCodes": "string[]"
+  },
+  "responseSchema": {
+    "checkId": "uuid",
+    "status": "string",
+    "scopeType": "string",
+    "mode": "string",
+    "reviewBlocked": "boolean",
+    "summary": "object",
+    "rules": "array",
+    "queuedAt": "datetime",
+    "startedAt": "datetime|null",
+    "completedAt": "datetime|null",
+    "failureCode": "string|null",
+    "failureMessage": "string|null"
+  },
+  "errorCodes": [
+    "WORKBENCH_QUALITY_INVALID_SCOPE",
+    "WORKBENCH_QUALITY_NOT_REVIEWABLE",
+    "WORKBENCH_QUALITY_CHECK_ALREADY_RUNNING",
+    "WORKBENCH_QUALITY_NOT_FOUND",
+    "WORKBENCH_QUALITY_EXECUTION_FAILED",
+    "WORKBENCH_QUALITY_RESULT_INVALID"
+  ]
+}
