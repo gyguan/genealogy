@@ -49,8 +49,7 @@ function navigate(view: string) {
 }
 
 function metricCard(label: string, value: number | string, tone = '') {
-  const card = document.createElement('button');
-  card.type = 'button';
+  const card = document.createElement('div');
   card.className = `workbench-overview-metric ${tone}`.trim();
   card.innerHTML = `<span class="workbench-overview-metric__label">${label}</span><strong>${value}</strong>`;
   return card;
@@ -63,10 +62,17 @@ function visibleProblemRows(resultCard: HTMLElement) {
   }).slice(0, 5);
 }
 
+function overviewSignature(resultCard: HTMLElement) {
+  const metrics = collectWorkbenchMetrics(resultCard);
+  const problems = visibleProblemRows(resultCard).map(row => row.textContent?.trim() || '').join('|');
+  return JSON.stringify({ metrics, problems });
+}
+
 function buildOverview(resultCard: HTMLElement) {
   const metrics = collectWorkbenchMetrics(resultCard);
   const section = document.createElement('section');
   section.className = 'workbench-overview-shell';
+  section.dataset.signature = overviewSignature(resultCard);
   section.setAttribute('aria-label', '修谱工作台总览');
 
   const metricsPanel = document.createElement('div');
@@ -137,10 +143,7 @@ function enhanceWorkbench() {
   if (!page || page.getAttribute(PAGE_MARKER) === 'true') return;
   page.setAttribute(PAGE_MARKER, 'true');
   page.classList.add('workbench-restructured-page');
-  const overview = buildOverview(resultCard);
-  page.insertBefore(overview, resultCard);
-  const drawer = document.querySelector<HTMLElement>('.ant-drawer-open');
-  drawer?.classList.add('workbench-task-detail-drawer');
+  page.insertBefore(buildOverview(resultCard), resultCard);
 }
 
 function refreshOverview() {
@@ -148,12 +151,19 @@ function refreshOverview() {
   const resultCard = page?.querySelector<HTMLElement>('.workbench-result-card');
   const current = page?.querySelector<HTMLElement>('.workbench-overview-shell');
   if (!page || !resultCard || !current) { enhanceWorkbench(); return; }
-  const next = buildOverview(resultCard);
-  current.replaceWith(next);
+  const signature = overviewSignature(resultCard);
+  if (current.dataset.signature === signature) return;
+  current.replaceWith(buildOverview(resultCard));
 }
 
+let scheduled = false;
 const observer = new MutationObserver(() => {
-  window.requestAnimationFrame(refreshOverview);
+  if (scheduled) return;
+  scheduled = true;
+  window.requestAnimationFrame(() => {
+    scheduled = false;
+    refreshOverview();
+  });
 });
 observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 enhanceWorkbench();
