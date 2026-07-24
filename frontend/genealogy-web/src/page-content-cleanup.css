@@ -20,6 +20,21 @@
   border-radius: 0 !important;
   box-shadow: none !important;
 }
+
+/* Wide query pages must consume the complete width offered by AppShell. */
+.antd-content:has(.business-page--imports),
+.antd-content:has(.business-page--auditTrace),
+.business-page--imports,
+.business-page--auditTrace,
+.business-page--imports > .import-center-page,
+.business-page--auditTrace > .audit-trace-page,
+.business-page--auditTrace .tracking-double-card-page {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin-inline: 0;
+}
+
 /* Match the audit result heading to the standard query-result card title pattern. */
 .business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
   min-height: unset;
