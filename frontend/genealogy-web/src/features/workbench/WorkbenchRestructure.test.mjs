@@ -18,9 +18,11 @@ test('workbench is rendered as a formal React page instead of DOM mutation', asy
 
 test('workbench follows query overview quality and task-list prototype hierarchy', async () => {
   const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  const expected = ['修谱工作台', '工作台总览', '当前任务', '快捷入口', '数据质量检查', '修谱任务'];
-  expected.forEach(label => assert.match(code, new RegExp(label)));
-  assert.ok(expected.map(label => code.indexOf(label)).every((value, index, values) => index === 0 || value > values[index - 1]));
+  for (const label of ['修谱工作台', '当前任务', '快捷入口', '数据质量检查', '修谱任务']) assert.match(code, new RegExp(label));
+  const sections = ['workbench-query-card', 'workbench-overview-section', 'workbench-quality-card', 'workbench-task-card'];
+  const positions = sections.map(marker => code.indexOf(marker));
+  assert.ok(positions.every(value => value >= 0));
+  assert.ok(positions.every((value, index) => index === 0 || value > positions[index - 1]));
 });
 
 test('workbench preserves quality scopes and server submission gate', async () => {
