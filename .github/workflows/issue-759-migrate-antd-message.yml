@@ -1,0 +1,47 @@
+name: Issue 759 migrate Ant Design Message
+
+on:
+  push:
+    branches:
+      - agent/issue-759-migrate-all-antd-message
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/genealogy-web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Run migration codemod
+        run: node scripts/migrate-antd-message.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify feedback contract
+        run: npm run test:feedback
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Commit migrated sources
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src package.json feedback-audit-baseline.json
+          if git diff --cached --quiet; then
+            echo "No migration changes to commit"
+            exit 0
+          fi
+          git commit -m "refactor: migrate all direct Ant Design Message calls"
+          git push
