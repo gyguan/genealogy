@@ -24,6 +24,8 @@ test('质量检查入口只挂载在审核列表结果工具栏', async () => {
 
 test('审核详情操作位于 Drawer Header 且无重复 Footer', async () => {
   const content = await source('ReviewCenterPageContent.tsx');
-  assert.match(content, /<Drawer[\s\S]*extra=/);
-  assert.doesNotMatch(content, /<Drawer[\s\S]*footer=/);
+  const drawerOpeningTag = content.match(/<Drawer[\s\S]*?>/)?.[0];
+  assert.ok(drawerOpeningTag, '应存在审核详情 Drawer');
+  assert.match(drawerOpeningTag, /extra=/);
+  assert.doesNotMatch(drawerOpeningTag, /footer=/);
 });
