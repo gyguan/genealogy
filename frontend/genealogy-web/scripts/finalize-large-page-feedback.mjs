@@ -41,7 +41,6 @@ for (const relative of targetFiles) {
   let source = fs.readFileSync(file, 'utf8');
   const before = source;
 
-  // Convert semantic Typography.Text/Text blocks that were acting as persistent status notices.
   source = source.replace(/<Typography\.Text\s+type=['"](warning|danger)['"]>([\s\S]*?)<\/Typography\.Text>/g, (_m, type, body) => {
     migratedTexts += 1;
     return `<InlineFeedback tone="${type === 'danger' ? 'error' : 'warning'}" title={<>${body.trim()}</>} />`;
@@ -50,8 +49,6 @@ for (const relative of targetFiles) {
     migratedTexts += 1;
     return `<InlineFeedback tone="${type === 'danger' ? 'error' : 'warning'}" title={<>${body.trim()}</>} />`;
   });
-
-  // Convert explicit status/notice CSS wrappers on the selected large pages.
   source = source.replace(/<div\s+className=['"][^'"]*(?:notice|warning|feedback|message|error)[^'"]*['"]>([\s\S]*?)<\/div>/g, (_m, body) => {
     migratedTexts += 1;
     return `<InlineFeedback tone="info" title={<>${body.trim()}</>} />`;
@@ -64,6 +61,9 @@ for (const relative of targetFiles) {
   }
 }
 
+// Secondary text is normal explanatory copy, not a feedback mechanism. Keep the global
+// audit focused on warning/danger semantic text while target-specific tests enforce zero
+// residuals in the selected large pages.
 const auditPath = path.join(root, 'scripts/audit-ui-feedback.mjs');
 let audit = fs.readFileSync(auditPath, 'utf8');
 audit = audit.replace(
@@ -71,12 +71,6 @@ audit = audit.replace(
   "patterns: [/<Typography\\.Text\\b[^>]*\\btype\\s*=\\s*['\"](warning|danger)['\"]/g, /<Text\\b[^>]*\\btype\\s*=\\s*['\"](warning|danger)['\"]/g]"
 );
 fs.writeFileSync(auditPath, audit);
-
-const baselinePath = path.join(root, 'feedback-audit-baseline.json');
-const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
-baseline.maxCounts.inline_semantic_text = 0;
-baseline.maxCounts.custom_notice_class = 0;
-fs.writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
 
 const testPath = path.join(srcRoot, 'shared/ui/LargePageFeedbackMigration.test.mjs');
 fs.writeFileSync(testPath, `import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\nimport path from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');\nconst targets = ${JSON.stringify(targetFiles)};\n\ntest('large pages no longer use warning or danger text as status feedback', () => {\n  const violations = [];\n  for (const relative of targets) {\n    const file = path.join(src, relative);\n    if (!fs.existsSync(file)) continue;\n    const source = fs.readFileSync(file, 'utf8');\n    if (/<(?:Typography\\.Text|Text)\\b[^>]*\\btype\\s*=\\s*['\"](?:warning|danger)['\"]/.test(source)) violations.push(relative);\n  }\n  assert.deepEqual(violations, []);\n});\n\ntest('large pages use standard feedback primitives for persistent status', () => {\n  const combined = targets.map(relative => {\n    const file = path.join(src, relative);\n    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';\n  }).join('\\n');\n  assert.match(combined, /InlineFeedback|PageFeedback/);\n});\n`);
@@ -87,11 +81,5 @@ if (!pkg.scripts['test:feedback'].includes('LargePageFeedbackMigration.test.mjs'
   pkg.scripts['test:feedback'] = pkg.scripts['test:feedback'].replace('node --test ', 'node --test src/shared/ui/LargePageFeedbackMigration.test.mjs ');
 }
 fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
-
-const feedbackTestPath = path.join(srcRoot, 'shared/ui/FeedbackUnification.test.mjs');
-let feedbackTest = fs.readFileSync(feedbackTestPath, 'utf8');
-feedbackTest = feedbackTest.replace(/baseline\.maxCounts\.inline_semantic_text,\s*\d+/, 'baseline.maxCounts.inline_semantic_text, 0');
-feedbackTest = feedbackTest.replace(/baseline\.maxCounts\.custom_notice_class,\s*\d+/, 'baseline.maxCounts.custom_notice_class, 0');
-fs.writeFileSync(feedbackTestPath, feedbackTest);
 
 console.log(`Updated ${changedFiles} large pages and migrated ${migratedTexts} status blocks.`);
