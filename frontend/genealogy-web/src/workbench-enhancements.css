@@ -25,7 +25,7 @@
 .workbench-quality-actions button:disabled { cursor: wait; opacity: .6; }
 .workbench-quality-panel { grid-column: 1 / -1; }
 .workbench-quality-result { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; padding: 12px; border-radius: 6px; }
-.workbench-quality-result.is-error, .workbench-quality-result.is-blocked { border: 1px solid #ffccc7; background: #fff2f0; color: #a8071a; }
+.workbench-quality-result.is-failed, .workbench-quality-result.is-blocked { border: 1px solid #ffccc7; background: #fff2f0; color: #a8071a; }
 .workbench-quality-result.is-success { border: 1px solid #b7eb8f; background: #f6ffed; color: #135200; }
 .workbench-quality-rules { margin-top: 12px; }
 .workbench-quality-rules button > span:first-child { display: flex; flex-direction: column; gap: 2px; }
