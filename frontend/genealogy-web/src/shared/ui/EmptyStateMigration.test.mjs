@@ -16,7 +16,7 @@ function walk(dir) {
 test('business source uses unified EmptyState instead of Ant Design Empty', () => {
   const violations = [];
   for (const file of walk(src)) {
-    if (file.endsWith('shared/ui/EmptyState.tsx') || /\.test\.|\.spec\./.test(file)) continue;
+    if (file.endsWith('shared/ui/Feedback.tsx') || /\.test\.|\.spec\./.test(file)) continue;
     const source = fs.readFileSync(file, 'utf8');
     if (/<Empty\b/.test(source) || /\bEmpty\.PRESENTED_IMAGE_/.test(source) || /import\s*\{[\s\S]*?\bEmpty\b[\s\S]*?\}\s*from\s*['"]antd['"]/.test(source)) {
       violations.push(path.relative(src, file));
