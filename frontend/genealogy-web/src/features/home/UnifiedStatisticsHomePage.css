@@ -21,7 +21,6 @@
 .public-home-page__compact-list { display: grid; gap: 8px; }
 .public-home-page__compact-list > button,
 .public-home-page__feature-item,
-.public-home-page__distribution-row,
 .public-home-page__timeline > button,
 .public-home-page__memory-grid > button,
 .public-home-page__lineage-branches > button { border: 1px solid #edf0f3; background: #fff; color: inherit; cursor: pointer; text-align: left; }
@@ -30,8 +29,6 @@
 .public-home-page__compact-list > button:focus-visible,
 .public-home-page__feature-item:hover,
 .public-home-page__feature-item:focus-visible,
-.public-home-page__distribution-row:hover,
-.public-home-page__distribution-row:focus-visible,
 .public-home-page__timeline > button:hover,
 .public-home-page__timeline > button:focus-visible,
 .public-home-page__memory-grid > button:hover,
@@ -42,16 +39,16 @@
 .public-home-page__compact-list strong,
 .public-home-page__compact-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .public-home-page__compact-list small { color: #667085; font-size: 12px; }
-.public-home-page__lineage-preview { display: grid; min-height: 245px; align-content: center; gap: 30px; overflow: hidden; padding: 20px; background: linear-gradient(#fff,#fbfcfe); }
-.public-home-page__lineage-root { position: relative; display: grid; width: 180px; margin: auto; gap: 4px; padding: 13px 16px; border: 1px solid #1677ff; border-radius: 10px; background: #f5f9ff; text-align: center; }
-.public-home-page__lineage-root::after { position: absolute; top: 100%; left: 50%; width: 1px; height: 31px; background: #bfd6f5; content: ''; }
+.public-home-page__lineage-preview { display: grid; min-height: 280px; align-content: center; gap: 34px; overflow: hidden; padding: 28px; background: linear-gradient(#fff,#fbfcfe); }
+.public-home-page__lineage-root { position: relative; display: grid; width: 210px; margin: auto; gap: 4px; padding: 14px 18px; border: 1px solid #1677ff; border-radius: 10px; background: #f5f9ff; text-align: center; }
+.public-home-page__lineage-root::after { position: absolute; top: 100%; left: 50%; width: 1px; height: 35px; background: #bfd6f5; content: ''; }
 .public-home-page__lineage-root small,
 .public-home-page__lineage-branches small { color: #667085; }
-.public-home-page__lineage-branches { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
-.public-home-page__lineage-branches > button { position: relative; display: grid; gap: 4px; padding: 12px; border-radius: 10px; text-align: center; }
-.public-home-page__lineage-branches > button::before { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 16px; background: #bfd6f5; content: ''; }
-.public-home-page__distribution-row { display: grid; width: 100%; gap: 7px; padding: 8px 10px; border-radius: 8px; }
-.public-home-page__distribution-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.public-home-page__lineage-branches { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 14px; }
+.public-home-page__lineage-branches > button { position: relative; display: grid; min-height: 104px; align-content: start; gap: 6px; padding: 14px; border-radius: 10px; text-align: center; }
+.public-home-page__lineage-branches > button::before { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 18px; background: #bfd6f5; content: ''; }
+.public-home-page__lineage-share { display: block; width: 100%; height: 6px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: #edf1f5; }
+.public-home-page__lineage-share > span { display: block; height: 100%; border-radius: inherit; background: #1677ff; }
 .public-home-page__timeline { position: relative; display: grid; gap: 10px; padding-left: 18px; }
 .public-home-page__timeline::before { position: absolute; top: 8px; bottom: 8px; left: 6px; width: 2px; background: #dbe7f7; content: ''; }
 .public-home-page__timeline > button { position: relative; display: grid; gap: 3px; padding: 10px 12px; border-radius: 8px; }
@@ -69,19 +66,22 @@
 .public-home-page__feature-copy { min-width: 0; }
 .public-home-page__feature-copy .ant-typography { margin-bottom: 0; }
 .public-home-page__feature-copy .ant-typography-secondary { margin-top: 4px; line-height: 1.6; }
+.public-home-page__card-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .public-home-page__empty { min-height: 320px; }
 .public-home-page__empty .ant-empty { margin: 72px 0; }
 @media (max-width: 1199px) {
-  .public-home-page__lineage-branches { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .public-home-page__lineage-branches { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
 @media (max-width: 991px) {
   .public-home-page__hero-layout { flex-direction: column; }
   .public-home-page__scope, .public-home-page__clan-select { width: 100%; }
   .public-home-page__feature-list { grid-template-columns: 1fr; }
+  .public-home-page__lineage-branches { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 767px) {
   .public-home-page__identity { flex-direction: column; }
   .public-home-page__search { grid-template-columns: 1fr; }
+  .public-home-page__lineage-preview { padding: 20px 14px; }
   .public-home-page__lineage-branches, .public-home-page__memory-grid { grid-template-columns: 1fr; }
   .public-home-page__feature-item { grid-template-columns: 40px minmax(0,1fr); }
   .public-home-page__feature-item > .ant-tag { grid-column: 2; justify-self: start; }
