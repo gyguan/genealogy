@@ -44,7 +44,6 @@ type WordForm = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
   onSubmittedReview?: (taskId: string) => void;
 };
 
@@ -64,7 +63,7 @@ function generationNoOptions() {
   return Array.from({ length: 60 }, (_, index) => ({ label: `第${index + 1}世`, value: String(index + 1) }));
 }
 
-export function GenerationStep({ notify, onSubmittedReview }: Props) {
+export function GenerationStep({ onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [schemeForm, setSchemeForm] = useState<SchemeForm>({ schemeName: '', branchId: '' });
   const [wordForm, setWordForm] = useState<WordForm>({ generationNo: '1', word: '' });
@@ -91,7 +90,6 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
   );
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);
