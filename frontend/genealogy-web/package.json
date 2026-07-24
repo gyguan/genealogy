@@ -10,6 +10,7 @@
     "api:check:culture": "node ../../scripts/api/check-culture-contract.mjs",
     "api:check:import-execution": "node ../../scripts/api/check-import-execution-contract.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:home": "node --test src/features/home/HomeDiscoveryPage.test.mjs",
     "api:generate": "node ../../scripts/api/generate-all-api-contracts.mjs && node ../../scripts/api/generate-import-execution-types.mjs && node ../../scripts/api/generate-import-failure-types.mjs",
     "api:check": "bash ../../scripts/api/check-api-contract.sh",
     "test:navigation": "rm -rf .navigation-test && npx tsc src/shared/navigation/urlState.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .navigation-test --skipLibCheck && node --test src/shared/navigation/urlState.test.mjs; status=$?; rm -rf .navigation-test; exit $status",
