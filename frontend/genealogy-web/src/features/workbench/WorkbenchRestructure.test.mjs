@@ -16,28 +16,16 @@ test('workbench is rendered as a formal React page instead of DOM mutation', asy
   assert.doesNotMatch(index, /workbench-enhancements/);
 });
 
-test('workbench keeps only query quality and task-list primary hierarchy', async () => {
+test('workbench keeps only query and task-list primary hierarchy', async () => {
   const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  for (const label of ['修谱工作台', '数据质量检查', '修谱任务']) assert.match(code, new RegExp(label));
-  assert.doesNotMatch(code, /workbench-overview-section/);
-  assert.doesNotMatch(code, /cardTitle\('当前任务'/);
-  assert.doesNotMatch(code, /cardTitle\('快捷入口'/);
-  assert.doesNotMatch(code, /Statistic title="任务总数"/);
-  assert.doesNotMatch(code, /Statistic title="处理中"/);
-  assert.doesNotMatch(code, /Statistic title="待确认"/);
-  assert.doesNotMatch(code, /Statistic title="阻塞问题"/);
-  const sections = ['workbench-query-card', 'workbench-quality-card', 'workbench-task-card'];
+  for (const label of ['修谱工作台', '修谱任务']) assert.match(code, new RegExp(label));
+  for (const removed of ['workbench-overview-section', 'workbench-quality-card', '数据质量检查', 'quality-checks', 'QualityResult', 'QualityRule']) {
+    assert.doesNotMatch(code, new RegExp(removed));
+  }
+  const sections = ['workbench-query-card', 'workbench-task-card'];
   const positions = sections.map(marker => code.indexOf(marker));
   assert.ok(positions.every(value => value >= 0));
-  assert.ok(positions.every((value, index) => index === 0 || value > positions[index - 1]));
-});
-
-test('workbench preserves quality scopes and server submission gate', async () => {
-  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  for (const scope of ['QUERY', 'DRAFT_IDS', 'WORKBENCH_SESSION', 'REVIEW_GATE']) assert.match(code, new RegExp(scope));
-  assert.match(code, /quality-checks\/submission-gate/);
-  assert.match(code, /affectedSubjectIds/);
-  assert.match(code, /存在阻断问题/);
+  assert.ok(positions[1] > positions[0]);
 });
 
 test('workbench keeps task list responsive and 720px drawer', async () => {
