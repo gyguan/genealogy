@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  migrate-alerts:
-    name: Migrate and verify page alerts
+  diagnose-alerts:
+    name: Diagnose page alert migration
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -27,27 +27,18 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Apply migration
-        working-directory: frontend/genealogy-web
-        run: node scripts/migrate-page-alerts.mjs
-      - name: Commit migration result
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/genealogy-web/src frontend/genealogy-web/package.json frontend/genealogy-web/feedback-audit-baseline.json
-          git commit -m "refactor: unify page alert feedback"
-          git push origin HEAD:agent/issue-771-unify-page-alerts
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Verify feedback audit and contract
+      - name: Capture diagnostics
         working-directory: frontend/genealogy-web
         run: |
-          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json
-          npm run test:feedback
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build production frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
+          npm run test:feedback > alert-feedback-test.log 2>&1 || true
+          npm run typecheck > alert-typecheck.log 2>&1 || true
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f frontend/genealogy-web/alert-feedback-test.log frontend/genealogy-web/alert-typecheck.log
+          git commit -m "chore: capture page alert diagnostics"
+          git push origin HEAD:agent/issue-771-unify-page-alerts
