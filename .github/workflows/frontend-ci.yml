@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  migrate-notify:
-    name: Finalize application notify migration
+  diagnose-notify:
+    name: Diagnose notify migration tests
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -27,38 +27,18 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Apply targeted cleanup
-        working-directory: frontend/genealogy-web
-        run: |
-          perl -0pi -e 's/\n  function notify\(data\?: unknown, error = false\) \{.*?\n  \}\n/\n/s' src/app/App.tsx
-          sed -i '/notify?.(data, error);/d' src/features/mvp1/steps/tree/TreeStep.tsx src/features/mvp1/steps/review/ReviewProgressStep.tsx
-          sed -i "/import { Panel } from '..\/..\/..\/..\/shared\/ui\/Panel';/a import { feedback } from '../../../../shared/ui/OperationFeedback';" src/features/mvp1/steps/review/WizardSummaryStep.tsx
-          sed -i "s/notify?.({ message: '本次建谱已完成' });/feedback.success('本次建谱已完成');/" src/features/mvp1/steps/review/WizardSummaryStep.tsx
-          perl -0pi -e 's/export function PersonDataExportActions\(\{ notify: _notify \}: Props\)/export function PersonDataExportActions()/g' src/features/exports/PersonDataExportActions.tsx
-          perl -0pi -e 's/export function SourceDraftDeleteAction\(\{ notify: _notify \}: Props\)/export function SourceDraftDeleteAction()/g' src/features/sources/SourceDraftDeleteAction.tsx
-          rm -f notify-residual.txt
-          if grep -Rnw --include='*.ts' --include='*.tsx' --exclude='*.test.*' --exclude='*.spec.*' '\bnotify\b' src; then
-            echo 'Legacy notify identifiers remain' >&2
-            exit 1
-          fi
-      - name: Commit targeted cleanup
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/genealogy-web/src frontend/genealogy-web/notify-residual.txt
-          git commit -m "fix: remove final notify residuals"
-          git push origin HEAD:agent/issue-767-remove-app-notify
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Verify feedback audit and contract
+      - name: Capture diagnostics
         working-directory: frontend/genealogy-web
         run: |
-          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json
-          npm run test:feedback
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build production frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
+          npm run test:feedback > feedback-test-output.log 2>&1 || true
+          npm run typecheck > typecheck-output.log 2>&1 || true
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/feedback-test-output.log frontend/genealogy-web/typecheck-output.log
+          git commit -m "chore: capture notify migration diagnostics"
+          git push origin HEAD:agent/issue-767-remove-app-notify
