@@ -6,6 +6,9 @@ on:
     paths:
       - ".github/workflows/issue-782-main-verifier.yml"
 
+permissions:
+  contents: write
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -13,6 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: agent/issue-782-source-binding-review-apply
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,7 +26,6 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
-          import textwrap
           source = Path('.github/workflows/issue-782-build-patch.yml').read_text()
           block = source.split('      - name: Apply source binding review patch', 1)[1]
           block = block.split('      - name: Run targeted backend tests', 1)[0]
@@ -34,11 +37,13 @@ jobs:
       - name: Run targeted backend tests
         working-directory: backend/genealogy-backend
         run: mvn -q -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test
-      - name: Upload verified files
-        uses: actions/upload-artifact@v4
-        with:
-          name: issue-782-verified-files
-          path: |
-            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+      - name: Commit verified files to feature branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java \
             backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
-          retention-days: 3
+          git commit -m "fix(review): apply source binding revisions"
+          git push origin HEAD:agent/issue-782-source-binding-review-apply
