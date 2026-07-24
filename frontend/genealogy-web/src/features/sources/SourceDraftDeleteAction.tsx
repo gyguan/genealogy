@@ -27,7 +27,7 @@ function sourceDependencyCounts(detail: SourceDetail | null) {
   };
 }
 
-export function SourceDraftDeleteAction({ notify: _notify }: Props) {
+export function SourceDraftDeleteAction() {
   const workspace = useWorkspace();
   const sourceId = Number(workspace.sourceId || sourceIdFromLocation() || 0) || undefined;
   const [detail, setDetail] = useState<SourceDetail | null>(null);

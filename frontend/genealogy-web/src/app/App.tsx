@@ -101,17 +101,6 @@ function AppShell() {
   const guardedUrlRef = useRef('');
 
   function closeToast(id: number) { setToasts(prev => prev.filter(item => item.id !== id)); }
-  function notify(data?: unknown, error = false) {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    const item: ToastItem = {
-      id,
-      message: getMessage(data, error ? '操作失败，请稍后重试' : '操作成功'),
-      description: getDescription(data),
-      type: getFeedbackTone(data, error)
-    };
-    setToasts(prev => [...prev.slice(-3), item]);
-    window.setTimeout(() => closeToast(id), 3200);
-  }
   function syncRouteFromUrl() {
     setPersonDetailRoute(readPersonDetailRoute()); setPersonEditRoute(readPersonEditRoute()); setActive(readViewFromUrl()); setPageEntryVersion(prev => prev + 1);
   }

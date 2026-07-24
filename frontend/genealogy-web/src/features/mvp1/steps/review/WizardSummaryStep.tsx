@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Col, Empty, Result, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 import type { Mvp1StepKey } from '../../domain/wizardStepState';
 import type { SummarySection } from '../../domain/wizardSummaryModel';
 import { loadWizardSummary } from '../../services/wizardSummaryService';
@@ -92,7 +93,7 @@ export function WizardSummaryStep({ onStepChange }: Props) {
     if (!summary?.complete || completed) return;
     setCompleted(true);
     completion.reportStatus({ ready: true, completed: true, blockerCount: 0, reason: '本次建谱已完成。' });
-    notify?.({ message: '本次建谱已完成' });
+    feedback.success('本次建谱已完成');
   }, [completion.requestVersion, summary, completed]);
 
   if (completed) {

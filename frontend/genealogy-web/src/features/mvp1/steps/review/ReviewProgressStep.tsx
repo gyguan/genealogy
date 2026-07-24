@@ -116,7 +116,6 @@ export function ReviewProgressStep({}: Props) {
   }
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);

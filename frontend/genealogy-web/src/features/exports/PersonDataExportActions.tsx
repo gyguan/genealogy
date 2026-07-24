@@ -9,7 +9,7 @@ type Props = {  };
 
 type ExportScope = 'clan' | 'branch';
 
-export function PersonDataExportActions({ notify: _notify }: Props) {
+export function PersonDataExportActions() {
   const workspace = useWorkspace();
   const [loading, setLoading] = useState(false);
 

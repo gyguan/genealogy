@@ -60,7 +60,6 @@ export function TreeStep({}: Props) {
   const nodeNameByPersonId = useMemo(() => new Map(nodes.map(node => [String(node.personId || node.id || ''), node.name || '未命名人物'])), [nodes]);
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);

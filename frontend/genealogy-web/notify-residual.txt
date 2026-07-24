@@ -1,6 +1,0 @@
-src/app/App.tsx:104:  function notify(data?: unknown, error = false) {
-src/features/mvp1/steps/tree/TreeStep.tsx:63:    notify?.(data, error);
-src/features/mvp1/steps/review/WizardSummaryStep.tsx:95:    notify?.({ message: '本次建谱已完成' });
-src/features/mvp1/steps/review/ReviewProgressStep.tsx:119:    notify?.(data, error);
-src/features/exports/PersonDataExportActions.tsx:12:export function PersonDataExportActions({ notify: _notify }: Props) {
-src/features/sources/SourceDraftDeleteAction.tsx:30:export function SourceDraftDeleteAction({ notify: _notify }: Props) {
