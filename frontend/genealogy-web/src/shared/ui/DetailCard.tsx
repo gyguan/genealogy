@@ -1,6 +1,6 @@
 import { Card, Descriptions } from 'antd';
 
-import { EmptyState } from './EmptyState';
+import { EmptyState } from './Feedback';
 
 export type DetailField<T> = {
   label: string;

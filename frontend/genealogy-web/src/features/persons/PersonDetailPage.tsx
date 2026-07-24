@@ -20,7 +20,7 @@ import type { PersonEvent } from './personDetailModel';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = { personId: string; onBack: () => void };
 type PageError = { status: 403 | 404 | 500; title: string; description: string };

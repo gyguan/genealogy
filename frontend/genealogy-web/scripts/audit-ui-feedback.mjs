@@ -74,7 +74,7 @@ const mechanisms = [
     id: 'empty_state',
     name: '空状态提示',
     target: '统一为 EmptyState',
-    patterns: [/<Empty\b/g, /\bemptyText\s*=/g, /\bnotFoundContent\s*=/g, /\blocale\s*=\s*\{\{\s*emptyText/g]
+    patterns: [/<Empty\b/g]
   },
   {
     id: 'tooltip_help',

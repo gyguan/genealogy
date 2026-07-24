@@ -7,7 +7,7 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {  refreshKey: number };
 

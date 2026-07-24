@@ -3,7 +3,7 @@ import { Button, Card, Drawer, Skeleton, Space, Typography } from 'antd';
 
 import { PageFeedback } from '../Feedback';
 
-import { EmptyState } from '../EmptyState';
+import { EmptyState } from '../Feedback';
 
 const { Text, Title } = Typography;
 

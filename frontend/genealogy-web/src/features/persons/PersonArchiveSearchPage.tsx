@@ -21,7 +21,7 @@ import {
 } from './personArchiveUrlState';
 import type { PersonArchiveSearchState } from './personArchiveUrlState';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {  };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;

@@ -53,7 +53,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 

@@ -10,7 +10,7 @@ import { loadPersons as queryPersons, type PersonLike } from '../../services/per
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
-import { EmptyState } from '../../../../shared/ui/EmptyState';
+import { EmptyState } from '../../../../shared/ui/Feedback';
 
 type TreeMode = 'family' | 'ancestors' | 'descendants';
 

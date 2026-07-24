@@ -14,7 +14,7 @@ import { dataStatusText } from './treeDisplayModel';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {
   graph: TreeGraphResponse | null;

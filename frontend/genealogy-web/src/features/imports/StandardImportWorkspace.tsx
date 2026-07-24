@@ -19,7 +19,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
 
-import { EmptyState } from '../../shared/ui/EmptyState';
+import { EmptyState } from '../../shared/ui/Feedback';
 
 const { Dragger } = Upload;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
