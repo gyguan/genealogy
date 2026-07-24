@@ -100,7 +100,6 @@ function AppShell() {
   const navigationGuardRef = useRef<EntityNavigationGuardState>(EMPTY_ENTITY_NAVIGATION_GUARD);
   const guardedUrlRef = useRef('');
 
-  function closeToast(id: number) { setToasts(prev => prev.filter(item => item.id !== id)); }
   function syncRouteFromUrl() {
     setPersonDetailRoute(readPersonDetailRoute()); setPersonEditRoute(readPersonEditRoute()); setActive(readViewFromUrl()); setPageEntryVersion(prev => prev + 1);
   }

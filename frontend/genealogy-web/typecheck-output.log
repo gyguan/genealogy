@@ -1,5 +1,0 @@
-
-> genealogy-web@0.1.0 typecheck
-> tsc -p tsconfig.json --noEmit
-
-src/app/App.tsx(103,37): error TS2304: Cannot find name 'setToasts'.
