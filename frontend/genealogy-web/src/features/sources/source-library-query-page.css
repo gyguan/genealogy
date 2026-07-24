@@ -66,9 +66,9 @@
   white-space: nowrap;
 }
 
-.source-library-query-page .source-library-query-alert,
-.source-library-query-page .source-library-result-alert,
-.source-library-query-page .source-library-form-alert {
+.source-library-query-page .source-library-query-status,
+.source-library-query-page .source-library-result-status,
+.source-library-query-page .source-library-form-status {
   margin-bottom: 16px;
 }
 .source-library-query-page .source-library-name-link {

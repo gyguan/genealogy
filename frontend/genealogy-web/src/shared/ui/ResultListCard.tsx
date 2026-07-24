@@ -107,13 +107,13 @@ export function ResultListCard<RecordType extends object>(props: ResultListCardP
       extra={extra}
       resultExtra={summaryExtra}
     >
-      {notice ? <div className="result-list-card__notice">{notice}</div> : null}
+      {notice ? <div className="result-list-card__status">{notice}</div> : null}
       {description ? <Typography.Paragraph className="result-list-card__description" type="secondary">{description}</Typography.Paragraph> : null}
       {initialError && !rows.length ? (
         <PageFeedback tone="error" title={initialError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
       ) : null}
       {refreshError && rows.length ? (
-        <PageFeedback className="result-list-card__refresh-error" tone="warning" title={refreshError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
+        <PageFeedback className="result-list-card__refresh-status" tone="warning" title={refreshError} action={onRetry ? <Button onClick={onRetry}>重试</Button> : undefined} />
       ) : null}
       <Table<RecordType>
         {...tableProps}

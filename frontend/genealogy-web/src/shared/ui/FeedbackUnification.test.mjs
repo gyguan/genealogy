@@ -183,8 +183,8 @@ test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.maxCounts.antd_message, 0);
   assert.equal(baseline.maxCounts.confirm_modal, 0);
   assert.equal(baseline.maxCounts.empty_state, 0);
-  assert.equal(baseline.maxCounts.inline_semantic_text, 145);
-  assert.equal(baseline.maxCounts.custom_notice_class, 30);
+  assert.equal(baseline.maxCounts.inline_semantic_text, 0);
+  assert.equal(baseline.maxCounts.custom_notice_class, 0);
   assert.match(audit, /--baseline/);
   assert.match(audit, /regressions\.length/);
   assert.match(audit, /process\.exitCode = 1/);

@@ -842,7 +842,7 @@ export function SourceLibraryQueryPage({}: Props) {
 
         <Modal open={attachmentModalOpen} title="上传附件" width={600} confirmLoading={attachmentSubmitLoading} okText="上传" onOk={() => void uploadAttachment()} onCancel={() => !attachmentSubmitLoading && setAttachmentModalOpen(false)}>
           <Form form={attachmentForm} layout="vertical" initialValues={{ privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
-            {attachmentSubmitError ? <PageFeedback tone="error" title="附件上传失败" description={attachmentSubmitError} className="source-library-form-alert" /> : null}
+            {attachmentSubmitError ? <PageFeedback tone="error" title="附件上传失败" description={attachmentSubmitError} className="source-library-form-status" /> : null}
             <Form.Item label="附件" required><Upload {...uploadProps}><Button icon={<UploadOutlined />}>选择文件</Button></Upload></Form.Item>
             <Form.Item name="privacyLevel" label="可见范围" rules={[{ required: true, message: '请选择可见范围' }]}><Select options={privacyOptions} /></Form.Item>
             <Form.Item name="sensitiveLevel" label="敏感级别" rules={[{ required: true, message: '请选择敏感级别' }]}><Select options={sensitiveOptions} /></Form.Item>
@@ -851,8 +851,8 @@ export function SourceLibraryQueryPage({}: Props) {
 
         <Modal open={bindingModalOpen} title={bindingMode === 'replace' ? '变更引用' : '新增引用'} confirmLoading={bindingSubmitLoading} onCancel={() => !bindingSubmitLoading && setBindingModalOpen(false)} onOk={() => bindingForm.submit()} okText="提交审核">
           <Form form={bindingForm} layout="vertical" onFinish={submitReferenceRevision}>
-            {bindingSubmitError ? <PageFeedback tone="error" title="引用提交失败" description={bindingSubmitError} className="source-library-form-alert" /> : null}
-            <PageFeedback tone="info" className="source-library-form-alert" title={bindingMode === 'replace' ? '变更引用提交后需审核通过才会生效，审核期间原引用继续有效。' : '新增引用提交后需审核通过才会正式生效。'} />
+            {bindingSubmitError ? <PageFeedback tone="error" title="引用提交失败" description={bindingSubmitError} className="source-library-form-status" /> : null}
+            <PageFeedback tone="info" className="source-library-form-status" title={bindingMode === 'replace' ? '变更引用提交后需审核通过才会生效，审核期间原引用继续有效。' : '新增引用提交后需审核通过才会正式生效。'} />
             <Form.Item name="targetType" label="引用对象类型" rules={[{ required: true, message: '请选择引用对象类型' }]}><Select options={bindingTargetTypeOptions} onChange={changeBindingTargetType} /></Form.Item>
             {bindingTargetType === 'generation_word' ? <Form.Item name="generationSchemeId" label="字辈方案"><Select allowClear showSearch optionFilterProp="label" loading={generationSchemeLoading} options={generationSchemeOptions.filter(item => item.value)} placeholder={generationSchemes.length ? '请选择已生效字辈方案' : '暂无已生效字辈方案'} onChange={changeGenerationScheme} /></Form.Item> : null}
             <Form.Item name="targetId" label="引用对象" rules={[{ required: true, message: '请选择引用对象' }]}><Select showSearch optionFilterProp="label" loading={bindingTargetType === 'generation_word' && generationWordLoading} options={targetOptions.filter(item => item.value)} placeholder={targetPlaceholder} disabled={bindingTargetType === 'generation_word' && !generationWordLoading && !generationWords.length} notFoundContent={bindingTargetType === 'generation_word' ? '请选择字辈方案后加载字辈明细' : '暂无可选对象'} /></Form.Item>
@@ -894,7 +894,7 @@ export function SourceLibraryQueryPage({}: Props) {
     <div className="source-library-page source-library-query-page">
       <Space direction="vertical" size="middle" className="source-library-stack">
         <Card className="source-library-query-card" title="来源资料查询">
-          {clanError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clanError} action={<Button size="small" onClick={() => void loadClans()}>重新加载</Button>} className="source-library-query-alert" /> : null}
+          {clanError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clanError} action={<Button size="small" onClick={() => void loadClans()}>重新加载</Button>} className="source-library-query-status" /> : null}
           <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search, clanId)}>
             <div className="source-library-query-grid source-library-query-grid--primary">
               <Form.Item name="clanId" label="宗族" rules={[{ required: true, message: '请选择宗族' }]}>
@@ -930,7 +930,7 @@ export function SourceLibraryQueryPage({}: Props) {
 
         <QueryResultCard className="source-library-result-card" extra={resultActions} total={sourceTotal}>
           
-          {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-alert" /> : null}
+          {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-status" /> : null}
           {!listLoaded && loading ? (
             <Space direction="vertical" align="center" className="source-library-loading"><Spin /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space>
           ) : isMobile ? (
@@ -996,8 +996,8 @@ export function SourceLibraryQueryPage({}: Props) {
         extra={<Space><Button disabled={createSubmitLoading} onClick={() => setCreateDrawerOpen(false)}>取消</Button><Button loading={createSubmitLoading} onClick={() => void submitCreateSource(false)}>保存草稿</Button><Button type="primary" loading={createSubmitLoading} onClick={() => void submitCreateSource(true)}>保存并提交审核</Button></Space>}
       >
         <Form form={createForm} layout="vertical" initialValues={{ sourceType: 'genealogy_book', confidenceLevel: 'unknown', privacyLevel: 'clan_only', sensitiveLevel: 'normal' }}>
-          {createSubmitError ? <PageFeedback tone="error" title="来源创建失败" description={createSubmitError} className="source-library-form-alert" /> : null}
-          <PageFeedback tone="info" title="新增来源默认保存为草稿；提交审核通过后才能作为正式证据。" className="source-library-form-alert" />
+          {createSubmitError ? <PageFeedback tone="error" title="来源创建失败" description={createSubmitError} className="source-library-form-status" /> : null}
+          <PageFeedback tone="info" title="新增来源默认保存为草稿；提交审核通过后才能作为正式证据。" className="source-library-form-status" />
           <Row gutter={16}>
             <Col xs={24} md={12}><Form.Item name="sourceName" label="来源名称" rules={[{ required: true, whitespace: true, message: '请输入来源名称' }]}><Input maxLength={200} placeholder="例如：张氏族谱卷一" /></Form.Item></Col>
             <Col xs={24} md={12}><Form.Item name="sourceType" label="来源类型" rules={[{ required: true, message: '请选择来源类型' }]}><Select options={sourceTypeOptions} /></Form.Item></Col>

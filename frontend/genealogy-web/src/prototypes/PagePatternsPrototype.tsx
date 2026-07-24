@@ -485,7 +485,7 @@ function ListPattern() {
             closable
             title="当前展示黄氏宗族全部可见文化资料"
             description="正式资料变更、归档和删除将进入审核流程。"
-            className="pp-list-alert"
+            className="pp-list-status"
           />
         ) : null}
         <ListState state={previewState} compact={compact} />

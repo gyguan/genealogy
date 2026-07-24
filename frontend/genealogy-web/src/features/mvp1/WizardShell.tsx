@@ -107,7 +107,7 @@ export function WizardShell<TKey extends string = string>({
 
       {gateNotice ? (
         <PageFeedback
-          className="wizard-gate-alert"
+          className="wizard-gate-status"
           tone="warning"
           title={gateNotice.title}
           description={gateNotice.reason}
