@@ -36,15 +36,30 @@ jobs:
               lines.append(line[10:] if line.startswith('          ') else line)
           exec(compile('\n'.join(lines), '<issue-782-patch>', 'exec'))
       - name: Run targeted backend tests
+        id: tests
         working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test
-      - name: Commit verified files to feature branch
+        shell: bash
+        run: |
+          set +e
+          mvn -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test 2>&1 | tee ../../../issue-782-test.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit verified files or diagnostics
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java \
-            backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
-          git commit -m "fix(review): apply source binding revisions"
+          if [ "${{ steps.tests.outputs.status }}" = "0" ]; then
+            git add \
+              backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java \
+              backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
+            git commit -m "fix(review): apply source binding revisions"
+          else
+            git add issue-782-test.log
+            git commit -m "test: capture source binding verifier failure"
+          fi
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
+      - name: Fail when tests failed
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
