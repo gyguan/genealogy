@@ -30,6 +30,17 @@ jobs:
           cache-dependency-path: frontend/genealogy-web/package.json
       - name: Run migration codemod
         run: node scripts/migrate-antd-message.mjs
+      - name: Commit migrated sources
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src package.json feedback-audit-baseline.json
+          if git diff --cached --quiet; then
+            echo "No migration changes to commit"
+          else
+            git commit -m "refactor: migrate all direct Ant Design Message calls"
+            git push origin HEAD:agent/issue-759-migrate-all-antd-message
+          fi
       - name: Install dependencies
         run: npm install
       - name: Verify feedback contract
@@ -38,14 +49,3 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
-      - name: Commit migrated sources
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src package.json feedback-audit-baseline.json
-          if git diff --cached --quiet; then
-            echo "No migration changes to commit"
-            exit 0
-          fi
-          git commit -m "refactor: migrate all direct Ant Design Message calls"
-          git push origin HEAD:agent/issue-759-migrate-all-antd-message
