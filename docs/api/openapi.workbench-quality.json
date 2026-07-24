@@ -1,0 +1,73 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Workbench Quality Overlay", "version": "1.0.0" },
+  "paths": {
+    "/api/v1/workbench/quality-checks": {
+      "post": {
+        "operationId": "triggerWorkbenchQualityCheck",
+        "summary": "触发修谱工作台质量检查",
+        "description": "支持当前查询、已选草稿和整个修谱会话。检查只读取草稿和任务数据，不修改正式谱库。",
+        "parameters": [{ "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WorkbenchQualityCheckRequest" } } } },
+        "responses": { "200": { "description": "检查完成", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WorkbenchQualityCheckApiResponse" } } } }, "409": { "description": "重复检查或状态冲突" } }
+      }
+    },
+    "/api/v1/workbench/quality-checks/{checkId}": {
+      "get": {
+        "operationId": "getWorkbenchQualityCheck",
+        "summary": "查询修谱质量检查结果",
+        "parameters": [{ "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }, { "name": "checkId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": { "200": { "description": "检查结果", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WorkbenchQualityCheckApiResponse" } } } } }
+      }
+    },
+    "/api/v1/workbench/quality-checks/latest": {
+      "get": {
+        "operationId": "getLatestWorkbenchQualityCheck",
+        "summary": "查询最近一次修谱质量检查",
+        "parameters": [{ "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }],
+        "responses": { "200": { "description": "最近检查结果" } }
+      }
+    },
+    "/api/v1/workbench/quality-checks/submission-gate": {
+      "post": {
+        "operationId": "checkWorkbenchSubmissionGate",
+        "summary": "提交审核前执行不可绕过的服务端质量门禁",
+        "description": "服务端重新执行阻断规则；存在阻断问题时返回错误，不依赖前端推断。",
+        "parameters": [{ "name": "clanId", "in": "query", "required": true, "schema": { "type": "integer", "format": "int64" } }],
+        "requestBody": { "required": false, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WorkbenchQualityCheckRequest" } } } },
+        "responses": { "200": { "description": "允许提交" }, "409": { "description": "存在阻断性问题" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "WorkbenchQualityCheckRequest": {
+        "type": "object",
+        "required": ["scopeType", "mode"],
+        "properties": {
+          "scopeType": { "type": "string", "enum": ["WORKBENCH_SESSION", "DRAFT_IDS", "QUERY"] },
+          "mode": { "type": "string", "enum": ["INCREMENTAL", "FULL", "REVIEW_GATE"] },
+          "subjectIds": { "type": "array", "items": { "type": "string" } },
+          "query": { "type": "object", "additionalProperties": true },
+          "ruleCodes": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "WorkbenchQualityCheckApiResponse": {
+        "type": "object",
+        "properties": { "success": { "type": "boolean" }, "data": { "$ref": "#/components/schemas/WorkbenchQualityCheckResponse" } }
+      },
+      "WorkbenchQualityCheckResponse": {
+        "type": "object",
+        "properties": {
+          "checkId": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["QUEUED", "RUNNING", "PASSED", "ISSUES_FOUND", "FAILED"] },
+          "scopeType": { "type": "string" },
+          "mode": { "type": "string" },
+          "reviewBlocked": { "type": "boolean" },
+          "summary": { "type": "object", "additionalProperties": true },
+          "rules": { "type": "array", "items": { "type": "object", "additionalProperties": true } }
+        }
+      }
+    }
+  }
+}
