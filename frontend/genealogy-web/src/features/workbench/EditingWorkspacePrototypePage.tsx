@@ -207,6 +207,7 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
     <Button icon={<SettingOutlined />} onClick={() => setTemplateOpen(true)}>任务模板</Button>
     <Button type="primary" disabled={!selectedKeys.length} loading={bulkLoading} onClick={() => void bulkCheck()}>批量核查</Button>
   </Space>;
+  const drawerAction = currentTask ? <Button type="primary" disabled={!currentTask.relatedEntryType || !onNavigate} onClick={() => currentTask.relatedEntryType && navigate(currentTask.relatedEntryType, currentTask)}>前往处理</Button> : null;
 
   return <div className="workbench-prototype-page">
     <Card className="workbench-query-card" title={cardTitle('修谱工作台', <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('mvp1Wizard')}>新建修谱</Button>)}>
@@ -280,7 +281,7 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
       <div className="workbench-pagination"><Pagination current={page} pageSize={PAGE_SIZE} total={total} showSizeChanger={false} showTotal={value => `共 ${value} 条`} onChange={value => void loadTasks(value, appliedFilters)} /></div>
     </Card>
 
-    <Drawer className="workbench-task-detail-drawer" width={720} open={Boolean(currentTask)} onClose={() => setCurrentTask(null)} title={currentTask ? taskTitle(currentTask) : '任务详情'} extra={currentTask ? <Button type="primary" disabled={!currentTask.relatedEntryType || !onNavigate} onClick={() => currentTask.relatedEntryType && navigate(currentTask.relatedEntryType, currentTask)}>前往处理</Button> : null}>
+    <Drawer className="workbench-task-detail-drawer" width={720} open={Boolean(currentTask)} onClose={() => setCurrentTask(null)} title={currentTask ? cardTitle(taskTitle(currentTask), drawerAction) : '任务详情'}>
       {currentTask ? <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Descriptions title="任务摘要" column={1} bordered size="small" items={[
           { key: 'type', label: '任务类型', children: currentTask.typeText }, { key: 'status', label: '状态', children: <Tag color={statusColor(currentTask.status)}>{currentTask.statusText}</Tag> },
