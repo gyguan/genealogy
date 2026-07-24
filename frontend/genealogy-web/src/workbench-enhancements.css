@@ -24,9 +24,9 @@
 .workbench-quick-actions button.is-primary, .workbench-quality-actions button.is-primary { border-color: #1677ff; background: #1677ff; color: #fff; }
 .workbench-quality-actions button:disabled { cursor: wait; opacity: .6; }
 .workbench-quality-panel { grid-column: 1 / -1; }
-.workbench-quality-feedback { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; padding: 12px; border-radius: 6px; }
-.workbench-quality-feedback.is-error, .workbench-quality-feedback.is-blocked { border: 1px solid #ffccc7; background: #fff2f0; color: #a8071a; }
-.workbench-quality-feedback.is-success { border: 1px solid #b7eb8f; background: #f6ffed; color: #135200; }
+.workbench-quality-result { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; padding: 12px; border-radius: 6px; }
+.workbench-quality-result.is-error, .workbench-quality-result.is-blocked { border: 1px solid #ffccc7; background: #fff2f0; color: #a8071a; }
+.workbench-quality-result.is-success { border: 1px solid #b7eb8f; background: #f6ffed; color: #135200; }
 .workbench-quality-rules { margin-top: 12px; }
 .workbench-quality-rules button > span:first-child { display: flex; flex-direction: column; gap: 2px; }
 .workbench-quality-rules small { color: #8c8c8c; }
