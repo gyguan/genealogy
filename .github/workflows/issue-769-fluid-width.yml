@@ -1,0 +1,77 @@
+name: Issue 769 Fluid Width
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.head_ref == 'agent/issue-769-fluid-page-width'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-769-fluid-page-width
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply page width changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          targets = [
+              Path('frontend/genealogy-web/src/features/imports/import-workbench.css'),
+              Path('frontend/genealogy-web/src/features/logs/tracking-page.css'),
+          ]
+          for path in targets:
+              source = path.read_text()
+              updated = source.replace('  max-width: 1600px;\n  margin: 0 auto;\n', '')
+              if updated == source:
+                  raise SystemExit(f'expected fixed-width rule not found: {path}')
+              path.write_text(updated)
+
+          test_path = Path('frontend/genealogy-web/src/shared/ui/FluidPageWidth.test.mjs')
+          test_path.write_text("""import test from 'node:test';
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+
+          const importCss = readFileSync(new URL('../../features/imports/import-workbench.css', import.meta.url), 'utf8');
+          const trackingCss = readFileSync(new URL('../../features/logs/tracking-page.css', import.meta.url), 'utf8');
+
+          function ruleBody(source, selector) {
+            const match = source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\\\s*\\\\{([^}]]+)\\\\}`));
+            assert.ok(match, `missing ${selector}`);
+            return match[1];
+          }
+
+          test('data import page uses all available browser width', () => {
+            const body = ruleBody(importCss, '.import-center-page');
+            assert.match(body, /width:\\s*100%/);
+            assert.doesNotMatch(body, /max-width/);
+          });
+
+          test('audit tracking page uses all available browser width', () => {
+            const body = ruleBody(trackingCss, '.tracking-double-card-page');
+            assert.match(body, /width:\\s*100%/);
+            assert.doesNotMatch(body, /max-width/);
+          });
+          """)
+          PY
+          rm .github/workflows/issue-769-fluid-width.yml
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/imports/import-workbench.css \
+                  frontend/genealogy-web/src/features/logs/tracking-page.css \
+                  frontend/genealogy-web/src/shared/ui/FluidPageWidth.test.mjs \
+                  .github/workflows/issue-769-fluid-width.yml
+          git commit -m "style: make import and tracking pages fluid width"
+          git push origin HEAD:agent/issue-769-fluid-page-width
