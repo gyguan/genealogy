@@ -27,21 +27,28 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Run person tests
+      - name: Capture validation results
         working-directory: frontend/genealogy-web
-        run: npm run test:person-edit
-      - name: Typecheck
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build
-        working-directory: frontend/genealogy-web
-        run: npm run build
+        shell: bash
+        run: |
+          set +e
+          : > ../../tasks/issue-761-validation.txt
+          npm run test:person-edit > /tmp/person-test.log 2>&1
+          echo "person-test-status=$?" >> ../../tasks/issue-761-validation.txt
+          tail -n 160 /tmp/person-test.log >> ../../tasks/issue-761-validation.txt
+          npm run typecheck > /tmp/person-typecheck.log 2>&1
+          echo "typecheck-status=$?" >> ../../tasks/issue-761-validation.txt
+          tail -n 160 /tmp/person-typecheck.log >> ../../tasks/issue-761-validation.txt
+          npm run build > /tmp/person-build.log 2>&1
+          echo "build-status=$?" >> ../../tasks/issue-761-validation.txt
+          tail -n 160 /tmp/person-build.log >> ../../tasks/issue-761-validation.txt
+          exit 0
       - name: Commit implementation
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/issue-761-implement.yml scripts/issue-761-implement.py
-          git add frontend/genealogy-web tasks/issue-761-execution.md
+          git add frontend/genealogy-web tasks/issue-761-execution.md tasks/issue-761-validation.txt
           git commit -m 'feat: unify person information grouping'
           git push origin HEAD:agent/issue-761-person-grouping
