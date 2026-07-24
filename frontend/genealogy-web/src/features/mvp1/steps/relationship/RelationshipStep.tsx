@@ -1,6 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Select, Space, Tag, Typography, message } from 'antd';
+import { Alert,
+  Button,
+  Empty,
+  Select,
+  Space,
+  Tag,
+  Typography
+} from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -22,6 +32,8 @@ import { loadClans as queryClans, type ClanLike } from '../../services/clanServi
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 import { createRelationshipApi, deleteRelationshipApi, loadRelationships as queryRelationships, type RelationshipLike } from '../../services/relationshipService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
+
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type Props = {
   notify?: (data: unknown, error?: boolean) => void;
@@ -79,8 +91,8 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
-      if (error) message.error(text);
-      else message.success(text);
+      if (error) feedback.error(text);
+      else feedback.success(text);
     }
   }
 

@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +26,7 @@ import {
   Tabs,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, MigrationEventDetailResponse, MigrationEventSummaryResponse } from '../../shared/api/generated/culture-types';
@@ -46,6 +50,8 @@ import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, rea
 import type { MigrationSearchState } from './migrationEventUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -180,7 +186,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   useEffect(() => {
     if (!clanId) { setBranches([]); return; }
     let active = true;
-    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) messageApi.error(errorText(error, '支派列表加载失败')); });
+    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
   }, [clanId, messageApi]);
   useEffect(() => {
@@ -241,7 +247,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
         : governanceTarget.kind === 'archive'
           ? await archiveMigrationEvent(governanceTarget.id, { reason: governanceReason.trim() })
           : await deleteMigrationEvent(governanceTarget.id);
-      messageApi.success(result.message || '操作已完成');
+      feedback.success(result.message || '操作已完成');
       if (governanceTarget.kind === 'delete' && !governanceTarget.reviewRequired && selectedId === governanceTarget.id) closeDetail();
       setGovernanceTarget(null); setGovernanceItem(null); setGovernanceReason(''); refresh();
     } catch (error) { setGovernanceError(errorText(error, statusOf(error) === 409 ? '对象状态已变化，请刷新后重试' : '操作失败')); }

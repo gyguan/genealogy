@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { Spin, message } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Spin
+} from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
@@ -10,6 +14,8 @@ import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
 import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -54,7 +60,7 @@ export function CultureProductPage() {
       .catch(error => {
         if (!active) return;
         setClans([]);
-        messageApi.error(errorText(error, '宗族列表加载失败'));
+        feedback.error(errorText(error, '宗族列表加载失败'));
       })
       .finally(() => {
         if (active) setClansLoading(false);

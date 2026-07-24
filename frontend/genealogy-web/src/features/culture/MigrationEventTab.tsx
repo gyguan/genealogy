@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -20,8 +24,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { TableProps } from 'antd';
 import type {
@@ -64,6 +67,8 @@ import {
   readMigrationLocation
 } from './migrationEventUrlState';
 import type { MigrationSearchState } from './migrationEventUrlState';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -203,7 +208,7 @@ export function MigrationEventTab() {
       .catch(error => {
         if (!active) return;
         setBranches([]);
-        messageApi.error(errorText(error, '支派列表加载失败'));
+        feedback.error(errorText(error, '支派列表加载失败'));
       });
     return () => { active = false; };
   }, [clanId]);
@@ -350,7 +355,7 @@ export function MigrationEventTab() {
       });
       setFormOpen(true);
     } catch (error) {
-      messageApi.error(errorText(error, '迁徙事件加载失败，无法编辑'));
+      feedback.error(errorText(error, '迁徙事件加载失败，无法编辑'));
     } finally {
       setActionLoading(false);
     }
@@ -364,14 +369,14 @@ export function MigrationEventTab() {
       const saved = editing
         ? await updateMigrationEvent(editing.id, values as MigrationEventUpdateRequest)
         : await createMigrationEvent(clanId, values as MigrationEventCreateRequest);
-      messageApi.success(editing?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
+      feedback.success(editing?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
       setFormOpen(false);
       setEditing(null);
       setSelectedId(saved.id);
       writeLocation(search, saved.id, 'replace');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '迁徙事件保存失败'));
+      feedback.error(errorText(error, '迁徙事件保存失败'));
     } finally {
       setSaving(false);
     }
@@ -381,10 +386,10 @@ export function MigrationEventTab() {
     setActionLoading(true);
     try {
       const result = await submitMigrationEventReview(item.id, {});
-      messageApi.success(result.message || '迁徙事件已提交审核');
+      feedback.success(result.message || '迁徙事件已提交审核');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '提交审核失败'));
+      feedback.error(errorText(error, '提交审核失败'));
     } finally {
       setActionLoading(false);
     }
@@ -400,7 +405,7 @@ export function MigrationEventTab() {
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveMigrationEvent(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -411,11 +416,11 @@ export function MigrationEventTab() {
     try {
       const reviewRequired = can(item, 'request_delete');
       const result = await deleteMigrationEvent(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (!reviewRequired && selectedId === item.id) closeDetail();
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '删除失败'));
+      feedback.error(errorText(error, '删除失败'));
     } finally {
       setActionLoading(false);
     }

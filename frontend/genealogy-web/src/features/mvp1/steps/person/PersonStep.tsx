@@ -1,7 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
 import type { Key } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Empty, Form, Input, Select, Space, Tag, message } from 'antd';
+import { Alert,
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  Select,
+  Space,
+  Tag
+} from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
@@ -18,6 +31,8 @@ import { PersonEventEditor } from '../../../persons/PersonEventEditor';
 import type { PersonEventDraft } from '../../../persons/personEventEditorModel';
 import { createPersonWithEvents } from '../../../persons/personEventCreateFlow';
 import { replacePersonEvents } from '../../../persons/personEventService';
+
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type PersonForm = {
   branchId: string;
@@ -181,8 +196,8 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
-      if (error) message.error(text);
-      else message.success(text);
+      if (error) feedback.error(text);
+      else feedback.success(text);
     }
   }
 

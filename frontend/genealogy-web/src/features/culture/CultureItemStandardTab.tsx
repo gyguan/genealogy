@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +25,7 @@ import {
   Tabs,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type {
@@ -81,6 +84,8 @@ import { buildCultureLocation, cultureSearchKey, defaultCultureSearch, readCultu
 import type { CultureSearchState } from './cultureUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -271,7 +276,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
     let active = true;
     listCultureBranches(clanId)
       .then(rows => { if (active) setBranches(rows); })
-      .catch(error => { if (active) messageApi.error(errorText(error, '支派列表加载失败')); });
+      .catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
   }, [clanId, messageApi]);
 
@@ -418,7 +423,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
         : governanceTarget.kind === 'archive'
           ? await archiveCultureItem(governanceTarget.id, { reason: governanceReason.trim() })
           : await deleteCultureItem(governanceTarget.id);
-      messageApi.success(result.message || '操作已完成');
+      feedback.success(result.message || '操作已完成');
       if (governanceTarget.kind === 'delete' && !governanceTarget.reviewRequired && selectedId === governanceTarget.id) closeDetail();
       setGovernanceTarget(null);
       setGovernanceItem(null);
@@ -438,7 +443,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      messageApi.error(errorText(error, '附件预览失败，仍可尝试下载'));
+      feedback.error(errorText(error, '附件预览失败，仍可尝试下载'));
     }
   }
 
@@ -452,7 +457,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      messageApi.error(errorText(error, '附件下载失败'));
+      feedback.error(errorText(error, '附件下载失败'));
     }
   }
 

@@ -1,10 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import type { Key } from 'react';
 import dayjs from 'dayjs';
-import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { ExportOutlined,
+  PlusOutlined,
+  SettingOutlined } from '@ant-design/icons';
 import {
-  Alert, Button, Card, Checkbox, Col, Collapse, DatePicker, Descriptions, Drawer, Dropdown, Empty, Form, Grid, Input,
-  Modal, Pagination, Row, Select, Skeleton, Space, Table, Tag, Timeline, Typography, message
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Collapse,
+  DatePicker,
+  Descriptions,
+  Drawer,
+  Dropdown,
+  Empty,
+  Form,
+  Grid,
+  Input,
+  Modal,
+  Pagination,
+  Row,
+  Select,
+  Skeleton,
+  Space,
+  Table,
+  Tag,
+  Timeline,
+  Typography
 } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
@@ -16,6 +44,8 @@ import {
 } from './editingWorkspaceModel';
 import type { WorkbenchFilters, WorkbenchUrlState } from './editingWorkspaceModel';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -197,7 +227,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       desiredTaskIdRef.current = '';
       setSelectedTask(null);
       replaceUrl({ taskId: '' });
-      message.info('原任务已处理完成、已移出当前筛选范围，或任务标识已失效。');
+      feedback.info('原任务已处理完成、已移出当前筛选范围，或任务标识已失效。');
     }
   }
   async function loadClans() {
@@ -211,7 +241,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       replaceUrl({ clanId: nextClanId });
       return nextClanId;
     } catch (error) {
-      message.error(errorMessage(error, '加载宗族列表失败'));
+      feedback.error(errorMessage(error, '加载宗族列表失败'));
       return '';
     }
   }
@@ -304,11 +334,11 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       const rows = toRecordList<WorkbenchTask>(page.records || []);
       downloadCsv(rows);
       if (notify) notify({ message: `已导出当前查询条件下的 ${rows.length} 条修谱任务。` });
-      else message.success(`已导出 ${rows.length} 条修谱任务`);
+      else feedback.success(`已导出 ${rows.length} 条修谱任务`);
     } catch (error) {
       const text = errorMessage(error, '导出任务失败，请稍后重试。');
       if (notify) notify({ message: text }, true);
-      else message.error(text);
+      else feedback.error(text);
     } finally {
       setExporting(false);
     }
@@ -318,7 +348,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     const nextTaskPage = await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters);
     if (!task || !nextTaskPage) return;
     const nextTask = toRecordList<WorkbenchTask>(nextTaskPage.records || []).find(item => item.key === task.key);
-    if (nextTask) { openTask(nextTask); message.success('任务状态已刷新'); }
+    if (nextTask) { openTask(nextTask); feedback.success('任务状态已刷新'); }
   }
   function applyRelatedContext(task: WorkbenchTask) {
     const id = task.relatedEntryId || '';
@@ -342,7 +372,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       const result = unwrapData<WorkbenchActionResponse>(await apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, {
         action: actionCode(task), comment: actionComment.trim(), expectedUpdatedAt: task.updatedAt || null
       }), {});
-      message.success(result.message || '任务处理完成');
+      feedback.success(result.message || '任务处理完成');
       setActionModalOpen(false);
       setActionComment('');
       const nextTaskPage = await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters);
@@ -352,9 +382,9 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
       else closeTask();
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 409) {
-        message.warning('任务已被其他成员处理或状态已变化，已为你刷新最新状态。');
+        feedback.warning('任务已被其他成员处理或状态已变化，已为你刷新最新状态。');
         await refreshTaskStatus();
-      } else message.error(errorMessage(error, '任务处理失败，请保留当前现场后重试'));
+      } else feedback.error(errorMessage(error, '任务处理失败，请保留当前现场后重试'));
     } finally {
       setActionLoading(false);
     }
@@ -377,8 +407,8 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     setBulkLoading(false);
   }
   async function copyTaskKey(task: WorkbenchTask) {
-    try { await navigator.clipboard.writeText(task.key); message.success('任务编号已复制'); }
-    catch { message.info(`任务编号：${task.key}`); }
+    try { await navigator.clipboard.writeText(task.key); feedback.success('任务编号已复制'); }
+    catch { feedback.info(`任务编号：${task.key}`); }
   }
   function moreMenu(task: WorkbenchTask): MenuProps {
     return {

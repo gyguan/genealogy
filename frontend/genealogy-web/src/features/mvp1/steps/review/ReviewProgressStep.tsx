@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Empty, Select, Table, Tag, message } from 'antd';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Empty,
+  Select,
+  Table,
+  Tag
+} from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -16,6 +25,8 @@ import {
   type ReviewProgressTaskLike as ReviewTaskLike
 } from '../../services/reviewProgressService';
 import { submitReviewTask } from '../../services/reviewTaskService';
+
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type ReviewForm = {
   targetTypes: ReviewTargetType[];
@@ -108,8 +119,8 @@ export function ReviewProgressStep({ notify }: Props) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
-      if (error) message.error(text);
-      else message.success(text);
+      if (error) feedback.error(text);
+      else feedback.success(text);
     }
   }
 
