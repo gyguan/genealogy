@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -19,8 +24,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { TableProps } from 'antd';
 import type {
@@ -69,6 +73,8 @@ import {
   readCultureSiteLocation
 } from './cultureSiteUrlState';
 import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -135,7 +141,7 @@ export function CultureSiteMaintenanceTab() {
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<CultureSiteTabSearchState>(initialLocation.search);
@@ -254,10 +260,10 @@ export function CultureSiteMaintenanceTab() {
       .catch(error => {
         if (!active) return;
         setBranches([]);
-        messageApi.error(errorText(error, '支派列表加载失败'));
+        feedback.error(errorText(error, '支派列表加载失败'));
       });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
 
   useEffect(() => {
     if (!clanId) {
@@ -403,10 +409,10 @@ export function CultureSiteMaintenanceTab() {
     setActionLoading(true);
     try {
       const result = await submitCultureSiteReview(item.id, {});
-      messageApi.success(result.message || '文化场所已提交审核');
+      feedback.success(result.message || '文化场所已提交审核');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '提交审核失败'));
+      feedback.error(errorText(error, '提交审核失败'));
     } finally {
       setActionLoading(false);
     }
@@ -422,7 +428,7 @@ export function CultureSiteMaintenanceTab() {
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveCultureSite(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -433,11 +439,11 @@ export function CultureSiteMaintenanceTab() {
     try {
       const reviewRequired = can(item, 'request_delete');
       const result = await deleteCultureSite(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (!reviewRequired && selectedId === item.id) closeDetail();
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '删除失败'));
+      feedback.error(errorText(error, '删除失败'));
     } finally {
       setActionLoading(false);
     }
@@ -450,7 +456,7 @@ export function CultureSiteMaintenanceTab() {
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      messageApi.error(errorText(error, '附件预览失败'));
+      feedback.error(errorText(error, '附件预览失败'));
     }
   }
 
@@ -464,7 +470,7 @@ export function CultureSiteMaintenanceTab() {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      messageApi.error(errorText(error, '附件下载失败'));
+      feedback.error(errorText(error, '附件下载失败'));
     }
   }
 
@@ -515,7 +521,7 @@ export function CultureSiteMaintenanceTab() {
   if (editor) {
     return (
       <>
-        {messageContext}
+        
         <CultureSiteEditorPage
           clanId={clanId}
           editor={editor}
@@ -532,7 +538,7 @@ export function CultureSiteMaintenanceTab() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      {messageContext}
+      
       <Card title="文化场所查询" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>

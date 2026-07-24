@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert, Button, Empty, Space, Typography, message } from 'antd';
+import { Alert,
+  Button,
+  Empty,
+  Space,
+  Typography
+} from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column } from '../../shared/ui/DataTable';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type StepReviewTargetType = 'person' | 'relationship' | 'source';
 
@@ -227,7 +237,7 @@ export function StepDraftReviewPanel() {
       if (seq === requestSeq.current && activeStepIndex() === sourceConfig.stepIndex) {
         setRows([]);
         setSearched(true);
-        message.error((error as Error).message || `查询${sourceConfig.label}失败`);
+        feedback.error((error as Error).message || `查询${sourceConfig.label}失败`);
       }
     } finally {
       if (seq === requestSeq.current && activeStepIndex() === sourceConfig.stepIndex) setLoading(false);

@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Col, Form, Input, InputNumber, Result, Row, Select, Space, message } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Result,
+  Row,
+  Select,
+  Space
+} from 'antd';
 import type {
   CultureItemCreateRequest,
   CultureItemDetailResponse,
@@ -10,6 +25,8 @@ import type { CultureEditorState } from './cultureEditorState';
 import type { CultureBranchOption } from './cultureLibraryService';
 import { createCultureItem, getCultureItem, updateCultureItem } from './cultureLibraryService';
 import { categoryOptions, confidenceOptions, privacyOptions, sensitiveOptions } from './cultureOptions';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type CultureItemFormValues = CultureItemCreateRequest;
 
@@ -37,7 +54,7 @@ function canEdit(item: CultureItemDetailResponse) {
 export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSaved, onDirtyChange }: Props) {
   const [form] = Form.useForm<CultureItemFormValues>();
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<CultureItemDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -127,7 +144,7 @@ export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSa
         ? await updateCultureItem(editor.id, { ...values, version: detail.version } as CultureItemUpdateRequest)
         : await createCultureItem(clanId, values as CultureItemCreateRequest);
       setDirty(false);
-      messageApi.success(detail?.dataStatus === 'official' ? '正式资料变更已提交审核' : '文化资料已保存为草稿');
+      feedback.success(detail?.dataStatus === 'official' ? '正式资料变更已提交审核' : '文化资料已保存为草稿');
       onSaved(saved.id);
     } catch (error) {
       setSubmitError(errorText(error, '文化资料保存失败'));
@@ -158,7 +175,7 @@ export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSa
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

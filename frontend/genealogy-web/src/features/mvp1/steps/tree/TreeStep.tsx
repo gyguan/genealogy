@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Button, Empty, Select, Space, Table, message } from 'antd';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Button,
+  Empty,
+  Select,
+  Space,
+  Table
+} from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
@@ -7,6 +15,8 @@ import { Panel } from '../../../../shared/ui/Panel';
 import { toRows } from '../../domain/normalize';
 import { isOfficial } from '../../domain/status';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
+
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type TreeMode = 'family' | 'ancestors' | 'descendants';
 
@@ -53,8 +63,8 @@ export function TreeStep({ notify }: Props) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
-      if (error) message.error(text);
-      else message.success(text);
+      if (error) feedback.error(text);
+      else feedback.success(text);
     }
   }
 

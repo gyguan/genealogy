@@ -1,5 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, InputNumber, Result, Row, Select, Space, message } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Result,
+  Row,
+  Select,
+  Space
+} from 'antd';
 import type {
   MigrationEventCreateRequest,
   MigrationEventDetailResponse,
@@ -11,6 +25,8 @@ import type { CultureBranchOption } from './cultureLibraryService';
 import type { CultureEditorState } from './cultureEditorState';
 import { confidenceOptions, privacyOptions, sensitiveOptions } from './cultureOptions';
 import { createMigrationEvent, getMigrationEvent, updateMigrationEvent } from './migrationEventService';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type MigrationFormValues = MigrationEventCreateRequest;
 
@@ -35,7 +51,7 @@ export function MigrationEventEditorPage({ clanId, editor, branches, onCancel, o
   const [form] = Form.useForm<MigrationFormValues>();
   const branchId = Form.useWatch('branchId', form);
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<MigrationEventDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -126,7 +142,7 @@ export function MigrationEventEditorPage({ clanId, editor, branches, onCancel, o
         ? await updateMigrationEvent(editor.id, { ...values, version: detail.version } as MigrationEventUpdateRequest)
         : await createMigrationEvent(clanId, values as MigrationEventCreateRequest);
       setDirty(false);
-      messageApi.success(detail?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
+      feedback.success(detail?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
       onSaved(saved.id);
     } catch (error) {
       setSubmitError(errorText(error, '迁徙事件保存失败'));
@@ -173,7 +189,7 @@ export function MigrationEventEditorPage({ clanId, editor, branches, onCancel, o
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

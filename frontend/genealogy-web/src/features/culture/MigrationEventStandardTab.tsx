@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +26,7 @@ import {
   Tabs,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, MigrationEventDetailResponse, MigrationEventSummaryResponse } from '../../shared/api/generated/culture-types';
@@ -46,6 +50,8 @@ import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, rea
 import type { MigrationSearchState } from './migrationEventUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -101,7 +107,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<MigrationSearchState>(initialLocation.search);
@@ -180,9 +186,9 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   useEffect(() => {
     if (!clanId) { setBranches([]); return; }
     let active = true;
-    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) messageApi.error(errorText(error, '支派列表加载失败')); });
+    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
   useEffect(() => {
     if (!clanId) { visibleItems.current = []; setItems([]); setTotal(0); return; }
     const requestId = ++listRequest.current;
@@ -241,7 +247,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
         : governanceTarget.kind === 'archive'
           ? await archiveMigrationEvent(governanceTarget.id, { reason: governanceReason.trim() })
           : await deleteMigrationEvent(governanceTarget.id);
-      messageApi.success(result.message || '操作已完成');
+      feedback.success(result.message || '操作已完成');
       if (governanceTarget.kind === 'delete' && !governanceTarget.reviewRequired && selectedId === governanceTarget.id) closeDetail();
       setGovernanceTarget(null); setGovernanceItem(null); setGovernanceReason(''); refresh();
     } catch (error) { setGovernanceError(errorText(error, statusOf(error) === 409 ? '对象状态已变化，请刷新后重试' : '操作失败')); }
@@ -274,13 +280,13 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor?.mode === 'edit' && clanId) return <>{messageContext}<MigrationEventEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+  if (editor?.mode === 'edit' && clanId) return <><MigrationEventEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <Text type="danger">删除</Text> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    {messageContext}
+    
     <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
       <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

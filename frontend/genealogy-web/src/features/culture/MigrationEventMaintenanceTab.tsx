@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -19,8 +24,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { TableProps } from 'antd';
 import type {
@@ -66,6 +70,8 @@ import {
   readMigrationLocation
 } from './migrationEventUrlState';
 import type { MigrationSearchState } from './migrationEventUrlState';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -126,7 +132,7 @@ export function MigrationEventMaintenanceTab() {
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<MigrationSearchState>(initialLocation.search);
@@ -245,10 +251,10 @@ export function MigrationEventMaintenanceTab() {
       .catch(error => {
         if (!active) return;
         setBranches([]);
-        messageApi.error(errorText(error, '支派列表加载失败'));
+        feedback.error(errorText(error, '支派列表加载失败'));
       });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
 
   useEffect(() => {
     if (!clanId) {
@@ -394,10 +400,10 @@ export function MigrationEventMaintenanceTab() {
     setActionLoading(true);
     try {
       const result = await submitMigrationEventReview(item.id, {});
-      messageApi.success(result.message || '迁徙事件已提交审核');
+      feedback.success(result.message || '迁徙事件已提交审核');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '提交审核失败'));
+      feedback.error(errorText(error, '提交审核失败'));
     } finally {
       setActionLoading(false);
     }
@@ -413,7 +419,7 @@ export function MigrationEventMaintenanceTab() {
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveMigrationEvent(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -424,11 +430,11 @@ export function MigrationEventMaintenanceTab() {
     try {
       const reviewRequired = can(item, 'request_delete');
       const result = await deleteMigrationEvent(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (!reviewRequired && selectedId === item.id) closeDetail();
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '删除失败'));
+      feedback.error(errorText(error, '删除失败'));
     } finally {
       setActionLoading(false);
     }
@@ -481,7 +487,7 @@ export function MigrationEventMaintenanceTab() {
   if (editor) {
     return (
       <>
-        {messageContext}
+        
         <MigrationEventEditorPage
           clanId={clanId}
           editor={editor}
@@ -498,7 +504,7 @@ export function MigrationEventMaintenanceTab() {
 
   return (
     <Card title="迁徙脉络" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增迁徙事件</Button>}>
-      {messageContext}
+      
       <Paragraph type="secondary">按支派维护真实迁徙事件。页面只展示查询列表和维护入口，不拼接推测路线。</Paragraph>
 
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

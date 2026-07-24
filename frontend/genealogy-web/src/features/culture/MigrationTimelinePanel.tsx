@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -16,8 +20,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type {
   CultureConfidenceLevel,
@@ -40,6 +43,8 @@ import {
 } from './migrationEventService';
 import type { MigrationSearchState } from './migrationEventService';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 const initialSearch: MigrationSearchState = { pageNo: 1, pageSize: 10 };
@@ -61,7 +66,7 @@ function completeness(item: MigrationEventSummaryResponse) {
 }
 
 export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; branches: CultureBranchOption[] }) {
-  const [messageApi, contextHolder] = message.useMessage();
+  
   const [search, setSearch] = useState<MigrationSearchState>(initialSearch);
   const [items, setItems] = useState<MigrationEventSummaryResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -111,7 +116,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
     setDetailLoading(true);
     getMigrationEvent(selectedId)
       .then(setDetail)
-      .catch(reason => messageApi.error(text(reason, '迁徙详情加载失败')))
+      .catch(reason => feedback.error(text(reason, '迁徙详情加载失败')))
       .finally(() => setDetailLoading(false));
   }, [selectedId, refreshVersion]);
 
@@ -151,7 +156,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
       });
       setFormOpen(true);
     } catch (reason) {
-      messageApi.error(text(reason, '迁徙事件加载失败'));
+      feedback.error(text(reason, '迁徙事件加载失败'));
     }
   }
 
@@ -163,13 +168,13 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
       const saved = editing
         ? await updateMigrationEvent(editing.id, values as MigrationEventUpdateRequest)
         : await createMigrationEvent(clanId, values as MigrationEventCreateRequest);
-      messageApi.success(editing?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
+      feedback.success(editing?.dataStatus === 'official' ? '正式迁徙变更已提交审核' : '迁徙事件已保存为草稿');
       setFormOpen(false);
       setEditing(null);
       setSelectedId(saved.id);
       refresh();
     } catch (reason) {
-      messageApi.error(text(reason, '迁徙事件保存失败'));
+      feedback.error(text(reason, '迁徙事件保存失败'));
     } finally {
       setSaving(false);
     }
@@ -178,10 +183,10 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
   async function submitReview(item: MigrationEventSummaryResponse) {
     try {
       const result = await submitMigrationEventReview(item.id, {});
-      messageApi.success(result.message || '迁徙事件已提交审核');
+      feedback.success(result.message || '迁徙事件已提交审核');
       refresh();
     } catch (reason) {
-      messageApi.error(text(reason, '提交审核失败'));
+      feedback.error(text(reason, '提交审核失败'));
     }
   }
 
@@ -195,7 +200,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveMigrationEvent(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -204,11 +209,11 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
   async function remove(item: MigrationEventSummaryResponse) {
     try {
       const result = await deleteMigrationEvent(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (selectedId === item.id) setSelectedId(undefined);
       refresh();
     } catch (reason) {
-      messageApi.error(text(reason, '删除失败'));
+      feedback.error(text(reason, '删除失败'));
     }
   }
 
@@ -234,7 +239,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
   ];
 
   return <Card title="迁徙脉络" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增迁徙事件</Button>}>
-    {contextHolder}
+    
     <Paragraph type="secondary">按支派和顺序展示真实迁徙事件。时间、地点或来源缺失时仅提示完整度，不拼接推测路线。</Paragraph>
     <Space wrap style={{ marginBottom: 16 }}>
       <Input.Search allowClear placeholder="搜索地点、时期、原因" style={{ width: 240 }} onSearch={keyword => setSearch({ ...search, keyword: keyword || undefined, pageNo: 1 })} />

@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +25,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { TableProps } from 'antd';
 import type {
@@ -68,6 +71,8 @@ import {
   readCultureSiteLocation
 } from './cultureSiteUrlState';
 import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -123,7 +128,7 @@ export function CultureSiteTab() {
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const visibleItems = useRef<CultureSiteSummaryResponse[]>([]);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [editForm] = Form.useForm<SiteFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
@@ -212,7 +217,7 @@ export function CultureSiteTab() {
       .catch(error => {
         if (!active) return;
         setBranches([]);
-        messageApi.error(errorText(error, '支派列表加载失败'));
+        feedback.error(errorText(error, '支派列表加载失败'));
       });
     return () => { active = false; };
   }, [clanId]);
@@ -360,7 +365,7 @@ export function CultureSiteTab() {
       });
       setFormOpen(true);
     } catch (error) {
-      messageApi.error(errorText(error, '文化场所加载失败，无法编辑'));
+      feedback.error(errorText(error, '文化场所加载失败，无法编辑'));
     } finally {
       setActionLoading(false);
     }
@@ -374,14 +379,14 @@ export function CultureSiteTab() {
       const saved = editing
         ? await updateCultureSite(editing.id, values as CultureSiteUpdateRequest)
         : await createCultureSite(clanId, values as CultureSiteCreateRequest);
-      messageApi.success(editing?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
+      feedback.success(editing?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
       setFormOpen(false);
       setEditing(null);
       setSelectedId(saved.id);
       writeLocation(search, saved.id, 'replace');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '文化场所保存失败'));
+      feedback.error(errorText(error, '文化场所保存失败'));
     } finally {
       setSaving(false);
     }
@@ -391,10 +396,10 @@ export function CultureSiteTab() {
     try {
       setActionLoading(true);
       const result = await submitCultureSiteReview(item.id, {});
-      messageApi.success(result.message || '文化场所已提交审核');
+      feedback.success(result.message || '文化场所已提交审核');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '提交审核失败'));
+      feedback.error(errorText(error, '提交审核失败'));
     } finally {
       setActionLoading(false);
     }
@@ -410,7 +415,7 @@ export function CultureSiteTab() {
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveCultureSite(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -420,11 +425,11 @@ export function CultureSiteTab() {
     try {
       setActionLoading(true);
       const result = await deleteCultureSite(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (selectedId === item.id && !can(item, 'request_delete')) closeDetail();
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '删除失败'));
+      feedback.error(errorText(error, '删除失败'));
     } finally {
       setActionLoading(false);
     }
@@ -437,7 +442,7 @@ export function CultureSiteTab() {
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      messageApi.error(errorText(error, '附件预览失败'));
+      feedback.error(errorText(error, '附件预览失败'));
     }
   }
 
@@ -451,7 +456,7 @@ export function CultureSiteTab() {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      messageApi.error(errorText(error, '附件下载失败'));
+      feedback.error(errorText(error, '附件下载失败'));
     }
   }
 
@@ -494,7 +499,7 @@ export function CultureSiteTab() {
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    {messageContext}
+    
     <Card size="small" title="祠堂与文化场所" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
       <Paragraph type="secondary">查询和维护祠堂、祖居、墓园与纪念设施；地图与 GIS 不在本期范围。</Paragraph>
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

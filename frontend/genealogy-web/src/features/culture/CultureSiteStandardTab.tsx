@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +26,7 @@ import {
   Tabs,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, CultureSiteDetailResponse, CultureSiteSummaryResponse, CultureSiteType } from '../../shared/api/generated/culture-types';
@@ -46,6 +50,8 @@ import { buildCultureSiteLocation, cultureSiteSearchKey, defaultCultureSiteSearc
 import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -107,7 +113,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<CultureSiteTabSearchState>(initialLocation.search);
@@ -186,9 +192,9 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   useEffect(() => {
     if (!clanId) { setBranches([]); return; }
     let active = true;
-    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) messageApi.error(errorText(error, '支派列表加载失败')); });
+    listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
   useEffect(() => {
     if (!clanId) { visibleItems.current = []; setItems([]); setTotal(0); return; }
     const requestId = ++listRequest.current;
@@ -247,7 +253,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
         : governanceTarget.kind === 'archive'
           ? await archiveCultureSite(governanceTarget.id, { reason: governanceReason.trim() })
           : await deleteCultureSite(governanceTarget.id);
-      messageApi.success(result.message || '操作已完成');
+      feedback.success(result.message || '操作已完成');
       if (governanceTarget.kind === 'delete' && !governanceTarget.reviewRequired && selectedId === governanceTarget.id) closeDetail();
       setGovernanceTarget(null); setGovernanceItem(null); setGovernanceReason(''); refresh();
     } catch (error) { setGovernanceError(errorText(error, statusOf(error) === 409 ? '对象状态已变化，请刷新后重试' : '操作失败')); }
@@ -259,7 +265,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (error) { messageApi.error(errorText(error, '附件预览失败，仍可尝试下载')); }
+    } catch (error) { feedback.error(errorText(error, '附件预览失败，仍可尝试下载')); }
   }
   async function downloadAttachment(id: number, fileName: string) {
     try {
@@ -267,7 +273,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url; anchor.download = fileName; anchor.click(); URL.revokeObjectURL(url);
-    } catch (error) { messageApi.error(errorText(error, '附件下载失败')); }
+    } catch (error) { feedback.error(errorText(error, '附件下载失败')); }
   }
   function openTracking() {
     if (!clanId || !selectedId) return;
@@ -296,13 +302,13 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor?.mode === 'edit' && clanId) return <>{messageContext}<CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+  if (editor?.mode === 'edit' && clanId) return <><CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <Text type="danger">删除</Text> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    {messageContext}
+    
     <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
       <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Empty, Input, Modal, Select, Space, Tag, message } from 'antd';
+import { Alert,
+  Button,
+  Empty,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Tag
+} from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -19,6 +30,8 @@ import {
   type GenerationSchemeLike
 } from '../../services/generationService';
 import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../services/reviewTaskService';
+
+import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type SchemeForm = {
   schemeName: string;
@@ -81,8 +94,8 @@ export function GenerationStep({ notify, onSubmittedReview }: Props) {
     notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
-      if (error) message.error(text);
-      else message.success(text);
+      if (error) feedback.error(text);
+      else feedback.success(text);
     }
   }
 

@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Col, Form, Input, InputNumber, Result, Row, Select, Space, message } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Result,
+  Row,
+  Select,
+  Space
+} from 'antd';
 import type {
   CultureSiteCreateRequest,
   CultureSiteDetailResponse,
@@ -11,6 +26,8 @@ import type { CultureBranchOption } from './cultureLibraryService';
 import type { CultureEditorState } from './cultureEditorState';
 import { confidenceOptions, privacyOptions, sensitiveOptions } from './cultureOptions';
 import { createCultureSite, getCultureSite, updateCultureSite } from './cultureSiteService';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 type CultureSiteFormValues = CultureSiteCreateRequest;
 
@@ -43,7 +60,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
   const [form] = Form.useForm<CultureSiteFormValues>();
   const branchId = Form.useWatch('branchId', form);
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<CultureSiteDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -141,7 +158,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
         ? await updateCultureSite(editor.id, { ...values, version: detail.version } as CultureSiteUpdateRequest)
         : await createCultureSite(clanId, values as CultureSiteCreateRequest);
       setDirty(false);
-      messageApi.success(detail?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
+      feedback.success(detail?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
       onSaved(saved.id);
     } catch (error) {
       setSubmitError(errorText(error, '文化场所保存失败'));
@@ -188,7 +205,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

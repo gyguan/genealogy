@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import {
+  useMemo,
+  useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import {
   Alert,
@@ -31,7 +33,6 @@ import {
   Tabs,
   Tag,
   Typography,
-  message,
   theme
 } from 'antd';
 import type { TableProps } from 'antd';
@@ -50,6 +51,8 @@ import {
 import zhCN from 'antd/locale/zh_CN';
 import 'antd/dist/reset.css';
 import './page-patterns.css';
+
+import { feedback } from '../shared/ui/OperationFeedback';
 
 const { Content, Header, Sider } = Layout;
 const { Paragraph, Text, Title } = Typography;
@@ -617,19 +620,19 @@ function DetailPattern() {
 
 function EditPattern() {
   const [form] = Form.useForm();
-  const [messageApi, contextHolder] = message.useMessage();
+  
 
   function saveDraft() {
-    messageApi.success('原型：草稿已保存');
+    feedback.success('原型：草稿已保存');
   }
 
   function submit() {
-    form.validateFields().then(() => messageApi.success('原型：变更申请已提交审核')).catch(() => undefined);
+    form.validateFields().then(() => feedback.success('原型：变更申请已提交审核')).catch(() => undefined);
   }
 
   return (
     <Space direction="vertical" size={16} className="pp-full-width">
-      {contextHolder}
+      
       <PatternPageHeader
         title="编辑文化资料"
         description="长表单采用独立页面，按业务语义分组；提交操作固定在页面底部，避免用户滚动后失去操作入口。"

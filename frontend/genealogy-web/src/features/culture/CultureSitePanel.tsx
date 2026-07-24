@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,8 +25,7 @@ import {
   Table,
   Tag,
   Timeline,
-  Typography,
-  message
+  Typography
 } from 'antd';
 import type {
   CultureSiteCreateRequest,
@@ -47,6 +50,8 @@ import {
   updateCultureSite
 } from './cultureSiteService';
 import type { CultureSiteSearchState } from './cultureSiteService';
+
+import { feedback } from '../../shared/ui/OperationFeedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -87,7 +92,7 @@ function missingFields(item: CultureSiteSummaryResponse) {
 }
 
 export function CultureSitePanel({ clanId, branches }: { clanId?: string; branches: CultureBranchOption[] }) {
-  const [messageApi, contextHolder] = message.useMessage();
+  
   const [search, setSearch] = useState<CultureSiteSearchState>(initialSearch);
   const [items, setItems] = useState<CultureSiteSummaryResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -143,7 +148,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
     Promise.allSettled([getCultureSite(selectedId), getCultureSiteTrace(clanId, selectedId)])
       .then(([detailResult, traceResult]) => {
         if (detailResult.status === 'fulfilled') setDetail(detailResult.value);
-        else messageApi.error(errorText(detailResult.reason, '文化场所详情加载失败'));
+        else feedback.error(errorText(detailResult.reason, '文化场所详情加载失败'));
         if (traceResult.status === 'fulfilled') setTrace(traceResult.value);
         else setTrace(null);
       })
@@ -193,7 +198,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       });
       setFormOpen(true);
     } catch (error) {
-      messageApi.error(errorText(error, '文化场所加载失败'));
+      feedback.error(errorText(error, '文化场所加载失败'));
     }
   }
 
@@ -205,13 +210,13 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       const result = editing
         ? await updateCultureSite(editing.id, values as CultureSiteUpdateRequest)
         : await createCultureSite(clanId, values as CultureSiteCreateRequest);
-      messageApi.success(editing?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
+      feedback.success(editing?.dataStatus === 'official' ? '正式场所变更已提交审核' : '文化场所已保存为草稿');
       setFormOpen(false);
       setEditing(null);
       setSelectedId(result.id);
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '文化场所保存失败'));
+      feedback.error(errorText(error, '文化场所保存失败'));
     } finally {
       setSaving(false);
     }
@@ -220,10 +225,10 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
   async function submitReview(item: CultureSiteSummaryResponse) {
     try {
       const result = await submitCultureSiteReview(item.id, {});
-      messageApi.success(result.message || '文化场所已提交审核');
+      feedback.success(result.message || '文化场所已提交审核');
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '提交审核失败'));
+      feedback.error(errorText(error, '提交审核失败'));
     }
   }
 
@@ -237,7 +242,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       async onOk() {
         if (!reason.trim()) throw new Error('请输入归档原因');
         const result = await archiveCultureSite(item.id, { reason: reason.trim() });
-        messageApi.success(result.message || '归档操作已提交');
+        feedback.success(result.message || '归档操作已提交');
         refresh();
       }
     });
@@ -246,11 +251,11 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
   async function remove(item: CultureSiteSummaryResponse) {
     try {
       const result = await deleteCultureSite(item.id);
-      messageApi.success(result.message || '删除操作已完成');
+      feedback.success(result.message || '删除操作已完成');
       if (selectedId === item.id && !item.allowedActions.includes('request_delete')) setSelectedId(undefined);
       refresh();
     } catch (error) {
-      messageApi.error(errorText(error, '删除失败'));
+      feedback.error(errorText(error, '删除失败'));
     }
   }
 
@@ -261,7 +266,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       window.open(url, '_blank', 'noopener,noreferrer');
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      messageApi.error(errorText(error, '影像预览失败'));
+      feedback.error(errorText(error, '影像预览失败'));
     }
   }
 
@@ -275,7 +280,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      messageApi.error(errorText(error, '影像下载失败'));
+      feedback.error(errorText(error, '影像下载失败'));
     }
   }
 
@@ -314,7 +319,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
   ];
 
   return <Card title="祠堂与文化场所" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
-    {contextHolder}
+    
     <Paragraph type="secondary">维护祠堂、祖居、墓园与纪念设施的可信资料。地图与导航不是前置条件；缺失地址、年代、来源或影像时仅提示完整度。</Paragraph>
     <Space wrap style={{ marginBottom: 16 }}>
       <Input.Search allowClear placeholder="搜索名称、地址、年代或现状" style={{ width: 280 }} onSearch={keyword => setSearch({ ...search, keyword: keyword || undefined, pageNo: 1 })} />

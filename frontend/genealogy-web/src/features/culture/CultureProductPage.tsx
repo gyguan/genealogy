@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { Spin, message } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Spin
+} from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
@@ -11,6 +15,8 @@ import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMount
 import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 function errorText(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -18,7 +24,7 @@ function errorText(error: unknown, fallback: string) {
 export function CultureProductPage() {
   const workspace = useWorkspace();
   const initialLocation = useRef(readCultureTabLocation()).current;
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [activeTab, setActiveTab] = useState<CultureTabKey>(initialLocation.tab);
   const [clans, setClans] = useState<CultureClanOption[]>([]);
   const [clansLoading, setClansLoading] = useState(true);
@@ -54,7 +60,7 @@ export function CultureProductPage() {
       .catch(error => {
         if (!active) return;
         setClans([]);
-        messageApi.error(errorText(error, '宗族列表加载失败'));
+        feedback.error(errorText(error, '宗族列表加载失败'));
       })
       .finally(() => {
         if (active) setClansLoading(false);
@@ -90,7 +96,7 @@ export function CultureProductPage() {
 
   return (
     <div className="tabbed-module-page culture-product-page">
-      {messageContext}
+      
       {hydratingInitialClan ? <div className="culture-page-loading"><Spin size="large" tip="正在加载宗族文化…" /></div> : renderActiveTab()}
     </div>
   );
