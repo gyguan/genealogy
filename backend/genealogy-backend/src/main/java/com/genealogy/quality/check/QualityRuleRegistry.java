@@ -26,6 +26,10 @@ public class QualityRuleRegistry {
         definitions.put(definition.code(), definition);
     }
 
+    public boolean contains(String code) {
+        return definitions.containsKey(code);
+    }
+
     public RuleDefinition get(String code) {
         return definitions.getOrDefault(code, new RuleDefinition(code, code, "WARNING", "发现数据质量问题"));
     }

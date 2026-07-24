@@ -15,6 +15,9 @@ public record QualityCheckEvaluation(
             int warningIssueCount,
             boolean blocked
     ) {
+        public boolean reviewBlocked() {
+            return blocked;
+        }
     }
 
     public record QualityCheckRuleResult(
