@@ -37,10 +37,9 @@ for (const relative of semanticTargets) {
   let source = fs.readFileSync(file, 'utf8');
   const before = source;
   source = source.replace(/<(Typography\.Text|Text)\b([^>]*)\btype\s*=\s*['"](warning|danger)['"]([^>]*)>([\s\S]*?)<\/\1>/g,
-    (_all, _tag, beforeProps, tone, afterProps, body) => {
+    (_all, _tag, _beforeProps, tone, _afterProps, body) => {
       migrated += 1;
-      const nextTone = tone === 'danger' ? 'error' : 'warning';
-      return `<InlineFeedback tone="${nextTone}" title={<>${body.trim()}</>} />`;
+      return `<InlineFeedback tone="${tone === 'danger' ? 'error' : 'warning'}" title={<>${body.trim()}</>} />`;
     });
   if (source !== before) {
     source = ensureFeedbackImport(source, file);
@@ -50,14 +49,12 @@ for (const relative of semanticTargets) {
 
 const auditFile = path.join(root, 'scripts/audit-ui-feedback.mjs');
 let audit = fs.readFileSync(auditFile, 'utf8');
-audit = audit.replace(
-  /patterns: \[\/className\\s\*=\\s\*\['"`\]\[\^'"`\]\*\(notice\|hint\|tip\|warning\|alert\|feedback\|message\|help\|note\|error\|empty\)\[\^'"`\]\*\['"`\]\/gi\]/,
-  "patterns: [/className\\s*=\\s*['\"`]([^'\"`]*)['\"`]/gi], classTokenPattern: /(?:^|[\\s_-])(notice|warning|alert|feedback|message|error)(?:$|[\\s_-])/i"
-);
-// Upgrade counting to evaluate explicit class tokens only for custom_notice_class.
+const oldCustomPattern = "patterns: [/className\\s*=\\s*['\"`][^'\"`]*(notice|hint|tip|warning|alert|feedback|message|help|note|error|empty)[^'\"`]*['\"`]/gi]";
+const newCustomPattern = "patterns: [/className\\s*=\\s*['\"]([^'\"]*)['\"]/gi], classTokenPattern: /(?:^|[\\s_-])(notice|warning|alert|feedback|message|error)(?:$|[\\s_-])/i";
+audit = audit.replace(oldCustomPattern, newCustomPattern);
 audit = audit.replace(
   "const count = mechanism.patterns.reduce((total, pattern) => total + countMatches(item.source, pattern), 0);",
-  "const count = mechanism.id === 'custom_notice_class'\n      ? [...item.source.matchAll(/className\\s*=\\s*['\"`]([^'\"`]*)['\"`]/gi)].filter(match => mechanism.classTokenPattern?.test(match[1])).length\n      : mechanism.patterns.reduce((total, pattern) => total + countMatches(item.source, pattern), 0);"
+  "const count = mechanism.id === 'custom_notice_class'\n      ? [...item.source.matchAll(/className\\s*=\\s*['\"]([^'\"]*)['\"]/gi)].filter(match => mechanism.classTokenPattern?.test(match[1])).length\n      : mechanism.patterns.reduce((total, pattern) => total + countMatches(item.source, pattern), 0);"
 );
 fs.writeFileSync(auditFile, audit);
 
@@ -90,7 +87,27 @@ const resultAllowlist = {
   'features/persons/PersonDetailPage.tsx': 1
 };
 const testFile = path.join(src, 'shared/ui/FinalFeedbackGovernance.test.mjs');
-fs.writeFileSync(testFile, `import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\nimport path from 'node:path';\nimport { fileURLToPath } from 'node:url';\n\nconst src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');\nconst semanticTargets = ${JSON.stringify(semanticTargets)};\nconst resultAllowlist = ${JSON.stringify(resultAllowlist, null, 2)};\n\nfunction walk(dir) {\n  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {\n    const full = path.join(dir, entry.name);\n    if (entry.isDirectory()) return walk(full);\n    return entry.isFile() && /\\.tsx?$/.test(entry.name) ? [full] : [];\n  });\n}\n\ntest('semantic warning and danger text is fully migrated', () => {\n  const violations = [];\n  for (const relative of semanticTargets) {\n    const source = fs.readFileSync(path.join(src, relative), 'utf8');\n    if (/<(?:Typography\\.Text|Text)\\b[^>]*\\btype\\s*=\\s*['\"](?:warning|danger)['\"]/.test(source)) violations.push(relative);\n  }\n  assert.deepEqual(violations, []);\n});\n\ntest('custom status classes are not used as feedback containers', () => {\n  const violations = [];\n  const token = /(?:^|[\\s_-])(notice|warning|alert|feedback|message|error)(?:$|[\\s_-])/i;\n  for (const file of walk(src)) {\n    if (/\\.test\\.|\\.spec\\./.test(file)) continue;\n    const source = fs.readFileSync(file, 'utf8');\n    for (const match of source.matchAll(/className\\s*=\\s*['\"`]([^'\"`]*)['\"`]/gi)) {\n      if (token.test(match[1])) violations.push(path.relative(src, file) + ':' + match[1]);\n    }\n  }\n  assert.deepEqual(violations, []);\n});\n\ntest('Result is restricted to reviewed full-page status locations', () => {\n  const actual = {};\n  for (const file of walk(src)) {\n    if (/\\.test\\.|\\.spec\\./.test(file)) continue;\n    const source = fs.readFileSync(file, 'utf8');\n    const count = (source.match(/<Result\\b/g) || []).length;\n    if (count) actual[path.relative(src, file).replaceAll('\\\\', '/')] = count;\n  }\n  assert.deepEqual(actual, resultAllowlist);\n});\n`);
+const testSource = [
+  "import test from 'node:test';",
+  "import assert from 'node:assert/strict';",
+  "import fs from 'node:fs';",
+  "import path from 'node:path';",
+  "import { fileURLToPath } from 'node:url';",
+  '',
+  "const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');",
+  `const semanticTargets = ${JSON.stringify(semanticTargets)};`,
+  `const resultAllowlist = ${JSON.stringify(resultAllowlist, null, 2)};`,
+  '',
+  "function walk(dir) { return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => { const full = path.join(dir, entry.name); if (entry.isDirectory()) return walk(full); return entry.isFile() && /\\.tsx?$/.test(entry.name) ? [full] : []; }); }",
+  '',
+  "test('semantic warning and danger text is fully migrated', () => { const violations = []; for (const relative of semanticTargets) { const source = fs.readFileSync(path.join(src, relative), 'utf8'); if (/<(?:Typography\\.Text|Text)\\b[^>]*\\btype\\s*=\\s*['\"](?:warning|danger)['\"]/.test(source)) violations.push(relative); } assert.deepEqual(violations, []); });",
+  '',
+  "test('custom status classes are not used as feedback containers', () => { const violations = []; const token = /(?:^|[\\s_-])(notice|warning|alert|feedback|message|error)(?:$|[\\s_-])/i; for (const file of walk(src)) { if (/\\.test\\.|\\.spec\\./.test(file)) continue; const source = fs.readFileSync(file, 'utf8'); for (const match of source.matchAll(/className\\s*=\\s*['\"]([^'\"]*)['\"]/gi)) { if (token.test(match[1])) violations.push(path.relative(src, file) + ':' + match[1]); } } assert.deepEqual(violations, []); });",
+  '',
+  "test('Result is restricted to reviewed full-page status locations', () => { const actual = {}; for (const file of walk(src)) { if (/\\.test\\.|\\.spec\\./.test(file)) continue; const source = fs.readFileSync(file, 'utf8'); const count = (source.match(/<Result\\b/g) || []).length; if (count) actual[path.relative(src, file).replaceAll('\\\\', '/')] = count; } assert.deepEqual(actual, resultAllowlist); });",
+  ''
+].join('\n');
+fs.writeFileSync(testFile, testSource);
 
 const packagePath = path.join(root, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
