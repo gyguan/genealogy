@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import {
-  Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Grid, Input, Modal,
-  Pagination, Row, Select, Skeleton, Space, Statistic, Table, Tag, Typography
+  Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, Modal,
+  Pagination, Row, Select, Skeleton, Space, Table, Tag, Typography
 } from 'antd';
-import type { MenuProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
-import { EmptyState, PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import { feedback } from '../../shared/ui/OperationFeedback';
 import { toRecordList } from '../../shared/utils/records';
 import './editing-workspace-prototype.css';
@@ -25,12 +24,6 @@ type Task = {
 };
 type TaskPage = { records?: Task[]; total?: number; pageNo?: number; pageSize?: number; totalPages?: number };
 type Clan = { id?: string | number; clanName?: string; name?: string; surname?: string };
-type QualityRule = { code: string; name: string; outcome: string; blockLevel: string; affectedSubjectCount: number; message?: string; affectedSubjectIds: string[] };
-type QualityResult = {
-  checkId: string; status: string; scopeType: string; mode: string; reviewBlocked: boolean;
-  summary?: { subjectCount: number; issueCount: number; blockingIssueCount: number; warningIssueCount: number };
-  rules: QualityRule[]; completedAt?: string; failureMessage?: string;
-};
 type Filters = { keyword: string; status: string[]; type: string[]; risk: string[] };
 
 const PAGE_SIZE = 10;
@@ -54,11 +47,6 @@ function clanName(clan?: Clan) { return clan?.clanName || clan?.name || clan?.su
 function taskTitle(task: Task) { return task.taskName || `${task.typeText}：${task.objectName}`; }
 function riskColor(risk: Task['risk']) { return risk === 'high' ? 'error' : risk === 'medium' ? 'warning' : 'success'; }
 function statusColor(status: Task['status']) { return status === 'blocked' ? 'error' : status === 'processing' ? 'processing' : status === 'ready' ? 'success' : 'default'; }
-function formatTime(value?: string) {
-  if (!value) return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
-}
 function queryString(clanId: string, page: number, filters: Filters) {
   const params = new URLSearchParams({ clanId, pageNo: String(page), pageSize: String(PAGE_SIZE) });
   if (filters.keyword.trim()) params.set('keyword', filters.keyword.trim());
@@ -83,10 +71,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
   const [error, setError] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<Key[]>([]);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
-  const [quality, setQuality] = useState<QualityResult | null>(null);
-  const [qualityLoading, setQualityLoading] = useState(false);
-  const [qualityError, setQualityError] = useState('');
-  const [qualityScope, setQualityScope] = useState<'QUERY' | 'DRAFT_IDS' | 'WORKBENCH_SESSION'>('QUERY');
   const [templateOpen, setTemplateOpen] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -114,13 +98,8 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
     } catch (cause) { setError(cause instanceof Error ? cause.message : '任务加载失败，请稍后重试'); }
     finally { setLoading(false); }
   }
-  async function loadLatestQuality() {
-    if (!currentClanId) return;
-    try { setQuality(await apiClient.get<QualityResult | null>(`/workbench/quality-checks/latest?clanId=${encodeURIComponent(currentClanId)}`)); }
-    catch { setQuality(null); }
-  }
   useEffect(() => { void loadClans(); }, []);
-  useEffect(() => { if (currentClanId) { void loadTasks(1, appliedFilters); void loadLatestQuality(); } }, [currentClanId]);
+  useEffect(() => { if (currentClanId) void loadTasks(1, appliedFilters); }, [currentClanId]);
 
   function submitSearch() { setAppliedFilters(filters); setSelectedKeys([]); void loadTasks(1, filters); }
   function resetSearch() { setFilters(EMPTY_FILTERS); setAppliedFilters(EMPTY_FILTERS); setSelectedKeys([]); void loadTasks(1, EMPTY_FILTERS); }
@@ -131,24 +110,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
       if (view === 'sourceLibrary') workspace.patch({ sourceId: task.relatedEntryId, sourceFocusReason: task.type });
     }
     onNavigate?.(view);
-  }
-  async function runQuality(gate = false) {
-    if (!currentClanId || qualityLoading) return;
-    if (qualityScope === 'DRAFT_IDS' && !selectedKeys.length) { setQualityError('请先从当前任务列表选择需要检查的草稿。'); return; }
-    setQualityLoading(true); setQualityError('');
-    try {
-      const endpoint = gate ? '/workbench/quality-checks/submission-gate' : '/workbench/quality-checks';
-      const result = await apiClient.post<QualityResult>(`${endpoint}?clanId=${encodeURIComponent(currentClanId)}`, {
-        scopeType: qualityScope, mode: gate ? 'REVIEW_GATE' : 'FULL',
-        subjectIds: qualityScope === 'DRAFT_IDS' ? selectedKeys.map(String) : [],
-        query: Object.fromEntries(queryString(currentClanId, page, appliedFilters)), ruleCodes: []
-      });
-      setQuality(result);
-      feedback[result.reviewBlocked ? 'warning' : 'success'](result.reviewBlocked ? '检查完成，存在阻断问题' : '质量检查已完成');
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : '质量检查失败';
-      setQualityError(message); feedback.error(message);
-    } finally { setQualityLoading(false); }
   }
   async function bulkCheck() {
     if (!selectedTasks.length || bulkLoading) return;
@@ -166,14 +127,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
     const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'workbench-tasks.csv'; link.click(); URL.revokeObjectURL(link.href);
   }
 
-  const qualityMenu: MenuProps = {
-    items: [
-      { key: 'QUERY', label: '当前查询范围' },
-      { key: 'DRAFT_IDS', label: `已选草稿（${selectedKeys.length}）` },
-      { key: 'WORKBENCH_SESSION', label: '整个修谱会话' }
-    ],
-    onClick: info => setQualityScope(info.key as typeof qualityScope)
-  };
   const columns = [
     { title: '任务名称', dataIndex: 'taskName', key: 'taskName', width: 230, render: (_: unknown, task: Task) => <Button type="link" className="workbench-task-link" onClick={() => setCurrentTask(task)}>{taskTitle(task)}</Button> },
     { title: '任务类型', dataIndex: 'typeText', key: 'typeText', width: 150 },
@@ -185,11 +138,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
     { title: '操作', key: 'actions', width: 150, fixed: 'right' as const, render: (_: unknown, task: Task) => <Space size={2}><Button type="link" onClick={() => setCurrentTask(task)}>查看</Button><Button type="link" disabled={!task.relatedEntryType || !onNavigate} onClick={() => task.relatedEntryType && navigate(task.relatedEntryType, task)}>处理</Button></Space> }
   ];
 
-  const qualityActions = <Space wrap>
-    <Dropdown menu={qualityMenu}><Button>{qualityScope === 'QUERY' ? '当前查询范围' : qualityScope === 'DRAFT_IDS' ? `已选草稿（${selectedKeys.length}）` : '整个修谱会话'}</Button></Dropdown>
-    <Button loading={qualityLoading} onClick={() => void runQuality(false)}>执行检查</Button>
-    <Button type="primary" loading={qualityLoading} onClick={() => void runQuality(true)}>提交审核检查</Button>
-  </Space>;
   const taskActions = <Space wrap>
     <Button icon={<ExportOutlined />} disabled={!tasks.length} onClick={exportCsv}>导出</Button>
     <Button icon={<SettingOutlined />} onClick={() => setTemplateOpen(true)}>任务模板</Button>
@@ -210,26 +158,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
           <Col xs={24} md={12}><Form.Item><Space wrap><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={loading}>查询</Button></Space></Form.Item></Col>
         </Row>
       </Form>
-    </Card>
-
-    <Card className="workbench-quality-card" title={cardTitle('数据质量检查', qualityActions)}>
-      {qualityError ? <PageFeedback tone="error" title="质量检查失败" description={qualityError} /> : null}
-      {!quality && !qualityLoading ? <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="尚未执行质量检查，建议在提交审核前完成检查" /> : null}
-      {qualityLoading ? <Skeleton active paragraph={{ rows: 3 }} /> : null}
-      {quality ? <>
-        <div className="workbench-quality-summary">
-          <Statistic title="检查对象" value={quality.summary?.subjectCount || 0} />
-          <Statistic title="发现问题" value={quality.summary?.issueCount || 0} />
-          <Statistic title="警告" value={quality.summary?.warningIssueCount || 0} />
-          <Statistic title="阻断" value={quality.summary?.blockingIssueCount || 0} valueStyle={quality.reviewBlocked ? { color: '#cf1322' } : undefined} />
-        </div>
-        <PageFeedback tone={quality.reviewBlocked ? 'error' : 'success'} title={quality.reviewBlocked ? '存在阻断问题，暂不能提交审核' : '质量检查完成，可以继续处理'} description={`最近检查：${formatTime(quality.completedAt)}`} />
-        <div className="workbench-quality-rule-list">
-          {quality.rules.filter(rule => rule.affectedSubjectCount > 0).map(rule => <button type="button" key={rule.code} onClick={() => { const id = rule.affectedSubjectIds[0]; const task = tasks.find(item => item.key === id); if (task) setCurrentTask(task); }}>
-            <span><strong>{rule.name}</strong><small>{rule.message || '发现数据质量问题'}</small></span><span><Tag color={rule.blockLevel === 'BLOCKING' ? 'error' : 'warning'}>{rule.blockLevel === 'BLOCKING' ? '阻断' : '警告'}</Tag>{rule.affectedSubjectCount} 项</span>
-          </button>)}
-        </div>
-      </> : null}
     </Card>
 
     <Card className="workbench-task-card" title={cardTitle(`修谱任务（共 ${total} 条）`, taskActions)}>
