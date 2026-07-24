@@ -1,11 +1,9 @@
 name: Issue 761 Implement
 
 on:
-  push:
-    branches:
-      - agent/issue-761-person-grouping
-    paths:
-      - '.github/workflows/issue-761-implement.yml'
+  pull_request:
+    types: [ready_for_review]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,6 +15,7 @@ concurrency:
 
 jobs:
   implement:
+    if: github.head_ref == 'agent/issue-761-person-grouping'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
