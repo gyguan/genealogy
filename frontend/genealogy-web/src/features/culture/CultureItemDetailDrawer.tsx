@@ -1,4 +1,4 @@
-import { Button, Descriptions, Drawer, Empty, List, Skeleton, Space, Tabs, Tag, Timeline, Typography } from 'antd';
+import { Button, Descriptions, Drawer, List, Skeleton, Space, Tabs, Tag, Timeline, Typography } from 'antd';
 import type { CultureItemDetailResponse } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
@@ -17,6 +17,8 @@ import {
 } from './cultureOptions';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -73,7 +75,7 @@ export function CultureItemDetailDrawer(props: Props) {
       destroyOnHidden
     >
       {props.loading && !item ? <Skeleton active paragraph={{ rows: 10 }} /> : null}
-      {!props.loading && !item ? <Empty description="资料不存在、已删除或当前无权查看" /> : null}
+      {!props.loading && !item ? <EmptyState description="资料不存在、已删除或当前无权查看" /> : null}
       {item ? (
         <Tabs
           items={[
@@ -103,7 +105,7 @@ export function CultureItemDetailDrawer(props: Props) {
                   </div>
                   <div>
                     <Title level={5}>正文</Title>
-                    {item.content ? <Paragraph className="culture-detail-content">{item.content}</Paragraph> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无正文或当前响应未返回正文" />}
+                    {item.content ? <Paragraph className="culture-detail-content">{item.content}</Paragraph> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无正文或当前响应未返回正文" />}
                   </div>
                 </Space>
               )

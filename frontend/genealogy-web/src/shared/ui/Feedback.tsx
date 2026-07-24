@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Alert, Empty, Popconfirm, Result } from 'antd';
+import { Alert, Popconfirm, Result } from 'antd';
 import type { AlertProps, PopconfirmProps, ResultProps } from 'antd';
 import '../../feedback-system.css';
+
+import { EmptyState } from './EmptyState';
 
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
 export type FeedbackVariant = 'page' | 'section' | 'inline' | 'toast';
@@ -71,9 +73,9 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <Empty
+    <EmptyState
       className={classNames('ui-empty-state', compact && 'ui-empty-state--compact', className)}
-      image={Empty.PRESENTED_IMAGE_SIMPLE}
+      image={EmptyState.PRESENTED_IMAGE_SIMPLE}
       description={(
         <span className="ui-empty-state__content">
           <strong>{title}</strong>
@@ -82,7 +84,7 @@ export function EmptyState({
       )}
     >
       {action}
-    </Empty>
+    </EmptyState>
   );
 }
 

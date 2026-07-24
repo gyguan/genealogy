@@ -1,23 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  Empty,
-  Result,
-  Skeleton,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Descriptions, Result, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
@@ -45,6 +28,8 @@ import {
 import './tracking-trace-detail-page.css';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Text, Title } = Typography;
 
@@ -226,7 +211,7 @@ export function TrackingTraceDetailPage({ clanId, targetType, targetId, reviewTa
             {
               key: 'timeline', label: `事件时间线 (${timeline.data.length})`, children: (
                 <SectionStateView state={timeline} onRetry={() => void loadSection('timeline')}>
-                  {timeline.data.length ? <Timeline items={timeline.data.map(item => ({ color: traceEventColor(item), children: <div><Space wrap><Tag>{traceSourceText(item.sourceType)}</Tag><Text strong>{item.title}</Text>{item.resultStatus ? <Tag color={statusColor(item.resultStatus)}>{statusText(item.resultStatus)}</Tag> : null}</Space><p>{display(item.summary, '暂无补充说明')}</p><Text type="secondary">{formatDateTime(item.occurredAt)} · {display(item.actorDisplayName, '系统或未知操作者')}</Text></div> }))} /> : <Empty description="当前对象暂无可见变更记录" />}
+                  {timeline.data.length ? <Timeline items={timeline.data.map(item => ({ color: traceEventColor(item), children: <div><Space wrap><Tag>{traceSourceText(item.sourceType)}</Tag><Text strong>{item.title}</Text>{item.resultStatus ? <Tag color={statusColor(item.resultStatus)}>{statusText(item.resultStatus)}</Tag> : null}</Space><p>{display(item.summary, '暂无补充说明')}</p><Text type="secondary">{formatDateTime(item.occurredAt)} · {display(item.actorDisplayName, '系统或未知操作者')}</Text></div> }))} /> : <EmptyState description="当前对象暂无可见变更记录" />}
                 </SectionStateView>
               )
             },

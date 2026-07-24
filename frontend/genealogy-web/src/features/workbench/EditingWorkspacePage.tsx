@@ -1,39 +1,9 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import dayjs from 'dayjs';
-import { ExportOutlined,
-  PlusOutlined,
-  SettingOutlined } from '@ant-design/icons';
+import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import {
-  Alert,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Collapse,
-  DatePicker,
-  Descriptions,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Grid,
-  Input,
-  Modal,
-  Pagination,
-  Row,
-  Select,
-  Skeleton,
-  Space,
-  Table,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Checkbox, Col, Collapse, DatePicker, Descriptions, Drawer, Dropdown, Form, Grid, Input, Modal, Pagination, Row, Select, Skeleton, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -48,6 +18,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -423,10 +395,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
 
   const hasFilters = filterLabels(filters).length > 0;
   const emptyState = workbenchEmptyState({ hasClan: Boolean(currentClanId), loading: taskLoading, error: Boolean(taskError), hasFilters, count: tasks.length });
-  const emptyNode = <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>
+  const emptyNode = <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>
     {emptyState.action === 'clear' ? <Button onClick={resetFilters}>清除筛选</Button>
       : emptyState.action === 'retry' ? <Button onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button> : null}
-  </Empty>;
+  </EmptyState>;
   const resultActions = <Space wrap>
     <Button type="primary" icon={<PlusOutlined />} disabled={!currentClanId || !onNavigate} onClick={startNewTask}>新建任务</Button>
     <Button icon={<ExportOutlined />} loading={exporting} disabled={!currentClanId || total === 0 || taskLoading} onClick={() => void exportTasks()}>导出任务</Button>
@@ -520,7 +492,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
           {historyError ? <PageFeedback tone="warning" title="处理记录加载失败" description={historyError} action={<Button size="small" onClick={() => void loadHistory(selectedTask.key)}>重试</Button>} /> : null}
           {!historyError && historyLoading ? <Skeleton active paragraph={{ rows: 3 }} /> : null}
           {!historyError && !historyLoading && history.length ? <Timeline items={history.map(item => ({ key: String(item.id || `${item.createdAt}-${item.actionText}`), children: <Space direction="vertical" size={2}><Typography.Text>{display(item.operatorName, '系统')} · {display(item.actionText, '更新任务')}</Typography.Text>{item.comment ? <Typography.Text>{item.comment}</Typography.Text> : null}<Typography.Text type="secondary">{formatDateTime(item.createdAt)}{item.resultText ? ` · ${item.resultText}` : ''}</Typography.Text></Space> }))} /> : null}
-          {!historyError && !historyLoading && !history.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无处理记录" /> : null}
+          {!historyError && !historyLoading && !history.length ? <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无处理记录" /> : null}
         </Card>
       </Space> : null}
     </Drawer>

@@ -1,27 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type {
   CultureConfidenceLevel,
   CulturePrivacyLevel,
@@ -46,6 +25,8 @@ import type { MigrationSearchState } from './migrationEventService';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -249,7 +230,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
       <Select allowClear placeholder="状态" style={{ width: 140 }} options={['draft', 'pending_review', 'official', 'rejected', 'archived'].map(value => ({ value, label: statusLabel(value) }))} onChange={dataStatus => setSearch({ ...search, dataStatus, pageNo: 1 })} />
     </Space>
     {error && <PageFeedback tone="error" title="迁徙事件加载失败" description={error} style={{ marginBottom: 16 }} />}
-    {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : <>
+    {!clanId ? <EmptyState description="请选择宗族后查看迁徙脉络" /> : <>
       <Timeline items={items.filter(item => item.dataStatus === 'official').map(item => ({
         children: <Space direction="vertical" size={0}>
           <Text strong>{item.fromLocation} → {item.toLocation}</Text>
@@ -276,7 +257,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
           {detail.sources.length ? detail.sources.map(source => <Paragraph key={source.sourceId}><Text strong>{source.sourceName}</Text>{source.excerpt ? `：${source.excerpt}` : ''}</Paragraph>) : <PageFeedback tone="warning" title="尚未绑定来源，不能形成可信正式迁徙结论" />}
         </Card>
         {detail.review.status && <PageFeedback tone="info" title={`审核状态：${detail.review.status}`} description={detail.review.rejectedReason || undefined} />}
-      </Space> : <Empty description="暂无可见详情" />}
+      </Space> : <EmptyState description="暂无可见详情" />}
     </Drawer>
 
     <Modal open={formOpen} title={editing ? (editing.dataStatus === 'official' ? '提交正式迁徙变更申请' : '编辑迁徙事件') : '新增迁徙事件'} okText={editing?.dataStatus === 'official' ? '提交变更申请' : '保存草稿'} confirmLoading={saving} onOk={() => void save()} onCancel={() => { if (!saving) { setFormOpen(false); setEditing(null); } }} destroyOnClose>

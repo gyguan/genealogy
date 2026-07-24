@@ -1,16 +1,4 @@
-import {
-  Collapse,
-  Descriptions,
-  Drawer,
-  Empty,
-  Skeleton,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+import { Collapse, Descriptions, Drawer, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import type {
   OperationLogResponse,
   TrackingObjectResponse,
@@ -33,6 +21,8 @@ import {
 } from './trackingCenterLabels';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Text, Title } = Typography;
 
@@ -80,7 +70,7 @@ function TraceOverview({ detail }: { detail: TrackingTraceDetailResponse }) {
 
 function TraceTimeline({ detail }: { detail: TrackingTraceDetailResponse }) {
   if (!detail.timeline.length) {
-    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前对象暂无可见变更记录" />;
+    return <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前对象暂无可见变更记录" />;
   }
   return (
     <Timeline
@@ -118,7 +108,7 @@ function ChangeChainTable({ rows }: { rows: TrackingTraceChangeChainResponse[] }
       rowKey={row => row.chainKey}
       dataSource={rows}
       pagination={false}
-      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可识别的单次变更链路" /> }}
+      locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无可识别的单次变更链路" /> }}
       scroll={{ x: 940 }}
       columns={[
         {
@@ -159,7 +149,7 @@ function RevisionTable({ rows }: { rows: TrackingTraceRevisionResponse[] }) {
       rowKey={row => String(row.id)}
       dataSource={rows}
       pagination={false}
-      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字段差异或版本记录" /> }}
+      locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无字段差异或版本记录" /> }}
       scroll={{ x: 760 }}
       columns={[
         { key: 'changeType', title: '变更类型', render: (_value, row) => display(row.changeType, '变更') },
@@ -180,7 +170,7 @@ function ReviewTable({ rows }: { rows: TrackingTraceReviewTaskResponse[] }) {
       rowKey={row => String(row.id)}
       dataSource={rows}
       pagination={false}
-      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审核记录" /> }}
+      locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无审核记录" /> }}
       scroll={{ x: 820 }}
       columns={[
         { key: 'status', title: '审核状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{statusText(row.status)}</Tag> },
@@ -202,7 +192,7 @@ function SourceTable({ rows }: { rows: TrackingTraceSourceBindingResponse[] }) {
       rowKey={row => String(row.id)}
       dataSource={rows}
       pagination={false}
-      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可见来源证据" /> }}
+      locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无可见来源证据" /> }}
       scroll={{ x: 760 }}
       columns={[
         { key: 'source', title: '来源资料', render: (_value, row) => row.sourceDisplayName },
@@ -224,7 +214,7 @@ function TraceLogTable({ rows }: { rows: OperationLogResponse[] }) {
       rowKey={row => String(row.id)}
       dataSource={rows}
       pagination={false}
-      locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可见原始日志" /> }}
+      locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无可见原始日志" /> }}
       scroll={{ x: 820 }}
       expandable={{
         rowExpandable: row => Boolean(technicalLogItems(row)),

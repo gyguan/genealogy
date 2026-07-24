@@ -1,20 +1,5 @@
-import {
-  useEffect,
-  useRef,
-  useState } from 'react';
-import { Alert,
-  Button,
-  Card,
-  Col,
-  Empty,
-  Result,
-  Row,
-  Space,
-  Spin,
-  Statistic,
-  Tag,
-  Typography
-} from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Card, Col, Result, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { feedback } from '../../../../shared/ui/OperationFeedback';
@@ -25,6 +10,8 @@ import { useWizardCompletion } from '../../WizardCompletionContext';
 import './wizard-summary-step.css';
 
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+
+import { EmptyState } from '../../../../shared/ui/EmptyState';
 
 type Props = {
 
@@ -155,7 +142,7 @@ export function WizardSummaryStep({ onStepChange }: Props) {
                   />
                 ))}
               </Space>
-            ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有阻塞项，可以完成建谱" />}
+            ) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="没有阻塞项，可以完成建谱" />}
           </Card>
 
           <Card className="wizard-summary-completion" size="small">

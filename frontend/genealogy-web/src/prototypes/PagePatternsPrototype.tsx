@@ -1,40 +1,7 @@
-import {
-  useMemo,
-  useState } from 'react';
+import { useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import {
-  Alert,
-  App as AntApp,
-  Breadcrumb,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  ConfigProvider,
-  Descriptions,
-  Divider,
-  Drawer,
-  Empty,
-  Flex,
-  Form,
-  Input,
-  InputNumber,
-  Layout,
-  Menu,
-  Modal,
-  Radio,
-  Result,
-  Row,
-  Segmented,
-  Select,
-  Space,
-  Statistic,
-  Table,
-  Tabs,
-  Tag,
-  Typography,
-  theme
-} from 'antd';
+  Alert, App as AntApp, Breadcrumb, Button, Card, Checkbox, Col, ConfigProvider, Descriptions, Divider, Drawer, Flex, Form, Input, InputNumber, Layout, Menu, Modal, Radio, Result, Row, Segmented, Select, Space, Statistic, Table, Tabs, Tag, Typography, theme } from 'antd';
 import type { TableProps } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -55,6 +22,8 @@ import './page-patterns.css';
 import { feedback } from '../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../shared/ui/Feedback';
+
+import { EmptyState } from '../shared/ui/EmptyState';
 
 const { Content, Header, Sider } = Layout;
 const { Paragraph, Text, Title } = Typography;
@@ -443,12 +412,12 @@ function RecordTable({ compact = false }: { compact?: boolean }) {
 function ListState({ state, compact }: { state: PreviewState; compact: boolean }) {
   if (state === 'empty') {
     return (
-      <Empty
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      <EmptyState
+        image={EmptyState.PRESENTED_IMAGE_SIMPLE}
         description={<Space direction="vertical" size={2}><Text>暂无文化资料</Text><Text type="secondary">可以调整筛选条件，或新增第一条资料。</Text></Space>}
       >
         <Space><Button>重置条件</Button><Button type="primary" icon={<PlusOutlined />}>新增资料</Button></Space>
-      </Empty>
+      </EmptyState>
     );
   }
   if (state === 'error') {
@@ -596,12 +565,12 @@ function DetailPattern() {
               {
                 key: 'evidence',
                 label: '来源与附件 5',
-                children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="此页展示来源列表、摘录、附件预览和下载权限" />
+                children: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="此页展示来源列表、摘录、附件预览和下载权限" />
               },
               {
                 key: 'history',
                 label: '审核与追踪 2',
-                children: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="此页展示当前审核、版本变更和完整追踪入口" />
+                children: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="此页展示当前审核、版本变更和完整追踪入口" />
               }
             ]}
           />

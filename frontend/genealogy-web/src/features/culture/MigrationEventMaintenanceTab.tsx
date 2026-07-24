@@ -1,31 +1,6 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Input,
-  List,
-  Modal,
-  Popconfirm,
-  Result,
-  Row,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, List, Modal, Popconfirm, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import type {
   CultureDataStatus,
@@ -74,6 +49,8 @@ import type { MigrationSearchState } from './migrationEventUrlState';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -522,7 +499,7 @@ export function MigrationEventMaintenanceTab() {
       </Form>
 
       {refreshError ? <PageFeedback tone="warning" closable title="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
-      {!clanId ? <Empty description="请选择宗族后查看迁徙脉络" /> : null}
+      {!clanId ? <EmptyState description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
       {clanId && listError && !listForbidden ? <PageFeedback tone="error" title="迁徙事件首次加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
       {clanId && !listForbidden ? (
@@ -567,7 +544,7 @@ export function MigrationEventMaintenanceTab() {
             <Card size="small" title={`来源证据（${detail.sources.length}）`}>
               {detail.sources.length ? (
                 <List size="small" dataSource={detail.sources} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} />
-              ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
+              ) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
             </Card>
             <Card size="small" title="审核与追踪">
               <Space direction="vertical" style={{ width: '100%' }}>

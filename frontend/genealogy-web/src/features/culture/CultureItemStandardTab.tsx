@@ -1,32 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Collapse,
-  Descriptions,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  List,
-  Result,
-  Row,
-  Select,
-  Skeleton,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, Collapse, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type {
   CultureCategory,
@@ -88,6 +62,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -537,7 +513,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
        total={page.totalElements} resultExtra={<Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />}>
         
         {refreshError ? <PageFeedback tone="warning" closable title="文化资料刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 12 }} /> : null}
-        {!clanId ? <Empty description="请选择宗族后浏览文化资料" /> : null}
+        {!clanId ? <EmptyState description="请选择宗族后浏览文化资料" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化资料'} /> : null}
         {clanId && listError && !listForbidden ? <Result status="error" title="文化资料首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
         {clanId && !listForbidden && !listError ? (
@@ -550,7 +526,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
             scroll={{ x: 1300 }}
             onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })}
             pagination={{ current: page.pageNo, pageSize: page.pageSize, total: page.totalElements, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: total => `共 ${total} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }}
-            locale={{ emptyText: <Empty description="没有符合当前条件的文化资料"><Button onClick={resetSearch}>重置筛选</Button></Empty> }}
+            locale={{ emptyText: <EmptyState description="没有符合当前条件的文化资料"><Button onClick={resetSearch}>重置筛选</Button></EmptyState> }}
           />
         ) : null}
         

@@ -1,37 +1,7 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeftOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import { ArrowLeftOutlined,
-  MoreOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  UploadOutlined } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Descriptions,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Result,
-  Row,
-  Select,
-  Space,
-  Spin,
-  Table,
-  Tabs,
-  Tag,
-  Tooltip,
-  Typography,
-  Upload
-} from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Input, Modal, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
@@ -70,6 +40,8 @@ import type {
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
@@ -854,8 +826,8 @@ export function SourceLibraryPage({}: Props) {
   }
 
   const emptyContent = hasActiveSearch(search)
-    ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="未找到符合当前条件的来源资料"><Button onClick={resetSearch}>重置筛选</Button></Empty>
-    : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未录入来源资料，可先在资料库创建来源草稿，也可通过建谱向导完成首条主流程。"><Space><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button><Button onClick={() => window.location.assign('/?view=wizard')}>前往建谱向导</Button></Space></Empty>;
+    ? <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="未找到符合当前条件的来源资料"><Button onClick={resetSearch}>重置筛选</Button></EmptyState>
+    : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="尚未录入来源资料，可先在资料库创建来源草稿，也可通过建谱向导完成首条主流程。"><Space><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button><Button onClick={() => window.location.assign('/?view=wizard')}>前往建谱向导</Button></Space></EmptyState>;
 
   return (
     <div className="source-library-page">
@@ -974,7 +946,7 @@ function BindingTable({ clanId, rows, total, pageNo, pageSize, loading, canBind,
       </Space>;
     }
   });
-  return <Table<SourceBindingSummary> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} loading={loading} pagination={{ current: pageNo, pageSize, total, showSizeChanger: false, showTotal: value => `共 ${value} 条引用`, onChange: onPageChange }} scroll={{ x: 980 }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }} columns={columns} />;
+  return <Table<SourceBindingSummary> size="small" rowKey={(row, index) => String(row.id || index)} dataSource={rows} loading={loading} pagination={{ current: pageNo, pageSize, total, showSizeChanger: false, showTotal: value => `共 ${value} 条引用`, onChange: onPageChange }} scroll={{ x: 980 }} locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无引用记录" /> }} columns={columns} />;
 }
 
 function AttachmentTable({ rows, total, pageNo, pageSize, loading, canManage, onPageChange, onPreview, onDownload, onDelete }: {
@@ -996,7 +968,7 @@ function AttachmentTable({ rows, total, pageNo, pageSize, loading, canManage, on
     loading={loading}
     scroll={{ x: 900 }}
     pagination={{ current: pageNo, pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 个附件`, onChange: onPageChange }}
-    locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }}
+    locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无附件" /> }}
     columns={[
       { title: '文件名', render: (_value, row) => row.fileName || '未命名附件' },
       { title: '类型', width: 120, render: (_value, row) => row.fileType || '待维护' },

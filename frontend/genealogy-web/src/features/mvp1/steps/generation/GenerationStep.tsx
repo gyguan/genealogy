@@ -1,17 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert,
-  Button,
-  Empty,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Tag
-} from 'antd';
+import { Alert, Button, Input, Modal, Select, Space, Tag } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -34,6 +23,8 @@ import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+
+import { EmptyState } from '../../../../shared/ui/EmptyState';
 
 type SchemeForm = {
   schemeName: string;
@@ -375,7 +366,7 @@ export function GenerationStep({ onSubmittedReview }: Props) {
             onChange: keys => setSelectedSchemeRowKeys(keys),
             getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
           }}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无字辈方案，创建后会显示在这里' : '请选择宗族后查看字辈方案'} /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无字辈方案，创建后会显示在这里' : '请选择宗族后查看字辈方案'} /> }}
           columns={[
             { key: 'schemeName', title: '字辈方案', render: (_value, row) => schemeName(row) },
             { key: 'branchId', title: '支派', render: (_value, row) => row.branchName || row.branchId || '-' },
@@ -435,7 +426,7 @@ export function GenerationStep({ onSubmittedReview }: Props) {
             rowKey={row => String(row.id || `${row.generationNo || ''}-${row.word || ''}`)}
             dataSource={items}
             pagination={false}
-            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无字辈明细，追加后会显示在这里" /> }}
+            locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无字辈明细，追加后会显示在这里" /> }}
             columns={[
               { key: 'generationNo', title: '代次', render: (_value, row) => row.generationNo ? `第${row.generationNo}世` : '-' },
               { key: 'word', title: '字辈', render: (_value, row) => row.word || '-' }

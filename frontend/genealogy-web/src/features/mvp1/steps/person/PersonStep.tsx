@@ -1,20 +1,7 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
 import dayjs from 'dayjs';
-import { Alert,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Form,
-  Input,
-  Select,
-  Space,
-  Tag
-} from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, Select, Space, Tag } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { ResultListCard } from '../../../../shared/ui/ResultListCard';
@@ -35,6 +22,8 @@ import { replacePersonEvents } from '../../../persons/personEventService';
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+
+import { EmptyState } from '../../../../shared/ui/EmptyState';
 
 type PersonForm = {
   branchId: string;
@@ -560,7 +549,7 @@ export function PersonStep({ onSubmittedReview }: Props) {
           getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
         }}
         onRow={row => ({ onClick: () => selectPerson(row) })}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无人物数据' : '请选择宗族后查看人物'} /> }}
+        locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无人物数据' : '请选择宗族后查看人物'} /> }}
         columns={[
           { key: 'name', title: '姓名', render: (_value, row) => row.name || '未命名人物' },
           { key: 'gender', title: '性别', width: 90, render: (_value, row) => genderText(row.gender) },

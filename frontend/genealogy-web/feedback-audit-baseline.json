@@ -8,7 +8,7 @@
     "antd_message": 0,
     "antd_notification": 0,
     "confirm_modal": 60,
-    "empty_state": 153,
+    "empty_state": 0,
     "tooltip_help": 26,
     "inline_semantic_text": 145,
     "custom_notice_class": 30,

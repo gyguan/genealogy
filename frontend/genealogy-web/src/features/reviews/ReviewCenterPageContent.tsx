@@ -1,35 +1,7 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react';
 import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  DatePicker,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Grid,
-  Input,
-  List,
-  Modal,
-  Pagination,
-  Result,
-  Row,
-  Select,
-  Space,
-  Spin,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, DatePicker, Descriptions, Drawer, Form, Grid, Input, List, Modal, Pagination, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
@@ -45,6 +17,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 type Props = {  };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -644,7 +618,7 @@ export function ReviewCenterPage({}: Props) {
     }
     if (hasLoaded && tasks.length === 0) {
       const filtered = hasFilters(appliedFilters);
-      return <Empty description={filtered ? '当前筛选条件下暂无审核任务' : '当前队列暂无审核任务'}>{filtered ? <Button type="primary" onClick={resetFilters}>清除筛选</Button> : null}</Empty>;
+      return <EmptyState description={filtered ? '当前筛选条件下暂无审核任务' : '当前队列暂无审核任务'}>{filtered ? <Button type="primary" onClick={resetFilters}>清除筛选</Button> : null}</EmptyState>;
     }
     return (
       <>
@@ -774,10 +748,10 @@ export function ReviewCenterPage({}: Props) {
               <Descriptions.Item label="处理时间">{formatDateTime(currentDetail.processedAt)}</Descriptions.Item>
               <Descriptions.Item label="变更摘要">{currentDetail.diffSummary || '暂无摘要'}</Descriptions.Item>
             </Descriptions></div>
-            <div><Typography.Title level={5}>字段变更</Typography.Title>{reviewDiff?.fields?.length ? <Table size="small" pagination={false} rowKey={row => `${row.fieldName}-${row.changeType}`} dataSource={reviewDiff.fields} columns={[{ title: '字段', dataIndex: 'fieldName', width: 140 }, { title: '变更前', dataIndex: 'beforeValue', render: value => value || '-' }, { title: '变更后', dataIndex: 'afterValue', render: value => value || '-' }]} scroll={{ x: 520 }} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前详情接口未返回字段级变更" />}</div>
-            <div><Typography.Title level={5}>来源与证据</Typography.Title>{currentDetail.targetSummary?.fileName ? <PageFeedback tone="info" title={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}</div>
-            <div><Typography.Title level={5}>风险与冲突</Typography.Title><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回风险或冲突项；最终校验以服务端提交结果为准" /></div>
-            <div><Typography.Title level={5}>影响范围</Typography.Title>{currentDetail.targetSummary?.draftCount !== undefined || currentDetail.targetSummary?.excludedCount !== undefined ? <Descriptions column={1} size="small" bordered><Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item><Descriptions.Item label="涉及草稿">{currentDetail.targetSummary?.draftCount ?? 0} 条</Descriptions.Item><Descriptions.Item label="排除记录">{currentDetail.targetSummary?.excludedCount ?? 0} 条</Descriptions.Item></Descriptions> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回可量化的影响范围" />}</div>
+            <div><Typography.Title level={5}>字段变更</Typography.Title>{reviewDiff?.fields?.length ? <Table size="small" pagination={false} rowKey={row => `${row.fieldName}-${row.changeType}`} dataSource={reviewDiff.fields} columns={[{ title: '字段', dataIndex: 'fieldName', width: 140 }, { title: '变更前', dataIndex: 'beforeValue', render: value => value || '-' }, { title: '变更后', dataIndex: 'afterValue', render: value => value || '-' }]} scroll={{ x: 520 }} /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前详情接口未返回字段级变更" />}</div>
+            <div><Typography.Title level={5}>来源与证据</Typography.Title>{currentDetail.targetSummary?.fileName ? <PageFeedback tone="info" title={`关联材料：${currentDetail.targetSummary.fileName}`} description="可通过右上角追踪入口查看关联对象、来源绑定和完整证据链。" /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前审核任务未返回可展示的来源或附件证据" />}</div>
+            <div><Typography.Title level={5}>风险与冲突</Typography.Title><EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回风险或冲突项；最终校验以服务端提交结果为准" /></div>
+            <div><Typography.Title level={5}>影响范围</Typography.Title>{currentDetail.targetSummary?.draftCount !== undefined || currentDetail.targetSummary?.excludedCount !== undefined ? <Descriptions column={1} size="small" bordered><Descriptions.Item label="目标支派">{currentDetail.branchName || '全宗族'}</Descriptions.Item><Descriptions.Item label="涉及草稿">{currentDetail.targetSummary?.draftCount ?? 0} 条</Descriptions.Item><Descriptions.Item label="排除记录">{currentDetail.targetSummary?.excludedCount ?? 0} 条</Descriptions.Item></Descriptions> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前审核详情未返回可量化的影响范围" />}</div>
             <div><Typography.Title level={5}>历史审核轮次</Typography.Title><Timeline items={historyItems} /></div>
           </Space>
         ) : null}

@@ -1,27 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Grid,
-  Input,
-  List,
-  Modal,
-  Row,
-  Col,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Descriptions, Drawer, Form, Grid, Input, List, Modal, Row, Col, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -49,6 +28,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
@@ -629,7 +610,7 @@ export function MemberPage({}: {  }) {
           <List
             loading={initializing || queryLoading}
             dataSource={members}
-            locale={{ emptyText: <Empty description={emptyDescription} /> }}
+            locale={{ emptyText: <EmptyState description={emptyDescription} /> }}
             renderItem={member => (
               <List.Item actions={[<Button key="detail" type="link" onClick={() => openMember(member)}>查看详情</Button>]}>
                 <List.Item.Meta
@@ -650,7 +631,7 @@ export function MemberPage({}: {  }) {
             rowKey="membershipId"
             loading={initializing || queryLoading}
             dataSource={members}
-            locale={{ emptyText: <Empty description={emptyDescription} /> }}
+            locale={{ emptyText: <EmptyState description={emptyDescription} /> }}
             scroll={{ x: 900 }}
             pagination={{
               current: query.pageNo,
@@ -729,7 +710,7 @@ export function MemberPage({}: {  }) {
               size="small"
               rowKey="grantId"
               pagination={false}
-              locale={{ emptyText: <Empty description="暂无可见有效授权" /> }}
+              locale={{ emptyText: <EmptyState description="暂无可见有效授权" /> }}
               dataSource={selectedMember.grants}
               scroll={{ x: 560 }}
               columns={[
@@ -754,7 +735,7 @@ export function MemberPage({}: {  }) {
                   size="small"
                   rowKey="auditId"
                   loading={auditLoading}
-                  locale={{ emptyText: <Empty description="暂无权限变更记录" /> }}
+                  locale={{ emptyText: <EmptyState description="暂无权限变更记录" /> }}
                   dataSource={audits}
                   scroll={{ x: 720 }}
                   pagination={{

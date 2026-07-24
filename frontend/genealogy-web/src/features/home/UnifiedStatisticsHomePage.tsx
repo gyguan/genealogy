@@ -1,23 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
 import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Empty,
-  List,
-  Progress,
-  Row,
-  Select,
-  Skeleton,
-  Space,
-  Statistic,
-  Tag,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, List, Progress, Row, Select, Skeleton, Space, Statistic, Tag, Typography } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
 import type { HomeDashboardBucketResponse, HomeDashboardResponse } from '../../shared/api/generated/home-types';
@@ -26,6 +9,8 @@ import { toRecordList } from '../../shared/ui/DataTable';
 import './UnifiedStatisticsHomePage.css';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -327,8 +312,8 @@ export function UnifiedStatisticsHomePage() {
     return (
       <Space className="public-home-page" direction="vertical" size="middle" style={{ width: '100%' }}>
         <Card className="public-home-page__empty">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          <EmptyState
+            image={EmptyState.PRESENTED_IMAGE_SIMPLE}
             description={(
               <Space direction="vertical" size={6}>
                 <Text strong>当前没有可浏览的宗族</Text>
@@ -445,7 +430,7 @@ export function UnifiedStatisticsHomePage() {
                   </div>
                 ))}
               </Space>
-            ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无公开支派分布数据" />}
+            ) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无公开支派分布数据" />}
           </Card>
         </Col>
         <Col xs={24} xl={12}>
@@ -466,7 +451,7 @@ export function UnifiedStatisticsHomePage() {
               />
             ) : null}
             {cultureState.loaded && !publicCultureEntries.length ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无已公开的宗族纪事或文化资料" />
+              <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无已公开的宗族纪事或文化资料" />
             ) : null}
           </Card>
         </Col>

@@ -1,23 +1,7 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  Alert,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Form,
-  Result,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography
-} from 'antd';
+  Alert, Button, Card, DatePicker, Form, Result, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogResponse,
@@ -43,6 +27,8 @@ import {
 } from './trackingCenterLabels';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -254,7 +240,7 @@ export function RiskAuditPanel({
               scroll={{ x: 1180 }}
               onRow={row => ({ onClick: () => openLog(row) })}
               rowClassName="tracking-clickable-row"
-              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }}
+              locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }}
               pagination={{
                 current: page?.pageNo || filters.pageNo,
                 pageSize: TRACKING_PAGE_SIZE,

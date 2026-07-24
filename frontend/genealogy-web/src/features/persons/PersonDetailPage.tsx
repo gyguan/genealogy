@@ -1,24 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Alert,
-  Button,
-  Card,
-  Descriptions,
-  Empty,
-  Progress,
-  Result,
-  Skeleton,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+import { Alert, Button, Card, Descriptions, Progress, Result, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -37,6 +19,8 @@ import {
 import type { PersonEvent } from './personDetailModel';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 type Props = { personId: string; onBack: () => void };
 type PageError = { status: 403 | 404 | 500; title: string; description: string };
@@ -57,7 +41,7 @@ function SectionFrame<T>({ state, emptyText, errorTitle, onRetry, children }: {
 }) {
   if (state.status === 'loading' && !state.data.length) return <Skeleton active paragraph={{ rows: 4 }} />;
   if (state.status === 'error') return <Space direction="vertical" size="middle" style={{ width: '100%' }}><PageFeedback tone="error" title={errorTitle} description={state.error} action={<Button onClick={onRetry}>重新加载</Button>} />{state.data.length ? children : null}</Space>;
-  if (!state.data.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={emptyText} />;
+  if (!state.data.length) return <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={emptyText} />;
   return <>{children}</>;
 }
 function countText(state: ResourceState<unknown[]>) { if (state.status === 'loading' && !state.data.length) return '加载中'; if (state.status === 'error' && !state.data.length) return '加载失败'; return `${state.data.length} 条`; }
@@ -155,7 +139,7 @@ export function PersonDetailPage({ personId, onBack }: Props) {
       { key: 'epitaph', label: '墓志资料', children: <Card size="small" title="墓志铭"><Typography.Paragraph>{display(person.epitaph, '暂无墓志铭。')}</Typography.Paragraph></Card> },
       { key: 'relationships', label: '亲属关系', children: <SectionFrame state={relationships} emptyText="暂无亲属关系" errorTitle="关系加载失败" onRetry={() => void loadRelationships()}><Table<any> size="small" bordered rowKey={(row, index) => String(row.id || index)} dataSource={relationships.data} pagination={false} columns={[{ key: 'relationship', title: '关系', render: (_value, row) => relationshipTypeText(row.relationshipType || row.type) }, { key: 'person', title: '关联人物', render: (_value, row) => relationshipName(row, personId) }, { key: 'status', title: '状态', render: (_value, row) => <Tag color={personStatusColor(personStatus(row))}>{personStatusText(personStatus(row))}</Tag> }, { key: 'actions', title: '操作', width: 120, render: (_value, row) => <DraftDeleteButton object={row} objectName={relationshipName(row, personId)} objectType="亲属关系" onDelete={() => apiClient.delete(`/relationships/${row.id}`)} onDeleted={() => void loadRelationships()} label="删除草稿" buttonProps={{ type: 'link', size: 'small' }} /> }]} scroll={{ x: 'max-content' }} /></SectionFrame> },
       { key: 'sources', label: '来源证据', children: <SectionFrame state={sources} emptyText="暂无来源证据" errorTitle="来源加载失败" onRetry={() => void loadSources()}><Table<any> size="small" bordered rowKey={(row, index) => String(row.id || row.sourceId || index)} dataSource={sources.data} pagination={false} columns={[{ key: 'sourceName', title: '来源名称', render: (_value, row) => sourceTitle(row) }, { key: 'sourceType', title: '来源类型', render: (_value, row) => sourceTypeText(row.sourceType) }, { key: 'evidence', title: '证据说明', render: (_value, row) => display(row.evidenceText || row.description, '暂无说明') }]} scroll={{ x: 'max-content' }} /></SectionFrame> },
-      { key: 'tracking', label: '审核追踪', children: tracking.status === 'loading' && !tracking.data ? <Skeleton active paragraph={{ rows: 5 }} /> : tracking.status === 'error' ? <PageFeedback tone="error" title="审核追踪加载失败" description={tracking.error} action={<Button onClick={() => void loadTracking(clanId)}>重新加载</Button>} /> : !trackingTimeline.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无审核与操作追踪记录" /> : <Space direction="vertical" size="middle" className="person-detail-section-stack"><Card size="small" title="档案治理状态"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="当前状态"><Tag color={personStatusColor(status)}>{personStatusText(status)}</Tag></Descriptions.Item><Descriptions.Item label="最近更新">{updatedText(person)}</Descriptions.Item><Descriptions.Item label="可见范围">{privacyText(person.privacyLevel)}</Descriptions.Item><Descriptions.Item label="追踪入口"><TrackingLinkButton clanId={clanId} targetType="person" targetId={personId} label="打开完整追踪" /></Descriptions.Item></Descriptions></Card><Timeline items={trackingTimeline.map(item => ({ key: item.eventKey, children: <div><Typography.Text strong>{item.title}</Typography.Text><br /><Typography.Text type="secondary">{display(item.occurredAt)} · {display(item.actorDisplayName, '系统')}</Typography.Text><Typography.Paragraph>{display(item.summary, '暂无说明')}</Typography.Paragraph></div> }))} /></Space> }
+      { key: 'tracking', label: '审核追踪', children: tracking.status === 'loading' && !tracking.data ? <Skeleton active paragraph={{ rows: 5 }} /> : tracking.status === 'error' ? <PageFeedback tone="error" title="审核追踪加载失败" description={tracking.error} action={<Button onClick={() => void loadTracking(clanId)}>重新加载</Button>} /> : !trackingTimeline.length ? <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无审核与操作追踪记录" /> : <Space direction="vertical" size="middle" className="person-detail-section-stack"><Card size="small" title="档案治理状态"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="当前状态"><Tag color={personStatusColor(status)}>{personStatusText(status)}</Tag></Descriptions.Item><Descriptions.Item label="最近更新">{updatedText(person)}</Descriptions.Item><Descriptions.Item label="可见范围">{privacyText(person.privacyLevel)}</Descriptions.Item><Descriptions.Item label="追踪入口"><TrackingLinkButton clanId={clanId} targetType="person" targetId={personId} label="打开完整追踪" /></Descriptions.Item></Descriptions></Card><Timeline items={trackingTimeline.map(item => ({ key: item.eventKey, children: <div><Typography.Text strong>{item.title}</Typography.Text><br /><Typography.Text type="secondary">{display(item.occurredAt)} · {display(item.actorDisplayName, '系统')}</Typography.Text><Typography.Paragraph>{display(item.summary, '暂无说明')}</Typography.Paragraph></div> }))} /></Space> }
     ]} /></Card>
   </div>;
 }

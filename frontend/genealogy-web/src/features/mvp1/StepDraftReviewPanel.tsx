@@ -1,20 +1,14 @@
-import {
-  useEffect,
-  useRef,
-  useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert,
-  Button,
-  Empty,
-  Space,
-  Typography
-} from 'antd';
+import { Alert, Button, Space, Typography } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { DataTable, type Column } from '../../shared/ui/DataTable';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/EmptyState';
 
 type StepReviewTargetType = 'person' | 'relationship' | 'source';
 
@@ -260,7 +254,7 @@ export function StepDraftReviewPanel() {
         </div>
         {!clanId ? <PageFeedback tone="warning" title="请先选择宗族" /> : null}
         {warning ? <PageFeedback tone="info" title={warning} /> : null}
-        {!searched ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
+        {!searched ? <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={`正在加载${config.label}结果`} /> : (
           <DataTable
             data={rows}
             empty={`暂无${config.label}数据`}
