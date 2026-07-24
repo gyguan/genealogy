@@ -76,6 +76,8 @@ import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -554,10 +556,10 @@ export function CultureSiteMaintenanceTab() {
       </Card>
 
       <Card title="祠堂与文化场所">
-        {refreshError ? <Alert type="warning" showIcon closable message="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
+        {refreshError ? <PageFeedback tone="warning" closable title="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
         {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化场所'} /> : null}
-        {clanId && listError && !listForbidden ? <Alert type="error" showIcon message="文化场所首次加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
+        {clanId && listError && !listForbidden ? <PageFeedback tone="error" title="文化场所首次加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
         {clanId && !listForbidden ? (
           <Table<CultureSiteSummaryResponse>
             rowKey="id"
@@ -582,7 +584,7 @@ export function CultureSiteMaintenanceTab() {
       </Card>
 
       <Drawer open={Boolean(selectedId)} width={720} title={<Title level={4} style={{ margin: 0 }}>文化场所详情</Title>} loading={detailLoading} onClose={closeDetail}>
-        {detailError ? <Alert type="error" showIcon message="文化场所详情加载失败" description={detailError} /> : null}
+        {detailError ? <PageFeedback tone="error" title="文化场所详情加载失败" description={detailError} /> : null}
         {detail ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={1}>
@@ -611,8 +613,8 @@ export function CultureSiteMaintenanceTab() {
             <Card size="small" title="审核与追踪">
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Text>审核状态：{detail.review.status || '尚未提交'}</Text>
-                {detail.review.rejectedReason ? <Alert type="warning" showIcon message="驳回原因" description={detail.review.rejectedReason} /> : null}
-                {traceError ? <Alert type="warning" showIcon message="完整追踪暂不可用" description={traceError} /> : null}
+                {detail.review.rejectedReason ? <PageFeedback tone="warning" title="驳回原因" description={detail.review.rejectedReason} /> : null}
+                {traceError ? <PageFeedback tone="warning" title="完整追踪暂不可用" description={traceError} /> : null}
                 <Text>可见历史事件：{trace?.timeline.length || 0}</Text>
                 <Button onClick={openTracking}>打开完整追踪</Button>
               </Space>

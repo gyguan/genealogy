@@ -1,7 +1,18 @@
-import { useMemo, useState } from 'react';
-import { Alert, Button, Form, Input, Modal, Select, Space } from 'antd';
+import {
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space
+} from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Role = {
   roleCode: string;
@@ -102,10 +113,9 @@ export function MemberInvitationModal({ open, clanId, roles, branches, onClose }
     >
       {token ? (
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Alert
-            type="success"
-            showIcon
-            message="一次性邀请已生成"
+          <PageFeedback
+            tone="success"
+            title="一次性邀请已生成"
             description={`有效期至 ${dateTime(expiresAt)}。邀请链接只在当前窗口展示一次，请通过可信渠道发送。`}
           />
           <Input.TextArea readOnly autoSize={{ minRows: 3, maxRows: 5 }} value={link} />
@@ -144,10 +154,9 @@ export function MemberInvitationModal({ open, clanId, roles, branches, onClose }
               />
             </Form.Item>
           ) : <Form.Item name="scopeId" hidden><Input /></Form.Item>}
-          <Alert
-            type={selectedRole?.riskLevel === 'high' ? 'warning' : 'info'}
-            showIcon
-            message="接受邀请时会再次校验邀请人的当前权限"
+          <PageFeedback
+            tone={selectedRole?.riskLevel === 'high' ? 'warning' : 'info'}
+            title="接受邀请时会再次校验邀请人的当前权限"
             description="邀请无法绕过角色层级、支派范围和最后管理员等后端安全规则。"
           />
         </Form>

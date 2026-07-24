@@ -80,7 +80,7 @@ const mechanisms = [
     id: 'tooltip_help',
     name: '悬浮帮助',
     target: '仅用于局部术语解释',
-    patterns: [/<Tooltip\b/g, /\btitle\s*=\s*\{?['"`][^'"`]*(提示|说明|帮助)/g]
+    patterns: [/<Tooltip\b/g]
   },
   {
     id: 'inline_semantic_text',

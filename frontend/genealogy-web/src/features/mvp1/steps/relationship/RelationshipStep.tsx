@@ -35,6 +35,8 @@ import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../../../shared/ui/Feedback';
+
 type Props = {
   onSubmittedReview?: (taskId: string) => void;
 };
@@ -325,8 +327,8 @@ export function RelationshipStep({ onSubmittedReview }: Props) {
               <input value={expectedNo ? `${relationshipRuleText(mode)} · 目标代次：第${expectedNo}世` : '中心人物需维护代次后才能自动筛选'} disabled readOnly />
             </label>
           </div>
-          {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
-          {saveError ? <Alert type="error" showIcon message={saveError} /> : null}
+          {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" /> : null}
+          {saveError ? <PageFeedback tone="error" title={saveError} /> : null}
           <Space wrap>
             <Button type="primary" loading={savingRelationship} disabled={!centerPersonId || !relativePersonId} onClick={() => void saveRelationship(false)}>保存关系草稿</Button>
             <Button loading={savingRelationship} disabled={!centerPersonId || !relativePersonId} onClick={() => void saveRelationship(true)}>保存并提交审核</Button>
@@ -338,7 +340,7 @@ export function RelationshipStep({ onSubmittedReview }: Props) {
         cardClassName="relationship-step-query-results"
         totalSuffix="条关系"
         description="草稿/已驳回关系可勾选后批量提交审批。"
-        notice={!centerPersonId ? <Alert type="info" showIcon message="关系按当前中心人物加载，请先选择中心人物。" /> : null}
+        notice={!centerPersonId ? <PageFeedback tone="info" title="关系按当前中心人物加载，请先选择中心人物。" /> : null}
         extra={(
           <Space wrap>
             <Button type="primary" disabled={!selectedReviewableRelationships.length} loading={submittingRelationships} onClick={() => void submitSelectedRelationships()}>

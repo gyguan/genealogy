@@ -28,6 +28,8 @@ import { submitReviewTask } from '../../services/reviewTaskService';
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../../../shared/ui/Feedback';
+
 type ReviewForm = {
   targetTypes: ReviewTargetType[];
 };
@@ -225,7 +227,7 @@ export function ReviewProgressStep({}: Props) {
       </div>
       <Button className="secondary" disabled={loadingData || !workspace.clanId} onClick={() => void loadReviewData()} style={{ marginBottom: 12 }}>查询审核进度</Button>
       {selectedTargetTypes.includes('relationships') && !workspace.personId ? (
-        <Alert type="info" showIcon message="关系候选对象按当前中心人物加载；如需提交关系审核，请先在录入人物/建立关系步骤选中中心人物。" style={{ marginBottom: 12 }} />
+        <PageFeedback tone="info" title="关系候选对象按当前中心人物加载；如需提交关系审核，请先在录入人物/建立关系步骤选中中心人物。" style={{ marginBottom: 12 }} />
       ) : null}
 
       <section className="review-progress-submit-list step-object-result-panel">

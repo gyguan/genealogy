@@ -1,5 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Collapse, Empty, Segmented, Space, Table, Tag, Typography, Upload } from 'antd';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Checkbox,
+  Collapse,
+  Empty,
+  Segmented,
+  Space,
+  Table,
+  Tag,
+  Typography,
+  Upload
+} from 'antd';
 import type { UploadProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { apiClient } from '../../shared/api/client';
@@ -16,6 +31,8 @@ import {
 } from './import-preview-model';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Dragger } = Upload;
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -226,10 +243,10 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({ clan
     <div className="standard-import-workspace">
       <Card title={title} extra={<Space wrap><Button loading={templateDownloading === 'csv'} disabled={Boolean(templateDownloading)} onClick={() => void downloadTemplate('csv')}>下载 CSV 模板</Button><Button loading={templateDownloading === 'xlsx'} disabled={Boolean(templateDownloading)} onClick={() => void downloadTemplate('xlsx')}>下载 XLSX 模板</Button></Space>}>
         <Space direction="vertical" size="middle" className="import-workbench-stack">
-          <Alert type="info" showIcon message={`模板版本：${TEMPLATE_VERSION}`} description={`更新时间：${TEMPLATE_UPDATED_AT}；格式：CSV / XLSX；CSV 编码：UTF-8；最大文件：20 MB。模板版本变化后必须重新上传并预检。`} />
+          <PageFeedback tone="info" title={`模板版本：${TEMPLATE_VERSION}`} description={`更新时间：${TEMPLATE_UPDATED_AT}；格式：CSV / XLSX；CSV 编码：UTF-8；最大文件：20 MB。模板版本变化后必须重新上传并预检。`} />
           <Collapse ghost size="small" items={[{ key: 'guide', label: '查看字段填写说明', children: <Typography.Paragraph type="secondary" className="import-guide-text">{guide}</Typography.Paragraph> }]} />
-          {!branchSelected ? <Alert type="warning" showIcon message={`请先选择${targetLabel}`} /> : <Typography.Text type="secondary">{targetLabel}：{branchName || '未命名支派'}</Typography.Text>}
-          {validationMessage ? <Alert type="error" showIcon message={validationMessage} closable onClose={() => setValidationMessage('')} /> : null}
+          {!branchSelected ? <PageFeedback tone="warning" title={`请先选择${targetLabel}`} /> : <Typography.Text type="secondary">{targetLabel}：{branchName || '未命名支派'}</Typography.Text>}
+          {validationMessage ? <PageFeedback tone="error" title={validationMessage} closable onClose={() => setValidationMessage('')} /> : null}
           <Dragger {...uploadProps} className="import-upload-dragger"><Typography.Text strong>拖拽文件到此处，或点击选择文件</Typography.Text><Typography.Paragraph type="secondary">选择文件后不会自动提交，需先完成数据预检。</Typography.Paragraph></Dragger>
           <Space wrap><Button disabled={!file || !branchSelected || batchCreating} loading={previewing} onClick={() => void previewFile()}>预览并校验</Button><Button type="primary" disabled={!preview || counts.error > 0 || (counts.duplicate > 0 && !duplicatesConfirmed) || previewing || batchCreating} loading={batchCreating} onClick={() => void createBatch()}>创建导入批次</Button></Space>
         </Space>
@@ -244,7 +261,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({ clan
             { value: 'duplicate', label: `疑似重复 ${counts.duplicate}` },
             { value: 'error', label: `错误 ${counts.error}` }
           ]} />
-          {counts.error > 0 ? <Alert type="error" showIcon message={`存在 ${counts.error} 条阻断错误，修正并重新预检后才能创建批次。`} /> : null}
+          {counts.error > 0 ? <PageFeedback tone="error" title={`存在 ${counts.error} 条阻断错误，修正并重新预检后才能创建批次。`} /> : null}
           {counts.duplicate > 0 ? <Checkbox checked={duplicatesConfirmed} onChange={event => { setDuplicatesConfirmed(event.target.checked); setValidationMessage(''); }}>我已核对疑似重复{objectName}，确认仍继续创建导入批次</Checkbox> : null}
           <div className="import-preview-table"><Table<Row> size="middle" rowKey={(row, index) => String(row.rowNo || index)} dataSource={filteredRows} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: total => `共 ${total} 条` }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前分类暂无数据" /> }} columns={previewColumns} scroll={{ x: 900 }} /></div>
           <div className="import-preview-card-list">{filteredRows.map((row, index) => <Card key={String(row.rowNo || index)} size="small" title={`第 ${row.rowNo || index + 1} 行`} extra={statusTag(importValidationStatus(row))}><Space direction="vertical" size={4}>{mobileEntries(row).map(([key, value]) => <Typography.Text key={key}><strong>{key}：</strong>{String(value)}</Typography.Text>)}{importPreviewMessage(row) ? <Typography.Text type="danger">{importPreviewMessage(row)}</Typography.Text> : null}</Space></Card>)}</div>

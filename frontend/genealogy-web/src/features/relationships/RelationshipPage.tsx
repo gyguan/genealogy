@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Tag } from 'antd';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Tag
+} from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../shared/ui/Form';
@@ -11,6 +16,8 @@ import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type RelationshipPreset = {
   title: string;
@@ -230,7 +237,7 @@ export function RelationshipPage({}: {  }) {
 
   return (
     <Panel title="关系管理" description="支持亲子、配偶、养父母、继嗣、出嗣等复杂关系；创建前可先做冲突预检。">
-      <Alert type="info" showIcon className="member-role-tip" message="复杂关系录入方向" description="亲子/养育/继嗣类关系建议按长幼、承接关系选择人物；出嗣关系建议记录出嗣人与入继对象。" />
+      <PageFeedback tone="info" className="member-role-tip" title="复杂关系录入方向" description="亲子/养育/继嗣类关系建议按长幼、承接关系选择人物；出嗣关系建议记录出嗣人与入继对象。" />
       <Field label="当前人物"><select value={workspace.personId} onChange={e => workspace.setPersonId(e.target.value)}><option value="">请选择当前人物</option>{people.map(person => <option key={person.id} value={person.id}>{personLabel(person)}</option>)}</select></Field>
       <Actions><button disabled={loading || !workspace.personId} onClick={() => run(list)}>{loading ? '处理中...' : '查询关系'}</button><button className="secondary" disabled={!workspace.clanId} onClick={() => setCreateOpen(true)}>新建关系</button><button className="secondary" disabled={loading || !workspace.clanId} onClick={() => run(loadPeople)}>刷新人物</button></Actions>
       <DataTable data={data} columns={[{ key: 'fromPersonName', title: '关系起点人物', render: row => relationshipPersonName(row, 'from') }, { key: 'toPersonName', title: '关系终点人物', render: row => relationshipPersonName(row, 'to') }, { key: 'relationType', title: '关系类型', render: row => changeText(row.relationType) }, { key: 'relationLabel', title: '关系标签', render: row => relationLabelText(row.relationLabel) }, { key: 'isLineageRelation', title: '世系', render: row => row.isLineageRelation ? '是' : '否' }, { key: 'isBiological', title: '血缘', render: row => row.isBiological ? '是' : '否' }, { key: 'dataStatus', title: '状态' }]} onSelect={row => detail(String(row.id))} />

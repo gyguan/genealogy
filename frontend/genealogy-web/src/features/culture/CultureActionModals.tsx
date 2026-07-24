@@ -1,5 +1,7 @@
-import { Alert, Input, Modal, Typography } from 'antd';
+import { Input, Modal, Typography } from 'antd';
 import type { CultureItemSummaryResponse } from '../../shared/api/generated/culture-types';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Text } = Typography;
 
@@ -32,7 +34,7 @@ export function CultureActionModals(props: Props) {
         onOk={props.onConfirmReview}
       >
         <Text>资料：{props.reviewTarget?.title}</Text>
-        <Alert type="info" showIcon message="提交后资料进入待审核状态，审核通过后才成为正式内容。" style={{ margin: '12px 0' }} />
+        <PageFeedback tone="info" title="提交后资料进入待审核状态，审核通过后才成为正式内容。" style={{ margin: '12px 0' }} />
         <Input.TextArea
           value={props.reviewComment}
           onChange={event => props.onReviewCommentChange(event.target.value)}
@@ -54,10 +56,9 @@ export function CultureActionModals(props: Props) {
         onOk={props.onConfirmArchive}
       >
         <Text>影响对象：{props.archiveTarget?.title}</Text>
-        <Alert
-          type="warning"
-          showIcon
-          message={archiveNeedsReview ? '正式资料不会立即归档，将创建审核申请。' : '归档后资料将退出正常维护和默认展示。'}
+        <PageFeedback
+          tone="warning"
+          title={archiveNeedsReview ? '正式资料不会立即归档，将创建审核申请。' : '归档后资料将退出正常维护和默认展示。'}
           style={{ margin: '12px 0' }}
         />
         <Input.TextArea

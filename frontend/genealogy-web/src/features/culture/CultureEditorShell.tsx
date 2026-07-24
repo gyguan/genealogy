@@ -1,7 +1,15 @@
-import { useEffect } from 'react';
+import {
+  useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Alert, Button, Card, Space, Typography } from 'antd';
+import { Alert,
+  Button,
+  Card,
+  Space,
+  Typography
+} from 'antd';
 import { confirmCultureEditorLeave } from './cultureEditorState';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Paragraph, Title } = Typography;
 
@@ -68,7 +76,7 @@ export function CultureEditorShell({
         </Space>
       </Card>
       {statusAlert}
-      {submitError ? <Alert type="error" showIcon message="保存失败" description={submitError} /> : null}
+      {submitError ? <PageFeedback tone="error" title="保存失败" description={submitError} /> : null}
       <div className="culture-editor-content">{children}</div>
       <div className="culture-editor-actions" role="toolbar" aria-label="编辑操作">
         <Space>

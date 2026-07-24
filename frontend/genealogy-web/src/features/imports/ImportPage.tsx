@@ -1,8 +1,25 @@
-import { SearchOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, DatePicker, Drawer, Form, Input, Row, Select, Space, Tabs, Typography } from 'antd';
+import { useCallback,
+  useEffect,
+  useMemo,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Col,
+  DatePicker,
+  Drawer,
+  Form,
+  Input,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Typography
+} from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
@@ -26,6 +43,8 @@ import {
 import { importTypeRegistry, type ImportTypeKey } from './import-type-registry';
 import './import-workbench.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { RangePicker } = DatePicker;
 type Props = {  };
@@ -231,8 +250,8 @@ export function ImportPage({}: Props) {
           <ImportTypeSelector activeType={activeType} onTypeChange={changeType} />
           <Card size="small" title="2. 选择导入目标">
             <Space direction="vertical" size={12} className="import-workbench-stack">
-              {!workspace.clanId ? <Alert type="warning" showIcon message="请先选择所属宗族。" /> : null}
-              {branchError ? <Alert type="error" showIcon message={branchError} /> : null}
+              {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择所属宗族。" /> : null}
+              {branchError ? <PageFeedback tone="error" title={branchError} /> : null}
               <Select
                 aria-label="目标支派"
                 showSearch

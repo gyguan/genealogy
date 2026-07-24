@@ -47,6 +47,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
 type WorkbenchTaskType = 'review_follow_up' | 'missing_source' | 'generation_mismatch' | 'relationship_check' | 'import_follow_up';
@@ -470,9 +472,9 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
 
     <QueryResultCard className="workbench-result-card" extra={resultActions} total={total}>
       
-      {selectedKeys.length ? <Alert type="info" showIcon message={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
-      {bulkFailures.length ? <Alert type="warning" showIcon closable onClose={() => setBulkFailures([])} message={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
-      {taskError ? <Alert type="error" showIcon message="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
+      {selectedKeys.length ? <PageFeedback tone="info" title={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
+      {bulkFailures.length ? <PageFeedback tone="warning" closable onClose={() => setBulkFailures([])} title={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
+      {taskError ? <PageFeedback tone="error" title="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
       {screens.md ? <Table<WorkbenchTask>
         size="middle"
         loading={taskLoading}
@@ -512,10 +514,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
 
     <Drawer title={selectedTask ? <Space direction="vertical" size={6}><Typography.Text strong>{taskTitle(selectedTask)}</Typography.Text><Space wrap size={4}><Tag>{display(selectedTask.typeText, '-')}</Tag><Tag color={riskColor(selectedTask.risk)}>{riskText(selectedTask.risk)}</Tag><Tag color={statusColor(selectedTask.status)}>{display(selectedTask.statusText, '状态未知')}</Tag></Space></Space> : '修谱任务详情'} width={screens.md ? 720 : '100%'} open={Boolean(selectedTask)} onClose={closeTask} extra={selectedTask ? <Space wrap><Button loading={taskLoading} onClick={() => void refreshTaskStatus()}>刷新状态</Button><Button disabled={!relatedView || !onNavigate} onClick={() => goRelatedEntry()}>{selectedTask.relatedEntryText || '前往相关页面'}</Button><Button type="primary" onClick={() => setActionModalOpen(true)}>{actionLabel(selectedTask)}</Button></Space> : null}>
       {selectedTask ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Alert type={selectedTask.reviewBlocked ? 'warning' : 'info'} showIcon message="问题描述" description={display(selectedTask.problemDescription, selectedTask.suggestion)} />
+        <PageFeedback tone={selectedTask.reviewBlocked ? 'warning' : 'info'} title="问题描述" description={display(selectedTask.problemDescription, selectedTask.suggestion)} />
         <Card size="small" title="任务信息"><Descriptions column={1} size="small"><Descriptions.Item label="谱书名称">{display(selectedTask.bookName, bookLabel(activeClan))}</Descriptions.Item><Descriptions.Item label="创建人">{display(selectedTask.creatorName, '-')}</Descriptions.Item><Descriptions.Item label="创建时间">{formatDateTime(selectedTask.createdAt)}</Descriptions.Item><Descriptions.Item label="涉及对象">{display(selectedTask.involvedObject || selectedTask.objectName)}</Descriptions.Item><Descriptions.Item label="所属范围">{display(selectedTask.branchName)}</Descriptions.Item><Descriptions.Item label="风险原因">{display(selectedTask.riskReason)}</Descriptions.Item><Descriptions.Item label="建议处理">{display(selectedTask.suggestion)}</Descriptions.Item><Descriptions.Item label="状态说明">{display(selectedTask.statusDescription)}</Descriptions.Item><Descriptions.Item label="最近更新">{formatDateTime(selectedTask.updatedAt)}</Descriptions.Item></Descriptions></Card>
         <Card size="small" title="处理记录" extra={<Button type="link" size="small" loading={historyLoading} onClick={() => void loadHistory(selectedTask.key)}>刷新</Button>}>
-          {historyError ? <Alert type="warning" showIcon message="处理记录加载失败" description={historyError} action={<Button size="small" onClick={() => void loadHistory(selectedTask.key)}>重试</Button>} /> : null}
+          {historyError ? <PageFeedback tone="warning" title="处理记录加载失败" description={historyError} action={<Button size="small" onClick={() => void loadHistory(selectedTask.key)}>重试</Button>} /> : null}
           {!historyError && historyLoading ? <Skeleton active paragraph={{ rows: 3 }} /> : null}
           {!historyError && !historyLoading && history.length ? <Timeline items={history.map(item => ({ key: String(item.id || `${item.createdAt}-${item.actionText}`), children: <Space direction="vertical" size={2}><Typography.Text>{display(item.operatorName, '系统')} · {display(item.actionText, '更新任务')}</Typography.Text>{item.comment ? <Typography.Text>{item.comment}</Typography.Text> : null}<Typography.Text type="secondary">{formatDateTime(item.createdAt)}{item.resultText ? ` · ${item.resultText}` : ''}</Typography.Text></Space> }))} /> : null}
           {!historyError && !historyLoading && !history.length ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无处理记录" /> : null}
@@ -524,10 +526,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     </Drawer>
 
     <Modal title={selectedTask ? actionLabel(selectedTask) : '完成任务处理'} open={actionModalOpen} onCancel={() => { if (!actionLoading) setActionModalOpen(false); }} onOk={() => void submitTaskAction()} okText="确认完成" cancelText="取消" confirmLoading={actionLoading} destroyOnHidden>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}><Alert type="warning" showIcon message={`将处理任务：${taskTitle(selectedTask)}`} description="确认后将更新任务状态并刷新查询结果；若任务已被他人处理，系统会提示冲突并加载最新状态。" /><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text>处理说明（可选）</Typography.Text><Input.TextArea value={actionComment} onChange={event => setActionComment(event.target.value)} maxLength={500} showCount rows={4} placeholder="补充处理依据、核查结果或后续关注事项" /></Space></Space>
+      <Space direction="vertical" size="middle" style={{ width: '100%' }}><PageFeedback tone="warning" title={`将处理任务：${taskTitle(selectedTask)}`} description="确认后将更新任务状态并刷新查询结果；若任务已被他人处理，系统会提示冲突并加载最新状态。" /><Space direction="vertical" size={4} style={{ width: '100%' }}><Typography.Text>处理说明（可选）</Typography.Text><Input.TextArea value={actionComment} onChange={event => setActionComment(event.target.value)} maxLength={500} showCount rows={4} placeholder="补充处理依据、核查结果或后续关注事项" /></Space></Space>
     </Modal>
     <Modal title="批量标记已核查" open={bulkModalOpen} onCancel={() => { if (!bulkLoading) setBulkModalOpen(false); }} onOk={() => void submitBulkCheck()} okText="确认处理" cancelText="取消" confirmLoading={bulkLoading}>
-      <Alert type="warning" showIcon message={`将处理当前页选中的 ${selectedTasks.length} 项任务`} description="系统会逐项提交并汇总成功和失败结果，不会因单项失败中断其他任务。" />
+      <PageFeedback tone="warning" title={`将处理当前页选中的 ${selectedTasks.length} 项任务`} description="系统会逐项提交并汇总成功和失败结果，不会因单项失败中断其他任务。" />
     </Modal>
     <Modal title="任务模板管理" open={templateModalOpen} onCancel={() => setTemplateModalOpen(false)} footer={<Button type="primary" onClick={() => setTemplateModalOpen(false)}>完成</Button>} width={820}>
       <Table size="small" rowKey="key" pagination={false} dataSource={templateRows} columns={[{ title: '模板名称', dataIndex: 'name', width: 160 }, { title: '任务类型', dataIndex: 'type', width: 150 }, { title: '默认优先级', dataIndex: 'priority', width: 110, render: value => <Tag>{value}</Tag> }, { title: '生成规则', dataIndex: 'trigger' }]} />

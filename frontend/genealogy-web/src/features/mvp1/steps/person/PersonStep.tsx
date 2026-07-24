@@ -34,6 +34,8 @@ import { replacePersonEvents } from '../../../persons/personEventService';
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../../../shared/ui/Feedback';
+
 type PersonForm = {
   branchId: string;
   personCode: string;
@@ -537,7 +539,7 @@ export function PersonStep({ onSubmittedReview }: Props) {
         cardClassName="person-step-query-results"
         totalSuffix="个人物"
         description="草稿/已驳回人物可勾选后批量提交审批；已通过人物可选中后用于建立关系。"
-        notice={!workspace.clanId ? <Alert type="warning" showIcon message="请先选择宗族" /> : null}
+        notice={!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" /> : null}
         extra={(
           <Space wrap>
             <Button type="primary" disabled={!selectedReviewablePersons.length} loading={submittingPersons} onClick={() => void submitSelectedPersons()}>批量提交审核（{selectedReviewablePersons.length}）</Button>

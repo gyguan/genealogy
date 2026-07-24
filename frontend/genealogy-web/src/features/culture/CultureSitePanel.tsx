@@ -53,6 +53,8 @@ import type { CultureSiteSearchState } from './cultureSiteService';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Paragraph, Text, Title } = Typography;
 
 const siteTypes: { value: CultureSiteType; label: string }[] = [
@@ -327,7 +329,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       <Select allowClear placeholder="支派" style={{ width: 180 }} options={branchOptions} onChange={branchId => setSearch({ ...search, branchId, pageNo: 1 })} />
       <Select allowClear placeholder="数据状态" style={{ width: 140 }} options={statusOptions} onChange={dataStatus => setSearch({ ...search, dataStatus, pageNo: 1 })} />
     </Space>
-    {listError ? <Alert type="error" showIcon message="文化场所加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
+    {listError ? <PageFeedback tone="error" title="文化场所加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
     {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : <>
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {items.slice(0, 4).map(item => <Col key={item.id} xs={24} sm={12} xl={6}>
@@ -368,7 +370,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
           {detail.attachments.length ? <List grid={{ gutter: 12, xs: 1, sm: 2 }} dataSource={detail.attachments} renderItem={attachment => <List.Item><Card size="small"><Space direction="vertical"><Image preview={false} width={64} height={48} style={{ objectFit: 'cover' }} fallback="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" src={attachment.contentType?.startsWith('image/') && attachment.canPreview ? `/api/v1/source-attachments/${attachment.attachmentId}/preview` : undefined} /><Text ellipsis>{attachment.fileName}</Text><Space>{attachment.canPreview ? <Button size="small" onClick={() => void previewAttachment(attachment.attachmentId)}>预览</Button> : null}{attachment.canDownload ? <Button size="small" onClick={() => void downloadAttachment(attachment.attachmentId, attachment.fileName)}>下载</Button> : null}</Space></Space></Card></List.Item>} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可见影像" />}
         </Card>
         <Card size="small" title="审核与追踪">
-          <Space direction="vertical"><Text>审核状态：{detail.review.status || '尚未提交'}</Text>{detail.review.rejectedReason ? <Alert type="warning" showIcon message="驳回原因" description={detail.review.rejectedReason} /> : null}<Text>可见历史事件：{trace?.timeline.length || 0}</Text><Button onClick={openTracking}>打开完整追踪</Button></Space>
+          <Space direction="vertical"><Text>审核状态：{detail.review.status || '尚未提交'}</Text>{detail.review.rejectedReason ? <PageFeedback tone="warning" title="驳回原因" description={detail.review.rejectedReason} /> : null}<Text>可见历史事件：{trace?.timeline.length || 0}</Text><Button onClick={openTracking}>打开完整追踪</Button></Space>
           {trace?.timeline.length ? <Timeline style={{ marginTop: 16 }} items={trace.timeline.slice(0, 5).map(event => ({ children: `${event.title} · ${event.occurredAt || ''}` }))} /> : null}
         </Card>
         {actionButtons(detail)}
@@ -376,7 +378,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
     </Drawer>
 
     <Modal open={formOpen} width={760} title={editing ? (editing.dataStatus === 'official' ? '提交正式场所变更申请' : '编辑文化场所') : '新增文化场所'} okText={editing?.dataStatus === 'official' ? '提交变更审核' : '保存草稿'} cancelText="取消" confirmLoading={saving} onOk={() => void save()} onCancel={() => { if (!saving) { setFormOpen(false); setEditing(null); } }}>
-      {editing?.dataStatus === 'official' ? <Alert type="info" showIcon message="正式场所不会被直接覆盖" description="本次修改将生成审核任务，审核通过后才生效；地址、坐标和说明不会写入通用差异快照。" style={{ marginBottom: 16 }} /> : null}
+      {editing?.dataStatus === 'official' ? <PageFeedback tone="info" title="正式场所不会被直接覆盖" description="本次修改将生成审核任务，审核通过后才生效；地址、坐标和说明不会写入通用差异快照。" style={{ marginBottom: 16 }} /> : null}
       <Form form={form} layout="vertical">
         <Row gutter={12}>
           <Col xs={24} md={12}><Form.Item name="siteType" label="场所类型" rules={[{ required: true }]}><Select options={siteTypes} /></Form.Item></Col>

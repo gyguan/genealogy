@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -21,6 +24,8 @@ import type { HomeDashboardBucketResponse, HomeDashboardResponse } from '../../s
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { toRecordList } from '../../shared/ui/DataTable';
 import './UnifiedStatisticsHomePage.css';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -293,10 +298,9 @@ export function UnifiedStatisticsHomePage() {
     if (state.status !== 'error' && state.status !== 'forbidden') return null;
     const forbidden = state.status === 'forbidden';
     return (
-      <Alert
-        type="warning"
-        showIcon
-        message={forbidden ? `暂无权限查看${label}` : `${label}加载失败`}
+      <PageFeedback
+        tone="warning"
+        title={forbidden ? `暂无权限查看${label}` : `${label}加载失败`}
         description={state.error}
         action={forbidden ? undefined : <Button size="small" onClick={retry}>重试</Button>}
       />

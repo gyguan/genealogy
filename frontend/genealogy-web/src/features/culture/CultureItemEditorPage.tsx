@@ -28,6 +28,8 @@ import { categoryOptions, confidenceOptions, privacyOptions, sensitiveOptions } 
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 type CultureItemFormValues = CultureItemCreateRequest;
 
 type Props = {
@@ -168,9 +170,9 @@ export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSa
   const title = editor.mode === 'create' ? '新增文化资料' : official ? '申请变更正式文化资料' : '编辑文化资料';
   const primaryText = editor.mode === 'create' ? '保存草稿' : official ? '提交变更申请' : '保存修改';
   const statusAlert = official ? (
-    <Alert type="warning" showIcon message="正式资料不会被直接覆盖" description="本次修改将创建审核任务，审核通过后才会更新正式内容。" />
+    <PageFeedback tone="warning" title="正式资料不会被直接覆盖" description="本次修改将创建审核任务，审核通过后才会更新正式内容。" />
   ) : rejected ? (
-    <Alert type="info" showIcon message="请根据驳回意见修订" description={detail?.review.rejectedReason || '审核方未返回具体驳回说明。'} />
+    <PageFeedback tone="info" title="请根据驳回意见修订" description={detail?.review.rejectedReason || '审核方未返回具体驳回说明。'} />
   ) : null;
 
   return (

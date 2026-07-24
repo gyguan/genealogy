@@ -177,7 +177,7 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
 
 test('audit gate prevents legacy feedback mechanisms from increasing', () => {
   assert.equal(baseline.version, 1);
-  assert.equal(baseline.maxCounts.page_alert, 158);
+  assert.equal(baseline.maxCounts.page_alert, 0);
   assert.equal(baseline.maxCounts.field_help, 104);
   assert.equal(baseline.maxCounts.app_notify, 0);
   assert.equal(baseline.maxCounts.antd_message, 0);

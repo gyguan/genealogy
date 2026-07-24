@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Result, Row, Space, Spin, Statistic, Tag, Typography } from 'antd';
+import {
+  useEffect,
+  useRef,
+  useState } from 'react';
+import { Alert,
+  Button,
+  Card,
+  Col,
+  Empty,
+  Result,
+  Row,
+  Space,
+  Spin,
+  Statistic,
+  Tag,
+  Typography
+} from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Panel } from '../../../../shared/ui/Panel';
 import { feedback } from '../../../../shared/ui/OperationFeedback';
@@ -8,6 +23,8 @@ import type { SummarySection } from '../../domain/wizardSummaryModel';
 import { loadWizardSummary } from '../../services/wizardSummaryService';
 import { useWizardCompletion } from '../../WizardCompletionContext';
 import './wizard-summary-step.css';
+
+import { PageFeedback } from '../../../../shared/ui/Feedback';
 
 type Props = {
 
@@ -35,7 +52,7 @@ function navigate(view: 'reviewCenter' | 'personArchive' | 'treeProduct') {
 function SectionCard({ section, onRetry }: { section: SummarySection; onRetry: () => void }) {
   return (
     <Card className="wizard-summary-section" size="small" title={section.title} extra={<Button type="link" onClick={() => onRetry()}>刷新</Button>}>
-      {section.error ? <Alert type="error" showIcon message={section.error} action={<Button size="small" onClick={onRetry}>重试</Button>} /> : null}
+      {section.error ? <PageFeedback tone="error" title={section.error} action={<Button size="small" onClick={onRetry}>重试</Button>} /> : null}
       <Row gutter={[12, 12]}>
         <Col xs={12} sm={8}><Statistic title="总数" value={section.counts.total} /></Col>
         {section.detailCount !== undefined ? <Col xs={12} sm={8}><Statistic title="明细/绑定" value={section.detailCount} /></Col> : null}
@@ -117,7 +134,7 @@ export function WizardSummaryStep({ onStepChange }: Props) {
         <Button loading={loading} onClick={() => void load()}>刷新汇总</Button>
         <Button onClick={() => navigate('reviewCenter')}>进入审核中心</Button>
       </div>
-      {loadError ? <Alert type="error" showIcon message={loadError} action={<Button size="small" onClick={() => void load()}>重试</Button>} /> : null}
+      {loadError ? <PageFeedback tone="error" title={loadError} action={<Button size="small" onClick={() => void load()}>重试</Button>} /> : null}
       {loading && !summary ? <div className="wizard-summary-loading"><Spin /><Typography.Text type="secondary">正在汇总建谱结果…</Typography.Text></div> : null}
       {summary ? (
         <>
@@ -129,11 +146,10 @@ export function WizardSummaryStep({ onStepChange }: Props) {
             {summary.blockers.length ? (
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 {summary.blockers.map(blocker => (
-                  <Alert
+                  <PageFeedback
                     key={blocker.key}
-                    type="warning"
-                    showIcon
-                    message={blocker.title}
+                    tone="warning"
+                    title={blocker.title}
                     description={blocker.reason}
                     action={<Button size="small" onClick={() => onStepChange(blocker.step)}>返回处理</Button>}
                   />

@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState } from 'react';
 import {
   Alert,
   Button,
@@ -40,6 +44,8 @@ import {
 } from './trackingCenterLabels';
 import './tracking-trace-detail-page.css';
 
+import { PageFeedback } from '../../shared/ui/Feedback';
+
 const { Text, Title } = Typography;
 
 type SectionKey = 'timeline' | 'chains' | 'changes' | 'reviews' | 'sources' | 'logs';
@@ -79,10 +85,9 @@ function SectionStateView({ state, onRetry, children }: {
   if (state.forbidden) return <Result status="403" title="无权查看该分区" subTitle="当前账号没有该分区的审计查看权限。" />;
   if (state.error) {
     return (
-      <Alert
-        type="error"
-        showIcon
-        message="当前分区加载失败"
+      <PageFeedback
+        tone="error"
+        title="当前分区加载失败"
         description={state.error}
         action={<Button icon={<ReloadOutlined />} onClick={onRetry}>重试</Button>}
       />
@@ -104,10 +109,9 @@ function TraceOverview({ detail }: { detail: TrackingTraceDetailResponse }) {
         <Descriptions.Item label="最近变更">{formatDateTime(summary.changedAt)}</Descriptions.Item>
         <Descriptions.Item label="历史覆盖"><Tag color={detail.traceCoverage.complete ? 'success' : 'warning'}>{coverageText(detail.traceCoverage.level)}</Tag></Descriptions.Item>
       </Descriptions>
-      <Alert
-        showIcon
-        type={detail.traceCoverage.complete ? 'success' : 'warning'}
-        message={detail.traceCoverage.complete ? '当前可见历史已完整加载' : '当前历史存在范围说明'}
+      <PageFeedback
+        tone={detail.traceCoverage.complete ? 'success' : 'warning'}
+        title={detail.traceCoverage.complete ? '当前可见历史已完整加载' : '当前历史存在范围说明'}
         description={detail.traceCoverage.notes.join('；') || '未发现需要补充说明的历史缺口'}
       />
     </Space>
@@ -248,7 +252,7 @@ export function TrackingTraceDetailPage({ clanId, targetType, targetId, reviewTa
                             { key: 'type', title: '变更类型', width: 100, render: (_value, field) => <Tag>{changeTypeText(field.changeType)}</Tag> }
                           ]}
                         />
-                      ) : <Alert type="info" showIcon message="仅有历史摘要" description={display(row.diffSummary, '该历史版本无法恢复字段级差异。')} />
+                      ) : <PageFeedback tone="info" title="仅有历史摘要" description={display(row.diffSummary, '该历史版本无法恢复字段级差异。')} />
                     }}
                     columns={[
                       { key: 'changeType', title: '变更类型', width: 120, render: (_value, row) => changeTypeText(row.changeType) },

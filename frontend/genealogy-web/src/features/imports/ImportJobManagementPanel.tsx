@@ -1,6 +1,22 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState } from 'react';
 import type { Key } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import { Alert,
+  Button,
+  Card,
+  Checkbox,
+  Empty,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Typography
+} from 'antd';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -8,6 +24,8 @@ import { importFileFormatOptions, importFileFormatText, importTypeOptions, impor
 import { ImportFailureBulkActions } from './ImportFailureBulkActions';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {  refreshKey: number };
 
@@ -410,7 +428,7 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
           <Select allowClear placeholder="全部文件格式" value={fileFormat} options={[...importFileFormatOptions]} style={{ width: 160 }} onChange={value => { setFileFormat(value); setPageNo(1); clearSelection(); }} />
           <Typography.Text type="secondary">{workspace.branchId ? '当前仅显示所选支派的导入任务' : '当前显示全宗族导入任务'}</Typography.Text>
         </Space>
-        {errorMessage ? <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} /> : null}
+        {errorMessage ? <PageFeedback tone="error" title={errorMessage} style={{ marginBottom: 16 }} /> : null}
         <Table<ImportJobSummary>
           size="small"
           bordered
@@ -464,10 +482,9 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
             <Tag color={reviewStatusColor(selectedJob.reviewStatus)}>{reviewStatusText(selectedJob.reviewStatus)}</Tag>
             {(selectedJob.reviewRound || 0) > 0 ? <Typography.Text type="secondary">已提交 {selectedJob.reviewRound} 轮</Typography.Text> : null}
           </Space>
-          <Alert
-            type={(selectedJob.failureCount || 0) > 0 ? 'warning' : selectedJob.reviewStatus === 'approved' ? 'success' : 'info'}
-            showIcon
-            message={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved' ? '审核已通过，批次数据已正式生效。' : selectedJob.reviewStatus === 'pending' ? '批次正在审核中，暂不能继续修改。' : selectedJob.reviewStatus === 'rejected' ? '批次已驳回，可按审核意见调整后重新提交。' : '全部数据已生成草稿，可以提交审核。')}
+          <PageFeedback
+            tone={(selectedJob.failureCount || 0) > 0 ? 'warning' : selectedJob.reviewStatus === 'approved' ? 'success' : 'info'}
+            title={selectedJob.errorSummary || (selectedJob.reviewStatus === 'approved' ? '审核已通过，批次数据已正式生效。' : selectedJob.reviewStatus === 'pending' ? '批次正在审核中，暂不能继续修改。' : selectedJob.reviewStatus === 'rejected' ? '批次已驳回，可按审核意见调整后重新提交。' : '全部数据已生成草稿，可以提交审核。')}
             description={(selectedJob.failureCount || 0) > 0 ? '修正失败行后系统会重新计算批次状态；原始行始终保留，不会被覆盖。' : undefined}
             style={{ marginBottom: 12 }}
           />
@@ -517,9 +534,9 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
       <Modal title={`修正导入数据${editingRow?.rowNo ? ` · 第 ${editingRow.rowNo} 行` : ''}`} open={Boolean(editingRow)} confirmLoading={retryLoading} okText="保存并重试" cancelText="取消" onOk={() => void retryRow()} onCancel={() => { setEditingRow(null); form.resetFields(); }} destroyOnHidden>
         {editingRow ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert type="info" showIcon message="原始数据仅作对照；保存后将使用对应业务类型的修正规则重新校验，不会修改原始导入记录。" />
+            <PageFeedback tone="info" title="原始数据仅作对照；保存后将使用对应业务类型的修正规则重新校验，不会修改原始导入记录。" />
             <Typography.Paragraph type="secondary" copyable={{ text: editingRow.rawData || '' }}>原始数据：{editingRow.rawData || '-'}</Typography.Paragraph>
-            {editingRow.errorMessage ? <Alert type="error" showIcon message={editingRow.errorMessage} /> : null}
+            {editingRow.errorMessage ? <PageFeedback tone="error" title={editingRow.errorMessage} /> : null}
             <Form form={form} layout="vertical">{renderCorrectionFields()}</Form>
           </Space>
         ) : null}
@@ -527,7 +544,7 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
 
       <Modal title={reviewJob?.reviewStatus === 'rejected' ? '重新提交导入批次审核' : '提交导入批次审核'} open={Boolean(reviewJob)} confirmLoading={reviewLoading} okText="确认提交" cancelText="取消" onOk={() => void submitReview()} onCancel={() => { setReviewJob(null); setReviewComment(''); }} destroyOnHidden>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert type="info" showIcon message="提交后，批次草稿将锁定，审核通过后统一正式生效；提交人不能审核自己的批次。" />
+          <PageFeedback tone="info" title="提交后，批次草稿将锁定，审核通过后统一正式生效；提交人不能审核自己的批次。" />
           <Typography.Text>业务类型：{importTypeText(reviewJob?.importType || reviewJob?.legacyImportType)}</Typography.Text>
           <Typography.Text>文件：{reviewJob?.originalFilename || '-'}</Typography.Text>
           <Typography.Text>草稿数据：{reviewJob?.successCount || 0} 条</Typography.Text>

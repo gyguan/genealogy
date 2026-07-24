@@ -1,6 +1,20 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
-import { Alert, Button, Empty, Popover, Space, Spin, Tag, Tooltip } from 'antd';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState } from 'react';
+import type { PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent } from 'react';
+import { Alert,
+  Button,
+  Empty,
+  Popover,
+  Space,
+  Spin,
+  Tag,
+  Tooltip
+} from 'antd';
 import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined } from '@ant-design/icons';
 import type {
   TreeEdgeResponse,
@@ -11,6 +25,8 @@ import type {
 import { buildLineageLayout } from './lineageGraphModel';
 import { edgeIndicators, edgeVisual, nodeIndicators } from './lineageSemanticsModel';
 import { dataStatusText } from './treeDisplayModel';
+
+import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {
   graph: TreeGraphResponse | null;
@@ -225,11 +241,10 @@ export function LineageGraphCanvas({
   const noticeContent = (
     <Space direction="vertical" size={8} className="lineage-graph-notice-popover">
       {layout.notices.map(notice => (
-        <Alert
+        <PageFeedback
           key={notice.code}
-          type={noticeType(notice.code)}
-          showIcon
-          message={`${notice.message}${notice.count > 1 ? `（${notice.count}）` : ''}`}
+          tone={noticeType(notice.code)}
+          title={`${notice.message}${notice.count > 1 ? `（${notice.count}）` : ''}`}
         />
       ))}
     </Space>
@@ -254,10 +269,9 @@ export function LineageGraphCanvas({
 
       {layout.notices.length ? (
         <div className="lineage-graph-notices">
-          <Alert
-            type={noticeType(layout.notices[0].code)}
-            showIcon
-            message={`${layout.notices[0].message}${layout.notices[0].count > 1 ? `（${layout.notices[0].count}）` : ''}`}
+          <PageFeedback
+            tone={noticeType(layout.notices[0].code)}
+            title={`${layout.notices[0].message}${layout.notices[0].count > 1 ? `（${layout.notices[0].count}）` : ''}`}
             action={layout.notices.length > 1 ? <Popover trigger="click" placement="bottomRight" content={noticeContent}><Button type="link" size="small">查看全部 {layout.notices.length} 项</Button></Popover> : null}
           />
         </div>
