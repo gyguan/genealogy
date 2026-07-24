@@ -1,6 +1,11 @@
 import { apiClient } from './shared/api/client';
 
 type JsonRecord = Record<string, unknown>;
+type RuntimeApiClient = {
+  get: (path: string) => Promise<unknown>;
+  post: (path: string, body?: unknown) => Promise<unknown>;
+  __workbenchQualityGuardInstalled?: boolean;
+};
 
 function asRecord(value: unknown): JsonRecord | null {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -23,7 +28,7 @@ function normalizeRule(value: unknown): JsonRecord {
   };
 }
 
-function normalizeQualityResponse<T>(value: T): T {
+function normalizeQualityResponse(value: unknown): unknown {
   const record = asRecord(value);
   if (!record) return value;
 
@@ -36,28 +41,28 @@ function normalizeQualityResponse<T>(value: T): T {
       blockingIssueCount: 0,
       warningIssueCount: 0
     }
-  } as T;
+  };
 }
 
 function isWorkbenchQualityPath(path: string) {
   return path.startsWith('/workbench/quality-checks');
 }
 
-const guarded = apiClient as typeof apiClient & { __workbenchQualityGuardInstalled?: boolean };
+const runtimeClient = apiClient as unknown as RuntimeApiClient;
 
-if (!guarded.__workbenchQualityGuardInstalled) {
-  guarded.__workbenchQualityGuardInstalled = true;
+if (!runtimeClient.__workbenchQualityGuardInstalled) {
+  runtimeClient.__workbenchQualityGuardInstalled = true;
 
-  const originalGet = apiClient.get.bind(apiClient);
-  const originalPost = apiClient.post.bind(apiClient);
+  const originalGet = runtimeClient.get.bind(runtimeClient);
+  const originalPost = runtimeClient.post.bind(runtimeClient);
 
-  apiClient.get = (async <T = unknown>(path: string): Promise<T> => {
-    const result = await originalGet<T>(path);
+  runtimeClient.get = async (path: string) => {
+    const result = await originalGet(path);
     return isWorkbenchQualityPath(path) ? normalizeQualityResponse(result) : result;
-  }) as typeof apiClient.get;
+  };
 
-  apiClient.post = (async <T = unknown>(path: string, body?: unknown): Promise<T> => {
-    const result = await originalPost<T>(path, body);
+  runtimeClient.post = async (path: string, body?: unknown) => {
+    const result = await originalPost(path, body);
     return isWorkbenchQualityPath(path) ? normalizeQualityResponse(result) : result;
-  }) as typeof apiClient.post;
+  };
 }
