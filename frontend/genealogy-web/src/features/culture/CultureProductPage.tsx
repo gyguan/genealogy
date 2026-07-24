@@ -24,7 +24,7 @@ function errorText(error: unknown, fallback: string) {
 export function CultureProductPage() {
   const workspace = useWorkspace();
   const initialLocation = useRef(readCultureTabLocation()).current;
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [activeTab, setActiveTab] = useState<CultureTabKey>(initialLocation.tab);
   const [clans, setClans] = useState<CultureClanOption[]>([]);
   const [clansLoading, setClansLoading] = useState(true);
@@ -96,7 +96,7 @@ export function CultureProductPage() {
 
   return (
     <div className="tabbed-module-page culture-product-page">
-      {messageContext}
+      
       {hydratingInitialClan ? <div className="culture-page-loading"><Spin size="large" tip="正在加载宗族文化…" /></div> : renderActiveTab()}
     </div>
   );

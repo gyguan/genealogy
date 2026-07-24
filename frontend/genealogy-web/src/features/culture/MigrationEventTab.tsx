@@ -119,7 +119,7 @@ export function MigrationEventTab() {
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const visibleItems = useRef<MigrationEventSummaryResponse[]>([]);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [editForm] = Form.useForm<MigrationFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
@@ -474,7 +474,7 @@ export function MigrationEventTab() {
 
   return (
     <Card title="迁徙脉络" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增迁徙事件</Button>}>
-      {messageContext}
+      
       <Paragraph type="secondary">按支派维护真实迁徙事件。页面只展示查询列表和维护入口，不拼接推测路线。</Paragraph>
 
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

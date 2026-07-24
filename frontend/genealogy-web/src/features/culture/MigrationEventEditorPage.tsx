@@ -51,7 +51,7 @@ export function MigrationEventEditorPage({ clanId, editor, branches, onCancel, o
   const [form] = Form.useForm<MigrationFormValues>();
   const branchId = Form.useWatch('branchId', form);
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<MigrationEventDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -189,7 +189,7 @@ export function MigrationEventEditorPage({ clanId, editor, branches, onCancel, o
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

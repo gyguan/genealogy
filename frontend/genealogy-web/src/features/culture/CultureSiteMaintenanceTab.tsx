@@ -141,7 +141,7 @@ export function CultureSiteMaintenanceTab() {
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<CultureSiteTabSearchState>(initialLocation.search);
@@ -521,7 +521,7 @@ export function CultureSiteMaintenanceTab() {
   if (editor) {
     return (
       <>
-        {messageContext}
+        
         <CultureSiteEditorPage
           clanId={clanId}
           editor={editor}
@@ -538,7 +538,7 @@ export function CultureSiteMaintenanceTab() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      {messageContext}
+      
       <Card title="文化场所查询" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>

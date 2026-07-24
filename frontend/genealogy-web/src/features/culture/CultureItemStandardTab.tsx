@@ -151,7 +151,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchValues>();
   const [search, setSearch] = useState<CultureSearchState>(initialLocation.search);
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
@@ -488,7 +488,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   ];
 
   if (editor?.mode === 'edit' && clanId) {
-    return <>{messageContext}<CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+    return <><CultureItemEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
   }
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
@@ -499,7 +499,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      {messageContext}
+      
       <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
         <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>

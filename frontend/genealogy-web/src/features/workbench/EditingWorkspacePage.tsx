@@ -400,7 +400,7 @@ export function EditingWorkspacePage({ onNavigate, notify }: Props) {
     setBulkFailures(results.flatMap((result, index) => result.status === 'rejected'
       ? [{ key: selectedTasks[index].key, objectName: taskTitle(selectedTasks[index]), reason: errorMessage(result.reason, '处理失败') }]
       : []));
-    message[resultSummary.failed ? 'warning' : 'success'](`批量处理完成：成功 ${resultSummary.succeeded} 项，失败 ${resultSummary.failed} 项`);
+    feedback[resultSummary.failed ? 'warning' : 'success'](`批量处理完成：成功 ${resultSummary.succeeded} 项，失败 ${resultSummary.failed} 项`);
     setBulkModalOpen(false);
     setSelectedKeys([]);
     await loadWorkbench(currentClanId, taskPage.pageNo || 1, filters);

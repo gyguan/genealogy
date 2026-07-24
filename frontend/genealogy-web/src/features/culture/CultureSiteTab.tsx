@@ -128,7 +128,7 @@ export function CultureSiteTab() {
   const listRequest = useRef(0);
   const detailRequest = useRef(0);
   const visibleItems = useRef<CultureSiteSummaryResponse[]>([]);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchFormValues>();
   const [editForm] = Form.useForm<SiteFormValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
@@ -499,7 +499,7 @@ export function CultureSiteTab() {
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    {messageContext}
+    
     <Card size="small" title="祠堂与文化场所" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
       <Paragraph type="secondary">查询和维护祠堂、祖居、墓园与纪念设施；地图与 GIS 不在本期范围。</Paragraph>
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

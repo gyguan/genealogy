@@ -60,7 +60,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
   const [form] = Form.useForm<CultureSiteFormValues>();
   const branchId = Form.useWatch('branchId', form);
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<CultureSiteDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -205,7 +205,7 @@ export function CultureSiteEditorPage({ clanId, editor, branches, onCancel, onSa
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

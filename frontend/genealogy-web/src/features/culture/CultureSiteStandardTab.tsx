@@ -113,7 +113,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [searchForm] = Form.useForm<SearchValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<CultureSiteTabSearchState>(initialLocation.search);
@@ -302,13 +302,13 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
     { title: '操作', key: 'actions', fixed: 'right', width: 190, render: (_, item) => rowActions(item) }
   ];
 
-  if (editor?.mode === 'edit' && clanId) return <>{messageContext}<CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
+  if (editor?.mode === 'edit' && clanId) return <><CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <Text type="danger">删除</Text> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    {messageContext}
+    
     <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
       <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>

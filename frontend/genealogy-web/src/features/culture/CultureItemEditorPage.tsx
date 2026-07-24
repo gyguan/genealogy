@@ -54,7 +54,7 @@ function canEdit(item: CultureItemDetailResponse) {
 export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSaved, onDirtyChange }: Props) {
   const [form] = Form.useForm<CultureItemFormValues>();
   const requestVersion = useRef(0);
-  const [messageApi, messageContext] = message.useMessage();
+  
   const [detail, setDetail] = useState<CultureItemDetailResponse | null>(null);
   const [loading, setLoading] = useState(editor.mode === 'edit');
   const [loadError, setLoadError] = useState('');
@@ -175,7 +175,7 @@ export function CultureItemEditorPage({ clanId, editor, branches, onCancel, onSa
 
   return (
     <>
-      {messageContext}
+      
       <Form form={form} layout="vertical" disabled={saving} onValuesChange={() => setDirty(true)}>
         <CultureEditorShell
           title={title}

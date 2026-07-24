@@ -14,12 +14,8 @@ function walk(directory) {
   });
 }
 
-test('business source contains no direct Ant Design Message calls', () => {
-  const violations = walk(root).flatMap(file => {
-    const source = readFileSync(file, 'utf8');
-    return /\b(message|messageApi)\.(success|info|warning|error|loading)\s*\(/.test(source)
-      ? [path.relative(process.cwd(), file)]
-      : [];
-  });
+test('business source contains no direct Ant Design Message usage', () => {
+  const pattern = /\b(message|messageApi)\.(success|info|warning|error|loading)\s*\(|\bmessage\.useMessage\s*\(|\bmessage\s*\[/;
+  const violations = walk(root).filter(file => pattern.test(readFileSync(file, 'utf8'))).map(file => path.relative(process.cwd(), file));
   assert.deepEqual(violations, []);
 });
