@@ -16,10 +16,11 @@ test('workbench is rendered as a formal React page instead of DOM mutation', asy
   assert.doesNotMatch(index, /workbench-enhancements/);
 });
 
-test('workbench follows query overview quality and task-list prototype hierarchy', async () => {
+test('workbench keeps only query quality and task-list primary hierarchy', async () => {
   const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  for (const label of ['修谱工作台', '当前任务', '快捷入口', '数据质量检查', '修谱任务']) assert.match(code, new RegExp(label));
-  const sections = ['workbench-query-card', 'workbench-overview-section', 'workbench-quality-card', 'workbench-task-card'];
+  for (const label of ['修谱工作台', '数据质量检查', '修谱任务']) assert.match(code, new RegExp(label));
+  for (const removed of ['任务总数', '当前任务', '快捷入口', 'workbench-overview-section']) assert.doesNotMatch(code, new RegExp(removed));
+  const sections = ['workbench-query-card', 'workbench-quality-card', 'workbench-task-card'];
   const positions = sections.map(marker => code.indexOf(marker));
   assert.ok(positions.every(value => value >= 0));
   assert.ok(positions.every((value, index) => index === 0 || value > positions[index - 1]));
@@ -33,10 +34,10 @@ test('workbench preserves quality scopes and server submission gate', async () =
   assert.match(code, /存在阻断问题/);
 });
 
-test('workbench keeps quick entries responsive list and 720px drawer', async () => {
+test('workbench keeps task list responsive and 720px drawer', async () => {
   const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
   const css = await source('features/workbench/editing-workspace-prototype.css');
-  for (const label of ['新建修谱', '人物档案', '来源资料', '世系图谱']) assert.match(code, new RegExp(label));
+  assert.match(code, /新建修谱/);
   assert.match(css, /width:\s*min\(720px,\s*100vw\)/);
   assert.match(css, /@media\s*\(max-width:\s*575px\)/);
   assert.match(code, /rowSelection/);
