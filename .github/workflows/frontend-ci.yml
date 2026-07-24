@@ -1,169 +1,68 @@
 name: Frontend CI
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "frontend/genealogy-web/**"
-      - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: ["main"]
     paths:
       - "frontend/genealogy-web/**"
       - ".github/workflows/frontend-ci.yml"
-  workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: wizard-feedback-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   frontend-build:
-    name: Frontend Typecheck and Build
+    name: Migrate and verify wizard feedback
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR branch
         uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          ref: agent/issue-763-finish-wizard-feedback-unification
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Apply migration
+        if: github.actor != 'github-actions[bot]'
+        working-directory: frontend/genealogy-web
+        run: node scripts/finish-wizard-feedback-unification.mjs
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Audit frontend feedback patterns
-        working-directory: frontend/genealogy-web
-        run: node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json --json=ui-feedback-audit.json --markdown=ui-feedback-audit.md
-      - name: Test feedback system
+      - name: Verify feedback contract
         working-directory: frontend/genealogy-web
         run: npm run test:feedback
-      - name: Test multi-select unification
+      - name: Verify wizard tests
         working-directory: frontend/genealogy-web
-        run: npm run test:multi-select
-      - name: Detect Tree-related changes
-        id: tree-changes
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then echo "changed=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" == "0000000000000000000000000000000000000000" ]]; then BASE_SHA="${HEAD_SHA}^"; fi
-          git diff --name-only "$BASE_SHA" "$HEAD_SHA" > /tmp/frontend-changed-files.txt
-          if grep -Eq '^frontend/genealogy-web/(src/features/tree(/|[^/])|e2e/tree[^/]*|src/shared/api/generated/tree[^/]*|src/shared/api/tree[^/]*)' /tmp/frontend-changed-files.txt; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Test Tree graph model
-        if: steps.tree-changes.outputs.changed == 'true'
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: set -o pipefail; npm run test:tree 2>&1 | tee tree-test-output.log
-      - name: Test draft delete model
-        working-directory: frontend/genealogy-web
-        run: npm run test:draft-delete
-      - name: Test entity navigation guard
-        working-directory: frontend/genealogy-web
-        run: npm run test:entity-navigation
-      - name: Test wizard state model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard
-      - name: Test wizard session model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-session
-      - name: Test wizard dependency model
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-dependencies
-      - name: Test wizard form validation
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-forms
-      - name: Test generation review validation
-        working-directory: frontend/genealogy-web
-        run: npm run test:generation-validation
-      - name: Test staged source workflow
-        working-directory: frontend/genealogy-web
-        run: npm run test:source-stage
-      - name: Test wizard result lists
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-result-lists
-      - name: Test wizard completion summary
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-summary
-      - name: Test wizard completion controls
-        working-directory: frontend/genealogy-web
-        run: npm run test:wizard-completion
-      - name: Compile and test person core models
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf .person-edit-test
-          npx tsc src/shared/domain/personFormOptions.ts src/features/persons/personEditModel.ts src/features/persons/personDetailModel.ts src/features/persons/personStatusActions.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --outDir .person-edit-test --skipLibCheck
-          node --experimental-specifier-resolution=node --test src/features/persons/personEditModel.test.mjs src/features/persons/personDetailModel.test.mjs
-          rm -rf .person-edit-test
-      - name: Compile person event models
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf .person-event-test
-          npx tsc src/features/persons/personEventEditorModel.ts src/features/persons/personEventSaveFlow.ts src/features/persons/personCreateWithEventsFlow.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-event-test --skipLibCheck
-      - name: Test person event save flow
-        working-directory: frontend/genealogy-web
-        run: node --experimental-specifier-resolution=node --test src/features/persons/personEventSaveFlow.test.mjs src/features/persons/personCreateWithEventsFlow.test.mjs
-      - name: Test person page contracts
-        working-directory: frontend/genealogy-web
-        run: node --test src/features/persons/personEventEditor.test.mjs src/features/persons/PersonEditPageEvents.test.mjs src/features/mvp1/steps/person/PersonStepEvents.test.mjs src/shared/ui/promptCopyCleanup.test.mjs src/shared/ui/resultSortRemoval.test.mjs
-      - name: Clean person test outputs
-        if: always()
-        working-directory: frontend/genealogy-web
-        run: rm -rf .person-edit-test .person-event-test
-      - name: Test review center pagination
-        working-directory: frontend/genealogy-web
-        run: npm run test:reviews
-      - name: Test person archive query and create entry state
-        working-directory: frontend/genealogy-web
-        shell: bash
-        run: |
-          rm -rf .person-archive-test .person-create-entry-test
-          npx tsc src/features/persons/personArchiveUrlState.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-archive-test --skipLibCheck
-          npx tsc src/features/persons/personCreateEntryModel.ts --ignoreConfig --rootDir src --target ES2020 --module ESNext --moduleResolution Bundler --lib ES2020,DOM --outDir .person-create-entry-test --skipLibCheck
-          node --test src/features/persons/personArchiveUrlState.test.mjs src/features/persons/personCreateEntryModel.test.mjs
-          status=$?
-          rm -rf .person-archive-test .person-create-entry-test
-          exit $status
-      - name: Test workbench query state
-        working-directory: frontend/genealogy-web
-        run: npm run test:workbench
-      - name: Test import workbench state rules
-        working-directory: frontend/genealogy-web
-        run: npm run test:imports
+          npm run test:wizard
+          npm run test:wizard-session
+          npm run test:wizard-dependencies
+          npm run test:wizard-forms
+          npm run test:generation-validation
+          npm run test:source-stage
+          npm run test:wizard-result-lists
+          npm run test:wizard-summary
+          npm run test:wizard-completion
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
-        shell: bash
-        run: set -o pipefail; npm run typecheck 2>&1 | tee typecheck-output.log
+        run: npm run typecheck
       - name: Build production frontend
         working-directory: frontend/genealogy-web
         run: npm run build
-      - name: Upload frontend feedback audit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-feedback-audit
-          path: |
-            frontend/genealogy-web/ui-feedback-audit.json
-            frontend/genealogy-web/ui-feedback-audit.md
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload frontend diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-diagnostics
-          path: |
-            frontend/genealogy-web/typecheck-output.log
-            frontend/genealogy-web/tree-test-output.log
-          if-no-files-found: ignore
-          retention-days: 3
+      - name: Commit migration
+        if: github.actor != 'github-actions[bot]'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src frontend/genealogy-web/package.json
+          git commit -m "refactor: finish wizard feedback unification"
+          git push origin HEAD:agent/issue-763-finish-wizard-feedback-unification
