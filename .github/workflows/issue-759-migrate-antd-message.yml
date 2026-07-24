@@ -30,7 +30,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
       - name: Run migration codemod
-        run: node scripts/migrate-antd-message.mjs
+        run: |
+          node scripts/migrate-antd-message.mjs
+          sed -i "s/assert.equal(baseline.maxCounts.antd_message, 91)/assert.equal(baseline.maxCounts.antd_message, 0)/" src/shared/ui/FeedbackUnification.test.mjs
       - name: Commit migrated sources
         run: |
           git config user.name "github-actions[bot]"
