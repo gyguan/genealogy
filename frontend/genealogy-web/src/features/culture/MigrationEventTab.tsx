@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, List, Modal, Popconfirm, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, InputNumber, List, Modal, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import type {
   CultureDataStatus,
@@ -45,7 +45,7 @@ import type { MigrationSearchState } from './migrationEventUrlState';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -376,7 +376,7 @@ export function MigrationEventTab() {
 
   function archive(item: MigrationEventSummaryResponse) {
     let reason = '';
-    Modal.confirm({
+    confirmAction({
       title: can(item, 'request_archive') ? '申请归档正式迁徙事件' : '归档迁徙事件',
       content: <Input.TextArea autoFocus placeholder="请输入归档原因" onChange={event => { reason = event.target.value; }} />,
       okText: can(item, 'request_archive') ? '提交归档申请' : '确认归档',
@@ -425,12 +425,12 @@ export function MigrationEventTab() {
         {can(item, 'submit_review') ? <Button type="link" loading={actionLoading} onClick={() => void submitReview(item)}>提交审核</Button> : null}
         {can(item, 'archive', 'request_archive') ? <Button type="link" onClick={() => archive(item)}>归档</Button> : null}
         {can(item, 'delete', 'request_delete') ? (
-          <Popconfirm
+          <ConfirmAction
             title={can(item, 'request_delete') ? '提交正式迁徙事件删除申请？' : '确认删除该迁徙事件？'}
             onConfirm={() => void remove(item)}
           >
             <Button danger type="link" loading={actionLoading}>删除</Button>
-          </Popconfirm>
+          </ConfirmAction>
         ) : null}
       </Space>
     );

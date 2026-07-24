@@ -68,7 +68,7 @@ const mechanisms = [
     id: 'confirm_modal',
     name: '确认弹窗',
     target: '统一为 ConfirmAction',
-    patterns: [/<Popconfirm\b/g, /\bModal\.confirm\s*\(/g, /\bmodal\.confirm\s*\(/g, /<Modal\b/g]
+    patterns: [/<Popconfirm\b/g, /\bModal\.confirm\s*\(/g, /\bmodal\.confirm\s*\(/g]
   },
   {
     id: 'empty_state',

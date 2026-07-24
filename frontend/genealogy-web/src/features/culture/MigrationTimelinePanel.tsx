@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Descriptions, Drawer, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type {
   CultureConfidenceLevel,
   CulturePrivacyLevel,
@@ -24,7 +24,7 @@ import type { MigrationSearchState } from './migrationEventService';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -175,7 +175,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
 
   function archive(item: MigrationEventSummaryResponse) {
     let reason = '';
-    Modal.confirm({
+    confirmAction({
       title: '归档迁徙事件',
       content: <Input.TextArea autoFocus placeholder="请输入归档原因" onChange={event => { reason = event.target.value; }} />,
       okText: '确认归档',
@@ -216,7 +216,7 @@ export function MigrationTimelinePanel({ clanId, branches }: { clanId?: string; 
         {(row.allowedActions.includes('update') || row.allowedActions.includes('request_update')) && <Button size="small" onClick={() => void openEdit(row)}>编辑</Button>}
         {row.allowedActions.includes('submit_review') && <Button size="small" type="primary" onClick={() => void submitReview(row)}>提交审核</Button>}
         {(row.allowedActions.includes('archive') || row.allowedActions.includes('request_archive')) && <Button size="small" onClick={() => archive(row)}>归档</Button>}
-        {(row.allowedActions.includes('delete') || row.allowedActions.includes('request_delete')) && <Popconfirm title="确认删除该迁徙事件？" onConfirm={() => void remove(row)}><Button danger size="small">删除</Button></Popconfirm>}
+        {(row.allowedActions.includes('delete') || row.allowedActions.includes('request_delete')) && <ConfirmAction title="确认删除该迁徙事件？" onConfirm={() => void remove(row)}><Button danger size="small">删除</Button></ConfirmAction>}
       </Space>
     }
   ];
