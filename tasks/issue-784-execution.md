@@ -4,6 +4,7 @@
 
 - Issue：#784 `[审核中心重构 P0-01] 统一审核列表与详情操作布局`
 - 分支：`agent/issue-784-review-center-layout`
+- Draft PR：#789
 - 状态：进行中
 - 流程强度：标准
 - 契约强度：不涉及
@@ -31,9 +32,10 @@
 
 - [x] 读取根规则、前端规则、页面规范和 Issue 现场
 - [x] 创建远程分支和执行文件
-- [ ] 创建 Draft PR 并回写 Issue
-- [ ] 定位 Drawer Header、Footer 和列表工具栏实现
-- [ ] 重构详情操作布局并移除重复 Footer
+- [x] 创建 Draft PR 并回写 Issue
+- [x] 定位 Drawer Header、Footer 和列表工具栏实现
+- [x] 建立统一详情 Header 操作组件
+- [ ] 将页面接入统一 Header 操作组件并调整 Drawer 为 720px
 - [ ] 在列表工具栏预留质量检查入口位置（禁用并说明后续 Issue）
 - [ ] 补充或更新聚焦测试
 - [ ] 执行 typecheck、聚焦测试、build、api:check
@@ -51,4 +53,10 @@
 
 - 已读取 `AGENTS.md`、`frontend/genealogy-web/AGENTS.md`、`docs/21-frontend-page-pattern-spec.md`。
 - 已确认本 Issue 不涉及公共 API、数据库、权限和审核正式生效路径。
-- 下一步：创建 Draft PR 后再修改业务代码。
+- 已创建 Draft PR #789 后开始业务代码修改。
+
+### 第一实现检查点
+
+- 新增 `ReviewDetailHeaderActions.tsx`，将追踪、驳回整改、审核通过收敛为 Drawer Header 专用操作组件。
+- 组件明确禁止承载质量检查入口，避免列表级检查动作进入详情。
+- 下一步将组件接入现有审核中心页面，调整 Drawer 宽度并补充测试。
