@@ -278,7 +278,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       .then(rows => { if (active) setBranches(rows); })
       .catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
 
   useEffect(() => {
     if (!clanId) {

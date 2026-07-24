@@ -263,7 +263,7 @@ export function CultureSiteMaintenanceTab() {
         feedback.error(errorText(error, '支派列表加载失败'));
       });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
 
   useEffect(() => {
     if (!clanId) {

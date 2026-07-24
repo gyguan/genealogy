@@ -188,7 +188,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
     let active = true;
     listCultureBranches(clanId).then(rows => { if (active) setBranches(rows); }).catch(error => { if (active) feedback.error(errorText(error, '支派列表加载失败')); });
     return () => { active = false; };
-  }, [clanId, messageApi]);
+  }, [clanId]);
   useEffect(() => {
     if (!clanId) { visibleItems.current = []; setItems([]); setTotal(0); return; }
     const requestId = ++listRequest.current;
