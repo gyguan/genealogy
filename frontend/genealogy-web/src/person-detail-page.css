@@ -1,6 +1,13 @@
+.antd-content:has(.person-detail-page),
+.business-page--personArchive:has(.person-detail-page),
 .person-detail-page {
-  width: min(100%, 1440px);
-  margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin-inline: 0;
+}
+
+.person-detail-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
