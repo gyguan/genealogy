@@ -1,33 +1,6 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Collapse,
-  Descriptions,
-  Drawer,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  List,
-  Result,
-  Row,
-  Select,
-  Skeleton,
-  Space,
-  Table,
-  Tabs,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, Collapse, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, CultureSiteDetailResponse, CultureSiteSummaryResponse, CultureSiteType } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
@@ -54,6 +27,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -327,10 +302,10 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="文化场所排序" className="culture-result-sort" value={search.sort} options={siteSortOptions} onChange={changeSort} />}>
       
       {refreshError ? <PageFeedback tone="warning" closable title="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
-      {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : null}
+      {!clanId ? <EmptyState description="请选择宗族后查看文化场所" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化场所'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="文化场所首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
-      {clanId && !listForbidden && !listError ? <Table<CultureSiteSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <Empty description="没有符合当前条件的文化场所"><Button onClick={resetSearch}>重置筛选</Button></Empty> }} /> : null}
+      {clanId && !listForbidden && !listError ? <Table<CultureSiteSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <EmptyState description="没有符合当前条件的文化场所"><Button onClick={resetSearch}>重置筛选</Button></EmptyState> }} /> : null}
       
     </QueryResultCard>
     <Drawer open={Boolean(selectedId)} width={720} title={<Space><Title level={4} style={{ margin: 0 }}>{detail?.name || selectedSummary?.name || '文化场所详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>} extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'site', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null} onClose={closeDetail} destroyOnHidden>

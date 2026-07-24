@@ -1,20 +1,6 @@
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import type { PointerEvent as ReactPointerEvent,
-  WheelEvent as ReactWheelEvent } from 'react';
-import { Alert,
-  Button,
-  Empty,
-  Popover,
-  Space,
-  Spin,
-  Tag,
-  Tooltip
-} from 'antd';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
+import { Alert, Button, Popover, Space, Spin, Tag, Tooltip } from 'antd';
 import { FullscreenExitOutlined, FullscreenOutlined, ReloadOutlined } from '@ant-design/icons';
 import type {
   TreeEdgeResponse,
@@ -27,6 +13,8 @@ import { edgeIndicators, edgeVisual, nodeIndicators } from './lineageSemanticsMo
 import { dataStatusText } from './treeDisplayModel';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {
   graph: TreeGraphResponse | null;
@@ -233,7 +221,7 @@ export function LineageGraphCanvas({
   if (!graph || !layout?.nodes.length) {
     return (
       <div className="lineage-graph-empty" aria-busy={loading}>
-        {loading ? <Spin /> : <Empty description={emptyText} />}
+        {loading ? <Spin /> : <EmptyState description={emptyText} />}
       </div>
     );
   }

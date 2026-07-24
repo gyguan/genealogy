@@ -1,14 +1,5 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
-import { Alert,
-  Button,
-  Empty,
-  Select,
-  Table,
-  Tag
-} from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Select, Table, Tag } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Field } from '../../../../shared/ui/Form';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -29,6 +20,8 @@ import { submitReviewTask } from '../../services/reviewTaskService';
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+
+import { EmptyState } from '../../../../shared/ui/Feedback';
 
 type ReviewForm = {
   targetTypes: ReviewTargetType[];
@@ -244,7 +237,7 @@ export function ReviewProgressStep({}: Props) {
           rowKey={row => row.key}
           dataSource={reviewCandidates}
           pagination={false}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无可提交审核对象' : '请选择宗族后查看可提交对象'} /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无可提交审核对象' : '请选择宗族后查看可提交对象'} /> }}
           columns={[
             { key: 'title', title: '对象名称', render: (_value, row) => row.title },
             { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },
@@ -273,7 +266,7 @@ export function ReviewProgressStep({}: Props) {
           dataSource={tasks}
           pagination={false}
           onRow={row => ({ onClick: () => workspace.setReviewTaskId(String(row.id || '')) })}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无待审任务' : '请选择宗族后查看待审任务'} /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={workspace.clanId ? '暂无待审任务' : '请选择宗族后查看待审任务'} /> }}
           columns={[
             { key: 'title', title: '标题', render: (_value, row) => reviewTaskTitle(row) },
             { key: 'targetType', title: '对象类型', width: 130, render: (_value, row) => reviewTargetTypeText(row.targetType) },

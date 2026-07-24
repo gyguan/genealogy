@@ -1,22 +1,6 @@
-import {
-  useEffect,
-  useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Key } from 'react';
-import { Alert,
-  Button,
-  Card,
-  Checkbox,
-  Empty,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography
-} from 'antd';
+import { Alert, Button, Card, Checkbox, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -26,6 +10,8 @@ import { ImportFailureBulkActions } from './ImportFailureBulkActions';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {  refreshKey: number };
 
@@ -436,7 +422,7 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
           rowKey="id"
           dataSource={jobs}
           onRow={row => ({ onClick: () => void loadDetail(row), style: { cursor: 'pointer' } })}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无导入任务" /> }}
           pagination={{
             current: pageNo,
             pageSize,
@@ -515,7 +501,7 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
                 getCheckboxProps: row => ({ disabled: !retryable(row, selectedJob) })
               }}
               pagination={{ current: rowPageNo, pageSize: rowPageSize, total: rowTotal, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条待修正数据`, onChange: (nextPage, nextPageSize) => { setRowPageNo(nextPageSize === rowPageSize ? nextPage : 1); setRowPageSize(nextPageSize); } }}
-              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有待修正数据" /> }}
+              locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="没有待修正数据" /> }}
               columns={[
                 { key: 'rowNo', title: '行号', dataIndex: 'rowNo', width: 80 },
                 { key: 'rowStatus', title: '状态', width: 120, render: (_value, row) => <Tag color={rowStatusColor(row.rowStatus)}>{rowStatusText(row.rowStatus)}</Tag> },
@@ -527,7 +513,7 @@ export function ImportJobManagementPanel({ refreshKey }: Props) {
               scroll={{ x: 'max-content' }}
               />
             </>
-          ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />}
+          ) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={selectedJob.reviewStatus === 'approved' ? '批次已正式生效' : '当前批次没有失败行'} />}
         </Card>
       ) : null}
 

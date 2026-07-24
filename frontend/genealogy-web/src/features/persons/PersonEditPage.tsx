@@ -1,23 +1,5 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
-import { Alert,
-  Button,
-  Card,
-  DatePicker,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Spin,
-  Tag,
-  Tooltip,
-  Typography
-} from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, DatePicker, Dropdown, Form, Input, Modal, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -51,6 +33,8 @@ import type { PersonStatusAction, PersonStatusActionKey } from './personStatusAc
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {
   personId: string;
@@ -382,7 +366,7 @@ export function PersonEditPage({ personId, onCancel, onNavigationGuardChange }: 
   if (loading) return <div className="person-edit-page"><EntityPageBackButton label={backLabel} onBack={leavePage} disabled={busy} /><Card className="person-edit-loading"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在加载人物档案…</Typography.Text></Space></Card></div>;
 
   if (loadError || !person) {
-    return <Card><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loadError || '人物档案不存在'}><Space><EntityPageBackButton label={backLabel} onBack={leavePage} /><Button type="primary" onClick={() => void loadPerson()}>重新加载</Button></Space></Empty></Card>;
+    return <Card><EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={loadError || '人物档案不存在'}><Space><EntityPageBackButton label={backLabel} onBack={leavePage} /><Button type="primary" onClick={() => void loadPerson()}>重新加载</Button></Space></EmptyState></Card>;
   }
 
   const personName = display(person.name || person.personName, '未命名人物');

@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Button, Card, Drawer, Empty, Skeleton, Space, Typography } from 'antd';
+import { Button, Card, Drawer, Skeleton, Space, Typography } from 'antd';
 
 import { PageFeedback } from '../Feedback';
+
+import { EmptyState } from '../Feedback';
 
 const { Text, Title } = Typography;
 
@@ -121,7 +123,7 @@ export type DetailDrawerProps = {
 export function DetailDrawer({ open, title, width = 720, onClose, children }: DetailDrawerProps) {
   return (
     <Drawer title={title} open={open} onClose={onClose} width={width} destroyOnHidden>
-      {children || <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无明细数据" />}
+      {children || <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无明细数据" />}
     </Drawer>
   );
 }

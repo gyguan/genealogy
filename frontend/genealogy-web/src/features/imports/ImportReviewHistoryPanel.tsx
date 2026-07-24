@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Space, Table, Tag, Typography } from 'antd';
 import type { PageResponse } from '../../shared/api/client';
 import { apiClient } from '../../shared/api/client';
 import type { ReviewTaskListItemResponse } from '../../shared/api/generated/tracking-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 type Props = {  refreshKey: number };
 
@@ -92,7 +94,7 @@ export function ImportReviewHistoryPanel({ refreshKey }: Props) {
         rowKey="id"
         dataSource={records}
         pagination={false}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无导入审核记录" /> }}
+        locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无导入审核记录" /> }}
         columns={[
           { key: 'file', title: '导入文件', width: 220, ellipsis: true, render: (_value, row) => row.targetSummary?.fileName || row.title },
           { key: 'branch', title: '目标支派', width: 140, render: (_value, row) => row.targetSummary?.branchName || row.branchName || '全宗族' },

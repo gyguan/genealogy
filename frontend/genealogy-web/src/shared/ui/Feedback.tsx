@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Alert, Empty, Popconfirm, Result } from 'antd';
-import type { AlertProps, PopconfirmProps, ResultProps } from 'antd';
+import { Alert, Empty as AntEmpty, Popconfirm, Result } from 'antd';
+import type { AlertProps, EmptyProps, PopconfirmProps, ResultProps } from 'antd';
 import '../../feedback-system.css';
 
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
@@ -57,33 +57,47 @@ export function InlineFeedback(props: Omit<PageFeedbackProps, 'variant'>) {
   return <PageFeedback {...props} variant="inline" />;
 }
 
-export function EmptyState({
-  title = '暂无数据',
-  description,
-  action,
-  compact = false,
-  className
-}: {
+export type EmptyStateProps = Omit<EmptyProps, 'description' | 'children'> & {
   title?: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
   compact?: boolean;
-  className?: string;
-}) {
+  children?: ReactNode;
+};
+
+/** 空状态的统一入口，同时兼容历史 Ant Design Empty 常用属性。 */
+export function EmptyState({
+  title,
+  description,
+  action,
+  compact = false,
+  className,
+  image = AntEmpty.PRESENTED_IMAGE_SIMPLE,
+  children,
+  ...emptyProps
+}: EmptyStateProps) {
+  const content = title ? (
+    <span className="ui-empty-state__content">
+      <strong>{title}</strong>
+      {description ? <span>{description}</span> : null}
+    </span>
+  ) : (description ?? '暂无数据');
+
   return (
-    <Empty
+    <AntEmpty
+      {...emptyProps}
       className={classNames('ui-empty-state', compact && 'ui-empty-state--compact', className)}
-      image={Empty.PRESENTED_IMAGE_SIMPLE}
-      description={(
-        <span className="ui-empty-state__content">
-          <strong>{title}</strong>
-          {description ? <span>{description}</span> : null}
-        </span>
-      )}
+      image={image}
+      description={content}
     >
-      {action}
-    </Empty>
+      {action ?? children}
+    </AntEmpty>
   );
+}
+
+export namespace EmptyState {
+  export const PRESENTED_IMAGE_DEFAULT = AntEmpty.PRESENTED_IMAGE_DEFAULT;
+  export const PRESENTED_IMAGE_SIMPLE = AntEmpty.PRESENTED_IMAGE_SIMPLE;
 }
 
 /** 仅用于整页无法继续的 403/404/500 等状态。 */

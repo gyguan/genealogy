@@ -1,13 +1,5 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
-import { Button,
-  Empty,
-  Select,
-  Space,
-  Table
-} from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Select, Space, Table } from 'antd';
 import { apiClient } from '../../../../shared/api/client';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { Actions, Field } from '../../../../shared/ui/Form';
@@ -17,6 +9,8 @@ import { isOfficial } from '../../domain/status';
 import { loadPersons as queryPersons, type PersonLike } from '../../services/personService';
 
 import { feedback } from '../../../../shared/ui/OperationFeedback';
+
+import { EmptyState } from '../../../../shared/ui/Feedback';
 
 type TreeMode = 'family' | 'ancestors' | 'descendants';
 
@@ -165,7 +159,7 @@ export function TreeStep({}: Props) {
           rowKey={row => String(row.id || row.personId || `${row.name || ''}-${row.generationNo || ''}`)}
           dataSource={nodes}
           pagination={false}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无节点，生成后展示" /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无节点，生成后展示" /> }}
           columns={[
             { key: 'name', title: '人物', render: (_value, row) => row.name || '未命名人物' },
             { key: 'generationNo', title: '代次', width: 100, render: (_value, row) => row.generationNo ? `第${row.generationNo}世` : '-' },
@@ -179,7 +173,7 @@ export function TreeStep({}: Props) {
           rowKey={row => String(row.id || `${row.fromPersonId || ''}-${row.toPersonId || ''}-${row.relationLabel || ''}`)}
           dataSource={edges}
           pagination={false}
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无关系边" /> }}
+          locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无关系边" /> }}
           columns={[
             { key: 'fromPersonId', title: '起点', render: (_value, row) => nodeNameByPersonId.get(String(row.fromPersonId || '')) || '起点人物待维护' },
             { key: 'toPersonId', title: '终点', render: (_value, row) => nodeNameByPersonId.get(String(row.toPersonId || '')) || '终点人物待维护' },

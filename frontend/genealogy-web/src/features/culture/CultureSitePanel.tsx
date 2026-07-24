@@ -1,32 +1,6 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Checkbox,
-  Col,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Image,
-  Input,
-  InputNumber,
-  List,
-  Modal,
-  Popconfirm,
-  Row,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Image, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type {
   CultureSiteCreateRequest,
   CultureSiteDetailResponse,
@@ -54,6 +28,8 @@ import type { CultureSiteSearchState } from './cultureSiteService';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -330,7 +306,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
       <Select allowClear placeholder="数据状态" style={{ width: 140 }} options={statusOptions} onChange={dataStatus => setSearch({ ...search, dataStatus, pageNo: 1 })} />
     </Space>
     {listError ? <PageFeedback tone="error" title="文化场所加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
-    {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : <>
+    {!clanId ? <EmptyState description="请选择宗族后查看文化场所" /> : <>
       <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
         {items.slice(0, 4).map(item => <Col key={item.id} xs={24} sm={12} xl={6}>
           <Card size="small" loading={loading} title={item.name} extra={<Tag>{siteTypeLabel(item.siteType)}</Tag>}>
@@ -364,10 +340,10 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
         </Descriptions>
         <Card size="small" title="摘要与说明"><Paragraph>{detail.summary || '暂无摘要'}</Paragraph><Paragraph>{detail.description || '暂无详细说明'}</Paragraph></Card>
         <Card size="small" title="来源证据">
-          {detail.sources.length ? <List size="small" dataSource={detail.sources} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
+          {detail.sources.length ? <List size="small" dataSource={detail.sources} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
         </Card>
         <Card size="small" title="影像附件">
-          {detail.attachments.length ? <List grid={{ gutter: 12, xs: 1, sm: 2 }} dataSource={detail.attachments} renderItem={attachment => <List.Item><Card size="small"><Space direction="vertical"><Image preview={false} width={64} height={48} style={{ objectFit: 'cover' }} fallback="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" src={attachment.contentType?.startsWith('image/') && attachment.canPreview ? `/api/v1/source-attachments/${attachment.attachmentId}/preview` : undefined} /><Text ellipsis>{attachment.fileName}</Text><Space>{attachment.canPreview ? <Button size="small" onClick={() => void previewAttachment(attachment.attachmentId)}>预览</Button> : null}{attachment.canDownload ? <Button size="small" onClick={() => void downloadAttachment(attachment.attachmentId, attachment.fileName)}>下载</Button> : null}</Space></Space></Card></List.Item>} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可见影像" />}
+          {detail.attachments.length ? <List grid={{ gutter: 12, xs: 1, sm: 2 }} dataSource={detail.attachments} renderItem={attachment => <List.Item><Card size="small"><Space direction="vertical"><Image preview={false} width={64} height={48} style={{ objectFit: 'cover' }} fallback="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" src={attachment.contentType?.startsWith('image/') && attachment.canPreview ? `/api/v1/source-attachments/${attachment.attachmentId}/preview` : undefined} /><Text ellipsis>{attachment.fileName}</Text><Space>{attachment.canPreview ? <Button size="small" onClick={() => void previewAttachment(attachment.attachmentId)}>预览</Button> : null}{attachment.canDownload ? <Button size="small" onClick={() => void downloadAttachment(attachment.attachmentId, attachment.fileName)}>下载</Button> : null}</Space></Space></Card></List.Item>} /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无可见影像" />}
         </Card>
         <Card size="small" title="审核与追踪">
           <Space direction="vertical"><Text>审核状态：{detail.review.status || '尚未提交'}</Text>{detail.review.rejectedReason ? <PageFeedback tone="warning" title="驳回原因" description={detail.review.rejectedReason} /> : null}<Text>可见历史事件：{trace?.timeline.length || 0}</Text><Button onClick={openTracking}>打开完整追踪</Button></Space>

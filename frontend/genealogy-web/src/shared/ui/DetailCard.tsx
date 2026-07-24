@@ -1,4 +1,6 @@
-import { Card, Descriptions, Empty } from 'antd';
+import { Card, Descriptions } from 'antd';
+
+import { EmptyState } from './Feedback';
 
 export type DetailField<T> = {
   label: string;
@@ -11,7 +13,7 @@ function isTechnicalLabel(label: string) {
 }
 
 export function DetailCard<T extends Record<string, any>>({ title, data, fields, empty = '请选择或查询一条记录' }: { title: string; data?: T | null; fields: DetailField<T>[]; empty?: string }) {
-  if (!data) return <Empty className="empty antd-empty" description={empty} />;
+  if (!data) return <EmptyState className="empty antd-empty" description={empty} />;
   const visibleFields = fields.filter(field => !isTechnicalLabel(field.label));
   return (
     <Card className="detail-card antd-detail-card" title={title} size="small">

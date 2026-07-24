@@ -1,16 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react';
-import { Alert,
-  Button,
-  Empty,
-  Select,
-  Space,
-  Tag,
-  Typography
-} from 'antd';
+import { Alert, Button, Select, Space, Tag, Typography } from 'antd';
 import { useWorkspace } from '../../../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../../../shared/navigation/TrackingLinkButton';
 import { Panel } from '../../../../shared/ui/Panel';
@@ -36,6 +26,8 @@ import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../../../shared/ui/Feedback';
+
+import { EmptyState } from '../../../../shared/ui/Feedback';
 
 type Props = {
   onSubmittedReview?: (taskId: string) => void;
@@ -363,7 +355,7 @@ export function RelationshipStep({ onSubmittedReview }: Props) {
           getCheckboxProps: row => ({ disabled: !isReviewable(row) || !row.id })
         }}
         onRow={row => ({ onClick: () => selectRelationship(row) })}
-        locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={centerPersonId ? '暂无关系数据' : '请选择中心人物后查看关系'} /> }}
+        locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={centerPersonId ? '暂无关系数据' : '请选择中心人物后查看关系'} /> }}
         columns={[
           { key: 'name', title: '姓名', render: (_value, row) => relativeName(row, centerPersonId || workspace.personId) },
           { key: 'relationType', title: '关系类型', width: 120, render: (_value, row) => relationTypeText(row, centerPersonId || workspace.personId) },

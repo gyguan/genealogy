@@ -1,31 +1,6 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Descriptions,
-  Drawer,
-  Empty,
-  Form,
-  Input,
-  List,
-  Modal,
-  Popconfirm,
-  Result,
-  Row,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Timeline,
-  Typography
-} from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Form, Input, List, Modal, Popconfirm, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import type {
   CultureDataStatus,
@@ -77,6 +52,8 @@ import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { PageFeedback } from '../../shared/ui/Feedback';
+
+import { EmptyState } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -557,7 +534,7 @@ export function CultureSiteMaintenanceTab() {
 
       <Card title="祠堂与文化场所">
         {refreshError ? <PageFeedback tone="warning" closable title="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
-        {!clanId ? <Empty description="请选择宗族后查看文化场所" /> : null}
+        {!clanId ? <EmptyState description="请选择宗族后查看文化场所" /> : null}
         {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化场所'} /> : null}
         {clanId && listError && !listForbidden ? <PageFeedback tone="error" title="文化场所首次加载失败" description={listError} style={{ marginBottom: 16 }} /> : null}
         {clanId && !listForbidden ? (
@@ -602,13 +579,13 @@ export function CultureSiteMaintenanceTab() {
             </Descriptions>
             <Card size="small" title="摘要与历史说明"><Paragraph>{detail.summary || '暂无摘要'}</Paragraph><Paragraph>{detail.description || '暂无详细说明'}</Paragraph></Card>
             <Card size="small" title="来源证据">
-              {detail.sources.length ? <List size="small" dataSource={detail.sources} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
+              {detail.sources.length ? <List size="small" dataSource={detail.sources} renderItem={source => <List.Item><List.Item.Meta title={source.sourceName} description={source.excerpt || '来源摘录受限或尚未补录'} /></List.Item>} /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="尚未绑定来源" />}
             </Card>
             <Card size="small" title="附件">
               {detail.attachments.length ? <List size="small" dataSource={detail.attachments} renderItem={attachment => <List.Item actions={[
                 attachment.canPreview ? <Button key="preview" type="link" onClick={() => void previewAttachment(attachment.attachmentId)}>预览</Button> : null,
                 attachment.canDownload ? <Button key="download" type="link" onClick={() => void downloadAttachment(attachment.attachmentId, attachment.fileName)}>下载</Button> : null
-              ].filter(Boolean)}><List.Item.Meta title={attachment.fileName} description={attachment.contentType || '未知类型'} /></List.Item>} /> : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可见附件" />}
+              ].filter(Boolean)}><List.Item.Meta title={attachment.fileName} description={attachment.contentType || '未知类型'} /></List.Item>} /> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无可见附件" />}
             </Card>
             <Card size="small" title="审核与追踪">
               <Space direction="vertical" style={{ width: '100%' }}>
