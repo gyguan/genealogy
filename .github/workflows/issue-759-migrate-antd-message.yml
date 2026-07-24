@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   migrate:
+    # The codemod is idempotent; user commits rerun verification, bot commits do not loop.
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     defaults:
