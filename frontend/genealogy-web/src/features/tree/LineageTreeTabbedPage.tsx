@@ -83,7 +83,7 @@ import './lineage-tabbed-page.css';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -848,7 +848,7 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
               ? '以中心人物为核心，按 1～3 代深度展示相关亲属；查询只刷新人物中心图谱。'
               : '按支派范围和展开深度浏览整体世系结构；不受中心人物影响。'}
           </Typography.Text>
-          {activeDirty ? <Typography.Text type="warning">查询条件已调整，点击“查询”后刷新当前 TAB 结果。</Typography.Text> : null}
+          {activeDirty ? <InlineFeedback tone="warning" title={<>查询条件已调整，点击“查询”后刷新当前 TAB 结果。</>} /> : null}
         </div>
       </Card>
 

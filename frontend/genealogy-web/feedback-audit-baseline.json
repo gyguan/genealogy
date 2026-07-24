@@ -10,8 +10,8 @@
     "confirm_modal": 0,
     "empty_state": 0,
     "tooltip_help": 26,
-    "inline_semantic_text": 145,
-    "custom_notice_class": 30,
+    "inline_semantic_text": 0,
+    "custom_notice_class": 0,
     "result_status": 42
   }
 }

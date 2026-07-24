@@ -17,7 +17,7 @@ import {
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -251,7 +251,7 @@ export function StandardImportWorkspace<Row extends ImportPreviewRowBase>({ clan
           {counts.error > 0 ? <PageFeedback tone="error" title={`存在 ${counts.error} 条阻断错误，修正并重新预检后才能创建批次。`} /> : null}
           {counts.duplicate > 0 ? <Checkbox checked={duplicatesConfirmed} onChange={event => { setDuplicatesConfirmed(event.target.checked); setValidationMessage(''); }}>我已核对疑似重复{objectName}，确认仍继续创建导入批次</Checkbox> : null}
           <div className="import-preview-table"><Table<Row> size="middle" rowKey={(row, index) => String(row.rowNo || index)} dataSource={filteredRows} pagination={{ pageSize: 20, showSizeChanger: true, showTotal: total => `共 ${total} 条` }} locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前分类暂无数据" /> }} columns={previewColumns} scroll={{ x: 900 }} /></div>
-          <div className="import-preview-card-list">{filteredRows.map((row, index) => <Card key={String(row.rowNo || index)} size="small" title={`第 ${row.rowNo || index + 1} 行`} extra={statusTag(importValidationStatus(row))}><Space direction="vertical" size={4}>{mobileEntries(row).map(([key, value]) => <Typography.Text key={key}><strong>{key}：</strong>{String(value)}</Typography.Text>)}{importPreviewMessage(row) ? <Typography.Text type="danger">{importPreviewMessage(row)}</Typography.Text> : null}</Space></Card>)}</div>
+          <div className="import-preview-card-list">{filteredRows.map((row, index) => <Card key={String(row.rowNo || index)} size="small" title={`第 ${row.rowNo || index + 1} 行`} extra={statusTag(importValidationStatus(row))}><Space direction="vertical" size={4}>{mobileEntries(row).map(([key, value]) => <Typography.Text key={key}><strong>{key}：</strong>{String(value)}</Typography.Text>)}{importPreviewMessage(row) ? <InlineFeedback tone="error" title={<>{importPreviewMessage(row)}</>} /> : null}</Space></Card>)}</div>
         </Space>
       </Card> : null}
     </div>
