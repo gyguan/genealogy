@@ -1,0 +1,44 @@
+name: Issue 782 Main Verifier
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/issue-782-main-verifier.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-782-source-binding-review-apply
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Materialize patch from branch workflow
+        shell: python
+        run: |
+          from pathlib import Path
+          import textwrap
+          source = Path('.github/workflows/issue-782-build-patch.yml').read_text()
+          block = source.split('      - name: Apply source binding review patch', 1)[1]
+          block = block.split('      - name: Run targeted backend tests', 1)[0]
+          script = block.split('        run: |', 1)[1]
+          lines = []
+          for line in script.splitlines():
+              lines.append(line[10:] if line.startswith('          ') else line)
+          exec(compile('\n'.join(lines), '<issue-782-patch>', 'exec'))
+      - name: Run targeted backend tests
+        working-directory: backend/genealogy-backend
+        run: mvn -q -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test
+      - name: Upload verified files
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-782-verified-files
+          path: |
+            backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
+            backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
+          retention-days: 3
