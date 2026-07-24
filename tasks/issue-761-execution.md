@@ -11,8 +11,8 @@
 - [x] T3 调整人物编辑页分组
 - [x] T4 调整人物详情页分组
 - [x] T5 增加页面分组源码契约测试
-- [ ] T6 Frontend CI 与 Culture Page Gate 通过
-- [ ] T7 Changed-files 审查和 PR 收口
+- [x] T6 Frontend CI 与 Culture Page Gate 通过
+- [x] T7 Changed-files 审查和 PR 收口
 
 ## 统一分组
 
@@ -23,6 +23,13 @@
 5. 生平事迹
 6. 墓志资料
 7. 治理信息
+
+## 验证结果
+
+- Frontend CI #1618：通过
+- API Contract #1735：通过
+- Culture Page Gate #360：通过
+- Changed-files：仅包含正式页面、测试、配置和本执行看板，无临时工作流、诊断文件、构建产物或锁文件
 
 ## 约束
 
