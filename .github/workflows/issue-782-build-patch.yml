@@ -1,3 +1,4 @@
+# synchronize trigger
 name: Issue 782 Build Patch
 
 on:
