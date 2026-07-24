@@ -1,0 +1,205 @@
+from pathlib import Path
+import json
+
+root = Path('frontend/genealogy-web/src/features')
+
+# PersonEventEditor: configurable semantic section title.
+event_editor = root / 'persons/PersonEventEditor.tsx'
+source = event_editor.read_text()
+source = source.replace("  disabled?: boolean;\n};", "  disabled?: boolean;\n  title?: string;\n};")
+source = source.replace(
+    "export function PersonEventEditor({ value = [], onChange, disabled = false }: Props) {",
+    "export function PersonEventEditor({ value = [], onChange, disabled = false, title = '关键事件' }: Props) {"
+)
+source = source.replace('<span>关键事件</span>', '<span>{title}</span>')
+event_editor.write_text(source)
+
+# Create page.
+person_step = root / 'mvp1/steps/person/PersonStep.tsx'
+source = person_step.read_text()
+living_marker = """const livingOptions = [
+  { value: 'true', label: '在世' },
+  { value: 'false', label: '已故' },
+  { value: '', label: '未知' }
+];
+"""
+options = living_marker + """
+const personDatePrecisionOptions = [
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' },
+  { value: 'unknown', label: '未知' }
+];
+
+const descendantOptions = [
+  { value: 'true', label: '有' },
+  { value: 'false', label: '无' },
+  { value: '', label: '未知' }
+];
+"""
+if living_marker not in source:
+    raise SystemExit('PersonStep options marker missing')
+source = source.replace(living_marker, options, 1)
+start = source.index('        <Card size="small" title="适用范围"')
+end = source.index('        <Space className="actions antd-actions"', start)
+sections = r'''        <Card size="small" title="宗族上下文" className="person-step-form-card">
+          <div className="wizard-form-grid">
+            <Form.Item label="适用宗族" required><Select showSearch optionFilterProp="label" value={workspace.clanId} onChange={changeClan} disabled={loadingClans} options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></Form.Item>
+          </div>
+        </Card>
+
+        <Card size="small" title="基本身份" className="person-step-form-card">
+          <div className="wizard-form-grid">
+            <Form.Item label="姓名" required><Input value={personForm.name} onChange={event => patchPerson('name', event.target.value)} placeholder="请输入人物姓名" /></Form.Item>
+            <Form.Item label="性别" required><Select value={personForm.gender} onChange={value => patchPerson('gender', value)} options={genderOptions} /></Form.Item>
+            <Form.Item label="谱名"><Input value={personForm.genealogyName} onChange={event => patchPerson('genealogyName', event.target.value)} /></Form.Item>
+            <Form.Item label="字号"><Input value={personForm.courtesyName} onChange={event => patchPerson('courtesyName', event.target.value)} /></Form.Item>
+            <Form.Item label="别名"><Input value={personForm.aliasName} onChange={event => patchPerson('aliasName', event.target.value)} /></Form.Item>
+            <Form.Item label="排行"><Input value={personForm.rankInFamily} onChange={event => patchPerson('rankInFamily', event.target.value)} /></Form.Item>
+          </div>
+        </Card>
+
+        <Card size="small" title="世系归属" className="person-step-form-card">
+          <div className="wizard-form-grid">
+            <Form.Item label="所属支派" required extra="只展示已审核通过的支派。"><Select showSearch optionFilterProp="label" value={personForm.branchId || workspace.branchId} onChange={changeBranch} disabled={!workspace.clanId || loadingOptions || !officialBranches.length} options={[{ value: '', label: officialBranches.length ? '请选择已通过支派' : '暂无已通过支派' }, ...officialBranches.map(branch => ({ value: String(branch.id), label: branchName(branch) }))]} /></Form.Item>
+            <Form.Item label="字辈方案" extra="选择方案后，可在字辈字段中带出字辈和代次。"><Select showSearch optionFilterProp="label" value={selectedSchemeId} disabled={!workspace.clanId || loadingOptions || !officialSchemes.length} onChange={value => { const selected = officialSchemes.find(scheme => String(scheme.id) === value); if (selected) void selectScheme(selected); else setSelectedSchemeId(''); }} options={[{ value: '', label: officialSchemes.length ? '请选择已通过字辈方案' : '暂无已通过方案' }, ...officialSchemes.map(scheme => ({ value: String(scheme.id), label: schemeName(scheme) }))]} /></Form.Item>
+            <Form.Item label="字辈"><Select value={generationSelectedValue(personForm.generationWord, personForm.generationNo, generationItems)} onChange={selectGenerationItem} disabled={!generationItems.length} options={[{ value: '', label: generationItems.length ? '请选择字辈' : '无字辈明细，可先保存人物' }, ...generationItems.map(item => ({ value: generationOptionValue(item), label: generationLabel(item) }))]} /></Form.Item>
+            <Form.Item label="代次"><Input value={personForm.generationNo ? `第${personForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item>
+            <Form.Item label="世系状态"><Select value={personForm.lineageStatus} onChange={value => patchPerson('lineageStatus', value)} options={lineageStatusOptions} /></Form.Item>
+            <Form.Item label="是否有后裔"><Select value={personForm.hasDescendant} onChange={value => patchPerson('hasDescendant', value)} options={descendantOptions} /></Form.Item>
+          </div>
+        </Card>
+
+        <Card size="small" title="生卒与地域" className="person-step-form-card">
+          <div className="wizard-form-grid">
+            <Form.Item label="出生日期"><DatePicker value={dateValue(personForm.birthDate)} onChange={(_date, value) => patchPerson('birthDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="出生日期精度"><Select value={personForm.birthDatePrecision} onChange={value => patchPerson('birthDatePrecision', value)} options={personDatePrecisionOptions} /></Form.Item>
+            <Form.Item label="是否在世"><Select value={personForm.isLiving} onChange={value => patchPerson('isLiving', value)} options={livingOptions} /></Form.Item>
+            <Form.Item label="逝世日期"><DatePicker value={dateValue(personForm.deathDate)} onChange={(_date, value) => patchPerson('deathDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="逝世日期精度"><Select value={personForm.deathDatePrecision} onChange={value => patchPerson('deathDatePrecision', value)} options={personDatePrecisionOptions} /></Form.Item>
+            <Form.Item label="出生地"><Input value={personForm.birthPlace} onChange={event => patchPerson('birthPlace', event.target.value)} /></Form.Item>
+            <Form.Item label="居住地"><Input value={personForm.residencePlace} onChange={event => patchPerson('residencePlace', event.target.value)} /></Form.Item>
+            <Form.Item label="墓葬地"><Input value={personForm.tombPlace} onChange={event => patchPerson('tombPlace', event.target.value)} /></Form.Item>
+          </div>
+        </Card>
+
+        <Card size="small" title="生平概况" className="person-step-form-card">
+          <div className="wizard-form-grid">
+            <Form.Item label="职业"><Input value={personForm.occupation} onChange={event => patchPerson('occupation', event.target.value)} /></Form.Item>
+            <Form.Item label="教育程度"><Select value={personForm.education} onChange={value => patchPerson('education', value)} options={personEducationOptions} /></Form.Item>
+            <Form.Item label="称号荣誉"><Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} /></Form.Item>
+          </div>
+          <Form.Item label="人物传记"><Input.TextArea value={personForm.biography} onChange={event => patchPerson('biography', event.target.value)} rows={4} placeholder="记录人物生平、主要经历与贡献" /></Form.Item>
+        </Card>
+
+        <PersonEventEditor title="生平事迹" value={personEvents} onChange={setPersonEvents} disabled={savingPerson} />
+
+        <Card size="small" title="墓志资料" className="person-step-form-card"><Form.Item label="墓志铭"><Input.TextArea value={personForm.epitaph} onChange={event => patchPerson('epitaph', event.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Form.Item></Card>
+
+        <Card size="small" title="治理信息" className="person-step-form-card"><div className="wizard-form-grid"><Form.Item label="隐私级别"><Select value={personForm.privacyLevel} onChange={value => patchPerson('privacyLevel', value)} options={privacyLevelOptions} /></Form.Item><Form.Item label="档案状态"><Tag>草稿</Tag></Form.Item></div></Card>
+
+'''
+source = source[:start] + sections + source[end:]
+person_step.write_text(source)
+
+# Edit page.
+edit_page = root / 'persons/PersonEditPage.tsx'
+source = edit_page.read_text()
+marker = "function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {"
+precision_options = """const personDatePrecisionOptions = [
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' },
+  { value: 'unknown', label: '未知' }
+];
+
+"""
+if marker not in source:
+    raise SystemExit('PersonEditPage date marker missing')
+source = source.replace(marker, precision_options + marker, 1)
+old = """  function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
+    const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
+    form.setFieldValue(precisionField, value ? 'day' : 'unknown');
+    markChanged();
+    void form.validateFields(['deathDate']);
+  }
+"""
+new = """  function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
+    const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
+    const currentPrecision = form.getFieldValue(precisionField) || 'unknown';
+    form.setFieldValue(precisionField, value ? (currentPrecision === 'unknown' ? 'day' : currentPrecision) : 'unknown');
+    markChanged();
+    void form.validateFields(['deathDate']);
+  }
+"""
+if old not in source:
+    raise SystemExit('PersonEditPage changeDate block missing')
+source = source.replace(old, new, 1)
+start = source.index('        <div className="person-edit-sections">')
+end = source.index('      </Form>', start)
+sections = r'''        <div className="person-edit-sections">
+          <Card title="基本身份"><div className="person-edit-fields"><Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item><Form.Item name="genealogyName" label="谱名"><Input /></Form.Item><Form.Item name="courtesyName" label="字号"><Input /></Form.Item><Form.Item name="aliasName" label="别名"><Input /></Form.Item><Form.Item name="gender" label="性别"><Select options={personGenderOptions} /></Form.Item><Form.Item name="rankInFamily" label="排行"><Input /></Form.Item></div></Card>
+
+          <Card title="世系归属"><div className="person-edit-fields"><Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item><Form.Item name="generationWord" hidden><Input /></Form.Item><Form.Item name="generationNo" hidden><Input /></Form.Item><Form.Item label="字辈" extra="选择字辈后自动带出代次，仅展示已审核通过的字辈方案明细"><Select allowClear showSearch optionFilterProp="label" value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)} loading={loadingGenerations} disabled={!loadingGenerations && !generationOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationOptions} onChange={changeGeneration} /></Form.Item><Form.Item label="代次"><Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item><Form.Item name="lineageStatus" label="世系状态"><Select options={personLineageStatusOptions} /></Form.Item><Form.Item name="hasDescendant" label="是否有后裔"><Select options={personTriStateOptions} /></Form.Item></div></Card>
+
+          <Card title="生卒与地域"><div className="person-edit-fields"><Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}><DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} /></Form.Item><Form.Item name="birthDatePrecision" label="出生日期精度"><Select options={personDatePrecisionOptions} /></Form.Item><Form.Item name="isLiving" label="是否在世"><Select options={personLivingOptions} onChange={changeLiving} /></Form.Item><Form.Item name="deathDate" label="逝世日期" dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']} getValueProps={value => dateValueProps(value, deathPrecision)} normalize={normalizePickerDate} rules={[({ getFieldValue }) => ({ validator(_, value) { if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期')); const birth = normalizePersonDate(getFieldValue('birthDate'), getFieldValue('birthDatePrecision')); const death = normalizePersonDate(value, getFieldValue('deathDatePrecision')); if (birth && death && death < birth.slice(0, death.length)) return Promise.reject(new Error('逝世日期不能早于出生日期')); return Promise.resolve(); } })]}><DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} /></Form.Item><Form.Item name="deathDatePrecision" label="逝世日期精度"><Select options={personDatePrecisionOptions} /></Form.Item><Form.Item name="birthPlace" label="出生地"><Input /></Form.Item><Form.Item name="residencePlace" label="居住地"><Input /></Form.Item><Form.Item name="tombPlace" label="墓葬地"><Input /></Form.Item></div></Card>
+
+          <Card title="生平概况"><div className="person-edit-fields"><Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item><Form.Item name="biography" label="人物传记" className="person-edit-field--wide"><Input.TextArea rows={6} placeholder="记录人物生平、主要经历与贡献" /></Form.Item></div></Card>
+
+          <PersonEventEditor title="生平事迹" value={events} disabled={eventEditingDisabled} onChange={changeEvents} />
+
+          <Card title="墓志资料"><div className="person-edit-fields"><Form.Item name="epitaph" label="墓志铭" className="person-edit-field--wide"><Input.TextArea rows={4} /></Form.Item></div></Card>
+
+          <Card title="治理信息"><div className="person-edit-fields"><Form.Item name="privacyLevel" label="隐私级别"><Select options={personPrivacyOptions} /></Form.Item><div><Typography.Text type="secondary">档案状态</Typography.Text><div style={{ marginTop: 8 }}><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag><Typography.Text type="secondary">状态不可通过普通资料保存直接修改</Typography.Text></div></div></div></Card>
+        </div>
+'''
+source = source[:start] + sections + source[end:]
+edit_page.write_text(source)
+
+# Detail page.
+detail_page = root / 'persons/PersonDetailPage.tsx'
+source = detail_page.read_text()
+start = source.index("      { key: 'basic', label: '基本信息'")
+end = source.index("      { key: 'relationships'", start)
+tabs = r'''      { key: 'basic', label: '基本信息', children: <Space direction="vertical" size="middle" className="person-detail-section-stack"><Card size="small" title="基本身份"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="姓名">{personName(person)}</Descriptions.Item><Descriptions.Item label="谱名">{display(person.genealogyName)}</Descriptions.Item><Descriptions.Item label="字号">{display(person.courtesyName)}</Descriptions.Item><Descriptions.Item label="别名">{display(person.aliasName)}</Descriptions.Item><Descriptions.Item label="性别">{genderText(person.gender)}</Descriptions.Item><Descriptions.Item label="排行">{display(person.rankInFamily)}</Descriptions.Item></Descriptions></Card><Card size="small" title="世系归属"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="支派">{branchText(person)}</Descriptions.Item><Descriptions.Item label="字辈">{display(person.generationWord)}</Descriptions.Item><Descriptions.Item label="代次">{generationText(person)}</Descriptions.Item><Descriptions.Item label="世系状态">{display(person.lineageStatus)}</Descriptions.Item><Descriptions.Item label="是否有后裔">{boolText(person.hasDescendant)}</Descriptions.Item></Descriptions></Card><Card size="small" title="生卒与地域"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="生卒">{lifeText(person)}</Descriptions.Item><Descriptions.Item label="是否在世">{livingText(person.isLiving)}</Descriptions.Item><Descriptions.Item label="出生地">{display(person.birthPlace)}</Descriptions.Item><Descriptions.Item label="居住地">{display(person.residencePlace)}</Descriptions.Item><Descriptions.Item label="墓葬地">{display(person.tombPlace)}</Descriptions.Item></Descriptions></Card><Card size="small" title="生平概况"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="职业">{display(person.occupation)}</Descriptions.Item><Descriptions.Item label="教育程度">{display(person.education)}</Descriptions.Item><Descriptions.Item label="称号荣誉">{display(person.titleOrHonor)}</Descriptions.Item></Descriptions></Card><Card size="small" title="治理信息"><Descriptions column={{ xs: 1, md: 2 }} bordered size="small"><Descriptions.Item label="隐私级别">{privacyText(person.privacyLevel)}</Descriptions.Item><Descriptions.Item label="档案状态"><Tag color={personStatusColor(status)}>{personStatusText(status)}</Tag></Descriptions.Item><Descriptions.Item label="资料完整度">{completeness}%</Descriptions.Item><Descriptions.Item label="更新时间">{updatedText(person)}</Descriptions.Item></Descriptions></Card></Space> },
+      { key: 'events', label: '生平事迹', children: <Space direction="vertical" size="middle" className="person-detail-section-stack"><Card size="small" title="关键事件"><SectionFrame state={events} emptyText="暂无关键事件记录" errorTitle="事件加载失败" onRetry={() => void loadEvents()}><Timeline items={eventItems} /></SectionFrame></Card><Card size="small" title="人物传记"><Typography.Paragraph>{display(person.biography, '暂无人物传记。')}</Typography.Paragraph></Card></Space> },
+      { key: 'epitaph', label: '墓志资料', children: <Card size="small" title="墓志铭"><Typography.Paragraph>{display(person.epitaph, '暂无墓志铭。')}</Typography.Paragraph></Card> },
+'''
+source = source[:start] + tabs + source[end:]
+detail_page.write_text(source)
+
+state_file = root / 'persons/personArchiveUrlState.ts'
+source = state_file.read_text()
+source = source.replace("export type PersonDetailTab = 'basic' | 'events' | 'relations' | 'sources' | 'tracking';", "export type PersonDetailTab = 'basic' | 'events' | 'epitaph' | 'relations' | 'sources' | 'tracking';")
+source = source.replace("const allowedTabs = new Set<PersonDetailTab>(['basic', 'events', 'relations', 'sources', 'tracking']);", "const allowedTabs = new Set<PersonDetailTab>(['basic', 'events', 'epitaph', 'relations', 'sources', 'tracking']);")
+state_file.write_text(source)
+
+# Contract test.
+test_file = root / 'persons/PersonGroupingContract.test.mjs'
+test_file.write_text(r'''import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const createSource = readFileSync(new URL('../mvp1/steps/person/PersonStep.tsx', import.meta.url), 'utf8');
+const editSource = readFileSync(new URL('./PersonEditPage.tsx', import.meta.url), 'utf8');
+const detailSource = readFileSync(new URL('./PersonDetailPage.tsx', import.meta.url), 'utf8');
+const tabSource = readFileSync(new URL('./personArchiveUrlState.ts', import.meta.url), 'utf8');
+const sections = ['基本身份', '世系归属', '生卒与地域', '生平概况', '生平事迹', '墓志资料', '治理信息'];
+test('create page uses unified grouping and exposes missing fields', () => { sections.forEach(section => assert.match(createSource, new RegExp(`title=\\"${section}\\"`))); ['birthDatePrecision', 'deathDatePrecision', 'tombPlace', 'hasDescendant'].forEach(field => assert.match(createSource, new RegExp(`personForm\\.${field}`))); assert.doesNotMatch(createSource, /title="传记与隐私"|title="生卒与居住"|title="世系信息"/); });
+test('edit page uses unified grouping', () => { sections.forEach(section => assert.match(editSource, new RegExp(`title=\\"${section}\\"`))); assert.match(editSource, /name="birthDatePrecision" label="出生日期精度"/); assert.match(editSource, /name="deathDatePrecision" label="逝世日期精度"/); assert.doesNotMatch(editSource, /title="生平与墓志"|title="治理与展示"|title="生卒与地点"/); });
+test('detail page aligns cards and supports the epitaph tab', () => { ['基本身份', '世系归属', '生卒与地域', '生平概况', '治理信息'].forEach(section => assert.match(detailSource, new RegExp(`title=\\"${section}\\"`))); assert.match(detailSource, /key: 'events', label: '生平事迹'/); assert.match(detailSource, /key: 'epitaph', label: '墓志资料'/); assert.match(tabSource, /'epitaph'/); assert.doesNotMatch(detailSource, /title="身份与世系"|title="生活与治理"/); });
+''')
+
+package_file = Path('frontend/genealogy-web/package.json')
+package = json.loads(package_file.read_text())
+command = package['scripts']['test:person-edit']
+test_name = 'src/features/persons/PersonGroupingContract.test.mjs'
+if test_name not in command:
+    command = command.replace('src/features/persons/PersonEditPageEvents.test.mjs', f'src/features/persons/PersonEditPageEvents.test.mjs {test_name}')
+package['scripts']['test:person-edit'] = command
+package_file.write_text(json.dumps(package, ensure_ascii=False, indent=2) + '\n')
+
+task = Path('tasks/issue-761-execution.md')
+text = task.read_text()
+for item in ['T2 调整人物创建页分组并补齐字段', 'T3 调整人物编辑页分组', 'T4 调整人物详情页分组', 'T5 增加页面分组源码契约测试']:
+    text = text.replace(f'- [ ] {item}', f'- [x] {item}')
+task.write_text(text)
