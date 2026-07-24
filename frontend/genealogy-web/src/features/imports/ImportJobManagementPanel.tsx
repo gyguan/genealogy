@@ -9,7 +9,7 @@ import { ImportFailureBulkActions } from './ImportFailureBulkActions';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
+type Props = {  refreshKey: number };
 
 type ImportJobSummary = {
   id: number;

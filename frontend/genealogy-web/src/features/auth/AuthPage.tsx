@@ -63,7 +63,7 @@ function showPolicy(title: string, content: string) {
   Modal.info({ title, content, okText: '我知道了', width: 520 });
 }
 
-export function AuthPage({ onChanged, notify, standalone = false }: Props) {
+export function AuthPage({ onChanged, standalone = false }: Props) {
   const initialMode = useMemo(() => authModeFromLocation(window.location.search), []);
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);

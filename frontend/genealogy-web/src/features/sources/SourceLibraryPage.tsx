@@ -70,7 +70,7 @@ const typeValues = new Set(['genealogy_book', 'local_chronicle', 'tombstone', 'p
 const statusValues = new Set(['draft', 'pending_review', 'official', 'rejected', 'archived']);
 const privacyValues = new Set(['public', 'clan_only', 'branch_only', 'relatives_only', 'private', 'sealed']);
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type BindingMode = 'create' | 'replace';
 type BindingTargetType = 'person' | 'branch' | 'clan' | 'generation_word';
 type DetailErrorKind = 'not_found' | 'forbidden' | 'service';

@@ -7,7 +7,7 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
+type Props = {  refreshKey: number };
 
 function statusText(value?: string) {
   const status = String(value || '').toLowerCase();

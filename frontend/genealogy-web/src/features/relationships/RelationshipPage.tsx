@@ -92,7 +92,7 @@ function relationshipPersonId(row: any, side: 'from' | 'to') {
   return String(side === 'from' ? row.fromPersonId || row.sourcePersonId || '' : row.toPersonId || row.targetPersonId || '');
 }
 
-export function RelationshipPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function RelationshipPage({}: {  }) {
   const workspace = useWorkspace();
   const [people, setPeople] = useState<PersonOption[]>([]);
   const [fromPersonId, setFromPersonId] = useState(workspace.personId);

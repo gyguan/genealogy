@@ -60,7 +60,6 @@ export function AsyncImportExecutionPanel({
   branchName,
   refreshKey,
   query,
-  notify,
   onChanged,
   onTotalChange,
   onPageChange,

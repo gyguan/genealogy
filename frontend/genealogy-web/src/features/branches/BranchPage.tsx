@@ -21,7 +21,7 @@ function display(value: unknown, fallback = '-') {
   return text || fallback;
 }
 
-export function BranchPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function BranchPage({}: {  }) {
   const workspace = useWorkspace();
   const [branchName, setBranchName] = useState('');
   const [parentId, setParentId] = useState(workspace.branchId);

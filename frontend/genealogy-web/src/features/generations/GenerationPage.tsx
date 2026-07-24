@@ -9,7 +9,7 @@ import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-export function GenerationPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function GenerationPage({}: {  }) {
   const workspace = useWorkspace();
   const [schemeId, setSchemeId] = useState('');
   const [schemeName, setSchemeName] = useState('');

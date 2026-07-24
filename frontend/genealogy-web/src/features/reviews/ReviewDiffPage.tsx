@@ -7,7 +7,7 @@ import { DetailCard } from '../../shared/ui/DetailCard';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 
 type ReviewDiff = {
   reviewTaskId?: number;

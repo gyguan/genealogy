@@ -7,7 +7,7 @@ import { DraftDeleteButton } from '../../shared/ui/DraftDeleteButton';
 import { PageFeedback } from '../../shared/ui/Feedback';
 import { deleteSource, getSourceDetail, type SourceDetail } from './sourceLibraryService';
 
-type Props = { notify?: (data: unknown, error?: boolean) => void };
+type Props = {  };
 
 function sourceIdFromLocation() {
   const value = Number(new URLSearchParams(window.location.search).get('sourceId'));

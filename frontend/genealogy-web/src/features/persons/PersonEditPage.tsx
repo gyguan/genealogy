@@ -111,7 +111,7 @@ function personEditBackLabel() {
   }
 }
 
-export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardChange }: Props) {
+export function PersonEditPage({ personId, onCancel, onNavigationGuardChange }: Props) {
   const workspace = useWorkspace();
   const [form] = Form.useForm<PersonEditForm>();
   const [person, setPerson] = useState<any>();

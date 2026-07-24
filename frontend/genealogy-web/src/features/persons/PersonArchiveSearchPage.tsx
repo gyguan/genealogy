@@ -21,7 +21,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
 type NavigationAction = 'name' | 'view' | 'edit';
 type MultiKey = 'genders' | 'generationWords' | 'generationNos' | 'dataStatuses';

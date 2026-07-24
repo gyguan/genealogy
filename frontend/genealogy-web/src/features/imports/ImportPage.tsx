@@ -28,7 +28,7 @@ import './import-workbench.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 const { RangePicker } = DatePicker;
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type BranchOption = { id: number | string; branchName?: string; status?: string };
 type QueryFormValues = {
   importTypes?: ImportTypeKey[];

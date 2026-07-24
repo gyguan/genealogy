@@ -5,7 +5,7 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { feedback } from '../../shared/ui/OperationFeedback';
 import { saveDownloadedBlob } from '../../shared/utils/download';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 
 type ExportScope = 'clan' | 'branch';
 

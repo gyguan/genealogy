@@ -112,7 +112,7 @@ function asOperationLog(row: RiskAuditEventResponse): OperationLogResponse {
   };
 }
 
-export function LogPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function LogPage({}: {  }) {
   const workspace = useWorkspace();
   const initial = useRef(readTrackingCenterState(window.location.search)).current;
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);

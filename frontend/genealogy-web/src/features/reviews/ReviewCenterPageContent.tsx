@@ -18,7 +18,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
 type DecisionType = 'approve' | 'reject';
 type BranchOption = { id: number | string; branchName?: string };

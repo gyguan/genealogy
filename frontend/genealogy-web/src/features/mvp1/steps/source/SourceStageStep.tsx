@@ -23,7 +23,7 @@ import { bindSourceApi, createSourceApi, loadSourceLinks, loadSources, type Sour
 import './source-stage-step.css';
 
 type TargetType = 'person' | 'relationship' | 'branch' | 'clan';
-type Props = { notify?: (data: unknown, error?: boolean) => void; onSubmittedReview?: (taskId: string) => void };
+type Props = {  onSubmittedReview?: (taskId: string) => void };
 const sourceTypes = [
   ['genealogy_book', '族谱'], ['local_chronicle', '地方志'], ['oral_history', '口述'], ['tombstone', '墓碑'], ['photo', '照片'], ['archive', '档案'], ['other', '其他']
 ].map(([value, label]) => ({ value, label }));

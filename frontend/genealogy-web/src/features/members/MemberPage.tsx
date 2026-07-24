@@ -116,7 +116,7 @@ function writeUrlState(query: MemberQuery, memberId?: number, replace = false) {
   window.history[replace ? 'replaceState' : 'pushState']({}, '', next);
 }
 
-export function MemberPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function MemberPage({}: {  }) {
   const screens = useBreakpoint();
   const isMobile = !screens.md;
   const workspace = useWorkspace();

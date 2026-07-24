@@ -11,7 +11,7 @@ import { ResultNotice } from '../../shared/ui/ResultNotice';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-export function ClanPage({}: { notify: (data: unknown, error?: boolean) => void }) {
+export function ClanPage({}: {  }) {
   const workspace = useWorkspace();
   const [form, setForm] = useState({ clanName: '', surname: '', hallName: '', originPlace: '' });
   const [list, setList] = useState<PageResponse<any> | null>(null);

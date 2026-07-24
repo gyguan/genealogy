@@ -25,7 +25,7 @@ import { WizardShell, type WizardGateNotice } from './WizardShell';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 type Notice = { message: string; id?: string | number };
-type Props = { notify: (data: unknown, error?: boolean) => void };
+type Props = {  };
 type SaveState = { status: 'unsaved' | 'saved' | 'error'; savedAt?: string };
 type SkipState = { relationship: boolean; source: boolean };
 type DraftState = Partial<Record<Mvp1StepKey, WizardStepDraft>>;
