@@ -3,11 +3,10 @@ import {
   Button,
   Card,
   DatePicker,
+  Drawer,
   Form,
   Grid,
   Input,
-  Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
@@ -18,7 +17,7 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useState } from 'react';
-import { EmptyState } from '../../shared/ui/Feedback';
+import { ConfirmAction, EmptyState } from '../../shared/ui/Feedback';
 import {
   emptyPersonEvent,
   isFuturePersonEventDate,
@@ -125,9 +124,9 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
         <Button aria-label="上移事件" size="small" icon={<ArrowUpOutlined />} disabled={disabled || index === 0} onClick={() => move(index, -1)} />
         <Button aria-label="下移事件" size="small" icon={<ArrowDownOutlined />} disabled={disabled || index === events.length - 1} onClick={() => move(index, 1)} />
         <Button aria-label="编辑事件" size="small" icon={<EditOutlined />} disabled={disabled} onClick={() => openEdit(index)}>{compact ? null : '编辑'}</Button>
-        <Popconfirm title={`确认删除“${event.eventTitle}”这条生平事迹吗？`} okText="删除" cancelText="取消" onConfirm={() => remove(index)} disabled={disabled}>
+        <ConfirmAction title={`确认删除“${event.eventTitle}”这条生平事迹吗？`} okText="删除" danger onConfirm={() => remove(index)} disabled={disabled}>
           <Button danger aria-label="删除事件" size="small" icon={<DeleteOutlined />} disabled={disabled}>{compact ? null : '删除'}</Button>
-        </Popconfirm>
+        </ConfirmAction>
       </Space>
     );
   }
@@ -142,7 +141,7 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
         <Button type="link" style={{ padding: 0, height: 'auto', textAlign: 'left' }} disabled={disabled} onClick={() => openEdit(index)}>
           <Space direction="vertical" size={2} align="start">
             <Typography.Text strong>{event.eventTitle}</Typography.Text>
-            {event.eventDescription ? <Typography.Text type="secondary" ellipsis style={{ maxWidth: 360 }}>{event.eventDescription}</Typography.Text> : null}
+            {event.eventDescription ? <span style={{ color: 'rgba(0, 0, 0, 0.45)', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.eventDescription}</span> : null}
           </Space>
         </Button>
       )
@@ -161,7 +160,7 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
       )}
     >
       <Typography.Paragraph type="secondary">
-        记录人物一生中的重要经历。新增和编辑在弹窗中完成，列表按人工顺序稳定展示。
+        记录人物一生中的重要经历。新增和编辑在弹层中完成，列表按人工顺序稳定展示。
       </Typography.Paragraph>
 
       {!events.length ? (
@@ -184,13 +183,13 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
             <Card key={String(event.id || `event-${index}`)} size="small">
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <Space wrap>
-                  <Typography.Text type="secondary">{eventDateText(event)}</Typography.Text>
+                  <span style={{ color: 'rgba(0, 0, 0, 0.45)' }}>{eventDateText(event)}</span>
                   <Tag>{eventTypeText(event.eventType)}</Tag>
                 </Space>
                 <Button type="link" style={{ padding: 0, height: 'auto', textAlign: 'left' }} disabled={disabled} onClick={() => openEdit(index)}>
                   <Typography.Text strong>{event.eventTitle}</Typography.Text>
                 </Button>
-                {event.eventPlace ? <Typography.Text type="secondary">地点：{event.eventPlace}</Typography.Text> : null}
+                {event.eventPlace ? <span style={{ color: 'rgba(0, 0, 0, 0.45)' }}>地点：{event.eventPlace}</span> : null}
                 {event.eventDescription ? <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>{event.eventDescription}</Typography.Paragraph> : null}
                 {actionButtons(index, true)}
               </Space>
@@ -199,16 +198,20 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
         </Space>
       )}
 
-      <Modal
+      <Drawer
         open={Boolean(draft)}
         title={editingIndex === null ? '新增生平事迹' : '编辑生平事迹'}
-        okText={editingIndex === null ? '确认新增' : '保存修改'}
-        cancelText="取消"
-        width={640}
+        width={screens.md ? 640 : '100%'}
         destroyOnHidden
-        onCancel={closeEditor}
-        onOk={confirmEditor}
-        okButtonProps={{ disabled: Boolean(draft && isFuturePersonEventDate(draft.eventDate)) }}
+        onClose={closeEditor}
+        footer={(
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button onClick={closeEditor}>取消</Button>
+            <Button type="primary" disabled={Boolean(draft && isFuturePersonEventDate(draft.eventDate))} onClick={confirmEditor}>
+              {editingIndex === null ? '确认新增' : '保存修改'}
+            </Button>
+          </Space>
+        )}
       >
         {draft ? (
           <Form layout="vertical" requiredMark="optional">
@@ -242,7 +245,7 @@ export function PersonEventEditor({ value = [], onChange, disabled = false, titl
             </div>
           </Form>
         ) : null}
-      </Modal>
+      </Drawer>
     </Card>
   );
 }
