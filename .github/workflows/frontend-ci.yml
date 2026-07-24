@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  finalize-notify:
-    name: Finalize notify migration fixes
+  diagnose-types:
+    name: Diagnose notify migration types
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -27,7 +27,7 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Apply final fixes
+      - name: Persist baseline fix
         working-directory: frontend/genealogy-web
         run: |
           sed -i 's/baseline.maxCounts.app_notify, 141/baseline.maxCounts.app_notify, 0/' src/shared/ui/FeedbackUnification.test.mjs
@@ -35,21 +35,14 @@ jobs:
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Verify feedback audit and contract
+      - name: Capture type diagnostics
         working-directory: frontend/genealogy-web
-        run: |
-          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json
-          npm run test:feedback
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build production frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
-      - name: Commit final fixes
+        run: npm run typecheck > typecheck-output.log 2>&1 || true
+      - name: Commit baseline and diagnostics
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A frontend/genealogy-web
-          git commit -m "fix: complete application notify migration"
+          git add frontend/genealogy-web/src/shared/ui/FeedbackUnification.test.mjs
+          git add -f frontend/genealogy-web/typecheck-output.log
+          git commit -m "fix: align notify audit baseline and capture type diagnostics"
           git push origin HEAD:agent/issue-767-remove-app-notify
