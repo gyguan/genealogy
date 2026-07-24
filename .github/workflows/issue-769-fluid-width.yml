@@ -2,7 +2,7 @@ name: Issue 769 Fluid Width
 
 on:
   pull_request:
-    types: [opened, ready_for_review]
+    types: [ready_for_review]
     branches: [main]
 
 permissions:
@@ -44,9 +44,10 @@ jobs:
           const trackingCss = readFileSync(new URL('../../features/logs/tracking-page.css', import.meta.url), 'utf8');
 
           function ruleBody(source, selector) {
-            const match = source.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\\\s*\\\\{([^}]]+)\\\\}`));
-            assert.ok(match, `missing ${selector}`);
-            return match[1];
+            const start = source.indexOf(`${selector} {`);
+            assert.notEqual(start, -1, `missing ${selector}`);
+            const end = source.indexOf('}', start);
+            return source.slice(start, end);
           }
 
           test('data import page uses all available browser width', () => {
@@ -62,7 +63,7 @@ jobs:
           });
           """)
           PY
-          rm .github/workflows/issue-769-fluid-width.yml
+          node --test frontend/genealogy-web/src/shared/ui/FluidPageWidth.test.mjs
       - name: Commit implementation
         shell: bash
         run: |
@@ -71,7 +72,6 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add frontend/genealogy-web/src/features/imports/import-workbench.css \
                   frontend/genealogy-web/src/features/logs/tracking-page.css \
-                  frontend/genealogy-web/src/shared/ui/FluidPageWidth.test.mjs \
-                  .github/workflows/issue-769-fluid-width.yml
+                  frontend/genealogy-web/src/shared/ui/FluidPageWidth.test.mjs
           git commit -m "style: make import and tracking pages fluid width"
           git push origin HEAD:agent/issue-769-fluid-page-width
