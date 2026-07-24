@@ -53,7 +53,6 @@ function selectedTaskIds(resultCard: HTMLElement) {
     const link = row?.querySelector<HTMLButtonElement>('button.ant-btn-link');
     const taskRows = Array.from(resultCard.querySelectorAll<HTMLTableRowElement>('tbody .ant-table-row'));
     const index = row ? taskRows.indexOf(row) : -1;
-    const cards = Array.from(resultCard.querySelectorAll<HTMLElement>('.ant-card[role="button"]'));
     const card = input.closest<HTMLElement>('.ant-card[role="button"]');
     const raw = row?.getAttribute('data-row-key') || card?.getAttribute('data-row-key') || link?.textContent || (index >= 0 ? taskRows[index]?.textContent : '');
     return String(raw || '').trim();
@@ -101,9 +100,9 @@ function qualityPanel(resultCard: HTMLElement) {
   ];
   buttons.forEach(([label, scope, gate]) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = qualityLoading ? '检查中…' : label; button.disabled = qualityLoading; if (gate) button.className = 'is-primary'; button.addEventListener('click', () => void runQuality(resultCard, scope, gate)); actions.appendChild(button); });
   panel.appendChild(actions);
-  if (qualityError) { const error = document.createElement('div'); error.className = 'workbench-quality-feedback is-error'; error.textContent = qualityError; panel.appendChild(error); }
+  if (qualityError) { const error = document.createElement('div'); error.className = 'workbench-quality-result is-error'; error.textContent = qualityError; panel.appendChild(error); }
   if (latestQuality) {
-    const summary = document.createElement('div'); summary.className = `workbench-quality-feedback ${latestQuality.reviewBlocked ? 'is-blocked' : 'is-success'}`;
+    const summary = document.createElement('div'); summary.className = `workbench-quality-result ${latestQuality.reviewBlocked ? 'is-blocked' : 'is-success'}`;
     summary.innerHTML = `<strong>${latestQuality.reviewBlocked ? '禁止提交审核' : '检查已完成'}</strong><span>检查 ${latestQuality.summary?.subjectCount || 0} 个对象，发现 ${latestQuality.summary?.issueCount || 0} 个问题，其中阻断 ${latestQuality.summary?.blockingIssueCount || 0} 个。</span>`;
     panel.appendChild(summary);
     const list = document.createElement('div'); list.className = 'workbench-quality-rules';
