@@ -27,7 +27,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -345,7 +345,7 @@ export function MemberPage({}: {  }) {
   async function confirmHighRiskGrant(values: GrantFormValues) {
     if (selectedRole?.riskLevel !== 'high') return true;
     return new Promise<boolean>(resolve => {
-      Modal.confirm({
+      confirmAction({
         title: `确认授予高风险角色“${selectedRole.roleName}”`,
         content: (
           <Space direction="vertical" size={8}>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Image, Input, InputNumber, List, Modal, Popconfirm, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Image, Input, InputNumber, List, Modal, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type {
   CultureSiteCreateRequest,
   CultureSiteDetailResponse,
@@ -27,7 +27,7 @@ import type { CultureSiteSearchState } from './cultureSiteService';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -212,7 +212,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
 
   function archive(item: CultureSiteSummaryResponse) {
     let reason = '';
-    Modal.confirm({
+    confirmAction({
       title: item.allowedActions.includes('request_archive') ? '申请归档正式场所' : '归档文化场所',
       content: <Input.TextArea autoFocus placeholder="请输入归档原因" onChange={event => { reason = event.target.value; }} />,
       okText: item.allowedActions.includes('request_archive') ? '提交归档申请' : '确认归档',
@@ -281,7 +281,7 @@ export function CultureSitePanel({ clanId, branches }: { clanId?: string; branch
     {(item.allowedActions.includes('update') || item.allowedActions.includes('request_update')) && <Button size="small" onClick={() => void openEdit(item)}>编辑</Button>}
     {item.allowedActions.includes('submit_review') && <Button size="small" type="primary" onClick={() => void submitReview(item)}>提交审核</Button>}
     {(item.allowedActions.includes('archive') || item.allowedActions.includes('request_archive')) && <Button size="small" onClick={() => archive(item)}>归档</Button>}
-    {(item.allowedActions.includes('delete') || item.allowedActions.includes('request_delete')) && <Popconfirm title={item.allowedActions.includes('request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(item)}><Button danger size="small">删除</Button></Popconfirm>}
+    {(item.allowedActions.includes('delete') || item.allowedActions.includes('request_delete')) && <ConfirmAction title={item.allowedActions.includes('request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(item)}><Button danger size="small">删除</Button></ConfirmAction>}
   </Space>;
 
   const columns = [

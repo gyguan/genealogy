@@ -24,6 +24,8 @@ import { WizardShell, type WizardGateNotice } from './WizardShell';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
+import { confirmAction } from '../../shared/ui/Feedback';
+
 type Notice = { message: string; id?: string | number };
 type Props = {  };
 type SaveState = { status: 'unsaved' | 'saved' | 'error'; savedAt?: string };
@@ -126,7 +128,7 @@ export function Mvp1WizardPage({}: Props) {
   useEffect(() => {
     if (!storedSession || promptShown.current) return;
     promptShown.current = true;
-    Modal.confirm({
+    confirmAction({
       title: '继续上次建谱？',
       content: `上次保存于 ${new Date(storedSession.savedAt).toLocaleString('zh-CN')}，停留在“${stepOrder.find(step => step.key === storedSession.activeStep)?.title || '建谱'}”。`,
       okText: '继续',
@@ -387,7 +389,7 @@ export function Mvp1WizardPage({}: Props) {
       navigateToView('home');
       return;
     }
-    Modal.confirm({
+    confirmAction({
       title: '退出建谱？',
       content: saveState.status === 'saved' ? '当前进度已保存。' : '当前未保存内容将丢失。',
       okText: '退出',

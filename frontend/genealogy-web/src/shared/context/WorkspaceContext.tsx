@@ -10,6 +10,8 @@ import {
 } from '../../features/mvp1/domain/wizardDependencies';
 import type { Mvp1StepKey } from '../../features/mvp1/domain/wizardStepState';
 
+import { confirmAction } from '../ui/Feedback';
+
 export type WorkspaceSelectionKey = keyof WizardSelections;
 export type WorkspacePatch = Partial<Pick<WorkspaceState,
   | 'clanId'
@@ -176,7 +178,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
     const snapshot = captureControlSnapshot();
     pendingChange.current = true;
-    Modal.confirm({
+    confirmAction({
       title: `切换后将重新确认：${dependencyImpactText(plan)}`,
       content: affectsUnsavedInput
         ? `当前“${activeStep}”步骤存在未保存输入。确认后仅解除本次向导中的下游选择与缓存，不会删除任何已创建业务数据。`

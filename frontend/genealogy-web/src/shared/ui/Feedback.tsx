@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Alert, Empty as AntEmpty, Popconfirm, Result } from 'antd';
-import type { AlertProps, EmptyProps, PopconfirmProps, ResultProps } from 'antd';
+import { Alert, Empty as AntEmpty, Modal, Popconfirm, Result } from 'antd';
+import type { AlertProps, EmptyProps, ModalFuncProps, PopconfirmProps, ResultProps } from 'antd';
 import '../../feedback-system.css';
 
 export type FeedbackTone = 'success' | 'info' | 'warning' | 'error';
@@ -125,4 +125,18 @@ export function ConfirmAction({
       {children}
     </Popconfirm>
   );
+}
+
+/** 命令式确认的统一入口，仅用于无法随触发器渲染 ConfirmAction 的场景。 */
+export function confirmAction(options: ModalFuncProps) {
+  return Modal.confirm({
+    okText: '确认',
+    cancelText: '取消',
+    centered: true,
+    ...options,
+    okButtonProps: {
+      ...options.okButtonProps,
+      danger: options.okButtonProps?.danger || options.type === 'error'
+    }
+  });
 }

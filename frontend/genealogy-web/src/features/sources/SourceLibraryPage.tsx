@@ -39,7 +39,7 @@ import type {
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -942,7 +942,7 @@ function BindingTable({ clanId, rows, total, pageNo, pageSize, loading, canBind,
       return <Space size="small">
         <TrackingLinkButton size="small" type="link" clanId={clanId} targetType={row.targetType} targetId={row.targetId} />
         <Tooltip title={disabled ? (row.hasPendingRevision ? '已有待审核变更，不能重复提交' : '当前引用状态不可变更') : undefined}><span><Button size="small" type="link" disabled={disabled} onClick={() => onReplace(row)}>变更</Button></span></Tooltip>
-        <Dropdown trigger={['click']} menu={{ items: [{ key: 'delete', label: '解除引用', danger: true, disabled, onClick: () => Modal.confirm({ title: '提交解除引用审核', content: '解除引用不会立即生效，审核通过后该引用将归档。', okText: '提交审核', okType: 'danger', onOk: () => onDelete(row) }) }] }}><Button type="text" size="small" icon={<MoreOutlined />} aria-label="更多引用操作" /></Dropdown>
+        <Dropdown trigger={['click']} menu={{ items: [{ key: 'delete', label: '解除引用', danger: true, disabled, onClick: () => confirmAction({ title: '提交解除引用审核', content: '解除引用不会立即生效，审核通过后该引用将归档。', okText: '提交审核', okType: 'danger', onOk: () => onDelete(row) }) }] }}><Button type="text" size="small" icon={<MoreOutlined />} aria-label="更多引用操作" /></Dropdown>
       </Space>;
     }
   });
@@ -979,7 +979,7 @@ function AttachmentTable({ rows, total, pageNo, pageSize, loading, canManage, on
       { title: '操作', width: 190, fixed: 'right', render: (_value, row) => <Space size="small">
         <Tooltip title={row.previewAllowed ? '预览附件' : '该附件格式或权限不支持在线预览'}><span><Button size="small" type="link" disabled={!row.previewAllowed} onClick={() => onPreview(row)}>预览</Button></span></Tooltip>
         <Tooltip title={row.downloadAllowed ? '下载附件' : '您没有下载该附件的权限'}><span><Button size="small" type="link" disabled={!row.downloadAllowed} onClick={() => onDownload(row)}>下载</Button></span></Tooltip>
-        {canManage ? <Dropdown trigger={['click']} menu={{ items: [{ key: 'delete', label: '删除附件', danger: true, onClick: () => Modal.confirm({ title: '删除附件', content: `确认删除附件“${row.fileName || '当前附件'}”吗？`, okType: 'danger', okText: '删除', onOk: () => onDelete(row) }) }] }}><Button type="text" size="small" icon={<MoreOutlined />} aria-label="更多附件操作" /></Dropdown> : null}
+        {canManage ? <Dropdown trigger={['click']} menu={{ items: [{ key: 'delete', label: '删除附件', danger: true, onClick: () => confirmAction({ title: '删除附件', content: `确认删除附件“${row.fileName || '当前附件'}”吗？`, okType: 'danger', okText: '删除', onOk: () => onDelete(row) }) }] }}><Button type="text" size="small" icon={<MoreOutlined />} aria-label="更多附件操作" /></Dropdown> : null}
       </Space> }
     ]}
   />;

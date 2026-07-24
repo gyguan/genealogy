@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Input, InputNumber, List, Modal, Popconfirm, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Checkbox, Col, Descriptions, Drawer, Form, Input, InputNumber, List, Modal, Result, Row, Select, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { TableProps } from 'antd';
 import type {
   CultureDataStatus,
@@ -48,7 +48,7 @@ import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -385,7 +385,7 @@ export function CultureSiteTab() {
 
   function archive(item: CultureSiteSummaryResponse) {
     let reason = '';
-    Modal.confirm({
+    confirmAction({
       title: can(item, 'request_archive') ? '申请归档正式场所' : '归档文化场所',
       content: <Input.TextArea autoFocus placeholder="请输入归档原因" onChange={event => { reason = event.target.value; }} />,
       okText: can(item, 'request_archive') ? '提交归档申请' : '确认归档',
@@ -469,7 +469,7 @@ export function CultureSiteTab() {
         {can(item, 'update', 'request_update') ? <Button type="link" onClick={() => void openEdit(item)}>编辑</Button> : null}
         {can(item, 'submit_review') ? <Button type="link" onClick={() => void submitReview(item)}>提交审核</Button> : null}
         {can(item, 'archive', 'request_archive') ? <Button type="link" onClick={() => archive(item)}>归档</Button> : null}
-        {can(item, 'delete', 'request_delete') ? <Popconfirm title={can(item, 'request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(item)}><Button danger type="link">删除</Button></Popconfirm> : null}
+        {can(item, 'delete', 'request_delete') ? <ConfirmAction title={can(item, 'request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(item)}><Button danger type="link">删除</Button></ConfirmAction> : null}
       </Space>
     }
   ];
@@ -563,7 +563,7 @@ export function CultureSiteTab() {
           {can(selectedSummary, 'update', 'request_update') ? <Button loading={actionLoading} onClick={() => void openEdit(selectedSummary)}>编辑</Button> : null}
           {can(selectedSummary, 'submit_review') ? <Button type="primary" loading={actionLoading} onClick={() => void submitReview(selectedSummary)}>提交审核</Button> : null}
           {can(selectedSummary, 'archive', 'request_archive') ? <Button loading={actionLoading} onClick={() => archive(selectedSummary)}>归档</Button> : null}
-          {can(selectedSummary, 'delete', 'request_delete') ? <Popconfirm title={can(selectedSummary, 'request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(selectedSummary)}><Button danger loading={actionLoading}>删除</Button></Popconfirm> : null}
+          {can(selectedSummary, 'delete', 'request_delete') ? <ConfirmAction title={can(selectedSummary, 'request_delete') ? '提交正式场所删除申请？' : '确认删除该场所草稿？'} onConfirm={() => void remove(selectedSummary)}><Button danger loading={actionLoading}>删除</Button></ConfirmAction> : null}
         </Space> : null}
       </Space> : null}
     </Drawer>

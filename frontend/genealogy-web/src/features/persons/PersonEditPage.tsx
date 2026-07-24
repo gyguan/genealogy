@@ -32,7 +32,7 @@ import type { PersonStatusAction, PersonStatusActionKey } from './personStatusAc
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -279,7 +279,7 @@ export function PersonEditPage({ personId, onCancel, onNavigationGuardChange }: 
       finishLeave();
       return;
     }
-    Modal.confirm({
+    confirmAction({
       title: '放弃未保存的修改？',
       content: '当前修改尚未保存，返回后将无法恢复。',
       okText: '放弃修改并返回',
@@ -353,7 +353,7 @@ export function PersonEditPage({ personId, onCancel, onNavigationGuardChange }: 
       void runStatusAction(action);
       return;
     }
-    Modal.confirm({
+    confirmAction({
       title: action.confirmTitle || `确认${action.label}？`,
       content: action.confirmDescription,
       okText: action.label,
