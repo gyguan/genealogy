@@ -1,10 +1,10 @@
 name: Issue 782 Main Verifier
 
 on:
-  push:
+  pull_request:
     branches: ["main"]
     paths:
-      - ".github/workflows/issue-782-main-verifier.yml"
+      - ".github/workflows/issue-782-build-patch.yml"
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/issue-782-source-binding-review-apply
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
@@ -46,4 +46,4 @@ jobs:
             backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java \
             backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
           git commit -m "fix(review): apply source binding revisions"
-          git push origin HEAD:agent/issue-782-source-binding-review-apply
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
