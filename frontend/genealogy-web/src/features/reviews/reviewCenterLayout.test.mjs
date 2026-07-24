@@ -16,18 +16,14 @@ test('审核详情抽屉遵循 720px 规范且移动端全屏', async () => {
 
 test('质量检查入口只挂载在审核列表结果工具栏', async () => {
   const page = await source('ReviewCenterPage.tsx');
-  const detailActions = await source('ReviewDetailHeaderActions.tsx');
+  const content = await source('ReviewCenterPageContent.tsx');
   assert.match(page, /query-result-outer-card__extra/);
   assert.match(page, />触发质量检查<\/Button>/);
-  assert.doesNotMatch(detailActions, /触发质量检查/);
-  assert.doesNotMatch(detailActions, /质量检查入口属于列表工具栏[\s\S]*Button[^]*质量检查/);
+  assert.doesNotMatch(content, /触发质量检查/);
 });
 
-test('审核详情操作集中在 Drawer Header 组件', async () => {
-  const detailActions = await source('ReviewDetailHeaderActions.tsx');
+test('审核详情操作位于 Drawer Header 且无重复 Footer', async () => {
   const content = await source('ReviewCenterPageContent.tsx');
-  assert.match(detailActions, /驳回整改/);
-  assert.match(detailActions, /审核通过/);
   assert.match(content, /<Drawer[\s\S]*extra=/);
   assert.doesNotMatch(content, /<Drawer[\s\S]*footer=/);
 });
