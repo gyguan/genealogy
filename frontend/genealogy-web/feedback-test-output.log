@@ -6,132 +6,132 @@ TAP version 13
 # Subtest: current user sessions use standard feedback, confirmation and empty states
 ok 1 - current user sessions use standard feedback, confirmation and empty states
   ---
-  duration_ms: 1.556811
+  duration_ms: 1.331242
   ...
 # Subtest: booklet export uses semantic operation feedback
 ok 2 - booklet export uses semantic operation feedback
   ---
-  duration_ms: 2.213112
+  duration_ms: 1.973857
   ...
 # Subtest: person data export uses semantic operation feedback
 ok 3 - person data export uses semantic operation feedback
   ---
-  duration_ms: 2.127852
+  duration_ms: 1.973687
   ...
 # Subtest: import history overview uses standard page and empty feedback
 ok 4 - import history overview uses standard page and empty feedback
   ---
-  duration_ms: 1.550018
+  duration_ms: 1.378918
   ...
 # Subtest: member invitation entry uses semantic feedback without legacy notify props
 ok 5 - member invitation entry uses semantic feedback without legacy notify props
   ---
-  duration_ms: 2.123294
+  duration_ms: 1.923415
   ...
 # Subtest: member invitation modal uses semantic feedback without notify wiring
 ok 6 - member invitation modal uses semantic feedback without notify wiring
   ---
-  duration_ms: 2.324661
+  duration_ms: 1.925364
   ...
 # Subtest: step renderer no longer passes legacy notify to any wizard step
 ok 7 - step renderer no longer passes legacy notify to any wizard step
   ---
-  duration_ms: 2.26018
+  duration_ms: 1.941653
   ...
 # Subtest: remaining wizard steps use only OperationFeedback
 ok 8 - remaining wizard steps use only OperationFeedback
   ---
-  duration_ms: 3.355074
+  duration_ms: 2.914734
   ...
 # Subtest: StepRenderer and callers no longer pass notify
 ok 9 - StepRenderer and callers no longer pass notify
   ---
-  duration_ms: 26.295223
+  duration_ms: 22.674841
   ...
 # Subtest: business source contains no direct Ant Design Message usage
 ok 10 - business source contains no direct Ant Design Message usage
   ---
-  duration_ms: 26.345247
+  duration_ms: 24.373477
   ...
 # Subtest: application source no longer exposes the legacy notify interface
 ok 11 - application source no longer exposes the legacy notify interface
   ---
-  duration_ms: 15.971394
+  duration_ms: 22.488432
   ...
 # Subtest: OperationFeedback supports migrated application feedback payloads
 ok 12 - OperationFeedback supports migrated application feedback payloads
   ---
-  duration_ms: 0.290756
+  duration_ms: 0.429124
   ...
 # Subtest: feedback system exposes five standard user-facing forms
 ok 13 - feedback system exposes five standard user-facing forms
   ---
-  duration_ms: 1.368117
+  duration_ms: 1.196344
   ...
 # Subtest: operation feedback exposes one semantic API for transient results
 ok 14 - operation feedback exposes one semantic API for transient results
   ---
-  duration_ms: 0.2401
+  duration_ms: 0.220212
   ...
 # Subtest: global toast uses the same semantic feedback primitive
 ok 15 - global toast uses the same semantic feedback primitive
   ---
-  duration_ms: 0.230512
+  duration_ms: 0.214325
   ...
 # Subtest: async import execution panel uses only standard feedback primitives
 ok 16 - async import execution panel uses only standard feedback primitives
   ---
-  duration_ms: 0.28239
+  duration_ms: 0.247847
   ...
 # Subtest: import failure bulk actions use standard operation and page feedback
 ok 17 - import failure bulk actions use standard operation and page feedback
   ---
-  duration_ms: 0.230732
+  duration_ms: 0.194432
   ...
 # Subtest: clan step separates transient feedback from persistent page errors
 ok 18 - clan step separates transient feedback from persistent page errors
   ---
-  duration_ms: 1.111736
+  duration_ms: 1.023408
   ...
 # Subtest: branch step uses standard transient, page, confirmation and empty feedback
 ok 19 - branch step uses standard transient, page, confirmation and empty feedback
   ---
-  duration_ms: 0.238047
+  duration_ms: 0.216409
   ...
 # Subtest: source step uses standard transient, page and empty feedback
 ok 20 - source step uses standard transient, page and empty feedback
   ---
-  duration_ms: 0.304932
+  duration_ms: 0.277075
   ...
 # Subtest: source stage uses standard transient, page and empty feedback
 ok 21 - source stage uses standard transient, page and empty feedback
   ---
-  duration_ms: 0.271469
+  duration_ms: 0.244486
   ...
 # Subtest: shared data table uses standard operation, confirmation and empty feedback
 ok 22 - shared data table uses standard operation, confirmation and empty feedback
   ---
-  duration_ms: 0.331762
+  duration_ms: 0.2582
   ...
 # Subtest: source draft deletion uses page feedback without duplicate success notification
 ok 23 - source draft deletion uses page feedback without duplicate success notification
   ---
-  duration_ms: 0.188082
+  duration_ms: 0.19688
   ...
 # Subtest: source focus bridge keeps loading errors visible through page feedback
 ok 24 - source focus bridge keeps loading errors visible through page feedback
   ---
-  duration_ms: 0.174177
+  duration_ms: 0.14677
   ...
 # Subtest: feedback styling normalizes alerts, field help, empty states and full-page results
 ok 25 - feedback styling normalizes alerts, field help, empty states and full-page results
   ---
-  duration_ms: 0.176231
+  duration_ms: 0.146363
   ...
 # Subtest: audit gate prevents legacy feedback mechanisms from increasing
 not ok 26 - audit gate prevents legacy feedback mechanisms from increasing
   ---
-  duration_ms: 1.48728
+  duration_ms: 1.307076
   location: '/home/runner/work/genealogy/genealogy/frontend/genealogy-web/src/shared/ui/FeedbackUnification.test.mjs:178:1'
   failureType: 'testCodeFailure'
   error: |-
@@ -161,4 +161,4 @@ not ok 26 - audit gate prevents legacy feedback mechanisms from increasing
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 338.654074
+# duration_ms 304.681544
