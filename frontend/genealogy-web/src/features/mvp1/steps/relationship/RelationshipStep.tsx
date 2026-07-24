@@ -36,7 +36,6 @@ import { countSettledResults, submitReviewTask, submitReviewTasks } from '../../
 import { feedback } from '../../../../shared/ui/OperationFeedback';
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
   onSubmittedReview?: (taskId: string) => void;
 };
 
@@ -60,7 +59,7 @@ function readableError(error: unknown, fallback: string) {
   return errorMessage;
 }
 
-export function RelationshipStep({ notify, onSubmittedReview }: Props) {
+export function RelationshipStep({ onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [clans, setClans] = useState<ClanLike[]>([]);
   const [persons, setPersons] = useState<PersonLike[]>([]);
@@ -88,7 +87,6 @@ export function RelationshipStep({ notify, onSubmittedReview }: Props) {
   );
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);

@@ -14,19 +14,18 @@ export type { Mvp1StepKey } from './domain/wizardStepState';
 
 type StepRendererProps = {
   activeStep: Mvp1StepKey;
-  notify: (data: unknown, error?: boolean) => void;
   onStepChange: (step: Mvp1StepKey) => void;
   onSubmittedReview?: (taskId: string) => void;
 };
 
-export function StepRenderer({ activeStep, notify, onStepChange, onSubmittedReview }: StepRendererProps) {
+export function StepRenderer({ activeStep, onStepChange, onSubmittedReview }: StepRendererProps) {
   let content: ReactNode;
   switch (activeStep) {
     case 'clan': content = <ClanStep onCreated={() => onStepChange('branch')} />; break;
     case 'branch': content = <BranchStep onSubmittedReview={onSubmittedReview} />; break;
-    case 'generation': content = <GenerationStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
-    case 'person': content = <PersonStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
-    case 'relationship': content = <RelationshipStep notify={notify} onSubmittedReview={onSubmittedReview} />; break;
+    case 'generation': content = <GenerationStep onSubmittedReview={onSubmittedReview} />; break;
+    case 'person': content = <PersonStep onSubmittedReview={onSubmittedReview} />; break;
+    case 'relationship': content = <RelationshipStep onSubmittedReview={onSubmittedReview} />; break;
     case 'source': content = <SourceStageStep onSubmittedReview={onSubmittedReview} />; break;
     default: content = null;
   }

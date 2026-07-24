@@ -65,7 +65,6 @@ type PersonForm = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
   onSubmittedReview?: (taskId: string) => void;
 };
 
@@ -181,7 +180,7 @@ function normalizeDateString(value: string | string[]) {
   return Array.isArray(value) ? value[0] || '' : value;
 }
 
-export function PersonStep({ notify, onSubmittedReview }: Props) {
+export function PersonStep({ onSubmittedReview }: Props) {
   const workspace = useWorkspace();
   const [personForm, setPersonForm] = useState<PersonForm>({ ...defaultPersonForm });
   const [personEvents, setPersonEvents] = useState<PersonEventDraft[]>([]);
@@ -206,7 +205,6 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
   );
 
   function toast(data: unknown, error = false) {
-    notify?.(data, error);
     const text = typeof data === 'string' ? data : (data as any)?.message;
     if (text) {
       if (error) feedback.error(text);
