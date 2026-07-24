@@ -5,7 +5,9 @@ on:
     branches: ["main"]
     paths:
       - "frontend/genealogy-web/src/features/logs/**"
+      - "frontend/genealogy-web/src/page-content-cleanup.css"
       - "frontend/genealogy-web/e2e/tracking-page-pattern.spec.ts"
+      - "frontend/genealogy-web/e2e/fluid-page-width.spec.ts"
       - ".github/workflows/tracking-page-gate.yml"
   workflow_dispatch:
 
@@ -70,7 +72,7 @@ jobs:
 
       - name: Run tracking Chromium E2E
         working-directory: frontend/genealogy-web
-        run: npx playwright test e2e/tracking-page-pattern.spec.ts
+        run: npx playwright test e2e/tracking-page-pattern.spec.ts e2e/fluid-page-width.spec.ts
 
       - name: Upload tracking diagnostics
         if: failure()
