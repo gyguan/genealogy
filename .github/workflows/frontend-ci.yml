@@ -30,6 +30,13 @@ jobs:
       - name: Apply migration
         working-directory: frontend/genealogy-web
         run: node scripts/migrate-page-alerts.mjs
+      - name: Commit migration result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src frontend/genealogy-web/package.json frontend/genealogy-web/feedback-audit-baseline.json
+          git commit -m "refactor: unify page alert feedback"
+          git push origin HEAD:agent/issue-771-unify-page-alerts
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
@@ -44,10 +51,3 @@ jobs:
       - name: Build production frontend
         working-directory: frontend/genealogy-web
         run: npm run build
-      - name: Commit migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/genealogy-web/src frontend/genealogy-web/package.json frontend/genealogy-web/feedback-audit-baseline.json
-          git commit -m "refactor: unify page alert feedback"
-          git push origin HEAD:agent/issue-771-unify-page-alerts
