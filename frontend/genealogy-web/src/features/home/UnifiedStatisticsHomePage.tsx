@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  Button, Card, Col, Input, Progress, Row, Select, Skeleton, Space, Statistic, Tag, Typography
-} from 'antd';
+import { Button, Card, Col, Input, Row, Select, Skeleton, Space, Statistic, Tag, Typography } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import type { CultureOverviewResponse } from '../../shared/api/generated/culture-types';
-import type { HomeDashboardBucketResponse, HomeDashboardResponse } from '../../shared/api/generated/home-types';
+import type { HomeDashboardResponse } from '../../shared/api/generated/home-types';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { EmptyState, PageFeedback } from '../../shared/ui/Feedback';
 import { toRecordList } from '../../shared/ui/DataTable';
@@ -18,12 +16,18 @@ type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'forbidden';
 type ResourceState<T> = { status: LoadStatus; data: T; error: string; loaded: boolean };
 type HomeCultureEntry = {
   type: 'compatibility' | 'culture_item' | 'migration_event' | 'culture_site' | string;
-  category: string; title: string; subtitle: string; status: string; sourceCount: number;
-  targetTab: 'items' | 'migrations' | 'sites'; targetQueryKey?: string; targetQueryValue?: string;
+  category: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  sourceCount: number;
+  targetTab: 'items' | 'migrations' | 'sites';
+  targetQueryKey?: string;
+  targetQueryValue?: string;
 };
 type HomeCultureOverview = CultureOverviewResponse & { entries?: HomeCultureEntry[] };
-type RecentView = { key: string; title: string; subtitle: string; kind: string; view: HomeView; visitedAt: string };
 type HomeView = 'treeProduct' | 'personArchive' | 'sourceLibrary' | 'culture' | 'editingWorkspace';
+type RecentView = { key: string; title: string; subtitle: string; kind: string; view: HomeView; visitedAt: string };
 type UserIdentity = { id?: string | number; userId?: string | number; username?: string };
 
 const cultureQueryKeys = [
@@ -85,7 +89,8 @@ function cardTitle(label: ReactNode, action?: ReactNode) {
 function updateHomeUrl(clanId: string) {
   const url = new URL(window.location.href);
   if (clanId) url.searchParams.set('clanId', clanId); else url.searchParams.delete('clanId');
-  url.searchParams.delete('metric'); url.searchParams.delete('category');
+  url.searchParams.delete('metric');
+  url.searchParams.delete('category');
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 function readClanIdFromUrl() { return new URLSearchParams(window.location.search).get('clanId') || ''; }
@@ -135,7 +140,8 @@ export function UnifiedStatisticsHomePage() {
   function openCulture(tab: 'items' | 'migrations' | 'sites', entry?: HomeCultureEntry) {
     if (entry) saveRecent({ key: `culture:${entry.type}:${entry.title}`, title: entry.title, subtitle: display(entry.subtitle, categoryText(entry.category)), kind: categoryText(entry.category), view: 'culture' });
     const url = new URL(window.location.href);
-    url.searchParams.set('view', 'culture'); url.searchParams.set('tab', tab);
+    url.searchParams.set('view', 'culture');
+    url.searchParams.set('tab', tab);
     if (currentClanId) url.searchParams.set('clanId', currentClanId);
     cultureQueryKeys.forEach(key => url.searchParams.delete(key));
     if (entry?.targetQueryKey && entry.targetQueryValue) url.searchParams.set(entry.targetQueryKey, entry.targetQueryValue);
@@ -143,7 +149,8 @@ export function UnifiedStatisticsHomePage() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
   async function loadPublicAreas(clanId: string) {
-    setDashboardState(previous => loadingResource(previous)); setCultureState(previous => loadingResource(previous));
+    setDashboardState(previous => loadingResource(previous));
+    setCultureState(previous => loadingResource(previous));
     await Promise.all([
       apiClient.get<HomeDashboardResponse>(`/clans/${clanId}/dashboard`).then(data => setDashboardState(successResource(data))).catch(error => setDashboardState(previous => failureResource(previous, error))),
       apiClient.get<HomeCultureOverview>(`/clans/${clanId}/culture-overview`).then(data => setCultureState(successResource(data))).catch(error => setCultureState(previous => failureResource(previous, error)))
@@ -157,14 +164,25 @@ export function UnifiedStatisticsHomePage() {
       const requestedClanId = String(clanIdOverride || workspace.clanId || '').trim();
       const fallbackClanId = String((clans[0] as any)?.id || '');
       const clanId = requestedClanId && clans.some(clan => String(clan.id) === requestedClanId) ? requestedClanId : fallbackClanId;
-      if (!clanId) { setDashboardState(emptyResource(null)); setCultureState(emptyResource(null)); updateHomeUrl(''); return; }
+      if (!clanId) {
+        setDashboardState(emptyResource(null));
+        setCultureState(emptyResource(null));
+        updateHomeUrl('');
+        return;
+      }
       if (workspace.clanId !== clanId) resetWorkspaceForClan(clanId);
-      updateHomeUrl(clanId); await loadPublicAreas(clanId);
-    } catch (error) { setClansState(previous => failureResource(previous, error)); }
+      updateHomeUrl(clanId);
+      await loadPublicAreas(clanId);
+    } catch (error) {
+      setClansState(previous => failureResource(previous, error));
+    }
   }
   async function switchClan(nextClanId: string) {
     if (!nextClanId || nextClanId === currentClanId) return;
-    resetWorkspaceForClan(nextClanId); updateHomeUrl(nextClanId); setRecentViews([]); await loadPublicAreas(nextClanId);
+    resetWorkspaceForClan(nextClanId);
+    updateHomeUrl(nextClanId);
+    setRecentViews([]);
+    await loadPublicAreas(nextClanId);
   }
   function renderAreaAlert(label: string, state: ResourceState<unknown>, retry: () => void) {
     if (state.status !== 'error' && state.status !== 'forbidden') return null;
@@ -181,7 +199,9 @@ export function UnifiedStatisticsHomePage() {
     try {
       const parsed = JSON.parse(sessionStorage.getItem(recentStorageKey) || '[]');
       setRecentViews(Array.isArray(parsed) ? parsed.slice(0, 6) : []);
-    } catch { setRecentViews([]); }
+    } catch {
+      setRecentViews([]);
+    }
   }, [recentStorageKey]);
 
   const generationBuckets = (dashboard?.generationDistribution || []).filter(item => item.count > 0);
@@ -250,10 +270,21 @@ export function UnifiedStatisticsHomePage() {
       <Col xs={24} xl={8}><Card title={cardTitle('待补充线索', <Button type="link" onClick={() => navigateToView('editingWorkspace')}>进入修谱</Button>)} className="public-home-page__discovery-card">{improvementHints.length ? <div className="public-home-page__compact-list">{improvementHints.map((item, index) => <button key={`${item.title}-${index}`} type="button" onClick={() => item.kind === '来源' ? navigateToView('sourceLibrary') : openCulture('items')}><span><strong>{item.title}</strong><small>{item.subtitle}</small></span><Tag color="orange">{item.kind}</Tag></button>)}</div> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前公开内容暂无待补充线索" />}</Card></Col>
     </Row>
 
-    <Row gutter={[16, 16]}>
-      <Col xs={24} xl={15}><Card title={cardTitle('世系概览', <Button type="link" onClick={() => navigateToView('treeProduct')}>进入完整世系图谱</Button>)}><div className="public-home-page__lineage-preview"><div className="public-home-page__lineage-root"><strong>{display(currentClan?.ancestorName, clanLabel(currentClan))}</strong><small>{generationCount ? `已记录 ${generationCount} 代` : '宗族世系'}</small></div><div className="public-home-page__lineage-branches">{branches.length ? branches.slice(0, 4).map(branch => <button key={branch.key} type="button" onClick={() => navigateToView('treeProduct', { key: `branch:${branch.key}`, title: display(branch.label, '未命名支派'), subtitle: `${branch.count} 人`, kind: '支派' })}><strong>{display(branch.label, '未命名支派')}</strong><small>{branch.count} 人</small></button>) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无公开世系与支派数据" />}</div></div></Card></Col>
-      <Col xs={24} xl={9}><Card title={cardTitle('主要支派分布', <Button type="link" onClick={() => navigateToView('treeProduct')}>查看全部</Button>)}>{branches.length ? <Space direction="vertical" size="middle" style={{ width: '100%' }}>{branches.map((item: HomeDashboardBucketResponse) => <button type="button" key={item.key} className="public-home-page__distribution-row" onClick={() => navigateToView('treeProduct')}><div className="public-home-page__distribution-label"><Text strong>{display(item.label, '未命名支派')}</Text><Text type="secondary">{item.count} 人 · {percent(item.count, dashboard?.peopleTotal || 0)}%</Text></div><Progress percent={percent(item.count, dashboard?.peopleTotal || 0)} showInfo={false} size="small" /></button>)}</Space> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无公开支派分布数据" />}</Card></Col>
-    </Row>
+    <Card title={cardTitle('世系概览', <Button type="link" onClick={() => navigateToView('treeProduct')}>进入完整世系图谱</Button>)}>
+      <div className="public-home-page__lineage-preview">
+        <div className="public-home-page__lineage-root"><strong>{display(currentClan?.ancestorName, clanLabel(currentClan))}</strong><small>{generationCount ? `已记录 ${generationCount} 代` : '宗族世系'}</small></div>
+        <div className="public-home-page__lineage-branches">
+          {branches.length ? branches.map(branch => {
+            const branchPercent = percent(branch.count, dashboard?.peopleTotal || 0);
+            return <button key={branch.key} type="button" onClick={() => navigateToView('treeProduct', { key: `branch:${branch.key}`, title: display(branch.label, '未命名支派'), subtitle: `${branch.count} 人`, kind: '支派' })}>
+              <strong>{display(branch.label, '未命名支派')}</strong>
+              <small>{branch.count} 人 · {branchPercent}%</small>
+              <span className="public-home-page__lineage-share" aria-hidden="true"><span style={{ width: `${branchPercent}%` }} /></span>
+            </button>;
+          }) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无公开世系与支派数据" />}
+        </div>
+      </div>
+    </Card>
 
     <Row gutter={[16, 16]}>
       <Col xs={24} xl={12}><Card title={cardTitle('宗族时间轴', <Button type="link" onClick={() => openCulture('items')}>查看完整大事记</Button>)}>{timelineEntries.length ? <div className="public-home-page__timeline">{timelineEntries.map((entry, index) => <button type="button" key={`${entry.title}-${index}`} onClick={() => openCulture(entry.targetTab, entry)}><span className="public-home-page__timeline-dot" /><Text type="secondary">{categoryText(entry.category)}</Text><strong>{entry.title}</strong><small>{display(entry.subtitle, `已关联 ${entry.sourceCount || 0} 条来源`)}</small></button>)}</div> : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="暂无已公开的迁徙、修谱或宗族纪事" />}</Card></Col>
