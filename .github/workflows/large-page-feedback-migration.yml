@@ -1,0 +1,54 @@
+name: Large Page Feedback Migration
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/genealogy-web/**"
+      - ".github/workflows/large-page-feedback-migration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-large-pages:
+    name: Migrate and verify large-page feedback
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/issue-780-finalize-large-page-feedback'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || 'agent/issue-780-finalize-large-page-feedback' }}
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Run large-page feedback migration
+        working-directory: frontend/genealogy-web
+        run: node scripts/finalize-large-page-feedback.mjs
+      - name: Install dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+      - name: Verify feedback audit and contract
+        working-directory: frontend/genealogy-web
+        run: |
+          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json
+          npm run test:feedback
+      - name: Typecheck frontend
+        working-directory: frontend/genealogy-web
+        run: npm run typecheck
+      - name: Build production frontend
+        working-directory: frontend/genealogy-web
+        run: npm run build
+      - name: Commit migration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A frontend/genealogy-web
+          git commit -m "refactor: finalize large-page feedback patterns"
+          git push origin HEAD:agent/issue-780-finalize-large-page-feedback
