@@ -39,6 +39,6 @@ test('workbench overview is responsive and drawer remains 720px', async () => {
   const css = await source('workbench-enhancements.css');
   assert.match(css, /grid-template-columns:\s*repeat\(5/);
   assert.match(css, /width:\s*min\(720px,\s*100vw\)/);
-  assert.match(css, /workbench-quality-feedback/);
+  assert.match(css, /workbench-quality-result/);
   assert.match(css, /@media\s*\(max-width:\s*575px\)/);
 });
