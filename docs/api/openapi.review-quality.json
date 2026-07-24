@@ -1,0 +1,251 @@
+{
+  "paths": {
+    "/api/v1/clans/{clanId}/review-quality-checks": {
+      "post": {
+        "operationId": "triggerReviewQualityCheck",
+        "tags": ["ReviewQuality"],
+        "summary": "Trigger a quality check for review tasks from the review list",
+        "description": "Requires review permission for the clan. The check only discovers and reports data-quality issues; it never changes the formal genealogy repository. Repeated triggers for the same effective scope and mode may return REVIEW_QUALITY_CHECK_ALREADY_RUNNING.",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewQualityCheckTriggerRequest" } } }
+        },
+        "responses": {
+          "202": {
+            "description": "Quality check accepted",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseReviewQualityCheckAcceptedResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/ReviewQualityBadRequest" },
+          "403": { "$ref": "#/components/responses/ReviewQualityForbidden" },
+          "409": { "$ref": "#/components/responses/ReviewQualityConflict" }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-quality-checks/{checkId}": {
+      "get": {
+        "operationId": "getReviewQualityCheck",
+        "tags": ["ReviewQuality"],
+        "summary": "Get quality-check status and result",
+        "description": "Returns execution status, summary, blocking semantics and rule details. Access is restricted to users who can view the corresponding review queue.",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "checkId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current quality-check status and result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseReviewQualityCheckResponse" } } }
+          },
+          "403": { "$ref": "#/components/responses/ReviewQualityForbidden" },
+          "404": { "$ref": "#/components/responses/ReviewQualityNotFound" }
+        }
+      }
+    },
+    "/api/v1/clans/{clanId}/review-tasks/{reviewTaskId}/quality-check": {
+      "get": {
+        "operationId": "getLatestReviewTaskQualityCheck",
+        "tags": ["ReviewQuality"],
+        "summary": "Get the latest quality-check result for one review task",
+        "description": "Read-only convenience endpoint for result presentation. Triggering remains a review-list action and is not required in the detail view.",
+        "parameters": [
+          { "name": "clanId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "reviewTaskId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest result; status NOT_CHECKED is returned when no check exists",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponseReviewQualityCheckResponse" } } }
+          },
+          "403": { "$ref": "#/components/responses/ReviewQualityForbidden" },
+          "404": { "$ref": "#/components/responses/ReviewQualityNotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "ReviewQualityBadRequest": {
+        "description": "Invalid scope, mode or filter combination",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewQualityErrorResponse" } } }
+      },
+      "ReviewQualityForbidden": {
+        "description": "User cannot trigger or view quality checks for this review queue",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewQualityErrorResponse" } } }
+      },
+      "ReviewQualityConflict": {
+        "description": "Duplicate execution, review-task state conflict or non-reviewable scope",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewQualityErrorResponse" } } }
+      },
+      "ReviewQualityNotFound": {
+        "description": "Quality check or review task not found in the clan",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewQualityErrorResponse" } } }
+      }
+    },
+    "schemas": {
+      "ReviewQualityCheckMode": {
+        "type": "string",
+        "enum": ["INCREMENTAL", "FULL", "REVIEW_GATE"],
+        "description": "INCREMENTAL checks changed data, FULL runs all enabled rules, REVIEW_GATE runs only rules that may block approval."
+      },
+      "ReviewQualityCheckStatus": {
+        "type": "string",
+        "enum": ["NOT_CHECKED", "QUEUED", "RUNNING", "PASSED", "ISSUES_FOUND", "FAILED"]
+      },
+      "ReviewQualityCheckScopeType": {
+        "type": "string",
+        "enum": ["TASK_IDS", "QUERY"]
+      },
+      "ReviewQualityBlockLevel": {
+        "type": "string",
+        "enum": ["NONE", "WARNING", "BLOCKING"]
+      },
+      "ReviewQualityRuleOutcome": {
+        "type": "string",
+        "enum": ["PASSED", "ISSUE", "SKIPPED", "FAILED"]
+      },
+      "ReviewQualityCheckQueryScope": {
+        "type": "object",
+        "description": "Snapshot of review-list filters. The server resolves matching task IDs at trigger time.",
+        "properties": {
+          "view": { "type": "string", "enum": ["pending", "submitted", "processed"], "default": "pending" },
+          "targetType": { "type": "string", "nullable": true },
+          "status": { "type": "string", "nullable": true },
+          "branchId": { "type": "integer", "format": "int64", "nullable": true },
+          "submittedFrom": { "type": "string", "format": "date-time", "nullable": true },
+          "submittedTo": { "type": "string", "format": "date-time", "nullable": true },
+          "processedFrom": { "type": "string", "format": "date-time", "nullable": true },
+          "processedTo": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "ReviewQualityCheckTriggerRequest": {
+        "type": "object",
+        "required": ["scopeType", "mode"],
+        "properties": {
+          "scopeType": { "$ref": "#/components/schemas/ReviewQualityCheckScopeType" },
+          "mode": { "$ref": "#/components/schemas/ReviewQualityCheckMode" },
+          "reviewTaskIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "uniqueItems": true,
+            "items": { "type": "integer", "format": "int64" },
+            "description": "Required when scopeType is TASK_IDS and ignored otherwise."
+          },
+          "query": {
+            "$ref": "#/components/schemas/ReviewQualityCheckQueryScope",
+            "description": "Required when scopeType is QUERY and ignored otherwise."
+          },
+          "ruleCodes": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string" },
+            "description": "Optional rule subset. REVIEW_GATE still restricts execution to enabled gate rules."
+          }
+        }
+      },
+      "ReviewQualityCheckAcceptedResponse": {
+        "type": "object",
+        "required": ["checkId", "status", "scopeType", "mode", "acceptedTaskCount", "acceptedAt"],
+        "properties": {
+          "checkId": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/ReviewQualityCheckStatus" },
+          "scopeType": { "$ref": "#/components/schemas/ReviewQualityCheckScopeType" },
+          "mode": { "$ref": "#/components/schemas/ReviewQualityCheckMode" },
+          "acceptedTaskCount": { "type": "integer", "minimum": 0 },
+          "acceptedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReviewQualityCheckSummary": {
+        "type": "object",
+        "required": ["taskCount", "ruleCount", "passedRuleCount", "issueCount", "blockingIssueCount", "warningIssueCount", "reviewBlocked"],
+        "properties": {
+          "taskCount": { "type": "integer", "minimum": 0 },
+          "ruleCount": { "type": "integer", "minimum": 0 },
+          "passedRuleCount": { "type": "integer", "minimum": 0 },
+          "issueCount": { "type": "integer", "minimum": 0 },
+          "blockingIssueCount": { "type": "integer", "minimum": 0 },
+          "warningIssueCount": { "type": "integer", "minimum": 0 },
+          "reviewBlocked": { "type": "boolean", "description": "True only when at least one enabled rule produced a BLOCKING issue. Approval must be rejected by the service while true." }
+        }
+      },
+      "ReviewQualityRuleResult": {
+        "type": "object",
+        "required": ["ruleCode", "ruleName", "outcome", "blockLevel", "affectedTaskCount"],
+        "properties": {
+          "ruleCode": { "type": "string" },
+          "ruleName": { "type": "string" },
+          "outcome": { "$ref": "#/components/schemas/ReviewQualityRuleOutcome" },
+          "blockLevel": { "$ref": "#/components/schemas/ReviewQualityBlockLevel" },
+          "affectedTaskCount": { "type": "integer", "minimum": 0 },
+          "message": { "type": "string", "nullable": true },
+          "affectedReviewTaskIds": { "type": "array", "items": { "type": "integer", "format": "int64" } }
+        }
+      },
+      "ReviewQualityCheckResponse": {
+        "type": "object",
+        "required": ["status", "reviewBlocked"],
+        "properties": {
+          "checkId": { "type": "string", "format": "uuid", "nullable": true },
+          "status": { "$ref": "#/components/schemas/ReviewQualityCheckStatus" },
+          "scopeType": { "$ref": "#/components/schemas/ReviewQualityCheckScopeType", "nullable": true },
+          "mode": { "$ref": "#/components/schemas/ReviewQualityCheckMode", "nullable": true },
+          "reviewBlocked": { "type": "boolean" },
+          "summary": { "$ref": "#/components/schemas/ReviewQualityCheckSummary", "nullable": true },
+          "rules": { "type": "array", "items": { "$ref": "#/components/schemas/ReviewQualityRuleResult" } },
+          "queuedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "lastCheckedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "failureCode": { "type": "string", "nullable": true },
+          "failureMessage": { "type": "string", "nullable": true }
+        }
+      },
+      "ReviewQualityErrorCode": {
+        "type": "string",
+        "enum": [
+          "REVIEW_QUALITY_INVALID_SCOPE",
+          "REVIEW_QUALITY_CHECK_ALREADY_RUNNING",
+          "REVIEW_QUALITY_TASK_STATE_CONFLICT",
+          "REVIEW_QUALITY_FORBIDDEN",
+          "REVIEW_QUALITY_NOT_REVIEWABLE",
+          "REVIEW_QUALITY_NOT_FOUND"
+        ]
+      },
+      "ReviewQualityErrorResponse": {
+        "type": "object",
+        "required": ["success", "code", "message"],
+        "properties": {
+          "success": { "type": "boolean", "enum": [false] },
+          "code": { "$ref": "#/components/schemas/ReviewQualityErrorCode" },
+          "message": { "type": "string" },
+          "traceId": { "type": "string", "nullable": true }
+        }
+      },
+      "ApiResponseReviewQualityCheckAcceptedResponse": {
+        "type": "object",
+        "required": ["success", "data"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ReviewQualityCheckAcceptedResponse" },
+          "traceId": { "type": "string" }
+        }
+      },
+      "ApiResponseReviewQualityCheckResponse": {
+        "type": "object",
+        "required": ["success", "data"],
+        "properties": {
+          "success": { "type": "boolean" },
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ReviewQualityCheckResponse" },
+          "traceId": { "type": "string" }
+        }
+      }
+    }
+  }
+}
