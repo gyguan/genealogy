@@ -100,7 +100,7 @@ function qualityPanel(resultCard: HTMLElement) {
   ];
   buttons.forEach(([label, scope, gate]) => { const button = document.createElement('button'); button.type = 'button'; button.textContent = qualityLoading ? '检查中…' : label; button.disabled = qualityLoading; if (gate) button.className = 'is-primary'; button.addEventListener('click', () => void runQuality(resultCard, scope, gate)); actions.appendChild(button); });
   panel.appendChild(actions);
-  if (qualityError) { const error = document.createElement('div'); error.className = 'workbench-quality-result is-error'; error.textContent = qualityError; panel.appendChild(error); }
+  if (qualityError) { const error = document.createElement('div'); error.className = 'workbench-quality-result is-failed'; error.textContent = qualityError; panel.appendChild(error); }
   if (latestQuality) {
     const summary = document.createElement('div'); summary.className = `workbench-quality-result ${latestQuality.reviewBlocked ? 'is-blocked' : 'is-success'}`;
     summary.innerHTML = `<strong>${latestQuality.reviewBlocked ? '禁止提交审核' : '检查已完成'}</strong><span>检查 ${latestQuality.summary?.subjectCount || 0} 个对象，发现 ${latestQuality.summary?.issueCount || 0} 个问题，其中阻断 ${latestQuality.summary?.blockingIssueCount || 0} 个。</span>`;
