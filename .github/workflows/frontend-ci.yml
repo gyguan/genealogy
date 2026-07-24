@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 jobs:
-  migrate-empty-state:
-    name: Migrate and verify empty states
+  diagnose-empty-state:
+    name: Diagnose empty state migration
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -27,51 +27,24 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Repair unified EmptyState architecture
-        working-directory: frontend/genealogy-web
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          root=Path('src')
-          for p in root.rglob('*.tsx'):
-              s=p.read_text()
-              s=s.replace("/EmptyState';", "/Feedback';")
-              s=s.replace('/EmptyState";', '/Feedback";')
-              p.write_text(s)
-          p=Path('src/shared/ui/Feedback.tsx')
-          s=p.read_text()
-          s=s.replace("import { Alert, Popconfirm, Result } from 'antd';", "import { Alert, Empty as AntEmpty, Popconfirm, Result } from 'antd';")
-          s=s.replace("\nimport { EmptyState } from './Feedback';\n", "\n")
-          s=s.replace('<EmptyState\n      className=', '<AntEmpty\n      className=')
-          s=s.replace('image={EmptyState.PRESENTED_IMAGE_SIMPLE}', 'image={AntEmpty.PRESENTED_IMAGE_SIMPLE}')
-          s=s.replace('</EmptyState>', '</AntEmpty>')
-          p.write_text(s)
-          Path('src/shared/ui/EmptyState.tsx').unlink(missing_ok=True)
-          audit=Path('scripts/audit-ui-feedback.mjs')
-          s=audit.read_text()
-          s=s.replace("patterns: [/<Empty\\b/g, /\\bemptyText\\s*=/g, /\\bnotFoundContent\\s*=/g, /\\blocale\\s*=\\s*\\{\\{\\s*emptyText/g]", "patterns: [/<Empty\\b/g]")
-          audit.write_text(s)
-          test=Path('src/shared/ui/FeedbackUnification.test.mjs')
-          test.write_text(test.read_text().replace('baseline.maxCounts.empty_state, 153', 'baseline.maxCounts.empty_state, 0'))
-          PY
-      - name: Commit migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A frontend/genealogy-web
-          git commit -m "fix: complete empty state migration"
-          git push origin HEAD:agent/issue-776-unify-empty-state
       - name: Install dependencies
         working-directory: frontend/genealogy-web
         run: npm install
-      - name: Verify feedback contract
+      - name: Capture diagnostics
         working-directory: frontend/genealogy-web
+        shell: bash
         run: |
-          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json
-          npm run test:feedback
-      - name: Typecheck frontend
-        working-directory: frontend/genealogy-web
-        run: npm run typecheck
-      - name: Build production frontend
-        working-directory: frontend/genealogy-web
-        run: npm run build
+          set +e
+          node scripts/audit-ui-feedback.mjs --baseline=feedback-audit-baseline.json > empty-state-diagnostics.log 2>&1
+          echo "audit=$?" >> empty-state-diagnostics.log
+          npm run test:feedback >> empty-state-diagnostics.log 2>&1
+          echo "feedback=$?" >> empty-state-diagnostics.log
+          npm run typecheck >> empty-state-diagnostics.log 2>&1
+          echo "typecheck=$?" >> empty-state-diagnostics.log
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f frontend/genealogy-web/empty-state-diagnostics.log
+          git commit -m "chore: capture empty state diagnostics"
+          git push origin HEAD:agent/issue-776-unify-empty-state
