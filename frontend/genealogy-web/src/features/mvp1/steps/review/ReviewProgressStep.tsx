@@ -40,7 +40,7 @@ type ReviewCandidate = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
 };
 
 const targetTypeOptions: { value: ReviewTargetType; label: string }[] = [
@@ -71,7 +71,7 @@ function relationshipObjectName(row?: RelationshipLike) {
   return `${from} → ${to} · ${relation}`;
 }
 
-export function ReviewProgressStep({ notify }: Props) {
+export function ReviewProgressStep({}: Props) {
   const workspace = useWorkspace();
   const [reviewForm, setReviewForm] = useState<ReviewForm>({ ...defaultReviewForm });
   const [clans, setClans] = useState<ClanLike[]>([]);

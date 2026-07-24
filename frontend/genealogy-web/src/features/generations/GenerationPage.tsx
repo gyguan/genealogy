@@ -7,7 +7,9 @@ import { DetailCard } from '../../shared/ui/DetailCard';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
-export function GenerationPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+import { feedback } from '../../shared/ui/OperationFeedback';
+
+export function GenerationPage({}: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [schemeId, setSchemeId] = useState('');
   const [schemeName, setSchemeName] = useState('');
@@ -20,7 +22,7 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
 
   function requireSelectedScheme() {
     if (!schemeId) {
-      notify({ message: '请先创建或选择字辈方案，方案ID由系统自动生成' }, true);
+      feedback.from({ message: '请先创建或选择字辈方案，方案ID由系统自动生成' }, true);
       return false;
     }
     return true;
@@ -40,14 +42,14 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
       setSelectedScheme(res);
     }
     setResult({ message: '字辈方案创建成功，方案ID由系统自动生成', id: res?.id });
-    notify({ message: '字辈方案创建成功，方案ID由系统自动生成', id: res?.id });
+    feedback.from({ message: '字辈方案创建成功，方案ID由系统自动生成', id: res?.id });
   }
 
   async function listSchemes() {
     if (!workspace.clanId) throw new Error('请先选择宗族');
     const res = await apiClient.get(`/clans/${workspace.clanId}/generation-schemes`);
     setSchemes(res);
-    notify({ message: '字辈方案查询完成' });
+    feedback.from({ message: '字辈方案查询完成' });
   }
 
   async function selectScheme(row: any) {
@@ -61,7 +63,7 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
     if (!requireSelectedScheme()) return;
     const res: any = await apiClient.post(`/generation-schemes/${schemeId}/items`, { generationNo: Number(generationNo), word });
     setResult({ message: '字辈明细已追加', id: res?.id });
-    notify({ message: '字辈明细已追加', id: res?.id });
+    feedback.from({ message: '字辈明细已追加', id: res?.id });
     await listWords();
   }
 
@@ -69,14 +71,14 @@ export function GenerationPage({ notify }: { notify: (data: unknown, error?: boo
     if (!requireSelectedScheme()) return;
     const res = await apiClient.get(`/generation-schemes/${schemeId}/items`);
     setItems(res);
-    notify({ message: '字辈明细查询完成' });
+    feedback.from({ message: '字辈明细查询完成' });
   }
 
   async function queryWord() {
     if (!requireSelectedScheme()) return;
     const res = await apiClient.get(`/generation-schemes/${schemeId}/items/${generationNo}`);
     setItems([res]);
-    notify({ message: '字辈查询完成' });
+    feedback.from({ message: '字辈查询完成' });
   }
 
   return (

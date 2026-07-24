@@ -9,7 +9,9 @@ import { Modal } from '../../shared/ui/Modal';
 import { Panel } from '../../shared/ui/Panel';
 import { ResultNotice } from '../../shared/ui/ResultNotice';
 
-export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) => void }) {
+import { feedback } from '../../shared/ui/OperationFeedback';
+
+export function ClanPage({}: { notify: (data: unknown, error?: boolean) => void }) {
   const workspace = useWorkspace();
   const [form, setForm] = useState({ clanName: '', surname: '', hallName: '', originPlace: '' });
   const [list, setList] = useState<PageResponse<any> | null>(null);
@@ -28,7 +30,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
     try {
       await action();
     } catch (error) {
-      notify({ message: (error as Error).message || '操作失败' }, true);
+      feedback.from({ message: (error as Error).message || '操作失败' }, true);
     } finally {
       setLoading(false);
     }
@@ -40,7 +42,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       if (data?.id) workspace.setClanId(String(data.id));
       setResult({ message: '宗族创建成功，编码已自动生成' });
       setCreateOpen(false);
-      notify({ message: '宗族创建成功，编码已自动生成' });
+      feedback.from({ message: '宗族创建成功，编码已自动生成' });
       await load();
     });
   }
@@ -50,7 +52,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
     setList(data);
     const first = data.records?.[0];
     if (!workspace.clanId && first?.id) workspace.setClanId(String(first.id));
-    notify({ message: `已查询到 ${data.records?.length || 0} 个宗族` });
+    feedback.from({ message: `已查询到 ${data.records?.length || 0} 个宗族` });
   }
 
   async function detail(id: string) {
@@ -59,7 +61,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       setSelected(data);
       workspace.setClanId(String((data as any)?.id || id));
       setDetailOpen(true);
-      notify({ message: '宗族详情查询完成' });
+      feedback.from({ message: '宗族详情查询完成' });
     });
   }
 
@@ -75,7 +77,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       });
       setSelected(data);
       setResult({ message: '宗族信息已更新' });
-      notify({ message: '宗族信息已更新' });
+      feedback.from({ message: '宗族信息已更新' });
       await load();
     });
   }
@@ -88,7 +90,7 @@ export function ClanPage({ notify }: { notify: (data: unknown, error?: boolean) 
       setDetailOpen(false);
       setSelected(undefined);
       setResult({ message: '宗族已删除' });
-      notify({ message: '宗族已删除' });
+      feedback.from({ message: '宗族已删除' });
       await load();
     });
   }

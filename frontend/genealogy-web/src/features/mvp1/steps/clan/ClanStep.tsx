@@ -27,7 +27,7 @@ type ClanRecord = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
   onCreated?: (clanId: string) => void;
 };
 

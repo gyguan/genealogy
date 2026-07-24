@@ -19,6 +19,8 @@ import {
 import type { PersonArchiveSearchState } from './personArchiveUrlState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type Props = { notify: (data: unknown, error?: boolean) => void };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
 type NavigationAction = 'name' | 'view' | 'edit';
@@ -79,7 +81,7 @@ function saveBlob(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function PersonArchiveSearchPage({ notify }: Props) {
+export function PersonArchiveSearchPage({}: Props) {
   const workspace = useWorkspace();
   const initialState = useRef(readPersonArchiveSearch()).current;
   const initialHasQuery = useRef(hasPersonArchiveQuery()).current;
@@ -194,7 +196,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
     workspace.setClanId(nextClanId); workspace.setBranchId('');
     setForm(formOf(emptySearch)); setPageNo(1); setRawData(undefined); setQueryError(''); setRefreshError(''); setForbidden(false);
     writePersonArchiveUrl(emptySearch, 'replace');
-    if (changed) notify({ message: '已切换宗族，查询条件和结果已清空。' });
+    if (changed) feedback.from({ message: '已切换宗族，查询条件和结果已清空。' });
   }
   function changeBranch(nextBranchId: string) { workspace.setBranchId(nextBranchId); patch('branchId', nextBranchId); }
   function appendMulti(params: URLSearchParams, key: string, values: string[]) { values.forEach(value => params.append(key, value)); }
@@ -241,7 +243,7 @@ export function PersonArchiveSearchPage({ notify }: Props) {
   function openEditor(row: any, triggerId?: string) { const id = personId(row); if (!id) return; rememberNavigation(triggerId); workspace.setPersonId(String(id)); navigateToPersonEdit(id); }
   function createPerson() {
     const entryError = getPersonCreateEntryError({ clanId: workspace.clanId, branchId: form.branchId });
-    if (entryError) { notify({ message: entryError }, true); return; }
+    if (entryError) { feedback.from({ message: entryError }, true); return; }
     workspace.setBranchId(form.branchId);
     rememberNavigation();
     const url = new URL(window.location.href);
@@ -257,18 +259,18 @@ export function PersonArchiveSearchPage({ notify }: Props) {
       const params = queryParams(form, false);
       const blob = await apiClient.download(`/clans/${workspace.clanId}/exports/persons/search.csv?${params.toString()}`);
       saveBlob(blob, 'persons-search.csv');
-      notify({ message: `已导出当前查询条件下的 ${total} 条人物档案。` });
+      feedback.from({ message: `已导出当前查询条件下的 ${total} 条人物档案。` });
     } catch (error) {
-      notify({ message: errorText(error, '导出人物失败，请稍后重试。') }, true);
+      feedback.from({ message: errorText(error, '导出人物失败，请稍后重试。') }, true);
     } finally {
       setExporting(false);
     }
   }
   async function copyPersonId(row: any) {
     const id = personId(row);
-    if (!id) { notify({ message: '该人物暂无可复制编号' }, true); return; }
-    try { await navigator.clipboard.writeText(String(id)); notify({ message: '人物编号已复制' }); }
-    catch { notify({ message: `人物编号：${id}` }); }
+    if (!id) { feedback.from({ message: '该人物暂无可复制编号' }, true); return; }
+    try { await navigator.clipboard.writeText(String(id)); feedback.from({ message: '人物编号已复制' }); }
+    catch { feedback.from({ message: `人物编号：${id}` }); }
   }
   function moreMenu(row: any): MenuProps { return { items: [{ key: 'copy-id', label: '复制人物编号' }], onClick: info => { info.domEvent.stopPropagation(); if (info.key === 'copy-id') void copyPersonId(row); } }; }
   function branchText(row: any) { const branchId = String(personBranchId(row) || ''); const branch = branchOptions.find(item => String(item.id) === branchId); return row.branchName || row.branch?.branchName || branch?.branchName || '支派待维护'; }

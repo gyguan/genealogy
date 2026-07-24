@@ -5,6 +5,8 @@ import { DataTable } from '../../shared/ui/DataTable';
 import { Panel } from '../../shared/ui/Panel';
 import { DetailCard } from '../../shared/ui/DetailCard';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type Props = { notify: (data: unknown, error?: boolean) => void };
 
 type ReviewDiff = {
@@ -25,19 +27,19 @@ function changeText(value?: string) {
   return dict[value || ''] || value || '-';
 }
 
-export function ReviewDiffPage({ notify }: Props) {
+export function ReviewDiffPage({}: Props) {
   const [reviewTaskId, setReviewTaskId] = useState('');
   const [revisionId, setRevisionId] = useState('');
   const [diff, setDiff] = useState<ReviewDiff | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function queryByTask() {
-    if (!reviewTaskId) { notify({ message: '请输入审核任务ID' }, true); return; }
+    if (!reviewTaskId) { feedback.from({ message: '请输入审核任务ID' }, true); return; }
     await query(`/review-tasks/${reviewTaskId}/diff`);
   }
 
   async function queryByRevision() {
-    if (!revisionId) { notify({ message: '请输入修订ID' }, true); return; }
+    if (!revisionId) { feedback.from({ message: '请输入修订ID' }, true); return; }
     await query(`/revisions/${revisionId}/diff`);
   }
 
@@ -47,9 +49,9 @@ export function ReviewDiffPage({ notify }: Props) {
     try {
       const data = await apiClient.get<ReviewDiff>(path);
       setDiff(data);
-      notify({ message: '审核 Diff 查询完成' });
+      feedback.from({ message: '审核 Diff 查询完成' });
     } catch (error) {
-      notify({ message: (error as Error).message || '审核 Diff 查询失败' }, true);
+      feedback.from({ message: (error as Error).message || '审核 Diff 查询失败' }, true);
     } finally {
       setLoading(false);
     }

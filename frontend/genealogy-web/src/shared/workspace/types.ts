@@ -21,7 +21,7 @@ export const defaultWorkspace: WorkspaceContext = {
 export type WorkspaceUpdater = (patch: Partial<WorkspaceContext>) => void;
 
 export type FeatureProps = {
-  notify: (data: unknown, error?: boolean) => void;
+
   workspace: WorkspaceContext;
   updateWorkspace: WorkspaceUpdater;
 };

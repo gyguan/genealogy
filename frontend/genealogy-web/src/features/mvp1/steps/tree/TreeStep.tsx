@@ -36,7 +36,7 @@ type TreeEdgeLike = {
 };
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
 };
 
 function personOptionLabel(person: PersonLike) {
@@ -46,7 +46,7 @@ function personOptionLabel(person: PersonLike) {
   return `${name} · ${generation}${word}`;
 }
 
-export function TreeStep({ notify }: Props) {
+export function TreeStep({}: Props) {
   const workspace = useWorkspace();
   const [treeMode, setTreeMode] = useState<TreeMode>('family');
   const [depth, setDepth] = useState('5');

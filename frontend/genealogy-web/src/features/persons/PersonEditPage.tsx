@@ -30,9 +30,11 @@ import type { PersonDatePrecision, PersonEditForm } from './personEditModel';
 import { visiblePersonStatusActions } from './personStatusActions';
 import type { PersonStatusAction, PersonStatusActionKey } from './personStatusActions';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type Props = {
   personId: string;
-  notify: (data: unknown, error?: boolean) => void;
+
   onCancel: () => void;
   onNavigationGuardChange?: (state: EntityNavigationGuardState) => void;
 };
@@ -317,7 +319,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
       form.setFieldsValue(toPersonEditForm(updated));
       setDirty(false);
       setSaved(true);
-      notify({ message: allowsDirectEventSave(status) ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核' });
+      feedback.from({ message: allowsDirectEventSave(status) ? '人物资料及关键事件已保存' : '人物资料及关键事件已提交审核' });
     } catch (error) {
       setDirty(true);
       setSaveError((error as Error).message || '人物资料及关键事件保存失败');
@@ -333,7 +335,7 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
     setActionLoading(action.key);
     try {
       await apiClient.post(action.endpoint(personId));
-      notify({ message: `${action.label}成功` });
+      feedback.from({ message: `${action.label}成功` });
       await loadPerson();
     } catch (error) {
       setActionError((error as Error).message || `${action.label}失败`);

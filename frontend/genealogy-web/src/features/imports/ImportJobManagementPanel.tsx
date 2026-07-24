@@ -7,6 +7,8 @@ import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { importFileFormatOptions, importFileFormatText, importTypeOptions, importTypeText } from './import-type-registry';
 import { ImportFailureBulkActions } from './ImportFailureBulkActions';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type Props = { notify: (data: unknown, error?: boolean) => void; refreshKey: number };
 
 type ImportJobSummary = {
@@ -157,7 +159,7 @@ function canSubmitReview(job: ImportJobSummary) {
     && ['not_submitted', 'rejected'].includes(String(job.reviewStatus || 'not_submitted').toLowerCase());
 }
 
-export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
+export function ImportJobManagementPanel({ refreshKey }: Props) {
   const workspace = useWorkspace();
   const [form] = Form.useForm<RetryFormValues>();
   const [jobs, setJobs] = useState<ImportJobSummary[]>([]);
@@ -232,7 +234,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     } catch (error) {
       setRows([]);
       setRowTotal(0);
-      notify({ message: (error as Error).message || '失败行加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '失败行加载失败' }, true);
     } finally {
       setRowLoading(false);
     }
@@ -258,7 +260,7 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
         setRowTotal(0);
       }
     } catch (error) {
-      notify({ message: (error as Error).message || '导入任务详情加载失败' }, true);
+      feedback.from({ message: (error as Error).message || '导入任务详情加载失败' }, true);
     } finally {
       setDetailLoading(false);
     }
@@ -317,18 +319,18 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           : `/clans/${workspace.clanId}/imports/${selectedJob.id}/rows/${editingRow.id}/retry`;
       const result = await apiClient.post<ImportJobRow>(endpoint, { ...values, expectedVersion: editingRow.version ?? 0 });
       if (result.rowStatus === 'draft_created') {
-        notify({ message: `第 ${result.rowNo || editingRow.rowNo || '-'} 行修正成功，已生成草稿` });
+        feedback.from({ message: `第 ${result.rowNo || editingRow.rowNo || '-'} 行修正成功，已生成草稿` });
         setEditingRow(null);
         form.resetFields();
       } else {
         setEditingRow(result);
-        notify({ message: result.errorMessage || '修正后仍未通过校验' }, true);
+        feedback.from({ message: result.errorMessage || '修正后仍未通过校验' }, true);
       }
       await refreshDetail(selectedJob.id);
       await loadRows(selectedJob.id, rowPageNo, rowPageSize);
       await loadJobs();
     } catch (error) {
-      notify({ message: (error as Error).message || '失败行重试失败' }, true);
+      feedback.from({ message: (error as Error).message || '失败行重试失败' }, true);
     } finally {
       setRetryLoading(false);
     }
@@ -340,13 +342,13 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
     try {
       const task = await apiClient.post<ReviewTaskCreated>(`/clans/${workspace.clanId}/imports/${reviewJob.id}/submit-review`, { comment: reviewComment.trim() || undefined });
       if (task.id) workspace.setReviewTaskId(String(task.id));
-      notify({ message: `导入批次已提交第 ${(reviewJob.reviewRound || 0) + 1} 轮审核` });
+      feedback.from({ message: `导入批次已提交第 ${(reviewJob.reviewRound || 0) + 1} 轮审核` });
       setReviewJob(null);
       setReviewComment('');
       await refreshDetail(reviewJob.id);
       await loadJobs();
     } catch (error) {
-      notify({ message: (error as Error).message || '提交审核失败' }, true);
+      feedback.from({ message: (error as Error).message || '提交审核失败' }, true);
     } finally {
       setReviewLoading(false);
     }
@@ -472,7 +474,6 @@ export function ImportJobManagementPanel({ notify, refreshKey }: Props) {
           {(selectedJob.failureCount || 0) > 0 ? (
             <>
               <ImportFailureBulkActions
-                notify={notify}
                 clanId={workspace.clanId}
                 jobId={selectedJob.id}
                 selectedRows={rows.filter(row => selectedRowKeys.includes(row.id))}

@@ -20,6 +20,8 @@ import {
 } from './import-task-model';
 import type { ImportTaskQueryState } from './import-task-query-state';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 const LOAD_LIMIT = 200;
 const actionLabels: Record<ImportExecutionAction, string> = { pause: '暂停', resume: '继续', cancel: '取消', retry: '重试' };
 const typeLabels = { person: '人物', relationship: '关系', source: '来源' } as const;
@@ -44,7 +46,7 @@ type Props = {
   branchName?: string;
   refreshKey: number;
   query: ImportTaskQueryState;
-  notify: (data: unknown, error?: boolean) => void;
+
   onChanged: () => void;
   onTotalChange: (value: number) => void;
   onPageChange: (pageNo: number, pageSize: number) => void;
@@ -111,11 +113,11 @@ export function AsyncImportExecutionPanel({
     setActionKey(key);
     try {
       await apiClient.post(`/clans/${clanId}/imports/${job.id}/execution/${action}`, {});
-      notify({ message: `任务已${actionLabels[action]}` });
+      feedback.from({ message: `任务已${actionLabels[action]}` });
       await load();
       onChanged();
     } catch (error) {
-      notify({ message: (error as Error).message || `${actionLabels[action]}任务失败` }, true);
+      feedback.from({ message: (error as Error).message || `${actionLabels[action]}任务失败` }, true);
     } finally {
       setActionKey('');
     }

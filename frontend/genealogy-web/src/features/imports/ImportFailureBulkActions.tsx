@@ -22,7 +22,7 @@ type Props = {
   selectedRows: SelectedRow[];
   totalFailures: number;
   editable: boolean;
-  notify: (data: unknown, error?: boolean) => void;
+
   onChanged: () => Promise<void> | void;
 };
 
@@ -49,10 +49,7 @@ export function ImportFailureBulkActions({
   selectedRows,
   totalFailures,
   editable,
-  notify: _notify,
-  onChanged
-}: Props) {
-  const [loadingAction, setLoadingAction] = useState('');
+
   const [excludeScope, setExcludeScope] = useState<ExcludeScope>();
   const [excludeReason, setExcludeReason] = useState('');
   const [result, setResult] = useState<ImportRowBulkOperationResponse>();

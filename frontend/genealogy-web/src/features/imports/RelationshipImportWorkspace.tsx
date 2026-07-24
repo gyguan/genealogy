@@ -4,7 +4,7 @@ import type { ImportPreviewRowBase } from './import-preview-model';
 import { StandardImportWorkspace } from './StandardImportWorkspace';
 
 type Props = {
-  notify: (data: unknown, error?: boolean) => void;
+
   clanId: string;
   branchId: string;
   branchName: string;

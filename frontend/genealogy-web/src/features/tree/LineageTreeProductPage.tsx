@@ -75,9 +75,11 @@ import './lineage-workbench-issue376.css';
 import './lineage-double-card.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
-  notify: (data: unknown, error?: boolean) => void;
+
   onNavigate?: (view: NavigateTarget) => void;
 };
 type LoadState = { loading: boolean; error: string };
@@ -241,7 +243,7 @@ function RelationScopeSelect({ value, onChange }: {
   );
 }
 
-export function LineageTreeProductPage({ notify, onNavigate }: Props) {
+export function LineageTreeProductPage({ onNavigate }: Props) {
   const workspace = useWorkspace();
   const screens = Grid.useBreakpoint();
   const requestGate = useRef(new LineageRequestGate());
@@ -471,7 +473,7 @@ export function LineageTreeProductPage({ notify, onNavigate }: Props) {
 
   async function handleClanChange(clanId: string) {
     await initializeClan(clanId);
-    notify({ message: clanId ? '宗族已切换，图谱查询范围已重新初始化' : '已清空宗族选择' });
+    feedback.from({ message: clanId ? '宗族已切换，图谱查询范围已重新初始化' : '已清空宗族选择' });
   }
 
   function handleBranchChange(branchId: string) {

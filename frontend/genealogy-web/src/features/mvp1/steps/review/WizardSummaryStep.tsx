@@ -9,7 +9,7 @@ import { useWizardCompletion } from '../../WizardCompletionContext';
 import './wizard-summary-step.css';
 
 type Props = {
-  notify?: (data: unknown, error?: boolean) => void;
+
   onStepChange: (step: Mvp1StepKey) => void;
 };
 
@@ -47,7 +47,7 @@ function SectionCard({ section, onRetry }: { section: SummarySection; onRetry: (
   );
 }
 
-export function WizardSummaryStep({ notify, onStepChange }: Props) {
+export function WizardSummaryStep({ onStepChange }: Props) {
   const workspace = useWorkspace();
   const completion = useWizardCompletion();
   const [summary, setSummary] = useState<SummaryData>();

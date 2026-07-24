@@ -77,9 +77,11 @@ import './lineage-workbench-issue376.css';
 import './lineage-double-card.css';
 import './lineage-tabbed-page.css';
 
+import { feedback } from '../../shared/ui/OperationFeedback';
+
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
-  notify: (data: unknown, error?: boolean) => void;
+
   onNavigate?: (view: NavigateTarget) => void;
 };
 type LoadState = { loading: boolean; error: string };
@@ -248,7 +250,7 @@ function DetailSummary({ target, indicators }: { target: SummaryTarget; indicato
   );
 }
 
-export function LineageTreeTabbedPage({ notify, onNavigate }: Props) {
+export function LineageTreeTabbedPage({ onNavigate }: Props) {
   const workspace = useWorkspace();
   const screens = Grid.useBreakpoint();
   const requestGate = useRef(new LineageRequestGate());
@@ -505,7 +507,7 @@ export function LineageTreeTabbedPage({ notify, onNavigate }: Props) {
 
   async function handleClanChange(clanId: string) {
     await initializeClan(clanId);
-    notify({ message: clanId ? '宗族已切换，两类图谱查询范围已重新初始化' : '已清空宗族选择' });
+    feedback.from({ message: clanId ? '宗族已切换，两类图谱查询范围已重新初始化' : '已清空宗族选择' });
   }
 
   async function handlePersonBranchChange(branchId: string) {

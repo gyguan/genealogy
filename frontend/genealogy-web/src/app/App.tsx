@@ -10,9 +10,7 @@ import {
 import type { EntityNavigationGuardState } from '../shared/navigation/entityNavigationGuard';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
-import type { FeedbackTone } from '../shared/ui/Feedback';
-import { ToastStack } from '../shared/ui/ToastStack';
-import type { ToastItem } from '../shared/ui/ToastStack';
+import { feedback } from '../shared/ui/OperationFeedback';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
 import { BookletActions } from '../features/booklets/BookletActions';
@@ -66,28 +64,6 @@ function writeViewToUrl(key: ViewKey, mode: 'push' | 'replace' = 'push') {
   navigateToView(key as AppViewKey, window.location.href, { mode });
 }
 
-function feedbackRecord(data: unknown) {
-  return data && typeof data === 'object' ? data as Record<string, unknown> : null;
-}
-
-function getMessage(data: unknown, fallback: string) {
-  if (typeof data === 'string') return data;
-  const record = feedbackRecord(data);
-  return String(record?.message || record?.errorMessage || record?.status || fallback);
-}
-
-function getDescription(data: unknown) {
-  const value = feedbackRecord(data)?.description;
-  return value === null || value === undefined ? undefined : String(value);
-}
-
-function getFeedbackTone(data: unknown, error: boolean): FeedbackTone {
-  if (error) return 'error';
-  const type = feedbackRecord(data)?.type;
-  return type === 'success' || type === 'info' || type === 'warning' || type === 'error'
-    ? type
-    : 'success';
-}
 
 export function App() {
   return (
@@ -120,7 +96,6 @@ function AppShell() {
   const [personDetailRoute, setPersonDetailRoute] = useState<PersonDetailRoute | null>(readPersonDetailRoute);
   const [personEditRoute, setPersonEditRoute] = useState<PersonEditRoute | null>(readPersonEditRoute);
   const [pageEntryVersion, setPageEntryVersion] = useState(0);
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
   const navigationGuardRef = useRef<EntityNavigationGuardState>(EMPTY_ENTITY_NAVIGATION_GUARD);
   const guardedUrlRef = useRef('');
@@ -142,7 +117,7 @@ function AppShell() {
   }
   function onLoginChanged() { setAuthStatus('authenticated'); }
   function logout() {
-    apiClient.post('/auth/logout').catch(() => undefined).finally(() => { apiClient.clearToken(); setAuthStatus('anonymous'); notify({ message: '已退出登录' }); });
+    apiClient.post('/auth/logout').catch(() => undefined).finally(() => { apiClient.clearToken(); setAuthStatus('anonymous'); feedback.from({ message: '已退出登录' }); });
   }
   function setNavigationGuard(state: EntityNavigationGuardState) {
     navigationGuardRef.current = state;
@@ -151,7 +126,7 @@ function AppShell() {
   function allowNavigation() {
     const decision = entityNavigationDecision(navigationGuardRef.current);
     if (decision === 'block_busy') {
-      notify({ message: '人物档案正在提交，请稍后再离开。' }, true);
+      feedback.from({ message: '人物档案正在提交，请稍后再离开。' }, true);
       return false;
     }
     if (decision === 'confirm_dirty' && !window.confirm(entityNavigationPrompt())) return false;
@@ -168,7 +143,7 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    const onUnhandled = (event: PromiseRejectionEvent) => { event.preventDefault(); notify({ message: event.reason?.message || '操作失败，请检查输入后重试' }, true); };
+    const onUnhandled = (event: PromiseRejectionEvent) => { event.preventDefault(); feedback.from({ message: event.reason?.message || '操作失败，请检查输入后重试' }, true); };
     window.addEventListener('unhandledrejection', onUnhandled);
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
@@ -191,19 +166,19 @@ function AppShell() {
   }
 
   function renderPage() {
-    if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} notify={notify} onCancel={navigateBackFromPersonEdit} onNavigationGuardChange={setNavigationGuard} />;
+    if (personEditRoute) return <PersonEditPage personId={personEditRoute.personId} onCancel={navigateBackFromPersonEdit} onNavigationGuardChange={setNavigationGuard} />;
     if (personDetailRoute) return <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} />;
     switch (active) {
       case 'home': return <StatisticsHomePage />;
-      case 'mvp1Wizard': return <Mvp1WizardPage notify={notify} />;
-      case 'treeProduct': return <LineageTreeProductPage notify={notify} onNavigate={enterPage} />;
-      case 'personArchive': return <PersonArchiveSearchPage notify={notify} />;
-      case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceDraftDeleteAction notify={notify} /><SourceLibraryQueryPage notify={notify} /></>;
+      case 'mvp1Wizard': return <Mvp1WizardPage />;
+      case 'treeProduct': return <LineageTreeProductPage onNavigate={enterPage} />;
+      case 'personArchive': return <PersonArchiveSearchPage />;
+      case 'sourceLibrary': return <><SourceLibraryFocusBridge /><SourceDraftDeleteAction /><SourceLibraryQueryPage /></>;
       case 'editingWorkspace': return <EditingWorkspacePage onNavigate={enterPage} />;
-      case 'imports': return <ImportPage notify={notify} />;
-      case 'reviewCenter': return <ReviewCenterPage notify={notify} />;
-      case 'memberManage': return <MemberPage notify={notify} />;
-      case 'auditTrace': return <LogPage notify={notify} />;
+      case 'imports': return <ImportPage />;
+      case 'reviewCenter': return <ReviewCenterPage />;
+      case 'memberManage': return <MemberPage />;
+      case 'auditTrace': return <LogPage />;
       case 'culture': return <CultureProductPage />;
       default: return null;
     }
@@ -211,13 +186,13 @@ function AppShell() {
 
   function renderModuleActions() {
     if (personDetailRoute || personEditRoute) return null;
-    if (active === 'treeProduct') return <BookletActions notify={notify} />;
+    if (active === 'treeProduct') return <BookletActions />;
     if (active === 'memberManage') return <MemberInvitationAction />;
     return null;
   }
 
   if (authStatus === 'checking') return <div className="commercial-auth-shell" aria-label="正在检查登录状态"><Space direction="vertical" align="center" size={16}><Spin size="large" /><Typography.Text type="secondary">正在安全验证登录状态…</Typography.Text></Space></div>;
-  if (authStatus === 'anonymous') return <><AuthPage notify={notify} onChanged={onLoginChanged} standalone /><ToastStack items={toasts} onClose={closeToast} /></>;
+  if (authStatus === 'anonymous') return <AuthPage onChanged={onLoginChanged} standalone />;
 
   const routeKey = personEditRoute?.personId ? `edit-${personEditRoute.personId}` : personDetailRoute?.personId ? `detail-${personDetailRoute.personId}` : 'list';
   return (
@@ -233,7 +208,6 @@ function AppShell() {
         </Header>
         <Content className="content content--compact antd-content"><div className={`business-page business-page--${active}`} key={`${active}-${routeKey}-${pageEntryVersion}`}>{renderPage()}</div></Content>
       </Layout>
-      <ToastStack items={toasts} onClose={closeToast} />
     </Layout>
   );
 }
