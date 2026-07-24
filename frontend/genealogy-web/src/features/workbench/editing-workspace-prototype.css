@@ -9,6 +9,31 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
+.workbench-prototype-page .ant-card-head-title {
+  overflow: visible;
+  white-space: normal;
+}
+
+.workbench-card-title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workbench-card-title > span {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.workbench-card-actions {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
+}
+
 .workbench-query-card .ant-card-head {
   border-bottom: 1px solid #f0f0f0;
 }
@@ -94,12 +119,6 @@
   justify-content: flex-start;
 }
 
-.workbench-quality-card .ant-card-head-wrapper,
-.workbench-task-card .ant-card-head-wrapper {
-  align-items: flex-start;
-  gap: 16px;
-}
-
 .workbench-quality-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -144,15 +163,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .workbench-quality-card .ant-card-head-wrapper,
-  .workbench-task-card .ant-card-head-wrapper {
+  .workbench-card-title {
+    align-items: flex-start;
     flex-direction: column;
   }
 
-  .workbench-quality-card .ant-card-extra,
-  .workbench-task-card .ant-card-extra {
+  .workbench-card-actions {
     width: 100%;
-    margin-inline-start: 0;
+    justify-content: flex-start;
   }
 }
 
