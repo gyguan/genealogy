@@ -92,7 +92,7 @@ const mechanisms = [
     id: 'custom_notice_class',
     name: '自定义提示条/提示样式',
     target: '迁移到统一组件',
-    patterns: [/className\s*=\s*['"`][^'"`]*(notice|hint|tip|warning|alert|feedback|message|help|note|error|empty)[^'"`]*['"`]/gi]
+    patterns: [/className\s*=\s*['"]([^'"]*)['"]/gi], classTokenPattern: /(?:^|[\s_-])(notice|warning|alert|feedback|message|error)(?:$|[\s_-])/i
   },
   {
     id: 'result_status',
@@ -126,7 +126,9 @@ const legacySources = fileSources.filter(item => !canonicalImplementationFiles.h
 const byMechanism = mechanisms.map(mechanism => {
   const occurrences = [];
   for (const item of legacySources) {
-    const count = mechanism.patterns.reduce((total, pattern) => total + countMatches(item.source, pattern), 0);
+    const count = mechanism.id === 'custom_notice_class'
+      ? [...item.source.matchAll(/className\s*=\s*['"]([^'"]*)['"]/gi)].filter(match => mechanism.classTokenPattern?.test(match[1])).length
+      : mechanism.patterns.reduce((total, pattern) => total + countMatches(item.source, pattern), 0);
     if (count > 0) occurrences.push({ file: item.relative, count });
   }
   occurrences.sort((left, right) => right.count - left.count || left.file.localeCompare(right.file));

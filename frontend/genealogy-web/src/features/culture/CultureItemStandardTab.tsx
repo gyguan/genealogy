@@ -61,7 +61,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
+import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
 
@@ -443,7 +443,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
     const more: MenuProps['items'] = [];
     if (can(item, 'submit_review')) more.push({ key: 'review', label: '提交审核' });
     if (can(item, 'archive', 'request_archive')) more.push({ key: 'archive', label: '归档' });
-    if (can(item, 'delete', 'request_delete')) more.push({ key: 'delete', label: <Text type="danger">删除</Text> });
+    if (can(item, 'delete', 'request_delete')) more.push({ key: 'delete', label: <InlineFeedback tone="error" title={<>删除</>} /> });
     return (
       <Space size={2} onClick={event => event.stopPropagation()}>
         <Button type="link" onClick={() => openDetail(item)}>查看</Button>
@@ -472,7 +472,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [
     can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null,
-    can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <Text type="danger">删除</Text> } : null
+    can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <InlineFeedback tone="error" title={<>删除</>} /> } : null
   ].filter(Boolean) as MenuProps['items'] : [];
 
   return (

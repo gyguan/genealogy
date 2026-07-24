@@ -10,9 +10,9 @@
   white-space: normal;
 }
 
-.result-list-card__notice,
+.result-list-card__status,
 .result-list-card__description,
-.result-list-card__refresh-error {
+.result-list-card__refresh-status {
   margin-bottom: 12px;
 }
 

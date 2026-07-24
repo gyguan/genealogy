@@ -227,7 +227,7 @@ export function LineageGraphCanvas({
   }
 
   const noticeContent = (
-    <Space direction="vertical" size={8} className="lineage-graph-notice-popover">
+    <Space direction="vertical" size={8} className="lineage-graph-status-popover">
       {layout.notices.map(notice => (
         <PageFeedback
           key={notice.code}

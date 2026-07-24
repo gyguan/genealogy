@@ -55,7 +55,7 @@ export function WizardValidationBoundary({ step, children }: Props) {
         <div className="wizard-validation-boundary">
           {businessError ? (
             <PageFeedback
-              className="wizard-step-local-error"
+              className="wizard-step-local-status"
               tone="error"
               title={businessError}
               closable
