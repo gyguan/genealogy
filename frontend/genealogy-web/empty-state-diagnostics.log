@@ -109,67 +109,67 @@ TAP version 13
 # Subtest: current user sessions use standard feedback, confirmation and empty states
 ok 1 - current user sessions use standard feedback, confirmation and empty states
   ---
-  duration_ms: 1.959765
+  duration_ms: 2.112197
   ...
 # Subtest: booklet export uses semantic operation feedback
 ok 2 - booklet export uses semantic operation feedback
   ---
-  duration_ms: 1.959764
+  duration_ms: 1.484114
   ...
 # Subtest: person data export uses semantic operation feedback
 ok 3 - person data export uses semantic operation feedback
   ---
-  duration_ms: 2.16451
+  duration_ms: 1.696671
   ...
 # Subtest: import history overview uses standard page and empty feedback
 ok 4 - import history overview uses standard page and empty feedback
   ---
-  duration_ms: 1.962418
+  duration_ms: 1.616855
   ...
 # Subtest: member invitation entry uses semantic feedback without legacy notify props
 ok 5 - member invitation entry uses semantic feedback without legacy notify props
   ---
-  duration_ms: 2.231399
+  duration_ms: 2.176865
   ...
 # Subtest: member invitation modal uses semantic feedback without notify wiring
 ok 6 - member invitation modal uses semantic feedback without notify wiring
   ---
-  duration_ms: 1.780317
+  duration_ms: 2.288899
   ...
 # Subtest: step renderer no longer passes legacy notify to any wizard step
 ok 7 - step renderer no longer passes legacy notify to any wizard step
   ---
-  duration_ms: 1.966764
+  duration_ms: 1.472132
   ...
 # Subtest: remaining wizard steps use only OperationFeedback
 ok 8 - remaining wizard steps use only OperationFeedback
   ---
-  duration_ms: 2.842371
+  duration_ms: 3.340505
   ...
 # Subtest: StepRenderer and callers no longer pass notify
 ok 9 - StepRenderer and callers no longer pass notify
   ---
-  duration_ms: 24.824241
+  duration_ms: 27.123148
   ...
 # Subtest: business source contains no direct Ant Design Message usage
 ok 10 - business source contains no direct Ant Design Message usage
   ---
-  duration_ms: 24.23034
+  duration_ms: 17.872518
   ...
 # Subtest: application source no longer exposes the legacy notify interface
 ok 11 - application source no longer exposes the legacy notify interface
   ---
-  duration_ms: 16.704405
+  duration_ms: 19.635745
   ...
 # Subtest: OperationFeedback supports migrated application feedback payloads
 ok 12 - OperationFeedback supports migrated application feedback payloads
   ---
-  duration_ms: 0.272396
+  duration_ms: 0.262098
   ...
 # Subtest: business source uses unified EmptyState instead of Ant Design Empty
 not ok 13 - business source uses unified EmptyState instead of Ant Design Empty
   ---
-  duration_ms: 37.60108
+  duration_ms: 40.547375
   location: '/home/runner/work/genealogy/genealogy/frontend/genealogy-web/src/shared/ui/EmptyStateMigration.test.mjs:16:1'
   failureType: 'testCodeFailure'
   error: |-
@@ -199,82 +199,82 @@ not ok 13 - business source uses unified EmptyState instead of Ant Design Empty
 # Subtest: feedback system exposes five standard user-facing forms
 ok 14 - feedback system exposes five standard user-facing forms
   ---
-  duration_ms: 1.756441
+  duration_ms: 1.980677
   ...
 # Subtest: operation feedback exposes one semantic API for transient results
 ok 15 - operation feedback exposes one semantic API for transient results
   ---
-  duration_ms: 0.30846
+  duration_ms: 0.361578
   ...
 # Subtest: global toast uses the same semantic feedback primitive
 ok 16 - global toast uses the same semantic feedback primitive
   ---
-  duration_ms: 0.282752
+  duration_ms: 0.327686
   ...
 # Subtest: async import execution panel uses only standard feedback primitives
 ok 17 - async import execution panel uses only standard feedback primitives
   ---
-  duration_ms: 0.28869
+  duration_ms: 0.334299
   ...
 # Subtest: import failure bulk actions use standard operation and page feedback
 ok 18 - import failure bulk actions use standard operation and page feedback
   ---
-  duration_ms: 0.315031
+  duration_ms: 0.338747
   ...
 # Subtest: clan step separates transient feedback from persistent page errors
 ok 19 - clan step separates transient feedback from persistent page errors
   ---
-  duration_ms: 0.504303
+  duration_ms: 0.496714
   ...
 # Subtest: branch step uses standard transient, page, confirmation and empty feedback
 ok 20 - branch step uses standard transient, page, confirmation and empty feedback
   ---
-  duration_ms: 0.263974
+  duration_ms: 0.382537
   ...
 # Subtest: source step uses standard transient, page and empty feedback
 ok 21 - source step uses standard transient, page and empty feedback
   ---
-  duration_ms: 0.273128
+  duration_ms: 0.380873
   ...
 # Subtest: source stage uses standard transient, page and empty feedback
 ok 22 - source stage uses standard transient, page and empty feedback
   ---
-  duration_ms: 0.312406
+  duration_ms: 0.492517
   ...
 # Subtest: shared data table uses standard operation, confirmation and empty feedback
 ok 23 - shared data table uses standard operation, confirmation and empty feedback
   ---
-  duration_ms: 0.409071
+  duration_ms: 0.445592
   ...
 # Subtest: source draft deletion uses page feedback without duplicate success notification
 ok 24 - source draft deletion uses page feedback without duplicate success notification
   ---
-  duration_ms: 0.238145
+  duration_ms: 0.343696
   ...
 # Subtest: source focus bridge keeps loading errors visible through page feedback
 ok 25 - source focus bridge keeps loading errors visible through page feedback
   ---
-  duration_ms: 0.209823
+  duration_ms: 0.260234
   ...
 # Subtest: feedback styling normalizes alerts, field help, empty states and full-page results
 ok 26 - feedback styling normalizes alerts, field help, empty states and full-page results
   ---
-  duration_ms: 0.231716
+  duration_ms: 0.276253
   ...
 # Subtest: audit gate prevents legacy feedback mechanisms from increasing
 ok 27 - audit gate prevents legacy feedback mechanisms from increasing
   ---
-  duration_ms: 0.372837
+  duration_ms: 0.408164
   ...
 # Subtest: business source no longer renders Ant Design Alert directly
 ok 28 - business source no longer renders Ant Design Alert directly
   ---
-  duration_ms: 20.238699
+  duration_ms: 32.140733
   ...
 # Subtest: page alert audit baseline remains zero
 ok 29 - page alert audit baseline remains zero
   ---
-  duration_ms: 0.240318
+  duration_ms: 0.86744
   ...
 1..29
 # tests 29
@@ -284,198 +284,10 @@ ok 29 - page alert audit baseline remains zero
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 376.40828
+# duration_ms 372.88554
 feedback=1
 
 > genealogy-web@0.1.0 typecheck
 > tsc -p tsconfig.json --noEmit
 
-src/features/culture/CultureItemDetailDrawer.tsx(108,124): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureItemDetailDrawer.tsx(108,142): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureItemStandardTab.tsx(529,35): error TS2322: Type '{ description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'children' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteMaintenanceTab.tsx(582,241): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteMaintenanceTab.tsx(582,259): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureSiteMaintenanceTab.tsx(588,158): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteMaintenanceTab.tsx(588,176): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureSitePanel.tsx(343,237): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSitePanel.tsx(343,255): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureSitePanel.tsx(346,886): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSitePanel.tsx(346,904): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureSiteStandardTab.tsx(308,646): error TS2322: Type '{ description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'children' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteTab.tsx(544,237): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteTab.tsx(544,255): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/CultureSiteTab.tsx(550,154): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/CultureSiteTab.tsx(550,172): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/MigrationEventMaintenanceTab.tsx(547,31): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/MigrationEventMaintenanceTab.tsx(547,49): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/culture/MigrationEventStandardTab.tsx(286,649): error TS2322: Type '{ description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'children' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/MigrationEventTab.tsx(517,31): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/culture/MigrationEventTab.tsx(517,49): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/home/UnifiedStatisticsHomePage.tsx(316,13): error TS2322: Type '{ image: any; description: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/home/UnifiedStatisticsHomePage.tsx(316,31): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/home/UnifiedStatisticsHomePage.tsx(433,29): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/home/UnifiedStatisticsHomePage.tsx(433,47): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/home/UnifiedStatisticsHomePage.tsx(454,27): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/home/UnifiedStatisticsHomePage.tsx(454,45): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/imports/ImportJobManagementPanel.tsx(425,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/imports/ImportJobManagementPanel.tsx(425,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/imports/ImportJobManagementPanel.tsx(504,48): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/imports/ImportJobManagementPanel.tsx(504,66): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/imports/ImportJobManagementPanel.tsx(516,27): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/imports/ImportJobManagementPanel.tsx(516,45): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/imports/ImportReviewHistoryPanel.tsx(97,42): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/imports/ImportReviewHistoryPanel.tsx(97,60): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/imports/StandardImportWorkspace.tsx(253,275): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/imports/StandardImportWorkspace.tsx(253,293): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/LogPage.tsx(400,291): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/LogPage.tsx(400,309): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/LogPage.tsx(412,320): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/LogPage.tsx(412,338): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/LogPage.tsx(424,319): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/LogPage.tsx(424,337): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/RiskAuditPanel.tsx(243,48): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/RiskAuditPanel.tsx(243,66): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(73,24): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(73,42): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(111,40): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(111,58): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(152,40): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(152,58): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(173,40): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(173,58): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(195,40): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(195,58): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/logs/TrackingDetailDrawers.tsx(217,40): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/logs/TrackingDetailDrawers.tsx(217,58): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/StepDraftReviewPanel.tsx(257,34): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/StepDraftReviewPanel.tsx(257,52): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/generation/GenerationStep.tsx(369,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/generation/GenerationStep.tsx(369,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/generation/GenerationStep.tsx(429,46): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/generation/GenerationStep.tsx(429,64): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/person/PersonStep.tsx(552,42): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/person/PersonStep.tsx(552,60): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/relationship/RelationshipStep.tsx(358,42): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/relationship/RelationshipStep.tsx(358,60): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/review/ReviewProgressStep.tsx(240,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/review/ReviewProgressStep.tsx(240,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/review/ReviewProgressStep.tsx(269,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/review/ReviewProgressStep.tsx(269,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/review/WizardSummaryStep.tsx(145,29): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/review/WizardSummaryStep.tsx(145,47): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/tree/TreeStep.tsx(162,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/tree/TreeStep.tsx(162,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/mvp1/steps/tree/TreeStep.tsx(176,44): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/mvp1/steps/tree/TreeStep.tsx(176,62): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/persons/PersonArchiveSearchPage.tsx(330,610): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/persons/PersonArchiveSearchPage.tsx(330,628): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/persons/PersonArchiveSearchPage.tsx(335,1485): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/persons/PersonArchiveSearchPage.tsx(335,1503): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/persons/PersonDetailPage.tsx(44,46): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/persons/PersonDetailPage.tsx(44,64): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/persons/PersonDetailPage.tsx(142,367): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/persons/PersonDetailPage.tsx(142,385): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/persons/PersonEditPage.tsx(369,30): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/persons/PersonEditPage.tsx(369,48): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/reviews/ReviewCenterPageContent.tsx(621,15): error TS2322: Type '{ description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'children' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/reviews/ReviewCenterPageContent.tsx(751,472): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/reviews/ReviewCenterPageContent.tsx(751,490): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/reviews/ReviewCenterPageContent.tsx(752,252): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/reviews/ReviewCenterPageContent.tsx(752,270): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/reviews/ReviewCenterPageContent.tsx(753,82): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/reviews/ReviewCenterPageContent.tsx(753,100): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/reviews/ReviewCenterPageContent.tsx(754,553): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/reviews/ReviewCenterPageContent.tsx(754,571): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryPage.tsx(829,19): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryPage.tsx(829,37): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryPage.tsx(830,19): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryPage.tsx(830,37): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryPage.tsx(949,326): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryPage.tsx(949,344): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryPage.tsx(971,38): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryPage.tsx(971,56): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryQueryPage.tsx(872,19): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryQueryPage.tsx(872,37): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryQueryPage.tsx(873,19): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryQueryPage.tsx(873,37): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryQueryPage.tsx(1054,326): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryQueryPage.tsx(1054,344): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/sources/SourceLibraryQueryPage.tsx(1076,38): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/sources/SourceLibraryQueryPage.tsx(1076,56): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/workbench/EditingWorkspacePage.tsx(398,33): error TS2322: Type '{ image: any; description: string; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/workbench/EditingWorkspacePage.tsx(398,51): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/features/workbench/EditingWorkspacePage.tsx(495,78): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/features/workbench/EditingWorkspacePage.tsx(495,96): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/prototypes/PagePatternsPrototype.tsx(416,9): error TS2322: Type '{ image: any; description: Element; children: Element; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/prototypes/PagePatternsPrototype.tsx(416,27): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/prototypes/PagePatternsPrototype.tsx(568,39): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/prototypes/PagePatternsPrototype.tsx(568,57): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/prototypes/PagePatternsPrototype.tsx(573,39): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/prototypes/PagePatternsPrototype.tsx(573,57): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-src/shared/ui/page-patterns/dashboard.tsx(126,32): error TS2322: Type '{ image: any; description: string; }' is not assignable to type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-  Property 'image' does not exist on type 'IntrinsicAttributes & { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }'.
-src/shared/ui/page-patterns/dashboard.tsx(126,50): error TS2339: Property 'PRESENTED_IMAGE_SIMPLE' does not exist on type '({ title, description, action, compact, className }: { title?: ReactNode; description?: ReactNode; action?: ReactNode; compact?: boolean; className?: string; }) => Element'.
-typecheck=1
+typecheck=0
