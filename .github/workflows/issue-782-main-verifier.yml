@@ -33,13 +33,24 @@ jobs:
               lines.append(line[10:] if line.startswith('          ') else line)
           exec(compile('\n'.join(lines), '<issue-782-patch>', 'exec'))
       - name: Run targeted backend tests
+        id: tests
         working-directory: backend/genealogy-backend
-        run: mvn -q -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test
-      - name: Upload verified files
+        shell: bash
+        run: |
+          set +e
+          mvn -Dtest=RevisionApplyServiceSourceBindingTest,RevisionApplyServiceGenerationSchemeTest test 2>&1 | tee ../../../issue-782-test.log
+          status=${PIPESTATUS[0]}
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload verifier diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: issue-782-verified-files
+          name: issue-782-verifier-output
           path: |
+            issue-782-test.log
             backend/genealogy-backend/src/main/java/com/genealogy/review/application/RevisionApplyService.java
             backend/genealogy-backend/src/test/java/com/genealogy/review/application/RevisionApplyServiceSourceBindingTest.java
           retention-days: 3
+      - name: Fail when tests failed
+        if: steps.tests.outputs.status != '0'
+        run: exit 1
