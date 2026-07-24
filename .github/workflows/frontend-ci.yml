@@ -27,15 +27,17 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/genealogy-web/package.json
-      - name: Run empty state migration
+      - name: Finalize empty state migration
         working-directory: frontend/genealogy-web
-        run: node scripts/migrate-empty-state.mjs
+        run: |
+          node scripts/migrate-empty-state.mjs
+          sed -i 's/baseline.maxCounts.empty_state, 153/baseline.maxCounts.empty_state, 0/' src/shared/ui/FeedbackUnification.test.mjs
       - name: Commit migration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A frontend/genealogy-web
-          git commit -m "refactor: unify empty state components"
+          git commit -m "fix: complete empty state migration"
           git push origin HEAD:agent/issue-776-unify-empty-state
       - name: Install dependencies
         working-directory: frontend/genealogy-web
