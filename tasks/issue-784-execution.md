@@ -35,7 +35,8 @@
 - [x] 创建 Draft PR 并回写 Issue
 - [x] 定位 Drawer Header、Footer 和列表工具栏实现
 - [x] 建立统一详情 Header 操作组件
-- [ ] 将页面接入统一 Header 操作组件并调整 Drawer 为 720px
+- [x] 将审核中心 Drawer 统一为桌面端 720px、移动端全屏
+- [ ] 将页面接入统一 Header 操作组件
 - [ ] 在列表工具栏预留质量检查入口位置（禁用并说明后续 Issue）
 - [ ] 补充或更新聚焦测试
 - [ ] 执行 typecheck、聚焦测试、build、api:check
@@ -59,4 +60,9 @@
 
 - 新增 `ReviewDetailHeaderActions.tsx`，将追踪、驳回整改、审核通过收敛为 Drawer Header 专用操作组件。
 - 组件明确禁止承载质量检查入口，避免列表级检查动作进入详情。
-- 下一步将组件接入现有审核中心页面，调整 Drawer 宽度并补充测试。
+
+### 第二实现检查点
+
+- `ReviewCenterPage` 在挂载期间增加审核中心专属 body class，卸载时清理，避免样式泄漏到其他模块。
+- 新增 `reviewCenterLayout.css`：桌面端审核详情 Drawer 统一为 720px，移动端保持 100vw。
+- 当前分支尚未出现 GitHub 状态检查结果；在完成组件接入后统一执行前端验证。
