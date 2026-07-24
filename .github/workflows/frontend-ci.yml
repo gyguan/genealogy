@@ -134,6 +134,9 @@ jobs:
           status=$?
           rm -rf .person-archive-test .person-create-entry-test
           exit $status
+      - name: Test homepage discovery contracts
+        working-directory: frontend/genealogy-web
+        run: npm run test:home
       - name: Test workbench query state
         working-directory: frontend/genealogy-web
         run: npm run test:workbench
