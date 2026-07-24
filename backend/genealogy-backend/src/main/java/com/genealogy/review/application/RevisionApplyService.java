@@ -20,7 +20,9 @@ import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.review.entity.AuditRecordEntity;
+import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.entity.SourceEntity;
+import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class RevisionApplyService {
     private static final String TARGET_PERSON = "person";
     private static final String TARGET_RELATIONSHIP = "relationship";
     private static final String TARGET_SOURCE = "source";
+    private static final String TARGET_SOURCE_BINDING = "source_binding";
     private static final String TARGET_BRANCH = "branch";
     private static final String TARGET_GENERATION_SCHEME = "generation_scheme";
     private static final String TARGET_CLAN = "clan";
@@ -46,6 +49,10 @@ public class RevisionApplyService {
     private static final String STATUS_DRAFT = "draft";
     private static final String STATUS_PENDING_REVIEW = "pending_review";
     private static final String CHANGE_PERSON_DELETE = "person_delete";
+    private static final String CHANGE_CREATE = "create";
+    private static final String CHANGE_REPLACE = "replace";
+    private static final String CHANGE_DELETE = "delete";
+    private static final String STATUS_ARCHIVED = "archived";
 
     private final PersonRepository personRepository;
     private final RelationshipRepository relationshipRepository;
@@ -57,6 +64,7 @@ public class RevisionApplyService {
     private final ImportJobRowRepository importJobRowRepository;
     private final ObjectMapper objectMapper;
     private PersonEventApplicationService personEventApplicationService;
+    private SourceBindingRepository sourceBindingRepository;
 
     public RevisionApplyService(
             PersonRepository personRepository,
@@ -88,6 +96,11 @@ public class RevisionApplyService {
         this.personEventApplicationService = personEventApplicationService;
     }
 
+    @Autowired
+    void setSourceBindingRepository(SourceBindingRepository sourceBindingRepository) {
+        this.sourceBindingRepository = sourceBindingRepository;
+    }
+
     @Transactional
     public void apply(AuditRecordEntity revision, LocalDateTime applyTime) {
         String targetType = normalize(revision.getTargetType());
@@ -95,6 +108,7 @@ public class RevisionApplyService {
         if (TARGET_PERSON.equals(targetType)) { applyPerson(revision, applyTime); return; }
         if (TARGET_RELATIONSHIP.equals(targetType)) { applyRelationship(revision, applyTime); return; }
         if (TARGET_SOURCE.equals(targetType)) { applySource(revision); return; }
+        if (TARGET_SOURCE_BINDING.equals(targetType)) { applySourceBinding(revision, applyTime); return; }
         if (TARGET_BRANCH.equals(targetType)) { applyBranch(revision, applyTime); return; }
         if (TARGET_GENERATION_SCHEME.equals(targetType)) { applyGenerationScheme(revision); return; }
         if (TARGET_IMPORT_JOB.equals(targetType)) { applyImportJob(revision, applyTime); return; }
@@ -108,6 +122,7 @@ public class RevisionApplyService {
         if (TARGET_PERSON.equals(targetType)) { rejectPerson(revision, rejectTime); return; }
         if (TARGET_RELATIONSHIP.equals(targetType)) { rejectRelationship(revision, rejectTime); return; }
         if (TARGET_SOURCE.equals(targetType)) { rejectSource(revision); return; }
+        if (TARGET_SOURCE_BINDING.equals(targetType)) { return; }
         if (TARGET_BRANCH.equals(targetType)) { rejectBranch(revision, rejectTime); return; }
         if (TARGET_GENERATION_SCHEME.equals(targetType)) { rejectGenerationScheme(revision); return; }
         if (TARGET_IMPORT_JOB.equals(targetType)) rejectImportJob(revision, rejectTime);
@@ -282,6 +297,67 @@ public class RevisionApplyService {
             entity.setStatus(STATUS_REJECTED);
             genSchemeRepository.save(entity);
         });
+    }
+
+
+    private void applySourceBinding(AuditRecordEntity revision, LocalDateTime applyTime) {
+        if (sourceBindingRepository == null) {
+  throw new BusinessException("SOURCE_BINDING_APPLY_REPOSITORY_MISSING", "来源绑定审核生效服务不可用");
+        }
+        String changeType = normalize(revision.getChangeType());
+        if (CHANGE_DELETE.equals(changeType)) {
+  SourceBindingEntity entity = requireSourceBinding(revision.getTargetId(), revision.getClanId());
+  entity.setBindingStatus(STATUS_ARCHIVED);
+  entity.setUpdatedAt(applyTime);
+  sourceBindingRepository.save(entity);
+  return;
+        }
+        if (!CHANGE_CREATE.equals(changeType) && !CHANGE_REPLACE.equals(changeType)) {
+  throw new BusinessException("SOURCE_BINDING_CHANGE_TYPE_INVALID", "来源绑定变更类型不合法");
+        }
+        SourceBindingEntity snapshot = readPayload(revision.getNewPayload(), SourceBindingEntity.class);
+        if (snapshot == null) {
+  throw new BusinessException("SOURCE_BINDING_REVISION_PAYLOAD_MISSING", "来源绑定审核快照缺失");
+        }
+        if (CHANGE_CREATE.equals(changeType)) {
+  ensureNoActiveSourceBinding(snapshot, null);
+  snapshot.setId(null);
+  snapshot.setCreatedBy(revision.getSubmitterId());
+  if (snapshot.getCreatedAt() == null) snapshot.setCreatedAt(applyTime);
+        } else {
+  SourceBindingEntity current = requireSourceBinding(revision.getTargetId(), revision.getClanId());
+  ensureNoActiveSourceBinding(snapshot, current.getId());
+  snapshot.setId(current.getId());
+  snapshot.setCreatedBy(current.getCreatedBy());
+  snapshot.setCreatedAt(current.getCreatedAt());
+        }
+        snapshot.setClanId(revision.getClanId());
+        snapshot.setBindingStatus(STATUS_OFFICIAL);
+        snapshot.setUpdatedAt(applyTime);
+        sourceBindingRepository.save(snapshot);
+    }
+
+    private SourceBindingEntity requireSourceBinding(Long bindingId, Long clanId) {
+        SourceBindingEntity entity = sourceBindingRepository.findById(bindingId)
+      .orElseThrow(() -> new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在"));
+        if (!Objects.equals(entity.getClanId(), clanId) || STATUS_ARCHIVED.equals(normalize(entity.getBindingStatus()))) {
+  throw new BusinessException("SOURCE_BINDING_NOT_FOUND", "来源绑定不存在");
+        }
+        return entity;
+    }
+
+    private void ensureNoActiveSourceBinding(SourceBindingEntity snapshot, Long currentId) {
+        boolean exists = sourceBindingRepository.existsBySourceIdAndTargetTypeAndTargetIdAndBindingStatusNot(
+      snapshot.getSourceId(), snapshot.getTargetType(), snapshot.getTargetId(), STATUS_ARCHIVED);
+        if (!exists) return;
+        if (currentId != null) {
+  SourceBindingEntity current = sourceBindingRepository.findById(currentId).orElse(null);
+  if (current != null
+          && Objects.equals(current.getSourceId(), snapshot.getSourceId())
+          && Objects.equals(current.getTargetType(), snapshot.getTargetType())
+          && Objects.equals(current.getTargetId(), snapshot.getTargetId())) return;
+        }
+        throw new BusinessException("SOURCE_BINDING_ALREADY_EXISTS", "来源与目标对象已存在有效绑定");
     }
 
     private void applyImportJob(AuditRecordEntity revision, LocalDateTime applyTime) {
