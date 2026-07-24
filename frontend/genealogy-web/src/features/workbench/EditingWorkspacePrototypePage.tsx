@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
-import {
-  AuditOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ExportOutlined,
-  FileSearchOutlined, PlusOutlined, ReloadOutlined, SafetyCertificateOutlined,
-  SettingOutlined, TeamOutlined
-} from '@ant-design/icons';
+import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import {
   Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Grid, Input, Modal,
-  Pagination, Progress, Row, Select, Skeleton, Space, Statistic, Table, Tag, Typography
+  Pagination, Row, Select, Skeleton, Space, Statistic, Table, Tag, Typography
 } from 'antd';
 import type { MenuProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
@@ -99,14 +95,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
   const tasks = useMemo(() => toRecordList<Task>(taskPage.records || []), [taskPage.records]);
   const selectedTasks = useMemo(() => tasks.filter(task => selectedKeys.includes(task.key)), [tasks, selectedKeys]);
   const total = Number(taskPage.total || 0);
-  const metrics = useMemo(() => {
-    const processing = tasks.filter(task => task.status === 'processing').length;
-    const ready = tasks.filter(task => task.status === 'ready').length;
-    const blocked = tasks.filter(task => task.status === 'blocked' || task.reviewBlocked).length;
-    const completed = Math.max(0, tasks.length - processing - blocked);
-    return { processing, ready, blocked, completion: tasks.length ? Math.round(completed / tasks.length * 100) : 0 };
-  }, [tasks]);
-  const priorityTasks = useMemo(() => tasks.filter(task => task.status === 'blocked' || task.risk === 'high').slice(0, 5), [tasks]);
 
   async function loadClans() {
     try {
@@ -223,37 +211,6 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
         </Row>
       </Form>
     </Card>
-
-    <section className="workbench-overview-section" aria-label="工作台总览">
-      <Row gutter={[12, 12]}>
-        <Col xs={12} md={6}><Card><Statistic title="任务总数" value={total} prefix={<AuditOutlined />} /></Card></Col>
-        <Col xs={12} md={6}><Card><Statistic title="处理中" value={metrics.processing} prefix={<ReloadOutlined />} /></Card></Col>
-        <Col xs={12} md={6}><Card><Statistic title="待确认" value={metrics.ready} prefix={<CheckCircleOutlined />} /></Card></Col>
-        <Col xs={12} md={6}><Card><Statistic title="阻塞问题" value={metrics.blocked} prefix={<ExclamationCircleOutlined />} valueStyle={metrics.blocked ? { color: '#cf1322' } : undefined} /></Card></Col>
-      </Row>
-      <Row gutter={[16, 16]}>
-        <Col xs={24} xl={15}>
-          <Card title={cardTitle('当前任务', <Typography.Text type="secondary">当前页完成率 {metrics.completion}%</Typography.Text>)}>
-            <Progress percent={metrics.completion} showInfo={false} />
-            <div className="workbench-priority-list">
-              {priorityTasks.length ? priorityTasks.map(task => <button key={task.key} type="button" onClick={() => setCurrentTask(task)}>
-                <span><Tag color={task.status === 'blocked' ? 'error' : riskColor(task.risk)}>{task.status === 'blocked' ? '阻塞' : '高风险'}</Tag><strong>{taskTitle(task)}</strong><small>{task.objectName} · {task.branchName}</small></span><span>查看详情 ›</span>
-              </button>) : <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前查询范围暂无高风险或阻塞任务" />}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} xl={9}>
-          <Card title={cardTitle('快捷入口', <Typography.Text type="secondary">保持当前宗族上下文</Typography.Text>)}>
-            <div className="workbench-entry-grid">
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('mvp1Wizard')}>新建修谱</Button>
-              <Button icon={<TeamOutlined />} onClick={() => navigate('personArchive')}>人物档案</Button>
-              <Button icon={<FileSearchOutlined />} onClick={() => navigate('sourceLibrary')}>来源资料</Button>
-              <Button icon={<SafetyCertificateOutlined />} onClick={() => navigate('treeProduct')}>世系图谱</Button>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-    </section>
 
     <Card className="workbench-quality-card" title={cardTitle('数据质量检查', qualityActions)}>
       {qualityError ? <PageFeedback tone="error" title="质量检查失败" description={qualityError} /> : null}
