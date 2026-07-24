@@ -80,6 +80,13 @@ function allowsRevisionSubmit(status: unknown) {
   return ['official', 'rejected'].includes(normalizedStatus(status));
 }
 
+const personDatePrecisionOptions = [
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' },
+  { value: 'unknown', label: '未知' }
+];
+
 function dateValueProps(value: string | undefined, precision: PersonDatePrecision) {
   if (!value || precision === 'unknown') return { value: null };
   const dateText = precision === 'year' ? `${value}-01-01` : precision === 'month' ? `${value}-01` : value;
@@ -243,7 +250,8 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
 
   function changeDate(field: 'birth' | 'death', value: Dayjs | null) {
     const precisionField = field === 'birth' ? 'birthDatePrecision' : 'deathDatePrecision';
-    form.setFieldValue(precisionField, value ? 'day' : 'unknown');
+    const currentPrecision = form.getFieldValue(precisionField) || 'unknown';
+    form.setFieldValue(precisionField, value ? (currentPrecision === 'unknown' ? 'day' : currentPrecision) : 'unknown');
     markChanged();
     void form.validateFields(['deathDate']);
   }
@@ -396,49 +404,19 @@ export function PersonEditPage({ personId, notify, onCancel, onNavigationGuardCh
         onValuesChange={markChanged}
       >
         <div className="person-edit-sections">
-          <Card title="基本身份"><div className="person-edit-fields">
-            <Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item>
-            <Form.Item name="genealogyName" label="谱名"><Input /></Form.Item>
-            <Form.Item name="courtesyName" label="字号"><Input /></Form.Item>
-            <Form.Item name="aliasName" label="别名"><Input /></Form.Item>
-            <Form.Item name="gender" label="性别"><Select options={personGenderOptions} /></Form.Item>
-          </div></Card>
+          <Card title="基本身份"><div className="person-edit-fields"><Form.Item name="name" label="姓名" rules={[{ required: true, whitespace: true, message: '请输入姓名' }]}><Input placeholder="请输入姓名" /></Form.Item><Form.Item name="genealogyName" label="谱名"><Input /></Form.Item><Form.Item name="courtesyName" label="字号"><Input /></Form.Item><Form.Item name="aliasName" label="别名"><Input /></Form.Item><Form.Item name="gender" label="性别"><Select options={personGenderOptions} /></Form.Item><Form.Item name="rankInFamily" label="排行"><Input /></Form.Item></div></Card>
 
-          <Card title="世系与支派"><div className="person-edit-fields">
-            <Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item>
-            <Form.Item name="generationWord" hidden><Input /></Form.Item>
-            <Form.Item name="generationNo" hidden><Input /></Form.Item>
-            <Form.Item label="字辈" extra="选择字辈后自动带出代次，仅展示已审核通过的字辈方案明细">
-              <Select allowClear showSearch optionFilterProp="label" value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)} loading={loadingGenerations} disabled={!loadingGenerations && !generationOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationOptions} onChange={changeGeneration} />
-            </Form.Item>
-            <Form.Item label="代次"><Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item>
-            <Form.Item name="rankInFamily" label="排行"><Input /></Form.Item>
-          </div></Card>
+          <Card title="世系归属"><div className="person-edit-fields"><Form.Item name="branchId" label="所属支派"><Select allowClear showSearch optionFilterProp="label" placeholder="请选择支派" options={branchOptions} /></Form.Item><Form.Item name="generationWord" hidden><Input /></Form.Item><Form.Item name="generationNo" hidden><Input /></Form.Item><Form.Item label="字辈" extra="选择字辈后自动带出代次，仅展示已审核通过的字辈方案明细"><Select allowClear showSearch optionFilterProp="label" value={personGenerationSelectedValue(selectedGenerationWord, selectedGenerationNo, availableGenerationItems)} loading={loadingGenerations} disabled={!loadingGenerations && !generationOptions.length} placeholder={loadingGenerations ? '正在加载字辈' : '请选择字辈'} options={generationOptions} onChange={changeGeneration} /></Form.Item><Form.Item label="代次"><Input value={selectedGenerationNo ? `第${selectedGenerationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item><Form.Item name="lineageStatus" label="世系状态"><Select options={personLineageStatusOptions} /></Form.Item><Form.Item name="hasDescendant" label="是否有后裔"><Select options={personTriStateOptions} /></Form.Item></div></Card>
 
-          <Card title="生卒与地点"><div className="person-edit-fields">
-            <Form.Item name="birthDatePrecision" hidden><Input /></Form.Item>
-            <Form.Item name="deathDatePrecision" hidden><Input /></Form.Item>
-            <Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}><DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} /></Form.Item>
-            <Form.Item name="isLiving" label="是否在世"><Select options={personLivingOptions} onChange={changeLiving} /></Form.Item>
-            <Form.Item name="deathDate" label="逝世日期" dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']} getValueProps={value => dateValueProps(value, deathPrecision)} normalize={normalizePickerDate} rules={[({ getFieldValue }) => ({ validator(_, value) { if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期')); const birth = normalizePersonDate(getFieldValue('birthDate'), getFieldValue('birthDatePrecision')); const death = normalizePersonDate(value, getFieldValue('deathDatePrecision')); if (birth && death && death < birth.slice(0, death.length)) return Promise.reject(new Error('逝世日期不能早于出生日期')); return Promise.resolve(); } })]}><DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} /></Form.Item>
-            <Form.Item name="birthPlace" label="出生地"><Input /></Form.Item>
-            <Form.Item name="residencePlace" label="居住地"><Input /></Form.Item>
-          </div></Card>
+          <Card title="生卒与地域"><div className="person-edit-fields"><Form.Item name="birthDate" label="出生日期" getValueProps={value => dateValueProps(value, birthPrecision)} normalize={normalizePickerDate} dependencies={['birthDatePrecision']}><DatePicker style={{ width: '100%' }} placeholder="请选择出生日期" onChange={value => changeDate('birth', value)} /></Form.Item><Form.Item name="birthDatePrecision" label="出生日期精度"><Select options={personDatePrecisionOptions} /></Form.Item><Form.Item name="isLiving" label="是否在世"><Select options={personLivingOptions} onChange={changeLiving} /></Form.Item><Form.Item name="deathDate" label="逝世日期" dependencies={['deathDatePrecision', 'birthDate', 'birthDatePrecision', 'isLiving']} getValueProps={value => dateValueProps(value, deathPrecision)} normalize={normalizePickerDate} rules={[({ getFieldValue }) => ({ validator(_, value) { if (getFieldValue('isLiving') === 'true' && value) return Promise.reject(new Error('在世人物不能填写逝世日期')); const birth = normalizePersonDate(getFieldValue('birthDate'), getFieldValue('birthDatePrecision')); const death = normalizePersonDate(value, getFieldValue('deathDatePrecision')); if (birth && death && death < birth.slice(0, death.length)) return Promise.reject(new Error('逝世日期不能早于出生日期')); return Promise.resolve(); } })]}><DatePicker style={{ width: '100%' }} placeholder="请选择逝世日期" onChange={value => changeDate('death', value)} /></Form.Item><Form.Item name="deathDatePrecision" label="逝世日期精度"><Select options={personDatePrecisionOptions} /></Form.Item><Form.Item name="birthPlace" label="出生地"><Input /></Form.Item><Form.Item name="residencePlace" label="居住地"><Input /></Form.Item><Form.Item name="tombPlace" label="墓葬地"><Input /></Form.Item></div></Card>
 
-          <PersonEventEditor value={events} disabled={eventEditingDisabled} onChange={changeEvents} />
+          <Card title="生平概况"><div className="person-edit-fields"><Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item><Form.Item name="biography" label="人物传记" className="person-edit-field--wide"><Input.TextArea rows={6} placeholder="记录人物生平、主要经历与贡献" /></Form.Item></div></Card>
 
-          <Card title="生平与墓志"><div className="person-edit-fields">
-            <Form.Item name="occupation" label="职业"><Input /></Form.Item><Form.Item name="education" label="教育程度"><Select options={personEducationOptions} /></Form.Item><Form.Item name="titleOrHonor" label="称号荣誉"><Input /></Form.Item>
-            <Form.Item name="biography" label="人物传记" className="person-edit-field--wide"><Input.TextArea rows={6} placeholder="记录人物生平、主要经历与贡献" /></Form.Item>
-            <Form.Item name="tombPlace" label="墓葬地"><Input /></Form.Item><Form.Item name="epitaph" label="墓志铭" className="person-edit-field--wide"><Input.TextArea rows={4} /></Form.Item>
-          </div></Card>
+          <PersonEventEditor title="生平事迹" value={events} disabled={eventEditingDisabled} onChange={changeEvents} />
 
-          <Card title="治理与展示"><div className="person-edit-fields">
-            <Form.Item name="hasDescendant" label="是否有后裔"><Select options={personTriStateOptions} /></Form.Item>
-            <Form.Item name="lineageStatus" label="世系状态"><Select options={personLineageStatusOptions} /></Form.Item>
-            <Form.Item name="privacyLevel" label="隐私级别"><Select options={personPrivacyOptions} /></Form.Item>
-            <div><Typography.Text type="secondary">档案状态</Typography.Text><div style={{ marginTop: 8 }}><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag><Typography.Text type="secondary">状态不可通过普通资料保存直接修改</Typography.Text></div></div>
-          </div></Card>
+          <Card title="墓志资料"><div className="person-edit-fields"><Form.Item name="epitaph" label="墓志铭" className="person-edit-field--wide"><Input.TextArea rows={4} /></Form.Item></div></Card>
+
+          <Card title="治理信息"><div className="person-edit-fields"><Form.Item name="privacyLevel" label="隐私级别"><Select options={personPrivacyOptions} /></Form.Item><div><Typography.Text type="secondary">档案状态</Typography.Text><div style={{ marginTop: 8 }}><Tag color={personStatusColor(personStatus)}>{personStatusText(personStatus)}</Tag><Typography.Text type="secondary">状态不可通过普通资料保存直接修改</Typography.Text></div></div></div></Card>
         </div>
       </Form>
 

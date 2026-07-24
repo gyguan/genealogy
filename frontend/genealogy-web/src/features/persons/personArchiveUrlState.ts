@@ -11,7 +11,7 @@ export type PersonArchiveSearchState = {
   sort: string;
 };
 
-export type PersonDetailTab = 'basic' | 'events' | 'relations' | 'sources' | 'tracking';
+export type PersonDetailTab = 'basic' | 'events' | 'epitaph' | 'relations' | 'sources' | 'tracking';
 
 export const DEFAULT_PERSON_SORT = 'updatedAt,desc';
 export const DEFAULT_PERSON_PAGE_SIZE = 10;
@@ -28,7 +28,7 @@ const PERSON_ARCHIVE_QUERY_KEYS = [
 const allowedGender = new Set(['male', 'female', 'unknown']);
 const allowedStatus = new Set(['draft', 'pending_review', 'official', 'rejected', 'archived']);
 const allowedSort = new Set<string>(PERSON_SORT_OPTIONS.map(item => item.value));
-const allowedTabs = new Set<PersonDetailTab>(['basic', 'events', 'relations', 'sources', 'tracking']);
+const allowedTabs = new Set<PersonDetailTab>(['basic', 'events', 'epitaph', 'relations', 'sources', 'tracking']);
 
 function text(params: URLSearchParams, key: string) {
   return String(params.get(key) || '').trim().slice(0, 200);

@@ -15,6 +15,7 @@ type Props = {
   value?: PersonEventDraft[];
   onChange?: (events: PersonEventDraft[]) => void;
   disabled?: boolean;
+  title?: string;
 };
 
 const eventTypeOptions = [
@@ -34,7 +35,7 @@ const eventDatePrecisionOptions = [
   { value: 'day', label: '日' }
 ];
 
-export function PersonEventEditor({ value = [], onChange, disabled = false }: Props) {
+export function PersonEventEditor({ value = [], onChange, disabled = false, title = '关键事件' }: Props) {
   const events = normalizePersonEvents(value);
 
   function update(index: number, patch: Partial<PersonEventDraft>) {
@@ -57,7 +58,7 @@ export function PersonEventEditor({ value = [], onChange, disabled = false }: Pr
     <Card
       title={(
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <span>关键事件</span>
+          <span>{title}</span>
           <Button type="dashed" icon={<PlusOutlined />} disabled={disabled} onClick={add}>新增事件</Button>
         </Space>
       )}

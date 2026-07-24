@@ -96,6 +96,19 @@ const livingOptions = [
   { value: '', label: '未知' }
 ];
 
+const personDatePrecisionOptions = [
+  { value: 'year', label: '年' },
+  { value: 'month', label: '月' },
+  { value: 'day', label: '日' },
+  { value: 'unknown', label: '未知' }
+];
+
+const descendantOptions = [
+  { value: 'true', label: '有' },
+  { value: 'false', label: '无' },
+  { value: '', label: '未知' }
+];
+
 const lineageStatusOptions = [
   { value: 'normal', label: '正常' },
   { value: 'adopted_in', label: '继入' },
@@ -443,46 +456,13 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
   return (
     <Panel title="录入人物" description="人物保存后默认为草稿；审核通过后才能作为中心人物建立关系。">
       <Form layout="vertical" className="person-step-form">
-        <Card size="small" title="适用范围" className="person-step-form-card">
+        <Card size="small" title="宗族上下文" className="person-step-form-card">
           <div className="wizard-form-grid">
-            <Form.Item label="适用宗族" required>
-              <Select
-                showSearch
-                optionFilterProp="label"
-                value={workspace.clanId}
-                onChange={changeClan}
-                disabled={loadingClans}
-                options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]}
-              />
-            </Form.Item>
-            <Form.Item label="所属支派" required extra="只展示已审核通过的支派，避免直接操作系统标识。">
-              <Select
-                showSearch
-                optionFilterProp="label"
-                value={personForm.branchId || workspace.branchId}
-                onChange={changeBranch}
-                disabled={!workspace.clanId || loadingOptions || !officialBranches.length}
-                options={[{ value: '', label: officialBranches.length ? '请选择已通过支派' : '暂无已通过支派' }, ...officialBranches.map(branch => ({ value: String(branch.id), label: branchName(branch) }))]}
-              />
-            </Form.Item>
-            <Form.Item label="字辈方案" extra="选择方案后，可在字辈字段中带出字辈和代次。">
-              <Select
-                showSearch
-                optionFilterProp="label"
-                value={selectedSchemeId}
-                disabled={!workspace.clanId || loadingOptions || !officialSchemes.length}
-                onChange={value => {
-                  const selected = officialSchemes.find(scheme => String(scheme.id) === value);
-                  if (selected) void selectScheme(selected);
-                  else setSelectedSchemeId('');
-                }}
-                options={[{ value: '', label: officialSchemes.length ? '请选择已通过字辈方案' : '暂无已通过方案' }, ...officialSchemes.map(scheme => ({ value: String(scheme.id), label: schemeName(scheme) }))]}
-              />
-            </Form.Item>
+            <Form.Item label="适用宗族" required><Select showSearch optionFilterProp="label" value={workspace.clanId} onChange={changeClan} disabled={loadingClans} options={[{ value: '', label: '请选择宗族' }, ...clans.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></Form.Item>
           </div>
         </Card>
 
-        <Card size="small" title="基础信息" className="person-step-form-card">
+        <Card size="small" title="基本身份" className="person-step-form-card">
           <div className="wizard-form-grid">
             <Form.Item label="姓名" required><Input value={personForm.name} onChange={event => patchPerson('name', event.target.value)} placeholder="请输入人物姓名" /></Form.Item>
             <Form.Item label="性别" required><Select value={personForm.gender} onChange={value => patchPerson('gender', value)} options={genderOptions} /></Form.Item>
@@ -493,45 +473,44 @@ export function PersonStep({ notify, onSubmittedReview }: Props) {
           </div>
         </Card>
 
-        <Card size="small" title="世系信息" className="person-step-form-card">
+        <Card size="small" title="世系归属" className="person-step-form-card">
           <div className="wizard-form-grid">
-            <Form.Item label="字辈">
-              <Select
-                value={generationSelectedValue(personForm.generationWord, personForm.generationNo, generationItems)}
-                onChange={selectGenerationItem}
-                disabled={!generationItems.length}
-                options={[{ value: '', label: generationItems.length ? '请选择字辈' : '无字辈明细，可先保存人物' }, ...generationItems.map(item => ({ value: generationOptionValue(item), label: generationLabel(item) }))]}
-              />
-            </Form.Item>
+            <Form.Item label="所属支派" required extra="只展示已审核通过的支派。"><Select showSearch optionFilterProp="label" value={personForm.branchId || workspace.branchId} onChange={changeBranch} disabled={!workspace.clanId || loadingOptions || !officialBranches.length} options={[{ value: '', label: officialBranches.length ? '请选择已通过支派' : '暂无已通过支派' }, ...officialBranches.map(branch => ({ value: String(branch.id), label: branchName(branch) }))]} /></Form.Item>
+            <Form.Item label="字辈方案" extra="选择方案后，可在字辈字段中带出字辈和代次。"><Select showSearch optionFilterProp="label" value={selectedSchemeId} disabled={!workspace.clanId || loadingOptions || !officialSchemes.length} onChange={value => { const selected = officialSchemes.find(scheme => String(scheme.id) === value); if (selected) void selectScheme(selected); else setSelectedSchemeId(''); }} options={[{ value: '', label: officialSchemes.length ? '请选择已通过字辈方案' : '暂无已通过方案' }, ...officialSchemes.map(scheme => ({ value: String(scheme.id), label: schemeName(scheme) }))]} /></Form.Item>
+            <Form.Item label="字辈"><Select value={generationSelectedValue(personForm.generationWord, personForm.generationNo, generationItems)} onChange={selectGenerationItem} disabled={!generationItems.length} options={[{ value: '', label: generationItems.length ? '请选择字辈' : '无字辈明细，可先保存人物' }, ...generationItems.map(item => ({ value: generationOptionValue(item), label: generationLabel(item) }))]} /></Form.Item>
             <Form.Item label="代次"><Input value={personForm.generationNo ? `第${personForm.generationNo}世` : '选择字辈后自动带出'} disabled readOnly /></Form.Item>
             <Form.Item label="世系状态"><Select value={personForm.lineageStatus} onChange={value => patchPerson('lineageStatus', value)} options={lineageStatusOptions} /></Form.Item>
+            <Form.Item label="是否有后裔"><Select value={personForm.hasDescendant} onChange={value => patchPerson('hasDescendant', value)} options={descendantOptions} /></Form.Item>
           </div>
         </Card>
 
-        <Card size="small" title="生卒与居住" className="person-step-form-card">
+        <Card size="small" title="生卒与地域" className="person-step-form-card">
           <div className="wizard-form-grid">
             <Form.Item label="出生日期"><DatePicker value={dateValue(personForm.birthDate)} onChange={(_date, value) => patchPerson('birthDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
-            <Form.Item label="逝世日期"><DatePicker value={dateValue(personForm.deathDate)} onChange={(_date, value) => patchPerson('deathDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="出生日期精度"><Select value={personForm.birthDatePrecision} onChange={value => patchPerson('birthDatePrecision', value)} options={personDatePrecisionOptions} /></Form.Item>
             <Form.Item label="是否在世"><Select value={personForm.isLiving} onChange={value => patchPerson('isLiving', value)} options={livingOptions} /></Form.Item>
+            <Form.Item label="逝世日期"><DatePicker value={dateValue(personForm.deathDate)} onChange={(_date, value) => patchPerson('deathDate', normalizeDateString(value))} style={{ width: '100%' }} /></Form.Item>
+            <Form.Item label="逝世日期精度"><Select value={personForm.deathDatePrecision} onChange={value => patchPerson('deathDatePrecision', value)} options={personDatePrecisionOptions} /></Form.Item>
             <Form.Item label="出生地"><Input value={personForm.birthPlace} onChange={event => patchPerson('birthPlace', event.target.value)} /></Form.Item>
             <Form.Item label="居住地"><Input value={personForm.residencePlace} onChange={event => patchPerson('residencePlace', event.target.value)} /></Form.Item>
+            <Form.Item label="墓葬地"><Input value={personForm.tombPlace} onChange={event => patchPerson('tombPlace', event.target.value)} /></Form.Item>
+          </div>
+        </Card>
+
+        <Card size="small" title="生平概况" className="person-step-form-card">
+          <div className="wizard-form-grid">
             <Form.Item label="职业"><Input value={personForm.occupation} onChange={event => patchPerson('occupation', event.target.value)} /></Form.Item>
             <Form.Item label="教育程度"><Select value={personForm.education} onChange={value => patchPerson('education', value)} options={personEducationOptions} /></Form.Item>
-            <Form.Item label="荣誉称号"><Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} /></Form.Item>
+            <Form.Item label="称号荣誉"><Input value={personForm.titleOrHonor} onChange={event => patchPerson('titleOrHonor', event.target.value)} /></Form.Item>
           </div>
+          <Form.Item label="人物传记"><Input.TextArea value={personForm.biography} onChange={event => patchPerson('biography', event.target.value)} rows={4} placeholder="记录人物生平、主要经历与贡献" /></Form.Item>
         </Card>
 
-        <Card size="small" title="关键事件" className="person-step-form-card">
-          <PersonEventEditor value={personEvents} onChange={setPersonEvents} disabled={savingPerson} />
-        </Card>
+        <PersonEventEditor title="生平事迹" value={personEvents} onChange={setPersonEvents} disabled={savingPerson} />
 
-        <Card size="small" title="传记与隐私" className="person-step-form-card">
-          <div className="wizard-form-grid">
-            <Form.Item label="隐私级别"><Select value={personForm.privacyLevel} onChange={value => patchPerson('privacyLevel', value)} options={privacyLevelOptions} /></Form.Item>
-          </div>
-          <Form.Item label="人物传记"><Input.TextArea value={personForm.biography} onChange={event => patchPerson('biography', event.target.value)} rows={4} placeholder="记录生平、迁徙、功名、事迹等" /></Form.Item>
-          <Form.Item label="墓志铭"><Input.TextArea value={personForm.epitaph} onChange={event => patchPerson('epitaph', event.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Form.Item>
-        </Card>
+        <Card size="small" title="墓志资料" className="person-step-form-card"><Form.Item label="墓志铭"><Input.TextArea value={personForm.epitaph} onChange={event => patchPerson('epitaph', event.target.value)} rows={3} placeholder="记录墓志、碑文或相关摘录" /></Form.Item></Card>
+
+        <Card size="small" title="治理信息" className="person-step-form-card"><div className="wizard-form-grid"><Form.Item label="隐私级别"><Select value={personForm.privacyLevel} onChange={value => patchPerson('privacyLevel', value)} options={privacyLevelOptions} /></Form.Item><Form.Item label="档案状态"><Tag>草稿</Tag></Form.Item></div></Card>
 
         <Space className="actions antd-actions" wrap>
           <Button type="primary" disabled={savingPerson} loading={savingPerson} onClick={() => void createPerson(true, false)}>保存草稿继续录入</Button>
