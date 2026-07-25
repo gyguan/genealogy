@@ -28,6 +28,29 @@ test('workbench keeps only query and task-list primary hierarchy', async () => {
   assert.ok(positions[1] > positions[0]);
 });
 
+test('workbench query follows the standard one-row and advanced-filter pattern', async () => {
+  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
+  const css = await source('features/workbench/editing-workspace-prototype.css');
+  assert.match(code, /workbench-filter-grid--primary/);
+  assert.match(code, /workbench-advanced-filters/);
+  assert.match(code, /更多筛选/);
+  assert.match(code, /收起筛选/);
+  assert.match(code, /workbench-query-actions/);
+  assert.match(css, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /justify-content:\s*flex-end/);
+});
+
+test('new workbench action is placed in the result card before export', async () => {
+  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
+  const actionsStart = code.indexOf('const taskActions');
+  const resultCard = code.indexOf('workbench-task-card');
+  const create = code.indexOf('新建修谱', actionsStart);
+  const exportAction = code.indexOf('>导出</Button>', actionsStart);
+  assert.ok(actionsStart >= 0 && resultCard > actionsStart);
+  assert.ok(create > actionsStart && exportAction > create);
+  assert.doesNotMatch(code, /workbench-query-card[^\n]+新建修谱/);
+});
+
 test('workbench keeps task list responsive and 720px drawer', async () => {
   const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
   const css = await source('features/workbench/editing-workspace-prototype.css');
