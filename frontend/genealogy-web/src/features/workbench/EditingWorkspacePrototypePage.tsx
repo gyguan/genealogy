@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Key, ReactNode } from 'react';
 import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import {
-  Button, Card, Col, Descriptions, Drawer, Form, Grid, Input, Modal,
+  Button, Card, Col, Collapse, Descriptions, Drawer, Form, Grid, Input, Modal,
   Pagination, Row, Select, Skeleton, Space, Table, Tag, Typography
 } from 'antd';
 import { apiClient } from '../../shared/api/client';
@@ -65,6 +65,7 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
   const [clans, setClans] = useState<Clan[]>([]);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [taskPage, setTaskPage] = useState<TaskPage>({ records: [], total: 0, pageNo: 1, pageSize: PAGE_SIZE });
   const [loading, setLoading] = useState(false);
@@ -102,7 +103,13 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
   useEffect(() => { if (currentClanId) void loadTasks(1, appliedFilters); }, [currentClanId]);
 
   function submitSearch() { setAppliedFilters(filters); setSelectedKeys([]); void loadTasks(1, filters); }
-  function resetSearch() { setFilters(EMPTY_FILTERS); setAppliedFilters(EMPTY_FILTERS); setSelectedKeys([]); void loadTasks(1, EMPTY_FILTERS); }
+  function resetSearch() {
+    setFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+    setAdvancedOpen(false);
+    setSelectedKeys([]);
+    void loadTasks(1, EMPTY_FILTERS);
+  }
   function navigate(view: ViewKey, task?: Task) {
     if (task?.relatedEntryId) {
       if (view === 'personArchive' || view === 'treeProduct') workspace.patch({ personId: task.relatedEntryId });
@@ -139,24 +146,42 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
   ];
 
   const taskActions = <Space wrap>
+    <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('mvp1Wizard')}>新建修谱</Button>
     <Button icon={<ExportOutlined />} disabled={!tasks.length} onClick={exportCsv}>导出</Button>
     <Button icon={<SettingOutlined />} onClick={() => setTemplateOpen(true)}>任务模板</Button>
-    <Button type="primary" disabled={!selectedKeys.length} loading={bulkLoading} onClick={() => void bulkCheck()}>批量核查</Button>
+    <Button disabled={!selectedKeys.length} loading={bulkLoading} onClick={() => void bulkCheck()}>批量核查</Button>
   </Space>;
   const drawerAction = currentTask ? <Button type="primary" disabled={!currentTask.relatedEntryType || !onNavigate} onClick={() => currentTask.relatedEntryType && navigate(currentTask.relatedEntryType, currentTask)}>前往处理</Button> : null;
 
   return <div className="workbench-prototype-page">
-    <Card className="workbench-query-card" title={cardTitle('修谱工作台', <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('mvp1Wizard')}>新建修谱</Button>)}>
+    <Card className="workbench-query-card" title="修谱工作台">
       <Form layout="vertical" onFinish={submitSearch}>
-        <Row gutter={[16, 0]} align="bottom">
-          <Col xs={24} md={6}><Form.Item label="宗族"><Select value={currentClanId || undefined} onChange={value => workspace.setClanId(value)} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanName(clan) }))} /></Form.Item></Col>
-          <Col xs={24} md={6}><Form.Item label="谱书"><Select disabled value={currentClanId || undefined} options={currentClanId ? [{ value: currentClanId, label: `${clanName(activeClan)}族谱` }] : []} /></Form.Item></Col>
-          <Col xs={24} md={6}><Form.Item label="关键词"><Input value={filters.keyword} onChange={event => setFilters(previous => ({ ...previous, keyword: event.target.value }))} placeholder="任务、人物、关系或来源" allowClear /></Form.Item></Col>
-          <Col xs={24} md={6}><Form.Item label="任务状态"><Select mode="multiple" value={filters.status} onChange={value => setFilters(previous => ({ ...previous, status: value }))} options={statusOptions} maxTagCount="responsive" allowClear /></Form.Item></Col>
-          <Col xs={24} md={6}><Form.Item label="任务类型"><Select mode="multiple" value={filters.type} onChange={value => setFilters(previous => ({ ...previous, type: value }))} options={typeOptions} maxTagCount="responsive" allowClear /></Form.Item></Col>
-          <Col xs={24} md={6}><Form.Item label="风险等级"><Select mode="multiple" value={filters.risk} onChange={value => setFilters(previous => ({ ...previous, risk: value }))} options={riskOptions} maxTagCount="responsive" allowClear /></Form.Item></Col>
-          <Col xs={24} md={12}><Form.Item><Space wrap><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit" loading={loading}>查询</Button></Space></Form.Item></Col>
-        </Row>
+        <div className="workbench-filter-grid workbench-filter-grid--primary">
+          <Form.Item label="宗族"><Select value={currentClanId || undefined} onChange={value => workspace.setClanId(value)} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanName(clan) }))} /></Form.Item>
+          <Form.Item label="谱书"><Select disabled value={currentClanId || undefined} options={currentClanId ? [{ value: currentClanId, label: `${clanName(activeClan)}族谱` }] : []} /></Form.Item>
+          <Form.Item label="关键词"><Input value={filters.keyword} onChange={event => setFilters(previous => ({ ...previous, keyword: event.target.value }))} placeholder="任务、人物、关系或来源" allowClear /></Form.Item>
+          <Form.Item label="任务状态"><Select mode="multiple" value={filters.status} onChange={value => setFilters(previous => ({ ...previous, status: value }))} options={statusOptions} maxTagCount="responsive" placeholder="请选择（多选）" allowClear /></Form.Item>
+        </div>
+        <Collapse
+          className="workbench-advanced-collapse"
+          bordered={false}
+          activeKey={advancedOpen ? ['advanced'] : []}
+          items={[{
+            key: 'advanced',
+            label: null,
+            showArrow: false,
+            styles: { header: { display: 'none' }, body: { padding: 0 } },
+            children: <div id="workbench-advanced-filters" className="workbench-filter-grid workbench-filter-grid--advanced">
+              <Form.Item label="任务类型"><Select mode="multiple" value={filters.type} onChange={value => setFilters(previous => ({ ...previous, type: value }))} options={typeOptions} maxTagCount="responsive" placeholder="请选择（多选）" allowClear /></Form.Item>
+              <Form.Item label="风险等级"><Select mode="multiple" value={filters.risk} onChange={value => setFilters(previous => ({ ...previous, risk: value }))} options={riskOptions} maxTagCount="responsive" placeholder="请选择（多选）" allowClear /></Form.Item>
+            </div>
+          }]}
+        />
+        <Space className="workbench-query-actions">
+          <Button type="link" className="workbench-more-filter" aria-expanded={advancedOpen} aria-controls="workbench-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+          <Button onClick={resetSearch}>重置</Button>
+          <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
+        </Space>
       </Form>
     </Card>
 
