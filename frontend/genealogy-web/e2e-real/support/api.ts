@@ -25,5 +25,15 @@ export async function responsePayload(response: APIResponse) {
 }
 
 export function responseData(payload: any) {
-  return payload?.data ?? payload;
+  const data = payload?.data ?? payload;
+  if (data
+      && !Array.isArray(data)
+      && typeof data === 'object'
+      && data.source
+      && typeof data.source === 'object'
+      && Array.isArray(data.bindingSummaries)
+      && Array.isArray(data.attachmentSummaries)) {
+    return { ...data.source, ...data };
+  }
+  return data;
 }
