@@ -121,8 +121,10 @@ public class ImportFileIdempotencyAspect {
                 fingerprint.setJobId(response.id());
                 fingerprint.setCreatedAt(LocalDateTime.now());
                 fingerprintRepository.saveAndFlush(fingerprint);
+
+                ImportJobResponse completeResponse = importJobApplicationService.getJob(clanId, response.id(), actorId);
                 transactionManager.commit(transaction);
-                return result;
+                return completeResponse;
             } catch (Throwable throwable) {
                 if (!transaction.isCompleted()) {
                     transactionManager.rollback(transaction);
