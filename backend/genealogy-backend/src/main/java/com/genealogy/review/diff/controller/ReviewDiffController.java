@@ -21,11 +21,10 @@ public class ReviewDiffController {
         this.reviewDiffApplicationService = reviewDiffApplicationService;
     }
 
-    @GetMapping("/review-tasks/{reviewTaskId}/diff")
-    public ApiResponse<ReviewDiffResponse> byReviewTask(@Positive @PathVariable Long reviewTaskId) {
-        return ApiResponse.success(reviewDiffApplicationService.byReviewTask(reviewTaskId));
-    }
-
+    /**
+     * Review-task diff is served by ApprovalController so login and review_task:view
+     * authorization are enforced in one canonical route.
+     */
     @GetMapping("/revisions/{revisionId}/diff")
     public ApiResponse<ReviewDiffResponse> byRevision(@Positive @PathVariable Long revisionId) {
         return ApiResponse.success(reviewDiffApplicationService.byRevision(revisionId));
