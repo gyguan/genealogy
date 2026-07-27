@@ -3,6 +3,8 @@ package com.genealogy.integration;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.entity.AppUserEntity;
 import com.genealogy.auth.repository.AppUserRepository;
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.review.application.ApprovalApplicationService;
@@ -63,6 +65,7 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
     @Autowired AuditRecordRepository auditRecordRepository;
     @Autowired CheckTaskRepository checkTaskRepository;
     @Autowired AppUserRepository appUserRepository;
+    @Autowired ClanRepository clanRepository;
 
     @MockBean AuthorizationApplicationService authorizationApplicationService;
     @MockBean RevisionApplyService revisionApplyService;
@@ -73,9 +76,10 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
         LocalDateTime now = LocalDateTime.now();
         AppUserEntity submitter = saveUser("submitter");
         AppUserEntity reviewer = saveUser("reviewer");
+        ClanEntity clan = saveClan(now);
 
         AuditRecordEntity revision = new AuditRecordEntity();
-        revision.setClanId(900001L);
+        revision.setClanId(clan.getId());
         revision.setTargetType("person");
         revision.setTargetId(910001L);
         revision.setChangeType("submit_review");
@@ -87,7 +91,7 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
         revision = auditRecordRepository.saveAndFlush(revision);
 
         CheckTaskEntity task = new CheckTaskEntity();
-        task.setClanId(revision.getClanId());
+        task.setClanId(clan.getId());
         task.setRevisionId(revision.getId());
         task.setReviewLevel(1);
         task.setReviewerRole("reviewer");
@@ -99,6 +103,7 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
 
         Long taskId = task.getId();
         Long reviewerId = reviewer.getId();
+        Long revisionId = revision.getId();
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -139,7 +144,7 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
             assertThat(rejected.getCode()).isEqualTo("REVIEW_TASK_ALREADY_HANDLED");
 
             CheckTaskEntity savedTask = checkTaskRepository.findById(taskId).orElseThrow();
-            AuditRecordEntity savedRevision = auditRecordRepository.findById(revision.getId()).orElseThrow();
+            AuditRecordEntity savedRevision = auditRecordRepository.findById(revisionId).orElseThrow();
             assertThat(savedTask.getStatus()).isEqualTo("approved");
             assertThat(savedTask.getReviewerId()).isEqualTo(reviewerId);
             assertThat(savedRevision.getStatus()).isEqualTo("approved");
@@ -147,6 +152,18 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    private ClanEntity saveClan(LocalDateTime now) {
+        String token = UUID.randomUUID().toString();
+        ClanEntity clan = new ClanEntity();
+        clan.setClanCode("REVIEW-CONCURRENCY-" + token);
+        clan.setClanName("审核并发集成测试-" + token);
+        clan.setSurname("黄");
+        clan.setStatus("pending_review");
+        clan.setCreatedAt(now);
+        clan.setUpdatedAt(now);
+        return clanRepository.saveAndFlush(clan);
     }
 
     private AppUserEntity saveUser(String prefix) {
