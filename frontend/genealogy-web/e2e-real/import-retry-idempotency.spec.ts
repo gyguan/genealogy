@@ -183,8 +183,8 @@ test.describe('数据导入预览、修正、审核与幂等完整业务链', ()
     ));
     const personJobId = idOf(personJob, '人物导入批次');
     expect(personJob).toMatchObject({ totalCount: 3, successCount: 2, failureCount: 1 });
-    expect(personJob.processingStatus).toBe('correction_required');
-    expect(personJob.reviewStatus).toBe('not_submitted');
+    const personJobCreated = await okData(await page.request.get(`/api/v1/clans/${clanId}/imports/${personJobId}`));
+    expect(personJobCreated).toMatchObject({ processingStatus: 'correction_required', reviewStatus: 'not_submitted' });
 
     const failedPersonRows = await okData(await page.request.get(
       `/api/v1/clans/${clanId}/imports/${personJobId}/rows?status=failed&pageNo=1&pageSize=20`
@@ -303,7 +303,8 @@ test.describe('数据导入预览、修正、审核与幂等完整业务链', ()
     ));
     const relationshipJobId = idOf(relationshipJob, '关系导入批次');
     expect(relationshipJob).toMatchObject({ totalCount: 3, successCount: 1, failureCount: 2 });
-    expect(relationshipJob.processingStatus).toBe('correction_required');
+    const relationshipJobCreated = await okData(await page.request.get(`/api/v1/clans/${clanId}/imports/${relationshipJobId}`));
+    expect(relationshipJobCreated).toMatchObject({ processingStatus: 'correction_required', reviewStatus: 'not_submitted' });
 
     const failedRelationshipRows = await okData(await page.request.get(
       `/api/v1/clans/${clanId}/imports/${relationshipJobId}/rows?status=failed&pageNo=1&pageSize=20`
