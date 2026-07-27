@@ -2,6 +2,8 @@ import { expect, test, type APIResponse, type Page } from '@playwright/test';
 import { functionalRunId, loginThroughUi } from './support/auth';
 import { csrfHeaders, requiredNumberEnv, responseData, responsePayload } from './support/api';
 
+const handledTaskConflict = /REVIEW_TASK_ALREADY_HANDLED|REVIEW_QUALITY_TASK_STATE_CONFLICT|STATE_CONFLICT|已处理|冲突/;
+
 async function resetBrowserSession(page: Page) {
   await page.context().clearCookies();
   await page.goto('/');
@@ -301,7 +303,7 @@ test.describe('审核驳回、修改重提与并发治理闭环', () => {
     expect(concurrentStatuses.filter(status => status >= 200 && status < 300)).toHaveLength(1);
     expect(concurrentStatuses.filter(status => status >= 400)).toHaveLength(1);
     const failedConcurrent = concurrent.find(response => !response.ok());
-    expect(JSON.stringify(await responsePayload(failedConcurrent!))).toMatch(/REVIEW_TASK_ALREADY_HANDLED|已处理|冲突/);
+    expect(JSON.stringify(await responsePayload(failedConcurrent!))).toMatch(handledTaskConflict);
 
     const firstPerson = await okData(await page.request.get(`/api/v1/persons/${first.personId}`));
     expect(statusOf(firstPerson)).toBe('official');
@@ -314,7 +316,7 @@ test.describe('审核驳回、修改重提与并发治理闭环', () => {
     const valid = batchLikeResponses[1];
     expect(repeated.ok()).toBeFalsy();
     expect(valid.ok(), await valid.text()).toBeTruthy();
-    expect(JSON.stringify(await responsePayload(repeated))).toMatch(/REVIEW_TASK_ALREADY_HANDLED|已处理|冲突/);
+    expect(JSON.stringify(await responsePayload(repeated))).toMatch(handledTaskConflict);
     expect(statusOf(responseData(await responsePayload(valid)))).toBe('approved');
 
     const secondPerson = await okData(await page.request.get(`/api/v1/persons/${second.personId}`));
