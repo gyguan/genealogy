@@ -44,41 +44,43 @@ public class ImportFileIdempotencyAspect {
         this.transactionManager = transactionManager;
     }
 
-    @Around("execution(* com.genealogy.imports.application.ImportApplicationService.importPersonsCsv(..))"
-            + " && args(clanId, branchId, file, confirmDuplicates, actorId)")
-    public Object guardPersonImport(
-            ProceedingJoinPoint joinPoint,
-            Long clanId,
-            Long branchId,
-            MultipartFile file,
-            boolean confirmDuplicates,
-            Long actorId
-    ) throws Throwable {
-        return guard(joinPoint, clanId, branchId, ImportJobEntity.TYPE_PERSON, file, actorId);
+    @Around("execution(* com.genealogy.imports.application.ImportApplicationService.importPersonsCsv(..))")
+    public Object guardPersonImport(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object[] args = joinPoint.getArgs();
+        return guard(
+                joinPoint,
+                requiredLong(args, 0, "clanId"),
+                requiredLong(args, 1, "branchId"),
+                ImportJobEntity.TYPE_PERSON,
+                requiredFile(args, 2),
+                requiredLong(args, 4, "actorId")
+        );
     }
 
-    @Around("execution(* com.genealogy.imports.application.RelationshipImportApplicationService.importRelationships(..))"
-            + " && args(clanId, branchId, file, actorId)")
-    public Object guardRelationshipImport(
-            ProceedingJoinPoint joinPoint,
-            Long clanId,
-            Long branchId,
-            MultipartFile file,
-            Long actorId
-    ) throws Throwable {
-        return guard(joinPoint, clanId, branchId, ImportJobEntity.TYPE_RELATIONSHIP, file, actorId);
+    @Around("execution(* com.genealogy.imports.application.RelationshipImportApplicationService.importRelationships(..))")
+    public Object guardRelationshipImport(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object[] args = joinPoint.getArgs();
+        return guard(
+                joinPoint,
+                requiredLong(args, 0, "clanId"),
+                requiredLong(args, 1, "branchId"),
+                ImportJobEntity.TYPE_RELATIONSHIP,
+                requiredFile(args, 2),
+                requiredLong(args, 3, "actorId")
+        );
     }
 
-    @Around("execution(* com.genealogy.imports.application.SourceImportApplicationService.importSources(..))"
-            + " && args(clanId, branchId, file, actorId)")
-    public Object guardSourceImport(
-            ProceedingJoinPoint joinPoint,
-            Long clanId,
-            Long branchId,
-            MultipartFile file,
-            Long actorId
-    ) throws Throwable {
-        return guard(joinPoint, clanId, branchId, ImportJobEntity.TYPE_SOURCE, file, actorId);
+    @Around("execution(* com.genealogy.imports.application.SourceImportApplicationService.importSources(..))")
+    public Object guardSourceImport(ProceedingJoinPoint joinPoint) throws Throwable {
+        Object[] args = joinPoint.getArgs();
+        return guard(
+                joinPoint,
+                requiredLong(args, 0, "clanId"),
+                requiredLong(args, 1, "branchId"),
+                ImportJobEntity.TYPE_SOURCE,
+                requiredFile(args, 2),
+                requiredLong(args, 3, "actorId")
+        );
     }
 
     private Object guard(
@@ -133,6 +135,20 @@ public class ImportFileIdempotencyAspect {
                 locks.remove(lockKey, lock);
             }
         }
+    }
+
+    private Long requiredLong(Object[] args, int index, String name) {
+        if (args.length <= index || !(args[index] instanceof Long value) || value <= 0) {
+            throw new BusinessException("IMPORT_IDEMPOTENCY_ARGUMENT_INVALID", "导入幂等参数无效：" + name);
+        }
+        return value;
+    }
+
+    private MultipartFile requiredFile(Object[] args, int index) {
+        if (args.length <= index || !(args[index] instanceof MultipartFile file)) {
+            throw new BusinessException("IMPORT_IDEMPOTENCY_ARGUMENT_INVALID", "导入幂等文件参数无效");
+        }
+        return file;
     }
 
     private String sha256(MultipartFile file) {
