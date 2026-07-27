@@ -1,0 +1,25 @@
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  main:
+    banner-mode: off
+
+genealogy:
+  auth:
+    public-registration-enabled: true
+    demo-mode-enabled: false
+    expose-bearer-token: true
+    expose-reset-token: false
+    cookie-secure: false
+    cookie-same-site: Lax
+  attachment:
+    storage-root: ${java.io.tmpdir}/genealogy-functional-attachments
+
+logging:
+  level:
+    com.genealogy: info
