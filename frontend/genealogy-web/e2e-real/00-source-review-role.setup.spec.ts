@@ -12,6 +12,10 @@ async function resetBrowserSession(page: Page) {
   await page.reload();
 }
 
+function normalizePermissionCode(value: unknown) {
+  return String(value || '').trim().replaceAll('.', ':').toLowerCase();
+}
+
 test.describe('完整业务链审核角色初始化', () => {
   test.describe.configure({ mode: 'serial', retries: 0 });
 
@@ -39,13 +43,14 @@ test.describe('完整业务链审核角色初始化', () => {
       const permissionsResponse = await page.request.get(`/api/v1/member-management/roles/${role.id}/permissions`);
       expect(permissionsResponse.ok(), await permissionsResponse.text()).toBeTruthy();
       const permissions = responseData(await responsePayload(permissionsResponse));
-      if (Array.isArray(permissions) && permissions.some(item => item.permissionCode === 'source:review')) {
+      if (Array.isArray(permissions)
+          && permissions.some(item => normalizePermissionCode(item.permissionCode) === 'source:review')) {
         sourceReviewRole = role;
         break;
       }
     }
 
-    expect(sourceReviewRole, '系统必须存在包含 source:review 的可授权角色').toBeTruthy();
+    expect(sourceReviewRole, '系统必须存在包含 source.review/source:review 的可授权角色').toBeTruthy();
     const grantResponse = await page.request.post(`/api/v1/clans/${clanId}/member-grants`, {
       headers: editorHeaders,
       data: {
