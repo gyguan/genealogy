@@ -201,6 +201,8 @@ class PostgreSqlCoreIT {
         person.setName(name);
         person.setGender("unknown");
         person.setIsLiving(true);
+        person.setHasDescendant(false);
+        person.setLineageStatus("normal");
         person.setPrivacyLevel("clan_only");
         person.setDataStatus("draft");
         person.setCreatedAt(LocalDateTime.now());
