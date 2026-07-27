@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { loginThroughUi } from './support/auth';
 import { csrfHeaders, requiredNumberEnv, responseData, responsePayload } from './support/api';
 
-async function resetBrowserSession(page: import('@playwright/test').Page) {
+async function resetBrowserSession(page: Page) {
   await page.context().clearCookies();
   await page.goto('/');
   await page.evaluate(() => {
@@ -42,8 +42,8 @@ test.describe.serial('真实审核治理与世系查询', () => {
 
     const pendingResponse = await page.request.get(`/api/v1/review-tasks/${task.id}`);
     expect(pendingResponse.ok(), await pendingResponse.text()).toBeTruthy();
-    expect(responseData(await responsePayload(pendingResponse))?.task?.status
-      ?? responseData(await responsePayload(pendingResponse))?.status).toBe('pending');
+    const pendingDetail = responseData(await responsePayload(pendingResponse));
+    expect(pendingDetail?.task?.status ?? pendingDetail?.status).toBe('pending');
 
     await resetBrowserSession(page);
     await loginThroughUi(page, 'REVIEWER');
