@@ -168,7 +168,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          command -v psql >/dev/null || sudo apt-get update && sudo apt-get install -y postgresql-client
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
 
           jq -nc \
             --arg username "$FUNCTIONAL_TEST_EDITOR_USERNAME" \
@@ -213,11 +216,13 @@ jobs:
           create_person() {
             local person_name="$1"
             local generation_no="$2"
+            local person_code="$3"
             jq -nc \
               --argjson branchId "$core_branch_id" \
+              --arg personCode "$person_code" \
               --arg name "$person_name" \
               --argjson generationNo "$generation_no" \
-              '{branchId:$branchId,personCode:null,name:$name,genealogyName:null,courtesyName:null,aliasName:null,gender:"male",generationNo:$generationNo,generationWord:null,rankInFamily:null,birthDate:null,birthDatePrecision:null,deathDate:null,deathDatePrecision:null,isLiving:false,birthPlace:null,residencePlace:null,occupation:null,education:null,titleOrHonor:null,biography:null,tombPlace:null,epitaph:null,hasDescendant:true,lineageStatus:"normal",privacyLevel:"clan_only",dataStatus:"draft",confirmDuplicate:true}' \
+              '{branchId:$branchId,personCode:$personCode,name:$name,genealogyName:null,courtesyName:null,aliasName:null,gender:"male",generationNo:$generationNo,generationWord:null,rankInFamily:null,birthDate:null,birthDatePrecision:null,deathDate:null,deathDatePrecision:null,isLiving:false,birthPlace:null,residencePlace:null,occupation:null,education:null,titleOrHonor:null,biography:null,tombPlace:null,epitaph:null,hasDescendant:true,lineageStatus:"normal",privacyLevel:"clan_only",dataStatus:"draft",confirmDuplicate:true}' \
               | curl --fail-with-body --silent --show-error \
                   -b editor.cookies \
                   -H 'Content-Type: application/json' \
@@ -226,9 +231,9 @@ jobs:
                   "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/persons"
           }
 
-          create_person "黄测试始祖-${FUNCTIONAL_TEST_RUN_ID}" 1 > core-root-person.json
-          create_person "黄测试承继-${FUNCTIONAL_TEST_RUN_ID}" 2 > core-middle-person.json
-          create_person "黄测试后代-${FUNCTIONAL_TEST_RUN_ID}" 3 > core-child-person.json
+          create_person "黄测试始祖-${FUNCTIONAL_TEST_RUN_ID}" 1 "FT-R-${GITHUB_RUN_ID}" > core-root-person.json
+          create_person "黄测试承继-${FUNCTIONAL_TEST_RUN_ID}" 2 "FT-M-${GITHUB_RUN_ID}" > core-middle-person.json
+          create_person "黄测试后代-${FUNCTIONAL_TEST_RUN_ID}" 3 "FT-C-${GITHUB_RUN_ID}" > core-child-person.json
           root_person_id="$(jq -r '.data.id // empty' core-root-person.json)"
           middle_person_id="$(jq -r '.data.id // empty' core-middle-person.json)"
           child_person_id="$(jq -r '.data.id // empty' core-child-person.json)"
@@ -261,9 +266,9 @@ jobs:
           reviewer_user_id="$(jq -r '.data.id // empty' reviewer-register.json)"
           editor_user_id="$(jq -r '.data.id // empty' editor-register.json)"
           test -n "$reviewer_user_id" && test -n "$editor_user_id"
-          reviewer_role_id="$(psql -At -v ON_ERROR_STOP=1 -c "select id from app_role where role_code = 'reviewer' limit 1")"
+          reviewer_role_id="$(psql -Atq -v ON_ERROR_STOP=1 -c "select id from app_role where role_code = 'reviewer' limit 1")"
           test -n "$reviewer_role_id"
-          reviewer_membership_id="$(psql -At -v ON_ERROR_STOP=1 -c "insert into clan_membership(user_id, clan_id, join_status, member_status, joined_at, created_at, updated_at) values (${reviewer_user_id}, ${core_clan_id}, 'accepted', 'active', now(), now(), now()) returning id")"
+          reviewer_membership_id="$(psql -Atq -v ON_ERROR_STOP=1 -c "insert into clan_membership(user_id, clan_id, join_status, member_status, joined_at, created_at, updated_at) values (${reviewer_user_id}, ${core_clan_id}, 'accepted', 'active', now(), now(), now()) returning id")"
           psql -v ON_ERROR_STOP=1 -c "insert into member_role(membership_id, role_id, scope_type, scope_id, status, granted_by, granted_at, created_at, updated_at) values (${reviewer_membership_id}, ${reviewer_role_id}, 'clan', ${core_clan_id}, 'active', ${editor_user_id}, now(), now(), now())"
 
           {
