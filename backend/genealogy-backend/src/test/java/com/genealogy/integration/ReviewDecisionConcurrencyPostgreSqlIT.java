@@ -36,9 +36,9 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -99,7 +99,7 @@ class ReviewDecisionConcurrencyPostgreSqlIT {
         task.setCreatedAt(now);
         task = checkTaskRepository.saveAndFlush(task);
 
-        doNothing().when(authorizationApplicationService).requirePermission(any(), any(), any());
+        when(authorizationApplicationService.requirePermission(any(), any(), any())).thenReturn(null);
 
         Long taskId = task.getId();
         Long reviewerId = reviewer.getId();
