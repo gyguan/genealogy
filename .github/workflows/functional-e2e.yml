@@ -264,12 +264,20 @@ jobs:
           psql -v ON_ERROR_STOP=1 -c "update relationship set data_status = 'official' where id in (${relation_1_id}, ${relation_2_id})"
 
           reviewer_user_id="$(jq -r '.data.id // empty' reviewer-register.json)"
-          editor_user_id="$(jq -r '.data.id // empty' editor-register.json)"
-          test -n "$reviewer_user_id" && test -n "$editor_user_id"
-          reviewer_role_id="$(psql -Atq -v ON_ERROR_STOP=1 -c "select id from app_role where role_code = 'reviewer' limit 1")"
-          test -n "$reviewer_role_id"
-          reviewer_membership_id="$(psql -Atq -v ON_ERROR_STOP=1 -c "insert into clan_membership(user_id, clan_id, join_status, member_status, joined_at, created_at, updated_at) values (${reviewer_user_id}, ${core_clan_id}, 'accepted', 'active', now(), now(), now()) returning id")"
-          psql -v ON_ERROR_STOP=1 -c "insert into member_role(membership_id, role_id, scope_type, scope_id, status, granted_by, granted_at, created_at, updated_at) values (${reviewer_membership_id}, ${reviewer_role_id}, 'clan', ${core_clan_id}, 'active', ${editor_user_id}, now(), now(), now())"
+          test -n "$reviewer_user_id"
+          jq -nc \
+            --argjson userId "$reviewer_user_id" \
+            --argjson scopeId "$core_clan_id" \
+            '{userId:$userId,roleCode:"reviewer",scopeType:"clan",scopeId:$scopeId,reason:"功能测试授予独立审核员"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b editor.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${editor_csrf}" \
+                --data-binary @- \
+                "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/member-grants" \
+                > reviewer-grant.json
+          reviewer_grant_id="$(jq -r '.data.grantId // .data.id // empty' reviewer-grant.json)"
+          test -n "$reviewer_grant_id"
 
           {
             echo "FUNCTIONAL_TEST_CORE_CLAN_ID=${core_clan_id}"
