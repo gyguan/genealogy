@@ -1,5 +1,7 @@
 package com.genealogy.integration;
 
+import com.genealogy.auth.entity.AppUserEntity;
+import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
@@ -50,17 +52,29 @@ class ReviewDecisionPostgreSqlIT {
     @Autowired AuditRecordRepository auditRecordRepository;
     @Autowired CheckTaskRepository checkTaskRepository;
     @Autowired ClanRepository clanRepository;
+    @Autowired AppUserRepository appUserRepository;
 
     @Test
     void ftPerm004_selfApprovalIsRejectedBeforeStateMutation() {
-        ClanEntity clan = new ClanEntity();
         String token = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+
+        AppUserEntity submitter = new AppUserEntity();
+        submitter.setUsername("review-it-" + token);
+        submitter.setPasswordHash("not-used-in-integration-test");
+        submitter.setDisplayName("审核提交人");
+        submitter.setStatus("active");
+        submitter.setCreatedAt(now);
+        submitter.setUpdatedAt(now);
+        submitter = appUserRepository.saveAndFlush(submitter);
+
+        ClanEntity clan = new ClanEntity();
         clan.setClanCode("REVIEW-IT-" + token);
         clan.setClanName("审核隔离集成测试-" + token);
         clan.setSurname("黄");
         clan.setStatus("pending_review");
-        clan.setCreatedAt(LocalDateTime.now());
-        clan.setUpdatedAt(LocalDateTime.now());
+        clan.setCreatedAt(now);
+        clan.setUpdatedAt(now);
         clan = clanRepository.saveAndFlush(clan);
 
         AuditRecordEntity revision = new AuditRecordEntity();
@@ -70,8 +84,8 @@ class ReviewDecisionPostgreSqlIT {
         revision.setChangeType("submit_review");
         revision.setOldPayload("{}");
         revision.setNewPayload("{}");
-        revision.setSubmitterId(77L);
-        revision.setSubmitTime(LocalDateTime.now());
+        revision.setSubmitterId(submitter.getId());
+        revision.setSubmitTime(now);
         revision.setStatus("pending");
         revision = auditRecordRepository.saveAndFlush(revision);
 
@@ -81,14 +95,15 @@ class ReviewDecisionPostgreSqlIT {
         task.setReviewLevel(1);
         task.setReviewerRole("clan_admin");
         task.setStatus("pending");
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreatedAt(now);
         task = checkTaskRepository.saveAndFlush(task);
 
         Long taskId = task.getId();
         Long revisionId = revision.getId();
+        Long submitterId = submitter.getId();
         assertThatThrownBy(() -> approvalApplicationService.approve(
                 taskId,
-                new ReviewDecisionRequest(77L, "提交人尝试自审")
+                new ReviewDecisionRequest(submitterId, "提交人尝试自审")
         )).isInstanceOfSatisfying(BusinessException.class, exception ->
                 assertThat(exception.getCode()).isEqualTo("REVIEW_SELF_DECISION_FORBIDDEN")
         );
