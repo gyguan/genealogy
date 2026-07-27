@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-type TestRole = 'ADMIN' | 'EDITOR' | 'REVIEWER' | 'VIEWER';
+type TestRole = 'ADMIN' | 'EDITOR' | 'REVIEWER' | 'VIEWER' | 'RESTRICTED';
 
 function requiredEnv(name: string) {
   const value = String(process.env[name] || '').trim();
@@ -11,9 +11,10 @@ function requiredEnv(name: string) {
 }
 
 export function credentials(role: TestRole) {
+  const credentialRole = role === 'RESTRICTED' ? 'VIEWER' : role;
   return {
-    username: requiredEnv(`FUNCTIONAL_TEST_${role}_USERNAME`),
-    password: requiredEnv(`FUNCTIONAL_TEST_${role}_PASSWORD`)
+    username: requiredEnv(`FUNCTIONAL_TEST_${credentialRole}_USERNAME`),
+    password: requiredEnv(`FUNCTIONAL_TEST_${credentialRole}_PASSWORD`)
   };
 }
 
