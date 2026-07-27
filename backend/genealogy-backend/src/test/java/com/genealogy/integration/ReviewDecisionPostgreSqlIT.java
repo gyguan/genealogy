@@ -1,5 +1,7 @@
 package com.genealogy.integration;
 
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.review.application.ApprovalApplicationService;
 import com.genealogy.review.dto.ReviewDecisionRequest;
@@ -18,6 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,13 +49,24 @@ class ReviewDecisionPostgreSqlIT {
     @Autowired ApprovalApplicationService approvalApplicationService;
     @Autowired AuditRecordRepository auditRecordRepository;
     @Autowired CheckTaskRepository checkTaskRepository;
+    @Autowired ClanRepository clanRepository;
 
     @Test
     void ftPerm004_selfApprovalIsRejectedBeforeStateMutation() {
+        ClanEntity clan = new ClanEntity();
+        String token = UUID.randomUUID().toString();
+        clan.setClanCode("REVIEW-IT-" + token);
+        clan.setClanName("审核隔离集成测试-" + token);
+        clan.setSurname("黄");
+        clan.setStatus("pending_review");
+        clan.setCreatedAt(LocalDateTime.now());
+        clan.setUpdatedAt(LocalDateTime.now());
+        clan = clanRepository.saveAndFlush(clan);
+
         AuditRecordEntity revision = new AuditRecordEntity();
-        revision.setClanId(1L);
+        revision.setClanId(clan.getId());
         revision.setTargetType("clan");
-        revision.setTargetId(1L);
+        revision.setTargetId(clan.getId());
         revision.setChangeType("submit_review");
         revision.setOldPayload("{}");
         revision.setNewPayload("{}");
@@ -62,7 +76,7 @@ class ReviewDecisionPostgreSqlIT {
         revision = auditRecordRepository.saveAndFlush(revision);
 
         CheckTaskEntity task = new CheckTaskEntity();
-        task.setClanId(1L);
+        task.setClanId(clan.getId());
         task.setRevisionId(revision.getId());
         task.setReviewLevel(1);
         task.setReviewerRole("clan_admin");
@@ -71,6 +85,7 @@ class ReviewDecisionPostgreSqlIT {
         task = checkTaskRepository.saveAndFlush(task);
 
         Long taskId = task.getId();
+        Long revisionId = revision.getId();
         assertThatThrownBy(() -> approvalApplicationService.approve(
                 taskId,
                 new ReviewDecisionRequest(77L, "提交人尝试自审")
@@ -79,7 +94,7 @@ class ReviewDecisionPostgreSqlIT {
         );
 
         CheckTaskEntity unchangedTask = checkTaskRepository.findById(taskId).orElseThrow();
-        AuditRecordEntity unchangedRevision = auditRecordRepository.findById(revision.getId()).orElseThrow();
+        AuditRecordEntity unchangedRevision = auditRecordRepository.findById(revisionId).orElseThrow();
         assertThat(unchangedTask.getStatus()).isEqualTo("pending");
         assertThat(unchangedTask.getReviewerId()).isNull();
         assertThat(unchangedTask.getReviewedAt()).isNull();
