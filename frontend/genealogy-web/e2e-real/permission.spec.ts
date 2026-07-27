@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { functionalRunId, loginThroughUi } from './support/auth';
 
-test('FT-PERM-001 查看者不能通过真实接口创建宗族', async ({ page }) => {
+test('FT-PERM-001 已归属其他宗族的账号不能创建第二宗族', async ({ page }) => {
   await loginThroughUi(page, 'VIEWER');
   const clanName = `越权创建-${functionalRunId()}`;
 
@@ -12,7 +12,7 @@ test('FT-PERM-001 查看者不能通过真实接口创建宗族', async ({ page 
   await page.getByRole('button', { name: '创建宗族' }).click();
 
   await expect(page.getByText(clanName, { exact: true })).toHaveCount(0);
-  await expect(page.getByText(/无权|权限|禁止|FORBIDDEN|403/i).first()).toBeVisible();
+  await expect(page.getByText(/一个用户只能归属一个宗族|跨宗族|无权|权限|禁止|FORBIDDEN|403/i).first()).toBeVisible();
 
   const clansResponse = await page.request.get('/api/v1/clans');
   expect(clansResponse.ok()).toBeTruthy();
