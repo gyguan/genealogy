@@ -1,0 +1,223 @@
+name: Functional E2E
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - "frontend/genealogy-web/**"
+      - "docs/testing/**"
+      - "tasks/issue-81*.md"
+      - ".github/workflows/functional-e2e.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functional-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  functional-test:
+    name: PostgreSQL Integration and Real Browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      VITE_API_PROXY_TARGET: http://127.0.0.1:8080
+      E2E_BASE_URL: http://127.0.0.1:5179
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+
+      - name: Generate isolated functional test identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          suffix="${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          {
+            echo "FUNCTIONAL_TEST_RUN_ID=gha-${suffix}"
+            echo "FUNCTIONAL_TEST_ADMIN_USERNAME=ft_admin_${suffix}"
+            echo "FUNCTIONAL_TEST_ADMIN_PASSWORD=$(openssl rand -hex 16)"
+            echo "FUNCTIONAL_TEST_VIEWER_USERNAME=ft_restricted_${suffix}"
+            echo "FUNCTIONAL_TEST_VIEWER_PASSWORD=$(openssl rand -hex 16)"
+          } >> "$GITHUB_ENV"
+
+      - name: Run PostgreSQL integration tests
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -o pipefail
+          mvn -B -DskipITs=false verify 2>&1 | tee ../../postgresql-integration.log
+
+      - name: Start functional backend
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../backend-functional.log 2>&1 &
+          echo $! > ../../backend-functional.pid
+          for attempt in $(seq 1 60); do
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Backend did not open port 8080" >&2
+          tail -n 200 ../../backend-functional.log || true
+          exit 1
+
+      - name: Register isolated test accounts
+        shell: bash
+        run: |
+          set -euo pipefail
+          register_user() {
+            local username="$1"
+            local password="$2"
+            local display_name="$3"
+            jq -nc \
+              --arg username "$username" \
+              --arg password "$password" \
+              --arg displayName "$display_name" \
+              '{username:$username,password:$password,displayName:$displayName,phone:null,email:null}' \
+              | curl --fail-with-body --silent --show-error \
+                  -H 'Content-Type: application/json' \
+                  --data-binary @- \
+                  http://127.0.0.1:8080/api/v1/auth/register
+          }
+
+          register_user "$FUNCTIONAL_TEST_ADMIN_USERNAME" "$FUNCTIONAL_TEST_ADMIN_PASSWORD" "功能测试管理员" > admin-register.json
+          register_user "$FUNCTIONAL_TEST_VIEWER_USERNAME" "$FUNCTIONAL_TEST_VIEWER_PASSWORD" "受限宗族账号" > viewer-register.json
+
+      - name: Seed restricted account in another clan
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -nc \
+            --arg username "$FUNCTIONAL_TEST_VIEWER_USERNAME" \
+            --arg password "$FUNCTIONAL_TEST_VIEWER_PASSWORD" \
+            '{username:$username,password:$password,rememberMe:false}' \
+            | curl --fail-with-body --silent --show-error \
+                -c viewer.cookies \
+                -H 'Content-Type: application/json' \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/auth/login \
+                > viewer-login.json
+
+          csrf_token="$(jq -r '.data.csrfToken // empty' viewer-login.json)"
+          test -n "$csrf_token"
+
+          jq -nc \
+            --arg clanName "受限账号基线宗族-${FUNCTIONAL_TEST_RUN_ID}" \
+            '{clanCode:null,clanName:$clanName,surname:"测",hallName:"测试堂",commandery:null,originPlace:"CI",description:"功能测试隔离数据"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b viewer.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${csrf_token}" \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/clans \
+                > viewer-seed-clan.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Install Chromium
+        working-directory: frontend/genealogy-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Start functional frontend
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --host 127.0.0.1 > ../../frontend-functional.log 2>&1 &
+          echo $! > ../../frontend-functional.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5179/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Frontend did not become ready" >&2
+          tail -n 200 ../../frontend-functional.log || true
+          exit 1
+
+      - name: Run real Playwright functional tests
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:e2e:real 2>&1 | tee ../../playwright-real.log
+
+      - name: Print service diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '===== PostgreSQL integration ====='
+          tail -n 200 postgresql-integration.log || true
+          echo '===== Backend ====='
+          tail -n 300 backend-functional.log || true
+          echo '===== Frontend ====='
+          tail -n 200 frontend-functional.log || true
+          echo '===== Playwright ====='
+          tail -n 300 playwright-real.log || true
+
+      - name: Upload functional test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: functional-test-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            postgresql-integration.log
+            backend-functional.log
+            frontend-functional.log
+            playwright-real.log
+            backend/genealogy-backend/target/failsafe-reports/**
+            backend/genealogy-backend/target/surefire-reports/**
+            frontend/genealogy-web/test-results/real-e2e/**
+            frontend/genealogy-web/playwright-report-real/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop functional services
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f frontend-functional.pid ]]; then kill "$(cat frontend-functional.pid)" 2>/dev/null || true; fi
+          if [[ -f backend-functional.pid ]]; then kill "$(cat backend-functional.pid)" 2>/dev/null || true; fi
