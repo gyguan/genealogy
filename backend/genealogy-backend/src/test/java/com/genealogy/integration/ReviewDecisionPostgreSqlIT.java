@@ -1,0 +1,119 @@
+package com.genealogy.integration;
+
+import com.genealogy.auth.entity.AppUserEntity;
+import com.genealogy.auth.repository.AppUserRepository;
+import com.genealogy.clan.entity.ClanEntity;
+import com.genealogy.clan.repository.ClanRepository;
+import com.genealogy.common.exception.BusinessException;
+import com.genealogy.review.application.ApprovalApplicationService;
+import com.genealogy.review.dto.ReviewDecisionRequest;
+import com.genealogy.review.entity.AuditRecordEntity;
+import com.genealogy.review.entity.CheckTaskEntity;
+import com.genealogy.review.repository.AuditRecordRepository;
+import com.genealogy.review.repository.CheckTaskRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@Testcontainers
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@ActiveProfiles("integration-test")
+class ReviewDecisionPostgreSqlIT {
+
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("genealogy_review_it")
+            .withUsername("genealogy")
+            .withPassword("genealogy");
+
+    @DynamicPropertySource
+    static void postgresProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
+        registry.add("spring.flyway.enabled", () -> true);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+    }
+
+    @Autowired ApprovalApplicationService approvalApplicationService;
+    @Autowired AuditRecordRepository auditRecordRepository;
+    @Autowired CheckTaskRepository checkTaskRepository;
+    @Autowired ClanRepository clanRepository;
+    @Autowired AppUserRepository appUserRepository;
+
+    @Test
+    void ftPerm004_selfApprovalIsRejectedBeforeStateMutation() {
+        String token = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+
+        AppUserEntity submitter = new AppUserEntity();
+        submitter.setUsername("review-it-" + token);
+        submitter.setPasswordHash("not-used-in-integration-test");
+        submitter.setDisplayName("审核提交人");
+        submitter.setStatus("active");
+        submitter.setCreatedAt(now);
+        submitter.setUpdatedAt(now);
+        submitter = appUserRepository.saveAndFlush(submitter);
+
+        ClanEntity clan = new ClanEntity();
+        clan.setClanCode("REVIEW-IT-" + token);
+        clan.setClanName("审核隔离集成测试-" + token);
+        clan.setSurname("黄");
+        clan.setStatus("pending_review");
+        clan.setCreatedAt(now);
+        clan.setUpdatedAt(now);
+        clan = clanRepository.saveAndFlush(clan);
+
+        AuditRecordEntity revision = new AuditRecordEntity();
+        revision.setClanId(clan.getId());
+        revision.setTargetType("clan");
+        revision.setTargetId(clan.getId());
+        revision.setChangeType("submit_review");
+        revision.setOldPayload("{}");
+        revision.setNewPayload("{}");
+        revision.setSubmitterId(submitter.getId());
+        revision.setSubmitTime(now);
+        revision.setStatus("pending");
+        revision = auditRecordRepository.saveAndFlush(revision);
+
+        CheckTaskEntity task = new CheckTaskEntity();
+        task.setClanId(clan.getId());
+        task.setRevisionId(revision.getId());
+        task.setReviewLevel(1);
+        task.setReviewerRole("clan_admin");
+        task.setStatus("pending");
+        task.setCreatedAt(now);
+        task = checkTaskRepository.saveAndFlush(task);
+
+        Long taskId = task.getId();
+        Long revisionId = revision.getId();
+        Long submitterId = submitter.getId();
+        assertThatThrownBy(() -> approvalApplicationService.approve(
+                taskId,
+                new ReviewDecisionRequest(submitterId, "提交人尝试自审")
+        )).isInstanceOfSatisfying(BusinessException.class, exception ->
+                assertThat(exception.getCode()).isEqualTo("REVIEW_SELF_DECISION_FORBIDDEN")
+        );
+
+        CheckTaskEntity unchangedTask = checkTaskRepository.findById(taskId).orElseThrow();
+        AuditRecordEntity unchangedRevision = auditRecordRepository.findById(revisionId).orElseThrow();
+        assertThat(unchangedTask.getStatus()).isEqualTo("pending");
+        assertThat(unchangedTask.getReviewerId()).isNull();
+        assertThat(unchangedTask.getReviewedAt()).isNull();
+        assertThat(unchangedRevision.getStatus()).isEqualTo("pending");
+        assertThat(unchangedRevision.getApprovedAt()).isNull();
+    }
+}
