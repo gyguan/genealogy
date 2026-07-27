@@ -250,7 +250,7 @@ jobs:
             jq -nc \
               --argjson fromPersonId "$from_id" \
               --argjson toPersonId "$to_id" \
-              '{fromPersonId:$fromPersonId,toPersonId:$toPersonId,relationType:"father_of",relationLabel:"父子",relationCategory:"blood",ritualRelationType:null,successionReason:null,successorBranchId:null,isLineageRelation:true,isBiological:true,isPrimary:true,description:"功能测试世系关系",confidenceLevel:"high"}' \
+              '{fromPersonId:$fromPersonId,toPersonId:$toPersonId,relationType:"parent_child",relationLabel:"father",relationCategory:"blood",ritualRelationType:null,successionReason:null,successorBranchId:null,isLineageRelation:true,isBiological:true,isPrimary:true,description:"功能测试世系关系",confidenceLevel:"high"}' \
               | curl --fail-with-body --silent --show-error \
                   -b editor.cookies \
                   -H 'Content-Type: application/json' \
