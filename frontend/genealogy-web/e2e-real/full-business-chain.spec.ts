@@ -307,7 +307,7 @@ test.describe('完整建谱主数据到审核发布业务链', () => {
       }
     });
     expect(duplicateBinding.ok()).toBeFalsy();
-    expect(JSON.stringify(await responsePayload(duplicateBinding))).toMatch(/SOURCE_BINDING.*EXIST|重复|已存在|CONFLICT|唯一/);
+    expect(JSON.stringify(await responsePayload(duplicateBinding))).toMatch(/SOURCE_BINDING_(DUPLICATED|.*EXIST)|重复|已存在|CONFLICT|唯一/);
 
     const tree = await okData(await page.request.get(
       `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=6&maxNodes=100&maxEdges=200`
