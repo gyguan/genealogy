@@ -46,6 +46,11 @@ jobs:
       SPRING_PROFILES_ACTIVE: functional-test
       VITE_API_PROXY_TARGET: http://127.0.0.1:8080
       E2E_BASE_URL: http://127.0.0.1:5179
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: genealogy
+      PGUSER: genealogy
+      PGPASSWORD: genealogy
 
     steps:
       - name: Checkout
@@ -74,6 +79,10 @@ jobs:
             echo "FUNCTIONAL_TEST_RUN_ID=gha-${suffix}"
             echo "FUNCTIONAL_TEST_ADMIN_USERNAME=ft_admin_${suffix}"
             echo "FUNCTIONAL_TEST_ADMIN_PASSWORD=$(openssl rand -hex 16)"
+            echo "FUNCTIONAL_TEST_EDITOR_USERNAME=ft_editor_${suffix}"
+            echo "FUNCTIONAL_TEST_EDITOR_PASSWORD=$(openssl rand -hex 16)"
+            echo "FUNCTIONAL_TEST_REVIEWER_USERNAME=ft_reviewer_${suffix}"
+            echo "FUNCTIONAL_TEST_REVIEWER_PASSWORD=$(openssl rand -hex 16)"
             echo "FUNCTIONAL_TEST_VIEWER_USERNAME=ft_restricted_${suffix}"
             echo "FUNCTIONAL_TEST_VIEWER_PASSWORD=$(openssl rand -hex 16)"
           } >> "$GITHUB_ENV"
@@ -122,6 +131,8 @@ jobs:
           }
 
           register_user "$FUNCTIONAL_TEST_ADMIN_USERNAME" "$FUNCTIONAL_TEST_ADMIN_PASSWORD" "功能测试管理员" > admin-register.json
+          register_user "$FUNCTIONAL_TEST_EDITOR_USERNAME" "$FUNCTIONAL_TEST_EDITOR_PASSWORD" "功能测试编辑者" > editor-register.json
+          register_user "$FUNCTIONAL_TEST_REVIEWER_USERNAME" "$FUNCTIONAL_TEST_REVIEWER_PASSWORD" "功能测试审核员" > reviewer-register.json
           register_user "$FUNCTIONAL_TEST_VIEWER_USERNAME" "$FUNCTIONAL_TEST_VIEWER_PASSWORD" "受限宗族账号" > viewer-register.json
 
       - name: Seed restricted account in another clan
@@ -152,6 +163,115 @@ jobs:
                 --data-binary @- \
                 http://127.0.0.1:8080/api/v1/clans \
                 > viewer-seed-clan.json
+
+      - name: Seed review and lineage scenario
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v psql >/dev/null || sudo apt-get update && sudo apt-get install -y postgresql-client
+
+          jq -nc \
+            --arg username "$FUNCTIONAL_TEST_EDITOR_USERNAME" \
+            --arg password "$FUNCTIONAL_TEST_EDITOR_PASSWORD" \
+            '{username:$username,password:$password,rememberMe:false}' \
+            | curl --fail-with-body --silent --show-error \
+                -c editor.cookies \
+                -H 'Content-Type: application/json' \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/auth/login \
+                > editor-login.json
+          editor_csrf="$(jq -r '.data.csrfToken // empty' editor-login.json)"
+          test -n "$editor_csrf"
+
+          jq -nc \
+            --arg clanName "审核世系核心宗族-${FUNCTIONAL_TEST_RUN_ID}" \
+            '{clanCode:null,clanName:$clanName,surname:"黄",hallName:"敦本堂",commandery:"江夏郡",originPlace:"CI",description:"真实审核与世系功能测试"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b editor.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${editor_csrf}" \
+                --data-binary @- \
+                http://127.0.0.1:8080/api/v1/clans \
+                > core-clan.json
+          core_clan_id="$(jq -r '.data.id // empty' core-clan.json)"
+          test -n "$core_clan_id"
+
+          jq -nc \
+            --arg branchName "核心支派-${FUNCTIONAL_TEST_RUN_ID}" \
+            '{parentId:null,branchName:$branchName,sortOrder:1,founderPersonId:null,migrationFrom:"江夏",migrationTo:"长沙",managerMemberId:null,description:"功能测试核心支派"}' \
+            | curl --fail-with-body --silent --show-error \
+                -b editor.cookies \
+                -H 'Content-Type: application/json' \
+                -H "X-CSRF-Token: ${editor_csrf}" \
+                --data-binary @- \
+                "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/branches" \
+                > core-branch.json
+          core_branch_id="$(jq -r '.data.id // empty' core-branch.json)"
+          test -n "$core_branch_id"
+          psql -v ON_ERROR_STOP=1 -c "update branch set status = 'official' where id = ${core_branch_id}"
+
+          create_person() {
+            local person_name="$1"
+            local generation_no="$2"
+            jq -nc \
+              --argjson branchId "$core_branch_id" \
+              --arg name "$person_name" \
+              --argjson generationNo "$generation_no" \
+              '{branchId:$branchId,personCode:null,name:$name,genealogyName:null,courtesyName:null,aliasName:null,gender:"male",generationNo:$generationNo,generationWord:null,rankInFamily:null,birthDate:null,birthDatePrecision:null,deathDate:null,deathDatePrecision:null,isLiving:false,birthPlace:null,residencePlace:null,occupation:null,education:null,titleOrHonor:null,biography:null,tombPlace:null,epitaph:null,hasDescendant:true,lineageStatus:"normal",privacyLevel:"clan_only",dataStatus:"draft",confirmDuplicate:true}' \
+              | curl --fail-with-body --silent --show-error \
+                  -b editor.cookies \
+                  -H 'Content-Type: application/json' \
+                  -H "X-CSRF-Token: ${editor_csrf}" \
+                  --data-binary @- \
+                  "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/persons"
+          }
+
+          create_person "黄测试始祖-${FUNCTIONAL_TEST_RUN_ID}" 1 > core-root-person.json
+          create_person "黄测试承继-${FUNCTIONAL_TEST_RUN_ID}" 2 > core-middle-person.json
+          create_person "黄测试后代-${FUNCTIONAL_TEST_RUN_ID}" 3 > core-child-person.json
+          root_person_id="$(jq -r '.data.id // empty' core-root-person.json)"
+          middle_person_id="$(jq -r '.data.id // empty' core-middle-person.json)"
+          child_person_id="$(jq -r '.data.id // empty' core-child-person.json)"
+          test -n "$root_person_id" && test -n "$middle_person_id" && test -n "$child_person_id"
+
+          create_relationship() {
+            local from_id="$1"
+            local to_id="$2"
+            jq -nc \
+              --argjson fromPersonId "$from_id" \
+              --argjson toPersonId "$to_id" \
+              '{fromPersonId:$fromPersonId,toPersonId:$toPersonId,relationType:"father_of",relationLabel:"父子",relationCategory:"blood",ritualRelationType:null,successionReason:null,successorBranchId:null,isLineageRelation:true,isBiological:true,isPrimary:true,description:"功能测试世系关系",confidenceLevel:"high"}' \
+              | curl --fail-with-body --silent --show-error \
+                  -b editor.cookies \
+                  -H 'Content-Type: application/json' \
+                  -H "X-CSRF-Token: ${editor_csrf}" \
+                  --data-binary @- \
+                  "http://127.0.0.1:8080/api/v1/clans/${core_clan_id}/relationships"
+          }
+
+          create_relationship "$root_person_id" "$middle_person_id" > core-relation-1.json
+          create_relationship "$middle_person_id" "$child_person_id" > core-relation-2.json
+          relation_1_id="$(jq -r '.data.id // empty' core-relation-1.json)"
+          relation_2_id="$(jq -r '.data.id // empty' core-relation-2.json)"
+          test -n "$relation_1_id" && test -n "$relation_2_id"
+
+          psql -v ON_ERROR_STOP=1 -c "update person set data_status = 'official' where id in (${root_person_id}, ${middle_person_id}, ${child_person_id})"
+          psql -v ON_ERROR_STOP=1 -c "update relationship set data_status = 'official' where id in (${relation_1_id}, ${relation_2_id})"
+
+          reviewer_user_id="$(jq -r '.data.id // empty' reviewer-register.json)"
+          editor_user_id="$(jq -r '.data.id // empty' editor-register.json)"
+          test -n "$reviewer_user_id" && test -n "$editor_user_id"
+          reviewer_role_id="$(psql -At -v ON_ERROR_STOP=1 -c "select id from app_role where role_code = 'reviewer' limit 1")"
+          test -n "$reviewer_role_id"
+          reviewer_membership_id="$(psql -At -v ON_ERROR_STOP=1 -c "insert into clan_membership(user_id, clan_id, join_status, member_status, joined_at, created_at, updated_at) values (${reviewer_user_id}, ${core_clan_id}, 'accepted', 'active', now(), now(), now()) returning id")"
+          psql -v ON_ERROR_STOP=1 -c "insert into member_role(membership_id, role_id, scope_type, scope_id, status, granted_by, granted_at, created_at, updated_at) values (${reviewer_membership_id}, ${reviewer_role_id}, 'clan', ${core_clan_id}, 'active', ${editor_user_id}, now(), now(), now())"
+
+          {
+            echo "FUNCTIONAL_TEST_CORE_CLAN_ID=${core_clan_id}"
+            echo "FUNCTIONAL_TEST_CORE_BRANCH_ID=${core_branch_id}"
+            echo "FUNCTIONAL_TEST_CORE_ROOT_PERSON_ID=${root_person_id}"
+            echo "FUNCTIONAL_TEST_CORE_CHILD_PERSON_ID=${child_person_id}"
+          } >> "$GITHUB_ENV"
 
       - name: Install frontend dependencies
         working-directory: frontend/genealogy-web
