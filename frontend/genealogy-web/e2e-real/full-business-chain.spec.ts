@@ -318,7 +318,7 @@ test.describe('完整建谱主数据到审核发布业务链', () => {
     await page.getByRole('menuitem', { name: '人物档案', exact: true }).click();
     await expect(page.getByText('人物档案查询', { exact: true })).toBeVisible();
     await page.getByPlaceholder('请输入姓名').fill(personName);
-    await page.getByRole('button', { name: '查询', exact: true }).click();
+    await page.getByRole('button', { name: /^查\s*询$/ }).click();
     await expect(page.getByRole('button', { name: personName, exact: true }).first()).toBeVisible();
 
     await testInfo.attach('full-business-chain-ids', {
