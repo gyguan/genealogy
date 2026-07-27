@@ -232,7 +232,7 @@ test.describe('数据导入预览、修正、审核与幂等完整业务链', ()
       }
     );
     expect(stalePersonRetry.ok()).toBeFalsy();
-    expect(JSON.stringify(await responsePayload(stalePersonRetry))).toMatch(/IMPORT_JOB_ROW_NOT_RETRYABLE|VERSION_CONFLICT|不能再次重试/);
+    expect(JSON.stringify(await responsePayload(stalePersonRetry))).toMatch(/IMPORT_JOB_NOT_CORRECTABLE|IMPORT_JOB_ROW_NOT_RETRYABLE|VERSION_CONFLICT|不能再次重试/);
 
     const personImportTask = await okData(await page.request.post(
       `/api/v1/clans/${clanId}/imports/${personJobId}/submit-review`,
