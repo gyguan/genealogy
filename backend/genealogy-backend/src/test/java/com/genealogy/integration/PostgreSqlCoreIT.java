@@ -22,6 +22,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import javax.sql.DataSource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -61,11 +62,13 @@ class PostgreSqlCoreIT {
     @Autowired PlatformTransactionManager transactionManager;
 
     @Test
-    void ftFail003_emptyPostgresRunsFlywayAndValidatesCoreSchema() {
-        String databaseProduct = jdbcTemplate.getDataSource()
-                .getConnection()
-                .getMetaData()
-                .getDatabaseProductName();
+    void ftFail003_emptyPostgresRunsFlywayAndValidatesCoreSchema() throws Exception {
+        DataSource dataSource = jdbcTemplate.getDataSource();
+        assertThat(dataSource).isNotNull();
+        String databaseProduct;
+        try (var connection = dataSource.getConnection()) {
+            databaseProduct = connection.getMetaData().getDatabaseProductName();
+        }
         assertThat(databaseProduct).isEqualTo("PostgreSQL");
 
         Integer successfulMigrations = jdbcTemplate.queryForObject(
