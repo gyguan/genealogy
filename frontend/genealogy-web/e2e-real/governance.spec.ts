@@ -12,7 +12,13 @@ async function resetBrowserSession(page: Page) {
   await page.reload();
 }
 
-test.describe.serial('真实审核治理与世系查询', () => {
+function workflowStatus(value: any) {
+  return value?.taskStatus ?? value?.status;
+}
+
+test.describe('真实审核治理与世系查询', () => {
+  test.describe.configure({ mode: 'serial', retries: 0 });
+
   test('FT-PERM-004 / FT-REVIEW-002 提交人自审被拒绝，独立审核员可正式生效', async ({ page }) => {
     const clanId = requiredNumberEnv('FUNCTIONAL_TEST_CORE_CLAN_ID');
 
@@ -30,7 +36,8 @@ test.describe.serial('真实审核治理与世系查询', () => {
     expect(submitResponse.ok(), await submitResponse.text()).toBeTruthy();
     const task = responseData(await responsePayload(submitResponse));
     expect(Number(task.id)).toBeGreaterThan(0);
-    expect(task.status).toBe('pending');
+    expect(workflowStatus(task)).toBe('pending');
+    expect(task.reviewStatus ?? task.status).toBe('pending_review');
 
     const selfApproveResponse = await page.request.post(`/api/v1/review-tasks/${task.id}/approve`, {
       headers: editorHeaders,
@@ -43,7 +50,7 @@ test.describe.serial('真实审核治理与世系查询', () => {
     const pendingResponse = await page.request.get(`/api/v1/review-tasks/${task.id}`);
     expect(pendingResponse.ok(), await pendingResponse.text()).toBeTruthy();
     const pendingDetail = responseData(await responsePayload(pendingResponse));
-    expect(pendingDetail?.task?.status ?? pendingDetail?.status).toBe('pending');
+    expect(workflowStatus(pendingDetail?.task ?? pendingDetail)).toBe('pending');
 
     await resetBrowserSession(page);
     await loginThroughUi(page, 'REVIEWER');
@@ -54,7 +61,7 @@ test.describe.serial('真实审核治理与世系查询', () => {
     });
     expect(approveResponse.ok(), await approveResponse.text()).toBeTruthy();
     const approvedTask = responseData(await responsePayload(approveResponse));
-    expect(approvedTask.status).toBe('approved');
+    expect(workflowStatus(approvedTask)).toBe('approved');
 
     const clanResponse = await page.request.get(`/api/v1/clans/${clanId}`);
     expect(clanResponse.ok(), await clanResponse.text()).toBeTruthy();
