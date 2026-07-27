@@ -20,11 +20,11 @@ export function credentials(role: TestRole) {
 export async function loginThroughUi(page: Page, role: TestRole = 'ADMIN') {
   const account = credentials(role);
   await page.goto('/');
-  await page.getByLabel('账号').fill(account.username);
-  await page.getByLabel('密码').fill(account.password);
-  await page.getByRole('button', { name: '登录系统' }).click();
-  await expect(page.getByRole('menuitem', { name: '族谱首页' })).toBeVisible();
-  await expect(page.getByText('当前模块')).toBeVisible();
+  await page.locator('input#username').fill(account.username);
+  await page.locator('input#password').fill(account.password);
+  await page.getByRole('button', { name: '登录系统', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: '族谱首页', exact: true })).toBeVisible();
+  await expect(page.getByText('当前模块', { exact: true })).toBeVisible();
   return account;
 }
 
