@@ -190,52 +190,60 @@ test.describe('审核驳回、修改重提与并发治理闭环', () => {
     await loginThroughUi(page, 'EDITOR');
     editorHeaders = await csrfHeaders(page);
 
-    const updated = await okData(await page.request.put(`/api/v1/persons/${personId}`, {
-      headers: editorHeaders,
-      data: personUpdateData(afterReject, {
-        name: revisedName,
-        residencePlace: '多伦多',
-        biography: '根据驳回意见补充后的传记',
-        dataStatus: 'rejected'
-      })
-    }));
-    expect(updated.name).toBe(revisedName);
-    expect(statusOf(updated)).toBe('rejected');
-
-    await okData(await page.request.put(`/api/v1/persons/${personId}/events`, {
+    const revisedEvents = [
+      {
+        eventType: 'migration',
+        eventTitle: '首次迁居',
+        eventDate: '2020-01-01',
+        eventDatePrecision: 'day',
+        eventPlace: '长沙',
+        eventDescription: '保留首次事件',
+        sortOrder: 0
+      },
+      {
+        eventType: 'migration',
+        eventTitle: '迁居多伦多',
+        eventDate: '2024-05-01',
+        eventDatePrecision: 'day',
+        eventPlace: '多伦多',
+        eventDescription: '按驳回意见补充的新事件',
+        sortOrder: 1
+      }
+    ];
+    const updated = await okData(await page.request.put(`/api/v1/persons/${personId}/revision`, {
       headers: editorHeaders,
       data: {
-        events: [
-          {
-            eventType: 'migration',
-            eventTitle: '首次迁居',
-            eventDate: '2020-01-01',
-            eventDatePrecision: 'day',
-            eventPlace: '长沙',
-            eventDescription: '保留首次事件',
-            sortOrder: 0
-          },
-          {
-            eventType: 'migration',
-            eventTitle: '迁居多伦多',
-            eventDate: '2024-05-01',
-            eventDatePrecision: 'day',
-            eventPlace: '多伦多',
-            eventDescription: '按驳回意见补充的新事件',
-            sortOrder: 1
-          }
-        ]
+        person: personUpdateData(afterReject, {
+          name: revisedName,
+          residencePlace: '多伦多',
+          biography: '根据驳回意见补充后的传记',
+          dataStatus: 'rejected'
+        }),
+        events: { events: revisedEvents }
       }
     }));
+    expect(updated.name).toBe(revisedName);
+    expect(statusOf(updated)).toBe('pending_review');
 
-    const secondTask = await submitPerson(page, editorHeaders, personId, '已按驳回意见修改并重提');
-    const secondTaskId = idOf(secondTask, '重提审核任务');
-    expect(secondTaskId).not.toBe(firstTaskId);
-    expect(statusOf(secondTask)).toBe('pending');
+    const persistedPending = await okData(await page.request.get(`/api/v1/persons/${personId}`));
+    expect(statusOf(persistedPending)).toBe('pending_review');
+    expect(persistedPending.name).toBe(originalName);
 
     await resetBrowserSession(page);
     await loginThroughUi(page, 'REVIEWER');
     reviewerHeaders = await csrfHeaders(page);
+    const pendingTasks = await okData(await page.request.get(`/api/v1/clans/${clanId}/review-tasks/pending`));
+    const secondTask = pendingTasks.find((item: any) => item.targetType === 'person' && Number(item.targetId) === personId);
+    expect(secondTask, '修改被驳回人物后必须自动生成新的待审任务').toBeTruthy();
+    const secondTaskId = idOf(secondTask, '重提审核任务');
+    expect(secondTaskId).not.toBe(firstTaskId);
+    expect(statusOf(secondTask)).toBe('pending');
+
+    const secondDiff = await okData(await page.request.get(`/api/v1/review-tasks/${secondTaskId}/diff`));
+    expect(JSON.stringify(secondDiff)).toContain(revisedName);
+    expect(JSON.stringify(secondDiff)).toContain('根据驳回意见补充后的传记');
+    expect(JSON.stringify(secondDiff)).toContain('迁居多伦多');
+
     const approveResponse = await approve(page, reviewerHeaders, secondTaskId, '修改完整，同意发布');
     const approvedTask = await okData(approveResponse);
     expect(statusOf(approvedTask)).toBe('approved');
