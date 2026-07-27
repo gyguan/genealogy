@@ -160,7 +160,13 @@ test.describe('审核驳回、修改重提与并发治理闭环', () => {
     expect(diff.targetType).toBe('person');
     expect(Number(diff.targetId)).toBe(personId);
     expect(Array.isArray(diff.fields)).toBeTruthy();
-    expect(JSON.stringify(diff)).toContain(originalName);
+    const statusDiff = diff.fields.find((item: any) => item.fieldName === 'dataStatus');
+    expect(statusDiff).toMatchObject({
+      fieldName: 'dataStatus',
+      beforeValue: 'draft',
+      afterValue: 'pending_review',
+      changeType: 'modified'
+    });
 
     const rejectResponse = await page.request.post(`/api/v1/review-tasks/${firstTaskId}/reject`, {
       headers: reviewerHeaders,
