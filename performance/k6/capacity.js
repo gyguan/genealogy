@@ -65,34 +65,38 @@ function parse(response) {
   }
 }
 
-function validate(response, label, expected = [200]) {
+function validate(response, label, expected) {
+  const accepted = expected || [200];
   const payload = parse(response);
-  const ok = expected.includes(response.status) && payload?.success !== false;
-  check(response, { [`${label} status and business result`]: () => ok });
+  const businessSuccess = !payload || payload.success !== false;
+  const ok = accepted.indexOf(response.status) >= 0 && businessSuccess;
+  const checks = {};
+  checks[`${label} status and business result`] = function () { return ok; };
+  check(response, checks);
   if (!ok) {
     businessErrors.add(1, { operation: label, status: String(response.status) });
-    if (response.status === 200 && payload?.success === false) {
+    if (response.status === 200 && payload && payload.success === false) {
       silentFailures.add(1, { operation: label });
     }
   }
-  return payload?.data;
+  return payload ? payload.data : null;
 }
 
 function login() {
   const jar = http.cookieJar();
   const response = http.post(`${baseUrl}/api/v1/auth/login`, JSON.stringify({
-    username,
-    password,
+    username: username,
+    password: password,
     rememberMe: false,
   }), {
     headers: { 'Content-Type': 'application/json' },
     tags: { operation: 'login' },
   });
   const data = validate(response, 'login');
-  if (!data?.csrfToken) {
+  if (!data || !data.csrfToken) {
     throw new Error(`login did not return csrfToken, status=${response.status}`);
   }
-  return { jar, csrfToken: data.csrfToken };
+  return { jar: jar, csrfToken: data.csrfToken };
 }
 
 function getSession() {
@@ -140,7 +144,7 @@ function readTree() {
 function createDraftPerson() {
   const suffix = `${__VU}-${__ITER}-${Date.now()}`;
   const payload = {
-    branchId,
+    branchId: branchId,
     personCode: `LOAD-${suffix}`,
     name: `容量测试人物-${suffix}`,
     genealogyName: null,
@@ -173,7 +177,8 @@ function createDraftPerson() {
     headers: headers(),
     tags: { operation: 'person_create', workload: 'write' },
   });
-  const ok = [200, 201].includes(response.status) && parse(response)?.success !== false;
+  const parsed = parse(response);
+  const ok = [200, 201].indexOf(response.status) >= 0 && (!parsed || parsed.success !== false);
   writeSuccess.add(ok);
   validate(response, 'person_create', [200, 201]);
 }
@@ -190,8 +195,11 @@ export default function () {
 }
 
 export function handleSummary(data) {
+  const checksMetric = data.metrics && data.metrics.checks;
+  const checkValues = checksMetric && checksMetric.values;
+  const passes = checkValues && checkValues.passes ? checkValues.passes : 0;
   return {
     'performance-results/k6-summary.json': JSON.stringify(data, null, 2),
-    stdout: `\n#870 capacity test complete: profile=${profile}, checks=${data.metrics.checks?.values?.passes || 0}\n`,
+    stdout: `\n#870 capacity test complete: profile=${profile}, checks=${passes}\n`,
   };
 }
