@@ -45,7 +45,8 @@ jobs:
         run: npm run test:multi-select
       - name: Test DOM and CSS governance
         working-directory: frontend/genealogy-web
-        run: npm run test:dom-governance
+        shell: bash
+        run: set -o pipefail; npm run test:dom-governance 2>&1 | tee governance-test-output.log
       - name: Detect Tree-related changes
         id: tree-changes
         shell: bash
@@ -169,6 +170,7 @@ jobs:
         with:
           name: frontend-diagnostics
           path: |
+            frontend/genealogy-web/governance-test-output.log
             frontend/genealogy-web/typecheck-output.log
             frontend/genealogy-web/tree-test-output.log
           if-no-files-found: ignore
