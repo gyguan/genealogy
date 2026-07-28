@@ -22,6 +22,7 @@ const loaders: Record<FeatureStyleKey, () => Promise<unknown>> = {
     import('../../person-archive-source.css'),
     import('../../person-edit-page.css'),
     import('../../person-detail-page.css'),
+    import('../../features/persons/person-query-layout.css'),
     import('../../features/persons/person-form-system.css')
   ]),
   treeProduct: async () => Promise.all([

@@ -1,7 +1,21 @@
 /* Lineage query layout only. Graph canvas, nodes and edges stay in their dedicated visual styles. */
 .lineage-search-grid--workbench {
   grid-template-columns: 150px 190px minmax(280px, 360px);
+  align-items: end;
   justify-content: start;
+}
+
+.lineage-search-grid--workbench > .ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.lineage-search-grid--workbench .antd-actions {
+  align-items: end;
+  justify-content: flex-start;
+  min-height: 36px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .lineage-search-grid--workbench .ant-input-search {
@@ -61,5 +75,10 @@
 
   .lineage-search-grid--workbench .ant-input-search {
     max-width: none;
+  }
+
+  .lineage-search-grid--workbench .antd-actions {
+    width: 100%;
+    white-space: normal;
   }
 }

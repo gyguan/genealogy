@@ -1,0 +1,49 @@
+/* Person archive query layout. Keep query structure feature-owned and avoid global bridge overrides. */
+.archive-search-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.archive-search-form > .ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.archive-search-form .archive-search-actions-item {
+  min-width: 260px;
+  justify-self: start;
+}
+
+.archive-search-form .archive-search-actions-item .ant-form-item-control-input {
+  min-height: 32px;
+}
+
+.archive-search-form .archive-search-actions-item .ant-space,
+.archive-search-form .antd-actions {
+  align-items: center;
+}
+
+.archive-search-form .antd-actions {
+  justify-content: flex-start;
+  min-height: 32px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .archive-search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .archive-search-form .archive-search-actions-item {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .archive-search-form .antd-actions {
+    width: 100%;
+    white-space: normal;
+  }
+}
