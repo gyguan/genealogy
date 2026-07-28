@@ -1,13 +1,17 @@
 /*
  * Global style entry.
  *
- * This file contains only application shell, shared UI contracts and the
- * temporary Ant Design migration bridge. Feature CSS is loaded by
- * shared/styles/loadFeatureStyles.ts when its module becomes active.
+ * This file contains only the shared design baseline, application shell,
+ * shared UI contracts and the temporary Ant Design migration bridge.
+ * Feature CSS is loaded by shared/styles/loadFeatureStyles.ts when its
+ * module becomes active.
  *
  * Compatibility files require an owner and exit condition in
  * CSS_ARCHITECTURE.md.
  */
+
+/* authoritative design baseline */
+@import './design-system.css';
 
 /* shell/base */
 @import '../auth-commercial.css';
