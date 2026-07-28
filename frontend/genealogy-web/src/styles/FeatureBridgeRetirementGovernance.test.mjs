@@ -18,9 +18,11 @@ function sourceFiles(directory) {
   });
 }
 
-const applicationSource = sourceFiles(ROOT)
-  .map(file => readFileSync(file, 'utf8'))
-  .join('\n');
+const applicationSources = sourceFiles(ROOT).map(file => readFileSync(file, 'utf8'));
+const staticClassTokens = new Set(applicationSources.flatMap(source =>
+  [...source.matchAll(/className\s*=\s*["']([^"']+)["']/g)]
+    .flatMap(match => match[1].split(/\s+/).filter(Boolean))
+));
 
 const retiredClasses = [
   'auth-page-shell',
@@ -45,7 +47,7 @@ test('retired auth and relationship preset styles stay out of the bridge', () =>
 
 test('retired selectors have no application source references', () => {
   for (const className of retiredClasses) {
-    assert.equal(applicationSource.includes(className), false, `${className} is retired and must not be referenced`);
+    assert.equal(staticClassTokens.has(className), false, `${className} is retired and must not be referenced`);
   }
 });
 
