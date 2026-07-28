@@ -99,19 +99,6 @@
 .archive-search-form .ant-btn,
 .lineage-search-grid .ant-btn { height: 32px; }
 
-.lineage-search-results button { border: 1px solid #d9d9d9 !important; background: #fff !important; color: rgba(0, 0, 0, .88) !important; }
-.lineage-search-results button.active { border-color: #91caff !important; background: #f5faff !important; color: #1677ff !important; }
-
-.xp-source-row--focused,
-.xp-source-guide-focused,
-.xp-source-bind-focused { border-color: #91caff !important; background: #f5faff !important; box-shadow: 0 0 0 2px rgba(22, 119, 255, .12) !important; }
-.xp-source-row--focused .ant-card-body,
-.xp-source-guide-focused .ant-card-body,
-.xp-source-bind-focused .ant-card-body { position: relative; }
-.xp-source-row--focused .ant-card-body::before,
-.xp-source-guide-focused .ant-card-body::before,
-.xp-source-bind-focused .ant-card-body::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: #1677ff; }
-
 .antd-table-wrap { border: 0; border-radius: 8px; overflow: auto; }
 .antd-table-wrap .table-hint { display: block; padding: 0 0 8px; background: transparent; border-bottom: 0; }
 .antd-table-wrap .ant-table { border-radius: 8px; overflow: hidden; }
@@ -133,7 +120,7 @@
   .auth-hero-card { grid-row: auto; min-height: auto; padding: 24px; }
   .role-card-grid { grid-template-columns: 1fr; }
   .relationship-preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .github-user-name { display: none; }
+  .github-user-trigger .github-user-name { display: none; }
 }
 
 @media (max-width: 760px) {
