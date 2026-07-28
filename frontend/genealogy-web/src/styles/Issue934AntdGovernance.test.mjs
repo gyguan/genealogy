@@ -1,9 +1,21 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = new URL('../../', import.meta.url);
 const source = path => readFile(new URL(path, root), 'utf8');
+
+async function filesUnder(relativeDirectory, extensions) {
+  const directory = new URL(`${relativeDirectory}/`, root);
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relativePath = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) files.push(...await filesUnder(relativePath, extensions));
+    else if (extensions.some(extension => entry.name.endsWith(extension))) files.push(relativePath);
+  }
+  return files;
+}
 
 test('issue 934 pins the frontend toolchain and Ant Design dependencies', async () => {
   const packageJson = JSON.parse(await source('package.json'));
@@ -15,9 +27,12 @@ test('issue 934 pins the frontend toolchain and Ant Design dependencies', async 
 });
 
 test('issue 934 keeps browser-native blocking dialogs out of production source', async () => {
-  const app = await source('src/app/App.tsx');
-  assert.doesNotMatch(app, /window\.(?:confirm|alert|prompt)\s*\(/);
-  assert.match(app, /confirmAction\s*\(/);
+  const files = await filesUnder('src', ['.ts', '.tsx', '.js', '.jsx']);
+  for (const file of files) {
+    const content = await source(file);
+    assert.doesNotMatch(content, /window\.(?:confirm|alert|prompt)\s*\(/, `${file} must use shared Ant Design feedback`);
+  }
+  assert.match(await source('src/app/App.tsx'), /confirmAction\s*\(/);
 });
 
 test('issue 934 provides Chinese Ant Design and Day.js locale at the application root', async () => {
@@ -40,18 +55,9 @@ test('issue 934 centralizes grouped menu metadata and workspace context', async 
   assert.match(shell, /useWorkspace\(\)/);
 });
 
-test('issue 934 does not restore unscoped global Ant internal overrides', async () => {
+test('issue 934 keeps the global design baseline free of Ant internal selectors', async () => {
   const css = await source('src/styles/design-system.css');
-  for (const selector of [
-    '.ant-form-item-label > label',
-    '.ant-form-item-extra',
-    '.ant-form-item-explain',
-    '.ant-typography-secondary',
-    '.ant-statistic-content',
-    '.ant-table-cell'
-  ]) {
-    assert.doesNotMatch(css, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
+  assert.doesNotMatch(css, /(^|[,{]\s*)\.ant-[\w-]+/m);
 });
 
 test('issue 934 desktop matrix names all fourteen formal page entries', async () => {
