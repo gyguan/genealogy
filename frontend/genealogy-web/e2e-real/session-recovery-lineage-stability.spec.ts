@@ -183,11 +183,16 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
       saveReleased = true;
       await route.continue();
     });
+    const saveResponsePromise = page.waitForResponse(response =>
+      response.request().method() === 'PUT' && response.url().endsWith(`/api/v1/persons/${uiPersonId}`)
+    );
     await page.getByRole('button', { name: '保存草稿', exact: true }).click();
     await page.getByRole('menuitem', { name: '族谱首页', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/persons/${uiPersonId}/edit`));
     await expect(page.getByText('人物档案正在提交，请稍后再离开。', { exact: true })).toBeVisible();
     await expect.poll(() => saveReleased).toBeTruthy();
+    const saveResponse = await saveResponsePromise;
+    expect(saveResponse.ok(), await saveResponse.text()).toBeTruthy();
     await expect(page.getByText('人物资料及关键事件已保存', { exact: true }).first()).toBeVisible();
 
     const invalidDepth = await page.request.get(
@@ -232,6 +237,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
         injectedDetailAttempts: detailAttempts,
         navigationDirtyBlocked: true,
         navigationBusyBlocked: true,
+        saveStatus: saveResponse.status(),
         invalidDepthStatus: invalidDepth.status(),
         treeNodeCount: boundedTree.nodes.length,
         treeEdgeCount: boundedTree.edges.length,
