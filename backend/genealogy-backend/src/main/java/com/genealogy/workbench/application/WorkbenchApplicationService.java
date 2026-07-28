@@ -1,11 +1,14 @@
 package com.genealogy.workbench.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.auth.application.RbacAuthorizationApplicationService;
+import com.genealogy.auth.application.RbacAuthorizationApplicationService.PermissionDataScope;
 import com.genealogy.branch.entity.BranchEntity;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.review.entity.CheckTaskEntity;
@@ -20,9 +23,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -34,8 +40,10 @@ public class WorkbenchApplicationService {
     private static final String STATUS_PENDING_REVIEW = "pending_review";
     private static final String CREATOR_SYSTEM_RULE = "系统规则";
     private static final String CREATOR_REVIEW_FLOW = "审核流程";
+    private static final String PERSON_VIEW = "person:view";
 
     private final AuthorizationApplicationService authorizationApplicationService;
+    private final RbacAuthorizationApplicationService rbacAuthorizationApplicationService;
     private final ClanRepository clanRepository;
     private final PersonRepository personRepository;
     private final BranchRepository branchRepository;
@@ -44,6 +52,7 @@ public class WorkbenchApplicationService {
 
     public WorkbenchApplicationService(
             AuthorizationApplicationService authorizationApplicationService,
+            RbacAuthorizationApplicationService rbacAuthorizationApplicationService,
             ClanRepository clanRepository,
             PersonRepository personRepository,
             BranchRepository branchRepository,
@@ -51,6 +60,7 @@ public class WorkbenchApplicationService {
             CheckTaskRepository checkTaskRepository
     ) {
         this.authorizationApplicationService = authorizationApplicationService;
+        this.rbacAuthorizationApplicationService = rbacAuthorizationApplicationService;
         this.clanRepository = clanRepository;
         this.personRepository = personRepository;
         this.branchRepository = branchRepository;
@@ -60,8 +70,8 @@ public class WorkbenchApplicationService {
 
     @Transactional(readOnly = true)
     public WorkbenchSummaryResponse summary(Long clanId, Long branchId, Long actorId) {
-        authorizationApplicationService.requireClanMember(clanId, actorId);
-        List<WorkbenchTaskResponse> tasks = buildTasks(clanId, branchId);
+        WorkbenchDataScope scope = resolveScope(clanId, branchId, actorId);
+        List<WorkbenchTaskResponse> tasks = buildTasks(clanId, scope);
         return new WorkbenchSummaryResponse(
                 tasks.size(),
                 tasks.stream().filter(task -> "high".equals(task.risk())).count(),
@@ -86,9 +96,9 @@ public class WorkbenchApplicationService {
             int pageSize,
             Long actorId
     ) {
-        authorizationApplicationService.requireClanMember(clanId, actorId);
+        WorkbenchDataScope scope = resolveScope(clanId, branchId, actorId);
         String creatorName = creatorNameOf(creator);
-        List<WorkbenchTaskResponse> filtered = buildTasks(clanId, branchId).stream()
+        List<WorkbenchTaskResponse> filtered = buildTasks(clanId, scope).stream()
                 .filter(task -> containsIgnoreCase(task.taskName(), taskName))
                 .filter(task -> matchesKeyword(task, keyword))
                 .filter(task -> matchesAny(types, task.type()))
@@ -104,15 +114,39 @@ public class WorkbenchApplicationService {
         return PageResponse.of(filtered.subList(fromIndex, toIndex), filtered.size(), normalizedPageNo, normalizedPageSize);
     }
 
-    private List<WorkbenchTaskResponse> buildTasks(Long clanId, Long branchId) {
+    private WorkbenchDataScope resolveScope(Long clanId, Long branchId, Long actorId) {
+        authorizationApplicationService.requireClanMember(clanId, actorId);
+        if (branchId != null && branchRepository.findByIdAndClanId(branchId, clanId).isEmpty()) {
+            throw new BusinessException("BRANCH_NOT_FOUND", "支派不存在或不属于当前宗族");
+        }
+        if (authorizationApplicationService.isCrossClanAdmin(actorId)) {
+            return branchId == null ? WorkbenchDataScope.all() : WorkbenchDataScope.branches(Set.of(branchId));
+        }
+
+        PermissionDataScope permissionScope = rbacAuthorizationApplicationService.permissionDataScope(actorId, clanId, PERSON_VIEW);
+        if (permissionScope.fullClanAccess()) {
+            return branchId == null ? WorkbenchDataScope.all() : WorkbenchDataScope.branches(Set.of(branchId));
+        }
+        if (permissionScope.visibleBranchIds().isEmpty()) {
+            throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限查看修谱任务");
+        }
+        if (branchId != null && !permissionScope.canAccessBranch(branchId)) {
+            throw new BusinessException("AUTH_FORBIDDEN", "您暂无权限查看该支派的修谱任务");
+        }
+        return branchId == null
+                ? WorkbenchDataScope.branches(permissionScope.visibleBranchIds())
+                : WorkbenchDataScope.branches(Set.of(branchId));
+    }
+
+    private List<WorkbenchTaskResponse> buildTasks(Long clanId, WorkbenchDataScope scope) {
         Map<Long, BranchEntity> branchMap = branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId).stream()
                 .collect(Collectors.toMap(BranchEntity::getId, Function.identity(), (left, right) -> left));
-        List<PersonEntity> people = branchId == null
-                ? personRepository.findByClanIdAndDeletedAtIsNull(clanId)
-                : personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId);
+        List<PersonEntity> people = personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
+                .filter(person -> scope.includes(person.getBranchId()))
+                .toList();
         long sourceCount = sourceRepository.findByClanId(clanId, PageRequest.of(0, 1)).getTotalElements();
         List<CheckTaskEntity> reviewTasks = checkTaskRepository.findByClanIdAndStatus(clanId, STATUS_PENDING).stream()
-                .filter(task -> branchId == null || Objects.equals(task.getBranchId(), branchId))
+                .filter(task -> scope.includes(task.getBranchId()))
                 .limit(BUILD_TASK_LIMIT)
                 .toList();
         String bookName = bookName(clanId);
@@ -125,11 +159,51 @@ public class WorkbenchApplicationService {
                 .map(person -> generationMismatchTask(person, branchMap, bookName))
                 .forEach(tasks::add);
         if (!people.isEmpty() && sourceCount == 0) {
-            LocalDateTime createdAt = people.stream().map(PersonEntity::getCreatedAt).filter(Objects::nonNull).min(LocalDateTime::compareTo).orElse(null);
-            tasks.add(missingSourceTask(branchId, branchMap, sourceCount, bookName, createdAt));
+            if (scope.allBranches()) {
+                LocalDateTime createdAt = people.stream()
+                        .map(PersonEntity::getCreatedAt)
+                        .filter(Objects::nonNull)
+                        .min(LocalDateTime::compareTo)
+                        .orElse(null);
+                tasks.add(missingSourceTask(null, branchMap, sourceCount, bookName, createdAt));
+            } else {
+                people.stream()
+                        .filter(person -> person.getBranchId() != null)
+                        .collect(Collectors.groupingBy(
+                                PersonEntity::getBranchId,
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ))
+                        .forEach((visibleBranchId, branchPeople) -> {
+                            LocalDateTime createdAt = branchPeople.stream()
+                                    .map(PersonEntity::getCreatedAt)
+                                    .filter(Objects::nonNull)
+                                    .min(LocalDateTime::compareTo)
+                                    .orElse(null);
+                            tasks.add(missingSourceTask(visibleBranchId, branchMap, sourceCount, bookName, createdAt));
+                        });
+            }
         }
-        if (people.size() >= 2) {
-            tasks.add(relationshipCheckTask(people.get(0), people.get(1), branchMap, bookName));
+        if (scope.allBranches()) {
+            if (people.size() >= 2) {
+                tasks.add(relationshipCheckTask(people.get(0), people.get(1), branchMap, bookName));
+            }
+        } else {
+            people.stream()
+                    .filter(person -> person.getBranchId() != null)
+                    .collect(Collectors.groupingBy(
+                            PersonEntity::getBranchId,
+                            LinkedHashMap::new,
+                            Collectors.toList()
+                    ))
+                    .values().stream()
+                    .filter(branchPeople -> branchPeople.size() >= 2)
+                    .forEach(branchPeople -> tasks.add(relationshipCheckTask(
+                            branchPeople.get(0),
+                            branchPeople.get(1),
+                            branchMap,
+                            bookName
+                    )));
         }
         return tasks.stream().limit(BUILD_TASK_LIMIT).toList();
     }
@@ -232,7 +306,7 @@ public class WorkbenchApplicationService {
     ) {
         String objectName = personName(left) + " 与 " + personName(right);
         return new WorkbenchTaskResponse(
-                "relationship-check-candidate",
+                "relationship-check-" + left.getId() + "-" + right.getId(),
                 "复核" + objectName + "关系",
                 bookName,
                 CREATOR_SYSTEM_RULE,
@@ -323,5 +397,25 @@ public class WorkbenchApplicationService {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private record WorkbenchDataScope(boolean allBranches, Set<Long> visibleBranchIds) {
+        private WorkbenchDataScope {
+            visibleBranchIds = visibleBranchIds == null
+                    ? Set.of()
+                    : Set.copyOf(new LinkedHashSet<>(visibleBranchIds));
+        }
+
+        private static WorkbenchDataScope all() {
+            return new WorkbenchDataScope(true, Set.of());
+        }
+
+        private static WorkbenchDataScope branches(Set<Long> branchIds) {
+            return new WorkbenchDataScope(false, branchIds);
+        }
+
+        private boolean includes(Long branchId) {
+            return allBranches || branchId != null && visibleBranchIds.contains(branchId);
+        }
     }
 }
