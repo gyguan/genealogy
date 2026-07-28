@@ -18,11 +18,11 @@
 @import '../entity-page-header.css';
 @import '../runtime-error.css';
 
-/* shared patterns retained while components are migrated */
-@import '../guidance-cleanup.css';
-@import '../module-title-dedup.css';
-@import '../page-content-cleanup.css';
-@import '../query-button-unification.css';
+/* shared UI responsibilities */
+@import '../shared-guidance.css';
+@import '../shared-module-title.css';
+@import '../shared-page-content.css';
+@import '../shared-query-actions.css';
 
 /* migration bridge: must remain last and may only shrink */
 @import '../antd-bridge.css';
