@@ -33,6 +33,7 @@ wait_unavailable() {
   return 1
 }
 
+trap stop_backend EXIT
 started_at=$(date +%s)
 start_backend
 
@@ -52,12 +53,10 @@ query_tree() {
 
 query_tree > "$results_dir/tree-before.json"
 jq -e '.success == true' "$results_dir/tree-before.json" >/dev/null
-
-psql -Atc "select count(*) from person where id in (select id from person where branch_id=$CAPACITY_BRANCH_ID)" > "$results_dir/person-count-before.txt"
+psql -Atc "select count(*) from person where branch_id=$CAPACITY_BRANCH_ID" > "$results_dir/person-count-before.txt"
 psql -Atc "select count(*) from relationship where from_person_id=$CAPACITY_ROOT_PERSON_ID or to_person_id=$CAPACITY_ROOT_PERSON_ID" > "$results_dir/relation-count-before.txt"
 psql -Atc "select count(*) from flyway_schema_history" > "$results_dir/flyway-count-before.txt"
 
-# Short stability load with resource samples. Duration is configurable for 24/48/72h workflow dispatch.
 duration_seconds="${STABILITY_DURATION_SECONDS:-180}"
 echo 'timestamp,cpu_percent,rss_kb,threads,open_fds,db_connections' > "$results_dir/resource-samples.csv"
 load_end=$(( $(date +%s) + duration_seconds ))
@@ -76,7 +75,6 @@ while (( $(date +%s) < load_end )); do
 done
 echo "$iteration" > "$results_dir/load-iterations.txt"
 
-# Backend restart and session continuity check.
 restart_begin=$(date +%s%3N)
 stop_backend
 wait_unavailable
@@ -86,12 +84,10 @@ echo $((restart_end-restart_begin)) > "$results_dir/backend-rto-ms.txt"
 query_tree > "$results_dir/tree-after-backend-restart.json"
 jq -e '.success == true' "$results_dir/tree-after-backend-restart.json" >/dev/null
 
-# Real backup, destructive loss simulation and restore.
 pg_dump --format=custom --file="$results_dir/genealogy.backup" "$PGDATABASE"
 test -s "$results_dir/genealogy.backup"
 sha256sum "$results_dir/genealogy.backup" > "$results_dir/backup.sha256"
 backup_epoch=$(date +%s)
-
 stop_backend
 psql -v ON_ERROR_STOP=1 -c 'drop schema public cascade; create schema public;'
 restore_begin=$(date +%s%3N)
@@ -102,7 +98,6 @@ restore_epoch=$(date +%s)
 echo $((restore_epoch-backup_epoch)) > "$results_dir/rpo-seconds.txt"
 
 start_backend
-# New login after full database restore verifies authentication and Flyway startup.
 curl -sS --fail-with-body -H 'Content-Type: application/json' --data-binary "$login_payload" "$base_url/api/v1/auth/login" > "$results_dir/login-after-restore.json"
 access_token=$(jq -r '.data.accessToken // empty' "$results_dir/login-after-restore.json")
 test -n "$access_token"
@@ -116,17 +111,15 @@ cmp "$results_dir/person-count-before.txt" "$results_dir/person-count-after.txt"
 cmp "$results_dir/relation-count-before.txt" "$results_dir/relation-count-after.txt"
 cmp "$results_dir/flyway-count-before.txt" "$results_dir/flyway-count-after.txt"
 
-# Resource growth gate compares early and late sample medians to avoid one-sample noise.
 python3 - <<'PY'
 import csv, json, os, statistics, pathlib
 p=pathlib.Path(os.environ.get('STABILITY_RESULTS_DIR','stability-results'))
 rows=list(csv.DictReader((p/'resource-samples.csv').open()))
-def vals(name, rows): return [float(r[name]) for r in rows if r.get(name)]
+def vals(name, rs): return [float(r[name]) for r in rs if r.get(name)]
 window=max(3,min(20,len(rows)//4 or 3))
 early=rows[:window]; late=rows[-window:]
-metrics={}
+metrics={}; failed=[]
 limits={'rss_kb':1.35,'threads':1.25,'open_fds':1.35,'db_connections':1.50}
-failed=[]
 for name,limit in limits.items():
     a=statistics.median(vals(name,early) or [0]); b=statistics.median(vals(name,late) or [0])
     ratio=(b/a) if a else (1 if b==0 else 999)
@@ -153,4 +146,20 @@ jq -n \
   --argjson elapsedSeconds "$((finished_at-started_at))" \
   '{passed:true,durationSeconds:$durationSeconds,iterations:$iterations,backendRtoMs:$backendRtoMs,databaseRtoMs:$databaseRtoMs,rpoSeconds:$rpoSeconds,elapsedSeconds:$elapsedSeconds,critical:0,high:0}' > "$results_dir/summary.json"
 
+cat > "$results_dir/stability-dr-report.md" <<EOF
+# Issue #872 稳定性与灾备演练报告
+
+- Commit: \`${GITHUB_SHA:-local}\`
+- Continuous workload: ${duration_seconds} seconds / ${iteration} iterations
+- Backend restart RTO: ${rto_backend} ms
+- Database restore RTO: ${rto_db} ms
+- RPO: ${rpo} seconds
+- Critical/High unresolved findings: 0/0
+
+已执行持续认证业务查询、资源采样、后端停止与重启、真实 pg_dump 备份、完整 public Schema 删除、pg_restore 恢复、应用再次启动，以及恢复前后人物、关系与 Flyway 历史一致性校验。
+
+PR 门禁为短时可重复演练；同一脚本可在自托管 Runner 通过 STABILITY_DURATION_SECONDS 执行 24/48/72 小时长稳测试。
+EOF
+
 stop_backend
+trap - EXIT
