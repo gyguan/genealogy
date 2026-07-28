@@ -1,3 +1,4 @@
+import { commitNavigation } from '../../shared/navigation/navigationEvents';
 import { buildViewUrl } from '../../shared/navigation/urlState';
 
 export type PersonEditRoute = {
@@ -8,10 +9,6 @@ const PERSON_EDIT_PATH = /^\/persons\/([^/]+)\/edit\/?$/;
 
 function currentAppUrl() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
-}
-
-function emitRouteChange() {
-  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function readPersonEditRoute(pathname = window.location.pathname): PersonEditRoute | null {
@@ -32,12 +29,10 @@ export function navigateToPersonEdit(personId: string | number) {
   const next = buildViewUrl('personArchive', window.location.href, {
     pathname: `/persons/${encodeURIComponent(normalizedId)}/edit`
   });
-  window.history.pushState(
-    { ...(window.history.state || {}), genealogyPersonEditReturnUrl: returnUrl },
-    '',
-    next
-  );
-  emitRouteChange();
+  commitNavigation(next, {
+    mode: 'push',
+    state: { ...(window.history.state || {}), genealogyPersonEditReturnUrl: returnUrl }
+  });
 }
 
 export function navigateBackFromPersonEdit() {
@@ -48,6 +43,5 @@ export function navigateBackFromPersonEdit() {
   }
 
   const next = buildViewUrl('personArchive', window.location.href);
-  window.history.replaceState(window.history.state, '', next);
-  emitRouteChange();
+  commitNavigation(next, { mode: 'replace', state: window.history.state });
 }
