@@ -1,28 +1,3 @@
-.antd-admin-layout { min-height: 100vh; background: #f5f5f5; }
-.antd-main-layout { min-width: 0; min-height: 100vh; background: #f5f5f5; }
-.antd-sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; overflow: auto; border-right: 1px solid #f0f0f0; background: #fff !important; padding: 16px 8px; }
-.antd-brand { padding: 8px 12px 18px; margin-bottom: 8px; }
-.antd-brand .ant-typography { margin: 0; }
-.antd-sidebar .ant-menu { flex: 1 1 auto; }
-.antd-sidebar-footer { display: none !important; }
-.github-like-header { position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 24px; border-bottom: 1px solid #f0f0f0; background: #fff !important; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
-.github-like-header-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.github-like-header-title .ant-typography:last-child { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.github-user-trigger { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 8px; width: auto; height: 36px; min-height: 36px; max-height: 36px; padding: 2px 8px 2px 4px; overflow: hidden; border: 1px solid transparent; border-radius: 999px; background: transparent; color: rgba(0,0,0,.88); box-shadow: none; line-height: 1; vertical-align: middle; cursor: pointer; }
-.github-user-trigger:hover { border-color: #d9d9d9; background: #f5f5f5; }
-.github-user-trigger:focus-visible { border-color: #1677ff; background: #f5faff; outline: 2px solid rgba(22,119,255,.2); outline-offset: 2px; }
-.github-user-trigger .ant-avatar { flex: 0 0 32px; width: 32px; height: 32px; line-height: 32px; }
-.github-user-trigger .github-user-name { display: inline-block; max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 22px; }
-.github-user-trigger em { flex: 0 0 auto; color: rgba(0,0,0,.45); font-size: 12px; font-style: normal; line-height: 1; transform: translateY(-1px); }
-.github-user-dropdown { max-height: calc(100vh - 72px); overflow: auto; }
-.github-user-menu-summary { display: grid; gap: 2px; min-width: 180px; }
-.github-user-menu-summary strong { color: rgba(0,0,0,.88); font-weight: 600; }
-.github-user-menu-summary span { color: rgba(0,0,0,.45); font-size: 12px; }
-.profile-center-card { display: grid; gap: 16px; }
-.profile-center-card h5.ant-typography { margin: 0 0 2px; }
-.profile-center-descriptions { margin-top: 4px; }
-.antd-content { padding: 24px; min-width: 0; background: #f5f5f5; }
-
 .auth-page-shell { min-height: 100vh; display: grid; place-items: center; padding: 40px 24px; background: linear-gradient(135deg, #f5faff 0%, #f5f5f5 48%, #ffffff 100%); }
 .auth-page-inner { width: min(1180px, 100%); }
 .auth-layout { display: grid; grid-template-columns: minmax(320px, 1.2fr) minmax(320px, .9fr); gap: 16px; align-items: stretch; }
@@ -55,32 +30,6 @@
 .relationship-preset-grid strong { font-size: 14px; color: #1677ff; }
 .relationship-preset-grid span { font-size: 12px; color: rgba(0,0,0,.45); line-height: 20px; }
 
-.ant-card.panel,
-.ant-card.antd-panel { padding: 0 !important; border-radius: 12px; border-color: #f0f0f0; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
-.ant-card.panel .ant-card-head { min-height: 44px; padding: 0 16px; border-bottom-color: #f0f0f0; }
-.ant-card.panel .ant-card-body { padding: 16px; }
-.panel-description { margin-bottom: 12px !important; }
-
-/* Temporary layout compatibility; broad legacy .field descendant rules are retired. */
-.antd-field.ant-form-item { width: 100%; min-width: 0; margin: 0 0 12px !important; }
-.antd-field .ant-form-item-row { display: block; width: 100%; }
-.antd-field .ant-form-item-label { display: block; width: 100%; max-width: none; padding: 0 0 4px; text-align: left; }
-.antd-field .ant-form-item-label > label { display: inline-flex; min-height: 22px; color: rgba(0,0,0,.65); font-size: 14px; font-weight: 500; line-height: 22px; }
-.antd-field .ant-form-item-control { display: block; width: 100%; max-width: none; }
-.antd-field .ant-form-item-control-input { min-height: 32px; }
-.antd-field .ant-form-item-extra { font-size: 12px; line-height: 20px; color: rgba(0,0,0,.45); }
-.antd-field .ant-input,
-.antd-field .ant-input-affix-wrapper,
-.antd-field .ant-select,
-.antd-field .ant-picker { width: 100%; }
-.antd-field textarea.ant-input { min-height: 96px; }
-.antd-field .ant-select-selection-item,
-.antd-field .ant-select-selection-placeholder { display: flex; align-items: center; margin-bottom: 0; }
-
-.antd-actions { display: flex; align-items: center; margin-top: 0; }
-.antd-actions .ant-space-item { display: flex; }
-.person-step-form > .antd-actions .ant-space-item:nth-child(2) { display: none; }
-
 .archive-search-form,
 .lineage-search-grid { align-items: end !important; }
 .archive-search-form { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; gap: 12px !important; }
@@ -99,18 +48,6 @@
 .archive-search-form .ant-btn,
 .lineage-search-grid .ant-btn { height: 32px; }
 
-.antd-table-wrap { border: 0; border-radius: 8px; overflow: auto; }
-.antd-table-wrap .table-hint { display: block; padding: 0 0 8px; background: transparent; border-bottom: 0; }
-.antd-table-wrap .ant-table { border-radius: 8px; overflow: hidden; }
-.antd-table-wrap .ant-table-tbody > tr.clickable { cursor: pointer; }
-.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td { background: #f5faff; }
-.antd-empty { border: 1px dashed #d9d9d9; background: #fafafa; border-radius: 8px; padding: 18px; }
-
-.antd-detail-card { margin-top: 0; padding: 0 !important; background: #fff; }
-.antd-detail-card .ant-card-body { padding: 12px; }
-.antd-toast-stack { position: fixed; top: 22px; right: 24px; z-index: 1200; width: 360px; }
-.system-management .ant-tabs-nav { margin-bottom: 14px; }
-
 @media (max-width: 1400px) {
   .lineage-search-grid { grid-template-columns: 140px minmax(260px, 1fr) 120px auto !important; }
 }
@@ -120,13 +57,9 @@
   .auth-hero-card { grid-row: auto; min-height: auto; padding: 24px; }
   .role-card-grid { grid-template-columns: 1fr; }
   .relationship-preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .github-user-trigger .github-user-name { display: none; }
 }
 
 @media (max-width: 760px) {
-  .antd-content { padding: 12px; }
-  .github-like-header { padding: 0 12px; }
-  .github-like-header-title .ant-typography:last-child { max-width: 180px; }
   .archive-search-form,
   .lineage-search-grid { grid-template-columns: 1fr !important; }
   .relationship-preset-grid { grid-template-columns: 1fr; }
