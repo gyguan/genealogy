@@ -19,6 +19,12 @@ async function okData(response: APIResponse) {
   return responseData(payload);
 }
 
+function multipartHeaders(headers: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(headers).filter(([key]) => key.toLowerCase() !== 'content-type')
+  );
+}
+
 function rowsOf(value: any): any[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.records)) return value.records;
@@ -51,6 +57,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
 
     await loginThroughUi(page, 'EDITOR');
     const editorHeaders = await csrfHeaders(page);
+    const uploadHeaders = multipartHeaders(editorHeaders);
 
     const source = await okData(await page.request.post(`/api/v1/clans/${clanId}/sources`, {
       headers: editorHeaders,
@@ -73,7 +80,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     const sourceId = idOf(source, '来源');
 
     const upload = await okData(await page.request.post(`/api/v1/sources/${sourceId}/attachments`, {
-      headers: editorHeaders,
+      headers: uploadHeaders,
       multipart: {
         file: { name: fileName, mimeType: 'text/plain', buffer: Buffer.from(fileContent, 'utf8') },
         privacyLevel: 'clan_only',
@@ -87,7 +94,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     expect(String(upload.sensitiveLevel)).toBe('sensitive');
 
     const emptyUpload = await page.request.post(`/api/v1/sources/${sourceId}/attachments`, {
-      headers: editorHeaders,
+      headers: uploadHeaders,
       multipart: {
         file: { name: `empty-${runId}.txt`, mimeType: 'text/plain', buffer: Buffer.alloc(0) },
         privacyLevel: 'clan_only',
@@ -98,7 +105,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     expect(JSON.stringify(await responsePayload(emptyUpload))).toMatch(/empty|空|FILE|ATTACHMENT/i);
 
     const invalidUpload = await page.request.post(`/api/v1/sources/${sourceId}/attachments`, {
-      headers: editorHeaders,
+      headers: uploadHeaders,
       multipart: {
         file: { name: `blocked-${runId}.exe`, mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ-not-an-executable') },
         privacyLevel: 'clan_only',
