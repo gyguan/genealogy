@@ -26,9 +26,10 @@ test('application entry contains no business DOM runtime patches', () => {
 
 test('member invitation is rendered inside the member module instead of the global header', () => {
   const app = read('app/App.tsx');
+  const registry = read('app/moduleRegistry.tsx');
   const memberPage = read('features/members/MemberManagementPage.tsx');
   assert.equal(app.includes("import { MemberInvitationAction }"), false);
-  assert.match(app, /case 'memberManage': return <MemberManagementPage \/>/);
+  assert.match(registry, /key: 'memberManage'[\s\S]*render: \(\) => <MemberManagementPage \/>/);
   assert.match(memberPage, /<MemberInvitationAction \/>/);
 });
 
