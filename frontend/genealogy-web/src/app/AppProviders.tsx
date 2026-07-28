@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { App as AntdApp, ConfigProvider, theme } from 'antd';
+import type { ModalFuncProps } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import { confirmAction } from '../shared/ui/Feedback';
 
 dayjs.locale('zh-cn');
 
@@ -23,6 +26,32 @@ export const APPLICATION_FONT_FAMILY = [
   '"Segoe UI Symbol"',
   '"Noto Color Emoji"'
 ].join(', ');
+
+type ApplicationConfirmDetail = ModalFuncProps & {
+  resolve: (confirmed: boolean) => void;
+};
+
+function ApplicationConfirmationBridge() {
+  useEffect(() => {
+    const handleConfirm = (event: Event) => {
+      const { resolve, ...options } = (event as CustomEvent<ApplicationConfirmDetail>).detail;
+      confirmAction({
+        ...options,
+        onOk: () => {
+          resolve(true);
+          return options.onOk?.();
+        },
+        onCancel: () => {
+          resolve(false);
+          options.onCancel?.();
+        }
+      });
+    };
+    window.addEventListener('genealogy:confirm-action', handleConfirm);
+    return () => window.removeEventListener('genealogy:confirm-action', handleConfirm);
+  }, []);
+  return null;
+}
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
@@ -55,6 +84,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       }}
     >
       <AntdApp>
+        <ApplicationConfirmationBridge />
         <WorkspaceProvider>{children}</WorkspaceProvider>
       </AntdApp>
     </ConfigProvider>
