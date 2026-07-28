@@ -2,7 +2,7 @@
  * Global style entry.
  *
  * This file contains only the shared design baseline, application shell and
- * shared UI contracts. Feature CSS is loaded by
+ * named shared UI contracts. Feature CSS is loaded by
  * shared/styles/loadFeatureStyles.ts when its module becomes active.
  */
 
@@ -12,9 +12,6 @@
 /* shell/base */
 @import './shell/app-shell.css';
 @import '../auth-commercial.css';
-@import '../styles.css';
-@import '../experience.css';
-@import '../compact-ui.css';
 @import '../tabbed-module.css';
 @import '../entity-page-header.css';
 @import '../runtime-error.css';
