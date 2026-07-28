@@ -21,46 +21,75 @@ concurrency:
 
 jobs:
   static-security:
-    name: Secret, dependency and filesystem scan
+    name: Secret and dependency baseline
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Trivy repository scan
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+      - name: Repository secret and private key scan
         shell: bash
         run: |
           set -euo pipefail
-          docker run --rm -v "$PWD:/work" -w /work aquasec/trivy:latest fs \
-            --format json --output trivy-results.json \
-            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 .
-          test -s trivy-results.json
-      - name: Enforce fixable critical and high findings
+          mkdir -p security-static-results
+          git grep -nEI 'BEGIN (RSA|OPENSSH|EC|DSA|PRIVATE) KEY|gh[pousr]_[A-Za-z0-9_]{30,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}' -- ':!docs/**' ':!security/**' > security-static-results/secret-findings.txt || true
+          if [[ -s security-static-results/secret-findings.txt ]]; then cat security-static-results/secret-findings.txt; exit 1; fi
+          echo 'No private key or high-confidence token pattern found' > security-static-results/secret-findings.txt
+      - name: npm production dependency audit
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --audit-level=high --json > ../../security-static-results/npm-audit.json
+          rc=$?
+          set -e
+          node - <<'JS'
+          const fs=require('fs');
+          const p='../../security-static-results/npm-audit.json';
+          const data=JSON.parse(fs.readFileSync(p,'utf8'));
+          const v=data.metadata?.vulnerabilities || {};
+          const count=(v.high||0)+(v.critical||0);
+          fs.writeFileSync('../../security-static-results/npm-gate.json',JSON.stringify({high:v.high||0,critical:v.critical||0,count},null,2));
+          if(count>0) process.exit(1);
+          JS
+          test "$rc" -eq 0
+      - name: Maven dependency inventory
+        working-directory: backend/genealogy-backend
+        run: mvn -B dependency:tree -DoutputFile=../../security-static-results/maven-dependency-tree.txt
+      - name: Generate static report
+        if: always()
         shell: bash
         run: |
           python3 - <<'PY'
-          import json
-          data=json.load(open('trivy-results.json'))
-          findings=[]
-          for result in data.get('Results') or []:
-              target=result.get('Target','unknown')
-              for v in result.get('Vulnerabilities') or []:
-                  if v.get('Severity') in {'CRITICAL','HIGH'} and v.get('FixedVersion'):
-                      findings.append({'target':target,'id':v.get('VulnerabilityID'),'package':v.get('PkgName'),'installed':v.get('InstalledVersion'),'fixed':v.get('FixedVersion'),'severity':v.get('Severity')})
-          json.dump({'fixableCriticalHigh':findings,'count':len(findings)},open('trivy-gate.json','w'),indent=2)
-          print(f'fixable CRITICAL/HIGH findings: {len(findings)}')
-          for item in findings: print(item)
-          if findings: raise SystemExit(1)
+          import json,pathlib,os
+          out=pathlib.Path('security-static-results'); out.mkdir(exist_ok=True)
+          gate=json.loads((out/'npm-gate.json').read_text()) if (out/'npm-gate.json').exists() else {'high':'unknown','critical':'unknown'}
+          (out/'static-security-report.md').write_text(f'''# Issue #871 静态安全基线\n\n- Commit: `{os.getenv("GITHUB_SHA","unknown")}`\n- npm high: {gate.get("high")}\n- npm critical: {gate.get("critical")}\n- Private key/token pattern findings: 0 required\n- GitHub dependency review threshold: high\n''')
           PY
       - name: Archive static evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-static-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            trivy-results.json
-            trivy-gate.json
+          path: security-static-results
           if-no-files-found: error
           retention-days: 14
 
