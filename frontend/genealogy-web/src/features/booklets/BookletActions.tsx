@@ -71,5 +71,7 @@ export function BookletActions(_props: Props) {
     </Dropdown>
   );
 
-  return toolbar ? createPortal(<span className="lineage-result-export-action">{action}</span>, toolbar) : null;
+  return toolbar
+    ? createPortal(<span className="lineage-result-export-action">{action}</span>, toolbar)
+    : action;
 }
