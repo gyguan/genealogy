@@ -50,7 +50,7 @@ async function expectForbidden(response: any, pattern = /AUTH_FORBIDDEN|MEMBER_G
 test.describe('成员授权、支派范围与修谱协作闭环', () => {
   test.describe.configure({ mode: 'serial', retries: 0 });
 
-  test('FT-MEMBER-001~008 / FT-WORKBENCH-001 完整协作链', async ({ browser }, testInfo) => {
+  test('FT-MEMBER-001~008 / FT-WORKBENCH-001~003 完整协作链', async ({ browser }, testInfo) => {
     const clanId = requiredNumberEnv('MEMBER_SCOPE_CLAN_ID');
     const rootBranchId = requiredNumberEnv('MEMBER_SCOPE_ROOT_BRANCH_ID');
     const childBranchId = requiredNumberEnv('MEMBER_SCOPE_CHILD_BRANCH_ID');
@@ -154,7 +154,7 @@ test.describe('成员授权、支派范围与修谱协作闭环', () => {
       '#834 恢复支派管理员授权'
     );
     const restoredGrantId = Number(restoredGrant.grantId ?? restoredGrant.id);
-    expect(restoredGrantId).toBeGreaterThan(0);
+    expect(restoredGrantId).toBe(firstGrantId);
     await okData(await collaboratorPage.request.get(
       `/api/v1/workbench/tasks?clanId=${clanId}&pageNo=1&pageSize=100`
     ));
@@ -186,18 +186,40 @@ test.describe('成员授权、支派范围与修谱协作闭环', () => {
 
     const firstVisibleTask = workbenchRecords[0];
     expect(firstVisibleTask?.key, '工作台必须返回至少一条可见任务').toBeTruthy();
-    const taskAction = await collaboratorPage.request.post(
+    const collaboratorHeaders = await csrfHeaders(collaboratorPage);
+    const actionRequest = () => collaboratorPage.request.post(
       `/api/v1/workbench/tasks/${encodeURIComponent(firstVisibleTask.key)}/actions`,
       {
-        headers: await csrfHeaders(collaboratorPage),
+        headers: collaboratorHeaders,
         data: {
+          clanId,
           action: 'mark_checked',
-          comment: '#834 验证工作台任务核查动作',
+          comment: '#834 验证工作台任务并发核查动作',
           expectedUpdatedAt: firstVisibleTask.updatedAt ?? null
         }
       }
     );
-    expect(taskAction.status(), '工作台 UI 已暴露批量核查动作，后端必须提供非 404 的真实契约').not.toBe(404);
+    const [firstActionResponse, secondActionResponse] = await Promise.all([actionRequest(), actionRequest()]);
+    const [firstAction, secondAction] = await Promise.all([
+      okData(firstActionResponse),
+      okData(secondActionResponse)
+    ]);
+    expect(Number(firstAction.id)).toBeGreaterThan(0);
+    expect(Number(secondAction.id)).toBe(Number(firstAction.id));
+    expect([firstAction.idempotent, secondAction.idempotent]).toContain(true);
+
+    const replayedAction = await okData(await actionRequest());
+    expect(Number(replayedAction.id)).toBe(Number(firstAction.id));
+    expect(replayedAction.idempotent).toBe(true);
+
+    const afterAction = await okData(await collaboratorPage.request.get(
+      `/api/v1/workbench/tasks?clanId=${clanId}&pageNo=1&pageSize=100`
+    ));
+    expect(Number(dataOf(afterAction).total)).toBe(workbenchRecords.length - 1);
+    expect(recordsOf(afterAction).some((item: any) => item.key === firstVisibleTask.key)).toBeFalsy();
+
+    await collaboratorPage.reload();
+    await expect(collaboratorPage.getByText(firstVisibleTask.objectName, { exact: false })).toHaveCount(0);
 
     await testInfo.attach('member-scope-chain', {
       body: JSON.stringify({
@@ -208,7 +230,9 @@ test.describe('成员授权、支派范围与修谱协作闭环', () => {
         membershipId,
         firstGrantId,
         restoredGrantId,
-        visibleTaskTotal: workbenchRecords.length
+        visibleTaskTotal: workbenchRecords.length,
+        completedTaskKey: firstVisibleTask.key,
+        taskActionId: firstAction.id
       }, null, 2),
       contentType: 'application/json'
     });
