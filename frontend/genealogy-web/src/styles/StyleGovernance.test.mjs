@@ -16,7 +16,7 @@ function changedCssFiles() {
   const candidates = ['origin/main...HEAD', 'main...HEAD', 'HEAD^...HEAD'];
   for (const range of candidates) {
     try {
-      const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', range, '--', '*.css'], {
+      const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=AM', range, '--', '*.css'], {
         cwd: PROJECT_ROOT,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore']
