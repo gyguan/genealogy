@@ -44,6 +44,22 @@ public class SourceAttachmentApplicationService {
     private static final String SENSITIVE_HIGHLY = "highly_sensitive";
     private static final Set<String> PRIVACY_LEVELS = Set.of("public", PRIVACY_CLAN_ONLY, "branch_only", "relatives_only", "private", "sealed");
     private static final Set<String> SENSITIVE_LEVELS = Set.of(SENSITIVE_NORMAL, "sensitive", SENSITIVE_HIGHLY);
+    private static final Set<String> ALLOWED_FILE_EXTENSIONS = Set.of(
+            "pdf", "txt", "csv", "jpg", "jpeg", "png", "gif", "webp", "doc", "docx", "xls", "xlsx"
+    );
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "application/pdf",
+            "text/plain",
+            "text/csv",
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     private static final long MAX_FILE_SIZE_BYTES = 20L * 1024L * 1024L;
 
     private final SourceRepository sourceRepository;
@@ -146,48 +162,20 @@ public class SourceAttachmentApplicationService {
         operationLogApplicationService.record(attachment.getClanId(), actorId, "source_attachment_delete", "source_attachment", attachment.getId(), "delete source attachment: " + attachment.getOriginalFilename(), "sourceId=" + attachment.getSourceId(), requestId, clientIp);
     }
 
-    private void recordAttachmentAccess(
-            SourceAttachmentEntity attachment,
-            Long actorId,
-            boolean download,
-            String requestId,
-            String clientIp
-    ) {
+    private void recordAttachmentAccess(SourceAttachmentEntity attachment, Long actorId, boolean download, String requestId, String clientIp) {
         String actionType = download ? "source_attachment_download" : "source_attachment_preview";
         String actionName = download ? "download" : "preview";
         String summary = actionName + " source attachment: " + attachment.getOriginalFilename();
-        String detail = "sourceId=" + attachment.getSourceId()
-                + "; sensitiveLevel=" + normalizeSensitiveLevel(attachment.getSensitiveLevel());
+        String detail = "sourceId=" + attachment.getSourceId() + "; sensitiveLevel=" + normalizeSensitiveLevel(attachment.getSensitiveLevel());
         if (isSensitive(attachment)) {
             operationLogApplicationService.recordRisk(
-                    attachment.getClanId(),
-                    actorId,
-                    actionType,
-                    "source_attachment",
-                    attachment.getId(),
-                    summary,
-                    detail,
-                    requestId,
-                    clientIp,
-                    OperationRiskPolicy.sensitiveAccess(
-                            SENSITIVE_HIGHLY.equals(normalizeSensitiveLevel(attachment.getSensitiveLevel())),
-                            download,
-                            null
-                    )
+                    attachment.getClanId(), actorId, actionType, "source_attachment", attachment.getId(), summary, detail,
+                    requestId, clientIp,
+                    OperationRiskPolicy.sensitiveAccess(SENSITIVE_HIGHLY.equals(normalizeSensitiveLevel(attachment.getSensitiveLevel())), download, null)
             );
             return;
         }
-        operationLogApplicationService.record(
-                attachment.getClanId(),
-                actorId,
-                actionType,
-                "source_attachment",
-                attachment.getId(),
-                summary,
-                detail,
-                requestId,
-                clientIp
-        );
+        operationLogApplicationService.record(attachment.getClanId(), actorId, actionType, "source_attachment", attachment.getId(), summary, detail, requestId, clientIp);
     }
 
     private boolean isSensitive(SourceAttachmentEntity attachment) {
@@ -210,6 +198,13 @@ public class SourceAttachmentApplicationService {
         }
         if (file.getSize() > MAX_FILE_SIZE_BYTES) {
             throw new BusinessException("SOURCE_ATTACHMENT_TOO_LARGE", "附件大小不能超过20MB");
+        }
+        String filename = sanitizeOriginalFilename(file.getOriginalFilename()).toLowerCase(Locale.ROOT);
+        int dotIndex = filename.lastIndexOf('.');
+        String extension = dotIndex >= 0 && dotIndex < filename.length() - 1 ? filename.substring(dotIndex + 1) : "";
+        String contentType = normalizeContentType(file.getContentType()).toLowerCase(Locale.ROOT);
+        if (!ALLOWED_FILE_EXTENSIONS.contains(extension) || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new BusinessException("SOURCE_ATTACHMENT_TYPE_UNSUPPORTED", "不支持的附件类型");
         }
     }
 
@@ -247,19 +242,9 @@ public class SourceAttachmentApplicationService {
 
     private SourceAttachmentResponse toResponse(SourceAttachmentEntity entity, Long actorId) {
         return new SourceAttachmentResponse(
-                entity.getId(),
-                entity.getSourceId(),
-                entity.getClanId(),
-                entity.getOriginalFilename(),
-                entity.getContentType(),
-                entity.getFileSize(),
-                normalizePrivacyLevel(entity.getPrivacyLevel()),
-                normalizeSensitiveLevel(entity.getSensitiveLevel()),
-                entity.getUploadStatus(),
-                canPreview(entity, actorId),
-                canDownload(entity, actorId),
-                entity.getCreatedBy(),
-                entity.getCreatedAt()
+                entity.getId(), entity.getSourceId(), entity.getClanId(), entity.getOriginalFilename(), entity.getContentType(), entity.getFileSize(),
+                normalizePrivacyLevel(entity.getPrivacyLevel()), normalizeSensitiveLevel(entity.getSensitiveLevel()), entity.getUploadStatus(),
+                canPreview(entity, actorId), canDownload(entity, actorId), entity.getCreatedBy(), entity.getCreatedAt()
         );
     }
 
@@ -304,7 +289,7 @@ public class SourceAttachmentApplicationService {
         if (contentType == null || contentType.isBlank()) {
             return "application/octet-stream";
         }
-        return contentType;
+        return contentType.trim();
     }
 
     private String sanitizeOriginalFilename(String originalFilename) {

@@ -2,6 +2,7 @@ package com.genealogy.source.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.operationlog.application.OperationRiskPolicy;
 import com.genealogy.source.dto.SourceAttachmentFileResponse;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -92,6 +94,24 @@ class SourceAttachmentApplicationServiceTest {
         assertThat(savedRef.get().getChecksum()).isNotBlank();
         assertThat(Files.exists(Path.of(savedRef.get().getStoragePath()))).isTrue();
         verify(operationLogApplicationService).record(1L, 2L, "source_attachment_upload", "source_attachment", 30L, "upload source attachment: 族谱.pdf", "sourceId=10; privacyLevel=private; sensitiveLevel=sensitive", "req-1", "127.0.0.1");
+    }
+
+    @Test
+    void uploadShouldRejectExecutableFileTypeBeforeStorage() {
+        when(sourceRepository.findById(10L)).thenReturn(Optional.of(source()));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "blocked.exe",
+                "application/x-msdownload",
+                "MZ-not-an-executable".getBytes()
+        );
+
+        assertThatThrownBy(() -> service.upload(10L, file, "clan_only", "normal", 2L, "req-blocked", "127.0.0.1"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不支持的附件类型");
+
+        verifyNoMoreInteractions(sourceAttachmentRepository, operationLogApplicationService);
+        assertThat(Files.exists(tempDir.resolve("1").resolve("10"))).isFalse();
     }
 
     @Test
