@@ -35,9 +35,14 @@ test('issue 934 keeps browser-native blocking dialogs out of production source',
     const content = await source(file);
     assert.doesNotMatch(content, /window\.(?:confirm|alert|prompt)\s*\(/, `${file} must use shared Ant Design feedback`);
   }
-  assert.match(await source('src/app/App.tsx'), /confirmAction\s*\(/);
+  const app = await source('src/app/App.tsx');
+  const providers = await source('src/app/AppProviders.tsx');
+  const client = await source('src/shared/api/client.ts');
+  assert.match(app, /confirmAction\s*\(/);
   assert.match(await source('src/features/culture/cultureEditorState.ts'), /confirmAction\s*\(/);
-  assert.match(await source('src/shared/api/client.ts'), /确认创建疑似重复人物/);
+  assert.match(client, /genealogy:confirm-action/);
+  assert.match(providers, /genealogy:confirm-action/);
+  assert.match(client, /确认创建疑似重复人物/);
 });
 
 test('issue 934 provides Chinese Ant Design and Day.js locale at the application root', async () => {
