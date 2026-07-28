@@ -44,24 +44,31 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Resolve comparison base
+      - name: Resolve comparison refs
         id: refs
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           if [[ "$EVENT_NAME" == "pull_request" && -n "$PR_BASE_SHA" ]]; then
             BASE_SHA="$PR_BASE_SHA"
+            HEAD_SHA="$PR_HEAD_SHA"
           elif [[ "$EVENT_NAME" == "push" && -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
             BASE_SHA="$BEFORE_SHA"
+            HEAD_SHA="$CURRENT_SHA"
           else
             BASE_SHA="$(node -p "require('./frontend/genealogy-web/style-debt-baseline.json').referenceCommit")"
+            HEAD_SHA="$CURRENT_SHA"
           fi
           git cat-file -e "${BASE_SHA}^{commit}"
+          git cat-file -e "${HEAD_SHA}^{commit}"
           echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Verify governed exceptions
         working-directory: frontend/genealogy-web
@@ -74,7 +81,7 @@ jobs:
         working-directory: frontend/genealogy-web
         env:
           STYLE_AUDIT_BASE_SHA: ${{ steps.refs.outputs.base_sha }}
-          STYLE_AUDIT_HEAD_SHA: WORKTREE
+          STYLE_AUDIT_HEAD_SHA: ${{ steps.refs.outputs.head_sha }}
         run: node scripts/audit-style-debt.mjs --json=style-debt-audit.json --markdown=style-debt-audit.md
 
       - name: Publish audit summary
