@@ -1,0 +1,62 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "PingFang SC",
+    "Microsoft YaHei", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  color: rgba(0, 0, 0, 0.88);
+  background: #f5f5f5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --genealogy-font-size-caption: 12px;
+  --genealogy-line-height-caption: 20px;
+  --genealogy-font-size-body: 14px;
+  --genealogy-line-height-body: 22px;
+  --genealogy-font-size-subtitle: 16px;
+  --genealogy-line-height-subtitle: 24px;
+  --genealogy-font-size-title: 20px;
+  --genealogy-line-height-title: 28px;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  background: #f5f5f5;
+  font-family: inherit;
+  font-size: var(--genealogy-font-size-body);
+  line-height: var(--genealogy-line-height-body);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.ant-statistic-content,
+.ant-table-cell,
+.numeric-text,
+[data-numeric="true"] {
+  font-variant-numeric: tabular-nums;
+}
+
+.ant-form-item-label > label {
+  font-size: var(--genealogy-font-size-body);
+  font-weight: 500;
+  line-height: var(--genealogy-line-height-body);
+}
+
+.ant-form-item-extra,
+.ant-form-item-explain,
+.ant-typography-secondary,
+.ant-typography-caption {
+  font-size: var(--genealogy-font-size-caption);
+  line-height: var(--genealogy-line-height-caption);
+}
