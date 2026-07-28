@@ -19,6 +19,10 @@ import java.util.List;
  */
 @Service
 public class TreeApplicationService {
+    private static final String DIRECTION_FAMILY = "family";
+    private static final String DIRECTION_DESCENDANTS = "descendants";
+    private static final String DIRECTION_ANCESTORS = "ancestors";
+
     private final TreeGraphEngine engine;
 
     @Autowired
@@ -58,7 +62,8 @@ public class TreeApplicationService {
             Long personId, List<String> relationScopes, String dataView,
             Integer maxNodes, Integer maxEdges, Long actorId
     ) {
-        return engine.family(personId, relationScopes, dataView, maxNodes, maxEdges, actorId);
+        return personLineage(personId, DIRECTION_FAMILY, relationScopes, dataView,
+                1, maxNodes, maxEdges, actorId);
     }
 
     @Transactional(readOnly = true)
@@ -66,8 +71,8 @@ public class TreeApplicationService {
             Long rootPersonId, Integer maxDepth, List<String> relationScopes, String dataView,
             Integer maxNodes, Integer maxEdges, Long actorId
     ) {
-        return engine.descendants(rootPersonId, maxDepth, relationScopes, dataView,
-                maxNodes, maxEdges, actorId);
+        return personLineage(rootPersonId, DIRECTION_DESCENDANTS, relationScopes, dataView,
+                maxDepth, maxNodes, maxEdges, actorId);
     }
 
     @Transactional(readOnly = true)
@@ -75,8 +80,8 @@ public class TreeApplicationService {
             Long personId, Integer maxDepth, List<String> relationScopes, String dataView,
             Integer maxNodes, Integer maxEdges, Long actorId
     ) {
-        return engine.ancestors(personId, maxDepth, relationScopes, dataView,
-                maxNodes, maxEdges, actorId);
+        return personLineage(personId, DIRECTION_ANCESTORS, relationScopes, dataView,
+                maxDepth, maxNodes, maxEdges, actorId);
     }
 
     @Transactional(readOnly = true)
