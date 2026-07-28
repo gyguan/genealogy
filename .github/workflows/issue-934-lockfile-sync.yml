@@ -1,0 +1,39 @@
+name: Issue 934 lockfile sync
+
+on:
+  push:
+    branches:
+      - agent/issue-934-antd-governance
+    paths:
+      - frontend/genealogy-web/package.json
+      - .github/workflows/issue-934-lockfile-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-934-antd-governance
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package-lock.json
+      - name: Regenerate lockfile from pinned versions
+        working-directory: frontend/genealogy-web
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Commit synchronized lockfile
+        run: |
+          if git diff --quiet -- frontend/genealogy-web/package-lock.json; then
+            echo 'Lockfile already synchronized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/genealogy-web/package-lock.json
+          git commit -m 'Sync frontend lockfile for issue #934'
+          git push
