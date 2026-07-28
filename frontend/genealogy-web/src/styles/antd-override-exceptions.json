@@ -1,23 +1,7 @@
 {
   "owner": "frontend-platform",
   "reviewedAt": "2026-07-28",
-  "policy": "antd-bridge.css may only shrink; every !important declaration and selector that reaches Ant Design internals must be covered by this registry",
-  "importantSnapshot": [
-    ".archive-search-form, .lineage-search-grid|align-items",
-    ".archive-search-form|grid-template-columns",
-    ".archive-search-form|gap",
-    ".archive-search-form .ant-form-item, .lineage-search-grid .ant-form-item|margin",
-    "@media (max-width: 1400px)::.lineage-search-grid|grid-template-columns",
-    "@media (max-width: 760px)::.archive-search-form, .lineage-search-grid|grid-template-columns"
-  ],
-  "exceptions": [
-    {
-      "scope": "archive and lineage query grids",
-      "selectorPrefixes": [".archive-search-form", ".lineage-search-grid"],
-      "reason": "desktop query grids still depend on bridge layout compatibility",
-      "exitCondition": "query areas use feature-owned or shared QueryBar layout",
-      "trackingIssue": 897,
-      "reviewedAt": "2026-07-28"
-    }
-  ]
+  "policy": "Ant Design compatibility bridge is retired; temporary internal overrides require a new open tracking issue and feature-owned scope",
+  "importantSnapshot": [],
+  "exceptions": []
 }
