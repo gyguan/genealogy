@@ -14,10 +14,13 @@ test('migrated tree and source interaction rules stay out of the bridge', async 
 test('header user entry retains an explicit keyboard focus contract', async () => {
   const bridge = await source('src/antd-bridge.css');
   const menu = await source('src/features/auth/CurrentUserMenu.tsx');
-  assert.match(menu, /className="github-user-trigger"/);
-  assert.match(menu, /<button[^>]+type="button"/s);
-  assert.match(bridge, /\.github-user-trigger:focus-visible\s*\{/);
-  assert.match(bridge, /outline:\s*2px/);
+  const menuStyles = await source('src/features/auth/current-user-menu.css');
+  assert.match(menu, /<Button[\s\S]*className="github-user-trigger"/);
+  assert.match(menu, /aria-haspopup="menu"/);
+  assert.match(menu, /aria-expanded=\{menuOpen\}/);
+  assert.match(menuStyles, /\.github-user-trigger\.ant-btn:focus-visible\s*\{/);
+  assert.match(menuStyles, /outline:\s*2px/);
+  assert.doesNotMatch(bridge, /\.github-user-trigger/);
 });
 
 test('commercial auth visuals remain isolated to the auth feature', async () => {
