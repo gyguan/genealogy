@@ -22,7 +22,6 @@ const migratedPrefixes = [
   '.antd-content',
   '.ant-card.panel',
   '.antd-field',
-  '.antd-actions',
   '.antd-table-wrap',
   '.antd-empty',
   '.antd-detail-card',
@@ -41,7 +40,9 @@ test('migrated responsibility domains no longer exist in the bridge', () => {
   for (const prefix of migratedPrefixes) {
     assert.equal(bridge.includes(prefix), false, `${prefix} must not return to antd-bridge.css`);
   }
+  assert.doesNotMatch(bridge, /(^|})\s*\.antd-actions\s*\{/m);
   assert.match(shell, /\.github-like-header/);
+  assert.match(shared, /\.antd-actions\s*\{/);
   assert.match(shared, /\.antd-table-wrap/);
   assert.match(currentUserStyles, /\.github-user-trigger\.ant-btn/);
 });
