@@ -11,13 +11,14 @@ test('home keeps only home URL state', () => {
   assert.equal(next, '/?clanId=4');
 });
 
-test('target view keeps only its allowlisted parameters', () => {
+test('target view keeps only its allowlisted parameters and applies defaults', () => {
   const next = buildViewUrl('reviewCenter', 'https://example.test/?clanId=4&mode=branch&personId=173&reviewTab=submitted&status=pending');
   const url = new URL(next, 'https://example.test');
   assert.equal(url.searchParams.get('view'), 'reviewCenter');
   assert.equal(url.searchParams.get('clanId'), '4');
   assert.equal(url.searchParams.get('reviewTab'), 'submitted');
   assert.equal(url.searchParams.get('status'), 'pending');
+  assert.equal(url.searchParams.get('pageSize'), '10');
   assert.equal(url.searchParams.has('mode'), false);
   assert.equal(url.searchParams.has('personId'), false);
 });
@@ -52,6 +53,25 @@ test('explicit target parameters are filtered by the target allowlist', () => {
   assert.equal(url.searchParams.get('personRelations'), 'blood,marriage');
   assert.equal(url.searchParams.get('branchRelations'), 'blood,status');
   assert.equal(url.searchParams.has('reviewTab'), false);
+});
+
+test('source library preserves its search, detail and paging state', () => {
+  const next = buildViewUrl('sourceLibrary', 'https://example.test/?clanId=4&sourceId=16&keyword=卷一&sourceType=genealogy_book&verificationStatus=official&privacyLevel=clan_only&hasAttachment=true&hasBinding=false&pageNo=3&pageSize=20&sort=updatedAt,desc&reviewTab=submitted');
+  const url = new URL(next, 'https://example.test');
+  assert.equal(url.searchParams.get('sourceId'), '16');
+  assert.equal(url.searchParams.get('keyword'), '卷一');
+  assert.equal(url.searchParams.get('pageNo'), '3');
+  assert.equal(url.searchParams.get('pageSize'), '20');
+  assert.equal(url.searchParams.has('reviewTab'), false);
+});
+
+test('member management preserves list and detail state without leaking other modules', () => {
+  const next = buildViewUrl('memberManage', 'https://example.test/?clanId=4&keyword=张&role=branch_admin&scope=branch_subtree&status=active&page=2&pageSize=20&member=91&sourceId=16');
+  const url = new URL(next, 'https://example.test');
+  assert.equal(url.searchParams.get('keyword'), '张');
+  assert.equal(url.searchParams.get('scope'), 'branch_subtree');
+  assert.equal(url.searchParams.get('member'), '91');
+  assert.equal(url.searchParams.has('sourceId'), false);
 });
 
 test('person detail path does not inherit unrelated query state', () => {
