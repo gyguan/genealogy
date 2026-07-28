@@ -11,10 +11,10 @@ on:
       - ".github/workflows/stability-drill.yml"
   workflow_dispatch:
     inputs:
-      duration_hours:
-        description: "Continuous workload duration in hours (24, 48 or 72 recommended)"
+      duration_minutes:
+        description: "Hosted-runner workload duration in minutes (max 300); use the script on a self-hosted runner for 24/48/72h"
         required: true
-        default: "24"
+        default: "180"
       backend_rto_seconds:
         description: "Backend restart RTO target"
         required: true
@@ -39,7 +39,7 @@ jobs:
   stability-dr:
     name: PostgreSQL backup restore and stability drill
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 4500 || 35 }}
+    timeout-minutes: 360
     services:
       postgres:
         image: postgres:16-alpine
@@ -86,7 +86,12 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "STABILITY_DURATION_SECONDS=$(( ${{ inputs.duration_hours }} * 3600 ))" >> "$GITHUB_ENV"
+            minutes="${{ inputs.duration_minutes }}"
+            if (( minutes < 1 || minutes > 300 )); then
+              echo "duration_minutes must be between 1 and 300 on GitHub-hosted runners" >&2
+              exit 1
+            fi
+            echo "STABILITY_DURATION_SECONDS=$(( minutes * 60 ))" >> "$GITHUB_ENV"
             echo "BACKEND_RTO_MS=$(( ${{ inputs.backend_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
             echo "DATABASE_RTO_MS=$(( ${{ inputs.database_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
             echo "RPO_SECONDS=${{ inputs.rpo_seconds }}" >> "$GITHUB_ENV"
@@ -131,7 +136,7 @@ jobs:
 
 ## Conclusion boundary
 
-The PR gate is a short repeatable CI drill. The same workflow supports manually dispatched 24/48/72-hour runs. It proves the backup is restorable and the recovery procedure is executable; production infrastructure, network, storage replication and regional failover still require an equivalent environment-specific exercise.
+The PR gate is a short repeatable CI drill. GitHub-hosted workflow dispatch supports up to 300 minutes; the same repository script accepts arbitrary `STABILITY_DURATION_SECONDS` on a self-hosted runner for 24/48/72-hour exercises. Production infrastructure, network, storage replication and regional failover still require an equivalent environment-specific exercise.
 '''
           (out/'stability-dr-report.md').write_text(report)
           PY
