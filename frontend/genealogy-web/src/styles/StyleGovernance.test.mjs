@@ -35,6 +35,10 @@ function changedCssFiles() {
   return [path.join(ROOT, 'styles/index.css')];
 }
 
+function executableCss(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').trim();
+}
+
 test('application entry only imports Ant reset and the governed style entry', () => {
   const cssImports = [...mainSource.matchAll(/import\s+['"]([^'"]+\.css)['"];?/g)].map(match => match[1]);
   assert.deepEqual(cssImports, ['antd/dist/reset.css', './styles/index.css']);
@@ -45,24 +49,22 @@ test('feature styles are absent from the global bundle and loaded by active modu
     assert.equal(styleEntry.includes(file), false, `${file} must not be globally loaded`);
     assert.equal(featureLoader.includes(file), true, `${file} must be owned by the feature style loader`);
   }
-  for (const file of ['mvp1-wizard-layout.css', 'mvp1-wizard-generation.css', 'person-archive-layout.css', 'lineage-workbench.css', 'lineage-result-toolbar.css']) {
+  for (const file of ['mvp1-wizard-layout.css', 'mvp1-wizard-generation.css', 'person-archive-layout.css', 'person-query-layout.css', 'lineage-workbench.css', 'lineage-result-toolbar.css']) {
     assert.equal(featureLoader.includes(file), true, `${file} must have explicit feature ownership`);
   }
   assert.match(appSource, /loadFeatureStyles\(active\)/);
   assert.match(featureLoader, /const loaded = new Set/);
 });
 
-test('compatibility styles remain explicit, ordered and documented', () => {
-  assert.match(styleEntry, /shell\/base/);
+test('global compatibility entry no longer loads the retired bridge', () => {
+  assert.match(styleEntry, /shell\/app-shell/);
   assert.match(styleEntry, /shared UI responsibilities/);
-  assert.match(styleEntry, /migration bridge/);
-  const imports = [...styleEntry.matchAll(/@import\s+['"]([^'"]+)['"];?/g)].map(match => match[1]);
-  assert.equal(imports.at(-1), '../antd-bridge.css');
-  for (const file of ['shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css', 'antd-bridge.css']) {
+  assert.doesNotMatch(styleEntry, /antd-bridge\.css/);
+  assert.equal(executableCss(bridge), '');
+  for (const file of ['shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css']) {
     assert.match(architecture, new RegExp(file.replace('.', '\\.')));
   }
-  assert.match(architecture, /退出条件/);
-  assert.match(architecture, /只减不增/);
+  assert.match(architecture, /Bridge.*已退出|迁移桥.*已退出/i);
 });
 
 test('patch-named styles are removed and replaced by owned files', () => {
@@ -79,6 +81,7 @@ test('patch-named styles are removed and replaced by owned files', () => {
   ];
   const owned = [
     'person-archive-layout.css',
+    'features/persons/person-query-layout.css',
     'lineage-workbench.css',
     'lineage-result-toolbar.css',
     'shared-guidance.css',
@@ -106,17 +109,13 @@ test('legacy global styles do not target Ant Design descendants', () => {
   assert.match(legacyStyles, /\.sidebar nav > button/);
 });
 
-test('Ant Design internal overrides have an owner and exit condition registry', () => {
+test('Ant Design override ledger and bridge are empty after retirement', () => {
   assert.equal(typeof overrideRegistry.owner, 'string');
-  assert.ok(overrideRegistry.exceptions.length > 0);
-  for (const item of overrideRegistry.exceptions) {
-    assert.ok(item.scope);
-    assert.ok(item.reason);
-    assert.ok(item.exitCondition);
-  }
+  assert.deepEqual(overrideRegistry.exceptions, []);
+  assert.deepEqual(overrideRegistry.importantSnapshot, []);
+  assert.equal(executableCss(bridge), '');
+  assert.doesNotMatch(bridge, /!important/);
   assert.match(architecture, /antd-override-exceptions\.json/);
-  const importantCount = (bridge.match(/!important/g) ?? []).length;
-  assert.ok(importantCount <= 29, `antd-bridge.css contains ${importantCount} !important declarations; the baseline must only shrink`);
 });
 
 test('changed stylesheets do not introduce unscoped business selectors', () => {
@@ -130,7 +129,6 @@ test('changed stylesheets do not introduce unscoped business selectors', () => {
   ];
   for (const file of changedCssFiles()) {
     const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    if (file.endsWith('antd-bridge.css')) continue;
     for (const rule of prohibited) {
       rule.pattern.lastIndex = 0;
       assert.equal(rule.pattern.test(source), false, `${path.relative(PROJECT_ROOT, file)} contains prohibited ${rule.label}`);
