@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve('src');
@@ -9,6 +9,14 @@ const appSource = readFileSync(path.join(ROOT, 'app/App.tsx'), 'utf8');
 const styleEntry = readFileSync(path.join(ROOT, 'styles/index.css'), 'utf8');
 const featureLoader = readFileSync(path.join(ROOT, 'shared/styles/loadFeatureStyles.ts'), 'utf8');
 const architecture = readFileSync(path.join(ROOT, 'styles/CSS_ARCHITECTURE.md'), 'utf8');
+
+function cssFiles(directory) {
+  return readdirSync(directory).flatMap(name => {
+    const absolute = path.join(directory, name);
+    if (statSync(absolute).isDirectory()) return cssFiles(absolute);
+    return name.endsWith('.css') ? [absolute] : [];
+  });
+}
 
 test('application entry only imports Ant reset and the governed style entry', () => {
   const cssImports = [...mainSource.matchAll(/import\s+['"]([^'"]+\.css)['"];?/g)].map(match => match[1]);
@@ -34,7 +42,8 @@ test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(styleEntry, /shell\/base/);
   assert.match(styleEntry, /shared patterns/);
   assert.match(styleEntry, /migration bridge/);
-  assert.equal(styleEntry.trim().endsWith("@import '../antd-bridge.css';"), true);
+  const imports = [...styleEntry.matchAll(/@import\s+['"]([^'"]+)['"];?/g)].map(match => match[1]);
+  assert.equal(imports.at(-1), '../antd-bridge.css');
   for (const file of [
     'guidance-cleanup.css',
     'module-title-dedup.css',
@@ -48,8 +57,19 @@ test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(architecture, /只减不增/);
 });
 
-test('style policy forbids unscoped business selectors', () => {
-  assert.match(architecture, /禁止新增全局 `button \{\}`/);
+test('stylesheets do not introduce unscoped base business selectors', () => {
+  const prohibited = [
+    { pattern: /(^|})\s*button\s*\{/gm, label: 'button {}' },
+    { pattern: /(^|})\s*\.field\s+input\s*\{/gm, label: '.field input {}' },
+    { pattern: /(^|})\s*\.data-table\s*\{/gm, label: '.data-table {}' }
+  ];
+  for (const file of cssFiles(ROOT)) {
+    const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const rule of prohibited) {
+      assert.equal(rule.pattern.test(source), false, `${path.relative(ROOT, file)} contains prohibited ${rule.label}`);
+      rule.pattern.lastIndex = 0;
+    }
+  }
   assert.match(architecture, /业务 class 必须带模块前缀/);
   assert.match(architecture, /Token/);
 });
