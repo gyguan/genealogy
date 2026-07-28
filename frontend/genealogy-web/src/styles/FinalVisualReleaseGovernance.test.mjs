@@ -40,13 +40,18 @@ test('desktop visual regression matrix covers four widths and eight representati
   }
 });
 
-test('stable local screenshot evidence covers header query form table and statistics', async () => {
+test('stable local regions use strict approved visual baselines', async () => {
   const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
-  assert.match(spec, /local-header\.png/);
-  for (const name of ['query-bar', 'form', 'table', 'statistic-card']) {
-    assert.match(spec, new RegExp(`name: '${name}'`));
+  for (const name of ['local-header.png', 'local-query-bar.png', 'local-form.png', 'local-table.png', 'local-statistic-card.png']) {
+    assert.match(spec, new RegExp(name.replace('.', '\\.')));
   }
-  assert.match(spec, /local-\$\{item\.name\}\.png/);
-  assert.match(spec, /locator\(item\.region\)\.first\(\)/);
-  assert.match(spec, /region\.screenshot/);
+  assert.match(spec, /toHaveScreenshot/);
+  assert.match(spec, /maxDiffPixels:\s*100/);
+  assert.match(spec, /threshold:\s*0\.2/);
+  assert.match(spec, /animations:\s*'disabled'/);
+  assert.match(spec, /caret:\s*'hide'/);
+  assert.match(spec, /scale:\s*'css'/);
+  assert.match(spec, /Date\.now\s*=\s*\(\)\s*=>\s*fixedNow/);
+  assert.match(spec, /Math\.random\s*=\s*\(\)\s*=>/);
+  assert.match(spec, /document\.fonts\.ready/);
 });
