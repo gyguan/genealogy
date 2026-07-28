@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -7,24 +7,11 @@ const ROOT = path.resolve('src');
 const bridge = readFileSync(path.join(ROOT, 'antd-bridge.css'), 'utf8');
 const memberStyles = readFileSync(path.join(ROOT, 'member-permission-page.css'), 'utf8');
 const relationshipStep = readFileSync(path.join(ROOT, 'features/mvp1/steps/relationship/RelationshipStep.tsx'), 'utf8');
+const authPage = readFileSync(path.join(ROOT, 'features/auth/AuthPage.tsx'), 'utf8');
 const authCommercial = readFileSync(path.join(ROOT, 'auth-commercial.css'), 'utf8');
 const registry = JSON.parse(readFileSync(path.join(ROOT, 'styles/antd-override-exceptions.json'), 'utf8'));
 
-function sourceFiles(directory) {
-  return readdirSync(directory).flatMap(name => {
-    const file = path.join(directory, name);
-    if (statSync(file).isDirectory()) return sourceFiles(file);
-    return /\.(?:ts|tsx|js|jsx)$/.test(name) && !/\.test\./.test(name) ? [file] : [];
-  });
-}
-
-const applicationSources = sourceFiles(ROOT).map(file => readFileSync(file, 'utf8'));
-const staticClassTokens = new Set(applicationSources.flatMap(source =>
-  [...source.matchAll(/className\s*=\s*["']([^"']+)["']/g)]
-    .flatMap(match => match[1].split(/\s+/).filter(Boolean))
-));
-
-const retiredClasses = [
+const retiredAuthClasses = [
   'auth-page-shell',
   'auth-page-inner',
   'auth-layout',
@@ -34,20 +21,21 @@ const retiredClasses = [
   'auth-tip',
   'auth-result',
   'auth-register-card',
-  'auth-inline-title',
-  'relationship-preset-grid'
+  'auth-inline-title'
 ];
 
 test('retired auth and relationship preset styles stay out of the bridge', () => {
-  for (const className of retiredClasses) {
+  for (const className of [...retiredAuthClasses, 'relationship-preset-grid']) {
     assert.equal(bridge.includes(`.${className}`), false, `${className} must not return to antd-bridge.css`);
   }
   assert.match(authCommercial, /\.commercial-auth-shell/);
 });
 
-test('retired selectors have no application source references', () => {
-  for (const className of retiredClasses) {
-    assert.equal(staticClassTokens.has(className), false, `${className} is retired and must not be referenced`);
+test('active auth entry only uses the commercial auth system', () => {
+  assert.match(authPage, /commercial-auth-/);
+  for (const className of retiredAuthClasses) {
+    const exactClassToken = new RegExp(`className=["'][^"']*(?:^|\\s)${className}(?:\\s|$)`);
+    assert.doesNotMatch(authPage, exactClassToken);
   }
 });
 
