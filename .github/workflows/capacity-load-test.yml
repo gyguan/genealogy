@@ -133,11 +133,18 @@ jobs:
           SOAK_VUS: ${{ inputs.soak_vus || '50' }}
         run: |
           set -euo pipefail
+          mkdir -p performance-results
+          ls -l performance/k6/capacity.js
           docker run --rm --network host \
             -v "$PWD:/work" -w /work \
             -e BASE_URL -e LOAD_PROFILE -e SOAK_DURATION -e SOAK_VUS \
             -e CAPACITY_USERNAME -e CAPACITY_PASSWORD -e CAPACITY_CLAN_ID -e CAPACITY_BRANCH_ID -e CAPACITY_ROOT_PERSON_ID \
-            grafana/k6:0.49.0 run performance/k6/capacity.js | tee performance-results/k6-output.log
+            grafana/k6:0.49.0 inspect performance/k6/capacity.js 2>&1 | tee performance-results/k6-inspect.log
+          docker run --rm --network host \
+            -v "$PWD:/work" -w /work \
+            -e BASE_URL -e LOAD_PROFILE -e SOAK_DURATION -e SOAK_VUS \
+            -e CAPACITY_USERNAME -e CAPACITY_PASSWORD -e CAPACITY_CLAN_ID -e CAPACITY_BRANCH_ID -e CAPACITY_ROOT_PERSON_ID \
+            grafana/k6:0.49.0 run performance/k6/capacity.js 2>&1 | tee performance-results/k6-output.log
 
       - name: Stop sampler and validate consistency
         if: always()
