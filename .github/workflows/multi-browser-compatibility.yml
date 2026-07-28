@@ -1,0 +1,189 @@
+name: Multi-Browser Compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/genealogy-web/**"
+      - "docs/testing/**"
+      - ".github/workflows/multi-browser-compatibility.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: multi-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-compatibility:
+    name: ${{ matrix.browser.label }} compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - project: chromium
+            install: chromium
+            label: Chrome-Chromium
+          - project: edge
+            install: msedge
+            label: Microsoft-Edge
+          - project: firefox
+            install: firefox
+            label: Firefox
+          - project: webkit
+            install: webkit
+            label: Safari-WebKit
+        scale-factor: [1]
+
+    env:
+      E2E_BASE_URL: http://127.0.0.1:5179
+      E2E_BROWSER_PROJECT: ${{ matrix.browser.project }}
+      E2E_DEVICE_SCALE_FACTOR: ${{ matrix.scale-factor }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm install
+
+      - name: Install browser and system dependencies
+        working-directory: frontend/genealogy-web
+        run: npx playwright install --with-deps "${{ matrix.browser.install }}"
+
+      - name: Record browser environment
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/browser-metadata
+          {
+            echo "project=${E2E_BROWSER_PROJECT}"
+            echo "install_target=${{ matrix.browser.install }}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "viewport=1440x900"
+            echo "device_scale_factor=${E2E_DEVICE_SCALE_FACTOR}"
+            echo "node=$(node --version)"
+            echo "playwright=$(npx playwright --version)"
+          } | tee "test-results/browser-metadata/${E2E_BROWSER_PROJECT}.txt"
+
+      - name: Start frontend
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run dev -- --host 127.0.0.1 > ../../frontend-browser-${E2E_BROWSER_PROJECT}.log 2>&1 &
+          echo $! > ../../frontend-browser-${E2E_BROWSER_PROJECT}.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5179/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 200 ../../frontend-browser-${E2E_BROWSER_PROJECT}.log || true
+          exit 1
+
+      - name: Run browser compatibility suite
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -o pipefail
+          npx playwright test --project "${E2E_BROWSER_PROJECT}" 2>&1 \
+            | tee "../../playwright-${E2E_BROWSER_PROJECT}.log"
+
+      - name: Print diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '===== Frontend ====='
+          tail -n 250 "frontend-browser-${E2E_BROWSER_PROJECT}.log" || true
+          echo '===== Playwright ====='
+          tail -n 350 "playwright-${E2E_BROWSER_PROJECT}.log" || true
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-compatibility-${{ matrix.browser.project }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            frontend-browser-${{ matrix.browser.project }}.log
+            playwright-${{ matrix.browser.project }}.log
+            frontend/genealogy-web/test-results/browser-metadata/**
+            frontend/genealogy-web/test-results/browser-compatibility/**
+            frontend/genealogy-web/test-results/browser-compatibility-*.json
+            frontend/genealogy-web/playwright-report-browser/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop frontend
+        if: always()
+        shell: bash
+        run: |
+          pid_file="frontend-browser-${E2E_BROWSER_PROJECT}.pid"
+          if [[ -f "$pid_file" ]]; then
+            kill "$(cat "$pid_file")" 2>/dev/null || true
+          fi
+
+  high-dpi-chromium:
+    name: Chromium high-DPI and desktop viewport
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_BASE_URL: http://127.0.0.1:5179
+      E2E_BROWSER_PROJECT: chromium
+      E2E_DEVICE_SCALE_FACTOR: "2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Install dependencies and Chromium
+        working-directory: frontend/genealogy-web
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: Start frontend
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          npm run dev -- --host 127.0.0.1 > ../../frontend-high-dpi.log 2>&1 &
+          echo $! > ../../frontend-high-dpi.pid
+          for attempt in $(seq 1 60); do
+            curl --fail --silent http://127.0.0.1:5179/ >/dev/null && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: Run desktop viewport and high-DPI checks
+        working-directory: frontend/genealogy-web
+        run: npx playwright test e2e/css-desktop-viewport-matrix.spec.ts --project chromium
+      - name: Upload high-DPI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-compatibility-high-dpi-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            frontend-high-dpi.log
+            frontend/genealogy-web/test-results/browser-compatibility/**
+            frontend/genealogy-web/playwright-report-browser/**
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Stop frontend
+        if: always()
+        run: if [[ -f frontend-high-dpi.pid ]]; then kill "$(cat frontend-high-dpi.pid)" 2>/dev/null || true; fi
