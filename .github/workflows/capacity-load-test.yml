@@ -1,0 +1,229 @@
+name: Capacity Load Test
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "performance/**"
+      - "scripts/performance/**"
+      - "docs/testing/performance/**"
+      - "tasks/issue-870*.md"
+      - ".github/workflows/capacity-load-test.yml"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Load profile: ci, capacity or soak"
+        required: true
+        default: "capacity"
+        type: choice
+        options: [ci, capacity, soak]
+      soak_duration:
+        description: "k6 duration used by the soak profile"
+        required: false
+        default: "30m"
+      soak_vus:
+        description: "Virtual users used by the soak profile"
+        required: false
+        default: "50"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capacity-load-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  capacity-load:
+    name: PostgreSQL and k6 Capacity Baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: genealogy
+      PGUSER: genealogy
+      PGPASSWORD: genealogy
+      PERFORMANCE_RESULTS_DIR: performance-results
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install PostgreSQL client and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+
+      - name: Start backend
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -Xms256m -Xmx1024m -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../capacity-backend.log 2>&1 &
+          echo $! > ../../capacity-backend.pid
+          for attempt in $(seq 1 90); do
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 300 ../../capacity-backend.log || true
+          exit 1
+
+      - name: Seed repeatable capacity data
+        shell: bash
+        run: bash scripts/performance/seed-capacity-test.sh
+
+      - name: Start JVM and PostgreSQL resource sampler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p performance-results
+          echo 'timestamp,cpu_percent,rss_kb,db_connections,xact_commit,xact_rollback,blks_read,blks_hit,temp_files,deadlocks' > performance-results/resource-samples.csv
+          (
+            backend_pid="$(cat capacity-backend.pid)"
+            while kill -0 "$backend_pid" 2>/dev/null; do
+              timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              read -r cpu rss < <(ps -p "$backend_pid" -o %cpu=,rss= | awk '{print $1, $2}')
+              db="$(psql -Atc "select numbackends||','||xact_commit||','||xact_rollback||','||blks_read||','||blks_hit||','||temp_files||','||deadlocks from pg_stat_database where datname=current_database()")"
+              echo "$timestamp,${cpu:-0},${rss:-0},$db" >> performance-results/resource-samples.csv
+              sleep 2
+            done
+          ) &
+          echo $! > performance-sampler.pid
+
+      - name: Run baseline, staircase, spike and sustained load
+        shell: bash
+        env:
+          LOAD_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'ci' }}
+          SOAK_DURATION: ${{ inputs.soak_duration || '30m' }}
+          SOAK_VUS: ${{ inputs.soak_vus || '50' }}
+        run: |
+          set -euo pipefail
+          docker run --rm --network host \
+            -v "$PWD:/work" -w /work \
+            -e BASE_URL -e LOAD_PROFILE -e SOAK_DURATION -e SOAK_VUS \
+            -e CAPACITY_USERNAME -e CAPACITY_PASSWORD -e CAPACITY_CLAN_ID -e CAPACITY_BRANCH_ID -e CAPACITY_ROOT_PERSON_ID \
+            grafana/k6:0.49.0 run performance/k6/capacity.js | tee performance-results/k6-output.log
+
+      - name: Stop sampler and validate consistency
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f performance-sampler.pid ]]; then kill "$(cat performance-sampler.pid)" 2>/dev/null || true; fi
+          mkdir -p performance-results
+          psql -v ON_ERROR_STOP=1 -At <<'SQL' > performance-results/data-consistency.txt
+          select 'capacity_draft_count=' || count(*) from person where biography = '#870 可清理容量压测草稿';
+          select 'duplicate_person_codes=' || count(*) from (select person_code from person where person_code like 'LOAD-%' group by person_code having count(*) > 1) duplicates;
+          select 'unexpected_official_load_records=' || count(*) from person where person_code like 'LOAD-%' and data_status = 'official';
+          select 'open_connections=' || numbackends from pg_stat_database where datname = current_database();
+          select 'deadlocks=' || deadlocks from pg_stat_database where datname = current_database();
+          SQL
+          grep -q '^duplicate_person_codes=0$' performance-results/data-consistency.txt
+          grep -q '^unexpected_official_load_records=0$' performance-results/data-consistency.txt
+          ! grep -Eiq 'OutOfMemoryError|unable to create new native thread|connection pool.*exhaust|deadlock detected' capacity-backend.log
+
+      - name: Generate capacity report
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import csv, json, os, pathlib
+          out = pathlib.Path('performance-results')
+          summary_path = out / 'k6-summary.json'
+          data = json.loads(summary_path.read_text()) if summary_path.exists() else {'metrics': {}}
+          metrics = data.get('metrics', {})
+          def value(name, key, default=0): return metrics.get(name, {}).get('values', {}).get(key, default)
+          rows = list(csv.DictReader((out / 'resource-samples.csv').open())) if (out / 'resource-samples.csv').exists() else []
+          def maximum(field):
+              values=[]
+              for row in rows:
+                  try: values.append(float(row.get(field) or 0))
+                  except ValueError: pass
+              return max(values, default=0)
+          consistency = (out / 'data-consistency.txt').read_text() if (out / 'data-consistency.txt').exists() else 'not available'
+          profile = os.getenv('LOAD_PROFILE', 'ci')
+          report = f'''# Issue #870 容量压测执行报告
+
+          - Profile: `{profile}`
+          - Environment: GitHub-hosted Ubuntu runner, Java 17, PostgreSQL 16, single backend JVM (`-Xmx1024m`)
+          - Requests: `{int(value('http_reqs','count'))}`
+          - Throughput: `{value('http_reqs','rate'):.2f}` req/s
+          - HTTP P50/P95/P99: `{value('http_req_duration','med'):.2f}` / `{value('http_req_duration','p(95)'):.2f}` / `{value('http_req_duration','p(99)'):.2f}` ms
+          - HTTP failure rate: `{value('http_req_failed','rate')*100:.4f}%`
+          - Check pass rate: `{value('checks','rate')*100:.4f}%`
+          - Tree P95/P99: `{value('tree_duration','p(95)'):.2f}` / `{value('tree_duration','p(99)'):.2f}` ms
+          - Peak backend CPU sample: `{maximum('cpu_percent'):.2f}%`
+          - Peak backend RSS sample: `{maximum('rss_kb')/1024:.2f}` MiB
+          - Peak PostgreSQL connections: `{maximum('db_connections'):.0f}`
+
+          ## Consistency
+
+          ```text
+          {consistency.strip()}
+          ```
+
+          ## Thresholds
+
+          - HTTP failures < 1%
+          - HTTP P95 < 1500 ms; P99 < 3000 ms
+          - Tree P95 < 2000 ms; P99 < 4000 ms
+          - Checks and writes > 99%
+          - Silent business failures, duplicate person codes, partial official records, OOM and unrecoverable blocking: 0
+
+          ## Capacity boundary
+
+          This result is an engineering baseline for the listed single-runner environment. Production capacity must rerun the configurable `capacity` or `soak` profile on production-equivalent infrastructure. Scale-out is triggered before sustained P95/P99 threshold breach, error rate >= 1%, database connections >= 70% of pool capacity, or sustained CPU >= 70%.
+          '''
+          (out / 'capacity-report.md').write_text('\n'.join(line.strip() for line in report.splitlines()) + '\n')
+          PY
+          cat performance-results/capacity-report.md
+
+      - name: Upload capacity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capacity-load-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            performance-results
+            capacity-backend.log
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Stop backend
+        if: always()
+        run: |
+          if [[ -f capacity-backend.pid ]]; then kill "$(cat capacity-backend.pid)" 2>/dev/null || true; fi
