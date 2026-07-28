@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve('src');
@@ -48,27 +48,48 @@ test('feature styles are absent from the global bundle and loaded by active modu
     assert.equal(styleEntry.includes(file), false, `${file} must not be globally loaded`);
     assert.equal(featureLoader.includes(file), true, `${file} must be owned by the feature style loader`);
   }
+  for (const file of [
+    'mvp1-wizard-layout.css',
+    'mvp1-wizard-generation.css',
+    'person-archive-layout.css',
+    'lineage-workbench.css',
+    'lineage-result-toolbar.css'
+  ]) {
+    assert.equal(featureLoader.includes(file), true, `${file} must have explicit feature ownership`);
+  }
   assert.match(appSource, /loadFeatureStyles\(active\)/);
   assert.match(featureLoader, /const loaded = new Set/);
 });
 
 test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(styleEntry, /shell\/base/);
-  assert.match(styleEntry, /shared patterns/);
+  assert.match(styleEntry, /shared UI responsibilities/);
   assert.match(styleEntry, /migration bridge/);
   const imports = [...styleEntry.matchAll(/@import\s+['"]([^'"]+)['"];?/g)].map(match => match[1]);
   assert.equal(imports.at(-1), '../antd-bridge.css');
   for (const file of [
-    'guidance-cleanup.css',
-    'module-title-dedup.css',
-    'page-content-cleanup.css',
-    'query-button-unification.css',
+    'shared-guidance.css',
+    'shared-module-title.css',
+    'shared-page-content.css',
+    'shared-query-actions.css',
     'antd-bridge.css'
   ]) {
     assert.match(architecture, new RegExp(file.replace('.', '\\.')));
   }
   assert.match(architecture, /退出条件/);
   assert.match(architecture, /只减不增/);
+});
+
+test('patch-named styles have been retired from the source tree', () => {
+  const forbidden = /(cleanup|tweaks|overrides?|unification|refinement)\.css$/i;
+  const files = readdirSync(ROOT, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name.endsWith('.css'))
+    .map(entry => entry.name)
+    .filter(name => forbidden.test(name));
+  assert.deepEqual(files, []);
+  assert.doesNotMatch(styleEntry, /cleanup|tweaks|override|unification|refinement/i);
+  assert.doesNotMatch(featureLoader, /cleanup|tweaks|override|unification|refinement/i);
+  assert.match(architecture, /已全部退出本次治理范围/);
 });
 
 test('changed stylesheets do not introduce unscoped business selectors', () => {
