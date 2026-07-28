@@ -71,10 +71,31 @@
 .source-library-query-page .source-library-form-status {
   margin-bottom: 16px;
 }
+
 .source-library-query-page .source-library-name-link {
   height: auto;
   padding: 0;
   text-align: left;
+}
+
+.source-library-query-page .source-library-name-link:focus-visible,
+.source-library-query-page .source-library-mobile-card__title:focus-visible,
+.source-library-query-page .source-library-mobile-card__actions .ant-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.source-library-query-page .source-library-result-card .ant-table-row {
+  transition: background-color 0.2s ease;
+}
+
+.source-library-query-page .source-library-result-card .ant-table-row:hover > .ant-table-cell {
+  background: var(--ant-color-fill-tertiary, #f5f5f5);
+}
+
+.source-library-query-page .source-library-result-card .ant-table-row[aria-selected='true'] > .ant-table-cell,
+.source-library-query-page .source-library-result-card .ant-table-row.is-active > .ant-table-cell {
+  background: var(--ant-color-primary-bg, #e6f4ff);
 }
 
 .source-library-query-page .source-library-loading {
@@ -98,6 +119,11 @@
 
 .source-library-query-page .source-library-mobile-card {
   width: 100%;
+}
+
+.source-library-query-page .source-library-mobile-card:focus-within {
+  border-color: var(--ant-color-primary, #1677ff);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-border, #91caff);
 }
 
 .source-library-query-page .source-library-mobile-card__header {
