@@ -1,6 +1,7 @@
 import { defineConfig, devices, type Project } from '@playwright/test';
 
 const deviceScaleFactor = Number(process.env.E2E_DEVICE_SCALE_FACTOR || '1');
+const compatibilityOnly = process.env.E2E_COMPATIBILITY_ONLY === '1';
 const allProjects: Project[] = [
   { name: 'chromium', use: { ...devices['Desktop Chrome'], deviceScaleFactor } },
   { name: 'edge', use: { ...devices['Desktop Edge'], channel: 'msedge', deviceScaleFactor } },
@@ -21,6 +22,9 @@ const reportKey = requestedProject || 'chromium';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: compatibilityOnly
+    ? ['**/auth-commercial.spec.ts', '**/home-dashboard-header.spec.ts', '**/tree-release-gate.spec.ts']
+    : [],
   outputDir: `test-results/browser-compatibility/${reportKey}`,
   timeout: 60_000,
   expect: { timeout: 10_000 },
