@@ -1,3 +1,5 @@
+import { commitNavigation } from './navigationEvents';
+
 export type AppViewKey =
   | 'home'
   | 'mvp1Wizard'
@@ -26,6 +28,7 @@ const VIEW_QUERY_KEYS: Record<AppViewKey, readonly string[]> = {
     'dataStatus',
     'sort',
     'page',
+    'pageNo',
     'pageSize'
   ],
   treeProduct: [
@@ -42,7 +45,20 @@ const VIEW_QUERY_KEYS: Record<AppViewKey, readonly string[]> = {
     'branchRelations',
     'includeSubBranches'
   ],
-  sourceLibrary: ['clanId', 'sourceId', 'quality'],
+  sourceLibrary: [
+    'clanId',
+    'sourceId',
+    'quality',
+    'keyword',
+    'sourceType',
+    'verificationStatus',
+    'privacyLevel',
+    'hasAttachment',
+    'hasBinding',
+    'pageNo',
+    'pageSize',
+    'sort'
+  ],
   culture: [
     'clanId',
     'tab',
@@ -80,9 +96,34 @@ const VIEW_QUERY_KEYS: Record<AppViewKey, readonly string[]> = {
   ],
   imports: ['clanId', 'type', 'historyPage', 'historyPageSize', 'status'],
   editingWorkspace: ['clanId', 'branchId', 'personId', 'quality', 'status'],
-  reviewCenter: ['clanId', 'reviewTab', 'status', 'page', 'pageSize'],
-  memberManage: ['clanId', 'role', 'status'],
-  auditTrace: ['clanId', 'tab', 'objectType', 'auditAction', 'auditTarget', 'riskEvent']
+  reviewCenter: ['clanId', 'reviewTab', 'status', 'page', 'pageNo', 'pageSize'],
+  memberManage: ['clanId', 'keyword', 'role', 'scope', 'status', 'page', 'pageSize', 'member'],
+  auditTrace: [
+    'clanId',
+    'branchId',
+    'tab',
+    'objectType',
+    'objectStatus',
+    'objectKeyword',
+    'objectPage',
+    'auditAction',
+    'auditTarget',
+    'auditActor',
+    'auditResult',
+    'auditKeyword',
+    'auditPage',
+    'riskEvent',
+    'riskLevel',
+    'riskDisposition',
+    'riskActor',
+    'riskBranch',
+    'riskPage',
+    'traceType',
+    'traceId',
+    'reviewTaskId',
+    'auditLogId',
+    'riskLogId'
+  ]
 };
 
 export type ViewUrlOptions = {
@@ -101,6 +142,12 @@ function applyParams(url: URL, params: ViewUrlOptions['params']) {
   for (const [key, rawValue] of entries) {
     if (rawValue === null || rawValue === undefined || rawValue === '') url.searchParams.delete(key);
     else url.searchParams.set(key, String(rawValue));
+  }
+}
+
+function applyViewDefaults(view: AppViewKey, url: URL) {
+  if (view === 'reviewCenter' && !url.searchParams.has('pageSize')) {
+    url.searchParams.set('pageSize', '10');
   }
 }
 
@@ -124,6 +171,7 @@ export function buildViewUrl(view: AppViewKey, input: string | URL, options: Vie
 
   if (view === 'home') next.searchParams.delete('view');
   else next.searchParams.set('view', view);
+  applyViewDefaults(view, next);
   next.hash = options.hash || '';
   return `${next.pathname}${next.search}${next.hash}`;
 }
@@ -135,6 +183,5 @@ export function navigateToView(
 ) {
   const { mode = 'push', state = window.history.state, ...urlOptions } = options;
   const next = buildViewUrl(view, input, urlOptions);
-  window.history[mode === 'replace' ? 'replaceState' : 'pushState'](state, '', next);
-  return next;
+  return commitNavigation(next, { mode, state });
 }
