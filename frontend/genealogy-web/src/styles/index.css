@@ -18,6 +18,9 @@
 @import '../entity-page-header.css';
 @import '../runtime-error.css';
 
+/* authoritative Ant Design typography and token-aligned baseline */
+@import './design-system.css';
+
 /* shared UI responsibilities */
 @import '../shared-guidance.css';
 @import '../shared-module-title.css';
