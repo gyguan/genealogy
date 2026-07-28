@@ -9,15 +9,14 @@
 | Shared UI | 跨模块共享组件的稳定 class 契约 | `entity-page-header.css`、`tabbed-module.css`、`runtime-error.css`、`shared-*.css` | 基于中文文案或 DOM 顺序的选择器 |
 | Feature | `features/*` 页面与业务组件 | 带模块前缀的局部 class，由当前模块按需加载 | 无前缀 `.field`、`.data-table`、全局 `button` |
 | Visualization | 世系图等特殊可视化 | 图谱画布、节点、Drawer、工具栏 | 影响非图谱页面的 Ant Design 内部类覆盖 |
-| Migration Bridge | 旧页面迁移兼容 | 有明确 owner、原因和退出条件的最小规则 | 新增业务能力或长期扩张 |
 
 ## 当前入口文件处置
 
-`main.tsx` 只加载 `styles/index.css`。该入口只包含应用壳、共享 UI 和迁移兼容层。建谱向导、人物、世系图谱、成员与权限、审计追踪样式由 `shared/styles/loadFeatureStyles.ts` 根据当前模块按需加载，并在单次会话内去重。
+`main.tsx` 只加载 `styles/index.css`。该入口只包含应用壳和共享 UI。建谱向导、人物、世系图谱、成员与权限、审计追踪样式由 `shared/styles/loadFeatureStyles.ts` 根据当前模块按需加载，并在单次会话内去重。
 
 | 文件组 | 当前处置 | 责任/使用页面 | 退出条件 |
 | --- | --- | --- | --- |
-| `styles.css`、`compact-ui.css`、`experience.css` | 保留并冻结 legacy 范围 | 应用壳和稳定全局基线；旧控件仅允许直接子级和元素类型选择器 | #881～#883 页面迁移后继续缩小 |
+| `styles.css`、`compact-ui.css`、`experience.css` | 保留并冻结 legacy 范围 | 应用壳和稳定全局基线；旧控件仅允许直接子级和元素类型选择器 | #917 完成 Legacy/Prototype 清理 |
 | `auth-commercial.css` | 保留 | 登录/注册壳 | 认证页面完成 feature 内聚 |
 | `entity-page-header.css`、`tabbed-module.css`、`runtime-error.css` | 保留 | Shared UI 契约 | 对应共享组件改为 colocated style |
 | `shared-guidance.css` | 已迁移 | 跨页面引导信息显隐规则 | Shared UI 组件完成结构化显隐后删除 |
@@ -25,12 +24,12 @@
 | `shared-page-content.css` | 已迁移 | 跨页面内容密度规则 | 页面内容组件完成局部内聚后删除 |
 | `shared-query-actions.css` | 已迁移 | 查询动作区统一规则 | 查询表单全部采用 Shared QueryBar 后删除 |
 | `mvp1-wizard.css`、`mvp1-wizard-layout.css`、`mvp1-wizard-generation.css`、`mvp1-*-step.css` | 按职责加载 | 建谱向导壳、布局、生成步骤及各业务步骤 | 向导组件拆分后迁至 `features/mvp1` |
-| `person-archive-layout.css`、`person-archive-source.css`、`person-edit-page.css`、`person-detail-page.css` | 按页面职责加载 | 人物列表、来源区、编辑、详情 | 页面组件完成 colocated style 后迁移 |
-| `lineage-tree.css`、`lineage-graph.css`、`lineage-workbench.css`、`lineage-result-toolbar.css` | 按可视化职责加载 | 世系树、图谱、工作台、结果工具栏 | 迁至 `features/tree` feature style bundle |
+| `person-archive-layout.css`、`features/persons/person-query-layout.css`、`person-archive-source.css`、`person-edit-page.css`、`person-detail-page.css` | 按页面职责加载 | 人物列表、查询布局、来源区、编辑、详情 | 页面组件完成 colocated style 后迁移 |
+| `lineage-tree.css`、`lineage-graph.css`、`lineage-workbench.css`、`lineage-result-toolbar.css` | 按可视化职责加载 | 世系树、查询布局、图谱、工作台、结果工具栏 | 迁至 `features/tree` feature style bundle |
 | `audit-trace.css` | 按需加载 | 审计追踪 | 迁至 `features/logs` 并完成模块前缀复核 |
 | `member-permission-page.css` | 按需加载 | 成员与权限 | 迁至 `features/members` 并完成模块前缀复核 |
-| `antd-bridge.css` | 冻结，只减不增，必须最后加载 | Ant Design 迁移兼容层 | 所有规则替换为 Token、组件属性或模块前缀规则后删除 |
-| `styles/antd-override-exceptions.json` | 强制登记 | bridge 内保留的 `!important` 与 Ant 内部类覆盖 | 对应 exception 的退出条件满足后同步删除登记和规则 |
+| `antd-bridge.css` | 已退出，仅保留空文件防止历史路径误用 | 无运行时责任 | #917 可删除空文件 |
+| `styles/antd-override-exceptions.json` | 空台账 | 记录未来经批准的临时内部覆盖 | 新例外必须关联 open Issue、owner 和退出条件 |
 
 原 `*-cleanup.css`、`*-tweaks.css`、`*-overrides.css`、`*-unification.css` 和 `*-refinement.css` 文件名已全部退出本次治理范围；保留规则均已迁移到具名责任文件，不再以补丁顺序表达职责。
 
@@ -44,10 +43,11 @@
 
 ## Ant Design 覆盖登记
 
-- `antd-bridge.css` 是唯一允许集中承载临时 Ant Design 内部类覆盖的文件，并且必须最后加载。
-- 每一组保留规则都必须在 `styles/antd-override-exceptions.json` 中记录 owner、原因和退出条件。
-- `!important` 数量以治理测试中的上限为硬门禁，只能减少，不得提高上限来绕过失败。
-- Feature CSS 对 `.ant-*` 的覆盖必须置于稳定模块外层 class 下；未登记的全局 `.ant-*` 规则禁止合入。
+- Ant Design 迁移桥已退出；全局入口禁止重新导入 `antd-bridge.css`。
+- 查询布局由 `features/persons/person-query-layout.css` 与 `lineage-workbench.css` 分别负责。
+- Feature CSS 对 `.ant-*` 的覆盖必须置于稳定模块外层 class 下，并优先使用 Token、组件属性或公开 API。
+- `styles/antd-override-exceptions.json` 当前必须保持空；确需新增临时例外时，必须记录 owner、原因、开放状态 tracking issue、复核日期和退出条件。
+- `!important` 不得重新进入 Bridge 或查询布局责任文件。
 
 ## 新增样式约束
 
@@ -60,4 +60,4 @@
 
 ## 视觉回归矩阵
 
-CI 的 Culture Page Gate 和 Functional E2E 覆盖真实 Chromium 页面。CSS PR 额外执行 1920、1440、1366、1280 四种桌面宽度的应用壳与关键页面布局检查，验证页面不得出现水平溢出、内容区反向收缩或操作区遮挡。
+Visual Release Gate 覆盖 1920、1440、1366、1280 四种桌面宽度的八类代表页面，验证页面不得出现水平溢出、内容区反向收缩或操作区遮挡。人物档案与世系查询同时覆盖移动端单列布局契约。
