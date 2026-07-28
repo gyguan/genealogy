@@ -1,3 +1,4 @@
+# One-time atomic refactor for issue #926.
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
