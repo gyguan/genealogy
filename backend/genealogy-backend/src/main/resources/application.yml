@@ -61,6 +61,14 @@ genealogy:
     reset-minutes: ${GENEALOGY_AUTH_RESET_MINUTES:30}
     reset-base-url: ${GENEALOGY_AUTH_RESET_BASE_URL:http://localhost:5179/?auth=reset&resetToken=}
     reset-delivery-url: ${GENEALOGY_AUTH_RESET_DELIVERY_URL:}
+  tree:
+    query:
+      default-depth: ${GENEALOGY_TREE_QUERY_DEFAULT_DEPTH:5}
+      max-depth: ${GENEALOGY_TREE_QUERY_MAX_DEPTH:20}
+      default-nodes: ${GENEALOGY_TREE_QUERY_DEFAULT_NODES:500}
+      max-nodes: ${GENEALOGY_TREE_QUERY_MAX_NODES:2000}
+      default-edges: ${GENEALOGY_TREE_QUERY_DEFAULT_EDGES:1000}
+      max-edges: ${GENEALOGY_TREE_QUERY_MAX_EDGES:4000}
 
 logging:
   level:
