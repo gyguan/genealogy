@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const root = new URL('../../', import.meta.url);
@@ -8,55 +8,60 @@ async function source(path) {
   return readFile(new URL(path, root), 'utf8');
 }
 
-test('workbench is rendered as a formal React page instead of DOM mutation', async () => {
-  const page = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  const index = await source('../index.html');
-  assert.match(page, /export function EditingWorkspacePrototypePage/);
-  assert.doesNotMatch(page, /MutationObserver/);
-  assert.doesNotMatch(index, /workbench-enhancements/);
-});
-
-test('workbench keeps only query and task-list primary hierarchy', async () => {
-  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  for (const label of ['修谱工作台', '修谱任务']) assert.match(code, new RegExp(label));
-  for (const removed of ['workbench-overview-section', 'workbench-quality-card', '数据质量检查', 'quality-checks', 'QualityResult', 'QualityRule']) {
-    assert.doesNotMatch(code, new RegExp(removed));
+async function missing(path) {
+  try {
+    await access(new URL(path, root));
+    return false;
+  } catch {
+    return true;
   }
-  const sections = ['workbench-query-card', 'workbench-task-card'];
-  const positions = sections.map(marker => code.indexOf(marker));
-  assert.ok(positions.every(value => value >= 0));
-  assert.ok(positions[1] > positions[0]);
+}
+
+test('module registry renders the formal workbench page', async () => {
+  const registry = await source('app/moduleRegistry.tsx');
+  assert.match(registry, /EditingWorkspacePage/);
+  assert.doesNotMatch(registry, /EditingWorkspacePrototypePage/);
+  assert.match(registry, /<EditingWorkspacePage onNavigate=\{navigate\}/);
 });
 
-test('workbench query follows the standard one-row and advanced-filter pattern', async () => {
-  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  const css = await source('features/workbench/editing-workspace-prototype.css');
-  assert.match(code, /workbench-filter-grid--primary/);
-  assert.match(code, /workbench-advanced-filters/);
-  assert.match(code, /更多筛选/);
-  assert.match(code, /收起筛选/);
-  assert.match(code, /workbench-query-actions/);
-  assert.match(css, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(css, /justify-content:\s*flex-end/);
+test('prototype workbench entry and stylesheet are retired', async () => {
+  assert.equal(await missing('features/workbench/EditingWorkspacePrototypePage.tsx'), true);
+  assert.equal(await missing('features/workbench/editing-workspace-prototype.css'), true);
 });
 
-test('new workbench action is placed in the result card before export', async () => {
-  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  const actionsStart = code.indexOf('const taskActions');
-  const resultCard = code.indexOf('workbench-task-card');
-  const create = code.indexOf('新建修谱', actionsStart);
-  const exportAction = code.indexOf('>导出</Button>', actionsStart);
-  assert.ok(actionsStart >= 0 && resultCard > actionsStart);
-  assert.ok(create > actionsStart && exportAction > create);
-  assert.doesNotMatch(code, /workbench-query-card[^\n]+新建修谱/);
+test('workbench uses Ant Design page components and shared feedback', async () => {
+  const page = await source('features/workbench/EditingWorkspacePage.tsx');
+  for (const component of ['Button', 'Card', 'Form', 'Input', 'Select', 'Table', 'Drawer', 'Modal', 'Pagination']) {
+    assert.match(page, new RegExp(`\\b${component}\\b`), `${component} should be used`);
+  }
+  assert.match(page, /PageFeedback/);
+  assert.match(page, /EmptyState/);
+  assert.doesNotMatch(page, /className=["'][^"']*(?:prototype-|proto-)/);
+  assert.doesNotMatch(page, /MutationObserver|document\.querySelector|innerHTML/);
 });
 
-test('workbench keeps task list responsive and 720px drawer', async () => {
-  const code = await source('features/workbench/EditingWorkspacePrototypePage.tsx');
-  const css = await source('features/workbench/editing-workspace-prototype.css');
-  assert.match(code, /新建修谱/);
-  assert.match(css, /width:\s*min\(720px,\s*100vw\)/);
-  assert.match(css, /@media\s*\(max-width:\s*575px\)/);
-  assert.match(code, /rowSelection/);
-  assert.match(code, /Pagination/);
+test('workbench preserves query, task list and navigation workflows', async () => {
+  const page = await source('features/workbench/EditingWorkspacePage.tsx');
+  for (const marker of [
+    '/workbench/tasks?',
+    'loadHistory',
+    'submitBulkCheck',
+    'exportTasks',
+    'goRelatedEntry',
+    '任务模板管理',
+    '修谱工作台'
+  ]) assert.match(page, new RegExp(marker.replace(/[?]/g, '\\?')));
+});
+
+test('workbench provides responsive, empty, error and keyboard states', async () => {
+  const page = await source('features/workbench/EditingWorkspacePage.tsx');
+  assert.match(page, /Grid\.useBreakpoint/);
+  assert.match(page, /screens\.md/);
+  assert.match(page, /locale=\{\{ emptyText: emptyNode \}\}/);
+  assert.match(page, /taskError/);
+  assert.match(page, /role: 'button'/);
+  assert.match(page, /tabIndex: 0/);
+  assert.match(page, /event\.key === 'Enter'/);
+  assert.match(page, /scroll=\{\{ x: 1230 \}\}/);
+  assert.match(page, /width=\{screens\.md \? 720 : '100%'\}/);
 });
