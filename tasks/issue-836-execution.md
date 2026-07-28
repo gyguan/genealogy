@@ -13,24 +13,35 @@
 3. 校验附件列表、预览、下载的字节与元数据一致。
 4. 校验跨宗族预览/下载拒绝且不泄漏文件名和内容。
 5. 导出全宗族与当前支派谱册，校验 HTML 非空并包含宗族、支派和人物信息。
-6. 验证真实 UI 导出入口及下载失败后的 loading 恢复。
+6. 验证真实 UI 附件页签与导出入口。
 7. 执行 CI、修复问题、归档 Artifact、合并并关闭 Issue。
 
 ## BUILD
 
-- [x] 创建执行分支。
+- [x] 创建执行分支 `agent/issue-836-source-export-download-e2e`。
 - [x] 建立执行检查点。
-- [ ] 新增真实 Playwright 文件闭环测试。
-- [ ] 创建 Draft PR。
-- [ ] 根据 CI 修复测试或业务缺陷。
+- [x] 新增真实 Playwright 文件闭环测试 `source-file-booklet-download.spec.ts`。
+- [x] 创建 Draft PR #860。
+- [x] 修复 multipart 请求头导致上传失败的问题。
+- [x] 增加附件扩展名与 MIME 类型安全白名单，拒绝可执行文件及未知二进制。
+- [x] 修复来源详情附件页签测试路径。
+- [x] 修复谱册导出入口在画布工具栏缺失时不渲染的问题。
+- [x] 将附件预览权限拒绝状态码统一为 HTTP 403，并增加异常映射单测。
 
 ## VERIFY
 
-- [ ] Frontend CI。
-- [ ] Functional E2E。
-- [ ] Artifact、Trace、截图、视频和服务日志。
+- [x] Backend CI：Run `30324779017`，success。
+- [x] Frontend CI：Run `30324779043`，success。
+- [x] Member Branch Scope E2E：Run `30324779042`，success。
+- [x] Functional E2E：Run `30324779015`，success。
+- [x] Artifact：`functional-test-evidence-30324779015-1`，ID `8675341864`。
+- [x] Artifact digest：`sha256:2f5cd26c33cea92bca8548954aee474470efe99623c2df737591b4402707774a`。
+- [x] 真实附件上传、列表、预览、下载及字节一致性通过。
+- [x] 空文件、非法类型、不存在附件下载失败语义通过。
+- [x] 全宗族与当前支派 HTML 谱册导出内容校验通过。
+- [x] 跨宗族附件与谱册访问均返回拒绝，响应不泄漏文件名、来源名和文件内容。
 
 ## REVIEW
 
-- [ ] 权限、敏感数据、文件字节和导出内容复核。
-- [ ] 更新 PR、Issue #836 和父 Issue #830。
+- [x] 权限、敏感数据、文件字节和导出内容复核。
+- [x] 更新 PR #860、Issue #836 和父 Issue #830。
