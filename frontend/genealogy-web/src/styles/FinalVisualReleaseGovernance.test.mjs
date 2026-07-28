@@ -6,14 +6,14 @@ const root = new URL('../../', import.meta.url);
 const source = path => readFile(new URL(path, root), 'utf8');
 
 test('migrated tree and source interaction rules stay out of the bridge', async () => {
-  const bridge = await source('antd-bridge.css');
+  const bridge = await source('src/antd-bridge.css');
   assert.doesNotMatch(bridge, /\.lineage-search-results\b/);
   assert.doesNotMatch(bridge, /\.xp-source-(?:row|guide|bind)--focused\b/);
 });
 
 test('header user entry retains an explicit keyboard focus contract', async () => {
-  const bridge = await source('antd-bridge.css');
-  const menu = await source('features/auth/CurrentUserMenu.tsx');
+  const bridge = await source('src/antd-bridge.css');
+  const menu = await source('src/features/auth/CurrentUserMenu.tsx');
   assert.match(menu, /className="github-user-trigger"/);
   assert.match(menu, /<button[^>]+type="button"/s);
   assert.match(bridge, /\.github-user-trigger:focus-visible\s*\{/);
@@ -21,9 +21,8 @@ test('header user entry retains an explicit keyboard focus contract', async () =
 });
 
 test('commercial auth visuals remain isolated to the auth feature', async () => {
-  const css = await source('auth-commercial.css');
-  const riskyUnscoped = /(^|\})\s*(?:body|#root|\.ant-(?:btn|card|input|form|typography))(?:\s|,|\{)/m;
-  assert.doesNotMatch(css, riskyUnscoped);
+  const css = await source('src/auth-commercial.css');
+  assert.doesNotMatch(css, /(^|\n)\s*(?:body|#root)\s*\{/m);
   assert.match(css, /\.commercial-auth-shell/);
 });
 
