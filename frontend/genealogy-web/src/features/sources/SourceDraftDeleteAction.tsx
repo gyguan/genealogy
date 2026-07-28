@@ -27,6 +27,14 @@ function sourceDependencyCounts(detail: SourceDetail | null) {
   };
 }
 
+function sourceDetailActionTarget() {
+  const declaredTarget = document.querySelector<HTMLElement>('[data-source-detail-actions="true"]');
+  if (declaredTarget) return declaredTarget;
+  return document.querySelector<HTMLElement>('.source-library-detail-title')
+    ?.closest('.ant-row')
+    ?.querySelector<HTMLElement>('.ant-col:last-child > .ant-space') || null;
+}
+
 export function SourceDraftDeleteAction() {
   const workspace = useWorkspace();
   const sourceId = Number(workspace.sourceId || sourceIdFromLocation() || 0) || undefined;
@@ -58,7 +66,7 @@ export function SourceDraftDeleteAction() {
       return undefined;
     }
     const syncTarget = () => {
-      const nextTarget = document.querySelector<HTMLElement>('[data-source-detail-actions="true"]');
+      const nextTarget = sourceDetailActionTarget();
       setPortalTarget(current => current === nextTarget ? current : nextTarget);
     };
     const observer = new MutationObserver(syncTarget);
