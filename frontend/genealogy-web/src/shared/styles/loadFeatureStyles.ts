@@ -14,13 +14,15 @@ const loaders: Record<FeatureStyleKey, () => Promise<unknown>> = {
     import('../../mvp1-wizard-generation.css'),
     import('../../mvp1-source-step.css'),
     import('../../mvp1-tree-step.css'),
-    import('../../mvp1-person-step.css')
+    import('../../mvp1-person-step.css'),
+    import('../../features/mvp1/wizard-form-system.css')
   ]),
   personArchive: async () => Promise.all([
     import('../../person-archive-layout.css'),
     import('../../person-archive-source.css'),
     import('../../person-edit-page.css'),
-    import('../../person-detail-page.css')
+    import('../../person-detail-page.css'),
+    import('../../features/persons/person-form-system.css')
   ]),
   treeProduct: async () => Promise.all([
     import('../../lineage-tree.css'),
