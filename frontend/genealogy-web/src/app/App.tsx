@@ -8,6 +8,7 @@ import {
   entityNavigationPrompt
 } from '../shared/navigation/entityNavigationGuard';
 import type { EntityNavigationGuardState } from '../shared/navigation/entityNavigationGuard';
+import { subscribeNavigation } from '../shared/navigation/navigationEvents';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
 import { feedback } from '../shared/ui/OperationFeedback';
@@ -102,7 +103,10 @@ function AppShell() {
   const guardedUrlRef = useRef('');
 
   function syncRouteFromUrl() {
-    setPersonDetailRoute(readPersonDetailRoute()); setPersonEditRoute(readPersonEditRoute()); setActive(readViewFromUrl()); setPageEntryVersion(prev => prev + 1);
+    setPersonDetailRoute(readPersonDetailRoute());
+    setPersonEditRoute(readPersonEditRoute());
+    setActive(readViewFromUrl());
+    setPageEntryVersion(prev => prev + 1);
   }
   function onLoginChanged() { setAuthStatus('authenticated'); }
   function logout() {
@@ -137,21 +141,17 @@ function AppShell() {
     return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
-  useEffect(() => {
-    const onPopState = () => {
-      if (!allowNavigation()) {
-        window.history.pushState(window.history.state, '', guardedUrlRef.current);
-        return;
-      }
-      syncRouteFromUrl();
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  useEffect(() => subscribeNavigation(() => {
+    if (!allowNavigation()) {
+      window.history.replaceState(window.history.state, '', guardedUrlRef.current);
+      return;
+    }
+    syncRouteFromUrl();
+  }), []);
 
   function enterPage(key: ViewKey) {
     if (!allowNavigation()) return;
-    setPersonDetailRoute(null); setPersonEditRoute(null); setActive(key); setPageEntryVersion(prev => prev + 1); writeViewToUrl(key);
+    writeViewToUrl(key);
   }
 
   function renderPage() {
