@@ -1,11 +1,11 @@
-/* Final lineage workbench overrides load after global Ant Design bridge rules. */
+/* Lineage query layout only. Graph canvas, nodes and edges stay in their dedicated visual styles. */
 .lineage-search-grid--workbench {
-  grid-template-columns: 150px 190px minmax(280px, 360px) !important;
+  grid-template-columns: 150px 190px minmax(280px, 360px);
   justify-content: start;
 }
 
 .lineage-search-grid--workbench .ant-input-search {
-  width: 100% !important;
+  width: 100%;
   max-width: 360px;
 }
 
@@ -17,19 +17,18 @@
 .lineage-search-grid--workbench .ant-input-search .ant-input-affix-wrapper {
   display: flex;
   align-items: center;
-  height: 36px !important;
-  min-height: 36px !important;
+  min-height: 36px;
   padding-block: 0;
 }
 
 .lineage-search-grid--workbench .ant-input-search input.ant-input {
-  height: 34px !important;
-  min-height: 34px !important;
+  min-height: 34px;
   padding-block: 0;
   line-height: 34px;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon {
+.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon,
+.lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
   display: inline-flex;
   align-items: center;
 }
@@ -39,26 +38,25 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 36px !important;
-  min-height: 36px !important;
   min-width: 88px;
+  min-height: 36px;
   padding-inline: 14px;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
-  display: inline-flex;
-  align-items: center;
+.lineage-search-grid--workbench :is(.ant-input-affix-wrapper, .ant-select-selector, .ant-btn):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 @media (max-width: 1400px) {
   .lineage-search-grid--workbench {
-    grid-template-columns: 140px 190px minmax(280px, 360px) !important;
+    grid-template-columns: 140px 190px minmax(280px, 360px);
   }
 }
 
 @media (max-width: 760px) {
   .lineage-search-grid--workbench {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr;
   }
 
   .lineage-search-grid--workbench .ant-input-search {
