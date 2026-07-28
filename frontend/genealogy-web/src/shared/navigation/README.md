@@ -17,7 +17,7 @@
 
 禁止：
 
-- 业务代码主动派发伪造的 `PopStateEvent` 驱动路由刷新；
+- 业务代码主动派发伪造的 `PopStateEvent` 驱动跨页面路由刷新；
 - 入口层或 AppShell 覆盖 `history.pushState/replaceState`；
 - 菜单跳转先修改 React 页面状态、再写 URL。
 
@@ -42,4 +42,5 @@ AppShell 是未保存数据和提交中状态的统一保护点。菜单导航�
 - 跨页面导航重新使用伪造 `popstate`；
 - 入口层重新覆盖 History API；
 - 模块与实体导航绕过共享入口；
-- AppShell 绕过共享订阅机制。
+- AppShell 绕过共享订阅机制；
+- 核心模块未声明 URL 参数所有权。
