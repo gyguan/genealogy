@@ -43,6 +43,9 @@ jobs:
       - name: Test multi-select unification
         working-directory: frontend/genealogy-web
         run: npm run test:multi-select
+      - name: Test DOM and CSS governance
+        working-directory: frontend/genealogy-web
+        run: npm run test:dom-governance
       - name: Detect Tree-related changes
         id: tree-changes
         shell: bash
