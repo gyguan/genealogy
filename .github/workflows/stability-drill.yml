@@ -1,0 +1,146 @@
+name: Stability and Disaster Recovery
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - "scripts/stability/**"
+      - "docs/testing/stability/**"
+      - "tasks/issue-872*.md"
+      - ".github/workflows/stability-drill.yml"
+  workflow_dispatch:
+    inputs:
+      duration_hours:
+        description: "Continuous workload duration in hours (24, 48 or 72 recommended)"
+        required: true
+        default: "24"
+      backend_rto_seconds:
+        description: "Backend restart RTO target"
+        required: true
+        default: "60"
+      database_rto_seconds:
+        description: "Database restore RTO target"
+        required: true
+        default: "120"
+      rpo_seconds:
+        description: "Backup/restore RPO target"
+        required: true
+        default: "10"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stability-dr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stability-dr:
+    name: PostgreSQL backup restore and stability drill
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 4500 || 35 }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: genealogy
+      PGUSER: genealogy
+      PGPASSWORD: genealogy
+      STABILITY_RESULTS_DIR: stability-results
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Install PostgreSQL client and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+      - name: Resolve drill targets
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "STABILITY_DURATION_SECONDS=$(( ${{ inputs.duration_hours }} * 3600 ))" >> "$GITHUB_ENV"
+            echo "BACKEND_RTO_MS=$(( ${{ inputs.backend_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
+            echo "DATABASE_RTO_MS=$(( ${{ inputs.database_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
+            echo "RPO_SECONDS=${{ inputs.rpo_seconds }}" >> "$GITHUB_ENV"
+          else
+            echo "STABILITY_DURATION_SECONDS=180" >> "$GITHUB_ENV"
+            echo "BACKEND_RTO_MS=60000" >> "$GITHUB_ENV"
+            echo "DATABASE_RTO_MS=120000" >> "$GITHUB_ENV"
+            echo "RPO_SECONDS=10" >> "$GITHUB_ENV"
+          fi
+      - name: Execute stability and disaster recovery drill
+        shell: bash
+        run: bash scripts/stability/issue-872-drill.sh
+      - name: Generate drill report
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          out=pathlib.Path('stability-results'); out.mkdir(exist_ok=True)
+          summary=json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':False}
+          growth=json.loads((out/'resource-growth.json').read_text()) if (out/'resource-growth.json').exists() else {'metrics':{},'failed':['not-generated']}
+          report=f'''# Issue #872 稳定性与灾备演练报告
+
+- Commit: `{os.getenv("GITHUB_SHA","unknown")}`
+- Environment: GitHub-hosted Ubuntu Runner, Java 17, PostgreSQL 16, single backend JVM
+- Continuous workload: {summary.get("durationSeconds",0)} seconds / {summary.get("iterations",0)} iterations
+- Backend restart RTO: {summary.get("backendRtoMs","N/A")} ms
+- Database restore RTO: {summary.get("databaseRtoMs","N/A")} ms
+- RPO: {summary.get("rpoSeconds","N/A")} seconds
+- Resource growth failures: {growth.get("failed",[])}
+- Critical/High unresolved findings: {summary.get("critical",1)}/{summary.get("high",1)}
+
+## Executed recovery chain
+
+1. Start backend and create isolated official lineage data.
+2. Run continuous authenticated person and lineage reads while sampling CPU, RSS, threads, file descriptors and PostgreSQL connections.
+3. Stop and restart the backend; verify the existing access token and official lineage remain usable.
+4. Execute a real `pg_dump` custom-format backup.
+5. Destructively drop the complete `public` schema.
+6. Execute `pg_restore`, restart the application and verify authentication, Flyway history, official people and relationships.
+7. Compare pre/post counts and enforce RTO, RPO and resource-growth thresholds.
+
+## Conclusion boundary
+
+The PR gate is a short repeatable CI drill. The same workflow supports manually dispatched 24/48/72-hour runs. It proves the backup is restorable and the recovery procedure is executable; production infrastructure, network, storage replication and regional failover still require an equivalent environment-specific exercise.
+'''
+          (out/'stability-dr-report.md').write_text(report)
+          PY
+          cat stability-results/stability-dr-report.md
+      - name: Upload stability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-dr-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stability-results
+          if-no-files-found: error
+          retention-days: 14
