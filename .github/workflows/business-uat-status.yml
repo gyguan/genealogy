@@ -1,0 +1,52 @@
+name: Business UAT Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      strict_closure:
+        description: Fail unless #874 has complete real-business signoff evidence
+        required: false
+        default: false
+        type: boolean
+  issues:
+    types: [edited, closed, reopened]
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "scripts/uat/**"
+      - ".github/workflows/business-uat-status.yml"
+      - "docs/testing/uat/**"
+
+permissions:
+  contents: read
+  issues: read
+
+env:
+  TARGET_ISSUES: "874,902,903,904,905,906,907,909,910"
+
+jobs:
+  summarize:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
+      contains(env.TARGET_ISSUES, format('{0}', github.event.issue.number))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Generate UAT status report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STRICT_CLOSURE: ${{ github.event_name == 'workflow_dispatch' && inputs.strict_closure || false }}
+        run: node scripts/uat/summarize-issue-874.mjs
+      - name: Upload UAT status evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-874-uat-status-${{ github.run_id }}-${{ github.run_attempt }}
+          path: uat-results/
+          retention-days: 30
