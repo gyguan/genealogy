@@ -42,9 +42,11 @@ test('desktop visual regression matrix covers four widths and eight representati
 
 test('stable local screenshot evidence covers header query form table and statistics', async () => {
   const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
-  for (const artifact of ['local-header.png', 'local-query-bar.png', 'local-form.png', 'local-table.png', 'local-statistic-card.png']) {
-    assert.match(spec, new RegExp(artifact.replace('.', '\\.')));
+  assert.match(spec, /local-header\.png/);
+  for (const name of ['query-bar', 'form', 'table', 'statistic-card']) {
+    assert.match(spec, new RegExp(`name: '${name}'`));
   }
+  assert.match(spec, /local-\$\{item\.name\}\.png/);
   assert.match(spec, /locator\(item\.region\)\.first\(\)/);
   assert.match(spec, /region\.screenshot/);
 });
