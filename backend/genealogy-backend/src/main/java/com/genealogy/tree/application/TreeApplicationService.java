@@ -7,8 +7,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Compatibility facade that owns transaction boundaries and delegates graph algorithms
- * to focused components.
+ * Compatibility facade for Tree API use cases.
+ *
+ * <p>This class owns transaction boundaries and dependency coordination only. Graph
+ * traversal, branch component selection, cycle detection and response construction are
+ * implemented by the dedicated graph components.</p>
  */
 @Service
 public class TreeApplicationService {
