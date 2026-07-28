@@ -1,7 +1,9 @@
 package com.genealogy.relationship.entity;
 
+import com.genealogy.relationship.domain.RelationshipCategoryEntityListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
+@EntityListeners(RelationshipCategoryEntityListener.class)
 @Table(name = "relationship")
 public class RelationshipEntity {
 
@@ -35,27 +38,16 @@ public class RelationshipEntity {
 
     private String relationLabel;
 
-    /**
-     * blood: 血缘关系；ritual: 礼法承嗣关系；marriage: 婚配关系；status: 状态标记。
-     */
+    /** blood, ritual, marriage or status. */
+    @Column(nullable = false)
     private String relationCategory;
 
-    /**
-     * 入继、出继、承祧、兼祧、嗣子、无嗣等宗法承嗣细分类型。
-     */
     private String ritualRelationType;
 
-    /**
-     * 立嗣原因或宗法说明，例如无嗣、兼祧、承继某房等。
-     */
     @Column(columnDefinition = "text")
     private String successionReason;
 
-    /**
-     * 承继房支 ID，用于表示入继/承祧/兼祧所承继的房支。
-     */
     private Long successorBranchId;
-
     private Boolean isLineageRelation;
     private Boolean isBiological;
     private Boolean isPrimary;
