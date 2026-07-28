@@ -29,19 +29,16 @@ jobs:
         with:
           fetch-depth: 0
       - name: Trivy repository scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: json
-          output: trivy-results.json
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD:/work" -w /work aquasec/trivy:latest fs \
+            --format json --output trivy-results.json \
+            --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 .
+          test -s trivy-results.json
       - name: Enforce fixable critical and high findings
         shell: bash
         run: |
-          test -s trivy-results.json
           python3 - <<'PY'
           import json
           data=json.load(open('trivy-results.json'))
