@@ -8,6 +8,12 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/uat/**"
+      - ".github/workflows/business-uat-status.yml"
+      - "docs/testing/uat/**"
   issues:
     types: [edited, closed, reopened]
   issue_comment:
@@ -31,6 +37,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
+      github.event_name == 'push' ||
       contains(env.TARGET_ISSUES, format('{0}', github.event.issue.number))
     runs-on: ubuntu-latest
     timeout-minutes: 10
