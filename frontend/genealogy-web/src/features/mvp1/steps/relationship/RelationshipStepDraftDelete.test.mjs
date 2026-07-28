@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const relationshipStepSource = readFileSync(new URL('./RelationshipStep.tsx', import.meta.url), 'utf8');
 const relationshipServiceSource = readFileSync(new URL('../../services/relationshipService.ts', import.meta.url), 'utf8');
-const wizardEnhancementStyles = readFileSync(new URL('../../../../mvp1-wizard-enhancements.css', import.meta.url), 'utf8');
+const wizardGenerationStyles = readFileSync(new URL('../../../../mvp1-wizard-generation.css', import.meta.url), 'utf8');
 
 test('wizard relationship list exposes the shared draft delete action', () => {
   assert.match(relationshipStepSource, /import \{ DraftDeleteButton \}/);
@@ -32,7 +32,7 @@ test('relationship delete remains in the existing operation column with tracking
 
 test('relationship save actions are right aligned within the wizard step', () => {
   assert.match(
-    wizardEnhancementStyles,
+    wizardGenerationStyles,
     /\.relationship-step-panel > \.ant-space-vertical > \.ant-space-item > \.ant-space:has\(> \.ant-space-item > button\),[\s\S]*?\{\s*justify-content:\s*flex-end;\s*width:\s*100%;/
   );
 });
