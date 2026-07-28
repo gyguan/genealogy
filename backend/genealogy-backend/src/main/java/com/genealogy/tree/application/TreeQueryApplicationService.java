@@ -7,23 +7,25 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class TreeQueryApplicationService {
-    private final TreeApplicationService delegate;
+    private final LineageTraversalService lineageTraversalService;
+    private final BranchGraphService branchGraphService;
+    private final TreeGraphAssembler assembler;
 
-    public TreeQueryApplicationService(TreeApplicationService delegate) {
-        this.delegate = delegate;
+    public TreeQueryApplicationService(
+            LineageTraversalService lineageTraversalService,
+            BranchGraphService branchGraphService,
+            TreeGraphAssembler assembler
+    ) {
+        this.lineageTraversalService = lineageTraversalService;
+        this.branchGraphService = branchGraphService;
+        this.assembler = assembler;
     }
 
     public TreeGraphResponse personLineage(PersonLineageQuery query) {
-        return delegate.personLineage(
-                query.personId(), query.direction().apiValue(), query.relationScopes(), query.dataView(),
-                query.appliedDepth(), query.maxNodes(), query.maxEdges(), query.actorId()
-        );
+        return assembler.response(lineageTraversalService.traverse(query));
     }
 
     public TreeGraphResponse branchLineage(BranchLineageQuery query) {
-        return delegate.branchLineage(
-                query.clanId(), query.branchId(), query.includeSubBranches(), query.relationScopes(), query.dataView(),
-                query.appliedDepth(), query.maxNodes(), query.maxEdges(), query.actorId()
-        );
+        return assembler.response(branchGraphService.build(query));
     }
 }
