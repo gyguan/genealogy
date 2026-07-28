@@ -7,6 +7,7 @@ username="capacity_${run_id//[^a-zA-Z0-9]/_}"
 password="$(openssl rand -hex 16)"
 work_dir="${PERFORMANCE_RESULTS_DIR:-performance-results}"
 mkdir -p "$work_dir"
+chmod 0777 "$work_dir"
 
 register_payload="$(jq -nc --arg username "$username" --arg password "$password" '{username:$username,password:$password,displayName:"容量测试账号",phone:null,email:null}')"
 curl --fail-with-body --silent --show-error -H 'Content-Type: application/json' --data-binary "$register_payload" "$base_url/api/v1/auth/register" > "$work_dir/register.json"
