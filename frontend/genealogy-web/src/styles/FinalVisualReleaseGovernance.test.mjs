@@ -45,7 +45,7 @@ test('five stable regions use strict Chromium screenshot difference assertions',
   const config = await source('playwright.config.ts');
   const workflow = await source('../../.github/workflows/culture-page-gate.yml');
   for (const name of ['header.png', 'query-bar.png', 'form.png', 'table.png', 'statistic-card.png']) {
-    assert.match(spec, new RegExp(`toHaveScreenshot\\('${name.replace('.', '\\.')}')`));
+    assert.match(spec, new RegExp(`toHaveScreenshot\\('${name.replace('.', '\\.')}',[\\s\\S]*snapshotOptions`));
   }
   assert.match(spec, /browserName !== 'chromium'/);
   assert.match(spec, /maxDiffPixelRatio:\s*0\.001/);
