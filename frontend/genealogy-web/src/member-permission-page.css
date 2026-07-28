@@ -4,6 +4,41 @@
   margin-bottom: 12px;
 }
 
+.member-role-page {
+  display: grid;
+  gap: 16px;
+}
+
+.member-role-tip {
+  border-color: #91caff;
+  background: #f5faff;
+}
+
+.role-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.role-card-grid .ant-card {
+  border-color: #f0f0f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+
+.role-card-grid .ant-card-head {
+  min-height: 42px;
+  border-bottom-color: #f0f0f0;
+}
+
+.role-card-grid .ant-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.role-card-grid .ant-typography {
+  margin-bottom: 0;
+}
+
 .member-role-page > .ant-card:first-child .ant-row > .ant-col:last-child > .ant-space {
   align-items: flex-end;
 }
@@ -47,6 +82,12 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .role-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 575px) {
