@@ -136,7 +136,15 @@ test.describe('查询展示、文化与审计追溯一致性', () => {
     expect(Number(taskDiff.targetId)).toBe(personId);
     expect(taskDiff.targetType).toBe('person');
     expect(Array.isArray(taskDiff.fields)).toBeTruthy();
-    expect(JSON.stringify(taskDiff)).toContain(personName);
+    expect(Number(taskDiff.revisionId)).toBeGreaterThan(0);
+    expect(taskDiff.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        fieldName: 'dataStatus',
+        beforeValue: 'draft',
+        afterValue: 'pending_review',
+        changeType: 'modified'
+      })
+    ]));
 
     await approve(page, reviewerHeaders, personTaskId, '#835 人物审核通过');
     await approve(page, reviewerHeaders, sourceTaskId, '#835 来源审核通过');
@@ -235,6 +243,7 @@ test.describe('查询展示、文化与审计追溯一致性', () => {
         sourceId,
         personTaskId,
         sourceTaskId,
+        revisionId: Number(taskDiff.revisionId),
         queryUrl,
         detailUrl,
         treeNodeCount: tree.nodes.length,
