@@ -25,6 +25,7 @@ branch_payload='{"parentId":null,"branchName":"容量测试支派","sortOrder":1
 curl --fail-with-body --silent --show-error -b "$work_dir/cookies.txt" -H 'Content-Type: application/json' -H "X-CSRF-Token: $csrf_token" --data-binary "$branch_payload" "$base_url/api/v1/clans/$clan_id/branches" > "$work_dir/branch.json"
 branch_id="$(jq -r '.data.id // empty' "$work_dir/branch.json")"
 test -n "$branch_id"
+psql -v ON_ERROR_STOP=1 -c "update branch set status = 'official' where id = ${branch_id}"
 
 create_person() {
   local code="$1"
@@ -41,6 +42,7 @@ root_person_id="$(jq -r '.data.id // empty' "$work_dir/root-person.json")"
 middle_person_id="$(jq -r '.data.id // empty' "$work_dir/middle-person.json")"
 child_person_id="$(jq -r '.data.id // empty' "$work_dir/child-person.json")"
 test -n "$root_person_id" && test -n "$middle_person_id" && test -n "$child_person_id"
+psql -v ON_ERROR_STOP=1 -c "update person set data_status = 'official' where id in (${root_person_id}, ${middle_person_id}, ${child_person_id})"
 
 create_relationship() {
   local from_id="$1"
@@ -54,12 +56,7 @@ create_relationship "$middle_person_id" "$child_person_id" > "$work_dir/relation
 relation_1_id="$(jq -r '.data.id // empty' "$work_dir/relation-1.json")"
 relation_2_id="$(jq -r '.data.id // empty' "$work_dir/relation-2.json")"
 test -n "$relation_1_id" && test -n "$relation_2_id"
-
-psql -v ON_ERROR_STOP=1 <<SQL
-update branch set status = 'official' where id = ${branch_id};
-update person set data_status = 'official' where id in (${root_person_id}, ${middle_person_id}, ${child_person_id});
-update relationship set data_status = 'official' where id in (${relation_1_id}, ${relation_2_id});
-SQL
+psql -v ON_ERROR_STOP=1 -c "update relationship set data_status = 'official' where id in (${relation_1_id}, ${relation_2_id})"
 
 {
   echo "CAPACITY_USERNAME=$username"
