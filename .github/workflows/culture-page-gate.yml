@@ -10,6 +10,8 @@ on:
       - "frontend/genealogy-web/src/features/**"
       - "frontend/genealogy-web/e2e/culture-*.spec.ts"
       - "frontend/genealogy-web/e2e/css-desktop-viewport-matrix.spec.ts"
+      - "frontend/genealogy-web/e2e/**/*.spec.ts-snapshots/**"
+      - "frontend/genealogy-web/playwright.config.ts"
       - "frontend/genealogy-web/package.json"
       - ".github/workflows/culture-page-gate.yml"
   workflow_dispatch:
@@ -74,11 +76,15 @@ jobs:
           cat /tmp/visual-release-vite.log
           exit 1
 
+      - name: Bootstrap visual baselines for issue 919
+        working-directory: frontend/genealogy-web
+        run: npx playwright test e2e/css-desktop-viewport-matrix.spec.ts --project=chromium --grep "approved Chromium visual baselines" --update-snapshots
+
       - name: Run Chromium visual release E2E
         working-directory: frontend/genealogy-web
         run: npm run test:culture
 
-      - name: Upload viewport and local screenshot evidence
+      - name: Upload viewport, visual diff and baseline evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -86,6 +92,7 @@ jobs:
           path: |
             frontend/genealogy-web/playwright-report-browser
             frontend/genealogy-web/test-results
+            frontend/genealogy-web/e2e/**/*.spec.ts-snapshots
             /tmp/visual-release-vite.log
           if-no-files-found: ignore
           retention-days: 14
