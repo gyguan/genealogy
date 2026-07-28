@@ -42,6 +42,7 @@ test('desktop visual regression matrix covers four widths and eight representati
 
 test('five stable regions use strict Chromium screenshot difference assertions', async () => {
   const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
+  const config = await source('playwright.config.ts');
   const workflow = await source('../../.github/workflows/culture-page-gate.yml');
   for (const name of ['header.png', 'query-bar.png', 'form.png', 'table.png', 'statistic-card.png']) {
     assert.match(spec, new RegExp(`toHaveScreenshot\\('${name.replace('.', '\\.')}')`));
@@ -51,9 +52,10 @@ test('five stable regions use strict Chromium screenshot difference assertions',
   assert.match(spec, /threshold:\s*0\.15/);
   assert.match(spec, /animations:\s*'disabled'/);
   assert.match(spec, /caret:\s*'hide'/);
-  assert.match(spec, /deviceScaleFactor/);
   assert.match(spec, /Date\.now/);
   assert.match(spec, /Math\.random/);
+  assert.match(config, /deviceScaleFactor/);
+  assert.match(config, /E2E_DEVICE_SCALE_FACTOR\s*\|\|\s*'1'/);
   assert.match(workflow, /spec\.ts-snapshots/);
   assert.match(workflow, /retention-days:\s*14/);
 });
