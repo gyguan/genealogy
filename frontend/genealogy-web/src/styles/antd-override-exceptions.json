@@ -1,0 +1,31 @@
+{
+  "owner": "frontend-platform",
+  "policy": "antd-bridge.css may only shrink; every important or Ant internal override must be listed here",
+  "exceptions": [
+    {
+      "scope": ".antd-sidebar, .github-like-header, .antd-content",
+      "reason": "application shell migration compatibility",
+      "exitCondition": "AppShell owns layout exclusively through Ant Design component tokens"
+    },
+    {
+      "scope": ".antd-field",
+      "reason": "legacy form layout compatibility; source field pollution has been removed",
+      "exitCondition": "wizard and person forms complete migration in issue 882"
+    },
+    {
+      "scope": ".archive-search-form, .lineage-search-grid",
+      "reason": "desktop query grid compatibility",
+      "exitCondition": "query areas migrate to Shared QueryBar in issues 882 and 883"
+    },
+    {
+      "scope": ".lineage-search-results, .xp-source-*",
+      "reason": "tree and source selection state compatibility",
+      "exitCondition": "module-scoped interaction styles land in issue 883"
+    },
+    {
+      "scope": ".antd-table-wrap, .antd-detail-card",
+      "reason": "shared table and detail container compatibility",
+      "exitCondition": "shared wrappers own colocated styles"
+    }
+  ]
+}
