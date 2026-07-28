@@ -15,6 +15,14 @@ const representativePages = [
   { key: 'memberManage', label: '成员与权限', kind: 'permission' }
 ] as const;
 
+const snapshotOptions = {
+  animations: 'disabled' as const,
+  caret: 'hide' as const,
+  scale: 'css' as const,
+  threshold: 0.15,
+  maxDiffPixelRatio: 0.001
+};
+
 async function mockShellApi(page: Page) {
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
@@ -28,6 +36,35 @@ async function mockShellApi(page: Page) {
     }
     return route.fulfill(ok({}));
   });
+}
+
+async function stabilizeVisualEnvironment(page: Page) {
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' });
+  await page.addInitScript(() => {
+    const fixedNow = new Date('2026-07-28T00:00:00.000Z').valueOf();
+    Date.now = () => fixedNow;
+    Math.random = () => 0.417;
+  });
+  await page.addStyleTag({ content: `
+    *, *::before, *::after {
+      animation-duration: 0s !important;
+      animation-delay: 0s !important;
+      transition-duration: 0s !important;
+      transition-delay: 0s !important;
+      caret-color: transparent !important;
+    }
+    html, body, button, input, select, textarea {
+      font-family: Arial, "Microsoft YaHei", sans-serif !important;
+    }
+  ` });
+}
+
+async function openStablePage(page: Page, key: string) {
+  await page.goto(`/?view=${key}`);
+  await page.waitForLoadState('networkidle');
+  await stabilizeVisualEnvironment(page);
+  await expect(page.locator('.github-like-header')).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
 }
 
 async function expectInsideViewport(locator: Locator, width: number) {
@@ -76,30 +113,30 @@ for (const width of [1920, 1440, 1366, 1280]) {
       await page.goto(`/?view=${pageCase.key}`);
       await expect(page.getByText(pageCase.label, { exact: true }).first()).toBeVisible();
       await verifyStructure(page, width);
-      await page.screenshot({ path: testInfo.outputPath(`${pageCase.key}-${width}-full.png`), fullPage: true });
+      await page.screenshot({ path: testInfo.outputPath(`${pageCase.key}-${width}-full.png`), fullPage: true, animations: 'disabled' });
     });
   }
 }
 
-test('1440px stable regions produce reviewable local screenshot evidence', async ({ page }, testInfo) => {
+test('1440px stable regions match approved Chromium visual baselines', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Strict visual differences are governed by Chromium only.');
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockShellApi(page);
 
-  const cases = [
-    { key: 'home', region: '.ant-statistic, .ant-card', name: 'statistic-card' },
-    { key: 'personArchive', region: '.ant-form, .archive-search-form', name: 'query-bar' },
-    { key: 'mvp1Wizard', region: '.ant-form, .relationship-step-form-grid', name: 'form' },
-    { key: 'personArchive', region: '.ant-table-wrapper, .antd-table-wrap', name: 'table' }
-  ];
+  await openStablePage(page, 'home');
+  await expect(page.locator('.github-like-header')).toHaveScreenshot('header.png', snapshotOptions);
+  await expect(page.locator('.ant-statistic, .ant-card').first()).toHaveScreenshot('statistic-card.png', snapshotOptions);
 
-  await page.goto('/?view=home');
-  await expect(page.locator('.github-like-header')).toBeVisible();
-  await page.locator('.github-like-header').screenshot({ path: testInfo.outputPath('local-header.png') });
+  await openStablePage(page, 'personArchive');
+  const queryBar = page.locator('.archive-search-form, .ant-form').first();
+  await expect(queryBar).toBeVisible();
+  await expect(queryBar).toHaveScreenshot('query-bar.png', snapshotOptions);
 
-  for (const item of cases) {
-    await page.goto(`/?view=${item.key}`);
-    const region = page.locator(item.region).first();
-    await expect(region).toBeVisible();
-    await region.screenshot({ path: testInfo.outputPath(`local-${item.name}.png`) });
-  }
+  const formRegion = page.locator('.archive-search-form .ant-form-item, .ant-form .ant-form-item').first();
+  await expect(formRegion).toBeVisible();
+  await expect(formRegion).toHaveScreenshot('form.png', snapshotOptions);
+
+  const tableRegion = page.locator('.ant-table-wrapper, .antd-table-wrap').first();
+  await expect(tableRegion).toBeVisible();
+  await expect(tableRegion).toHaveScreenshot('table.png', snapshotOptions);
 });

@@ -40,13 +40,22 @@ test('desktop visual regression matrix covers four widths and eight representati
   }
 });
 
-test('stable local screenshot evidence covers header query form table and statistics', async () => {
+test('five stable regions use strict Chromium screenshot difference assertions', async () => {
   const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
-  assert.match(spec, /local-header\.png/);
-  for (const name of ['query-bar', 'form', 'table', 'statistic-card']) {
-    assert.match(spec, new RegExp(`name: '${name}'`));
+  const config = await source('playwright.config.ts');
+  const workflow = await source('../../.github/workflows/culture-page-gate.yml');
+  for (const name of ['header.png', 'query-bar.png', 'form.png', 'table.png', 'statistic-card.png']) {
+    assert.match(spec, new RegExp(`toHaveScreenshot\\('${name.replace('.', '\\.')}',[\\s\\S]*snapshotOptions`));
   }
-  assert.match(spec, /local-\$\{item\.name\}\.png/);
-  assert.match(spec, /locator\(item\.region\)\.first\(\)/);
-  assert.match(spec, /region\.screenshot/);
+  assert.match(spec, /browserName !== 'chromium'/);
+  assert.match(spec, /maxDiffPixelRatio:\s*0\.001/);
+  assert.match(spec, /threshold:\s*0\.15/);
+  assert.match(spec, /animations:\s*'disabled'/);
+  assert.match(spec, /caret:\s*'hide'/);
+  assert.match(spec, /Date\.now/);
+  assert.match(spec, /Math\.random/);
+  assert.match(config, /deviceScaleFactor/);
+  assert.match(config, /E2E_DEVICE_SCALE_FACTOR\s*\|\|\s*'1'/);
+  assert.match(workflow, /spec\.ts-snapshots/);
+  assert.match(workflow, /retention-days:\s*14/);
 });
