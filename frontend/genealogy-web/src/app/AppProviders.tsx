@@ -24,19 +24,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ConfigProvider
       theme={{
         algorithm: theme.defaultAlgorithm,
+        cssVar: { key: 'genealogy' },
         token: {
           colorPrimary: '#1677ff',
-          colorInfo: '#1677ff',
-          colorSuccess: '#52c41a',
-          colorWarning: '#faad14',
-          colorError: '#ff4d4f',
-          colorBgLayout: '#f5f5f5',
-          colorBgContainer: '#ffffff',
-          colorBorder: '#d9d9d9',
-          colorText: 'rgba(0, 0, 0, 0.88)',
-          colorTextSecondary: 'rgba(0, 0, 0, 0.65)',
-          colorTextTertiary: 'rgba(0, 0, 0, 0.45)',
-          colorTextDisabled: 'rgba(0, 0, 0, 0.25)',
           borderRadius: 8,
           borderRadiusLG: 12,
           controlHeight: 32,
@@ -47,15 +37,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
           lineHeight: 22 / 14,
           lineHeightSM: 20 / 12,
           lineHeightLG: 24 / 16,
-          fontFamily: APPLICATION_FONT_FAMILY,
-          boxShadowTertiary: '0 1px 2px rgba(0, 0, 0, 0.03)'
+          fontFamily: APPLICATION_FONT_FAMILY
         },
         components: {
-          Layout: { bodyBg: '#f5f5f5', siderBg: '#ffffff', headerBg: '#ffffff' },
           Menu: { itemBorderRadius: 8, itemHeight: 40, itemMarginBlock: 4, itemMarginInline: 8 },
           Card: { borderRadiusLG: 12, headerHeight: 48, paddingLG: 16 },
-          Table: { headerBg: '#fafafa', rowHoverBg: '#f5faff', cellPaddingBlockSM: 8, cellPaddingInlineSM: 12 },
-          Form: { itemMarginBottom: 12, labelColor: 'rgba(0, 0, 0, 0.65)', labelFontSize: 14 }
+          Table: { cellPaddingBlockSM: 8, cellPaddingInlineSM: 12 },
+          Form: { itemMarginBottom: 12, labelFontSize: 14 }
         }
       }}
     >

@@ -1,15 +1,15 @@
 .ant-card.panel,
 .ant-card.antd-panel {
   padding: 0;
-  border-color: #f0f0f0;
+  border-color: var(--genealogy-color-border-secondary);
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  box-shadow: var(--genealogy-box-shadow-tertiary);
 }
 
 .ant-card.panel .ant-card-head {
   min-height: 44px;
   padding: 0 16px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: var(--genealogy-color-border-secondary);
 }
 
 .ant-card.panel .ant-card-body {
@@ -42,7 +42,7 @@
 .antd-field .ant-form-item-label > label {
   display: inline-flex;
   min-height: 22px;
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   font-size: 14px;
   font-weight: 500;
   line-height: 22px;
@@ -53,7 +53,7 @@
 }
 
 .antd-field .ant-form-item-extra {
-  color: rgba(0, 0, 0, .45);
+  color: var(--genealogy-color-text-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
@@ -113,20 +113,20 @@
 }
 
 .antd-table-wrap .ant-table-tbody > tr.clickable:hover > td {
-  background: #f5faff;
+  background: var(--genealogy-color-primary-bg);
 }
 
 .antd-empty {
   padding: 18px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed var(--genealogy-color-border);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--genealogy-color-fill-alter);
 }
 
 .antd-detail-card {
   margin-top: 0;
   padding: 0;
-  background: #fff;
+  background: var(--genealogy-color-bg-container);
 }
 
 .antd-detail-card .ant-card-body {
