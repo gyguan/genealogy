@@ -1,24 +1,27 @@
 import { defineConfig, devices, type Project } from '@playwright/test';
 
+const deviceScaleFactor = Number(process.env.E2E_DEVICE_SCALE_FACTOR || '1');
 const allProjects: Project[] = [
-  { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  { name: 'edge', use: { ...devices['Desktop Edge'], channel: 'msedge' } },
-  { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-  { name: 'webkit', use: { ...devices['Desktop Safari'] } }
+  { name: 'chromium', use: { ...devices['Desktop Chrome'], deviceScaleFactor } },
+  { name: 'edge', use: { ...devices['Desktop Edge'], channel: 'msedge', deviceScaleFactor } },
+  { name: 'firefox', use: { ...devices['Desktop Firefox'], deviceScaleFactor } },
+  { name: 'webkit', use: { ...devices['Desktop Safari'], deviceScaleFactor } }
 ];
 
 const requestedProject = process.env.E2E_BROWSER_PROJECT;
 const projects = requestedProject
   ? allProjects.filter((project) => project.name === requestedProject)
-  : allProjects;
+  : allProjects.filter((project) => project.name === 'chromium');
 
 if (requestedProject && projects.length === 0) {
   throw new Error(`Unknown E2E_BROWSER_PROJECT: ${requestedProject}`);
 }
 
+const reportKey = requestedProject || 'chromium';
+
 export default defineConfig({
   testDir: './e2e',
-  outputDir: `test-results/browser-compatibility/${requestedProject || 'all-browsers'}`,
+  outputDir: `test-results/browser-compatibility/${reportKey}`,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
@@ -27,8 +30,8 @@ export default defineConfig({
   reporter: process.env.CI
     ? [
         ['line'],
-        ['html', { outputFolder: `playwright-report-browser/${requestedProject || 'all-browsers'}`, open: 'never' }],
-        ['json', { outputFile: `test-results/browser-compatibility-${requestedProject || 'all-browsers'}.json` }]
+        ['html', { outputFolder: `playwright-report-browser/${reportKey}`, open: 'never' }],
+        ['json', { outputFile: `test-results/browser-compatibility-${reportKey}.json` }]
       ]
     : [['list'], ['html', { outputFolder: 'playwright-report-browser', open: 'never' }]],
   use: {
@@ -36,8 +39,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: Number(process.env.E2E_DEVICE_SCALE_FACTOR || '1')
+    viewport: { width: 1440, height: 900 }
   },
   projects
 });
