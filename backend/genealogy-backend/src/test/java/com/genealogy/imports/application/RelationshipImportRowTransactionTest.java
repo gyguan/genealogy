@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -132,11 +131,11 @@ class RelationshipImportRowTransactionTest {
         @Bean
         DataSource dataSource() throws Exception {
             DataSource dataSource = mock(DataSource.class);
-            when(dataSource.getConnection()).thenAnswer(invocation -> {
-                Connection connection = mock(Connection.class);
-                when(connection.getAutoCommit()).thenReturn(true);
-                return connection;
-            });
+            Connection batchConnection = mock(Connection.class);
+            Connection rowConnection = mock(Connection.class);
+            when(batchConnection.getAutoCommit()).thenReturn(true);
+            when(rowConnection.getAutoCommit()).thenReturn(true);
+            when(dataSource.getConnection()).thenReturn(batchConnection, rowConnection);
             return dataSource;
         }
 
