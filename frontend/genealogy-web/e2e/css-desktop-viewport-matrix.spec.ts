@@ -40,6 +40,17 @@ for (const width of [1920, 1440, 1366, 1280]) {
     expect(layout.bodyScrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
     expect(layout.documentScrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
 
+    const userTrigger = page.locator('.github-user-trigger');
+    await expect(userTrigger).toBeVisible();
+    await userTrigger.focus();
+    await expect(userTrigger).toBeFocused();
+    const focusStyle = await userTrigger.evaluate(element => {
+      const style = window.getComputedStyle(element);
+      return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+    });
+    expect(focusStyle.outlineStyle).not.toBe('none');
+    expect(Number.parseFloat(focusStyle.outlineWidth)).toBeGreaterThanOrEqual(2);
+
     const searchCard = page.locator('.culture-search-card');
     const cardBox = await searchCard.boundingBox();
     expect(cardBox).not.toBeNull();
