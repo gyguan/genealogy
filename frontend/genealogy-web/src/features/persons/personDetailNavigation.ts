@@ -1,3 +1,4 @@
+import { commitNavigation } from '../../shared/navigation/navigationEvents';
 import { buildViewUrl } from '../../shared/navigation/urlState';
 
 export type PersonDetailRoute = {
@@ -8,10 +9,6 @@ const PERSON_DETAIL_PATH = /^\/persons\/([^/]+)\/?$/;
 
 function currentAppUrl() {
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
-}
-
-function emitRouteChange() {
-  window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
 export function readPersonDetailRoute(pathname = window.location.pathname): PersonDetailRoute | null {
@@ -32,12 +29,10 @@ export function navigateToPersonDetail(personId: string | number) {
   const next = buildViewUrl('personArchive', window.location.href, {
     pathname: `/persons/${encodeURIComponent(normalizedId)}`
   });
-  window.history.pushState(
-    { ...(window.history.state || {}), genealogyPersonDetailReturnUrl: returnUrl },
-    '',
-    next
-  );
-  emitRouteChange();
+  commitNavigation(next, {
+    mode: 'push',
+    state: { ...(window.history.state || {}), genealogyPersonDetailReturnUrl: returnUrl }
+  });
 }
 
 export function navigateBackFromPersonDetail() {
@@ -48,6 +43,5 @@ export function navigateBackFromPersonDetail() {
   }
 
   const next = buildViewUrl('personArchive', window.location.href);
-  window.history.replaceState(window.history.state, '', next);
-  emitRouteChange();
+  commitNavigation(next, { mode: 'replace', state: window.history.state });
 }
