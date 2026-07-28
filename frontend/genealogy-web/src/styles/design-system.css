@@ -42,13 +42,3 @@ select,
 textarea {
   font: inherit;
 }
-
-.text-caption {
-  font-size: var(--ant-font-size-sm);
-  line-height: var(--ant-line-height-sm);
-}
-
-.numeric-text,
-[data-numeric="true"] {
-  font-variant-numeric: tabular-nums;
-}
