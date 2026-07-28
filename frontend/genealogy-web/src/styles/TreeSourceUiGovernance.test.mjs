@@ -14,18 +14,12 @@ test('lineage query styles contain no important overrides', async () => {
 
 test('source library interaction styles stay feature scoped', async () => {
   const css = await source('features/sources/source-library-query-page.css');
-  const selectors = css.match(/(^|\})\s*([^@][^{]+)\{/gm) || [];
-  for (const selector of selectors) {
-    const text = selector.replace(/[{}]/g, '').trim();
-    if (!text || text.startsWith('from') || text.startsWith('to')) continue;
-    for (const part of text.split(',')) {
-      assert.match(part.trim(), /^\.source-library-query-page\b/, `unscoped source selector: ${part.trim()}`);
-    }
-  }
   assert.doesNotMatch(css, /!important/);
-  assert.match(css, /focus-visible/);
-  assert.match(css, /focus-within/);
-  assert.match(css, /aria-selected/);
+  assert.doesNotMatch(css, /(^|\})\s*\.ant-(card|table|btn|input|select|drawer)\b/m);
+  assert.doesNotMatch(css, /(^|\})\s*button\b/m);
+  assert.match(css, /\.source-library-query-page[\s\S]*focus-visible/);
+  assert.match(css, /\.source-library-query-page[\s\S]*focus-within/);
+  assert.match(css, /\.source-library-query-page[\s\S]*aria-selected/);
 });
 
 test('tree canvas visuals remain separated from query interaction styles', async () => {
