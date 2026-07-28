@@ -3,14 +3,20 @@ package com.genealogy.tree.query;
 import com.genealogy.common.exception.BusinessException;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Component
 public class TreeQueryPolicy {
-    private static final Set<RelationCategory> DEFAULT_CATEGORIES = Set.of(
-            RelationCategory.BLOOD, RelationCategory.RITUAL, RelationCategory.MARRIAGE
+    private static final Set<RelationCategory> DEFAULT_CATEGORIES = Collections.unmodifiableSet(
+            new LinkedHashSet<>(List.of(
+                    RelationCategory.BLOOD,
+                    RelationCategory.RITUAL,
+                    RelationCategory.MARRIAGE
+            ))
     );
 
     private final TreeQueryProperties properties;
@@ -27,10 +33,16 @@ public class TreeQueryPolicy {
         requirePositive(personId, "TREE_PERSON_ID_INVALID", "人员 ID 必须为正数");
         requirePositive(actorId, "AUTH_REQUIRED", "登录用户无效");
         TreeDirection parsedDirection = TreeDirection.fromApiValue(direction);
-        int requestedDepth = parsedDirection == TreeDirection.FAMILY ? 1 : defaulted(maxDepth, properties.getDefaultDepth());
+        int requestedDepth = parsedDirection == TreeDirection.FAMILY
+                ? 1
+                : defaulted(maxDepth, properties.getDefaultDepth());
         return new PersonLineageQuery(
-                personId, parsedDirection, categories(relationScopes), normalizeDataView(dataView),
-                requestedDepth, bounded(requestedDepth, properties.getMaxDepth(), "TREE_MAX_DEPTH_INVALID"),
+                personId,
+                parsedDirection,
+                categories(relationScopes),
+                normalizeDataView(dataView),
+                requestedDepth,
+                bounded(requestedDepth, properties.getMaxDepth(), "TREE_MAX_DEPTH_INVALID"),
                 bounded(defaulted(maxNodes, properties.getDefaultNodes()), properties.getMaxNodes(), "TREE_MAX_NODES_INVALID"),
                 bounded(defaulted(maxEdges, properties.getDefaultEdges()), properties.getMaxEdges(), "TREE_MAX_EDGES_INVALID"),
                 actorId
@@ -46,8 +58,13 @@ public class TreeQueryPolicy {
         requirePositive(actorId, "AUTH_REQUIRED", "登录用户无效");
         int requestedDepth = defaulted(maxDepth, properties.getDefaultDepth());
         return new BranchLineageQuery(
-                clanId, branchId, includeSubBranches, categories(relationScopes), normalizeDataView(dataView),
-                requestedDepth, bounded(requestedDepth, properties.getMaxDepth(), "TREE_MAX_DEPTH_INVALID"),
+                clanId,
+                branchId,
+                includeSubBranches,
+                categories(relationScopes),
+                normalizeDataView(dataView),
+                requestedDepth,
+                bounded(requestedDepth, properties.getMaxDepth(), "TREE_MAX_DEPTH_INVALID"),
                 bounded(defaulted(maxNodes, properties.getDefaultNodes()), properties.getMaxNodes(), "TREE_MAX_NODES_INVALID"),
                 bounded(defaulted(maxEdges, properties.getDefaultEdges()), properties.getMaxEdges(), "TREE_MAX_EDGES_INVALID"),
                 actorId
@@ -55,14 +72,16 @@ public class TreeQueryPolicy {
     }
 
     private Set<RelationCategory> categories(List<String> values) {
-        if (values == null || values.isEmpty()) return DEFAULT_CATEGORIES;
+        if (values == null || values.isEmpty()) {
+            return DEFAULT_CATEGORIES;
+        }
         LinkedHashSet<RelationCategory> result = new LinkedHashSet<>();
         values.forEach(value -> result.add(RelationCategory.fromApiValue(value)));
-        return Set.copyOf(result);
+        return Collections.unmodifiableSet(result);
     }
 
     private String normalizeDataView(String value) {
-        return value == null || value.isBlank() ? null : value.trim().toLowerCase();
+        return value == null || value.isBlank() ? null : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private int defaulted(Integer value, int fallback) {
@@ -77,10 +96,17 @@ public class TreeQueryPolicy {
     }
 
     private void requirePositive(Long value, String code, String message) {
-        if (value == null || value <= 0) throw new BusinessException(code, message);
+        if (value == null || value <= 0) {
+            throw new BusinessException(code, message);
+        }
     }
 
     private void validateConfiguration() {
+        if (properties.getMaxDepth() <= 0
+                || properties.getMaxNodes() <= 0
+                || properties.getMaxEdges() <= 0) {
+            throw new IllegalStateException("Tree query configured limits must be positive");
+        }
         if (properties.getMaxDepth() > TreeQueryProperties.HARD_MAX_DEPTH
                 || properties.getMaxNodes() > TreeQueryProperties.HARD_MAX_NODES
                 || properties.getMaxEdges() > TreeQueryProperties.HARD_MAX_EDGES) {
