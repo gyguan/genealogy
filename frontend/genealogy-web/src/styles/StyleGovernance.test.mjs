@@ -5,7 +5,9 @@ import path from 'node:path';
 
 const ROOT = path.resolve('src');
 const mainSource = readFileSync(path.join(ROOT, 'main.tsx'), 'utf8');
+const appSource = readFileSync(path.join(ROOT, 'app/App.tsx'), 'utf8');
 const styleEntry = readFileSync(path.join(ROOT, 'styles/index.css'), 'utf8');
+const featureLoader = readFileSync(path.join(ROOT, 'shared/styles/loadFeatureStyles.ts'), 'utf8');
 const architecture = readFileSync(path.join(ROOT, 'styles/CSS_ARCHITECTURE.md'), 'utf8');
 
 test('application entry only imports Ant reset and the governed style entry', () => {
@@ -13,11 +15,26 @@ test('application entry only imports Ant reset and the governed style entry', ()
   assert.deepEqual(cssImports, ['antd/dist/reset.css', './styles/index.css']);
 });
 
+test('feature styles are absent from the global bundle and loaded by active module', () => {
+  for (const file of [
+    'mvp1-wizard.css',
+    'person-edit-page.css',
+    'lineage-tree.css',
+    'member-permission-page.css',
+    'audit-trace.css'
+  ]) {
+    assert.equal(styleEntry.includes(file), false, `${file} must not be globally loaded`);
+    assert.equal(featureLoader.includes(file), true, `${file} must be owned by the feature style loader`);
+  }
+  assert.match(appSource, /loadFeatureStyles\(active\)/);
+  assert.match(featureLoader, /const loaded = new Set/);
+});
+
 test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(styleEntry, /shell\/base/);
-  assert.match(styleEntry, /feature compatibility/);
+  assert.match(styleEntry, /shared patterns/);
   assert.match(styleEntry, /migration bridge/);
-  assert.ok(styleEntry.lastIndexOf("@import '../antd-bridge.css';") > styleEntry.lastIndexOf("@import '../member-permission-page.css';"));
+  assert.equal(styleEntry.trim().endsWith("@import '../antd-bridge.css';"), true);
   for (const file of [
     'guidance-cleanup.css',
     'module-title-dedup.css',
