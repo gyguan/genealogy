@@ -1,0 +1,60 @@
+name: Issue 934 client decouple
+
+on:
+  push:
+    branches:
+      - agent/issue-934-antd-governance
+    paths:
+      - .github/workflows/issue-934-client-decouple.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-934-antd-governance
+      - name: Decouple API client from React UI
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('frontend/genealogy-web/src/shared/api/client.ts')
+          text = path.read_text()
+          text = text.replace("import { confirmAction } from '../ui/Feedback';\n\n", '')
+          old = """        const ok = await new Promise<boolean>(resolve => {
+                  confirmAction({
+                    title: '确认创建疑似重复人物？',
+                    content: '系统发现可能重复的人物档案。请确认信息无误后继续创建。',
+                    okText: '仍要创建',
+                    cancelText: '返回检查',
+                    okButtonProps: { danger: true },
+                    onOk: () => resolve(true),
+                    onCancel: () => resolve(false)
+                  });
+                });"""
+          new = """        const ok = await new Promise<boolean>(resolve => {
+                  window.dispatchEvent(new CustomEvent('genealogy:confirm-action', {
+                    detail: {
+                      title: '确认创建疑似重复人物？',
+                      content: '系统发现可能重复的人物档案。请确认信息无误后继续创建。',
+                      okText: '仍要创建',
+                      cancelText: '返回检查',
+                      okButtonProps: { danger: true },
+                      resolve
+                    }
+                  }));
+                });"""
+          if old not in text:
+              raise SystemExit('expected Ant Design confirmation block not found')
+          path.write_text(text.replace(old, new))
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/issue-934-client-decouple.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/genealogy-web/src/shared/api/client.ts .github/workflows/issue-934-client-decouple.yml
+          git commit -m 'Decouple API confirmation from UI layer'
+          git push
