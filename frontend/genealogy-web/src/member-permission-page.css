@@ -10,8 +10,8 @@
 }
 
 .member-role-tip {
-  border-color: #91caff;
-  background: #f5faff;
+  border-color: var(--genealogy-color-primary-bg-hover);
+  background: var(--genealogy-color-primary-bg);
 }
 
 .role-card-grid {
@@ -21,13 +21,13 @@
 }
 
 .role-card-grid .ant-card {
-  border-color: #f0f0f0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  border-color: var(--genealogy-color-border-secondary);
+  box-shadow: var(--genealogy-box-shadow-tertiary);
 }
 
 .role-card-grid .ant-card-head {
   min-height: 42px;
-  border-bottom-color: #f0f0f0;
+  border-bottom-color: var(--genealogy-color-border-secondary);
 }
 
 .role-card-grid .ant-card-body {
