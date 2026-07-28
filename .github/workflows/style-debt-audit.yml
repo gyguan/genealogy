@@ -1,0 +1,104 @@
+name: Style Debt Audit
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "frontend/genealogy-web/src/**/*.css"
+      - "frontend/genealogy-web/scripts/audit-style-debt.mjs"
+      - "frontend/genealogy-web/scripts/verify-style-debt-exceptions.mjs"
+      - "frontend/genealogy-web/style-debt-*.json"
+      - ".github/workflows/style-debt-audit.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "frontend/genealogy-web/src/**/*.css"
+      - "frontend/genealogy-web/scripts/audit-style-debt.mjs"
+      - "frontend/genealogy-web/scripts/verify-style-debt-exceptions.mjs"
+      - "frontend/genealogy-web/style-debt-*.json"
+      - ".github/workflows/style-debt-audit.yml"
+  schedule:
+    - cron: "17 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  style-debt:
+    name: Full CSS Debt Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve comparison refs
+        id: refs
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" && -n "$PR_BASE_SHA" ]]; then
+            BASE_SHA="$PR_BASE_SHA"
+            HEAD_SHA="$PR_HEAD_SHA"
+          elif [[ "$EVENT_NAME" == "push" && -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            BASE_SHA="$BEFORE_SHA"
+            HEAD_SHA="$CURRENT_SHA"
+          else
+            BASE_SHA="$(node -p "require('./frontend/genealogy-web/style-debt-baseline.json').referenceCommit")"
+            HEAD_SHA="$CURRENT_SHA"
+          fi
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+          echo "base_sha=$BASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify governed exceptions
+        working-directory: frontend/genealogy-web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/verify-style-debt-exceptions.mjs
+
+      - name: Audit full CSS debt
+        working-directory: frontend/genealogy-web
+        env:
+          STYLE_AUDIT_BASE_SHA: ${{ steps.refs.outputs.base_sha }}
+          STYLE_AUDIT_HEAD_SHA: ${{ steps.refs.outputs.head_sha }}
+        run: node scripts/audit-style-debt.mjs --json=style-debt-audit.json --markdown=style-debt-audit.md
+
+      - name: Publish audit summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f frontend/genealogy-web/style-debt-audit.md ]]; then
+            cat frontend/genealogy-web/style-debt-audit.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload style debt trend
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: style-debt-audit-${{ github.run_number }}
+          path: |
+            frontend/genealogy-web/style-debt-audit.json
+            frontend/genealogy-web/style-debt-audit.md
+          if-no-files-found: error
+          retention-days: 30

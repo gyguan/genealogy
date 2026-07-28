@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-28",
+  "policy": "Exceptions are exact entries, temporary, and require an open tracking issue.",
+  "exceptions": []
+}
