@@ -1,6 +1,10 @@
 package com.genealogy.tree.application;
 
+import com.genealogy.branch.repository.BranchRepository;
+import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.tree.dto.TreeGraphResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,8 +21,27 @@ import java.util.List;
 public class TreeApplicationService {
     private final TreeGraphEngine engine;
 
+    @Autowired
     public TreeApplicationService(TreeGraphEngine engine) {
         this.engine = engine;
+    }
+
+    /**
+     * Compatibility constructor retained for the established algorithm regression tests.
+     * Production dependency injection always uses the {@link Autowired} constructor.
+     */
+    TreeApplicationService(
+            PersonRepository personRepository,
+            RelationshipRepository relationshipRepository,
+            BranchRepository branchRepository,
+            TreeVisibilityApplicationService visibilityApplicationService
+    ) {
+        this(new TreeGraphEngine(
+                personRepository,
+                relationshipRepository,
+                branchRepository,
+                visibilityApplicationService
+        ));
     }
 
     @Transactional(readOnly = true)
