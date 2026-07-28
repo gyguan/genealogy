@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Trivy repository scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
