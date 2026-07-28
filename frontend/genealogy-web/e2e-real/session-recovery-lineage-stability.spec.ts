@@ -119,9 +119,16 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect(page.getByRole('button', { name: '登录系统', exact: true })).toBeVisible();
 
     await loginThroughUi(page, 'EDITOR');
+    const invalidDepth = await page.request.get(
+      `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=99&maxNodes=3&maxEdges=2`
+    );
+    expect(invalidDepth.ok()).toBeFalsy();
+    expect(invalidDepth.status()).toBe(400);
+    expect(JSON.stringify(await responsePayload(invalidDepth))).toMatch(/maxDepth|less than or equal to 20/i);
+
     const startedAt = Date.now();
     const boundedTree = await okData(await page.request.get(
-      `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=99&maxNodes=3&maxEdges=2`
+      `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=20&maxNodes=3&maxEdges=2`
     ));
     const elapsedMs = Date.now() - startedAt;
     expect(Array.isArray(boundedTree.nodes)).toBeTruthy();
@@ -130,7 +137,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     expect(boundedTree.edges.length).toBeLessThanOrEqual(2);
     expect(elapsedMs).toBeLessThan(5000);
 
-    const missingTree = await page.request.get('/api/v1/tree/person/9223372036854775000?direction=descendants&dataView=official&maxDepth=99&maxNodes=3&maxEdges=2');
+    const missingTree = await page.request.get('/api/v1/tree/person/9223372036854775000?direction=descendants&dataView=official&maxDepth=20&maxNodes=3&maxEdges=2');
     expect(missingTree.ok()).toBeFalsy();
     expect([403, 404]).toContain(missingTree.status());
     const missingPayload = await responsePayload(missingTree);
@@ -145,6 +152,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
         taskId,
         concurrentStatuses: submitResponses.map(response => response.status()),
         protectedStatusAfterCookieClear: protectedResponse.status(),
+        invalidDepthStatus: invalidDepth.status(),
         treeNodeCount: boundedTree.nodes.length,
         treeEdgeCount: boundedTree.edges.length,
         treeElapsedMs: elapsedMs,
