@@ -119,10 +119,13 @@ export function EditingWorkspacePrototypePage({ onNavigate }: Props) {
     onNavigate?.(view);
   }
   async function bulkCheck() {
-    if (!selectedTasks.length || bulkLoading) return;
+    if (!currentClanId || !selectedTasks.length || bulkLoading) return;
     setBulkLoading(true);
     const results = await Promise.allSettled(selectedTasks.map(task => apiClient.post(`/workbench/tasks/${encodeURIComponent(task.key)}/actions`, {
-      action: 'mark_checked', comment: '批量标记已核查', expectedUpdatedAt: task.updatedAt || null
+      clanId: Number(currentClanId),
+      action: 'mark_checked',
+      comment: '批量标记已核查',
+      expectedUpdatedAt: task.updatedAt || null
     })));
     const failed = results.filter(result => result.status === 'rejected').length;
     feedback[failed ? 'warning' : 'success'](`批量核查完成：成功 ${results.length - failed} 项，失败 ${failed} 项`);
