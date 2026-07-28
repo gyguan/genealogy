@@ -12,7 +12,7 @@ import { SourceDraftDeleteAction } from '../features/sources/SourceDraftDeleteAc
 import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocusBridge';
 import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
-import { EditingWorkspacePrototypePage } from '../features/workbench/EditingWorkspacePrototypePage';
+import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
 
 export type ModuleKey = 'home' | 'mvp1Wizard' | 'personArchive' | 'treeProduct' | 'sourceLibrary' | 'culture' | 'imports' | 'editingWorkspace' | 'reviewCenter' | 'memberManage' | 'auditTrace';
 export type ModuleNavigate = (key: ModuleKey) => void;
@@ -33,7 +33,7 @@ export const moduleRegistry: readonly ModuleDefinition[] = [
   { key: 'sourceLibrary', label: '来源资料库', description: '族谱原文、地方志、照片和口述记录', render: () => <><SourceLibraryFocusBridge /><SourceDraftDeleteAction /><SourceLibraryQueryPage /></> },
   { key: 'culture', label: '宗族文化', description: '姓氏源流、堂号、家训、迁徙和祠堂', render: () => <CultureProductPage /> },
   { key: 'imports', label: '数据导入', description: '族谱数据批量导入、结果和异常处理', render: () => <ImportPage /> },
-  { key: 'editingWorkspace', label: '修谱工作台', description: '修谱问题任务池、风险检查和审核前处理', render: navigate => <EditingWorkspacePrototypePage onNavigate={navigate} /> },
+  { key: 'editingWorkspace', label: '修谱工作台', description: '修谱问题任务池、风险检查和审核前处理', render: navigate => <EditingWorkspacePage onNavigate={navigate} /> },
   { key: 'reviewCenter', label: '审核中心', description: '入谱变更、资料复核和批量审核', render: () => <ReviewCenterPage /> },
   { key: 'memberManage', label: '成员与权限', description: '宗族成员、角色和权限配置', render: () => <MemberManagementPage /> },
   { key: 'auditTrace', label: '审计追踪', description: '操作日志、审核流和字段Diff完整追踪', render: () => <LogPage /> }
