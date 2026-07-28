@@ -126,6 +126,32 @@
   margin: 0 0 0 auto !important;
 }
 
+.lineage-inspector-drawer .ant-drawer-body {
+  position: relative;
+}
+
+.lineage-inspector-drawer .lineage-drawer-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.lineage-inspector-drawer .lineage-inspector-actions {
+  order: -1;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  justify-content: flex-end;
+  margin: -8px -8px 16px;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.lineage-inspector-drawer .lineage-inspector-actions + .ant-divider,
+.lineage-inspector-drawer .lineage-drawer-content > .ant-divider:last-of-type {
+  display: none;
+}
+
 @media (max-width: 1280px) {
   .lineage-tab-query-form {
     grid-template-columns: 1fr;
@@ -197,5 +223,14 @@
     width: 100%;
     min-width: 0;
     margin-left: 0 !important;
+  }
+
+  .lineage-inspector-drawer .lineage-inspector-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lineage-inspector-drawer .lineage-inspector-actions .ant-btn {
+    min-height: 40px;
   }
 }

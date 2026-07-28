@@ -18,8 +18,7 @@ import { CultureProductPage } from '../features/culture/CultureProductPage';
 import { ImportPage } from '../features/imports/ImportPage';
 import { StatisticsHomePage } from '../features/home/StatisticsHomePage';
 import { LogPage } from '../features/logs/LogPage';
-import { MemberInvitationAction } from '../features/members/MemberInvitationAction';
-import { MemberPage } from '../features/members/MemberPage';
+import { MemberManagementPage } from '../features/members/MemberManagementPage';
 import { Mvp1WizardPage } from '../features/mvp1/Mvp1WizardPage';
 import { PersonArchiveSearchPage } from '../features/persons/PersonArchiveSearchPage';
 import { PersonDetailPage } from '../features/persons/PersonDetailPage';
@@ -166,7 +165,7 @@ function AppShell() {
       case 'editingWorkspace': return <EditingWorkspacePrototypePage onNavigate={enterPage} />;
       case 'imports': return <ImportPage />;
       case 'reviewCenter': return <ReviewCenterPage />;
-      case 'memberManage': return <MemberPage />;
+      case 'memberManage': return <MemberManagementPage />;
       case 'auditTrace': return <LogPage />;
       case 'culture': return <CultureProductPage />;
       default: return null;
@@ -176,7 +175,6 @@ function AppShell() {
   function renderModuleActions() {
     if (personDetailRoute || personEditRoute) return null;
     if (active === 'treeProduct') return <BookletActions />;
-    if (active === 'memberManage') return <MemberInvitationAction />;
     return null;
   }
 
