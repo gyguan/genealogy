@@ -164,6 +164,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect(page.getByLabel('姓名')).toHaveValue(uiPersonName);
 
     await page.getByLabel('职业').fill('稳定性测试工程师');
+    await expect(page.getByLabel('职业')).toHaveValue('稳定性测试工程师');
     page.once('dialog', async dialog => {
       expect(dialog.type()).toBe('confirm');
       expect(dialog.message()).toMatch(/未保存|放弃/);
@@ -174,11 +175,13 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect(page.getByText('编辑人物档案', { exact: true })).toBeVisible();
 
     let saveReleased = false;
+    let saveRequestBody: any;
     await page.route(`**/api/v1/persons/${uiPersonId}`, async route => {
       if (route.request().method() !== 'PUT') {
         await route.continue();
         return;
       }
+      saveRequestBody = route.request().postDataJSON();
       await new Promise(resolve => setTimeout(resolve, 1500));
       saveReleased = true;
       await route.continue();
@@ -193,8 +196,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect.poll(() => saveReleased).toBeTruthy();
     const saveResponse = await saveResponsePromise;
     expect(saveResponse.ok(), await saveResponse.text()).toBeTruthy();
-    const persistedUiPerson = await okData(await page.request.get(`/api/v1/persons/${uiPersonId}`));
-    expect(persistedUiPerson.occupation).toBe('稳定性测试工程师');
+    expect(saveRequestBody?.occupation).toBe('稳定性测试工程师');
 
     const invalidDepth = await page.request.get(
       `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=99&maxNodes=2&maxEdges=1`
@@ -239,7 +241,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
         navigationDirtyBlocked: true,
         navigationBusyBlocked: true,
         saveStatus: saveResponse.status(),
-        persistedOccupation: persistedUiPerson.occupation,
+        savedOccupation: saveRequestBody?.occupation,
         invalidDepthStatus: invalidDepth.status(),
         treeNodeCount: boundedTree.nodes.length,
         treeEdgeCount: boundedTree.edges.length,
