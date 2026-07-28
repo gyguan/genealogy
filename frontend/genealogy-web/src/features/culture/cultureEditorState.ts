@@ -1,3 +1,5 @@
+import { confirmAction } from '../../shared/ui/Feedback';
+
 export type CultureEditorTarget = 'item' | 'migration' | 'site';
 export type CultureEditorMode = 'create' | 'edit';
 
@@ -10,6 +12,8 @@ export type CultureEditorState = {
 const editorKeys = ['cultureEditor', 'cultureEditorMode', 'cultureEditorId'];
 const editorTargets: CultureEditorTarget[] = ['item', 'migration', 'site'];
 const editorModes: CultureEditorMode[] = ['create', 'edit'];
+let confirmedLeave = false;
+let confirmationOpen = false;
 
 function valid<T extends string>(values: readonly T[], value: string | null): T | undefined {
   return values.includes(value as T) ? value as T : undefined;
@@ -61,6 +65,37 @@ export function isSameCultureEditor(left: CultureEditorState | null, right: Cult
     && left?.id === right?.id;
 }
 
+/**
+ * Keeps the existing synchronous navigation-guard contract while delegating
+ * the user decision to the shared Ant Design modal. After confirmation the
+ * editor parameters are removed and the normal popstate handlers complete the
+ * state transition exactly once.
+ */
 export function confirmCultureEditorLeave(dirty: boolean) {
-  return !dirty || window.confirm('当前修改尚未保存，确认离开编辑页面？');
+  if (!dirty) return true;
+  if (confirmedLeave) {
+    confirmedLeave = false;
+    return true;
+  }
+  if (confirmationOpen) return false;
+
+  confirmationOpen = true;
+  confirmAction({
+    title: '确认离开编辑页面？',
+    content: '当前修改尚未保存，离开后本次修改将不会保留。',
+    okText: '离开页面',
+    cancelText: '继续编辑',
+    okButtonProps: { danger: true },
+    onOk: () => {
+      confirmationOpen = false;
+      confirmedLeave = true;
+      const href = buildCultureEditorLocation(window.location.href, null);
+      window.history.replaceState(window.history.state, '', href);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    },
+    onCancel: () => {
+      confirmationOpen = false;
+    }
+  });
+  return false;
 }
