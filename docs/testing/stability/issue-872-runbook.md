@@ -3,25 +3,43 @@
 ## 目标与指标
 
 - PR 准出：持续负载 3 分钟，完成后端重启和数据库破坏性恢复；
-- 长稳档：通过 Actions 手工选择 24、48 或 72 小时；
+- 24/48/72 小时长稳：在生产等价自托管 Runner 上执行同一脚本；
 - 后端重启 RTO：默认不超过 60 秒；
 - PostgreSQL 恢复 RTO：默认不超过 120 秒；
 - 隔离测试数据 RPO：默认不超过 10 秒；
 - 恢复前后正式人物、关系和 Flyway 历史数量必须一致；
 - RSS、线程、文件句柄和数据库连接的后段中位数不得超过前段约定比例。
 
-## 非开发人员操作步骤
+## PR 准出演练
 
-1. 打开 GitHub Actions，选择 **Stability and Disaster Recovery**；
-2. 点击 **Run workflow**；
-3. 输入 `duration_hours`，推荐按发布阶段依次执行 24、48、72；
-4. 输入后端和数据库 RTO、RPO 目标；
-5. 启动演练并观察作业状态；
-6. 作业结束后下载 `stability-dr-evidence-*`；
-7. 打开 `stability-dr-report.md` 查看结论；
-8. 检查 `summary.json`、`resource-growth.json`、备份 SHA-256、恢复前后计数文件；
-9. 若任一步骤失败，不得删除 Artifact，应将报告和日志附到整改 Issue；
-10. 仅在所有阈值通过、数据计数一致且备份实际恢复成功后给出发布通过结论。
+1. 打开 PR 的 **Capacity Load Test**；
+2. 确认 `PostgreSQL backup restore and stability drill` Job 已执行；
+3. 作业结束后下载 `stability-dr-evidence-*`；
+4. 打开 `stability-dr-report.md` 查看结论；
+5. 检查 `summary.json`、`resource-growth.json`、备份 SHA-256、恢复前后计数文件；
+6. 若任一步骤失败，不得删除 Artifact，应将报告和日志附到整改 Issue；
+7. 仅在所有阈值通过、数据计数一致且备份实际恢复成功后给出发布通过结论。
+
+## 24/48/72 小时长稳执行
+
+在安装了 Java 17、PostgreSQL 客户端、jq，并可访问隔离 PostgreSQL 的自托管 Runner 上执行：
+
+```bash
+export BASE_URL=http://127.0.0.1:8080
+export SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/genealogy
+export SPRING_DATASOURCE_USERNAME=genealogy
+export SPRING_DATASOURCE_PASSWORD=genealogy
+export SPRING_PROFILES_ACTIVE=functional-test
+export PGHOST=127.0.0.1 PGPORT=5432 PGDATABASE=genealogy PGUSER=genealogy PGPASSWORD=genealogy
+export STABILITY_RESULTS_DIR=stability-results
+export STABILITY_DURATION_SECONDS=$((24 * 3600)) # 48h/72h 按需调整
+export BACKEND_RTO_MS=60000 DATABASE_RTO_MS=120000 RPO_SECONDS=10
+
+mvn -f backend/genealogy-backend/pom.xml -B -DskipTests package
+bash scripts/stability/issue-872-drill.sh
+```
+
+建议按 24 小时、48 小时、72 小时逐级执行，每次保留完整 Artifact。GitHub-hosted Runner 受单任务时长限制，不用于宣称已完成 24/48/72 小时演练。
 
 ## 自动故障演练
 
