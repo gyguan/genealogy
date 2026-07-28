@@ -14,23 +14,32 @@ function normalize(value) {
 function bridgeRules() {
   const rules = [];
   let media = '';
+  let pendingSelector = '';
   for (const rawLine of bridge.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith('/*')) continue;
     if (line.startsWith('@media') && line.endsWith('{')) {
       media = normalize(line.slice(0, -1));
+      pendingSelector = '';
       continue;
     }
     if (line === '}') {
       media = '';
+      pendingSelector = '';
       continue;
     }
     const open = line.indexOf('{');
     const close = line.lastIndexOf('}');
-    if (open < 0 || close < open) continue;
+    if (open < 0) {
+      pendingSelector = normalize(`${pendingSelector} ${line}`);
+      continue;
+    }
+    if (close < open) continue;
+    const selector = normalize(`${pendingSelector} ${line.slice(0, open)}`);
+    pendingSelector = '';
     rules.push({
       media,
-      selector: normalize(line.slice(0, open)),
+      selector,
       declarations: line.slice(open + 1, close).split(';').map(normalize).filter(Boolean)
     });
   }
