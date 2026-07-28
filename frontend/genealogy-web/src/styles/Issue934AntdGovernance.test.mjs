@@ -12,7 +12,10 @@ async function filesUnder(relativeDirectory, extensions) {
   for (const entry of entries) {
     const relativePath = `${relativeDirectory}/${entry.name}`;
     if (entry.isDirectory()) files.push(...await filesUnder(relativePath, extensions));
-    else if (extensions.some(extension => entry.name.endsWith(extension))) files.push(relativePath);
+    else if (
+      extensions.some(extension => entry.name.endsWith(extension)) &&
+      !/\.(?:test|spec)\.[^.]+$/.test(entry.name)
+    ) files.push(relativePath);
   }
   return files;
 }
