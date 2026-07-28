@@ -1,0 +1,159 @@
+name: Security Penetration
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - "frontend/genealogy-web/**"
+      - "security/**"
+      - "docs/testing/security/**"
+      - "tasks/issue-871*.md"
+      - ".github/workflows/security-penetration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-penetration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-security:
+    name: Secret, dependency and filesystem scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trivy repository scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+      - name: Archive static evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-static-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: trivy-results.sarif
+          if-no-files-found: error
+          retention-days: 14
+
+  dynamic-security:
+    name: PostgreSQL authenticated penetration suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      SECURITY_RESULTS_DIR: security-results
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+      - name: Start backend
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../security-backend.log 2>&1 &
+          echo $! > ../../security-backend.pid
+          for attempt in $(seq 1 90); do
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          tail -n 300 ../../security-backend.log || true
+          exit 1
+      - name: Run authenticated penetration tests
+        shell: bash
+        run: bash security/issue-871/api-penetration.sh
+      - name: Check backend logs for sensitive leakage
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p security-results
+          if grep -Eiq 'password=[^*[:space:]]|accessToken[=:][[:space:]]*[A-Za-z0-9._-]{20,}|BEGIN (RSA|OPENSSH|PRIVATE) KEY' security-backend.log; then
+            echo 'Sensitive material detected in backend logs' | tee security-results/log-leakage.txt
+            exit 1
+          fi
+          echo 'No plaintext password, access token or private key detected' > security-results/log-leakage.txt
+      - name: Generate final security report
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, os
+          out = pathlib.Path('security-results')
+          summary = json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':0,'failed':1,'critical':0,'high':1}
+          report = f'''# Issue #871 安全渗透测试报告
+
+          - Commit: `{os.getenv('GITHUB_SHA','unknown')}`
+          - Environment: GitHub-hosted Ubuntu Runner, PostgreSQL 16, Java 17, isolated test identities
+          - Dynamic tests passed: {summary.get('passed',0)}
+          - Dynamic tests failed: {summary.get('failed',0)}
+          - Critical findings: {summary.get('critical',0)}
+          - High findings: {summary.get('high',0)}
+
+          ## Attack surface
+
+          Authentication, malformed token, logout replay, CSRF, horizontal cross-clan authorization, SQL injection diagnostics, path traversal, account enumeration, malformed JSON disclosure, security headers and executable upload probes.
+
+          ## Release rule
+
+          Critical and high unresolved findings must be zero. Static Trivy CRITICAL/HIGH findings and any failed dynamic control block merge. This automated gate complements, but does not falsely claim to replace, an independent third-party manual penetration engagement against a production-equivalent deployment.
+          '''
+          (out/'security-report.md').write_text('\n'.join(line.strip() for line in report.splitlines())+'\n')
+          PY
+          cat security-results/security-report.md
+      - name: Upload dynamic security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dynamic-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            security-results
+            security-backend.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop backend
+        if: always()
+        run: |
+          if [[ -f security-backend.pid ]]; then kill "$(cat security-backend.pid)" 2>/dev/null || true; fi
