@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve('src');
@@ -38,23 +38,11 @@ test('application entry only imports Ant reset and the governed style entry', ()
 });
 
 test('feature styles are absent from the global bundle and loaded by active module', () => {
-  for (const file of [
-    'mvp1-wizard.css',
-    'person-edit-page.css',
-    'lineage-tree.css',
-    'member-permission-page.css',
-    'audit-trace.css'
-  ]) {
+  for (const file of ['mvp1-wizard.css', 'person-edit-page.css', 'lineage-tree.css', 'member-permission-page.css', 'audit-trace.css']) {
     assert.equal(styleEntry.includes(file), false, `${file} must not be globally loaded`);
     assert.equal(featureLoader.includes(file), true, `${file} must be owned by the feature style loader`);
   }
-  for (const file of [
-    'mvp1-wizard-layout.css',
-    'mvp1-wizard-generation.css',
-    'person-archive-layout.css',
-    'lineage-workbench.css',
-    'lineage-result-toolbar.css'
-  ]) {
+  for (const file of ['mvp1-wizard-layout.css', 'mvp1-wizard-generation.css', 'person-archive-layout.css', 'lineage-workbench.css', 'lineage-result-toolbar.css']) {
     assert.equal(featureLoader.includes(file), true, `${file} must have explicit feature ownership`);
   }
   assert.match(appSource, /loadFeatureStyles\(active\)/);
@@ -67,26 +55,20 @@ test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(styleEntry, /migration bridge/);
   const imports = [...styleEntry.matchAll(/@import\s+['"]([^'"]+)['"];?/g)].map(match => match[1]);
   assert.equal(imports.at(-1), '../antd-bridge.css');
-  for (const file of [
-    'shared-guidance.css',
-    'shared-module-title.css',
-    'shared-page-content.css',
-    'shared-query-actions.css',
-    'antd-bridge.css'
-  ]) {
+  for (const file of ['shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css', 'antd-bridge.css']) {
     assert.match(architecture, new RegExp(file.replace('.', '\\.')));
   }
   assert.match(architecture, /退出条件/);
   assert.match(architecture, /只减不增/);
 });
 
-test('patch-named styles have been retired from the source tree', () => {
+test('patch-named styles have been retired from tracked source files', () => {
+  const trackedCss = execFileSync('git', ['ls-files', 'src/**/*.css', 'src/*.css'], {
+    cwd: PROJECT_ROOT,
+    encoding: 'utf8'
+  }).split(/\r?\n/).filter(Boolean);
   const forbidden = /(cleanup|tweaks|overrides?|unification|refinement)\.css$/i;
-  const files = readdirSync(ROOT, { recursive: true, withFileTypes: true })
-    .filter(entry => entry.isFile() && entry.name.endsWith('.css'))
-    .map(entry => entry.name)
-    .filter(name => forbidden.test(name));
-  assert.deepEqual(files, []);
+  assert.deepEqual(trackedCss.filter(file => forbidden.test(path.basename(file))), []);
   assert.doesNotMatch(styleEntry, /cleanup|tweaks|override|unification|refinement/i);
   assert.doesNotMatch(featureLoader, /cleanup|tweaks|override|unification|refinement/i);
   assert.match(architecture, /已全部退出本次治理范围/);
