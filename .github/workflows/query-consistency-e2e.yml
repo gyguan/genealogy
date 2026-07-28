@@ -105,7 +105,7 @@ jobs:
           java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../query-consistency-backend.log 2>&1 &
           echo $! > ../../query-consistency-backend.pid
           for attempt in $(seq 1 60); do
-            if (echo > /dev/tcp/127.0.0.1:8080) >/dev/null 2>&1; then
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then
               exit 0
             fi
             sleep 2
