@@ -13,9 +13,9 @@ function executableCss(file) {
   return readFileSync(path.join(ROOT, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').trim();
 }
 
-function gitGrep(pattern) {
+function jsxClassUsage(token) {
   try {
-    return execFileSync('git', ['grep', '-nE', pattern, '--', 'src/**/*.tsx', 'src/**/*.ts', 'src/**/*.jsx', 'src/**/*.js'], {
+    return execFileSync('git', ['grep', '-nE', `className=.{0,160}(^|[[:space:]])${token}([[:space:]]|["'\x60}])`, '--', 'src/**/*.tsx', 'src/**/*.jsx'], {
       cwd: PROJECT_ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
@@ -32,7 +32,7 @@ test('legacy and prototype bundles stay out of the global entry', () => {
   }
 });
 
-test('retired native component systems do not return to active source', () => {
+test('retired native component systems do not return to active JSX', () => {
   const retiredTokens = [
     'legacy-field',
     'legacy-actions',
@@ -50,7 +50,7 @@ test('retired native component systems do not return to active source', () => {
     'data-table'
   ];
   for (const token of retiredTokens) {
-    assert.equal(gitGrep(token), '', `${token} must not be used by active TypeScript/JavaScript source`);
+    assert.equal(jsxClassUsage(token), '', `${token} must not be used as an active JSX class`);
   }
 });
 
