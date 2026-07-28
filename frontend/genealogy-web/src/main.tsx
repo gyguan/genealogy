@@ -32,61 +32,6 @@ import './page-content-cleanup.css';
 import './query-button-unification.css';
 import './lineage-result-toolbar-refinement.css';
 
-function installSourceRouteHistorySync() {
-  const historyWithMarker = window.history as History & { __sourceRouteSyncInstalled?: boolean };
-  if (historyWithMarker.__sourceRouteSyncInstalled) return;
-  historyWithMarker.__sourceRouteSyncInstalled = true;
-
-  const notifyWhenSourceRouteChanges = (previousSourceId: string | null) => {
-    const nextSourceId = new URL(window.location.href).searchParams.get('sourceId');
-    if (previousSourceId !== nextSourceId) {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
-    }
-  };
-
-  const originalPushState = window.history.pushState.bind(window.history);
-  window.history.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
-    const previousSourceId = new URL(window.location.href).searchParams.get('sourceId');
-    originalPushState(data, unused, url);
-    notifyWhenSourceRouteChanges(previousSourceId);
-  };
-
-  const originalReplaceState = window.history.replaceState.bind(window.history);
-  window.history.replaceState = (data: unknown, unused: string, url?: string | URL | null) => {
-    const previousSourceId = new URL(window.location.href).searchParams.get('sourceId');
-    originalReplaceState(data, unused, url);
-    notifyWhenSourceRouteChanges(previousSourceId);
-  };
-}
-
-function installReviewCenterDefaultPageSize() {
-  const historyWithMarker = window.history as History & { __reviewDefaultPageSizeInstalled?: boolean };
-  if (historyWithMarker.__reviewDefaultPageSizeInstalled) return;
-  historyWithMarker.__reviewDefaultPageSizeInstalled = true;
-
-  const originalPushState = window.history.pushState.bind(window.history);
-  const originalReplaceState = window.history.replaceState.bind(window.history);
-  const normalizeReviewPageSize = () => {
-    const url = new URL(window.location.href);
-    if (url.searchParams.get('view') !== 'reviewCenter' || url.searchParams.has('pageSize')) return;
-    url.searchParams.set('pageSize', '10');
-    originalReplaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  };
-
-  window.history.pushState = (data: unknown, unused: string, url?: string | URL | null) => {
-    originalPushState(data, unused, url);
-    normalizeReviewPageSize();
-  };
-  window.history.replaceState = (data: unknown, unused: string, url?: string | URL | null) => {
-    originalReplaceState(data, unused, url);
-    normalizeReviewPageSize();
-  };
-  normalizeReviewPageSize();
-}
-
-installSourceRouteHistorySync();
-installReviewCenterDefaultPageSize();
-
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   React.createElement(
     RuntimeErrorBoundary,
