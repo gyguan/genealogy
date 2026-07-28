@@ -291,31 +291,9 @@ jobs:
       - name: Execute stability and disaster recovery drill
         shell: bash
         run: bash scripts/stability/issue-872-drill.sh
-      - name: Generate drill report
+      - name: Print drill report
         if: always()
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import json, os, pathlib
-          out=pathlib.Path('stability-results'); out.mkdir(exist_ok=True)
-          summary=json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':False}
-          growth=json.loads((out/'resource-growth.json').read_text()) if (out/'resource-growth.json').exists() else {'metrics':{},'failed':['not-generated']}
-          report=f'''# Issue #872 稳定性与灾备演练报告
-
-- Commit: `{os.getenv("GITHUB_SHA","unknown")}`
-- Environment: GitHub-hosted Ubuntu Runner, Java 17, PostgreSQL 16, single backend JVM
-- Continuous workload: {summary.get("durationSeconds",0)} seconds / {summary.get("iterations",0)} iterations
-- Backend restart RTO: {summary.get("backendRtoMs","N/A")} ms
-- Database restore RTO: {summary.get("databaseRtoMs","N/A")} ms
-- RPO: {summary.get("rpoSeconds","N/A")} seconds
-- Resource growth failures: {growth.get("failed",[])}
-- Critical/High unresolved findings: {summary.get("critical",1)}/{summary.get("high",1)}
-
-The drill executed backend restart, real pg_dump backup, destructive schema loss, pg_restore, application restart and pre/post data consistency checks. The repository script accepts arbitrary STABILITY_DURATION_SECONDS on a self-hosted runner for 24/48/72-hour exercises.
-'''
-          (out/'stability-dr-report.md').write_text(report)
-          PY
-          cat stability-results/stability-dr-report.md
+        run: cat stability-results/stability-dr-report.md || true
       - name: Upload stability evidence
         if: always()
         uses: actions/upload-artifact@v4
