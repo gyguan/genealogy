@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const queryMultiSelectSource = readFileSync(new URL('./QueryMultiSelect.tsx', import.meta.url), 'utf8');
 const unifiedStyles = readFileSync(new URL('./query-multi-select.css', import.meta.url), 'utf8');
-const globalStyleEntry = readFileSync(new URL('../../lineage-result-toolbar-refinement.css', import.meta.url), 'utf8');
+const globalStyleEntry = readFileSync(new URL('../../lineage-result-toolbar.css', import.meta.url), 'utf8');
 const importWrapper = readFileSync(new URL('../../features/imports/ImportFilterMultiSelect.tsx', import.meta.url), 'utf8');
 const trackingWrapper = readFileSync(new URL('../../features/logs/TrackingMultiSelect.tsx', import.meta.url), 'utf8');
 const cultureWrapper = readFileSync(new URL('../../features/culture/CultureMultiSelect.tsx', import.meta.url), 'utf8');
