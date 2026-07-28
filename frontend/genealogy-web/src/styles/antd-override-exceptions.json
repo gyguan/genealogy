@@ -12,22 +12,6 @@
   ],
   "exceptions": [
     {
-      "scope": "legacy authentication presentation",
-      "selectorPrefixes": [".auth-hero-card", ".auth-card", ".auth-inline-title"],
-      "reason": "legacy authentication selectors still reach Ant Design component internals",
-      "exitCondition": "unused legacy auth selectors are deleted and retained styles move to the auth feature",
-      "trackingIssue": 896,
-      "reviewedAt": "2026-07-28"
-    },
-    {
-      "scope": "member role presentation",
-      "selectorPrefixes": [".role-card-grid"],
-      "reason": "member role cards still use bridge-owned Ant Card layout rules",
-      "exitCondition": "member role styles move to the members feature",
-      "trackingIssue": 896,
-      "reviewedAt": "2026-07-28"
-    },
-    {
       "scope": "archive and lineage query grids",
       "selectorPrefixes": [".archive-search-form", ".lineage-search-grid"],
       "reason": "desktop query grids still depend on bridge layout compatibility",
