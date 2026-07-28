@@ -14,7 +14,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: security-penetration-${{ github.event.pull_request.number || github.ref }}
@@ -34,22 +33,37 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          format: sarif
-          output: trivy-results.sarif
+          format: json
+          output: trivy-results.json
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: "1"
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy-results.sarif
+          exit-code: "0"
+      - name: Enforce fixable critical and high findings
+        shell: bash
+        run: |
+          test -s trivy-results.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('trivy-results.json'))
+          findings=[]
+          for result in data.get('Results') or []:
+              target=result.get('Target','unknown')
+              for v in result.get('Vulnerabilities') or []:
+                  if v.get('Severity') in {'CRITICAL','HIGH'} and v.get('FixedVersion'):
+                      findings.append({'target':target,'id':v.get('VulnerabilityID'),'package':v.get('PkgName'),'installed':v.get('InstalledVersion'),'fixed':v.get('FixedVersion'),'severity':v.get('Severity')})
+          json.dump({'fixableCriticalHigh':findings,'count':len(findings)},open('trivy-gate.json','w'),indent=2)
+          print(f'fixable CRITICAL/HIGH findings: {len(findings)}')
+          for item in findings: print(item)
+          if findings: raise SystemExit(1)
+          PY
       - name: Archive static evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-static-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: trivy-results.sarif
+          path: |
+            trivy-results.json
+            trivy-gate.json
           if-no-files-found: error
           retention-days: 14
 
@@ -121,26 +135,10 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, pathlib, os
-          out = pathlib.Path('security-results')
-          summary = json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':0,'failed':1,'critical':0,'high':1}
-          report = f'''# Issue #871 安全渗透测试报告
-
-          - Commit: `{os.getenv('GITHUB_SHA','unknown')}`
-          - Environment: GitHub-hosted Ubuntu Runner, PostgreSQL 16, Java 17, isolated test identities
-          - Dynamic tests passed: {summary.get('passed',0)}
-          - Dynamic tests failed: {summary.get('failed',0)}
-          - Critical findings: {summary.get('critical',0)}
-          - High findings: {summary.get('high',0)}
-
-          ## Attack surface
-
-          Authentication, malformed token, logout replay, CSRF, horizontal cross-clan authorization, SQL injection diagnostics, path traversal, account enumeration, malformed JSON disclosure, security headers and executable upload probes.
-
-          ## Release rule
-
-          Critical and high unresolved findings must be zero. Static Trivy CRITICAL/HIGH findings and any failed dynamic control block merge. This automated gate complements, but does not falsely claim to replace, an independent third-party manual penetration engagement against a production-equivalent deployment.
-          '''
-          (out/'security-report.md').write_text('\n'.join(line.strip() for line in report.splitlines())+'\n')
+          out=pathlib.Path('security-results')
+          summary=json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':0,'failed':1,'critical':0,'high':1}
+          text=f'''# Issue #871 安全渗透测试报告\n\n- Commit: `{os.getenv("GITHUB_SHA","unknown")}`\n- Dynamic tests passed: {summary.get("passed",0)}\n- Dynamic tests failed: {summary.get("failed",0)}\n- Critical findings: {summary.get("critical",0)}\n- High findings: {summary.get("high",0)}\n\n覆盖认证、Token、CSRF、注销重放、跨宗族越权、SQL 注入诊断、路径遍历、账号枚举、错误泄漏、安全响应头和危险上传。\n'''
+          (out/'security-report.md').write_text(text)
           PY
           cat security-results/security-report.md
       - name: Upload dynamic security evidence
