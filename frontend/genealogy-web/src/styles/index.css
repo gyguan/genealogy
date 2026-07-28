@@ -14,6 +14,7 @@
 @import './design-system.css';
 
 /* shell/base */
+@import './shell/app-shell.css';
 @import '../auth-commercial.css';
 @import '../styles.css';
 @import '../experience.css';
@@ -23,6 +24,7 @@
 @import '../runtime-error.css';
 
 /* shared UI responsibilities */
+@import './shared/shared-antd-contracts.css';
 @import '../shared-guidance.css';
 @import '../shared-module-title.css';
 @import '../shared-page-content.css';
