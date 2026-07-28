@@ -11,6 +11,7 @@ import type { EntityNavigationGuardState } from '../shared/navigation/entityNavi
 import { subscribeNavigation } from '../shared/navigation/navigationEvents';
 import { navigateToView } from '../shared/navigation/urlState';
 import type { AppViewKey } from '../shared/navigation/urlState';
+import { loadFeatureStyles } from '../shared/styles/loadFeatureStyles';
 import { feedback } from '../shared/ui/OperationFeedback';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CurrentUserMenu } from '../features/auth/CurrentUserMenu';
@@ -34,7 +35,6 @@ import { SourceLibraryFocusBridge } from '../features/sources/SourceLibraryFocus
 import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPage';
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
 import { EditingWorkspacePrototypePage } from '../features/workbench/EditingWorkspacePrototypePage';
-
 import { InlineFeedback } from '../shared/ui/Feedback';
 
 const { Sider, Content, Header } = Layout;
@@ -147,6 +147,12 @@ function AppShell() {
     }
     syncRouteFromUrl();
   }), []);
+
+  useEffect(() => {
+    void loadFeatureStyles(active).catch(error => {
+      console.error(`Failed to load feature styles for ${active}`, error);
+    });
+  }, [active]);
 
   function enterPage(key: ViewKey) {
     if (!allowNavigation()) return;

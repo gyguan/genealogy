@@ -1,0 +1,28 @@
+/*
+ * Global style entry.
+ *
+ * This file contains only application shell, shared UI contracts and the
+ * temporary Ant Design migration bridge. Feature CSS is loaded by
+ * shared/styles/loadFeatureStyles.ts when its module becomes active.
+ *
+ * Compatibility files require an owner and exit condition in
+ * CSS_ARCHITECTURE.md.
+ */
+
+/* shell/base */
+@import '../auth-commercial.css';
+@import '../styles.css';
+@import '../experience.css';
+@import '../compact-ui.css';
+@import '../tabbed-module.css';
+@import '../entity-page-header.css';
+@import '../runtime-error.css';
+
+/* shared patterns retained while components are migrated */
+@import '../guidance-cleanup.css';
+@import '../module-title-dedup.css';
+@import '../page-content-cleanup.css';
+@import '../query-button-unification.css';
+
+/* migration bridge: must remain last and may only shrink */
+@import '../antd-bridge.css';
