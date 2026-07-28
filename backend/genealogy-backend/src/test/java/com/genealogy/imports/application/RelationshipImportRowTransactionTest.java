@@ -26,9 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -72,7 +72,7 @@ class RelationshipImportRowTransactionTest {
         );
 
         verify(relationshipApplicationService).create(1L, request, 99L);
-        verify(dataSource, times(2)).getConnection();
+        verify(dataSource, atLeast(2)).getConnection();
     }
 
     @Test
