@@ -18,7 +18,17 @@ export async function payload(response: APIResponse) {
 }
 
 export function dataOf(value: any) {
-  return value?.data ?? value;
+  const data = value?.data ?? value;
+  if (data
+      && !Array.isArray(data)
+      && typeof data === 'object'
+      && data.source
+      && typeof data.source === 'object'
+      && Array.isArray(data.bindingSummaries)
+      && Array.isArray(data.attachmentSummaries)) {
+    return { ...data.source, ...data };
+  }
+  return data;
 }
 
 export function recordsOf(value: any): any[] {
