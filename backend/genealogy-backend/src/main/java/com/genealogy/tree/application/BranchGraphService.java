@@ -6,19 +6,19 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class BranchGraphService {
-    private final TreeApplicationService legacyEngine;
+    private final TreeGraphEngine graphEngine;
     private final TreeGraphAssembler assembler;
 
     public BranchGraphService(
-            TreeApplicationService legacyEngine,
+            TreeGraphEngine graphEngine,
             TreeGraphAssembler assembler
     ) {
-        this.legacyEngine = legacyEngine;
+        this.graphEngine = graphEngine;
         this.assembler = assembler;
     }
 
     public GraphSnapshot build(BranchLineageQuery query) {
-        TreeGraphResponse response = legacyEngine.branchLineage(
+        TreeGraphResponse response = graphEngine.branchLineage(
                 query.clanId(),
                 query.branchId(),
                 query.includeSubBranches(),

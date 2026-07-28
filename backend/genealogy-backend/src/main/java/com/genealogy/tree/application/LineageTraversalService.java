@@ -6,19 +6,19 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class LineageTraversalService {
-    private final TreeApplicationService legacyEngine;
+    private final TreeGraphEngine graphEngine;
     private final TreeGraphAssembler assembler;
 
     public LineageTraversalService(
-            TreeApplicationService legacyEngine,
+            TreeGraphEngine graphEngine,
             TreeGraphAssembler assembler
     ) {
-        this.legacyEngine = legacyEngine;
+        this.graphEngine = graphEngine;
         this.assembler = assembler;
     }
 
     public GraphSnapshot traverse(PersonLineageQuery query) {
-        TreeGraphResponse response = legacyEngine.personLineage(
+        TreeGraphResponse response = graphEngine.personLineage(
                 query.personId(),
                 query.direction().apiValue(),
                 query.relationScopes(),
