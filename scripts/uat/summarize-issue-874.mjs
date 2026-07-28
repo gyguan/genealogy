@@ -3,23 +3,28 @@ import fs from 'node:fs/promises';
 const token = process.env.GITHUB_TOKEN;
 const repository = process.env.GITHUB_REPOSITORY || 'gyguan/genealogy';
 const [owner, repo] = repository.split('/');
+const parentIssue = 874;
 const roleIssues = [902, 903, 904, 905, 906];
 const dataIssue = 910;
 const signoffIssue = 907;
 const allIssues = [...roleIssues, dataIssue, signoffIssue];
+const statusMarker = '<!-- issue-874-uat-live-status -->';
 
 if (!token) throw new Error('GITHUB_TOKEN is required');
 
-async function api(path) {
+async function api(path, options = {}) {
   const response = await fetch(`https://api.github.com${path}`, {
+    ...options,
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28'
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+      ...options.headers
     }
   });
   if (!response.ok) throw new Error(`${response.status} ${path}: ${await response.text()}`);
-  return response.json();
+  return response.status === 204 ? null : response.json();
 }
 
 function hasValue(text, label) {
@@ -64,7 +69,7 @@ const closureReady = signoffAllowed && signoff?.evidenceComplete;
 const summary = {
   generatedAt: new Date().toISOString(),
   repository,
-  parentIssue: 874,
+  parentIssue,
   completedRoles,
   totalRoles: roleIssues.length,
   p0CompletionRate: completedRoles / roleIssues.length,
@@ -82,5 +87,22 @@ const rows = results.map((item) => `| #${item.number} | ${item.state} | ${item.c
 const report = `# Issue #874 UAT 自动汇总\n\n- 生成时间：${summary.generatedAt}\n- 角色完成：${completedRoles}/${roleIssues.length}\n- P0 完成率：${(summary.p0CompletionRate * 100).toFixed(0)}%\n- 脱敏数据就绪：${summary.dataReady ? '是' : '否'}\n- 允许业务签署：${summary.signoffAllowed ? '是' : '否'}\n- 签署完整：${summary.signoffComplete ? '是' : '否'}\n- 可关闭 #874：${summary.closureReady ? '是' : '否'}\n\n| Issue | 状态 | 评论数 | 证据 | 缺失字段 |\n|---|---|---:|---|---|\n${rows}\n\n> 本报告只校验证据完整性，不验证执行人业务身份，也不能替代真实业务负责人签署。\n`;
 await fs.writeFile('uat-results/issue-874-summary.md', report);
 console.log(report);
+
+if (process.env.UPDATE_PARENT_COMMENT === 'true') {
+  const parentComments = await api(`/repos/${owner}/${repo}/issues/${parentIssue}/comments?per_page=100`);
+  const existing = parentComments.find((comment) => (comment.body || '').includes(statusMarker));
+  const body = `${statusMarker}\n## UAT 实时状态（自动更新）\n\n${report.replace('# Issue #874 UAT 自动汇总\n\n', '')}\n\n- 最近工作流：${process.env.GITHUB_SERVER_URL || 'https://github.com'}/${repository}/actions/runs/${process.env.GITHUB_RUN_ID || ''}`;
+  if (existing) {
+    await api(`/repos/${owner}/${repo}/issues/comments/${existing.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body })
+    });
+  } else {
+    await api(`/repos/${owner}/${repo}/issues/${parentIssue}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body })
+    });
+  }
+}
 
 if (process.env.STRICT_CLOSURE === 'true' && !closureReady) process.exitCode = 2;

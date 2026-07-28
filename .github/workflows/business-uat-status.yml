@@ -27,7 +27,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
 
 env:
   TARGET_ISSUES: "874,902,903,904,905,906,907,909,910"
@@ -50,6 +50,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STRICT_CLOSURE: ${{ github.event_name == 'workflow_dispatch' && inputs.strict_closure || false }}
+          UPDATE_PARENT_COMMENT: ${{ github.event_name != 'pull_request' }}
         run: node scripts/uat/summarize-issue-874.mjs
       - name: Upload UAT status evidence
         uses: actions/upload-artifact@v4
