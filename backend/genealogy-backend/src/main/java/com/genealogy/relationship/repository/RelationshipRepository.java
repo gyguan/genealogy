@@ -34,16 +34,7 @@ public interface RelationshipRepository extends JpaRepository<RelationshipEntity
               and r.dataStatus in :statuses
               and r.deletedAt is null
               and (:lineageOnly = false or r.relationType = 'parent_child' or r.isLineageRelation = true)
-              and (case
-                    when r.relationCategory is null or trim(r.relationCategory) = '' then
-                      case
-                        when lower(r.relationType) = 'spouse' then 'marriage'
-                        when lower(r.relationType) in ('adoptive','successor','out_adoption','in_adoption','dual_successor','heir_son') then 'ritual'
-                        when lower(r.relationType) = 'no_descendant' then 'status'
-                        else 'blood'
-                      end
-                    else lower(trim(r.relationCategory))
-                   end) in :categories
+              and r.relationCategory in :categories
             order by r.fromPersonId, r.toPersonId, r.id
             """)
     List<RelationshipEntity> findTreeOutgoing(
@@ -62,16 +53,7 @@ public interface RelationshipRepository extends JpaRepository<RelationshipEntity
               and r.dataStatus in :statuses
               and r.deletedAt is null
               and (:lineageOnly = false or r.relationType = 'parent_child' or r.isLineageRelation = true)
-              and (case
-                    when r.relationCategory is null or trim(r.relationCategory) = '' then
-                      case
-                        when lower(r.relationType) = 'spouse' then 'marriage'
-                        when lower(r.relationType) in ('adoptive','successor','out_adoption','in_adoption','dual_successor','heir_son') then 'ritual'
-                        when lower(r.relationType) = 'no_descendant' then 'status'
-                        else 'blood'
-                      end
-                    else lower(trim(r.relationCategory))
-                   end) in :categories
+              and r.relationCategory in :categories
             order by r.toPersonId, r.fromPersonId, r.id
             """)
     List<RelationshipEntity> findTreeIncoming(
@@ -90,16 +72,7 @@ public interface RelationshipRepository extends JpaRepository<RelationshipEntity
               and r.toPersonId in :personIds
               and r.dataStatus in :statuses
               and r.deletedAt is null
-              and (case
-                    when r.relationCategory is null or trim(r.relationCategory) = '' then
-                      case
-                        when lower(r.relationType) = 'spouse' then 'marriage'
-                        when lower(r.relationType) in ('adoptive','successor','out_adoption','in_adoption','dual_successor','heir_son') then 'ritual'
-                        when lower(r.relationType) = 'no_descendant' then 'status'
-                        else 'blood'
-                      end
-                    else lower(trim(r.relationCategory))
-                   end) in :categories
+              and r.relationCategory in :categories
             order by r.fromPersonId, r.toPersonId, r.id
             """)
     List<RelationshipEntity> findTreeWithinPeople(
