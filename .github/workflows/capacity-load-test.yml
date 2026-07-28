@@ -8,6 +8,9 @@ on:
       - "scripts/performance/**"
       - "docs/testing/performance/**"
       - "tasks/issue-870*.md"
+      - "scripts/stability/**"
+      - "docs/testing/stability/**"
+      - "tasks/issue-872*.md"
       - ".github/workflows/capacity-load-test.yml"
   workflow_dispatch:
     inputs:
@@ -234,3 +237,68 @@ jobs:
         if: always()
         run: |
           if [[ -f capacity-backend.pid ]]; then kill "$(cat capacity-backend.pid)" 2>/dev/null || true; fi
+
+  stability-dr:
+    name: PostgreSQL backup restore and stability drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: genealogy
+      PGUSER: genealogy
+      PGPASSWORD: genealogy
+      STABILITY_RESULTS_DIR: stability-results
+      STABILITY_DURATION_SECONDS: "180"
+      BACKEND_RTO_MS: "60000"
+      DATABASE_RTO_MS: "120000"
+      RPO_SECONDS: "10"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Install PostgreSQL client and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+      - name: Execute stability and disaster recovery drill
+        shell: bash
+        run: bash scripts/stability/issue-872-drill.sh
+      - name: Print drill report
+        if: always()
+        run: cat stability-results/stability-dr-report.md || true
+      - name: Upload stability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-dr-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: stability-results
+          if-no-files-found: error
+          retention-days: 14

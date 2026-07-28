@@ -1,3 +1,4 @@
+// Shared sustained-load profile for #870 capacity and #872 stability/recovery gates.
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
