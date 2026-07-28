@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { DownOutlined } from '@ant-design/icons';
 import { Avatar, Button, Descriptions, Dropdown, List, Modal, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { ConfirmAction, EmptyState, PageFeedback } from '../../shared/ui/Feedback';
 import { feedback } from '../../shared/ui/OperationFeedback';
+import './current-user-menu.css';
 
- type CurrentUser = {
+type CurrentUser = {
   id?: number;
   username?: string;
   phone?: string;
@@ -42,6 +44,7 @@ function dateTime(value?: string) {
 
 export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [sessions, setSessions] = useState<AuthSession[]>([]);
@@ -94,6 +97,7 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
   ];
 
   function onUserMenuClick(info: { key: string }) {
+    setMenuOpen(false);
     if (info.key === 'profile') {
       setProfileOpen(true);
       return;
@@ -132,14 +136,29 @@ export function CurrentUserMenu({ onLogout }: { onLogout: () => void }) {
     }
   }
 
+  const userLabel = currentUser?.displayName || currentUser?.username || '个人中心';
+
   return (
     <>
-      <Dropdown menu={{ items: userMenuItems, onClick: onUserMenuClick }} trigger={['click']} placement="bottomRight" overlayClassName="github-user-dropdown">
-        <button className="github-user-trigger" type="button">
+      <Dropdown
+        menu={{ items: userMenuItems, onClick: onUserMenuClick }}
+        trigger={['click']}
+        placement="bottomRight"
+        overlayClassName="github-user-dropdown"
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+      >
+        <Button
+          type="text"
+          className="github-user-trigger"
+          aria-label={`打开当前用户菜单：${userLabel}`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+        >
           <Avatar size={32} src={currentUser?.avatarUrl}>{avatarText(currentUser)}</Avatar>
-          <span className="github-user-name">{currentUser?.displayName || currentUser?.username || '个人中心'}</span>
-          <em>⌄</em>
-        </button>
+          <span className="github-user-name">{userLabel}</span>
+          <DownOutlined className="github-user-caret" aria-hidden="true" />
+        </Button>
       </Dropdown>
       <Modal
         title="个人中心"
