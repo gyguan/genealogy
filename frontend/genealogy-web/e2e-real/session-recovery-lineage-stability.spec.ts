@@ -193,7 +193,8 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect.poll(() => saveReleased).toBeTruthy();
     const saveResponse = await saveResponsePromise;
     expect(saveResponse.ok(), await saveResponse.text()).toBeTruthy();
-    await expect(page.getByText('人物资料及关键事件已保存', { exact: true }).first()).toBeVisible();
+    const persistedUiPerson = await okData(await page.request.get(`/api/v1/persons/${uiPersonId}`));
+    expect(persistedUiPerson.occupation).toBe('稳定性测试工程师');
 
     const invalidDepth = await page.request.get(
       `/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=99&maxNodes=2&maxEdges=1`
@@ -238,6 +239,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
         navigationDirtyBlocked: true,
         navigationBusyBlocked: true,
         saveStatus: saveResponse.status(),
+        persistedOccupation: persistedUiPerson.occupation,
         invalidDepthStatus: invalidDepth.status(),
         treeNodeCount: boundedTree.nodes.length,
         treeEdgeCount: boundedTree.edges.length,
