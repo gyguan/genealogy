@@ -1,0 +1,178 @@
+name: Security Penetration
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - "frontend/genealogy-web/**"
+      - "security/**"
+      - "docs/testing/security/**"
+      - "tasks/issue-871*.md"
+      - ".github/workflows/security-penetration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-penetration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-security:
+    name: Secret and dependency baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/genealogy-web/package.json
+      - name: Repository secret and private key scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p security-static-results
+          git grep -nEI 'BEGIN (RSA|OPENSSH|EC|DSA|PRIVATE) KEY|gh[pousr]_[A-Za-z0-9_]{30,}|sk-[A-Za-z0-9]{32,}|AKIA[0-9A-Z]{16}' -- ':!docs/**' ':!security/**' > security-static-results/secret-findings.txt || true
+          if [[ -s security-static-results/secret-findings.txt ]]; then cat security-static-results/secret-findings.txt; exit 1; fi
+          echo 'No private key or high-confidence token pattern found' > security-static-results/secret-findings.txt
+      - name: npm production dependency audit
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set +e
+          npm audit --omit=dev --audit-level=high --json > ../../security-static-results/npm-audit.json
+          rc=$?
+          set -e
+          node - <<'JS'
+          const fs=require('fs');
+          const p='../../security-static-results/npm-audit.json';
+          const data=JSON.parse(fs.readFileSync(p,'utf8'));
+          const v=data.metadata?.vulnerabilities || {};
+          const count=(v.high||0)+(v.critical||0);
+          fs.writeFileSync('../../security-static-results/npm-gate.json',JSON.stringify({high:v.high||0,critical:v.critical||0,count},null,2));
+          if(count>0) process.exit(1);
+          JS
+          test "$rc" -eq 0
+      - name: Maven dependency inventory
+        working-directory: backend/genealogy-backend
+        run: mvn -B dependency:tree -DoutputFile=../../security-static-results/maven-dependency-tree.txt
+      - name: Generate static report
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,pathlib,os
+          out=pathlib.Path('security-static-results'); out.mkdir(exist_ok=True)
+          gate=json.loads((out/'npm-gate.json').read_text()) if (out/'npm-gate.json').exists() else {'high':'unknown','critical':'unknown'}
+          (out/'static-security-report.md').write_text(f'''# Issue #871 静态安全基线\n\n- Commit: `{os.getenv("GITHUB_SHA","unknown")}`\n- npm high: {gate.get("high")}\n- npm critical: {gate.get("critical")}\n- Private key/token pattern findings: 0 required\n- Maven dependency inventory: archived\n''')
+          PY
+      - name: Archive static evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-static-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: security-static-results
+          if-no-files-found: error
+          retention-days: 14
+
+  dynamic-security:
+    name: PostgreSQL authenticated penetration suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: genealogy
+          POSTGRES_USER: genealogy
+          POSTGRES_PASSWORD: genealogy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U genealogy -d genealogy"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      BASE_URL: http://127.0.0.1:8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/genealogy
+      SPRING_DATASOURCE_USERNAME: genealogy
+      SPRING_DATASOURCE_PASSWORD: genealogy
+      SPRING_PROFILES_ACTIVE: functional-test
+      SECURITY_RESULTS_DIR: security-results
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+      - name: Start backend
+        working-directory: backend/genealogy-backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar > ../../security-backend.log 2>&1 &
+          echo $! > ../../security-backend.pid
+          for attempt in $(seq 1 90); do
+            if (echo > /dev/tcp/127.0.0.1/8080) >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          tail -n 300 ../../security-backend.log || true
+          exit 1
+      - name: Run authenticated penetration tests
+        shell: bash
+        run: bash security/issue-871/api-penetration.sh
+      - name: Check backend logs for sensitive leakage
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p security-results
+          if grep -Eiq 'password=[^*[:space:]]|accessToken[=:][[:space:]]*[A-Za-z0-9._-]{20,}|BEGIN (RSA|OPENSSH|PRIVATE) KEY' security-backend.log; then
+            echo 'Sensitive material detected in backend logs' | tee security-results/log-leakage.txt
+            exit 1
+          fi
+          echo 'No plaintext password, access token or private key detected' > security-results/log-leakage.txt
+      - name: Generate final security report
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, os
+          out=pathlib.Path('security-results')
+          summary=json.loads((out/'summary.json').read_text()) if (out/'summary.json').exists() else {'passed':0,'failed':1,'critical':0,'high':1}
+          text=f'''# Issue #871 安全渗透测试报告\n\n- Commit: `{os.getenv("GITHUB_SHA","unknown")}`\n- Dynamic tests passed: {summary.get("passed",0)}\n- Dynamic tests failed: {summary.get("failed",0)}\n- Critical findings: {summary.get("critical",0)}\n- High findings: {summary.get("high",0)}\n\n覆盖认证、Token、CSRF、注销重放、跨宗族越权、SQL 注入诊断、路径遍历、账号枚举、错误泄漏、安全响应头和危险上传。\n'''
+          (out/'security-report.md').write_text(text)
+          PY
+          cat security-results/security-report.md
+      - name: Upload dynamic security evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-dynamic-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            security-results
+            security-backend.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop backend
+        if: always()
+        run: |
+          if [[ -f security-backend.pid ]]; then kill "$(cat security-backend.pid)" 2>/dev/null || true; fi
