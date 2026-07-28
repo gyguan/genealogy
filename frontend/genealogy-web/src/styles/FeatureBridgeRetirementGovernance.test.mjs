@@ -53,9 +53,10 @@ test('relationship type selection uses Ant Design semantics', () => {
   assert.doesNotMatch(relationshipStep, /<button/);
 });
 
-test('issue 896 exception domains are retired', () => {
+test('all historical bridge exception domains are retired', () => {
   const serialized = JSON.stringify(registry);
   assert.doesNotMatch(serialized, /legacy authentication presentation/);
   assert.doesNotMatch(serialized, /member role presentation/);
-  assert.deepEqual(registry.exceptions.map(item => item.trackingIssue), [897]);
+  assert.deepEqual(registry.exceptions, []);
+  assert.deepEqual(registry.importantSnapshot, []);
 });
