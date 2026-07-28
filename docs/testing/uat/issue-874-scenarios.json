@@ -1,0 +1,60 @@
+{
+  "issue": 874,
+  "version": 1,
+  "roles": [
+    {
+      "id": "clan-admin",
+      "name": "宗族管理员",
+      "tasks": [
+        {"id":"ADM-P0-01","priority":"P0","name":"新建宗族、三层支派和初始人物","expected":"组织结构保存成功，返回后现场保持，审计可追溯","targetMinutes":20},
+        {"id":"ADM-P0-02","priority":"P0","name":"配置编辑、审核和查看角色权限","expected":"各角色仅能访问授权宗族与操作","targetMinutes":15}
+      ]
+    },
+    {
+      "id": "editor",
+      "name": "资料编辑人员",
+      "tasks": [
+        {"id":"EDT-P0-01","priority":"P0","name":"维护人物、关系、来源和附件","expected":"数据可保存、查询和追溯，附件可预览下载","targetMinutes":30},
+        {"id":"EDT-P0-02","priority":"P0","name":"提交审核并处理驳回意见后重提","expected":"状态、意见和版本链准确，未保存离开有保护","targetMinutes":20}
+      ]
+    },
+    {
+      "id": "reviewer",
+      "name": "审核人员",
+      "tasks": [
+        {"id":"REV-P0-01","priority":"P0","name":"审核、驳回并批准重提内容","expected":"审核对象、差异、意见和最终状态准确","targetMinutes":20}
+      ]
+    },
+    {
+      "id": "viewer",
+      "name": "普通查看人员",
+      "tasks": [
+        {"id":"VIW-P0-01","priority":"P0","name":"查询筛选分页并返回原现场","expected":"查询条件、页码和排序现场保持","targetMinutes":15},
+        {"id":"VIW-P0-02","priority":"P0","name":"查看世系图谱、缩放和截断提示","expected":"正式世系准确，深度截断提示清晰","targetMinutes":15},
+        {"id":"VIW-P0-03","priority":"P0","name":"导出全宗族和支派谱册","expected":"中文、人物、世系、来源和分页排版可交付","targetMinutes":20}
+      ]
+    },
+    {
+      "id": "business-owner",
+      "name": "业务负责人或验收责任人",
+      "tasks": [
+        {"id":"OWN-P0-01","priority":"P0","name":"复核问题清单、谱册样本和发布结论","expected":"完成通过、有条件通过或不通过签署","targetMinutes":15}
+      ]
+    }
+  ],
+  "requiredEvidence": [
+    "participant-register.csv",
+    "task-results.csv",
+    "feedback-register.csv",
+    "booklet-sample.pdf",
+    "screenshots-or-video",
+    "uat-signoff.md"
+  ],
+  "releaseRules": {
+    "p0CompletionRate": 1,
+    "blockerCount": 0,
+    "dataErrorCount": 0,
+    "permissionErrorCount": 0,
+    "requiresBusinessSignature": true
+  }
+}
