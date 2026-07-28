@@ -1,6 +1,7 @@
 name: Stability and Disaster Recovery
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: ["main"]
     paths:
@@ -9,24 +10,6 @@ on:
       - "docs/testing/stability/**"
       - "tasks/issue-872*.md"
       - ".github/workflows/stability-drill.yml"
-  workflow_dispatch:
-    inputs:
-      duration_minutes:
-        description: "Hosted-runner workload duration in minutes (max 300); use the script on a self-hosted runner for 24/48/72h"
-        required: true
-        default: "180"
-      backend_rto_seconds:
-        description: "Backend restart RTO target"
-        required: true
-        default: "60"
-      database_rto_seconds:
-        description: "Database restore RTO target"
-        required: true
-        default: "120"
-      rpo_seconds:
-        description: "Backup/restore RPO target"
-        required: true
-        default: "10"
 
 permissions:
   contents: read
@@ -39,7 +22,7 @@ jobs:
   stability-dr:
     name: PostgreSQL backup restore and stability drill
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:16-alpine
@@ -66,6 +49,10 @@ jobs:
       PGUSER: genealogy
       PGPASSWORD: genealogy
       STABILITY_RESULTS_DIR: stability-results
+      STABILITY_DURATION_SECONDS: "180"
+      BACKEND_RTO_MS: "60000"
+      DATABASE_RTO_MS: "120000"
+      RPO_SECONDS: "10"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,25 +69,6 @@ jobs:
       - name: Build backend
         working-directory: backend/genealogy-backend
         run: mvn -B -DskipTests package
-      - name: Resolve drill targets
-        shell: bash
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            minutes="${{ inputs.duration_minutes }}"
-            if (( minutes < 1 || minutes > 300 )); then
-              echo "duration_minutes must be between 1 and 300 on GitHub-hosted runners" >&2
-              exit 1
-            fi
-            echo "STABILITY_DURATION_SECONDS=$(( minutes * 60 ))" >> "$GITHUB_ENV"
-            echo "BACKEND_RTO_MS=$(( ${{ inputs.backend_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
-            echo "DATABASE_RTO_MS=$(( ${{ inputs.database_rto_seconds }} * 1000 ))" >> "$GITHUB_ENV"
-            echo "RPO_SECONDS=${{ inputs.rpo_seconds }}" >> "$GITHUB_ENV"
-          else
-            echo "STABILITY_DURATION_SECONDS=180" >> "$GITHUB_ENV"
-            echo "BACKEND_RTO_MS=60000" >> "$GITHUB_ENV"
-            echo "DATABASE_RTO_MS=120000" >> "$GITHUB_ENV"
-            echo "RPO_SECONDS=10" >> "$GITHUB_ENV"
-          fi
       - name: Execute stability and disaster recovery drill
         shell: bash
         run: bash scripts/stability/issue-872-drill.sh
@@ -136,7 +104,7 @@ jobs:
 
 ## Conclusion boundary
 
-The PR gate is a short repeatable CI drill. GitHub-hosted workflow dispatch supports up to 300 minutes; the same repository script accepts arbitrary `STABILITY_DURATION_SECONDS` on a self-hosted runner for 24/48/72-hour exercises. Production infrastructure, network, storage replication and regional failover still require an equivalent environment-specific exercise.
+The PR gate is a short repeatable CI drill. The repository script accepts arbitrary `STABILITY_DURATION_SECONDS` on a self-hosted runner for 24/48/72-hour exercises. Production infrastructure, network, storage replication and regional failover still require an equivalent environment-specific exercise.
 '''
           (out/'stability-dr-report.md').write_text(report)
           PY
