@@ -1,9 +1,3 @@
-:root {
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172033;
-  background: #f4f7fb;
-}
-
 * { box-sizing: border-box; }
 body { margin: 0; }
 
@@ -13,11 +7,11 @@ body { margin: 0; }
 .brand strong { font-size: 24px; letter-spacing: .2px; }
 .brand span { color: #98a2b3; font-size: 13px; }
 .sidebar nav { display: grid; gap: 8px; }
-.sidebar button { border: 0; text-align: left; border-radius: 14px; padding: 12px 14px; color: #d0d5dd; background: transparent; cursor: pointer; width: 100%; }
-.sidebar button span { display: block; font-weight: 700; }
-.sidebar button small { display: block; color: #98a2b3; margin-top: 4px; line-height: 1.4; }
-.sidebar button.active, .sidebar button:hover { background: #2e90fa; color: #fff; }
-.sidebar button.active small, .sidebar button:hover small { color: #e0f2fe; }
+.sidebar nav > button { border: 0; text-align: left; border-radius: 14px; padding: 12px 14px; color: #d0d5dd; background: transparent; cursor: pointer; width: 100%; }
+.sidebar nav > button > span { display: block; font-weight: 700; }
+.sidebar nav > button > small { display: block; color: #98a2b3; margin-top: 4px; line-height: 1.4; }
+.sidebar nav > button.active, .sidebar nav > button:hover { background: #2e90fa; color: #fff; }
+.sidebar nav > button.active > small, .sidebar nav > button:hover > small { color: #e0f2fe; }
 
 .content { flex: 1; padding: 28px; min-width: 0; }
 .topbar { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 18px; }
@@ -29,16 +23,18 @@ body { margin: 0; }
 .panel__header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .panel h2 { margin: 0 0 6px; font-size: 20px; }
 .panel p { margin: 0; color: #667085; }
-.field { display: block; margin: 12px 0; }
-.field span { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-.field small { display: block; color: #667085; margin-top: 4px; }
-.field input, .field select, .proto-search-card input { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; font: inherit; }
-.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
-.actions button, .prototype-actions button, .proto-tool-buttons button, .proto-mini-nav button, .proto-quick-actions button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font: inherit; font-weight: 700; cursor: pointer; }
-.actions button.secondary, .prototype-actions button.secondary, .proto-tool-buttons button.secondary, .proto-quick-actions button.secondary { background: #eff8ff; color: #175cd3; }
-.actions button.danger, .prototype-actions button.danger, .proto-tool-buttons button.danger, .proto-quick-actions button.danger { background: #d92d20; }
-.actions button.ghost, .prototype-actions button.ghost, .proto-tool-buttons button.ghost, .proto-quick-actions button.ghost { background: #f2f4f7; color: #344054; }
-.actions button:disabled, .prototype-actions button:disabled, .proto-tool-buttons button:disabled, .proto-mini-nav button:disabled, .proto-quick-actions button:disabled { cursor: not-allowed; opacity: .58; }
+:where(.legacy-field, .field:not(.ant-form-item)) { display: block; margin: 12px 0; }
+:where(.legacy-field, .field:not(.ant-form-item)) > span { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+:where(.legacy-field, .field:not(.ant-form-item)) > small { display: block; color: #667085; margin-top: 4px; }
+:where(.legacy-field, .field:not(.ant-form-item)) > input,
+:where(.legacy-field, .field:not(.ant-form-item)) > select,
+.proto-search-card > input { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 10px 12px; background: #fff; font: inherit; }
+:where(.legacy-actions, .actions:not(.ant-space)) { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+:where(.legacy-actions, .actions:not(.ant-space)) > button, .prototype-actions > button, .proto-tool-buttons > button, .proto-mini-nav > button, .proto-quick-actions > button { border: 0; border-radius: 10px; background: #1570ef; color: #fff; padding: 10px 14px; font: inherit; font-weight: 700; cursor: pointer; }
+:where(.legacy-actions, .actions:not(.ant-space)) > button.secondary, .prototype-actions > button.secondary, .proto-tool-buttons > button.secondary, .proto-quick-actions > button.secondary { background: #eff8ff; color: #175cd3; }
+:where(.legacy-actions, .actions:not(.ant-space)) > button.danger, .prototype-actions > button.danger, .proto-tool-buttons > button.danger, .proto-quick-actions > button.danger { background: #d92d20; }
+:where(.legacy-actions, .actions:not(.ant-space)) > button.ghost, .prototype-actions > button.ghost, .proto-tool-buttons > button.ghost, .proto-quick-actions > button.ghost { background: #f2f4f7; color: #344054; }
+:where(.legacy-actions, .actions:not(.ant-space)) > button:disabled, .prototype-actions > button:disabled, .proto-tool-buttons > button:disabled, .proto-mini-nav > button:disabled, .proto-quick-actions > button:disabled { cursor: not-allowed; opacity: .58; }
 .empty { border: 1px dashed #d0d5dd; background: #f9fafb; color: #667085; padding: 16px; border-radius: 14px; }
 .result-notice { margin-top: 16px; display: grid; gap: 5px; padding: 13px 14px; border: 1px solid #abefc6; background: #ecfdf3; color: #027a48; border-radius: 14px; }
 .result-notice strong { font-size: 14px; }
@@ -46,11 +42,11 @@ body { margin: 0; }
 .result-notice--error { border-color: #fecaca; background: #fef2f2; color: #b42318; }
 .table-wrap { overflow: auto; border: 1px solid #e4e7ec; border-radius: 14px; }
 .table-hint { padding: 10px 12px; background: #f9fafb; color: #667085; font-size: 12px; border-bottom: 1px solid #e4e7ec; }
-.data-table { width: 100%; border-collapse: collapse; background: #fff; }
-.data-table th { text-align: left; font-size: 12px; color: #667085; background: #f9fafb; padding: 11px 12px; border-bottom: 1px solid #e4e7ec; white-space: nowrap; }
-.data-table td { padding: 12px; border-bottom: 1px solid #f2f4f7; color: #344054; font-size: 14px; white-space: nowrap; }
-.data-table tr.clickable { cursor: pointer; }
-.data-table tr.clickable:hover { background: #eff8ff; }
+table.data-table { width: 100%; border-collapse: collapse; background: #fff; }
+table.data-table > thead > tr > th { text-align: left; font-size: 12px; color: #667085; background: #f9fafb; padding: 11px 12px; border-bottom: 1px solid #e4e7ec; white-space: nowrap; }
+table.data-table > tbody > tr > td { padding: 12px; border-bottom: 1px solid #f2f4f7; color: #344054; font-size: 14px; white-space: nowrap; }
+table.data-table > tbody > tr.clickable { cursor: pointer; }
+table.data-table > tbody > tr.clickable:hover { background: #eff8ff; }
 .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .metric { background: linear-gradient(135deg, #eff8ff, #f5f8ff); border: 1px solid #b2ddff; border-radius: 16px; padding: 14px; }
 .metric span { color: #475467; font-size: 13px; }
@@ -91,8 +87,8 @@ body { margin: 0; }
 .proto-filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .proto-filter-row span, .proto-tags span { border-radius: 999px; background: #eff8ff; color: #175cd3; padding: 6px 10px; font-size: 12px; font-weight: 700; }
 .proto-mini-nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.proto-mini-nav button { padding: 10px 8px; background: #fff; color: #475467; border: 1px solid #e4e7ec; }
-.proto-mini-nav button.active { background: #175cd3; color: #fff; border-color: #175cd3; }
+.proto-mini-nav > button { padding: 10px 8px; background: #fff; color: #475467; border: 1px solid #e4e7ec; }
+.proto-mini-nav > button.active { background: #175cd3; color: #fff; border-color: #175cd3; }
 .proto-card-title, .proto-canvas-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
 .proto-card-title span, .proto-canvas-toolbar span { color: #667085; font-size: 12px; }
 .proto-hint, .proto-source, .proto-task { padding: 13px; border: 1px solid #eef2f6; background: #fcfcfd; border-radius: 16px; margin-top: 10px; }

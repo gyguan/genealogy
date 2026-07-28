@@ -11,6 +11,9 @@ const appSource = readFileSync(path.join(ROOT, 'app/App.tsx'), 'utf8');
 const styleEntry = readFileSync(path.join(ROOT, 'styles/index.css'), 'utf8');
 const featureLoader = readFileSync(path.join(ROOT, 'shared/styles/loadFeatureStyles.ts'), 'utf8');
 const architecture = readFileSync(path.join(ROOT, 'styles/CSS_ARCHITECTURE.md'), 'utf8');
+const legacyStyles = readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
+const bridge = readFileSync(path.join(ROOT, 'antd-bridge.css'), 'utf8');
+const overrideRegistry = JSON.parse(readFileSync(path.join(ROOT, 'styles/antd-override-exceptions.json'), 'utf8'));
 
 function changedCssFiles() {
   const candidates = ['origin/main...HEAD', 'main...HEAD', 'HEAD^...HEAD'];
@@ -92,14 +95,42 @@ test('patch-named styles are removed and replaced by owned files', () => {
   assert.match(architecture, /已全部退出本次治理范围/);
 });
 
+test('legacy global styles do not target Ant Design descendants', () => {
+  assert.doesNotMatch(legacyStyles, /\.field\s+span/);
+  assert.doesNotMatch(legacyStyles, /\.field\s+(input|select)/);
+  assert.doesNotMatch(legacyStyles, /\.actions\s+button/);
+  assert.doesNotMatch(legacyStyles, /\.sidebar\s+button/);
+  assert.doesNotMatch(legacyStyles, /(^|\n)\.data-table\s*\{/);
+  assert.match(legacyStyles, /\.field:not\(\.ant-form-item\)/);
+  assert.match(legacyStyles, /table\.data-table/);
+  assert.match(legacyStyles, /\.sidebar nav > button/);
+});
+
+test('Ant Design internal overrides have an owner and exit condition registry', () => {
+  assert.equal(typeof overrideRegistry.owner, 'string');
+  assert.ok(overrideRegistry.exceptions.length > 0);
+  for (const item of overrideRegistry.exceptions) {
+    assert.ok(item.scope);
+    assert.ok(item.reason);
+    assert.ok(item.exitCondition);
+  }
+  assert.match(architecture, /antd-override-exceptions\.json/);
+  const importantCount = (bridge.match(/!important/g) ?? []).length;
+  assert.ok(importantCount <= 29, `antd-bridge.css contains ${importantCount} !important declarations; the baseline must only shrink`);
+});
+
 test('changed stylesheets do not introduce unscoped business selectors', () => {
   const prohibited = [
     { pattern: /(^|})\s*button\s*\{/gm, label: 'button {}' },
-    { pattern: /(^|})\s*\.field\s+input\s*\{/gm, label: '.field input {}' },
-    { pattern: /(^|})\s*\.data-table\s*\{/gm, label: '.data-table {}' }
+    { pattern: /(^|})\s*\.field\s+(?:span|input|select)\b/gm, label: 'unscoped .field descendant' },
+    { pattern: /(^|})\s*\.actions\s+button\b/gm, label: 'unscoped .actions button' },
+    { pattern: /(^|})\s*\.sidebar\s+button\b/gm, label: 'unscoped .sidebar button' },
+    { pattern: /(^|})\s*\.data-table\s*\{/gm, label: '.data-table {}' },
+    { pattern: /(^|})\s*\.ant-[\w-]+\s*\{/gm, label: 'unscoped Ant Design internal override' }
   ];
   for (const file of changedCssFiles()) {
     const source = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    if (file.endsWith('antd-bridge.css')) continue;
     for (const rule of prohibited) {
       rule.pattern.lastIndex = 0;
       assert.equal(rule.pattern.test(source), false, `${path.relative(PROJECT_ROOT, file)} contains prohibited ${rule.label}`);
