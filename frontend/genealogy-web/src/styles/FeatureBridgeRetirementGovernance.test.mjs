@@ -14,7 +14,7 @@ function sourceFiles(directory) {
   return readdirSync(directory).flatMap(name => {
     const file = path.join(directory, name);
     if (statSync(file).isDirectory()) return sourceFiles(file);
-    return /\.(?:ts|tsx|js|jsx|mjs)$/.test(name) ? [file] : [];
+    return /\.(?:ts|tsx|js|jsx)$/.test(name) && !/\.test\./.test(name) ? [file] : [];
   });
 }
 
