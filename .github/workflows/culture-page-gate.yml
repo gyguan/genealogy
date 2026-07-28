@@ -1,4 +1,4 @@
-name: Culture Page Gate
+name: Visual Release Gate
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - "frontend/genealogy-web/src/**/*.css"
       - "frontend/genealogy-web/src/styles/**"
       - "frontend/genealogy-web/src/shared/styles/**"
-      - "frontend/genealogy-web/src/features/culture/**"
+      - "frontend/genealogy-web/src/features/**"
       - "frontend/genealogy-web/e2e/culture-*.spec.ts"
       - "frontend/genealogy-web/e2e/css-desktop-viewport-matrix.spec.ts"
       - "frontend/genealogy-web/package.json"
@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  culture-page-gate:
-    name: Culture Shell and Chromium E2E
+  visual-release-gate:
+    name: Visual Shell and Chromium Matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -43,6 +43,10 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm run test:culture-shell
 
+      - name: Run DOM and CSS governance
+        working-directory: frontend/genealogy-web
+        run: npm run test:dom-governance
+
       - name: Typecheck frontend
         working-directory: frontend/genealogy-web
         run: npm run typecheck
@@ -59,29 +63,29 @@ jobs:
         working-directory: frontend/genealogy-web
         shell: bash
         run: |
-          npm run dev > /tmp/culture-vite.log 2>&1 &
-          echo $! > /tmp/culture-vite.pid
+          npm run dev > /tmp/visual-release-vite.log 2>&1 &
+          echo $! > /tmp/visual-release-vite.pid
           for attempt in {1..60}; do
             if curl --fail --silent http://127.0.0.1:5179/ >/dev/null; then
               exit 0
             fi
             sleep 1
           done
-          cat /tmp/culture-vite.log
+          cat /tmp/visual-release-vite.log
           exit 1
 
-      - name: Run culture Chromium E2E
+      - name: Run Chromium visual release E2E
         working-directory: frontend/genealogy-web
         run: npm run test:culture
 
-      - name: Upload culture and viewport evidence
+      - name: Upload viewport and local screenshot evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: culture-page-gate-evidence
+          name: visual-release-gate-evidence
           path: |
-            frontend/genealogy-web/playwright-report
+            frontend/genealogy-web/playwright-report-browser
             frontend/genealogy-web/test-results
-            /tmp/culture-vite.log
+            /tmp/visual-release-vite.log
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14

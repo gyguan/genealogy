@@ -29,11 +29,24 @@ test('commercial auth visuals remain isolated to the auth feature', async () => 
   assert.match(css, /\.commercial-auth-shell/);
 });
 
-test('desktop visual regression matrix covers the four release widths', async () => {
+test('desktop visual regression matrix covers four widths and eight representative page types', async () => {
   const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
   assert.match(spec, /\[1920,\s*1440,\s*1366,\s*1280\]/);
-  assert.match(spec, /bodyScrollWidth/);
-  assert.match(spec, /documentScrollWidth/);
-  assert.match(spec, /github-user-trigger/);
-  assert.match(spec, /toBeFocused/);
+  for (const key of ['home', 'mvp1Wizard', 'personArchive', 'editingWorkspace', 'treeProduct', 'sourceLibrary', 'imports', 'memberManage']) {
+    assert.match(spec, new RegExp(`key: '${key}'`));
+  }
+  for (const contract of ['bodyScrollWidth', 'documentScrollWidth', 'github-user-trigger', 'ant-table-wrapper', 'ant-upload-wrapper', 'ant-drawer-content-wrapper']) {
+    assert.match(spec, new RegExp(contract));
+  }
+});
+
+test('stable local screenshot evidence covers header query form table and statistics', async () => {
+  const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
+  assert.match(spec, /local-header\.png/);
+  for (const name of ['query-bar', 'form', 'table', 'statistic-card']) {
+    assert.match(spec, new RegExp(`name: '${name}'`));
+  }
+  assert.match(spec, /local-\$\{item\.name\}\.png/);
+  assert.match(spec, /locator\(item\.region\)\.first\(\)/);
+  assert.match(spec, /region\.screenshot/);
 });
