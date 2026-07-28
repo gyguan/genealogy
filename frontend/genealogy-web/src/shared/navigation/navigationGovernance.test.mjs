@@ -51,3 +51,10 @@ test('application shell subscribes through the shared navigation contract', () =
   assert.match(source, /subscribeNavigation/);
   assert.equal(source.includes("addEventListener('popstate'"), false);
 });
+
+test('URL parameter ownership is declared centrally', () => {
+  const source = read('shared/navigation/urlState.ts');
+  for (const view of ['personArchive', 'sourceLibrary', 'reviewCenter', 'memberManage', 'auditTrace']) {
+    assert.match(source, new RegExp(`${view}:`), `${view} must declare its URL parameter ownership`);
+  }
+});
