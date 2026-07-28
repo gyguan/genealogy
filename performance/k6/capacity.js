@@ -43,7 +43,6 @@ const profiles = {
 
 export const options = {
   stages: profiles[profile] || profiles.ci,
-  gracefulRampDown: '15s',
   thresholds: {
     http_req_failed: ['rate<0.01'],
     http_req_duration: ['p(95)<1500', 'p(99)<3000'],
@@ -83,7 +82,6 @@ function validate(response, label, expected) {
 }
 
 function login() {
-  const jar = http.cookieJar();
   const response = http.post(`${baseUrl}/api/v1/auth/login`, JSON.stringify({
     username: username,
     password: password,
@@ -93,10 +91,10 @@ function login() {
     tags: { operation: 'login' },
   });
   const data = validate(response, 'login');
-  if (!data || !data.csrfToken) {
-    throw new Error(`login did not return csrfToken, status=${response.status}`);
+  if (!data || !data.csrfToken || !data.accessToken) {
+    throw new Error(`login did not return csrfToken/accessToken, status=${response.status}`);
   }
-  return { jar: jar, csrfToken: data.csrfToken };
+  return { csrfToken: data.csrfToken, accessToken: data.accessToken };
 }
 
 function getSession() {
@@ -104,15 +102,19 @@ function getSession() {
   return session;
 }
 
-function headers() {
-  return {
+function authHeaders(includeCsrf) {
+  const current = getSession();
+  const result = {
+    'Authorization': `Bearer ${current.accessToken}`,
     'Content-Type': 'application/json',
-    'X-CSRF-Token': getSession().csrfToken,
   };
+  if (includeCsrf) result['X-CSRF-Token'] = current.csrfToken;
+  return result;
 }
 
 function readClan() {
   const response = http.get(`${baseUrl}/api/v1/clans/${clanId}`, {
+    headers: authHeaders(false),
     tags: { operation: 'clan_detail', workload: 'read' },
   });
   validate(response, 'clan_detail');
@@ -120,6 +122,7 @@ function readClan() {
 
 function readPersons() {
   const response = http.get(`${baseUrl}/api/v1/clans/${clanId}/persons?page=1&pageSize=20`, {
+    headers: authHeaders(false),
     tags: { operation: 'person_list', workload: 'read' },
   });
   validate(response, 'person_list');
@@ -127,6 +130,7 @@ function readPersons() {
 
 function readBranches() {
   const response = http.get(`${baseUrl}/api/v1/clans/${clanId}/branches`, {
+    headers: authHeaders(false),
     tags: { operation: 'branch_list', workload: 'read' },
   });
   validate(response, 'branch_list');
@@ -135,7 +139,7 @@ function readBranches() {
 function readTree() {
   const response = http.get(
     `${baseUrl}/api/v1/tree/person/${rootPersonId}?direction=descendants&dataView=official&maxDepth=20&maxNodes=500&maxEdges=800`,
-    { tags: { operation: 'lineage_tree', workload: 'graph' } },
+    { headers: authHeaders(false), tags: { operation: 'lineage_tree', workload: 'graph' } },
   );
   treeDuration.add(response.timings.duration);
   validate(response, 'lineage_tree');
@@ -174,7 +178,7 @@ function createDraftPerson() {
     confirmDuplicate: true,
   };
   const response = http.post(`${baseUrl}/api/v1/clans/${clanId}/persons`, JSON.stringify(payload), {
-    headers: headers(),
+    headers: authHeaders(true),
     tags: { operation: 'person_create', workload: 'write' },
   });
   const parsed = parse(response);
