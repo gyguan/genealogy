@@ -15,6 +15,8 @@ class GlobalExceptionHandlerTest {
                 .getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(handler.handleBusinessException(new BusinessException("AUTH_FORBIDDEN", "forbidden"))
                 .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(handler.handleBusinessException(new BusinessException("SOURCE_ATTACHMENT_PREVIEW_FORBIDDEN", "preview forbidden"))
+                .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(handler.handleBusinessException(new BusinessException("MEMBER_NOT_FOUND", "missing"))
                 .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(handler.handleBusinessException(new BusinessException("LAST_CLAN_ADMIN_REQUIRED", "conflict"))
