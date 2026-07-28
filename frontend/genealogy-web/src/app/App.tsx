@@ -63,7 +63,11 @@ function AppShell() {
     }
     if (decision === 'confirm_dirty') {
       confirmAction({
-        title: '确认离开当前页面？', content: entityNavigationPrompt(), okText: '离开页面', cancelText: '继续编辑', danger: true,
+        title: '确认离开当前页面？',
+        content: entityNavigationPrompt(),
+        okText: '离开页面',
+        cancelText: '继续编辑',
+        okButtonProps: { danger: true },
         onOk: () => { navigationGuardRef.current = EMPTY_ENTITY_NAVIGATION_GUARD; action(); }
       });
       return;
