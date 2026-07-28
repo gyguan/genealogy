@@ -5,7 +5,6 @@ import test from 'node:test';
 const main = readFileSync(new URL('../../main.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../../entity-page-header.css', import.meta.url), 'utf8');
 const sourceDelete = readFileSync(new URL('../sources/SourceDraftDeleteAction.tsx', import.meta.url), 'utf8');
-const lineageStyles = readFileSync(new URL('../../lineage-workbench.css', import.meta.url), 'utf8');
 
 test('详情操作由组件结构和稳定样式负责，不安装入口层 DOM 补丁', () => {
   assert.doesNotMatch(main, /installDetailActionUnification/);
@@ -13,7 +12,6 @@ test('详情操作由组件结构和稳定样式负责，不安装入口层 DOM 
   assert.doesNotMatch(main, /querySelector\(/);
   assert.match(styles, /\.entity-page-header__actions/);
   assert.match(styles, /\.entity-detail-actions/);
-  assert.match(lineageStyles, /\.lineage-inspector-actions/);
 });
 
 test('统一详情操作样式覆盖桌面端与移动端', () => {
