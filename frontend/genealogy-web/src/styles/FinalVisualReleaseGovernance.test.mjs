@@ -28,7 +28,7 @@ test('commercial auth visuals remain isolated to the auth feature', async () => 
 });
 
 test('desktop visual regression matrix covers the four release widths', async () => {
-  const spec = await source('../e2e/css-desktop-viewport-matrix.spec.ts');
+  const spec = await source('e2e/css-desktop-viewport-matrix.spec.ts');
   assert.match(spec, /\[1920,\s*1440,\s*1366,\s*1280\]/);
   assert.match(spec, /bodyScrollWidth/);
   assert.match(spec, /documentScrollWidth/);
