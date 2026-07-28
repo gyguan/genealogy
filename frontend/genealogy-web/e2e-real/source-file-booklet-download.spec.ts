@@ -155,6 +155,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     await page.getByRole('menuitem', { name: '来源资料库', exact: true }).click();
     await page.goto(`/?view=sourceLibrary&sourceId=${sourceId}`);
     await expect(page.getByText(sourceName, { exact: true }).first()).toBeVisible();
+    await page.getByRole('tab', { name: /来源附件/ }).click();
     await expect(page.getByText(fileName, { exact: true }).first()).toBeVisible();
 
     await page.getByRole('menuitem', { name: '世系图谱', exact: true }).click();
