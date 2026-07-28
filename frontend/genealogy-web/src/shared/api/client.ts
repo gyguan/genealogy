@@ -1,3 +1,5 @@
+import { confirmAction } from '../ui/Feedback';
+
 export type PageResponse<T> = {
   records: T[];
   total: number;
@@ -256,14 +258,24 @@ export class ApiClient {
       });
     } catch (error) {
       if (this.shouldConfirmDuplicatePerson(path, normalizedBody, error)) {
-        const ok = window.confirm('发现疑似重复人物。确认仍要创建这条人物记录吗？');
-        if (ok) {
-          return this.request<T>(path, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...(normalizedBody as Record<string, unknown>), confirmDuplicate: true })
-          });
-        }
+        const ok = await new Promise<boolean>(resolve => {
+        confirmAction({
+          title: '确认创建疑似重复人物？',
+          content: '系统发现可能重复的人物档案。请确认信息无误后继续创建。',
+          okText: '仍要创建',
+          cancelText: '返回检查',
+          okButtonProps: { danger: true },
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false)
+        });
+      });
+      if (ok) {
+        return this.request<T>(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...(normalizedBody as Record<string, unknown>), confirmDuplicate: true })
+        });
+      }
       }
       throw error;
     }
