@@ -1,31 +1,70 @@
 {
   "owner": "frontend-platform",
-  "policy": "antd-bridge.css may only shrink; every important or Ant internal override must be listed here",
+  "reviewedAt": "2026-07-28",
+  "policy": "antd-bridge.css may only shrink; every !important declaration and selector that reaches Ant Design internals must be covered by this registry",
+  "importantSnapshot": [
+    ".antd-sidebar|background",
+    ".antd-sidebar-footer|display",
+    ".github-like-header|background",
+    ".ant-card.panel, .ant-card.antd-panel|padding",
+    ".panel-description|margin-bottom",
+    ".antd-field.ant-form-item|margin",
+    ".archive-search-form, .lineage-search-grid|align-items",
+    ".archive-search-form|grid-template-columns",
+    ".archive-search-form|gap",
+    ".archive-search-form .ant-form-item, .lineage-search-grid .ant-form-item|margin",
+    ".antd-detail-card|padding",
+    "@media (max-width: 1400px)::.lineage-search-grid|grid-template-columns",
+    "@media (max-width: 760px)::.archive-search-form, .lineage-search-grid|grid-template-columns"
+  ],
   "exceptions": [
     {
-      "scope": ".antd-sidebar, .github-like-header, .antd-content",
-      "reason": "application shell migration compatibility",
-      "exitCondition": "AppShell owns layout exclusively through Ant Design component tokens"
+      "scope": "application shell and current user entry",
+      "selectorPrefixes": [".antd-sidebar", ".antd-brand", ".github-like-header", ".github-user-trigger", ".profile-center-card", ".antd-content"],
+      "reason": "application shell and user-entry migration compatibility",
+      "exitCondition": "shell, header and current-user styles are colocated and use component tokens",
+      "trackingIssue": 895,
+      "reviewedAt": "2026-07-28"
     },
     {
-      "scope": ".antd-field",
-      "reason": "legacy form layout compatibility; source field pollution has been removed",
-      "exitCondition": "wizard and person forms complete migration in issue 882"
+      "scope": "legacy authentication presentation",
+      "selectorPrefixes": [".auth-hero-card", ".auth-card", ".auth-inline-title"],
+      "reason": "legacy authentication selectors still reach Ant Design component internals",
+      "exitCondition": "unused legacy auth selectors are deleted and retained styles move to the auth feature",
+      "trackingIssue": 896,
+      "reviewedAt": "2026-07-28"
     },
     {
-      "scope": ".archive-search-form, .lineage-search-grid",
-      "reason": "desktop query grid compatibility",
-      "exitCondition": "query areas migrate to Shared QueryBar in issues 882 and 883"
+      "scope": "member role presentation",
+      "selectorPrefixes": [".role-card-grid"],
+      "reason": "member role cards still use bridge-owned Ant Card layout rules",
+      "exitCondition": "member role styles move to the members feature",
+      "trackingIssue": 896,
+      "reviewedAt": "2026-07-28"
     },
     {
-      "scope": ".lineage-search-results, .xp-source-*",
-      "reason": "tree and source selection state compatibility",
-      "exitCondition": "module-scoped interaction styles land in issue 883"
+      "scope": "shared panel and form compatibility",
+      "selectorPrefixes": [".ant-card.panel", ".ant-card.antd-panel", ".antd-field", ".antd-actions", ".person-step-form"],
+      "reason": "shared panel and form wrappers still depend on bridge layout compatibility",
+      "exitCondition": "shared wrappers and feature forms own their styles without bridge overrides",
+      "trackingIssue": 895,
+      "reviewedAt": "2026-07-28"
     },
     {
-      "scope": ".antd-table-wrap, .antd-detail-card",
-      "reason": "shared table and detail container compatibility",
-      "exitCondition": "shared wrappers own colocated styles"
+      "scope": "archive and lineage query grids",
+      "selectorPrefixes": [".archive-search-form", ".lineage-search-grid"],
+      "reason": "desktop query grids still depend on bridge layout compatibility",
+      "exitCondition": "query areas use feature-owned or shared QueryBar layout",
+      "trackingIssue": 895,
+      "reviewedAt": "2026-07-28"
+    },
+    {
+      "scope": "shared table, empty and detail wrappers",
+      "selectorPrefixes": [".antd-table-wrap", ".antd-empty", ".antd-detail-card", ".system-management"],
+      "reason": "shared wrappers still reach Ant Design internal elements from the bridge",
+      "exitCondition": "shared wrappers own colocated styles and no longer require the bridge",
+      "trackingIssue": 895,
+      "reviewedAt": "2026-07-28"
     }
   ]
 }
