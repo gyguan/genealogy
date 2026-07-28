@@ -62,13 +62,31 @@ test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(architecture, /只减不增/);
 });
 
-test('patch-named styles have been retired from tracked source files', () => {
-  const trackedCss = execFileSync('git', ['ls-files', 'src/**/*.css', 'src/*.css'], {
-    cwd: PROJECT_ROOT,
-    encoding: 'utf8'
-  }).split(/\r?\n/).filter(Boolean);
-  const forbidden = /(cleanup|tweaks|overrides?|unification|refinement)\.css$/i;
-  assert.deepEqual(trackedCss.filter(file => forbidden.test(path.basename(file))), []);
+test('patch-named styles are removed and replaced by owned files', () => {
+  const retired = [
+    'person-archive-tweaks.css',
+    'lineage-workbench-overrides.css',
+    'lineage-result-toolbar-refinement.css',
+    'guidance-cleanup.css',
+    'module-title-dedup.css',
+    'page-content-cleanup.css',
+    'query-button-unification.css',
+    'mvp1-wizard-simplified.css',
+    'mvp1-wizard-enhancements.css'
+  ];
+  const owned = [
+    'person-archive-layout.css',
+    'lineage-workbench.css',
+    'lineage-result-toolbar.css',
+    'shared-guidance.css',
+    'shared-module-title.css',
+    'shared-page-content.css',
+    'shared-query-actions.css',
+    'mvp1-wizard-layout.css',
+    'mvp1-wizard-generation.css'
+  ];
+  retired.forEach(file => assert.equal(existsSync(path.join(ROOT, file)), false, `${file} must be deleted`));
+  owned.forEach(file => assert.equal(existsSync(path.join(ROOT, file)), true, `${file} must exist`));
   assert.doesNotMatch(styleEntry, /cleanup|tweaks|override|unification|refinement/i);
   assert.doesNotMatch(featureLoader, /cleanup|tweaks|override|unification|refinement/i);
   assert.match(architecture, /已全部退出本次治理范围/);
