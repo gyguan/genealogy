@@ -1,0 +1,49 @@
+/*
+ * Global style entry.
+ *
+ * Layer ownership:
+ * 1. shell/base: application layout and shared visual baseline;
+ * 2. shared patterns: stable shared UI contracts;
+ * 3. feature compatibility: legacy feature styles retained during migration;
+ * 4. migration bridge: narrowly-scoped Ant Design compatibility rules.
+ *
+ * New feature styles must be imported by their feature component rather than
+ * added here. Compatibility files require an owner and exit condition in
+ * CSS_ARCHITECTURE.md.
+ */
+
+/* shell/base */
+@import '../auth-commercial.css';
+@import '../styles.css';
+@import '../experience.css';
+@import '../compact-ui.css';
+@import '../tabbed-module.css';
+@import '../entity-page-header.css';
+@import '../runtime-error.css';
+
+/* shared patterns retained while components are migrated */
+@import '../guidance-cleanup.css';
+@import '../module-title-dedup.css';
+@import '../page-content-cleanup.css';
+@import '../query-button-unification.css';
+
+/* feature compatibility: no new files may be added to this block */
+@import '../mvp1-wizard.css';
+@import '../mvp1-wizard-simplified.css';
+@import '../mvp1-wizard-enhancements.css';
+@import '../mvp1-source-step.css';
+@import '../mvp1-tree-step.css';
+@import '../mvp1-person-step.css';
+@import '../lineage-tree.css';
+@import '../lineage-graph.css';
+@import '../lineage-workbench-overrides.css';
+@import '../lineage-result-toolbar-refinement.css';
+@import '../audit-trace.css';
+@import '../person-archive-tweaks.css';
+@import '../person-archive-source.css';
+@import '../person-edit-page.css';
+@import '../person-detail-page.css';
+@import '../member-permission-page.css';
+
+/* migration bridge: must remain last and may only shrink */
+@import '../antd-bridge.css';
