@@ -4,8 +4,12 @@ on:
   pull_request:
     branches: ["main"]
     paths:
+      - "frontend/genealogy-web/src/**/*.css"
+      - "frontend/genealogy-web/src/styles/**"
+      - "frontend/genealogy-web/src/shared/styles/**"
       - "frontend/genealogy-web/src/features/culture/**"
       - "frontend/genealogy-web/e2e/culture-*.spec.ts"
+      - "frontend/genealogy-web/e2e/css-desktop-viewport-matrix.spec.ts"
       - "frontend/genealogy-web/package.json"
       - ".github/workflows/culture-page-gate.yml"
   workflow_dispatch:
@@ -70,14 +74,14 @@ jobs:
         working-directory: frontend/genealogy-web
         run: npm run test:culture
 
-      - name: Upload culture diagnostics
-        if: failure()
+      - name: Upload culture and viewport evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: culture-page-gate-diagnostics
+          name: culture-page-gate-evidence
           path: |
             frontend/genealogy-web/playwright-report
             frontend/genealogy-web/test-results
             /tmp/culture-vite.log
           if-no-files-found: ignore
-          retention-days: 5
+          retention-days: 7

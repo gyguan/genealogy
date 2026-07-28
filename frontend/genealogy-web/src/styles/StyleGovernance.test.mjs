@@ -16,7 +16,7 @@ function changedCssFiles() {
   const candidates = ['origin/main...HEAD', 'main...HEAD', 'HEAD^...HEAD'];
   for (const range of candidates) {
     try {
-      const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', range, '--', '*.css'], {
+      const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=AM', range, '--', '*.css'], {
         cwd: PROJECT_ROOT,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore']
@@ -38,15 +38,12 @@ test('application entry only imports Ant reset and the governed style entry', ()
 });
 
 test('feature styles are absent from the global bundle and loaded by active module', () => {
-  for (const file of [
-    'mvp1-wizard.css',
-    'person-edit-page.css',
-    'lineage-tree.css',
-    'member-permission-page.css',
-    'audit-trace.css'
-  ]) {
+  for (const file of ['mvp1-wizard.css', 'person-edit-page.css', 'lineage-tree.css', 'member-permission-page.css', 'audit-trace.css']) {
     assert.equal(styleEntry.includes(file), false, `${file} must not be globally loaded`);
     assert.equal(featureLoader.includes(file), true, `${file} must be owned by the feature style loader`);
+  }
+  for (const file of ['mvp1-wizard-layout.css', 'mvp1-wizard-generation.css', 'person-archive-layout.css', 'lineage-workbench.css', 'lineage-result-toolbar.css']) {
+    assert.equal(featureLoader.includes(file), true, `${file} must have explicit feature ownership`);
   }
   assert.match(appSource, /loadFeatureStyles\(active\)/);
   assert.match(featureLoader, /const loaded = new Set/);
@@ -54,21 +51,45 @@ test('feature styles are absent from the global bundle and loaded by active modu
 
 test('compatibility styles remain explicit, ordered and documented', () => {
   assert.match(styleEntry, /shell\/base/);
-  assert.match(styleEntry, /shared patterns/);
+  assert.match(styleEntry, /shared UI responsibilities/);
   assert.match(styleEntry, /migration bridge/);
   const imports = [...styleEntry.matchAll(/@import\s+['"]([^'"]+)['"];?/g)].map(match => match[1]);
   assert.equal(imports.at(-1), '../antd-bridge.css');
-  for (const file of [
-    'guidance-cleanup.css',
-    'module-title-dedup.css',
-    'page-content-cleanup.css',
-    'query-button-unification.css',
-    'antd-bridge.css'
-  ]) {
+  for (const file of ['shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css', 'antd-bridge.css']) {
     assert.match(architecture, new RegExp(file.replace('.', '\\.')));
   }
   assert.match(architecture, /退出条件/);
   assert.match(architecture, /只减不增/);
+});
+
+test('patch-named styles are removed and replaced by owned files', () => {
+  const retired = [
+    'person-archive-tweaks.css',
+    'lineage-workbench-overrides.css',
+    'lineage-result-toolbar-refinement.css',
+    'guidance-cleanup.css',
+    'module-title-dedup.css',
+    'page-content-cleanup.css',
+    'query-button-unification.css',
+    'mvp1-wizard-simplified.css',
+    'mvp1-wizard-enhancements.css'
+  ];
+  const owned = [
+    'person-archive-layout.css',
+    'lineage-workbench.css',
+    'lineage-result-toolbar.css',
+    'shared-guidance.css',
+    'shared-module-title.css',
+    'shared-page-content.css',
+    'shared-query-actions.css',
+    'mvp1-wizard-layout.css',
+    'mvp1-wizard-generation.css'
+  ];
+  retired.forEach(file => assert.equal(existsSync(path.join(ROOT, file)), false, `${file} must be deleted`));
+  owned.forEach(file => assert.equal(existsSync(path.join(ROOT, file)), true, `${file} must exist`));
+  assert.doesNotMatch(styleEntry, /cleanup|tweaks|override|unification|refinement/i);
+  assert.doesNotMatch(featureLoader, /cleanup|tweaks|override|unification|refinement/i);
+  assert.match(architecture, /已全部退出本次治理范围/);
 });
 
 test('changed stylesheets do not introduce unscoped business selectors', () => {

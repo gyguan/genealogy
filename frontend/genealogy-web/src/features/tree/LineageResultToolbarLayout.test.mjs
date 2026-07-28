@@ -4,9 +4,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
-const globalCss = readFileSync(new URL('../../lineage-result-toolbar-refinement.css', import.meta.url), 'utf8');
+const globalCss = readFileSync(new URL('../../lineage-result-toolbar.css', import.meta.url), 'utf8');
 const pageCss = readFileSync(new URL('./lineage-tabbed-page.css', import.meta.url), 'utf8');
 const mainSource = readFileSync(new URL('../../main.tsx', import.meta.url), 'utf8');
+const featureStyles = readFileSync(new URL('../../shared/styles/loadFeatureStyles.ts', import.meta.url), 'utf8');
 const formSource = readFileSync(new URL('../../shared/ui/Form.tsx', import.meta.url), 'utf8');
 const pageSource = readFileSync(new URL('./LineageTreeTabbedPage.tsx', import.meta.url), 'utf8');
 const portalSource = readFileSync(new URL('./LineageTreeProductPagePortal.tsx', import.meta.url), 'utf8');
@@ -33,12 +34,10 @@ test('lineage page follows the culture-style query card plus result card pattern
 test('person and branch tabs expose only their own query conditions', () => {
   const personForm = between(pageSource, 'const personQueryForm =', 'const branchQueryForm =');
   const branchForm = between(pageSource, 'const branchQueryForm =', 'const resultMeta =');
-
   assert.match(personForm, /label="中心人物"/);
   assert.match(personForm, /aria-label="人物中心展开深度"/);
   assert.match(personForm, /PERSON_DEPTH_OPTIONS/);
   assert.doesNotMatch(personForm, /包含下级支派/);
-
   assert.match(branchForm, /aria-label="支派全局展开深度"/);
   assert.match(branchForm, /aria-label="包含下级支派"/);
   assert.doesNotMatch(branchForm, /label="中心人物"/);
@@ -58,7 +57,6 @@ test('person depth defaults to one and is capped at three in the UI', () => {
 test('each tab query refreshes only its own graph and keeps independent applied state', () => {
   const personApply = between(pageSource, 'async function applyPersonQuery()', 'async function applyBranchQuery()');
   const branchApply = between(pageSource, 'async function applyBranchQuery()', 'function resetCurrentQuery()');
-
   assert.match(personApply, /loadPersonGraph\(personDraft\)/);
   assert.doesNotMatch(personApply, /loadBranchGraph/);
   assert.match(branchApply, /loadBranchGraph\(branchDraft\)/);
@@ -70,8 +68,9 @@ test('each tab query refreshes only its own graph and keeps independent applied 
   assert.match(pageSource, /branchRelationScopes:\s*branchApplied\.relationScopes/);
 });
 
-test('result toolbar refinement stylesheet is loaded without imperative DOM reparenting', () => {
-  assert.match(mainSource, /import '\.\/lineage-result-toolbar-refinement\.css';/);
+test('lineage result toolbar stylesheet is feature-owned without entry DOM reparenting', () => {
+  assert.match(featureStyles, /import\('\.\.\/\.\.\/lineage-result-toolbar\.css'\)/);
+  assert.doesNotMatch(mainSource, /lineage-result-toolbar/);
   assert.doesNotMatch(mainSource, /installLineageToolbarPlacement/);
 });
 
