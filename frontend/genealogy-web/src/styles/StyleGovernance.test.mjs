@@ -11,7 +11,6 @@ const appSource = readFileSync(path.join(ROOT, 'app/App.tsx'), 'utf8');
 const styleEntry = readFileSync(path.join(ROOT, 'styles/index.css'), 'utf8');
 const featureLoader = readFileSync(path.join(ROOT, 'shared/styles/loadFeatureStyles.ts'), 'utf8');
 const architecture = readFileSync(path.join(ROOT, 'styles/CSS_ARCHITECTURE.md'), 'utf8');
-const legacyStyles = readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
 const bridge = readFileSync(path.join(ROOT, 'antd-bridge.css'), 'utf8');
 const overrideRegistry = JSON.parse(readFileSync(path.join(ROOT, 'styles/antd-override-exceptions.json'), 'utf8'));
 
@@ -56,15 +55,17 @@ test('feature styles are absent from the global bundle and loaded by active modu
   assert.match(featureLoader, /const loaded = new Set/);
 });
 
-test('global compatibility entry no longer loads the retired bridge', () => {
+test('global entry only contains named shell and shared contracts', () => {
   assert.match(styleEntry, /shell\/app-shell/);
   assert.match(styleEntry, /shared UI responsibilities/);
-  assert.doesNotMatch(styleEntry, /antd-bridge\.css/);
-  assert.equal(executableCss(bridge), '');
-  for (const file of ['shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css']) {
-    assert.match(architecture, new RegExp(file.replace('.', '\\.')));
+  for (const retired of ['styles.css', 'experience.css', 'compact-ui.css', 'antd-bridge.css']) {
+    assert.equal(styleEntry.includes(retired), false, `${retired} must not be globally loaded`);
   }
-  assert.match(architecture, /Bridge.*已退出|迁移桥.*已退出/i);
+  for (const file of ['auth-commercial.css', 'tabbed-module.css', 'entity-page-header.css', 'runtime-error.css', 'shared-guidance.css', 'shared-module-title.css', 'shared-page-content.css', 'shared-query-actions.css']) {
+    assert.match(styleEntry, new RegExp(file.replace('.', '\\.')));
+  }
+  assert.equal(executableCss(bridge), '');
+  assert.match(architecture, /Legacy.*已退出|Legacy.*退役/i);
 });
 
 test('patch-named styles are removed and replaced by owned files', () => {
@@ -98,15 +99,11 @@ test('patch-named styles are removed and replaced by owned files', () => {
   assert.match(architecture, /已全部退出本次治理范围/);
 });
 
-test('legacy global styles do not target Ant Design descendants', () => {
-  assert.doesNotMatch(legacyStyles, /\.field\s+span/);
-  assert.doesNotMatch(legacyStyles, /\.field\s+(input|select)/);
-  assert.doesNotMatch(legacyStyles, /\.actions\s+button/);
-  assert.doesNotMatch(legacyStyles, /\.sidebar\s+button/);
-  assert.doesNotMatch(legacyStyles, /(^|\n)\.data-table\s*\{/);
-  assert.match(legacyStyles, /\.field:not\(\.ant-form-item\)/);
-  assert.match(legacyStyles, /table\.data-table/);
-  assert.match(legacyStyles, /\.sidebar nav > button/);
+test('retired legacy and prototype bundles contain no executable CSS', () => {
+  for (const file of ['styles.css', 'experience.css', 'compact-ui.css']) {
+    const source = readFileSync(path.join(ROOT, file), 'utf8');
+    assert.equal(executableCss(source), '', `${file} must remain retired`);
+  }
 });
 
 test('Ant Design override ledger and bridge are empty after retirement', () => {
