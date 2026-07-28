@@ -1,0 +1,146 @@
+.ant-card.panel,
+.ant-card.antd-panel {
+  padding: 0;
+  border-color: #f0f0f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+
+.ant-card.panel .ant-card-head {
+  min-height: 44px;
+  padding: 0 16px;
+  border-bottom-color: #f0f0f0;
+}
+
+.ant-card.panel .ant-card-body {
+  padding: 16px;
+}
+
+.panel-description {
+  margin-bottom: 12px;
+}
+
+.antd-field.ant-form-item {
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.antd-field .ant-form-item-row,
+.antd-field .ant-form-item-label,
+.antd-field .ant-form-item-control {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
+.antd-field .ant-form-item-label {
+  padding: 0 0 4px;
+  text-align: left;
+}
+
+.antd-field .ant-form-item-label > label {
+  display: inline-flex;
+  min-height: 22px;
+  color: rgba(0, 0, 0, .65);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.antd-field .ant-form-item-control-input {
+  min-height: 32px;
+}
+
+.antd-field .ant-form-item-extra {
+  color: rgba(0, 0, 0, .45);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.antd-field .ant-input,
+.antd-field .ant-input-affix-wrapper,
+.antd-field .ant-select,
+.antd-field .ant-picker {
+  width: 100%;
+}
+
+.antd-field textarea.ant-input {
+  min-height: 96px;
+}
+
+.antd-field .ant-select-selection-item,
+.antd-field .ant-select-selection-placeholder {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.antd-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 0;
+}
+
+.antd-actions .ant-space-item {
+  display: flex;
+}
+
+.person-step-form > .antd-actions .ant-space-item:nth-child(2) {
+  display: none;
+}
+
+.antd-table-wrap {
+  overflow: auto;
+  border: 0;
+  border-radius: 8px;
+}
+
+.antd-table-wrap .table-hint {
+  display: block;
+  padding: 0 0 8px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.antd-table-wrap .ant-table {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.antd-table-wrap .ant-table-tbody > tr.clickable {
+  cursor: pointer;
+}
+
+.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td {
+  background: #f5faff;
+}
+
+.antd-empty {
+  padding: 18px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.antd-detail-card {
+  margin-top: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.antd-detail-card .ant-card-body {
+  padding: 12px;
+}
+
+.antd-toast-stack {
+  position: fixed;
+  top: 22px;
+  right: 24px;
+  z-index: 1200;
+  width: 360px;
+}
+
+.system-management .ant-tabs-nav {
+  margin-bottom: 14px;
+}
