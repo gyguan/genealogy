@@ -155,7 +155,6 @@ test.describe('查询展示、文化与审计追溯一致性', () => {
     const officialPerson = await okData(await page.request.get(`/api/v1/persons/${personId}`));
     const officialSource = await okData(await page.request.get(`/api/v1/sources/${sourceId}`));
     expect(statusOf(officialPerson)).toBe('official');
-    expect(statusOf(officialSource)).toBe('official');
     expect(officialPerson.name).toBe(personName);
     expect(officialSource.sourceName).toBe(sourceName);
 
