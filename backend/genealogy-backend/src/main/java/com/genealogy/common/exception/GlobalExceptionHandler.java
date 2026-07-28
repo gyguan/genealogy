@@ -32,7 +32,8 @@ public class GlobalExceptionHandler {
             "AUTH_CSRF_INVALID",
             "AUTH_PUBLIC_REGISTRATION_DISABLED",
             "MEMBER_GRANT_FORBIDDEN",
-            "CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN"
+            "CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN",
+            "SOURCE_ATTACHMENT_PREVIEW_FORBIDDEN"
     );
     private static final Set<String> CONFLICT_CODES = Set.of(
             "AUTH_USERNAME_DUPLICATED",
