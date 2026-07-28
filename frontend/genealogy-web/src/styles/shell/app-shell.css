@@ -1,0 +1,87 @@
+.antd-admin-layout {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.antd-main-layout {
+  min-width: 0;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.antd-sidebar {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: auto;
+  padding: 16px 8px;
+  border-right: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.antd-brand {
+  padding: 8px 12px 18px;
+  margin-bottom: 8px;
+}
+
+.antd-brand .ant-typography {
+  margin: 0;
+}
+
+.antd-sidebar .ant-menu {
+  flex: 1 1 auto;
+}
+
+.antd-sidebar-footer {
+  display: none;
+}
+
+.github-like-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 56px;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+}
+
+.github-like-header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.github-like-header-title .ant-typography:last-child {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.antd-content {
+  min-width: 0;
+  padding: 24px;
+  background: #f5f5f5;
+}
+
+@media (max-width: 760px) {
+  .antd-content {
+    padding: 12px;
+  }
+
+  .github-like-header {
+    padding: 0 12px;
+  }
+
+  .github-like-header-title .ant-typography:last-child {
+    max-width: 180px;
+  }
+}
