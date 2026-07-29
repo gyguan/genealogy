@@ -10,6 +10,7 @@ const entityHeader = readFileSync(new URL('../shared/ui/EntityPageHeader.tsx', i
 const resultCard = readFileSync(new URL('../shared/ui/QueryResultCards.tsx', import.meta.url), 'utf8');
 const memberPage = readFileSync(new URL('../features/members/MemberManagementPage.tsx', import.meta.url), 'utf8');
 const bookletActions = readFileSync(new URL('../features/booklets/BookletActions.tsx', import.meta.url), 'utf8');
+const cultureHeader = readFileSync(new URL('../features/culture/CultureSearchHeader.tsx', import.meta.url), 'utf8');
 const cultureItem = readFileSync(new URL('../features/culture/CultureItemStandardTab.tsx', import.meta.url), 'utf8');
 const migrationEvent = readFileSync(new URL('../features/culture/MigrationEventStandardTab.tsx', import.meta.url), 'utf8');
 const cultureSite = readFileSync(new URL('../features/culture/CultureSiteStandardTab.tsx', import.meta.url), 'utf8');
@@ -86,10 +87,11 @@ test('page-level primary actions are promoted without moving result tools or usi
   assert.doesNotMatch(patterns, /appendChild|insertBefore|querySelector|MutationObserver/);
 });
 
-test('culture tabs use responsibility-specific query card headings', () => {
+test('culture tabs use responsibility-specific query card headings without a duplicate page title', () => {
   assert.match(cultureItem, /title="文化资料查询"/);
   assert.match(migrationEvent, /title="迁徙事件查询"/);
   assert.match(cultureSite, /title="宗族场所查询"/);
+  assert.doesNotMatch(cultureHeader, /<Title|culture-page-title|宗族文化/);
   for (const source of [cultureItem, migrationEvent, cultureSite]) {
     assert.doesNotMatch(source, /className="culture-page-header culture-search-card" title="宗族文化"/);
   }
