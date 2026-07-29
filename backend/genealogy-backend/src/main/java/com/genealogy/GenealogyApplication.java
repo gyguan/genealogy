@@ -19,7 +19,8 @@ public class GenealogyApplication {
 
     public static SpringApplication createApplication() {
         SpringApplication application = new SpringApplication(GenealogyApplication.class);
-        application.addListeners(new ProductionEnvironmentValidator());
+        ProductionEnvironmentValidator validator = new ProductionEnvironmentValidator();
+        application.addInitializers(context -> validator.validate(context.getEnvironment()));
         return application;
     }
 }
