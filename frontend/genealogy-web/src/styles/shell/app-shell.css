@@ -1,11 +1,22 @@
+[data-genealogy-app] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 [data-genealogy-app] .antd-admin-layout {
   min-height: 100vh;
+  max-width: 100%;
   background: var(--genealogy-color-bg-layout);
 }
 
 [data-genealogy-app] .antd-main-layout {
   min-width: 0;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--genealogy-color-bg-layout);
 }
 
@@ -68,6 +79,10 @@
 
 [data-genealogy-app] .antd-content {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   padding: 18px 24px 24px;
   background: var(--genealogy-color-bg-layout);
 }
