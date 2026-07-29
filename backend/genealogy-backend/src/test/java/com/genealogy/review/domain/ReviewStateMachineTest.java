@@ -27,12 +27,22 @@ class ReviewStateMachineTest {
     @CsvSource({
             "approved,approved,APPROVE",
             "rejected,rejected,APPROVE",
+            "cancelled,cancelled,REJECT"
+    })
+    void repeatedDecisionUsesStableHandledConflict(String task, String revision, ReviewAction action) {
+        assertThatThrownBy(() -> stateMachine.target(task, revision, action))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo("REVIEW_TASK_ALREADY_HANDLED");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
             "rejected,rejected,APPLY",
-            "cancelled,cancelled,REJECT",
             "applied,applied,APPLY",
             "pending,pending,APPLY"
     })
-    void rejectsUndeclaredTransitions(String task, String revision, ReviewAction action) {
+    void rejectsOtherUndeclaredTransitions(String task, String revision, ReviewAction action) {
         assertThatThrownBy(() -> stateMachine.target(task, revision, action))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
@@ -52,7 +62,7 @@ class ReviewStateMachineTest {
         assertThatThrownBy(() -> stateMachine.requireIndependentReviewer(42L, 42L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo("REVIEW_SELF_APPROVAL_FORBIDDEN");
+                .isEqualTo("REVIEW_SELF_DECISION_FORBIDDEN");
     }
 
     @Test
