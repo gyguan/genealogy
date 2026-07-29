@@ -8,9 +8,6 @@ import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobPayloadEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,7 +16,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 
@@ -73,16 +72,26 @@ public class ImportAsyncApplicationService {
         String format = filename.toLowerCase(Locale.ROOT).endsWith(".xlsx")
                 ? ImportJobEntity.FORMAT_XLSX
                 : ImportJobEntity.FORMAT_CSV;
-        LocalDateTime now = LocalDateTime.now();
+        byte[] content = readBytes(file);
+        String idempotencyKey = submissionKey(clanId, branchId, confirmDuplicates, content);
+        ImportJobEntity existing = importJobRepository
+                .findFirstByClanIdAndIdempotencyKeyOrderByCreatedAtDesc(clanId, idempotencyKey)
+                .orElse(null);
+        if (existing != null) {
+            return toResponse(existing);
+        }
 
+        LocalDateTime now = LocalDateTime.now();
         ImportJobEntity job = new ImportJobEntity();
         job.setClanId(clanId);
         job.setBranchId(branchId);
         job.setImportType(ImportJobEntity.TYPE_PERSON + "_" + format);
         job.setOriginalFilename(filename);
+        job.setIdempotencyKey(idempotencyKey);
         job.setTotalCount(0);
         job.setSuccessCount(0);
         job.setFailureCount(0);
+        job.setSkippedCount(0);
         job.setStatus("running");
         job.setProcessingStatus(ImportJobEntity.PROCESSING_PROCESSING);
         job.setReviewStatus(ImportJobEntity.REVIEW_NOT_SUBMITTED);
@@ -106,11 +115,14 @@ public class ImportAsyncApplicationService {
         payload.setJobId(saved.getId());
         payload.setOriginalFilename(filename);
         payload.setContentType(file.getContentType());
-        payload.setFileContent(readBytes(file));
+        payload.setFileContent(content);
         payload.setConfirmDuplicates(confirmDuplicates);
         payload.setCreatedAt(now);
         payloadRepository.save(payload);
+        return toResponse(saved);
+    }
 
+    private ImportJobResponse toResponse(ImportJobEntity saved) {
         return new ImportJobResponse(
                 saved.getId(), saved.getClanId(), saved.getBranchId(), saved.getImportType(), saved.getFileFormat(),
                 saved.getImportType() + "_" + saved.getFileFormat(), saved.getOriginalFilename(), saved.getTotalCount(),
@@ -140,19 +152,11 @@ public class ImportAsyncApplicationService {
                     return count;
                 }
             }
-            if (filename.endsWith(".xlsx")) {
-                try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
-                    Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
-                    if (sheet == null) return 0;
-                    int count = 0;
-                    for (int rowIndex = sheet.getFirstRowNum() + 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                        if (sheet.getRow(rowIndex) != null) count++;
-                        if (count >= properties.getAsyncRowCountThreshold()) return count;
-                    }
-                    return count;
-                }
-            }
-            return 0;
+            // XLSX is a ZIP container. Do not materialize a Workbook merely to route the request;
+            // file size routing keeps the upload path bounded and the worker performs chunk parsing.
+            return filename.endsWith(".xlsx") && file.getSize() > 0
+                    ? properties.getAsyncRowCountThreshold()
+                    : 0;
         } catch (Exception exception) {
             throw new BusinessException("IMPORT_FILE_READ_FAILED", "无法评估导入文件规模，请确认文件未损坏");
         }
@@ -163,6 +167,22 @@ public class ImportAsyncApplicationService {
             return file.getBytes();
         } catch (IOException exception) {
             throw new BusinessException("IMPORT_FILE_STORE_FAILED", "导入文件暂存失败，请重新上传");
+        }
+    }
+
+    private String submissionKey(Long clanId, Long branchId, boolean confirmDuplicates, byte[] content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(String.valueOf(clanId).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) ':');
+            digest.update(String.valueOf(branchId).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) ':');
+            digest.update(Boolean.toString(confirmDuplicates).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) ':');
+            digest.update(content);
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (Exception exception) {
+            throw new BusinessException("IMPORT_IDEMPOTENCY_KEY_FAILED", "无法生成导入幂等键");
         }
     }
 
