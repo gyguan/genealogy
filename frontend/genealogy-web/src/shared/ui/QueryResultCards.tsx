@@ -30,7 +30,8 @@ function splitFirstPrimaryAction(node: ReactNode): ActionSplit {
     if (!('children' in element.props)) return element;
     return cloneElement(element, undefined, Children.map(element.props.children, child => visit(child)));
   }
-  return { pageAction, resultActions: visit(node) };
+  const resultActions = visit(node);
+  return { pageAction, resultActions };
 }
 
 export function QueryResultCard({
