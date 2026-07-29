@@ -8,6 +8,8 @@ import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobPayloadEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +27,7 @@ import java.util.Locale;
 @Service
 public class ImportAsyncApplicationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ImportAsyncApplicationService.class);
     private static final String MODE_AUTO = "auto";
     private static final String MODE_SYNC = "sync";
     private static final String MODE_ASYNC = "async";
@@ -78,6 +81,10 @@ public class ImportAsyncApplicationService {
                 .findFirstByClanIdAndIdempotencyKeyOrderByCreatedAtDesc(clanId, idempotencyKey)
                 .orElse(null);
         if (existing != null) {
+            log.info(
+                    "event=import_job_deduplicated jobId={} clanId={} branchId={} stage={} result=existing submissionKeyPrefix={}",
+                    existing.getId(), clanId, branchId, existing.getExecutionStage(), prefix(idempotencyKey)
+            );
             return toResponse(existing);
         }
 
@@ -119,6 +126,11 @@ public class ImportAsyncApplicationService {
         payload.setConfirmDuplicates(confirmDuplicates);
         payload.setCreatedAt(now);
         payloadRepository.save(payload);
+        log.info(
+                "event=import_job_enqueued jobId={} clanId={} branchId={} stage={} fromStatus=none toStatus={} result=success fileFormat={} fileSize={} chunkSize={} submissionKeyPrefix={}",
+                saved.getId(), clanId, branchId, saved.getExecutionStage(), saved.getExecutionStatus(), format,
+                file.getSize(), saved.getChunkSize(), prefix(idempotencyKey)
+        );
         return toResponse(saved);
     }
 
@@ -152,8 +164,6 @@ public class ImportAsyncApplicationService {
                     return count;
                 }
             }
-            // XLSX is a ZIP container. Do not materialize a Workbook merely to route the request;
-            // file size routing keeps the upload path bounded and the worker performs chunk parsing.
             return filename.endsWith(".xlsx") && file.getSize() > 0
                     ? properties.getAsyncRowCountThreshold()
                     : 0;
@@ -184,6 +194,11 @@ public class ImportAsyncApplicationService {
         } catch (Exception exception) {
             throw new BusinessException("IMPORT_IDEMPOTENCY_KEY_FAILED", "无法生成导入幂等键");
         }
+    }
+
+    private String prefix(String value) {
+        if (value == null || value.isBlank()) return "";
+        return value.substring(0, Math.min(12, value.length()));
     }
 
     private String normalizeMode(String value) {
