@@ -33,7 +33,3 @@ body {
   color: var(--genealogy-color-text);
   background: var(--genealogy-color-bg-layout);
 }
-
-.ant-btn, .ant-input, .ant-select, .ant-input {
-  font: inherit;
-}
