@@ -6,7 +6,7 @@ import com.genealogy.common.exception.BusinessException;
 public final class SourceBindingAccessPolicy {
 
     public static final String VIEW_PERMISSION = "source:view";
-    public static final String MANAGE_PERMISSION = "source:update";
+    public static final String MANAGE_PERMISSION = "source:bind";
 
     public void requireView(ActorContext actor, Long bindingClanId) {
         requireSameClan(actor, bindingClanId);
