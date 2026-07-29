@@ -1,12 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FindBugsFilter>
-    <!-- Historical baseline only. Each entry is exact by class and bug pattern. -->
-    <Match>
-        <Class name="com.genealogy.imports.application.ImportApplicationService"/>
-        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
-    </Match>
-    <Match>
-        <Class name="com.genealogy.review.application.ReviewQualityCheckApplicationService"/>
-        <Bug pattern="NP_NULL_ON_SOME_PATH"/>
-    </Match>
+    <!-- No High-priority historical baseline. New exceptions require a tracking Issue and expiry. -->
 </FindBugsFilter>

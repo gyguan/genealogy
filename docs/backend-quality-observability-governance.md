@@ -19,7 +19,7 @@ mvn -Pdependency-vulnerability-scan -DskipTests -Dspotbugs.skip=true -Djacoco.sk
 - Application 不得依赖 Controller。
 - Domain 不得依赖 Controller 或 Repository。
 
-现有精确例外只允许按全限定类名登记，不允许整包排除。规则失败时，ArchUnit 会在 Surefire 报告中列出具体非法依赖。
+当前 Controller 与 Domain 跨层历史例外已在 #950 清零。人物重复检测与来源绑定查询由 Application Service 承接；成员授权在 Domain 中仅保留无适配器契约，Repository、事务和身份上下文装载由 Application 实现负责。新增例外不得通过整包排除，规则失败时 ArchUnit 会在 Surefire 报告中列出具体非法依赖。
 
 ## 覆盖率
 
@@ -27,7 +27,7 @@ JaCoCo 在 `target/site/jacoco` 生成 HTML 与 XML 报告。当前全后端行�
 
 ## 静态扫描
 
-SpotBugs 在 `verify` 阶段执行，`High` 优先级新增问题直接阻断。`config/spotbugs-exclude.xml` 是可审计历史基线；新增排除必须说明具体规则、原因、到期时间和跟踪 Issue，禁止使用整包排除。
+SpotBugs 在 `verify` 阶段执行，`High` 优先级新增问题直接阻断。当前 High 历史基线已在 #950 清零，`config/spotbugs-exclude.xml` 保持空登记。未来新增排除必须说明具体规则、原因、到期时间和跟踪 Issue，禁止使用整包排除。
 
 ## 依赖与构建环境
 

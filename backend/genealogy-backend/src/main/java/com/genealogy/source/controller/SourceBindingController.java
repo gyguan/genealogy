@@ -1,14 +1,13 @@
 package com.genealogy.source.controller;
 
-import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.auth.application.RequestContextApplicationService;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
-import com.genealogy.common.exception.BusinessException;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.application.SourceBindingCommandApplicationService;
+import com.genealogy.source.application.SourceBindingQueryApplicationService;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceBindingRevisionDeleteRequest;
@@ -16,8 +15,6 @@ import com.genealogy.source.dto.SourceBindingRevisionResponse;
 import com.genealogy.source.dto.SourceBindingRevisionSubmitRequest;
 import com.genealogy.source.dto.SourceBindingReviewDecisionRequest;
 import com.genealogy.source.dto.SourceBindingSummaryResponse;
-import com.genealogy.source.entity.SourceBindingEntity;
-import com.genealogy.source.repository.SourceBindingRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -38,26 +35,21 @@ import java.util.List;
 @RequestMapping("/api/v1")
 public class SourceBindingController {
 
-    private static final String SOURCE_VIEW = "source:view";
-
     private final SourceApplicationService sourceApplicationService;
     private final SourceBindingCommandApplicationService sourceBindingCommandApplicationService;
-    private final SourceBindingRepository sourceBindingRepository;
+    private final SourceBindingQueryApplicationService sourceBindingQueryApplicationService;
     private final RequestContextApplicationService requestContextApplicationService;
-    private final AuthorizationApplicationService authorizationApplicationService;
 
     public SourceBindingController(
             SourceApplicationService sourceApplicationService,
             SourceBindingCommandApplicationService sourceBindingCommandApplicationService,
-            SourceBindingRepository sourceBindingRepository,
-            RequestContextApplicationService requestContextApplicationService,
-            AuthorizationApplicationService authorizationApplicationService
+            SourceBindingQueryApplicationService sourceBindingQueryApplicationService,
+            RequestContextApplicationService requestContextApplicationService
     ) {
         this.sourceApplicationService = sourceApplicationService;
         this.sourceBindingCommandApplicationService = sourceBindingCommandApplicationService;
-        this.sourceBindingRepository = sourceBindingRepository;
+        this.sourceBindingQueryApplicationService = sourceBindingQueryApplicationService;
         this.requestContextApplicationService = requestContextApplicationService;
-        this.authorizationApplicationService = authorizationApplicationService;
     }
 
     @PostMapping("/clans/{clanId}/source-bindings")
@@ -77,7 +69,9 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.submitCreate(clanId, request, context.userId(), context.requestId(), context.clientIp()));
+        return ApiResponse.success(sourceBindingCommandApplicationService.submitCreate(
+                clanId, request, context.userId(), context.requestId(), context.clientIp()
+        ));
     }
 
     @PostMapping("/source-bindings/{bindingId}/replace-revision")
@@ -87,7 +81,9 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.submitReplace(bindingId, request, context.userId(), context.requestId(), context.clientIp()));
+        return ApiResponse.success(sourceBindingCommandApplicationService.submitReplace(
+                bindingId, request, context.userId(), context.requestId(), context.clientIp()
+        ));
     }
 
     @PostMapping("/source-bindings/{bindingId}/delete-revision")
@@ -97,7 +93,9 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.submitDelete(bindingId, request, context.userId(), context.requestId(), context.clientIp()));
+        return ApiResponse.success(sourceBindingCommandApplicationService.submitDelete(
+                bindingId, request, context.userId(), context.requestId(), context.clientIp()
+        ));
     }
 
     @PostMapping("/source-binding-revisions/{revisionId}/approve")
@@ -107,7 +105,9 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.approve(revisionId, request, context.userId(), context.requestId(), context.clientIp()));
+        return ApiResponse.success(sourceBindingCommandApplicationService.approve(
+                revisionId, request, context.userId(), context.requestId(), context.clientIp()
+        ));
     }
 
     @PostMapping("/source-binding-revisions/{revisionId}/reject")
@@ -117,12 +117,11 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.reject(revisionId, request, context.userId(), context.requestId(), context.clientIp()));
+        return ApiResponse.success(sourceBindingCommandApplicationService.reject(
+                revisionId, request, context.userId(), context.requestId(), context.clientIp()
+        ));
     }
 
-    /**
-     * Compatibility endpoint. New callers should use /clans/{clanId}/source-bindings.
-     */
     @Deprecated
     @PostMapping("/clans/{clanId}/source-links")
     public ApiResponse<SourceBindingResponse> bindLegacySourceLink(
@@ -142,11 +141,7 @@ public class SourceBindingController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(sourceApplicationService.listBindingSummariesBySource(
-                sourceId,
-                targetType,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                context.userId()
+                sourceId, targetType, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), context.userId()
         ));
     }
 
@@ -168,28 +163,12 @@ public class SourceBindingController {
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         if (clanId != null) {
-            return ApiResponse.success(sourceApplicationService.listBindingsByTarget(targetType, targetId, clanId, context.userId()));
+            return ApiResponse.success(sourceApplicationService.listBindingsByTarget(
+                    targetType, targetId, clanId, context.userId()
+            ));
         }
-        return ApiResponse.success(sourceBindingRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(targetType, targetId).stream()
-                .filter(binding -> canViewSourceBinding(binding, context.userId()))
-                .map(this::toResponse)
-                .toList());
-    }
-
-    private boolean canViewSourceBinding(SourceBindingEntity binding, Long actorId) {
-        try {
-            authorizationApplicationService.requirePermission(binding.getClanId(), actorId, SOURCE_VIEW);
-            return true;
-        } catch (BusinessException ignored) {
-            return false;
-        }
-    }
-
-    private SourceBindingResponse toResponse(SourceBindingEntity entity) {
-        return new SourceBindingResponse(
-                entity.getId(), entity.getClanId(), entity.getSourceId(), entity.getTargetType(), entity.getTargetId(),
-                entity.getBindingReason(), entity.getExcerpt(), entity.getConfidenceLevel(), entity.getBindingStatus(),
-                entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()
-        );
+        return ApiResponse.success(sourceBindingQueryApplicationService.listByTarget(
+                targetType, targetId, context.userId()
+        ));
     }
 }

@@ -31,7 +31,7 @@ class MemberGrantPolicyServiceTest {
     private final MemberRoleRepository memberRoleRepository = mock(MemberRoleRepository.class);
     private final RoleRepository roleRepository = mock(RoleRepository.class);
     private final BranchRepository branchRepository = mock(BranchRepository.class);
-    private final MemberGrantPolicyService service = new MemberGrantPolicyService(
+    private final com.genealogy.member.application.MemberGrantPolicyService service = new com.genealogy.member.application.MemberGrantPolicyService(
             authorizationApplicationService,
             clanMembershipRepository,
             memberRoleRepository,

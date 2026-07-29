@@ -6,7 +6,6 @@ import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.quality.domain.GenealogyQualityRuleService;
 import com.genealogy.review.dto.ReviewQualityCheckAcceptedResponse;
-import com.genealogy.review.dto.ReviewQualityCheckResponse;
 import com.genealogy.review.dto.ReviewQualityCheckTriggerRequest;
 import com.genealogy.review.entity.AuditRecordEntity;
 import com.genealogy.review.entity.CheckTaskEntity;
@@ -19,11 +18,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -47,17 +44,25 @@ class ReviewQualityCheckApplicationServiceTest {
         AuthorizationApplicationService authorization = mock(AuthorizationApplicationService.class);
         OperationLogApplicationService operationLog = mock(OperationLogApplicationService.class);
         GenealogyQualityRuleService rules = mock(GenealogyQualityRuleService.class);
+        ObjectMapper objectMapper = new ObjectMapper();
         when(rules.highestRisk(anyList())).thenReturn("high");
-        when(qualityCheckRepository.save(any(ReviewQualityCheckEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(qualityCheckRepository.existsByClanIdAndScopeFingerprintAndStatusIn(anyLong(), anyString(), anyCollection())).thenReturn(false);
+        when(qualityCheckRepository.save(any(ReviewQualityCheckEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(qualityCheckRepository.existsByClanIdAndScopeFingerprintAndStatusIn(
+                anyLong(),
+                anyString(),
+                anyCollection()
+        )).thenReturn(false);
         service = new ReviewQualityCheckApplicationService(
                 qualityCheckRepository,
                 checkTaskRepository,
                 auditRecordRepository,
                 authorization,
                 operationLog,
-                rules,
-                new ObjectMapper()
+                objectMapper,
+                new ReviewQualityCheckExecutor(objectMapper, rules),
+                new ReviewQualityCheckStateMachine(),
+                new ReviewQualityCheckAfterCommitActions(operationLog)
         );
     }
 
@@ -81,8 +86,6 @@ class ReviewQualityCheckApplicationServiceTest {
         );
 
         assertEquals("ISSUES_FOUND", accepted.status());
-        when(qualityCheckRepository.findByIdAndClanId(accepted.checkId(), 7L))
-                .thenAnswer(invocation -> Optional.of(latestSavedEntity(accepted.checkId())));
     }
 
     @Test
@@ -100,6 +103,15 @@ class ReviewQualityCheckApplicationServiceTest {
         assertEquals("REVIEW_QUALITY_TASK_STATE_CONFLICT", exception.getCode());
     }
 
+    @Test
+    void rejectsNullRequestExplicitly() {
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> service.trigger(7L, null, 3L)
+        );
+        assertEquals("REVIEW_QUALITY_REQUEST_REQUIRED", exception.getCode());
+    }
+
     private CheckTaskEntity pendingTask(Long id, Long clanId, Long revisionId) {
         CheckTaskEntity task = new CheckTaskEntity();
         task.setId(id);
@@ -108,19 +120,5 @@ class ReviewQualityCheckApplicationServiceTest {
         task.setStatus("pending");
         task.setCreatedAt(LocalDateTime.now());
         return task;
-    }
-
-    private ReviewQualityCheckEntity latestSavedEntity(java.util.UUID id) {
-        ReviewQualityCheckEntity entity = new ReviewQualityCheckEntity();
-        entity.setId(id);
-        entity.setClanId(7L);
-        entity.setScopeType("TASK_IDS");
-        entity.setMode("REVIEW_GATE");
-        entity.setStatus("ISSUES_FOUND");
-        entity.setTaskIdsJson("[11]");
-        entity.setRulesJson("[]");
-        entity.setReviewBlocked(true);
-        entity.setQueuedAt(LocalDateTime.now());
-        return entity;
     }
 }
