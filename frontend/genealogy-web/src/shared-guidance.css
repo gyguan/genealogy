@@ -1,32 +1,41 @@
 /* Issue #178: keep primary tasks above low-frequency product narration. */
 
-.lineage-section-desc, [data-genealogy-app] .tracking-filter-actions > .ant-typography, [data-genealogy-app] .person-archive-search .archive-search-summary {
+[data-genealogy-app] .lineage-section-desc,
+[data-genealogy-app] .tracking-filter-actions > .ant-typography,
+[data-genealogy-app] .person-archive-search .archive-search-summary {
   display: none;
 }
 
 /* The lineage workbench heading now contains the person/branch mode control and remains visible. */
-.lineage-workbench-head p {
+[data-genealogy-app] .lineage-workbench-head p {
   max-width: 760px;
 }
 
 /* The source library already has a global module title in App Header;
    keep the search card visible because its body contains the filter controls. */
-.source-library-page > .ant-space > .ant-space-item:first-child .ant-card-head {
+[data-genealogy-app] .source-library-page > .ant-space > .ant-space-item:first-child .ant-card-head {
   display: none;
 }
 
 /* General permission rules move to contextual help; risk warnings in modals remain visible. */
-.member-role-page > .ant-alert:first-child {
+[data-genealogy-app] .member-role-page > .ant-alert:first-child {
   display: none;
 }
 
 /* Culture concepts are available through labels; avoid repeating paragraphs in summary cards. */
-.home-culture-card-list .ant-typography-secondary, [data-genealogy-app] .home-culture-grid > .ant-card:nth-child(2) .ant-typography-secondary {
+[data-genealogy-app] .home-culture-card-list .ant-typography-secondary,
+[data-genealogy-app] .home-culture-grid > .ant-card:nth-child(2) .ant-typography-secondary {
   display: none;
 }
 
 /* Wizard flow rules are available from Panel help; lists keep only actionable states. */
-.step-draft-review-header p, [data-genealogy-app] .branch-step-list-header .ant-typography-paragraph, [data-genealogy-app] .review-progress-submit-list .step-draft-review-header p, [data-genealogy-app] .review-progress-task-list .step-draft-review-header p, [data-genealogy-app] .wizard-generation-inline-list > .ant-alert, [data-genealogy-app] .wizard-generation-word-grid + .wizard-inline-list-header + .ant-typography-paragraph, [data-genealogy-app] .relationship-step-panel > .ant-space > .ant-space-item:first-child {
+[data-genealogy-app] .step-draft-review-header p,
+[data-genealogy-app] .branch-step-list-header .ant-typography-paragraph,
+[data-genealogy-app] .review-progress-submit-list .step-draft-review-header p,
+[data-genealogy-app] .review-progress-task-list .step-draft-review-header p,
+[data-genealogy-app] .wizard-generation-inline-list > .ant-alert,
+[data-genealogy-app] .wizard-generation-word-grid + .wizard-inline-list-header + .ant-typography-paragraph,
+[data-genealogy-app] .relationship-step-panel > .ant-space > .ant-space-item:first-child {
   display: none;
 }
 
