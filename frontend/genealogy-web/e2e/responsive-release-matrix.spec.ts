@@ -42,11 +42,17 @@ async function documentOverflow(page: Page) {
 
 async function visibleCriticalAction(page: Page, patterns: RegExp[]) {
   if (!patterns.length) return true;
-  for (const pattern of patterns) {
-    const button = page.getByRole('button', { name: pattern }).filter({ visible: true }).first();
-    if (await button.count() && await button.isVisible()) return true;
-    const link = page.getByRole('link', { name: pattern }).filter({ visible: true }).first();
-    if (await link.count() && await link.isVisible()) return true;
+  const candidates = page.locator('button, a, [role="button"], [role="link"], [role="menuitem"]');
+  const count = await candidates.count();
+  for (let index = 0; index < count; index += 1) {
+    const candidate = candidates.nth(index);
+    if (!(await candidate.isVisible())) continue;
+    const accessibleText = [
+      await candidate.innerText().catch(() => ''),
+      await candidate.getAttribute('aria-label') || '',
+      await candidate.getAttribute('title') || ''
+    ].join(' ').replace(/\s+/g, '');
+    if (patterns.some(pattern => pattern.test(accessibleText))) return true;
   }
   return false;
 }
