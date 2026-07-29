@@ -25,6 +25,8 @@ jobs:
   configuration-and-migrations:
     name: Production config and Flyway upgrade
     runs-on: ubuntu-latest
+    env:
+      GENEALOGY_AUTH_RESET_DELIVERY_URL: http://127.0.0.1:9/test-reset-delivery
     services:
       postgres:
         image: postgres:16
