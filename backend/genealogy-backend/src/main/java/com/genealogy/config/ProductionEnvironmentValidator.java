@@ -1,8 +1,5 @@
 package com.genealogy.config;
 
-import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
-import org.springframework.context.ApplicationListener;
-import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 
 import java.util.ArrayList;
@@ -10,22 +7,16 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Validates production-only requirements after configuration data has been
- * loaded but before the application context creates the datasource.
+ * Validates production-only requirements after profiles and configuration data
+ * are available, but before application beans such as the datasource are built.
  */
-public final class ProductionEnvironmentValidator
-        implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
+public final class ProductionEnvironmentValidator {
 
     private static final List<String> REQUIRED_SECRETS = List.of(
             "DB_URL", "DB_USERNAME", "DB_PASSWORD"
     );
 
-    @Override
-    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
-        validate(event.getEnvironment());
-    }
-
-    void validate(ConfigurableEnvironment environment) {
+    public void validate(ConfigurableEnvironment environment) {
         boolean production = Arrays.stream(environment.getActiveProfiles())
                 .anyMatch("prod"::equalsIgnoreCase);
         if (!production) {
@@ -45,10 +36,5 @@ public final class ProductionEnvironmentValidator
                             + String.join(", ", missing)
             );
         }
-    }
-
-    @Override
-    public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
     }
 }
