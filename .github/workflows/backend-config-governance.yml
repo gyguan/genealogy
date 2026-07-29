@@ -51,15 +51,7 @@ jobs:
 
       - name: Verify production profile rejects missing Secrets
         working-directory: backend/genealogy-backend
-        run: |
-          set +e
-          output=$(mvn -q -DskipTests spring-boot:run \
-            -Dspring-boot.run.profiles=prod \
-            -Dspring-boot.run.arguments=--spring.main.web-application-type=none 2>&1)
-          status=$?
-          set -e
-          test "$status" -ne 0
-          echo "$output" | grep -q "Missing required Secret variables"
+        run: mvn -B -Dtest=ProductionProfileStartupTest test
 
       - name: Build backend
         working-directory: backend/genealogy-backend
