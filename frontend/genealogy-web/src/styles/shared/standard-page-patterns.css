@@ -1,7 +1,10 @@
 .standard-page {
   display: grid;
   gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  overflow-x: clip;
 }
 
 .standard-page-header {
@@ -9,6 +12,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -33,6 +38,14 @@
 .standard-page__content {
   display: grid;
   gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.standard-page__content > * {
+  max-width: 100%;
   min-width: 0;
 }
 
