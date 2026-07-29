@@ -1,10 +1,12 @@
 package com.genealogy.tree.application;
 
 import com.genealogy.tree.dto.TreeGraphResponse;
+import com.genealogy.tree.observability.TreeQueryMetrics;
 import com.genealogy.tree.query.BranchLineageQuery;
 import com.genealogy.tree.query.PersonLineageQuery;
 import com.genealogy.tree.query.RelationCategory;
 import com.genealogy.tree.query.TreeDirection;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,7 +24,8 @@ class TreeQueryApplicationServiceTest {
         LineageTraversalService lineage = mock(LineageTraversalService.class);
         BranchGraphService branch = mock(BranchGraphService.class);
         TreeGraphAssembler assembler = mock(TreeGraphAssembler.class);
-        TreeQueryApplicationService service = new TreeQueryApplicationService(lineage, branch, assembler);
+        TreeQueryMetrics metrics = new TreeQueryMetrics(new SimpleMeterRegistry(), 60_000);
+        TreeQueryApplicationService service = new TreeQueryApplicationService(lineage, branch, assembler, metrics);
         PersonLineageQuery query = new PersonLineageQuery(
                 10L, TreeDirection.BOTH,
                 Set.of(RelationCategory.BLOOD, RelationCategory.MARRIAGE),
@@ -43,7 +46,8 @@ class TreeQueryApplicationServiceTest {
         LineageTraversalService lineage = mock(LineageTraversalService.class);
         BranchGraphService branch = mock(BranchGraphService.class);
         TreeGraphAssembler assembler = mock(TreeGraphAssembler.class);
-        TreeQueryApplicationService service = new TreeQueryApplicationService(lineage, branch, assembler);
+        TreeQueryMetrics metrics = new TreeQueryMetrics(new SimpleMeterRegistry(), 60_000);
+        TreeQueryApplicationService service = new TreeQueryApplicationService(lineage, branch, assembler, metrics);
         BranchLineageQuery query = new BranchLineageQuery(
                 1L, 2L, true, Set.of(RelationCategory.BLOOD),
                 "official", 5, 5, 500, 1000, 20L
