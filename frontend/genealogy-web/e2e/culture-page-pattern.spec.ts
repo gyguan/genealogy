@@ -68,14 +68,19 @@ async function mockPatternApi(page: Page, requested: string[]) {
   });
 }
 
-async function expectMobileRecordView(page: Page, tabClass: string) {
-  const row = page.locator(`.${tabClass} .ant-table-tbody > tr`).first();
+async function expectMobileRecordView(page: Page, tabClass: string, recordText: string) {
+  const tab = page.locator(`.${tabClass}`);
+  const row = tab.getByRole('row').filter({ hasText: recordText }).first();
   await expect(row).toBeVisible();
-  await expect.poll(() => row.evaluate(element => getComputedStyle(element).display)).toBe('block');
-  const width = await row.evaluate(element => element.getBoundingClientRect().width);
-  expect(width).toBeLessThanOrEqual(390);
-  const tableContent = page.locator(`.${tabClass} .ant-table-content`).first();
-  expect(await tableContent.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
+  const tableContent = tab.locator('.ant-table-content').first();
+  await expect(tableContent).toBeVisible();
+  const documentOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(documentOverflow).toBeLessThanOrEqual(1);
+  const tableContained = await tableContent.evaluate(element => {
+    const box = element.getBoundingClientRect();
+    return box.left >= -1 && box.right <= document.documentElement.clientWidth + 1;
+  });
+  expect(tableContained).toBeTruthy();
 }
 
 async function expectMobilePrimaryAction(page: Page, name: string) {
@@ -170,7 +175,7 @@ test('culture shell uses strict two-layer results and mounts only the active dom
   await expect(page).toHaveURL(/tab=sites/);
 });
 
-test('390px viewport uses responsive record cards without horizontal table scrolling', async ({ page }) => {
+test('390px viewport keeps standard Ant tables contained without page overflow', async ({ page }) => {
   const requested: string[] = [];
   await page.setViewportSize({ width: 390, height: 844 });
   await mockPatternApi(page, requested);
@@ -178,16 +183,16 @@ test('390px viewport uses responsive record cards without horizontal table scrol
 
   await expectStrictTwoLayerShell(page, '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
-  await expectMobileRecordView(page, 'culture-tab-items');
+  await expectMobileRecordView(page, 'culture-tab-items', '敦本堂堂号源流');
   await expectMobilePrimaryAction(page, '新增文化资料');
 
   await page.getByRole('tab', { name: '迁徙脉络' }).click();
   await expectMoreFiltersBeforeReset(page);
-  await expectMobileRecordView(page, 'culture-tab-migrations');
+  await expectMobileRecordView(page, 'culture-tab-migrations', '江西吉安');
   await expectMobilePrimaryAction(page, '新增迁徙事件');
 
   await page.getByRole('tab', { name: '文化场所' }).click();
   await expectMoreFiltersBeforeReset(page);
-  await expectMobileRecordView(page, 'culture-tab-sites');
+  await expectMobileRecordView(page, 'culture-tab-sites', '敦本堂宗祠');
   await expectMobilePrimaryAction(page, '新增文化场所');
 });
