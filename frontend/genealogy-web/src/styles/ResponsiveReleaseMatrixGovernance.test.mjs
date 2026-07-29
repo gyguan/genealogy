@@ -8,6 +8,7 @@ const read = relative => readFileSync(path.join(root, relative), 'utf8');
 const spec = read('e2e/css-responsive-release-matrix.spec.ts');
 const desktop = read('e2e/css-desktop-viewport-matrix.spec.ts');
 const registry = read('src/app/moduleRegistry.tsx');
+const packageJson = read('package.json');
 const workflow = read('../../.github/workflows/culture-page-gate.yml');
 const browserWorkflow = read('../../.github/workflows/multi-browser-compatibility.yml');
 
@@ -71,6 +72,7 @@ test('responsive release checks include overflow actions containers navigation a
 
 test('visual and multi-browser workflows execute the responsive suite', () => {
   assert.match(workflow, /css-responsive-release-matrix\.spec\.ts/);
-  assert.match(browserWorkflow, /css-responsive-release-matrix\.spec\.ts/);
-  assert.match(browserWorkflow, /chromium|firefox|webkit/);
+  assert.match(packageJson, /test:culture[\s\S]*css-responsive-release-matrix\.spec\.ts/);
+  assert.match(browserWorkflow, /npx playwright test --project/);
+  for (const project of ['chromium', 'firefox', 'webkit']) assert.match(browserWorkflow, new RegExp(`project: ${project}`));
 });
