@@ -33,6 +33,13 @@ async function mockShellApi(page: Page, authenticated = true) {
     }
     if (path === '/clans') return route.fulfill(ok({ records: [{ id: 1, clanName: '黄氏宗族', surname: '黄' }], total: 1, pageNo: 1, pageSize: 20, totalPages: 1 }));
     if (path === '/clans/1/branches') return route.fulfill(ok([{ id: 2, branchName: '长沙支', branchPath: '黄氏宗族/长沙支' }]));
+    if (path === '/clans/1/grantable-roles') return route.fulfill(ok([]));
+    if (path === '/clans/1/culture-items') {
+      return route.fulfill(ok({
+        items: [],
+        page: { pageNo: 1, pageSize: 10, totalElements: 0, totalPages: 0 }
+      }));
+    }
     if (path === '/persons/1') return route.fulfill(ok({ id: 1, personName: '黄守正', name: '黄守正', gender: 'male', status: 'official', clanId: 1, branchId: 2, allowedActions: ['view', 'edit'] }));
     if (/statistics|dashboard|summary/.test(path)) return route.fulfill(ok({ totalClans: 1, totalPersons: 18, pendingReviews: 2, totalSources: 6 }));
     if (/persons/.test(path)) return route.fulfill(ok({ records: [], items: [], total: 0, pageNo: 1, pageSize: 20, totalPages: 0 }));
