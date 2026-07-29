@@ -64,6 +64,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -476,9 +477,8 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   ].filter(Boolean) as MenuProps['items'] : [];
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      
-      <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+    <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
+<Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
         <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[16, 0]}>
@@ -503,7 +503,10 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
               )
             }]}
           />
-          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+          <div className="culture-search-actions"><Space>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></div>
         </Form>
       </Card>
 

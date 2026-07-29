@@ -58,6 +58,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -354,7 +355,11 @@ export function LogPage({}: {  }) {
   }
 
   function queryActions(reset: () => void, query: () => void, loading: boolean) {
-    return <div className="tracking-query-actions"><Space wrap>{moreButton()}<Button disabled={loading} onClick={reset}>重置</Button><Button type="primary" loading={loading} onClick={query}>查询</Button></Space></div>;
+    return <div className="tracking-query-actions"><StandardQueryActions wrap>
+{moreButton()}
+<Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
+<Button data-query-action="submit" type="primary" loading={loading} onClick={query}>查询</Button>
+</StandardQueryActions></div>;
   }
 
   const objectFiltersView = (

@@ -20,6 +20,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -405,8 +406,8 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     <Button icon={<SettingOutlined />} onClick={() => setTemplateModalOpen(true)}>任务模板管理</Button>
   </Space>;
 
-  return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    <Card title="修谱工作台">
+  return <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
+<Card title="修谱工作台">
       <Form layout="vertical" onFinish={searchWorkbench}>
         <Row gutter={[16, 0]} align="bottom">
           <Col xs={24} sm={12} xl={6}><Form.Item label="宗族"><Select showSearch optionFilterProp="label" value={currentClanId} onChange={changeClan} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanLabel(clan) }))} placeholder="请选择宗族" /></Form.Item></Col>
@@ -434,10 +435,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         />
         <Row justify={screens.xl ? 'end' : 'start'} style={{ marginTop: 8 }}>
           <Space wrap>
-            <Button type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-            <Button onClick={resetFilters}>重置</Button>
-            <Button type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
-          </Space>
+<Button data-query-action="more" type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+<Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
+</StandardQueryActions>
         </Row>
       </Form>
     </Card>

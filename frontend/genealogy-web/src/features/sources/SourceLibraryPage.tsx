@@ -40,6 +40,7 @@ import type {
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { EmptyState, InlineFeedback, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Text, Title } = Typography;
 const ATTACHMENT_PAGE_SIZE = 20;
@@ -829,8 +830,8 @@ export function SourceLibraryPage({}: Props) {
 
   return (
     <div className="source-library-page">
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <Card className="source-library-query-card" title="来源资料查询">
+      <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
+<Card className="source-library-query-card" title="来源资料查询">
           <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search)}>
             <Row gutter={[16, 0]}>
               <Col xs={24} sm={12} lg={8} xl={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名、提供者、摘录" /></Form.Item></Col>
@@ -840,7 +841,10 @@ export function SourceLibraryPage({}: Props) {
               <Col xs={24} sm={12} lg={8} xl={6}><Form.Item name="hasAttachment" label="附件"><Select allowClear options={[{ value: 'true', label: '有附件' }, { value: 'false', label: '无附件' }]} /></Form.Item></Col>
               <Col xs={24} sm={12} lg={8} xl={6}><Form.Item name="hasBinding" label="引用"><Select allowClear options={[{ value: 'true', label: '有引用' }, { value: 'false', label: '无引用' }]} /></Form.Item></Col>
             </Row>
-            <Row justify="end"><Col><Space><Button onClick={resetSearch} disabled={loading}>重置</Button><Button type="primary" htmlType="submit" loading={loading}>查询</Button></Space></Col></Row>
+            <Row justify="end"><Col><Space>
+<Button data-query-action="reset" onClick={resetSearch} disabled={loading}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={loading}>查询</Button>
+</StandardQueryActions></Col></Row>
           </Form>
         </Card>
         <Card title={`来源资料（共 ${sourceTotal} 条）`} extra={<Space><Tooltip title={!clanId ? '请先选择宗族' : '新增来源草稿'}><span><Button type="primary" icon={<PlusOutlined />} disabled={!clanId} onClick={openCreateSource}>新增来源</Button></span></Tooltip><Tooltip title="刷新"><Button icon={<ReloadOutlined />} aria-label="刷新来源列表" loading={loading} onClick={() => void loadSources(search, true)} /></Tooltip></Space>}>

@@ -45,6 +45,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { EmptyState, InlineFeedback, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Text, Title } = Typography;
 const { useBreakpoint } = Grid;
@@ -892,8 +893,8 @@ export function SourceLibraryQueryPage({}: Props) {
 
   return (
     <div className="source-library-page source-library-query-page">
-      <Space direction="vertical" size="middle" className="source-library-stack">
-        <Card className="source-library-query-card" title="来源资料查询">
+      <StandardQueryActions direction="vertical" size="middle" className="source-library-stack">
+<Card className="source-library-query-card" title="来源资料查询">
           {clanError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clanError} action={<Button size="small" onClick={() => void loadClans()}>重新加载</Button>} className="source-library-query-status" /> : null}
           <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search, clanId)}>
             <div className="source-library-query-grid source-library-query-grid--primary">
@@ -922,8 +923,8 @@ export function SourceLibraryQueryPage({}: Props) {
               }]}
             />
             <div className="source-library-query-actions">
-              <Button onClick={resetSearch} disabled={loading}>重置</Button>
-              <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
+              
+              
             </div>
           </Form>
         </Card>
@@ -932,7 +933,10 @@ export function SourceLibraryQueryPage({}: Props) {
           
           {listError ? <PageFeedback tone="error" title={listStale ? '数据刷新失败，当前展示上次结果' : '来源资料加载失败'} description={listError} action={<Button size="small" onClick={() => void loadSources(search, true)}>重新加载</Button>} className="source-library-result-status" /> : null}
           {!listLoaded && loading ? (
-            <Space direction="vertical" align="center" className="source-library-loading"><Spin /><InlineFeedback tone="info" title="正在加载来源资料…" /></Space>
+            <Space direction="vertical" align="center" className="source-library-loading"><Spin /><InlineFeedback tone="info" title="正在加载来源资料…" />
+<Button data-query-action="reset" onClick={resetSearch} disabled={loading}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={loading}>查询</Button>
+</StandardQueryActions>
           ) : isMobile ? (
             <>
               <List<SourceRecord>

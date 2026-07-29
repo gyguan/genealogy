@@ -51,6 +51,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -476,9 +477,8 @@ export function CultureSiteTab() {
 
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
 
-  return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    
-    <Card size="small" title="祠堂与文化场所" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
+  return <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
+<Card size="small" title="祠堂与文化场所" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
       <Paragraph type="secondary">查询和维护祠堂、祖居、墓园与纪念设施；地图与 GIS 不在本期范围。</Paragraph>
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[12, 0]}>
@@ -489,7 +489,10 @@ export function CultureSiteTab() {
           <Col xs={24} md={8} xl={3}><Form.Item name="currentStatus" label="当前状态"><Input allowClear placeholder="存续、遗址等" /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="数据状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
-          <Col xs={24} xl={6} className="culture-search-actions"><Space><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button onClick={resetSearch}>重置</Button></Space></Col>
+          <Col xs={24} xl={6} className="culture-search-actions"><Space>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></Col>
         </Row>
       </Form>
     </Card>
