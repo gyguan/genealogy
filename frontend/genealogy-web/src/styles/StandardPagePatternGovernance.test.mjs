@@ -105,6 +105,7 @@ test('standard page CSS remains token-driven, responsive and does not target Ant
   assert.match(styles, /var\(--ant-/);
   assert.match(styles, /standard-page-header__actions/);
   assert.match(styles, /@media \(max-width: 767px\)/);
+  assert.match(styles, /standard-page-header__actions \.ant-btn\s*\{[^}]*min-height:\s*40px/s);
 });
 
 test('standard page patterns do not use runtime DOM rearrangement or static inline style objects', () => {
