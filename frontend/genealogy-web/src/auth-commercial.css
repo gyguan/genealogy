@@ -198,8 +198,6 @@
   .commercial-auth-layout { display: block; min-height: 100vh; }
   .commercial-auth-brand { min-height: auto; padding: 22px 22px 42px; }
   .commercial-auth-brand-copy { margin-top: 38px; }
-  .commercial-auth-capabilities,
-  .commercial-auth-lineage { display: none; }
   .commercial-auth-panel { padding: 28px 20px 20px; }
   .commercial-auth-form-grid { grid-template-columns: 1fr; gap: 0; }
   .commercial-auth-footer { flex-direction: column; justify-content: center; }
