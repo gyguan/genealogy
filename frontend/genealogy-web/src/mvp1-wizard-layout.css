@@ -4,11 +4,15 @@
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+  max-width: 100%;
+  min-width: 0;
   padding-bottom: 8px;
+  overflow-x: clip;
 }
 
 .mvp1-wizard-page > * {
   min-width: 0;
+  max-width: 100%;
 }
 
 .wizard-progress-card {
@@ -17,8 +21,10 @@
 }
 
 .wizard-progress-card .ant-card-body {
+  max-width: 100%;
   padding: 16px 20px;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
 .wizard-progress-card .wizard-ant-steps {
@@ -46,6 +52,8 @@
 
 .wizard-step-content {
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .wizard-fixed-action-card {
@@ -253,20 +261,8 @@
 }
 
 @media (max-width: 767px) {
-  .mvp1-wizard-page {
-    max-width: 100%;
-    overflow-x: clip;
-  }
-
   .wizard-progress-card .ant-card-body {
-    max-width: 100%;
     padding: 14px 16px;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-  }
-
-  .wizard-progress-card .wizard-ant-steps {
-    min-width: 720px;
   }
 
   .wizard-progress-summary {
