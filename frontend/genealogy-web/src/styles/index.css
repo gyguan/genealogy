@@ -18,7 +18,6 @@
 
 /* shared UI responsibilities */
 @import './shared/shared-antd-contracts.css';
-@import './shared/standard-page-patterns.css';
 @import '../shared-guidance.css';
 @import '../shared-module-title.css';
 @import '../shared-page-content.css';
