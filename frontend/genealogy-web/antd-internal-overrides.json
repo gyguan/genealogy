@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "reviewedAt": "2026-07-29",
-  "policy": "Ant Design internal selectors are forbidden unless replacement by token, component token, component prop, or outer layout is impossible. Every unavoidable selector requires an exact registered exception and an open tracking issue.",
+  "policy": "Every production selector containing an Ant Design class is inventoried and classified. Unscoped internal selectors are forbidden. Explicit business class bindings and scoped component contracts remain visible in the report; any future unavoidable unscoped selector requires an exact registered exception and an open tracking issue.",
   "exceptions": []
 }
