@@ -30,8 +30,8 @@ class ReviewRuntimeLoggingArchitectureTest {
                 .contains("targetId={}")
                 .contains("actorId={}")
                 .contains("clanId={}")
-                .contains("fromStatus={}")
-                .contains("toStatus={}")
+                .contains("fromStatus=")
+                .contains("toStatus=")
                 .contains("costMs={}");
     }
 
