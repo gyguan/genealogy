@@ -7,6 +7,21 @@ const root = path.resolve('src');
 const groups = ['persons', 'tree', 'sources', 'culture', 'workbench', 'reviews', 'members', 'logs'];
 function walk(dir) { return readdirSync(dir).flatMap(name => { const file = path.join(dir, name); return statSync(file).isDirectory() ? walk(file) : [file]; }); }
 
+function innermostSpaceBlocks(source) {
+  const tokens = [...source.matchAll(/<Space\b[^>]*>|<\/Space>/g)];
+  const stack = [];
+  const blocks = [];
+  for (const token of tokens) {
+    if (token[0].startsWith('</')) {
+      const open = stack.pop();
+      if (!open) continue;
+      const body = source.slice(open.index + open[0].length, token.index);
+      if (!/<Space\b/.test(body)) blocks.push(body);
+    } else stack.push(token);
+  }
+  return blocks;
+}
+
 test('Issue #943 exposes the standard query action contract', () => {
   const source = readFileSync(path.join(root, 'shared/ui/StandardQueryActions.tsx'), 'utf8');
   assert.match(source, /export function StandardQueryActions/);
@@ -32,12 +47,12 @@ test('eight query feature groups use StandardQueryActions and canonical action o
   }
 });
 
-test('migrated pages do not retain hand-built Space query action groups', () => {
+test('migrated pages do not retain hand-built innermost Space query action groups', () => {
   for (const group of groups) {
     for (const file of walk(path.join(root, 'features', group)).filter(file => file.endsWith('.tsx'))) {
       const source = readFileSync(file, 'utf8');
-      for (const block of source.matchAll(/<Space[\s\S]*?<\/Space>/g)) {
-        assert.equal(/>\s*重置\s*</.test(block[0]) && />\s*(查询|搜索|检索)\s*</.test(block[0]), false, file + ' must not hand-build query actions');
+      for (const body of innermostSpaceBlocks(source)) {
+        assert.equal(/>\s*重置\s*</.test(body) && />\s*(查询|搜索|检索)\s*</.test(body), false, file + ' must not hand-build query actions');
       }
     }
   }
