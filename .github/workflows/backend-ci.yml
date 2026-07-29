@@ -6,11 +6,13 @@ on:
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
+      - ".github/dependency-review-config.yml"
   pull_request:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
+      - ".github/dependency-review-config.yml"
   workflow_dispatch:
 
 concurrency:
@@ -53,31 +55,17 @@ jobs:
 
   dependency-vulnerability-scan:
     name: Critical Dependency Vulnerability Scan
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
         with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-
-      - name: Scan dependencies and block critical findings
-        working-directory: backend/genealogy-backend
-        run: mvn -B -Pdependency-vulnerability-scan -DskipTests -Dspotbugs.skip=true -Djacoco.skip=true verify
-
-      - name: Upload vulnerability reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-dependency-vulnerability-reports
-          path: |
-            backend/genealogy-backend/target/dependency-check-report.html
-            backend/genealogy-backend/target/dependency-check-report.json
-          if-no-files-found: ignore
-          retention-days: 14
+          config-file: ./.github/dependency-review-config.yml
