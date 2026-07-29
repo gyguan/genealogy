@@ -29,12 +29,19 @@ class SourceBindingPolicyTest {
 
     @Test
     void shouldRequireDedicatedViewAndBindPermissions() {
-        ActorContext viewer = actor(Set.of("source:view"));
+        ActorContext viewer = actor(Set.of("source.view"));
         policy.requireView(viewer, 1L);
         assertThatThrownBy(() -> policy.requireManage(viewer, 1L))
                 .isInstanceOf(BusinessException.class);
 
-        ActorContext editor = actor(Set.of("source:view", "source:bind"));
+        ActorContext editor = actor(Set.of("source.view", "source.bind"));
+        policy.requireManage(editor, 1L);
+    }
+
+    @Test
+    void shouldAcceptLegacyColonPermissionCodesAtPolicyBoundary() {
+        ActorContext editor = actor(Set.of("source.bind"));
+        assertThat(editor.hasPermission("source:bind")).isTrue();
         policy.requireManage(editor, 1L);
     }
 
