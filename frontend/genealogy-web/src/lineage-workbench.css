@@ -41,12 +41,14 @@
   line-height: 34px;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon, .lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
+.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon,
+.lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
   display: inline-flex;
   align-items: center;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-input-search-btn, .lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
+.lineage-search-grid--workbench .ant-input-search .ant-input-search-btn,
+.lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -55,7 +57,9 @@
   padding-inline: 14px;
 }
 
-.lineage-search-grid--workbench :is(.ant-input-affix-wrapper, .ant-select-selector, .ant-btn):focus-visible {
+.lineage-search-grid--workbench .ant-input-affix-wrapper:focus-visible,
+.lineage-search-grid--workbench .ant-select-selector:focus-visible,
+.lineage-search-grid--workbench .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
