@@ -10,7 +10,11 @@ const entityHeader = readFileSync(new URL('../shared/ui/EntityPageHeader.tsx', i
 const resultCard = readFileSync(new URL('../shared/ui/QueryResultCards.tsx', import.meta.url), 'utf8');
 const memberPage = readFileSync(new URL('../features/members/MemberManagementPage.tsx', import.meta.url), 'utf8');
 const bookletActions = readFileSync(new URL('../features/booklets/BookletActions.tsx', import.meta.url), 'utf8');
+const cultureItem = readFileSync(new URL('../features/culture/CultureItemStandardTab.tsx', import.meta.url), 'utf8');
+const migrationEvent = readFileSync(new URL('../features/culture/MigrationEventStandardTab.tsx', import.meta.url), 'utf8');
+const cultureSite = readFileSync(new URL('../features/culture/CultureSiteStandardTab.tsx', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('./shared/standard-page-patterns.css', import.meta.url), 'utf8');
+const entityStyles = readFileSync(new URL('../entity-page-header.css', import.meta.url), 'utf8');
 
 const requiredComponents = [
   'StandardPage',
@@ -68,15 +72,27 @@ test('special entity routes adapt to the same page header while auth remains an 
   assert.match(app, /standalone \/>/);
   assert.doesNotMatch(app, /headerActions=/);
   assert.doesNotMatch(shell, /headerActions/);
+  assert.doesNotMatch(entityStyles, /\.entity-page-header\s*\{[^}]*display:\s*grid/s);
+  assert.doesNotMatch(entityStyles, /entity-page-header__main|entity-page-header__copy|entity-page-header__actions/);
 });
 
 test('page-level primary actions are promoted without moving result tools or using DOM patches', () => {
   assert.match(resultCard, /splitFirstPrimaryAction/);
   assert.match(resultCard, /element\.props\.type === 'primary'/);
+  assert.match(resultCard, /element\.props\.menu \|\| element\.props\.overlay/);
   assert.match(resultCard, /<StandardPageActions>/);
   assert.match(memberPage, /<StandardPageActions><MemberInvitationAction/);
   assert.doesNotMatch(bookletActions, /createPortal|querySelector|MutationObserver/);
   assert.doesNotMatch(patterns, /appendChild|insertBefore|querySelector|MutationObserver/);
+});
+
+test('culture tabs use responsibility-specific query card headings', () => {
+  assert.match(cultureItem, /title="文化资料查询"/);
+  assert.match(migrationEvent, /title="迁徙事件查询"/);
+  assert.match(cultureSite, /title="宗族场所查询"/);
+  for (const source of [cultureItem, migrationEvent, cultureSite]) {
+    assert.doesNotMatch(source, /className="culture-page-header culture-search-card" title="宗族文化"/);
+  }
 });
 
 test('standard page CSS remains token-driven, responsive and does not target Ant internals', () => {
