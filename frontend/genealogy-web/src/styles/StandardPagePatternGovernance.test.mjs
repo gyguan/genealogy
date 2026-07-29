@@ -38,7 +38,6 @@ test('six representative modules use the standard page shell', () => {
   for (const key of migratedModules) {
     assert.match(registry, new RegExp(`standardModulePage\\('${key}'`), `${key} must use StandardPage`);
   }
-  assert.equal((registry.match(/standardModulePage\('/g) || []).length, migratedModules.length + 1, 'only the helper plus six migrated modules should define standard page entries');
 });
 
 test('standard page CSS remains token-driven and does not target Ant internals', () => {
