@@ -135,4 +135,8 @@
     width: 100%;
     justify-content: flex-start;
   }
+
+  .standard-page-header__actions .ant-btn {
+    min-height: 40px;
+  }
 }
