@@ -253,13 +253,20 @@
 }
 
 @media (max-width: 767px) {
+  .mvp1-wizard-page {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   .wizard-progress-card .ant-card-body {
+    max-width: 100%;
     padding: 14px 16px;
-    overflow-x: visible;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
   }
 
   .wizard-progress-card .wizard-ant-steps {
-    min-width: 0;
+    min-width: 720px;
   }
 
   .wizard-progress-summary {
