@@ -22,6 +22,7 @@
 
 @media (max-width: 767px) {
   .culture-search-card form { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; }
+  .culture-more-filters { transform: translateY(3px); }
   .culture-search-actions { justify-content: stretch; padding-bottom: 0; }
   .culture-result-actions { width: 100%; }
   .culture-result-sort { width: 100%; }
