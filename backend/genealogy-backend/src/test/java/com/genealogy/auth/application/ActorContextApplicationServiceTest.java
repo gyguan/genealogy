@@ -60,7 +60,9 @@ class ActorContextApplicationServiceTest {
         assertThat(context.clanId()).isEqualTo(1L);
         assertThat(context.membershipId()).isEqualTo(10L);
         assertThat(context.roleCodes()).containsExactly(AuthorizationApplicationService.ROLE_EDITOR);
-        assertThat(context.permissions()).containsExactlyInAnyOrder("source:view", "source:bind");
+        assertThat(context.permissions()).containsExactlyInAnyOrder("source.view", "source.bind");
+        assertThat(context.hasPermission("source:view")).isTrue();
+        assertThat(context.hasPermission("source.bind")).isTrue();
         assertThat(context.branchScopeIds()).containsExactly(99L);
         assertThat(context.crossClanAdmin()).isFalse();
         verify(membershipRepository).findByUserIdAndMemberStatus(7L, MemberStatus.active);
