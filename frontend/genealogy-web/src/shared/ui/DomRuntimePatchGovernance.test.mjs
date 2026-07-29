@@ -40,11 +40,11 @@ test('source draft delete keeps a usable source detail action target', () => {
   assert.match(sourceDelete, /createPortal/);
 });
 
-test('lineage drawer actions remain accessible without entry-layer node movement', () => {
+test('lineage drawer actions remain accessible without DOM or CSS reordering', () => {
   const styles = read('features/tree/lineage-tabbed-page.css');
   assert.match(styles, /\.lineage-inspector-drawer \.lineage-inspector-actions/);
-  assert.match(styles, /order:\s*-1/);
   assert.match(styles, /position:\s*sticky/);
+  assert.doesNotMatch(styles, /\border\s*:/);
 });
 
 test('runtime patch installers cannot be reintroduced', () => {
