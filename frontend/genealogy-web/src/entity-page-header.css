@@ -76,7 +76,7 @@
 }
 
 /* 来源详情保留现有结构，但返回入口与统一页头保持一致。 */
-.source-library-query-page .source-library-detail-title {
+[data-genealogy-app] .source-library-query-page .source-library-detail-title {
   margin-bottom: 0;
 }
 
