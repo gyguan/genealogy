@@ -32,6 +32,7 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
 - [代码可理解性与可维护性经验规范](docs/ai/code-understanding-and-maintainability-standard.md)
+- [前端代码可理解性与可维护性经验规范](docs/ai/frontend-code-understanding-and-maintainability-standard.md)
 - [Issue 创建、分组与执行顺序规范](docs/ai/issue-creation-standard.md)
 - [聊天式 GitHub 开发与任务看板指南](docs/ai/chat-driven-github-workflow.md)
 - [Issue 交付耗时经验](docs/ai/issue-delivery-cost-experience.md)
@@ -45,9 +46,10 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 
 - 全仓优先级、P0 红线与 P1 门禁：`AGENTS.md`
 - 后端分层、数据库、权限、测试与代码可理解性细则：`backend/genealogy-backend/AGENTS.md`
-- 代码复杂度、命名、Query/Command、显式上下文与模块导航经验：`docs/ai/code-understanding-and-maintainability-standard.md`
+- 后端代码复杂度、命名、Query/Command、显式上下文与模块导航经验：`docs/ai/code-understanding-and-maintainability-standard.md`
 - 数据库对象、SQL 与 Flyway 迁移规范：`docs/database-development-standard.md`
-- 前端组件、契约、交互与性能细则：`frontend/genealogy-web/AGENTS.md`
+- 前端组件、契约、状态、Hook、交互、性能与可理解性细则：`frontend/genealogy-web/AGENTS.md`
+- 前端组件拆分、状态归属、Effect、ViewModel、测试和模块导航经验：`docs/ai/frontend-code-understanding-and-maintainability-standard.md`
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
 - 通用 AI 提问模板库：`docs/ai/prompt-templates.md`
