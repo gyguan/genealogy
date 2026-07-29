@@ -1,21 +1,8 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", "PingFang SC",
-    "Microsoft YaHei", sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --genealogy-font-size-caption: 12px;
-  --genealogy-line-height-caption: 20px;
-  --genealogy-font-size-body: 14px;
-  --genealogy-line-height-body: 22px;
-  --genealogy-font-size-subtitle: 16px;
-  --genealogy-line-height-subtitle: 24px;
-  --genealogy-font-size-title: 20px;
-  --genealogy-line-height-title: 28px;
-
-  /* Stable application semantics backed by Ant Design CSS variables. */
+  /* Business semantic aliases. Ant Design theme remains the source of truth. */
   --genealogy-color-primary: var(--ant-color-primary, #1677ff);
   --genealogy-color-primary-hover: var(--ant-color-primary-hover, #4096ff);
   --genealogy-color-primary-bg: var(--ant-color-primary-bg, #e6f4ff);
@@ -42,9 +29,9 @@ body,
 
 body {
   margin: 0;
-  font-family: inherit;
-  font-size: var(--genealogy-font-size-body);
-  line-height: var(--genealogy-line-height-body);
+  font-family: var(--ant-font-family);
+  font-size: var(--ant-font-size);
+  line-height: var(--ant-line-height);
   color: var(--genealogy-color-text);
   background: var(--genealogy-color-bg-layout);
 }
@@ -54,25 +41,4 @@ input,
 select,
 textarea {
   font: inherit;
-}
-
-.ant-form-item-label > label {
-  font-size: var(--genealogy-font-size-body);
-  line-height: var(--genealogy-line-height-body);
-  font-weight: 500;
-}
-
-.ant-form-item-extra,
-.ant-form-item-explain,
-.ant-typography-secondary,
-.text-caption {
-  font-size: var(--genealogy-font-size-caption);
-  line-height: var(--genealogy-line-height-caption);
-}
-
-.ant-statistic-content,
-.ant-table-cell,
-.numeric-text,
-[data-numeric="true"] {
-  font-variant-numeric: tabular-nums;
 }

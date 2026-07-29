@@ -165,12 +165,11 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
 
     await page.getByLabel('职业').fill('稳定性测试工程师');
     await expect(page.getByLabel('职业')).toHaveValue('稳定性测试工程师');
-    page.once('dialog', async dialog => {
-      expect(dialog.type()).toBe('confirm');
-      expect(dialog.message()).toMatch(/未保存|放弃/);
-      await dialog.dismiss();
-    });
     await page.getByRole('menuitem', { name: '族谱首页', exact: true }).click();
+    const leaveConfirmation = page.getByRole('dialog', { name: '确认离开当前页面？' });
+    await expect(leaveConfirmation).toBeVisible();
+    await leaveConfirmation.getByRole('button', { name: '继续编辑', exact: true }).click();
+    await expect(leaveConfirmation).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`/persons/${uiPersonId}/edit`));
     await expect(page.getByText('编辑人物档案', { exact: true })).toBeVisible();
 

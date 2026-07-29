@@ -1,3 +1,5 @@
+import { requestConfirmation } from '../../shared/ui/confirmationEvents.js';
+
 export type CultureEditorTarget = 'item' | 'migration' | 'site';
 export type CultureEditorMode = 'create' | 'edit';
 
@@ -10,6 +12,8 @@ export type CultureEditorState = {
 const editorKeys = ['cultureEditor', 'cultureEditorMode', 'cultureEditorId'];
 const editorTargets: CultureEditorTarget[] = ['item', 'migration', 'site'];
 const editorModes: CultureEditorMode[] = ['create', 'edit'];
+let confirmedLeave = false;
+let confirmationOpen = false;
 
 function valid<T extends string>(values: readonly T[], value: string | null): T | undefined {
   return values.includes(value as T) ? value as T : undefined;
@@ -61,6 +65,33 @@ export function isSameCultureEditor(left: CultureEditorState | null, right: Cult
     && left?.id === right?.id;
 }
 
+/**
+ * Preserves the existing synchronous navigation-guard contract while routing
+ * the actual decision through the application-level Ant Design confirmation
+ * bridge. A confirmed leave replays the normal popstate transition once.
+ */
 export function confirmCultureEditorLeave(dirty: boolean) {
-  return !dirty || window.confirm('当前修改尚未保存，确认离开编辑页面？');
+  if (!dirty) return true;
+  if (confirmedLeave) {
+    confirmedLeave = false;
+    return true;
+  }
+  if (confirmationOpen) return false;
+
+  confirmationOpen = true;
+  void requestConfirmation({
+    title: '确认离开编辑页面？',
+    content: '当前修改尚未保存，离开后本次修改将不会保留。',
+    okText: '离开页面',
+    cancelText: '继续编辑',
+    danger: true
+  }).then(confirmed => {
+    confirmationOpen = false;
+    if (!confirmed) return;
+    confirmedLeave = true;
+    const href = buildCultureEditorLocation(window.location.href, null);
+    window.history.replaceState(window.history.state, '', href);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  return false;
 }

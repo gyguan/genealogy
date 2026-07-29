@@ -1,6 +1,15 @@
+import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { ConfigProvider, theme } from 'antd';
+import { App as AntdApp, ConfigProvider, theme } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import { WorkspaceProvider } from '../shared/context/WorkspaceContext';
+import { confirmAction } from '../shared/ui/Feedback';
+import { CONFIRMATION_EVENT } from '../shared/ui/confirmationEvents';
+import type { ConfirmationEventDetail } from '../shared/ui/confirmationEvents';
+
+dayjs.locale('zh-cn');
 
 export const APPLICATION_FONT_FAMILY = [
   '-apple-system',
@@ -19,9 +28,29 @@ export const APPLICATION_FONT_FAMILY = [
   '"Noto Color Emoji"'
 ].join(', ');
 
+function ApplicationConfirmationBridge() {
+  useEffect(() => {
+    const handleConfirm = (event: Event) => {
+      const detail = (event as CustomEvent<ConfirmationEventDetail>).detail;
+      if (!detail?.resolve) return;
+      const { resolve, danger, ...options } = detail;
+      confirmAction({
+        ...options,
+        okButtonProps: { danger },
+        onOk: () => resolve(true),
+        onCancel: () => resolve(false)
+      });
+    };
+    window.addEventListener(CONFIRMATION_EVENT, handleConfirm);
+    return () => window.removeEventListener(CONFIRMATION_EVENT, handleConfirm);
+  }, []);
+  return null;
+}
+
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ConfigProvider
+      locale={zhCN}
       theme={{
         algorithm: theme.defaultAlgorithm,
         cssVar: { key: 'genealogy' },
@@ -43,11 +72,15 @@ export function AppProviders({ children }: { children: ReactNode }) {
           Menu: { itemBorderRadius: 8, itemHeight: 40, itemMarginBlock: 4, itemMarginInline: 8 },
           Card: { borderRadiusLG: 12, headerHeight: 48, paddingLG: 16 },
           Table: { cellPaddingBlockSM: 8, cellPaddingInlineSM: 12 },
-          Form: { itemMarginBottom: 12, labelFontSize: 14 }
+          Form: { itemMarginBottom: 12, labelFontSize: 14 },
+          Modal: { borderRadiusLG: 12 }
         }
       }}
     >
-      <WorkspaceProvider>{children}</WorkspaceProvider>
+      <AntdApp>
+        <ApplicationConfirmationBridge />
+        <WorkspaceProvider>{children}</WorkspaceProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 }
