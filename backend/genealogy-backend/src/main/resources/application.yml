@@ -88,6 +88,8 @@ genealogy:
       max-edges: ${GENEALOGY_TREE_QUERY_MAX_EDGES:4000}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] requestId=%X{requestId:-} %logger{36} - %msg%n"
   level:
     root: INFO
     com.genealogy: INFO

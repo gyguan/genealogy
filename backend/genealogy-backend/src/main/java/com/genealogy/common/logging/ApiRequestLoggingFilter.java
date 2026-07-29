@@ -12,14 +12,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.UUID;
 
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE - 10)
 public class ApiRequestLoggingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ApiRequestLoggingFilter.class);
-    private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -34,8 +32,11 @@ public class ApiRequestLoggingFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         long startedAt = System.nanoTime();
-        String requestId = requestId(request);
+        String requestId = RequestLogContext.resolveOrGenerate(request);
         Throwable failure = null;
+        RequestLogContext.clear();
+        RequestLogContext.bind(request, requestId);
+        response.setHeader(RequestLogContext.REQUEST_ID_HEADER, requestId);
         try {
             filterChain.doFilter(request, response);
         } catch (ServletException | IOException | RuntimeException exception) {
@@ -53,15 +54,8 @@ public class ApiRequestLoggingFilter extends OncePerRequestFilter {
                     maskIp(clientIp(request)),
                     failure == null ? "" : failure.getClass().getSimpleName()
             );
+            RequestLogContext.clear();
         }
-    }
-
-    private String requestId(HttpServletRequest request) {
-        String value = request.getHeader(REQUEST_ID_HEADER);
-        if (value == null || value.isBlank()) {
-            value = UUID.randomUUID().toString();
-        }
-        return limit(value.trim(), 128);
     }
 
     private String safePath(HttpServletRequest request) {
