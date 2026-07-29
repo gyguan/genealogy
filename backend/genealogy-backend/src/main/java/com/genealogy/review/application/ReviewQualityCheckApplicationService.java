@@ -6,12 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
-import com.genealogy.quality.check.QualityCheckEvaluation;
 import com.genealogy.quality.check.QualityCheckScopeAdapter;
 import com.genealogy.quality.check.QualityCheckScopeType;
-import com.genealogy.quality.check.QualityRuleEngine;
-import com.genealogy.quality.check.QualityRuleRegistry;
-import com.genealogy.quality.domain.GenealogyQualityRuleService;
+import com.genealogy.review.domain.ReviewQualityCheckMode;
+import com.genealogy.review.domain.ReviewQualityCheckStatus;
 import com.genealogy.review.dto.ReviewQualityCheckAcceptedResponse;
 import com.genealogy.review.dto.ReviewQualityCheckResponse;
 import com.genealogy.review.dto.ReviewQualityCheckSummary;
@@ -42,17 +40,20 @@ public class ReviewQualityCheckApplicationService {
 
     private static final String REVIEW_VIEW = "review_task:view";
     private static final String REVIEW_APPROVE = "review_task:approve";
-    private static final Set<String> ACTIVE_STATUSES = Set.of("QUEUED", "RUNNING");
-    private static final Set<String> MODES = Set.of("INCREMENTAL", "FULL", "REVIEW_GATE");
+    private static final Set<String> ACTIVE_STATUSES = Set.of(
+            ReviewQualityCheckStatus.QUEUED.name(),
+            ReviewQualityCheckStatus.RUNNING.name()
+    );
 
     private final ReviewQualityCheckRepository qualityCheckRepository;
     private final CheckTaskRepository checkTaskRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final OperationLogApplicationService operationLogApplicationService;
     private final ObjectMapper objectMapper;
-    private final QualityRuleRegistry ruleRegistry;
-    private final QualityRuleEngine ruleEngine;
     private final QualityCheckScopeAdapter reviewScopeAdapter;
+    private final ReviewQualityCheckExecutor executor;
+    private final ReviewQualityCheckStateMachine stateMachine;
+    private final ReviewQualityCheckAfterCommitActions afterCommitActions;
 
     public ReviewQualityCheckApplicationService(
             ReviewQualityCheckRepository qualityCheckRepository,
@@ -60,16 +61,19 @@ public class ReviewQualityCheckApplicationService {
             AuditRecordRepository auditRecordRepository,
             AuthorizationApplicationService authorizationApplicationService,
             OperationLogApplicationService operationLogApplicationService,
-            GenealogyQualityRuleService genealogyQualityRuleService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ReviewQualityCheckExecutor executor,
+            ReviewQualityCheckStateMachine stateMachine,
+            ReviewQualityCheckAfterCommitActions afterCommitActions
     ) {
         this.qualityCheckRepository = qualityCheckRepository;
         this.checkTaskRepository = checkTaskRepository;
         this.authorizationApplicationService = authorizationApplicationService;
         this.operationLogApplicationService = operationLogApplicationService;
         this.objectMapper = objectMapper;
-        this.ruleRegistry = new QualityRuleRegistry();
-        this.ruleEngine = new QualityRuleEngine(objectMapper, genealogyQualityRuleService, ruleRegistry);
+        this.executor = executor;
+        this.stateMachine = stateMachine;
+        this.afterCommitActions = afterCommitActions;
         this.reviewScopeAdapter = new ReviewTaskQualityScopeAdapter(
                 checkTaskRepository,
                 auditRecordRepository,
@@ -83,15 +87,17 @@ public class ReviewQualityCheckApplicationService {
         if (request == null) {
             throw new BusinessException("REVIEW_QUALITY_REQUEST_REQUIRED", "质量检查请求不能为空");
         }
+
         String requestedScope = upper(request.scopeType());
-        String mode = upper(request.mode());
         QualityCheckScopeType scopeType;
+        ReviewQualityCheckMode mode;
         try {
             scopeType = QualityCheckScopeType.parse(requestedScope);
-        } catch (IllegalArgumentException ex) {
+            mode = ReviewQualityCheckMode.parse(request.mode());
+        } catch (IllegalArgumentException exception) {
             throw new BusinessException("REVIEW_QUALITY_INVALID_SCOPE", "检查范围或检查模式无效");
         }
-        if (!MODES.contains(mode) || !reviewScopeAdapter.supports(scopeType)) {
+        if (!reviewScopeAdapter.supports(scopeType)) {
             throw new BusinessException("REVIEW_QUALITY_INVALID_SCOPE", "检查范围或检查模式无效");
         }
 
@@ -102,7 +108,10 @@ public class ReviewQualityCheckApplicationService {
                         scopeType,
                         request.reviewTaskIds() == null
                                 ? List.of()
-                                : request.reviewTaskIds().stream().filter(Objects::nonNull).map(String::valueOf).toList(),
+                                : request.reviewTaskIds().stream()
+                                        .filter(Objects::nonNull)
+                                        .map(String::valueOf)
+                                        .toList(),
                         queryMap(request.query())
                 )
         );
@@ -115,8 +124,18 @@ public class ReviewQualityCheckApplicationService {
 
         List<String> requestedRules = normalizeRules(request.ruleCodes(), mode);
         String persistedScope = scopeType.persistedValue(requestedScope);
-        String fingerprint = fingerprint(persistedScope, mode, scope.persistedSubjectIds(), queryMap(request.query()), requestedRules);
-        if (qualityCheckRepository.existsByClanIdAndScopeFingerprintAndStatusIn(clanId, fingerprint, ACTIVE_STATUSES)) {
+        String fingerprint = fingerprint(
+                persistedScope,
+                mode.name(),
+                scope.persistedSubjectIds(),
+                queryMap(request.query()),
+                requestedRules
+        );
+        if (qualityCheckRepository.existsByClanIdAndScopeFingerprintAndStatusIn(
+                clanId,
+                fingerprint,
+                ACTIVE_STATUSES
+        )) {
             throw new BusinessException("REVIEW_QUALITY_CHECK_ALREADY_RUNNING", "相同范围的质量检查正在执行");
         }
 
@@ -125,8 +144,8 @@ public class ReviewQualityCheckApplicationService {
         entity.setId(UUID.randomUUID());
         entity.setClanId(clanId);
         entity.setScopeType(persistedScope);
-        entity.setMode(mode);
-        entity.setStatus("QUEUED");
+        entity.setMode(mode.name());
+        entity.setStatus(ReviewQualityCheckStatus.QUEUED.name());
         entity.setScopeFingerprint(fingerprint);
         entity.setTaskIdsJson(write(scope.persistedSubjectIds().stream().map(Long::valueOf).toList()));
         entity.setQueryJson(request.query() == null ? null : write(request.query()));
@@ -134,11 +153,26 @@ public class ReviewQualityCheckApplicationService {
         entity.setTriggeredBy(actorId);
         entity.setQueuedAt(now);
         qualityCheckRepository.save(entity);
-        operationLogApplicationService.record(clanId, actorId, "review_quality_trigger", "review_quality_check", null,
-                "触发审核质量检查", "checkId=" + entity.getId() + ", scope=" + persistedScope + ", mode=" + mode + ", tasks=" + scope.subjects().size());
+        operationLogApplicationService.record(
+                clanId,
+                actorId,
+                "review_quality_trigger",
+                "review_quality_check",
+                null,
+                "触发审核质量检查",
+                "checkId=" + entity.getId() + ", scope=" + persistedScope
+                        + ", mode=" + mode.name() + ", tasks=" + scope.subjects().size()
+        );
 
         execute(entity, scope, requestedRules);
-        return new ReviewQualityCheckAcceptedResponse(entity.getId(), entity.getStatus(), persistedScope, mode, scope.subjects().size(), now);
+        return new ReviewQualityCheckAcceptedResponse(
+                entity.getId(),
+                entity.getStatus(),
+                persistedScope,
+                mode.name(),
+                scope.subjects().size(),
+                now
+        );
     }
 
     @Transactional(readOnly = true)
@@ -164,15 +198,25 @@ public class ReviewQualityCheckApplicationService {
     public void ensureApprovalAllowed(Long taskId, Long actorId) {
         CheckTaskEntity task = checkTaskRepository.findById(taskId)
                 .orElseThrow(() -> new BusinessException("REVIEW_QUALITY_NOT_FOUND", "审核任务不存在"));
-        authorizationApplicationService.requireBranchPermission(task.getClanId(), actorId, task.getBranchId(), REVIEW_APPROVE);
+        authorizationApplicationService.requireBranchPermission(
+                task.getClanId(),
+                actorId,
+                task.getBranchId(),
+                REVIEW_APPROVE
+        );
         ReviewQualityCheckTriggerRequest request = new ReviewQualityCheckTriggerRequest(
-                "TASK_IDS", "REVIEW_GATE", List.of(taskId), null, List.copyOf(ruleRegistry.gateRules()));
+                "TASK_IDS",
+                ReviewQualityCheckMode.REVIEW_GATE.name(),
+                List.of(taskId),
+                null,
+                List.copyOf(executor.gateRules())
+        );
         ReviewQualityCheckAcceptedResponse accepted = trigger(task.getClanId(), request, actorId);
         ReviewQualityCheckResponse result = get(task.getClanId(), accepted.checkId(), actorId);
         if (result.reviewBlocked()) {
             throw new BusinessException("REVIEW_QUALITY_NOT_REVIEWABLE", blockingMessage(result));
         }
-        if ("FAILED".equals(result.status())) {
+        if (ReviewQualityCheckStatus.FAILED.name().equals(result.status())) {
             throw new BusinessException("REVIEW_QUALITY_TASK_STATE_CONFLICT", "质量检查执行失败，暂不能审核通过");
         }
     }
@@ -182,45 +226,44 @@ public class ReviewQualityCheckApplicationService {
             QualityCheckScopeAdapter.ResolvedQualityScope scope,
             List<String> requestedRules
     ) {
-        entity.setStatus("RUNNING");
-        entity.setStartedAt(LocalDateTime.now());
+        stateMachine.transition(entity, ReviewQualityCheckStatus.RUNNING);
         qualityCheckRepository.save(entity);
         try {
-            QualityCheckEvaluation evaluation = ruleEngine.evaluate(scope.subjects(), requestedRules, entity.getMode());
-            ReviewQualityCheckSummary summary = new ReviewQualityCheckSummary(
-                    evaluation.summary().subjectCount(),
-                    evaluation.summary().ruleCount(),
-                    evaluation.summary().passedRuleCount(),
-                    evaluation.summary().issueCount(),
-                    evaluation.summary().blockingIssueCount(),
-                    evaluation.summary().warningIssueCount(),
-                    evaluation.summary().blocked()
+            ReviewQualityCheckExecutor.ExecutionResult result = executor.execute(
+                    scope,
+                    requestedRules,
+                    entity.getMode()
             );
-            List<ReviewQualityRuleResult> rules = evaluation.rules().stream().map(item -> new ReviewQualityRuleResult(
-                    item.code(), item.name(), item.outcome(), item.blockLevel(), item.affectedSubjectCount(), item.message(),
-                    item.affectedSubjectIds().stream().map(Long::valueOf).toList()
-            )).toList();
+            ReviewQualityCheckSummary summary = result.summary();
             entity.setSummaryJson(write(summary));
-            entity.setRulesJson(write(rules));
+            entity.setRulesJson(write(result.rules()));
             entity.setReviewBlocked(summary.reviewBlocked());
-            entity.setStatus(summary.issueCount() == 0 ? "PASSED" : "ISSUES_FOUND");
-            entity.setCompletedAt(LocalDateTime.now());
+            stateMachine.transition(
+                    entity,
+                    summary.issueCount() == 0
+                            ? ReviewQualityCheckStatus.PASSED
+                            : ReviewQualityCheckStatus.ISSUES_FOUND
+            );
             qualityCheckRepository.save(entity);
-            operationLogApplicationService.record(entity.getClanId(), entity.getTriggeredBy(), "review_quality_complete", "review_quality_check", null,
-                    "完成审核质量检查", "checkId=" + entity.getId() + ", status=" + entity.getStatus() + ", blocked=" + entity.isReviewBlocked());
-        } catch (RuntimeException ex) {
-            entity.setStatus("FAILED");
+            afterCommitActions.completion(entity);
+        } catch (RuntimeException exception) {
+            stateMachine.transition(entity, ReviewQualityCheckStatus.FAILED);
             entity.setFailureCode("REVIEW_QUALITY_EXECUTION_FAILED");
-            entity.setFailureMessage(trim(ex.getMessage(), 500));
-            entity.setCompletedAt(LocalDateTime.now());
+            entity.setFailureMessage(trim(exception.getMessage(), 500));
             qualityCheckRepository.save(entity);
+            afterCommitActions.completion(entity);
         }
     }
 
     private void validateReadScope(ReviewQualityCheckEntity entity, Long actorId) {
         List<CheckTaskEntity> tasks = checkTaskRepository.findAllById(readTaskIds(entity));
         for (CheckTaskEntity task : tasks) {
-            authorizationApplicationService.requireBranchPermission(entity.getClanId(), actorId, task.getBranchId(), REVIEW_VIEW);
+            authorizationApplicationService.requireBranchPermission(
+                    entity.getClanId(),
+                    actorId,
+                    task.getBranchId(),
+                    REVIEW_VIEW
+            );
         }
     }
 
@@ -235,23 +278,35 @@ public class ReviewQualityCheckApplicationService {
         List<ReviewQualityRuleResult> rules = entity.getRulesJson() == null
                 ? List.of()
                 : read(entity.getRulesJson(), new TypeReference<List<ReviewQualityRuleResult>>() { });
-        return new ReviewQualityCheckResponse(entity.getId(), entity.getStatus(), entity.getScopeType(), entity.getMode(),
-                entity.isReviewBlocked(), summary, rules, entity.getQueuedAt(), entity.getStartedAt(), entity.getCompletedAt(),
-                entity.getCompletedAt(), entity.getFailureCode(), entity.getFailureMessage());
+        return new ReviewQualityCheckResponse(
+                entity.getId(),
+                entity.getStatus(),
+                entity.getScopeType(),
+                entity.getMode(),
+                entity.isReviewBlocked(),
+                summary,
+                rules,
+                entity.getQueuedAt(),
+                entity.getStartedAt(),
+                entity.getCompletedAt(),
+                entity.getCompletedAt(),
+                entity.getFailureCode(),
+                entity.getFailureMessage()
+        );
     }
 
     private List<Long> readTaskIds(ReviewQualityCheckEntity entity) {
         return read(entity.getTaskIdsJson(), new TypeReference<List<Long>>() { });
     }
 
-    private List<String> normalizeRules(List<String> values, String mode) {
+    private List<String> normalizeRules(List<String> values, ReviewQualityCheckMode mode) {
         List<String> normalized = values == null
                 ? List.of()
                 : values.stream().filter(Objects::nonNull).map(this::upper).distinct().toList();
-        if ("REVIEW_GATE".equals(mode)) {
+        if (mode == ReviewQualityCheckMode.REVIEW_GATE) {
             return normalized.isEmpty()
-                    ? List.copyOf(ruleRegistry.gateRules())
-                    : normalized.stream().filter(ruleRegistry.gateRules()::contains).toList();
+                    ? List.copyOf(executor.gateRules())
+                    : normalized.stream().filter(executor.gateRules()::contains).toList();
         }
         return normalized;
     }
@@ -275,22 +330,29 @@ public class ReviewQualityCheckApplicationService {
                 .orElse("存在阻断性质量问题，不能审核通过");
     }
 
-    private String fingerprint(String scopeType, String mode, List<String> subjectIds, Object query, List<String> rules) {
+    private String fingerprint(
+            String scopeType,
+            String mode,
+            List<String> subjectIds,
+            Object query,
+            List<String> rules
+    ) {
         String source = scopeType + "|" + mode + "|" + subjectIds + "|" + write(query) + "|" + rules;
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(source.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(source.getBytes(StandardCharsets.UTF_8));
             StringBuilder result = new StringBuilder();
             for (byte value : digest) result.append(String.format("%02x", value));
             return result.toString();
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException(ex);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 
     private String write(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException ex) {
+        } catch (JsonProcessingException exception) {
             throw new BusinessException("REVIEW_QUALITY_INVALID_SCOPE", "质量检查请求无法序列化");
         }
     }
@@ -299,7 +361,7 @@ public class ReviewQualityCheckApplicationService {
         if (value == null) return null;
         try {
             return objectMapper.readValue(value, type);
-        } catch (JsonProcessingException ex) {
+        } catch (JsonProcessingException exception) {
             throw new BusinessException("REVIEW_QUALITY_TASK_STATE_CONFLICT", "质量检查结果无法读取");
         }
     }
@@ -307,7 +369,7 @@ public class ReviewQualityCheckApplicationService {
     private <T> T read(String value, TypeReference<T> type) {
         try {
             return objectMapper.readValue(value, type);
-        } catch (JsonProcessingException ex) {
+        } catch (JsonProcessingException exception) {
             throw new BusinessException("REVIEW_QUALITY_TASK_STATE_CONFLICT", "质量检查结果无法读取");
         }
     }
