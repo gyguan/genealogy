@@ -27,7 +27,11 @@ export function AuthenticatedShell({ active, pageKey, page, headerActions, onNav
     children: moduleRegistry
       .filter(module => module.group === group)
       .sort((left, right) => left.order - right.order)
-      .map(module => ({ key: module.key, label: module.label, icon: module.icon }))
+      .map(module => ({
+        key: module.key,
+        label: module.label,
+        icon: <span aria-hidden="true">{module.icon}</span>
+      }))
   })).filter(group => group.children.length > 0);
 
   return (
