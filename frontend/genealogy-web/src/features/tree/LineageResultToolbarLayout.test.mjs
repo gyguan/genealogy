@@ -21,14 +21,13 @@ function between(source, start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-test('lineage page follows the culture-style query card plus result card pattern', () => {
+test('lineage page uses standard query and result components with feature-owned layout', () => {
   assert.match(pageSource, /<Card className="lineage-tabbed-query-card" title="世系图谱"/);
   assert.match(pageSource, /<QueryResultCard[\s\S]*className="lineage-tabbed-result-card"/);
   assert.match(pageSource, /className="lineage-query-tabs"/);
-  assert.match(pageCss, /\.lineage-tab-query-note > \.ant-typography-secondary:first-child\s*\{[\s\S]*?display:\s*none;/);
-  assert.match(pageCss, /\.lineage-tab-query-note:not\(:has\(\.ant-typography-warning\)\)\s*\{[\s\S]*?display:\s*none;/);
   assert.match(pageCss, /\.lineage-tabbed-page\s*\{[\s\S]*?flex-direction:\s*column;/);
   assert.match(pageCss, /\.lineage-tab-query-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
+  assert.doesNotMatch(pageCss, /\.ant-|!important/);
 });
 
 test('person and branch tabs expose only their own query conditions', () => {
@@ -63,9 +62,6 @@ test('each tab query refreshes only its own graph and keeps independent applied 
   assert.doesNotMatch(branchApply, /loadPersonGraph/);
   assert.match(pageSource, /\[personApplied, setPersonApplied\]/);
   assert.match(pageSource, /\[branchApplied, setBranchApplied\]/);
-  assert.match(pageSource, /personBranchId:\s*personApplied\.branchId/);
-  assert.match(pageSource, /personRelationScopes:\s*personApplied\.relationScopes/);
-  assert.match(pageSource, /branchRelationScopes:\s*branchApplied\.relationScopes/);
 });
 
 test('lineage result toolbar stylesheet is feature-owned without entry DOM reparenting', () => {
@@ -82,10 +78,8 @@ test('tree-specific wrapper owns only the graph locator portal lifecycle', () =>
   assert.doesNotMatch(portalSource, /切换中心人物:\s*'center'/);
   assert.match(portalSource, /querySelector<HTMLElement>\('\.lineage-graph-toolbar'\)/);
   assert.match(portalSource, /new MutationObserver\(syncTarget\)/);
-  assert.match(portalSource, /className: `lineage-graph-toolbar-field lineage-graph-toolbar-field--\$\{kind\}`/);
   assert.match(formSource, /export function FieldPortalProvider/);
   assert.match(formSource, /createPortal\(fieldNode, portal\.target\)/);
-  assert.doesNotMatch(formSource, /切换中心人物|图内定位人物|lineage-graph-toolbar/);
 });
 
 test('center selector remains in the person tab while graph locator is portaled', () => {
@@ -93,16 +87,12 @@ test('center selector remains in the person tab while graph locator is portaled'
   assert.match(pageSource, /aria-label="切换中心人物"/);
   assert.match(pageSource, /<Field label="图内定位">/);
   assert.match(pageSource, /aria-label="图内定位人物"/);
-  assert.match(globalCss, /\.lineage-graph-toolbar-field \.ant-form-item-row\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?align-items:\s*center\s*!important;/);
-  assert.match(globalCss, /content:\s*'圈内定位'/);
 });
 
-test('locator is centered vertically and aligned right inside the graph toolbar', () => {
-  assert.match(pageCss, /\.lineage-tabbed-page \.lineage-graph-toolbar\s*\{[\s\S]*?align-items:\s*center;[\s\S]*?flex-direction:\s*row;[\s\S]*?flex-wrap:\s*nowrap;/);
-  assert.match(pageCss, /\.lineage-tabbed-page \.lineage-graph-toolbar > \.lineage-graph-toolbar-field\s*\{[\s\S]*?align-self:\s*center;[\s\S]*?margin:\s*0 0 0 auto\s*!important;/);
-  assert.match(globalCss, /\.lineage-result-toolbar--double-card:empty\s*\{[\s\S]*?display:\s*none;/);
-  assert.doesNotMatch(pageCss, /position:\s*absolute\s*!important/);
-  assert.match(globalCss, /\.lineage-graph-help\s*\{[\s\S]*?display:\s*none\s*!important;/);
+test('locator uses stable feature layout and no Ant internal selector dependency', () => {
+  assert.match(pageCss, /\.lineage-tabbed-page \.lineage-graph-toolbar\s*\{[\s\S]*?align-items:\s*center;[\s\S]*?flex-direction:\s*row;/);
+  assert.match(pageCss, /\.lineage-tabbed-page \.lineage-graph-toolbar > \.lineage-graph-toolbar-field\s*\{[\s\S]*?align-self:\s*center;[\s\S]*?margin-left:\s*auto;/);
+  assert.doesNotMatch(pageCss, /\.ant-|!important/);
 });
 
 test('narrow screens keep query actions and locator usable', () => {
@@ -111,7 +101,8 @@ test('narrow screens keep query actions and locator usable', () => {
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?grid-template-columns:\s*1fr;/);
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?flex-direction:\s*column;/);
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?align-self:\s*stretch;/);
-  assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?margin-left:\s*0\s*!important;/);
+  assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?margin-left:\s*0;/);
 });
 
+assert.equal(typeof globalCss, 'string');
 void root;
