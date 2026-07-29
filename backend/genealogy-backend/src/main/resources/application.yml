@@ -1,32 +1,26 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: genealogy-backend
-
   datasource:
-    url: jdbc:postgresql://localhost:5432/genealogy
-    username: genealogy
-    password: 123456
     driver-class-name: org.postgresql.Driver
-
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
-
+        format_sql: false
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
-
+    validate-on-migrate: true
+    clean-disabled: true
   jackson:
     default-property-inclusion: non_null
     time-zone: Asia/Shanghai
-
   servlet:
     multipart:
       max-file-size: 20MB
@@ -40,12 +34,12 @@ springdoc:
 
 genealogy:
   attachment:
-    storage-root: ./data/attachments
+    storage-root: ${GENEALOGY_ATTACHMENT_STORAGE_ROOT:./data/attachments}
   auth:
     public-registration-enabled: ${GENEALOGY_AUTH_PUBLIC_REGISTRATION_ENABLED:false}
     demo-mode-enabled: ${GENEALOGY_AUTH_DEMO_MODE_ENABLED:false}
-    expose-bearer-token: ${GENEALOGY_AUTH_EXPOSE_BEARER_TOKEN:false}
-    expose-reset-token: ${GENEALOGY_AUTH_EXPOSE_RESET_TOKEN:false}
+    expose-bearer-token: false
+    expose-reset-token: false
     cookie-secure: ${GENEALOGY_AUTH_COOKIE_SECURE:false}
     cookie-same-site: ${GENEALOGY_AUTH_COOKIE_SAME_SITE:Strict}
     session-hours: ${GENEALOGY_AUTH_SESSION_HOURS:8}
@@ -72,4 +66,5 @@ genealogy:
 
 logging:
   level:
-    com.genealogy: debug
+    root: INFO
+    com.genealogy: INFO
