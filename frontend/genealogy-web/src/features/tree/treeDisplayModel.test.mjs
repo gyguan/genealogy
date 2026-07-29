@@ -50,9 +50,9 @@ test('uses peer endpoints for client-inferred sibling relationships', () => {
   assert.deepEqual(relationshipEndpointLabels(sibling), ['中心人物', '同辈人物']);
 });
 
-test('lineage result controls share the result title row on desktop', () => {
+test('lineage result controls use stable feature layout across desktop and mobile', () => {
   assert.match(lineageDoubleCardCss, /\.lineage-double-card-result\s*\{\s*position:\s*relative;/);
-  assert.match(lineageDoubleCardCss, /\.lineage-double-card-result > \.ant-card-head\s*\{\s*padding-right:\s*400px;/);
   assert.match(lineageDoubleCardCss, /\.lineage-result-toolbar--double-card\s*\{[\s\S]*position:\s*absolute;[\s\S]*top:\s*8px;[\s\S]*right:\s*16px;[\s\S]*width:\s*360px;/);
   assert.match(lineageDoubleCardCss, /@media \(max-width: 767px\)[\s\S]*\.lineage-result-toolbar--double-card,[\s\S]*position:\s*static;[\s\S]*width:\s*100%;/);
+  assert.doesNotMatch(lineageDoubleCardCss, /\.ant-|!important/);
 });
