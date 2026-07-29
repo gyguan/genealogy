@@ -62,7 +62,7 @@ test('workbench provides responsive, empty, error and keyboard states', async ()
   assert.match(page, /role: 'button'/);
   assert.match(page, /tabIndex: 0/);
   assert.match(page, /event\.key === 'Enter'/);
-  assert.match(page, /scroll=\{\{ x: 970 \}\}/);
+  assert.match(page, /scroll=\{\{ x: 880 \}\}/);
   assert.match(page, /width=\{screens\.md \? 720 : '100%'\}/);
 });
 
@@ -81,8 +81,12 @@ test('desktop task table keeps critical information visible and exposes low-freq
   assert.match(page, /label="涉及对象"/);
   assert.match(page, /label="所属范围"/);
   assert.match(page, /tableLayout="fixed"/);
-  assert.match(page, /columnWidth: 48/);
+  assert.match(page, /rowSelection=\{\{ columnWidth: 44/);
+  assert.match(page, /columnWidth: 56/);
+  assert.match(page, /key: 'taskName', title: '任务名称', width: 210/);
+  assert.match(page, /key: 'actions', title: '操作', width: 144/);
+  assert.match(page, /scroll=\{\{ x: 880 \}\}/);
   assert.doesNotMatch(page, /fixed: 'right'/);
   assert.doesNotMatch(page, /responsive:\s*\[/);
-  assert.doesNotMatch(page, /scroll=\{\{ x: 1230 \}\}/);
+  assert.doesNotMatch(page, /scroll=\{\{ x: (?:970|1230) \}\}/);
 });
