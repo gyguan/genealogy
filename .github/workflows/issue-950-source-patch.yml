@@ -1,0 +1,54 @@
+name: Issue 950 Source Patch
+
+on:
+  push:
+    branches: ["agent/issue-950-clear-architecture-baseline"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-950-clear-architecture-baseline
+          fetch-depth: 0
+      - name: Apply deterministic source fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          import_file = Path('backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportApplicationService.java')
+          text = import_file.read_text()
+          text = text.replace('jobRow.setDraftPersonId(savedPerson == null ? null : savedPerson.getId());',
+                              'jobRow.setDraftPersonId(savedPerson.getId());')
+          text = text.replace('jobRow.setDraftTargetId(savedPerson == null ? null : savedPerson.getId());',
+                              'jobRow.setDraftTargetId(savedPerson.getId());')
+          import_file.write_text(text)
+
+          review_file = Path('backend/genealogy-backend/src/main/java/com/genealogy/review/application/ReviewQualityCheckApplicationService.java')
+          text = review_file.read_text()
+          marker = '        authorizationApplicationService.requirePermission(clanId, actorId, REVIEW_APPROVE);\n'
+          replacement = marker + '''        if (request == null) {\n            throw new BusinessException("REVIEW_QUALITY_REQUEST_REQUIRED", "质量检查请求不能为空");\n        }\n'''
+          if 'REVIEW_QUALITY_REQUEST_REQUIRED' not in text:
+              text = text.replace(marker, replacement, 1)
+          text = text.replace('upper(request == null ? null : request.scopeType())', 'upper(request.scopeType())')
+          text = text.replace('upper(request == null ? null : request.mode())', 'upper(request.mode())')
+          text = text.replace('request == null || request.reviewTaskIds() == null', 'request.reviewTaskIds() == null')
+          text = text.replace('queryMap(request == null ? null : request.query())', 'queryMap(request.query())')
+          text = text.replace('normalizeRules(request == null ? null : request.ruleCodes(), mode)', 'normalizeRules(request.ruleCodes(), mode)')
+          review_file.write_text(text)
+
+          Path('backend/genealogy-backend/config/spotbugs-exclude.xml').write_text('''<?xml version="1.0" encoding="UTF-8"?>\n<FindBugsFilter>\n    <!-- No High-priority historical baseline. New exceptions require a tracking Issue and expiry. -->\n</FindBugsFilter>\n''')
+
+          Path('.github/workflows/issue-950-source-patch.yml').unlink()
+          PY
+      - name: Commit source fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: clear SpotBugs high baseline"
+          git push origin HEAD:agent/issue-950-clear-architecture-baseline
