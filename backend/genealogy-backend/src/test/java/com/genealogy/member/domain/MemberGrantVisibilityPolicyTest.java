@@ -16,7 +16,7 @@ import static org.mockito.Mockito.mock;
 
 class MemberGrantVisibilityPolicyTest {
 
-    private final MemberGrantPolicyService service = new MemberGrantPolicyService(
+    private final com.genealogy.member.application.MemberGrantPolicyService service = new com.genealogy.member.application.MemberGrantPolicyService(
             mock(AuthorizationApplicationService.class),
             mock(ClanMembershipRepository.class),
             mock(MemberRoleRepository.class),
