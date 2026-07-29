@@ -6,11 +6,13 @@ on:
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
+      - ".trivyignore"
   pull_request:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/**"
       - ".github/workflows/backend-ci.yml"
+      - ".trivyignore"
   workflow_dispatch:
 
 concurrency:
@@ -19,8 +21,9 @@ concurrency:
 
 jobs:
   backend-build:
-    name: Backend Compile, Unit Tests and Package
+    name: Architecture, Tests, Coverage and Static Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -33,15 +36,52 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Compile, run unit tests and package
+      - name: Run backend verification gates
         working-directory: backend/genealogy-backend
-        run: mvn -B -DskipITs package
+        run: mvn -B -DskipITs verify
 
-      - name: Upload failed unit test reports
-        if: failure()
+      - name: Upload backend quality reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-test-reports
-          path: backend/genealogy-backend/target/surefire-reports
+          name: backend-quality-reports
+          path: |
+            backend/genealogy-backend/target/surefire-reports
+            backend/genealogy-backend/target/site/jacoco
+            backend/genealogy-backend/target/spotbugsXml.xml
+            backend/genealogy-backend/target/spotbugs.html
           if-no-files-found: ignore
-          retention-days: 3
+          retention-days: 7
+
+  dependency-vulnerability-scan:
+    name: Critical Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan backend dependencies
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend/genealogy-backend
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: json
+          output: trivy-results.json
+          trivyignores: .trivyignore
+
+      - name: Upload vulnerability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dependency-vulnerability-report
+          path: trivy-results.json
+          if-no-files-found: ignore
+          retention-days: 14

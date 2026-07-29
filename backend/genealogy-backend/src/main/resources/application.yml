@@ -32,6 +32,24 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        genealogy.tree.query.duration: true
+
+
 genealogy:
   attachment:
     storage-root: ${GENEALOGY_ATTACHMENT_STORAGE_ROOT:./data/attachments}
@@ -56,6 +74,8 @@ genealogy:
     reset-base-url: ${GENEALOGY_AUTH_RESET_BASE_URL:http://localhost:5179/?auth=reset&resetToken=}
     reset-delivery-url: ${GENEALOGY_AUTH_RESET_DELIVERY_URL:}
   tree:
+    observability:
+      slow-query-ms: ${GENEALOGY_TREE_SLOW_QUERY_MS:1000}
     query:
       default-depth: ${GENEALOGY_TREE_QUERY_DEFAULT_DEPTH:5}
       max-depth: ${GENEALOGY_TREE_QUERY_MAX_DEPTH:20}
