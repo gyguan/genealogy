@@ -1,5 +1,6 @@
 package com.genealogy.auth.application;
 
+import com.genealogy.auth.dto.ActorContext;
 import com.genealogy.auth.dto.RequestUserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
@@ -9,10 +10,18 @@ import java.util.UUID;
 @Service
 public class RequestContextApplicationService {
 
-    private final AuthorizationApplicationService authorizationApplicationService;
+    private static final String ACTOR_CONTEXT_ATTRIBUTE_PREFIX =
+            RequestContextApplicationService.class.getName() + ".actor.";
 
-    public RequestContextApplicationService(AuthorizationApplicationService authorizationApplicationService) {
+    private final AuthorizationApplicationService authorizationApplicationService;
+    private final ActorContextApplicationService actorContextApplicationService;
+
+    public RequestContextApplicationService(
+            AuthorizationApplicationService authorizationApplicationService,
+            ActorContextApplicationService actorContextApplicationService
+    ) {
         this.authorizationApplicationService = authorizationApplicationService;
+        this.actorContextApplicationService = actorContextApplicationService;
     }
 
     public RequestUserContext optional(HttpServletRequest request) {
@@ -28,9 +37,22 @@ public class RequestContextApplicationService {
     }
 
     public RequestUserContext requireClanMember(Long clanId, HttpServletRequest request) {
+        ActorContext context = requireActor(clanId, request);
+        return new RequestUserContext(context.userId(), context.requestId(), context.clientIp());
+    }
+
+    public ActorContext requireActor(Long clanId, HttpServletRequest request) {
+        String attributeName = ACTOR_CONTEXT_ATTRIBUTE_PREFIX + clanId;
+        Object cached = request.getAttribute(attributeName);
+        if (cached instanceof ActorContext context) {
+            return context;
+        }
         String authorization = request.getHeader("Authorization");
-        Long userId = authorizationApplicationService.requireClanMember(clanId, authorization);
-        return new RequestUserContext(userId, requestId(request), clientIp(request));
+        Long userId = authorizationApplicationService.requireLogin(authorization);
+        ActorContext context = actorContextApplicationService.resolve(clanId, userId)
+                .withRequestMetadata(requestId(request), clientIp(request));
+        request.setAttribute(attributeName, context);
+        return context;
     }
 
     private String requestId(HttpServletRequest request) {
