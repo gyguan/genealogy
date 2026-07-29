@@ -686,8 +686,8 @@ export function ReviewCenterPage({}: Props) {
 
   return (
     <div className="review-center-page">
-      <StandardQueryActions direction="vertical" size={16} style={{ width: '100%' }}>
-<Card title="审核中心">
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Card title="审核中心">
           <Space direction="vertical" size={12} style={{ width: '100%' }}><Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)}>
             <Row gutter={16}>
               <Col xs={24} sm={12} lg={6}><Form.Item name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></Form.Item></Col>
@@ -696,7 +696,7 @@ export function ReviewCenterPage({}: Props) {
               {activeTab !== 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="submittedRange" label={currentFilterCopy.submittedLabel}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
               {activeTab === 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="processedRange" label="处理时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
             </Row>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Space>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><StandardQueryActions>
 <Button data-query-action="reset" onClick={resetFilters}>重置</Button>
 <Button data-query-action="submit" type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button>
 </StandardQueryActions></div>

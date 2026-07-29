@@ -176,8 +176,8 @@ export function RiskAuditPanel({
   }
 
   return (
-    <StandardQueryActions direction="vertical" size={16} style={{ width: '100%' }}>
-<Card className="tracking-filter-card">
+    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Card className="tracking-filter-card">
         <Form layout="vertical">
           <div className="tracking-filter-grid tracking-filter-grid--audit">
             <Form.Item label="时间范围">
@@ -218,7 +218,7 @@ export function RiskAuditPanel({
           </div>
         </Form>
         <div className="tracking-filter-actions">
-          <Space wrap>
+          <StandardQueryActions wrap>
 <Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
 <Button data-query-action="submit" type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
 </StandardQueryActions>

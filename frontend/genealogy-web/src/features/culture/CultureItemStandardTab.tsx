@@ -477,8 +477,9 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
   ].filter(Boolean) as MenuProps['items'] : [];
 
   return (
-    <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
-<Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      
+      <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
         <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[16, 0]}>
@@ -503,7 +504,7 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
               )
             }]}
           />
-          <div className="culture-search-actions"><Space>
+          <div className="culture-search-actions"><StandardQueryActions>
 <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
 <Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
 </StandardQueryActions></div>

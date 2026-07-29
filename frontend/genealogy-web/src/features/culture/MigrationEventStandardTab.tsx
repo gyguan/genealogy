@@ -263,8 +263,9 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <InlineFeedback tone="error" title={<>删除</>} /> } : null].filter(Boolean) as MenuProps['items'] : [];
 
-  return <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
-<Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+  return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    
+    <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
       <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[16, 0]}>
@@ -274,7 +275,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
           <Col xs={24} sm={12} lg={6}><Form.Item name="migrationTimeText" label="历史时期"><Input allowClear placeholder="如明洪武年间" /></Form.Item></Col>
         </Row>
         <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
-        <div className="culture-search-actions"><Space>
+        <div className="culture-search-actions"><StandardQueryActions>
 <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
 <Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
 </StandardQueryActions></div>

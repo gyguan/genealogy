@@ -517,8 +517,9 @@ export function CultureSiteMaintenanceTab() {
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
 
   return (
-    <StandardQueryActions direction="vertical" size="middle" style={{ width: '100%' }}>
-<Card title="文化场所查询" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
+    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      
+      <Card title="文化场所查询" extra={<Button type="primary" disabled={!clanId} onClick={openCreate}>新增场所</Button>}>
         <Form form={searchForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[12, 0]}>
             <Col xs={24} md={8} xl={5}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col>
@@ -527,7 +528,7 @@ export function CultureSiteMaintenanceTab() {
             <Col xs={24} md={8} xl={4}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col>
             <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
             <Col xs={24} md={8} xl={4}><Form.Item name="sort" label="排序"><Select options={siteSortOptions} /></Form.Item></Col>
-            <Col xs={24}><Space>
+            <Col xs={24}><StandardQueryActions>
 <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
 <Button data-query-action="submit" type="primary" htmlType="submit" loading={listLoading}>查询</Button>
 </StandardQueryActions></Col>
