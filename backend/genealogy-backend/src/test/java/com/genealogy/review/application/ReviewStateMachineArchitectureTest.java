@@ -24,8 +24,9 @@ class ReviewStateMachineArchitectureTest {
                 .contains("ReviewAction.APPROVE", "ReviewAction.REJECT");
         assertThat(machine)
                 .contains("REVIEW_ILLEGAL_TRANSITION")
+                .contains("REVIEW_TASK_ALREADY_HANDLED")
                 .contains("REVIEW_STATE_INCONSISTENT")
-                .contains("REVIEW_SELF_APPROVAL_FORBIDDEN")
+                .contains("REVIEW_SELF_DECISION_FORBIDDEN")
                 .contains("ReviewAction.APPLY")
                 .doesNotContain("targetType");
     }
