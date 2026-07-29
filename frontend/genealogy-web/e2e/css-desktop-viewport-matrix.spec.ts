@@ -125,7 +125,7 @@ test('1440px stable regions produce reviewable local screenshot evidence', async
   const cases = [
     { key: 'home', region: '.ant-statistic, .ant-card', name: 'statistic-card' },
     { key: 'personArchive', region: '.ant-form, .archive-search-form', name: 'query-bar' },
-    { key: 'mvp1Wizard', region: '.ant-form, .relationship-step-form-grid', name: 'form' },
+    { key: 'mvp1Wizard', region: '.business-page--mvp1Wizard .ant-card, .business-page--mvp1Wizard', name: 'wizard' },
     { key: 'personArchive', region: '.ant-table-wrapper, .antd-table-wrap', name: 'table' }
   ];
 
