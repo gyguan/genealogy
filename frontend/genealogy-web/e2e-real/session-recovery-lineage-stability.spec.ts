@@ -166,8 +166,8 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await page.getByLabel('职业').fill('稳定性测试工程师');
     await expect(page.getByLabel('职业')).toHaveValue('稳定性测试工程师');
     await page.getByRole('menuitem', { name: '族谱首页', exact: true }).click();
-    const leaveConfirmation = page.getByRole('dialog');
-    await expect(leaveConfirmation.getByText('确认离开当前页面？', { exact: true })).toBeVisible();
+    const leaveConfirmation = page.getByRole('dialog', { name: '确认离开当前页面？' });
+    await expect(leaveConfirmation).toBeVisible();
     await leaveConfirmation.getByRole('button', { name: '继续编辑', exact: true }).click();
     await expect(leaveConfirmation).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`/persons/${uiPersonId}/edit`));
