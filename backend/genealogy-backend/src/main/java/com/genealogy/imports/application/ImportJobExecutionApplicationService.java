@@ -2,6 +2,7 @@ package com.genealogy.imports.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.imports.domain.ImportExecutionState;
 import com.genealogy.imports.dto.ImportJobExecutionResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
@@ -36,8 +37,7 @@ public class ImportJobExecutionApplicationService {
 
     @Transactional(readOnly = true)
     public ImportJobExecutionResponse get(Long clanId, Long jobId, Long actorId) {
-        ImportJobEntity job = requireJob(clanId, jobId, actorId);
-        return toResponse(job);
+        return toResponse(requireJob(clanId, jobId, actorId));
     }
 
     @Transactional
@@ -50,9 +50,8 @@ public class ImportJobExecutionApplicationService {
             throw new BusinessException("IMPORT_JOB_PAUSE_NOT_ALLOWED", "当前任务状态不能暂停");
         }
         LocalDateTime now = LocalDateTime.now();
-        if (ImportJobEntity.EXECUTION_RUNNING.equals(status)) {
-            job.setRequestedAction(ImportJobEntity.ACTION_PAUSE);
-        } else {
+        if (ImportJobEntity.EXECUTION_RUNNING.equals(status)) job.setRequestedAction(ImportJobEntity.ACTION_PAUSE);
+        else {
             job.setExecutionStatus(ImportJobEntity.EXECUTION_PAUSED);
             job.setRequestedAction(null);
             job.setNextRetryAt(null);
@@ -84,27 +83,15 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse cancel(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        String status = job.getExecutionStatus();
-        if (List.of(ImportJobEntity.EXECUTION_COMPLETED, ImportJobEntity.EXECUTION_CANCELLED).contains(status)) {
-            throw new BusinessException("IMPORT_JOB_CANCEL_NOT_ALLOWED", "已完成或已取消任务不能再次取消");
-        }
-        if (hasSideEffects(job)) {
-            throw new BusinessException(
-                    "IMPORT_JOB_CANCEL_HAS_SIDE_EFFECTS",
-                    "任务已生成草稿或开始发布，不能取消；请暂停后继续处理，避免留下不可恢复的半成品"
-            );
+        ImportExecutionState state = ImportExecutionState.from(job.getExecutionStatus());
+        if (state.terminal()) {
+            throw new BusinessException("IMPORT_JOB_CANCEL_NOT_ALLOWED", "终态任务不能再次取消");
         }
         LocalDateTime now = LocalDateTime.now();
-        if (ImportJobEntity.EXECUTION_RUNNING.equals(status)) {
+        if (ImportJobEntity.EXECUTION_RUNNING.equals(job.getExecutionStatus())) {
             job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
         } else {
-            job.setExecutionStatus(ImportJobEntity.EXECUTION_CANCELLED);
-            job.setExecutionStage(ImportJobEntity.STAGE_CANCELLED);
-            job.setRequestedAction(null);
-            job.setCompletedAt(now);
-            job.setLeaseOwner(null);
-            job.setLeaseExpiresAt(null);
-            deletePayloadIfPresent(jobId);
+            completeCancellation(job, now);
         }
         job.setUpdatedAt(now);
         jobRepository.save(job);
@@ -115,16 +102,15 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse retry(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        if (!List.of(ImportJobEntity.EXECUTION_FAILED, ImportJobEntity.EXECUTION_DEAD_LETTER)
-                .contains(job.getExecutionStatus())) {
-            throw new BusinessException("IMPORT_JOB_RETRY_NOT_ALLOWED", "只有失败或待人工介入任务可以重试");
+        ImportExecutionState state = ImportExecutionState.from(job.getExecutionStatus());
+        if (!state.retryable()) {
+            throw new BusinessException("IMPORT_JOB_RETRY_NOT_ALLOWED", "只有部分失败、失败或待人工介入任务可以重试");
         }
         if (!ImportJobEntity.STAGE_PUBLISHING.equals(job.getFailureStage()) && !payloadRepository.existsById(jobId)) {
             throw new BusinessException("IMPORT_JOB_PAYLOAD_NOT_FOUND", "原始文件已不存在，无法恢复解析，请重新上传");
         }
         LocalDateTime now = LocalDateTime.now();
-        String resumeStage = normalizeStage(job.getFailureStage());
-        job.setExecutionStage(resumeStage);
+        job.setExecutionStage(normalizeStage(job.getFailureStage()));
         job.setExecutionStatus(ImportJobEntity.EXECUTION_QUEUED);
         job.setExecutionRetryCount(0);
         job.setRequestedAction(null);
@@ -138,15 +124,27 @@ public class ImportJobExecutionApplicationService {
         job.setLeaseExpiresAt(null);
         job.setUpdatedAt(now);
         jobRepository.save(job);
-        record(job, actorId, "import_job_retry", "重试导入任务");
+        record(job, actorId, "import_job_retry", "重试失败批次或失败行");
         return toResponse(job);
+    }
+
+    private void completeCancellation(ImportJobEntity job, LocalDateTime now) {
+        boolean partial = hasSideEffects(job);
+        job.setExecutionStatus(partial
+                ? ImportJobEntity.EXECUTION_PARTIAL_CANCELLED
+                : ImportJobEntity.EXECUTION_CANCELLED);
+        job.setExecutionStage(ImportJobEntity.STAGE_CANCELLED);
+        job.setStatus(partial ? "partial_cancelled" : "cancelled");
+        job.setRequestedAction(null);
+        job.setCompletedAt(now);
+        job.setLeaseOwner(null);
+        job.setLeaseExpiresAt(null);
+        deletePayloadIfPresent(job.getId());
     }
 
     private ImportJobEntity requireAsyncJob(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireJob(clanId, jobId, actorId);
-        if (!job.isAsyncExecution()) {
-            throw new BusinessException("IMPORT_JOB_NOT_ASYNC", "当前任务不是异步任务");
-        }
+        if (!job.isAsyncExecution()) throw new BusinessException("IMPORT_JOB_NOT_ASYNC", "当前任务不是异步任务");
         return job;
     }
 
@@ -160,14 +158,12 @@ public class ImportJobExecutionApplicationService {
     private ImportJobExecutionResponse toResponse(ImportJobEntity job) {
         int total = value(job.getTotalCount());
         int progress = ImportJobEntity.STAGE_PUBLISHING.equals(job.getExecutionStage())
-                ? value(job.getPublishedCount())
-                : value(job.getProcessedCount());
+                ? value(job.getPublishedCount()) : value(job.getProcessedCount());
         int denominator = ImportJobEntity.STAGE_PUBLISHING.equals(job.getExecutionStage())
-                ? Math.max(0, value(job.getSuccessCount()))
-                : total;
+                ? Math.max(0, value(job.getSuccessCount())) : total;
         int remaining = Math.max(0, denominator - progress);
         int percent = denominator <= 0 ? 0 : Math.min(100, (int) Math.round(progress * 100.0d / denominator));
-        if (ImportJobEntity.EXECUTION_COMPLETED.equals(job.getExecutionStatus())) percent = 100;
+        if (ImportExecutionState.from(job.getExecutionStatus()).terminal()) percent = Math.max(percent, 100);
         return new ImportJobExecutionResponse(
                 job.getId(), job.getExecutionMode(), job.getExecutionStatus(), job.getExecutionStage(),
                 job.getTotalCount(), job.getProcessedCount(), job.getPublishedCount(), remaining, percent,
@@ -185,13 +181,13 @@ public class ImportJobExecutionApplicationService {
         if (List.of(ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.EXECUTION_RUNNING,
                 ImportJobEntity.EXECUTION_RETRY_WAIT).contains(status)) {
             actions.add("pause");
-            if (!hasSideEffects(job)) actions.add("cancel");
+            actions.add("cancel");
         } else if (ImportJobEntity.EXECUTION_PAUSED.equals(status)) {
             actions.add("resume");
-            if (!hasSideEffects(job)) actions.add("cancel");
-        } else if (List.of(ImportJobEntity.EXECUTION_FAILED, ImportJobEntity.EXECUTION_DEAD_LETTER).contains(status)) {
+            actions.add("cancel");
+        } else if (ImportExecutionState.from(status).retryable()) {
             actions.add("retry");
-            if (!hasSideEffects(job)) actions.add("cancel");
+            actions.add("cancel");
         }
         return List.copyOf(actions);
     }
@@ -207,9 +203,7 @@ public class ImportJobExecutionApplicationService {
     }
 
     private void deletePayloadIfPresent(Long jobId) {
-        if (payloadRepository.existsById(jobId)) {
-            payloadRepository.deleteById(jobId);
-        }
+        if (payloadRepository.existsById(jobId)) payloadRepository.deleteById(jobId);
     }
 
     private void record(ImportJobEntity job, Long actorId, String action, String summary) {

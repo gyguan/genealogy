@@ -18,6 +18,8 @@ public interface ImportJobRepository extends JpaRepository<ImportJobEntity, Long
 
     Optional<ImportJobEntity> findByIdAndClanId(Long id, Long clanId);
 
+    Optional<ImportJobEntity> findFirstByClanIdAndIdempotencyKeyOrderByCreatedAtDesc(Long clanId, String idempotencyKey);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select job from ImportJobEntity job where job.id = :jobId and job.clanId = :clanId")
     Optional<ImportJobEntity> findByIdAndClanIdForUpdate(
