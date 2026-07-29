@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { createContext, useContext, useState } from 'react';
+import type { ReactNode, Ref } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Card,
   Drawer,
@@ -11,39 +13,65 @@ import type { CardProps, DrawerProps, ResultProps, TableProps } from 'antd';
 import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
 
+const StandardPageActionTarget = createContext<HTMLElement | null | undefined>(undefined);
+
 export type StandardPageProps = {
   title: ReactNode;
   description?: ReactNode;
+  scope?: ReactNode;
+  back?: ReactNode;
   extra?: ReactNode;
   children: ReactNode;
   className?: string;
   pageKey?: string;
 };
 
-export function StandardPage({ title, description, extra, children, className = '', pageKey }: StandardPageProps) {
+export function StandardPage({ title, description, scope, back, extra, children, className = '', pageKey }: StandardPageProps) {
   const classes = ['standard-page', className].filter(Boolean).join(' ');
-  return <section className={classes} data-standard-page={pageKey || 'standard'}>
-    <StandardPageHeader title={title} description={description} extra={extra} />
-    <div className="standard-page__content">{children}</div>
-  </section>;
+  const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
+  return <StandardPageActionTarget.Provider value={actionTarget}>
+    <section className={classes} data-standard-page={pageKey || 'standard'}>
+      <StandardPageHeader title={title} description={description} scope={scope} back={back} extra={extra} actionTargetRef={setActionTarget} />
+      <div className="standard-page__content">{children}</div>
+    </section>
+  </StandardPageActionTarget.Provider>;
 }
 
 export type StandardPageHeaderProps = {
   title: ReactNode;
   description?: ReactNode;
+  scope?: ReactNode;
+  back?: ReactNode;
   extra?: ReactNode;
   className?: string;
+  actionTargetRef?: Ref<HTMLDivElement>;
 };
 
-export function StandardPageHeader({ title, description, extra, className = '' }: StandardPageHeaderProps) {
+export function StandardPageHeader({ title, description, scope, back, extra, className = '', actionTargetRef }: StandardPageHeaderProps) {
   const classes = ['standard-page-header', className].filter(Boolean).join(' ');
   return <header className={classes}>
-    <div className="standard-page-header__copy">
-      <Typography.Title level={2} className="standard-page-header__title">{title}</Typography.Title>
-      {description ? <Typography.Paragraph type="secondary" className="standard-page-header__description">{description}</Typography.Paragraph> : null}
+    <div className="standard-page-header__leading">
+      {back ? <div className="standard-page-header__back">{back}</div> : null}
+      <div className="standard-page-header__copy">
+        <Typography.Title level={2} className="standard-page-header__title">{title}</Typography.Title>
+        {description ? <Typography.Paragraph type="secondary" className="standard-page-header__description">{description}</Typography.Paragraph> : null}
+        {scope ? <div className="standard-page-header__scope">{scope}</div> : null}
+      </div>
     </div>
-    {extra ? <Space className="standard-page-header__extra" wrap>{extra}</Space> : null}
+    <div ref={actionTargetRef} className="standard-page-header__actions" aria-label="页面操作">
+      {extra ? <Space className="standard-page-header__extra" wrap>{extra}</Space> : null}
+    </div>
   </header>;
+}
+
+export type StandardPageActionsProps = {
+  children: ReactNode;
+};
+
+export function StandardPageActions({ children }: StandardPageActionsProps) {
+  const target = useContext(StandardPageActionTarget);
+  if (target === undefined) return <>{children}</>;
+  return target ? createPortal(children, target) : null;
 }
 
 export type StandardQueryPanelProps = Omit<CardProps, 'title' | 'children'> & {
