@@ -17,12 +17,14 @@ function runAudit(...args) {
 
 test('production CSS contains no unregistered Ant Design internal selectors', () => {
   try {
-    const output = runAudit(`--json=${jsonReport}`, `--markdown=${markdownReport}`);
-    assert.match(output, /Result: \*\*PASSED\*\*/);
+    runAudit(`--json=${jsonReport}`, `--markdown=${markdownReport}`, '--report-only');
     const report = JSON.parse(readFileSync(new URL(`../../${jsonReport}`, import.meta.url), 'utf8'));
-    assert.equal(report.totals.unregistered, 0);
-    assert.equal(report.totals.unscoped, 0);
-    assert.equal(report.totals.staleExceptions, 0);
+    const failures = [
+      ...report.unregistered.map(value => `unregistered: ${value}`),
+      ...report.unscoped.map(value => `unscoped: ${value}`),
+      ...report.staleExceptions.map(value => `stale exception: ${value}`)
+    ];
+    assert.deepEqual(failures, [], failures.join('\n'));
   } finally {
     rmSync(new URL(`../../${jsonReport}`, import.meta.url), { force: true });
     rmSync(new URL(`../../${markdownReport}`, import.meta.url), { force: true });
