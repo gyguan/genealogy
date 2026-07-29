@@ -80,12 +80,8 @@ class ImportApplicationServiceRowStateTest {
                 new ImportMetrics(new SimpleMeterRegistry()),
                 200
         );
-        when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> {
-            ImportJobEntity entity = invocation.getArgument(0);
-            if (entity.getId() == null) entity.setId(101L);
-            lastSavedJob = entity;
-            return entity;
-        });
+        when(importJobRepository.saveAndFlush(any(ImportJobEntity.class))).thenAnswer(invocation -> rememberJob(invocation.getArgument(0)));
+        when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> rememberJob(invocation.getArgument(0)));
         lenient().when(importJobRepository.findById(anyLong()))
                 .thenAnswer(invocation -> Optional.ofNullable(lastSavedJob));
         lenient().when(importJobErrorRepository.findByJobIdOrderByRowNoAsc(anyLong())).thenReturn(List.of());
@@ -112,14 +108,13 @@ class ImportApplicationServiceRowStateTest {
         assertThat(result.fileFormat()).isEqualTo("csv");
         assertThat(result.legacyImportType()).isEqualTo("person_csv");
 
-        ArgumentCaptor<ImportJobEntity> jobCaptor = ArgumentCaptor.forClass(ImportJobEntity.class);
-        verify(importJobRepository, org.mockito.Mockito.atLeast(2)).save(jobCaptor.capture());
-        ImportJobEntity savedJob = jobCaptor.getAllValues().get(jobCaptor.getAllValues().size() - 1);
-        assertThat(savedJob.getImportType()).isEqualTo(ImportJobEntity.TYPE_PERSON);
-        assertThat(savedJob.getFileFormat()).isEqualTo(ImportJobEntity.FORMAT_CSV);
-        assertThat(savedJob.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_READY_FOR_REVIEW);
-        assertThat(savedJob.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_NOT_SUBMITTED);
-        assertThat(savedJob.getReviewRound()).isZero();
+        verify(importJobRepository).saveAndFlush(any(ImportJobEntity.class));
+        verify(importJobRepository).save(any(ImportJobEntity.class));
+        assertThat(lastSavedJob.getImportType()).isEqualTo(ImportJobEntity.TYPE_PERSON);
+        assertThat(lastSavedJob.getFileFormat()).isEqualTo(ImportJobEntity.FORMAT_CSV);
+        assertThat(lastSavedJob.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_READY_FOR_REVIEW);
+        assertThat(lastSavedJob.getReviewStatus()).isEqualTo(ImportJobEntity.REVIEW_NOT_SUBMITTED);
+        assertThat(lastSavedJob.getReviewRound()).isZero();
 
         ArgumentCaptor<PersonEntity> personCaptor = ArgumentCaptor.forClass(PersonEntity.class);
         verify(personRepository).save(personCaptor.capture());
@@ -189,6 +184,12 @@ class ImportApplicationServiceRowStateTest {
                         "是否在世必须填写是或否",
                         "代次必须是正整数"
                 );
+    }
+
+    private ImportJobEntity rememberJob(ImportJobEntity entity) {
+        if (entity.getId() == null) entity.setId(101L);
+        lastSavedJob = entity;
+        return entity;
     }
 
     private MockMultipartFile csv(String content) {
