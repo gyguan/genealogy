@@ -3,9 +3,12 @@ package com.genealogy.source.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.genealogy.auth.dto.ActorContext;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.RevisionRepository;
+import com.genealogy.source.domain.SourceBindingAccessPolicy;
+import com.genealogy.source.domain.SourceBindingTargetType;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceBindingRevisionDeleteRequest;
@@ -28,6 +31,7 @@ public class SourceBindingCommandApplicationService {
     private final SourceBindingTargetValidationService targetValidationService;
     private final RevisionRepository revisionRepository;
     private final ObjectMapper objectMapper;
+    private final SourceBindingAccessPolicy accessPolicy = new SourceBindingAccessPolicy();
 
     public SourceBindingCommandApplicationService(
             SourceApplicationService sourceApplicationService,
@@ -44,9 +48,25 @@ public class SourceBindingCommandApplicationService {
     }
 
     @Transactional
+    public SourceBindingResponse bind(Long clanId, SourceBindingCreateRequest request, ActorContext actor) {
+        accessPolicy.requireManage(actor, clanId);
+        return bind(clanId, request, actor.userId());
+    }
+
+    @Transactional
     public SourceBindingResponse bind(Long clanId, SourceBindingCreateRequest request, Long actorId) {
         validateTarget(clanId, request);
         return sourceApplicationService.bind(clanId, request, actorId);
+    }
+
+    @Transactional
+    public SourceBindingRevisionResponse submitCreate(
+            Long clanId,
+            SourceBindingRevisionSubmitRequest request,
+            ActorContext actor
+    ) {
+        accessPolicy.requireManage(actor, clanId);
+        return submitCreate(clanId, request, actor.userId(), actor.requestId(), actor.clientIp());
     }
 
     @Transactional
@@ -119,7 +139,8 @@ public class SourceBindingCommandApplicationService {
         if (request == null) {
             throw new BusinessException("SOURCE_BINDING_REQUEST_INVALID", "来源绑定请求不能为空");
         }
-        targetValidationService.validate(clanId, request.targetType(), request.targetId());
+        SourceBindingTargetType targetType = SourceBindingTargetType.fromApi(request.targetType());
+        targetValidationService.validate(clanId, targetType, request.targetId());
     }
 
     private void validateRevisionTarget(Long revisionId) {
@@ -133,7 +154,7 @@ public class SourceBindingCommandApplicationService {
         }
         try {
             JsonNode data = objectMapper.readTree(revision.getAfterData());
-            String targetType = data.path("targetType").asText(null);
+            SourceBindingTargetType targetType = SourceBindingTargetType.fromApi(data.path("targetType").asText(null));
             Long targetId = data.hasNonNull("targetId") ? data.get("targetId").longValue() : null;
             targetValidationService.validate(revision.getClanId(), targetType, targetId);
         } catch (JsonProcessingException exception) {
