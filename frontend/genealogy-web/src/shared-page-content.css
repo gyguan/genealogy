@@ -2,7 +2,7 @@
 
 /* The global module header already identifies the page; the home dashboard starts
    directly with clan context and metrics. */
-.antd-content:has(.business-page--home) {
+[data-genealogy-app] .antd-content:has(.business-page--home) {
   padding-top: 12px;
 }
 
@@ -15,14 +15,20 @@
 }
 
 /* Keep the expanded person archive filters visually consistent with other query pages. */
-.business-page--personArchive .person-archive-filter-grid--advanced {
+[data-genealogy-app] .business-page--personArchive .person-archive-filter-grid--advanced {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
 }
 
 /* Wide query pages must consume the complete width offered by AppShell. */
-.antd-content:has(.business-page--imports), [data-genealogy-app] .antd-content:has(.business-page--auditTrace), [data-genealogy-app] .business-page--imports, [data-genealogy-app] .business-page--auditTrace, [data-genealogy-app] .business-page--imports > .import-center-page, [data-genealogy-app] .business-page--auditTrace > .audit-trace-page, [data-genealogy-app] .business-page--auditTrace .tracking-double-card-page {
+[data-genealogy-app] .antd-content:has(.business-page--imports),
+[data-genealogy-app] .antd-content:has(.business-page--auditTrace),
+[data-genealogy-app] .business-page--imports,
+[data-genealogy-app] .business-page--auditTrace,
+[data-genealogy-app] .business-page--imports > .import-center-page,
+[data-genealogy-app] .business-page--auditTrace > .audit-trace-page,
+[data-genealogy-app] .business-page--auditTrace .tracking-double-card-page {
   width: 100%;
   min-width: 0;
   max-width: none;
@@ -30,7 +36,7 @@
 }
 
 /* Match the audit result heading to the standard query-result card title pattern. */
-.business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
   min-height: unset;
 }
 
@@ -41,7 +47,8 @@
   white-space: nowrap;
 }
 
-[data-genealogy-app] .business-page--auditTrace .tracking-result-title > h4.ant-typography, [data-genealogy-app] .business-page--auditTrace .tracking-result-title > .ant-typography-secondary {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title > h4.ant-typography,
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title > .ant-typography-secondary {
   margin: 0;
   color: rgba(0, 0, 0, 0.88);
   font-size: 16px;
