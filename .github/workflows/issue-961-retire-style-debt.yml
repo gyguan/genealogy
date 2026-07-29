@@ -1,0 +1,145 @@
+name: Issue 961 Style Debt Retirement
+
+on:
+  push:
+    branches:
+      - agent/issue-961-retire-c-style-debt
+    paths:
+      - .github/workflows/issue-961-retire-style-debt.yml
+
+permissions:
+  contents: write
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-961-retire-c-style-debt
+          fetch-depth: 0
+      - name: Retire C-class style debt
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re
+
+          root = Path('frontend/genealogy-web')
+          src = root / 'src'
+
+          color_map = {
+            '#1677ff': 'var(--genealogy-color-primary)',
+            '#4096ff': 'var(--genealogy-color-primary-hover)',
+            '#e6f4ff': 'var(--genealogy-color-primary-bg)',
+            '#bae0ff': 'var(--genealogy-color-primary-bg-hover)',
+            '#f5f5f5': 'var(--genealogy-color-bg-layout)',
+            '#ffffff': 'var(--genealogy-color-bg-container)',
+            '#d9d9d9': 'var(--genealogy-color-border)',
+            '#f0f0f0': 'var(--genealogy-color-border-secondary)',
+            'rgba(0, 0, 0, .88)': 'var(--genealogy-color-text)',
+            'rgba(0, 0, 0, .65)': 'var(--genealogy-color-text-secondary)',
+            'rgba(0, 0, 0, .45)': 'var(--genealogy-color-text-tertiary)',
+            'rgba(0, 0, 0, .25)': 'var(--genealogy-color-text-disabled)',
+            'rgba(0, 0, 0, .02)': 'var(--genealogy-color-fill-alter)',
+            'rgba(0, 0, 0, .03)': 'var(--genealogy-color-fill-secondary)',
+          }
+
+          global_files = {
+            'auth-commercial.css', 'tabbed-module.css', 'entity-page-header.css',
+            'runtime-error.css', 'shared-guidance.css', 'shared-module-title.css',
+            'shared-page-content.css', 'shared-query-actions.css',
+            'styles/shared/shared-antd-contracts.css', 'styles/shell/app-shell.css'
+          }
+
+          native_map = {
+            'button': '.ant-btn', 'input': '.ant-input', 'select': '.ant-select',
+            'textarea': '.ant-input', 'table': '.ant-table'
+          }
+
+          def rewrite_selector_header(match, is_global):
+            header = match.group(1)
+            stripped = header.strip()
+            if not stripped or stripped.startswith('@'):
+              return header + '{'
+            parts = []
+            for part in header.split(','):
+              value = part.strip()
+              for tag, replacement in native_map.items():
+                value = re.sub(rf'(?<![-\w.]){tag}(?![-\w])', replacement, value, flags=re.I)
+              if is_global and not value.startswith((':root', '[data-genealogy-app]')):
+                value = '[data-genealogy-app] ' + value
+              parts.append(value)
+            indent = header[:len(header)-len(header.lstrip())]
+            return indent + ', '.join(parts) + ' {'
+
+          for path in src.rglob('*.css'):
+            rel = path.relative_to(src).as_posix()
+            text = path.read_text()
+            text = re.sub(r'\s*!important\b', '', text, flags=re.I)
+            if rel != 'styles/design-system.css':
+              for literal, token in color_map.items():
+                text = re.sub(re.escape(literal), token, text, flags=re.I)
+            text = text.replace('.toast-stack', '.feedback-stack')
+            text = re.sub(r'([^{}]+)\{', lambda m: rewrite_selector_header(m, rel in global_files), text)
+            path.write_text(text)
+
+          # Rename active legacy references in TS/TSX/tests together with CSS.
+          for pattern in ('*.ts', '*.tsx', '*.js', '*.mjs'):
+            for path in src.rglob(pattern):
+              text = path.read_text()
+              updated = text.replace('toast-stack', 'feedback-stack')
+              if updated != text:
+                path.write_text(updated)
+
+          # Install a stable application root for globally shared CSS responsibilities.
+          main = src / 'main.tsx'
+          text = main.read_text()
+          text = text.replace(
+            "ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(",
+            "const applicationRoot = document.getElementById('root') as HTMLElement;\napplicationRoot.dataset.genealogyApp = 'true';\n\nReactDOM.createRoot(applicationRoot).render("
+          )
+          main.write_text(text)
+
+          # The token source of truth is not a fixed-color usage. Ensure the missing shared token exists.
+          design = src / 'styles/design-system.css'
+          text = design.read_text()
+          if '--genealogy-color-fill-secondary:' not in text:
+            text = text.replace('--genealogy-color-fill-alter: rgba(0, 0, 0, .02);', '--genealogy-color-fill-alter: rgba(0, 0, 0, .02);\n  --genealogy-color-fill-secondary: rgba(0, 0, 0, .03);')
+          design.write_text(text)
+
+          # Remove C-class exception after physical retirement.
+          exceptions = root / 'style-debt-exceptions.json'
+          data = json.loads(exceptions.read_text())
+          data.pop('temporaryCompatibility', None)
+          data['reviewedAt'] = '2026-07-29'
+          data['policy'] = 'A 类系统样式债和 C 类临时兼容债必须为零；B 类仅允许稳定 Feature 根作用域下的业务可视化。新增、移动、重命名或改变规范化条目均视为新的 A 类债务。'
+          exceptions.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+
+          # Verifier supports the completed state where no C-class exception exists.
+          verifier = root / 'scripts/verify-style-debt-exceptions.mjs'
+          text = verifier.read_text()
+          start = text.index('const temporary = data.temporaryCompatibility;')
+          end = text.index("console.log(`Verified B-class rules:")
+          replacement = "const temporary = data.temporaryCompatibility;\nif (temporary) {\n  for (const field of ['id', 'owner', 'reason', 'exitCondition', 'trackingIssue', 'reviewedAt', 'expiresAt']) {\n    if (temporary[field] === undefined || temporary[field] === '') throw new Error(`C-class compatibility exception missing ${field}`);\n  }\n  if (!Number.isInteger(temporary.trackingIssue)) throw new Error('C-class trackingIssue must be an integer');\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(temporary.reviewedAt)) throw new Error('C-class reviewedAt must be YYYY-MM-DD');\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(temporary.expiresAt)) throw new Error('C-class expiresAt must be YYYY-MM-DD');\n  const expiry = new Date(`${temporary.expiresAt}T23:59:59Z`);\n  if (!Number.isFinite(expiry.getTime())) throw new Error('C-class expiresAt is invalid');\n  if (expiry < new Date()) throw new Error(`C-class exception ${temporary.id} expired at ${temporary.expiresAt}`);\n  const repository = process.env.GITHUB_REPOSITORY;\n  const token = process.env.GITHUB_TOKEN;\n  if (!repository || !token) throw new Error('GITHUB_REPOSITORY and GITHUB_TOKEN are required to verify C-class tracking issues.');\n  const response = await fetch(`https://api.github.com/repos/${repository}/issues/${temporary.trackingIssue}`, { headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' } });\n  if (!response.ok) throw new Error(`Unable to verify tracking issue #${temporary.trackingIssue}: HTTP ${response.status}`);\n  const issue = await response.json();\n  if (issue.pull_request) throw new Error(`C-class tracking #${temporary.trackingIssue} must be an issue, not a pull request.`);\n  if (issue.state !== 'open') throw new Error(`C-class tracking issue #${temporary.trackingIssue} is ${issue.state}; remove the exception or reopen the issue.`);\n}\n"
+          text = text[:start] + replacement + text[end:]
+          text = text.replace("console.log(`Verified C-class tracking issue #${temporary.trackingIssue}: ${issue.title}`);\nconsole.log(`C-class exception expires at ${temporary.expiresAt}.`);", "console.log(temporary ? `Verified C-class tracking issue #${temporary.trackingIssue}.` : 'Verified C-class compatibility exceptions: 0');")
+          verifier.write_text(text)
+
+          # Audit token declarations correctly and require completed C=0 state.
+          audit = root / 'scripts/audit-style-debt.mjs'
+          text = audit.read_text()
+          text = text.replace("if (SYSTEM_COLORS.has(color)) result.categories.fixedSystemColors.push(entry(file, rule, property, color));", "if (SYSTEM_COLORS.has(color) && !(file === 'src/styles/design-system.css' && property.startsWith('--genealogy-'))) result.categories.fixedSystemColors.push(entry(file, rule, property, color));")
+          text = text.replace("`- **${governance.temporaryCompatibility.id}** — ${governance.temporaryCompatibility.owner}; tracking #${governance.temporaryCompatibility.trackingIssue}; expires ${governance.temporaryCompatibility.expiresAt}.`, ''", "...(governance.temporaryCompatibility ? [`- **${governance.temporaryCompatibility.id}** — ${governance.temporaryCompatibility.owner}; tracking #${governance.temporaryCompatibility.trackingIssue}; expires ${governance.temporaryCompatibility.expiresAt}.`] : ['- C-class compatibility exceptions: **0**.']), ''")
+          text = text.replace("failed: classification.A.length > 0 || head.totals.globalBundleBytes > base.totals.globalBundleBytes", "failed: classification.A.length > 0 || classification.C.length > 0 || head.totals.globalBundleBytes > base.totals.globalBundleBytes")
+          audit.write_text(text)
+
+          # Remove the one-shot workflow before committing.
+          Path('.github/workflows/issue-961-retire-style-debt.yml').unlink()
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: retire issue 961 C-class style debt"
+          git push origin HEAD:agent/issue-961-retire-c-style-debt
