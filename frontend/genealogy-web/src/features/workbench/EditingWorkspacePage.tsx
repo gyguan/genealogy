@@ -463,10 +463,10 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         rowKey="key"
         dataSource={tasks}
         tableLayout="fixed"
-        rowSelection={{ columnWidth: 48, selectedRowKeys: selectedKeys, preserveSelectedRowKeys: false, onChange: keys => setSelectedKeys(keys) }}
+        rowSelection={{ columnWidth: 44, selectedRowKeys: selectedKeys, preserveSelectedRowKeys: false, onChange: keys => setSelectedKeys(keys) }}
         expandable={{
           columnTitle: '完整信息',
-          columnWidth: 72,
+          columnWidth: 56,
           expandRowByClick: false,
           expandedRowRender: expandedTaskInformation
         }}
@@ -474,14 +474,14 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         locale={{ emptyText: emptyNode }}
         onRow={row => ({ role: 'button', tabIndex: 0, 'aria-label': `打开任务：${taskTitle(row)}`, onClick: () => openTask(row), onKeyDown: event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openTask(row); } }, style: { cursor: 'pointer', background: selectedTask?.key === row.key ? '#f0f7ff' : undefined } })}
         columns={[
-          { key: 'taskName', title: '任务名称', width: 220, render: (_value, row) => { const title = taskTitle(row); return <Button type="link" aria-label={`查看任务：${title}`} style={{ padding: 0, width: '100%', textAlign: 'left' }} onClick={event => { event.stopPropagation(); openTask(row); }}><span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={title}>{title}</span></Button>; } },
-          { key: 'status', title: '任务状态', width: 108, render: (_value, row) => <Tag color={statusColor(row.status)}>{display(row.statusText, '状态未知')}</Tag> },
-          { key: 'risk', title: '优先级', width: 80, render: (_value, row) => <Tag color={riskColor(row.risk)}>{riskText(row.risk)}</Tag> },
-          { key: 'creator', title: '创建人', width: 116, render: (_value, row) => { const creator = display(row.creatorName, '-'); return <Typography.Text ellipsis={{ tooltip: creator }}>{creator}</Typography.Text>; } },
-          { key: 'updatedAt', title: '最近更新', width: 168, render: (_value, row) => <Typography.Text style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.updatedAt || row.createdAt)}</Typography.Text> },
-          { key: 'actions', title: '操作', width: 160, render: (_value, row) => <Space size={0} onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openTask(row)}>查看</Button><Button type="link" disabled={!relatedViewOf(row.relatedEntryType) || !onNavigate} onClick={() => goRelatedEntry(row)}>编辑</Button><Dropdown menu={moreMenu(row)} trigger={['click']}><Button type="link">更多</Button></Dropdown></Space> }
+          { key: 'taskName', title: '任务名称', width: 210, render: (_value, row) => { const title = taskTitle(row); return <Button type="link" aria-label={`查看任务：${title}`} style={{ padding: 0, width: '100%', textAlign: 'left' }} onClick={event => { event.stopPropagation(); openTask(row); }}><span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={title}>{title}</span></Button>; } },
+          { key: 'status', title: '任务状态', width: 104, render: (_value, row) => <Tag color={statusColor(row.status)}>{display(row.statusText, '状态未知')}</Tag> },
+          { key: 'risk', title: '优先级', width: 72, render: (_value, row) => <Tag color={riskColor(row.risk)}>{riskText(row.risk)}</Tag> },
+          { key: 'creator', title: '创建人', width: 100, render: (_value, row) => { const creator = display(row.creatorName, '-'); return <Typography.Text ellipsis={{ tooltip: creator }}>{creator}</Typography.Text>; } },
+          { key: 'updatedAt', title: '最近更新', width: 150, render: (_value, row) => <Typography.Text style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.updatedAt || row.createdAt)}</Typography.Text> },
+          { key: 'actions', title: '操作', width: 144, render: (_value, row) => <Space size={0} onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openTask(row)}>查看</Button><Button type="link" disabled={!relatedViewOf(row.relatedEntryType) || !onNavigate} onClick={() => goRelatedEntry(row)}>编辑</Button><Dropdown menu={moreMenu(row)} trigger={['click']}><Button type="link">更多</Button></Dropdown></Space> }
         ]}
-        scroll={{ x: 970 }}
+        scroll={{ x: 880 }}
       /> : <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {taskLoading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
         {!taskLoading && tasks.map(task => <Card key={task.key} role="button" tabIndex={0} aria-label={`打开任务：${taskTitle(task)}`} onClick={() => openTask(task)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openTask(task); } }} style={{ borderColor: selectedTask?.key === task.key ? '#1677ff' : undefined }}>
