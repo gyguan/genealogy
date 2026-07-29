@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/genealogy}
+    username: ${DB_USERNAME:genealogy}
+    password: ${DB_PASSWORD:genealogy_local_only}
+  flyway:
+    enabled: true
+
+genealogy:
+  auth:
+    cookie-secure: false
+    expose-bearer-token: ${GENEALOGY_AUTH_EXPOSE_BEARER_TOKEN:true}
+    expose-reset-token: ${GENEALOGY_AUTH_EXPOSE_RESET_TOKEN:true}
+
+logging:
+  level:
+    com.genealogy: DEBUG
