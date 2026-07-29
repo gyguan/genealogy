@@ -1,0 +1,33 @@
+name: Issue 943 Query Action Repair
+
+on:
+  push:
+    branches:
+      - agent/issue-943-standard-query-actions
+    paths:
+      - scripts/issue-943-repair-codemod.mjs
+      - .github/workflows/issue-943-repair-codemod.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-943-standard-query-actions
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Repair nested query action migrations
+        run: node scripts/issue-943-repair-codemod.mjs
+      - name: Commit repaired implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(frontend): migrate innermost query action groups for issue #943"
+          git push origin HEAD:agent/issue-943-standard-query-actions
