@@ -393,6 +393,16 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
       }
     };
   }
+  function expandedTaskInformation(task: WorkbenchTask) {
+    return <Descriptions size="small" column={screens.xl ? 3 : 2} bordered>
+      <Descriptions.Item label="谱书名称">{display(task.bookName, bookLabel(activeClan))}</Descriptions.Item>
+      <Descriptions.Item label="任务类型">{display(task.typeText, '-')}</Descriptions.Item>
+      <Descriptions.Item label="创建时间">{formatDateTime(task.createdAt)}</Descriptions.Item>
+      <Descriptions.Item label="涉及对象">{display(task.involvedObject || task.objectName)}</Descriptions.Item>
+      <Descriptions.Item label="所属范围">{display(task.branchName)}</Descriptions.Item>
+      <Descriptions.Item label="最近更新">{formatDateTime(task.updatedAt || task.createdAt)}</Descriptions.Item>
+    </Descriptions>;
+  }
 
   const hasFilters = filterLabels(filters).length > 0;
   const emptyState = workbenchEmptyState({ hasClan: Boolean(currentClanId), loading: taskLoading, error: Boolean(taskError), hasFilters, count: tasks.length });
@@ -435,16 +445,15 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         />
         <Row justify={screens.xl ? 'end' : 'start'} style={{ marginTop: 8 }}>
           <StandardQueryActions wrap>
-<Button data-query-action="more" type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-<Button data-query-action="reset" onClick={resetFilters}>重置</Button>
-<Button data-query-action="submit" type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
-</StandardQueryActions>
+            <Button data-query-action="more" type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+            <Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+            <Button data-query-action="submit" type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
+          </StandardQueryActions>
         </Row>
       </Form>
     </Card>
 
     <QueryResultCard className="workbench-result-card" extra={resultActions} total={total}>
-      
       {selectedKeys.length ? <PageFeedback tone="info" title={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
       {bulkFailures.length ? <PageFeedback tone="warning" closable onClose={() => setBulkFailures([])} title={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
       {taskError ? <PageFeedback tone="error" title="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
@@ -453,21 +462,26 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         loading={taskLoading}
         rowKey="key"
         dataSource={tasks}
-        rowSelection={{ selectedRowKeys: selectedKeys, preserveSelectedRowKeys: false, onChange: keys => setSelectedKeys(keys) }}
+        tableLayout="fixed"
+        rowSelection={{ columnWidth: 48, selectedRowKeys: selectedKeys, preserveSelectedRowKeys: false, onChange: keys => setSelectedKeys(keys) }}
+        expandable={{
+          columnTitle: '完整信息',
+          columnWidth: 72,
+          expandRowByClick: false,
+          expandedRowRender: expandedTaskInformation
+        }}
         pagination={{ current: taskPage.pageNo || 1, pageSize: PAGE_SIZE, total, showSizeChanger: false, showTotal: workbenchTotalText, onChange: changePage }}
         locale={{ emptyText: emptyNode }}
         onRow={row => ({ role: 'button', tabIndex: 0, 'aria-label': `打开任务：${taskTitle(row)}`, onClick: () => openTask(row), onKeyDown: event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openTask(row); } }, style: { cursor: 'pointer', background: selectedTask?.key === row.key ? '#f0f7ff' : undefined } })}
         columns={[
-          { key: 'taskName', title: '任务名称', width: 220, render: (_value, row) => <Button type="link" style={{ padding: 0 }} onClick={event => { event.stopPropagation(); openTask(row); }}>{taskTitle(row)}</Button> },
-          { key: 'bookName', title: '谱书名称', width: 180, ellipsis: true, render: (_value, row) => display(row.bookName, bookLabel(activeClan)) },
-          { key: 'type', title: '任务类型', width: 150, render: (_value, row) => display(row.typeText, '-') },
-          { key: 'status', title: '任务状态', width: 110, render: (_value, row) => <Tag color={statusColor(row.status)}>{display(row.statusText, '状态未知')}</Tag> },
-          { key: 'risk', title: '优先级', width: 90, render: (_value, row) => <Tag color={riskColor(row.risk)}>{riskText(row.risk)}</Tag> },
-          { key: 'creator', title: '创建人', width: 120, render: (_value, row) => display(row.creatorName, '-') },
-          { key: 'createdAt', title: '创建时间', width: 170, render: (_value, row) => formatDateTime(row.createdAt) },
-          { key: 'actions', title: '操作', width: 180, fixed: 'right', render: (_value, row) => <Space size={4} onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openTask(row)}>查看</Button><Button type="link" disabled={!relatedViewOf(row.relatedEntryType) || !onNavigate} onClick={() => goRelatedEntry(row)}>编辑</Button><Dropdown menu={moreMenu(row)} trigger={['click']}><Button type="link">更多</Button></Dropdown></Space> }
+          { key: 'taskName', title: '任务名称', width: 220, render: (_value, row) => { const title = taskTitle(row); return <Button type="link" aria-label={`查看任务：${title}`} style={{ padding: 0, width: '100%', textAlign: 'left' }} onClick={event => { event.stopPropagation(); openTask(row); }}><span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={title}>{title}</span></Button>; } },
+          { key: 'status', title: '任务状态', width: 108, render: (_value, row) => <Tag color={statusColor(row.status)}>{display(row.statusText, '状态未知')}</Tag> },
+          { key: 'risk', title: '优先级', width: 80, render: (_value, row) => <Tag color={riskColor(row.risk)}>{riskText(row.risk)}</Tag> },
+          { key: 'creator', title: '创建人', width: 116, render: (_value, row) => { const creator = display(row.creatorName, '-'); return <Typography.Text ellipsis={{ tooltip: creator }}>{creator}</Typography.Text>; } },
+          { key: 'updatedAt', title: '最近更新', width: 168, render: (_value, row) => <Typography.Text style={{ whiteSpace: 'nowrap' }}>{formatDateTime(row.updatedAt || row.createdAt)}</Typography.Text> },
+          { key: 'actions', title: '操作', width: 160, render: (_value, row) => <Space size={0} onClick={event => event.stopPropagation()}><Button type="link" onClick={() => openTask(row)}>查看</Button><Button type="link" disabled={!relatedViewOf(row.relatedEntryType) || !onNavigate} onClick={() => goRelatedEntry(row)}>编辑</Button><Dropdown menu={moreMenu(row)} trigger={['click']}><Button type="link">更多</Button></Dropdown></Space> }
         ]}
-        scroll={{ x: 1230 }}
+        scroll={{ x: 970 }}
       /> : <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {taskLoading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
         {!taskLoading && tasks.map(task => <Card key={task.key} role="button" tabIndex={0} aria-label={`打开任务：${taskTitle(task)}`} onClick={() => openTask(task)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openTask(task); } }} style={{ borderColor: selectedTask?.key === task.key ? '#1677ff' : undefined }}>
@@ -482,7 +496,6 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
         {!taskLoading && !tasks.length ? emptyNode : null}
         {!taskLoading && total > PAGE_SIZE ? <Row justify="center"><Pagination current={taskPage.pageNo || 1} pageSize={PAGE_SIZE} total={total} showSizeChanger={false} showTotal={workbenchTotalText} onChange={changePage} size="small" /></Row> : null}
       </Space>}
-      
     </QueryResultCard>
 
     <Drawer title={selectedTask ? <Space direction="vertical" size={6}><Typography.Text strong>{taskTitle(selectedTask)}</Typography.Text><Space wrap size={4}><Tag>{display(selectedTask.typeText, '-')}</Tag><Tag color={riskColor(selectedTask.risk)}>{riskText(selectedTask.risk)}</Tag><Tag color={statusColor(selectedTask.status)}>{display(selectedTask.statusText, '状态未知')}</Tag></Space></Space> : '修谱任务详情'} width={screens.md ? 720 : '100%'} open={Boolean(selectedTask)} onClose={closeTask} extra={selectedTask ? <Space wrap><Button loading={taskLoading} onClick={() => void refreshTaskStatus()}>刷新状态</Button><Button disabled={!relatedView || !onNavigate} onClick={() => goRelatedEntry()}>{selectedTask.relatedEntryText || '前往相关页面'}</Button><Button type="primary" onClick={() => setActionModalOpen(true)}>{actionLabel(selectedTask)}</Button></Space> : null}>
