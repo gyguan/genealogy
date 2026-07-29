@@ -1,0 +1,74 @@
+name: Issue 945 Final Fix
+on:
+  push:
+    branches: [agent/issue-945-business-visual-boundaries]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-945-business-visual-boundaries
+      - name: Apply browser-safe boundary fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          auth = Path('frontend/genealogy-web/src/features/auth/AuthPage.tsx')
+          source = auth.read_text()
+          source = source.replace('<Layout.Sider className="commercial-auth-brand" width="48%" breakpoint="lg" collapsedWidth={0} aria-label="族谱管理平台介绍">', '<Layout.Content className="commercial-auth-brand" aria-label="族谱管理平台介绍">')
+          source = source.replace('</Layout.Sider>', '</Layout.Content>')
+          if 'Layout.Sider' in source:
+              raise SystemExit('AuthPage still contains Layout.Sider')
+          auth.write_text(source)
+
+          css = Path('frontend/genealogy-web/src/auth-commercial.css')
+          source = css.read_text()
+          source = source.replace('  grid-template-columns: minmax(420px, 1.08fr) minmax(400px, .92fr);', '  grid-template-columns: minmax(420px, 1.08fr) minmax(400px, .92fr);\n  flex-direction: row;')
+          source = source.replace('  .commercial-auth-layout { display: block; min-height: 100vh; }', '  .commercial-auth-layout { display: flex; flex-direction: column; min-height: 100vh; }')
+          css.write_text(source)
+
+          files = [
+              Path('frontend/genealogy-web/src/features/culture/CultureItemStandardTab.tsx'),
+              Path('frontend/genealogy-web/src/features/culture/MigrationEventStandardTab.tsx'),
+              Path('frontend/genealogy-web/src/features/culture/CultureSiteStandardTab.tsx'),
+          ]
+          collapse_pattern = re.compile(
+              r'<Collapse\s+ghost\s+className="culture-more-filters"\s+items=\{\[\{\s+key: \'more\',\s+label: \'更多筛选\',\s+children: \(\s*(<Row[\s\S]*?</Row>)\s*\)\s+\}\]\}\s*/>',
+              re.M,
+          )
+          for path in files:
+              source = path.read_text()
+              source = source.replace('Collapse, ', '')
+              source = source.replace(', Collapse,', ',')
+              marker = '  const [actionLoading, setActionLoading] = useState(false);'
+              if marker not in source:
+                  raise SystemExit(f'missing action state marker in {path}')
+              source = source.replace(marker, marker + "\n  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);")
+              source, count = collapse_pattern.subn(r'{moreFiltersOpen ? <div className="culture-more-filters">\1</div> : null}', source)
+              if count != 1:
+                  raise SystemExit(f'expected one culture Collapse in {path}, got {count}')
+              action_marker = '<StandardQueryActions>\n'
+              if action_marker not in source:
+                  raise SystemExit(f'missing StandardQueryActions in {path}')
+              source = source.replace(action_marker, action_marker + '<Button data-query-action="more" type="text" aria-expanded={moreFiltersOpen} onClick={() => setMoreFiltersOpen(value => !value)}>更多筛选</Button>\n', 1)
+              path.write_text(source)
+
+          governance = Path('frontend/genealogy-web/src/styles/BusinessVisualBoundaryGovernance.test.mjs')
+          source = governance.read_text().replace('assert.match(source, /<Layout\\.Sider className="commercial-auth-brand"/);', 'assert.match(source, /<Layout\\.Content className="commercial-auth-brand"/);')
+          governance.write_text(source)
+
+          workflow = Path('.github/workflows/issue-945-final-fix.yml')
+          workflow.unlink()
+          PY
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/genealogy-web/src/features/auth/AuthPage.tsx frontend/genealogy-web/src/auth-commercial.css frontend/genealogy-web/src/features/culture/CultureItemStandardTab.tsx frontend/genealogy-web/src/features/culture/MigrationEventStandardTab.tsx frontend/genealogy-web/src/features/culture/CultureSiteStandardTab.tsx frontend/genealogy-web/src/styles/BusinessVisualBoundaryGovernance.test.mjs .github/workflows/issue-945-final-fix.yml
+          git commit -m "fix(frontend): restore auth visibility and culture query alignment"
+          git push origin HEAD:agent/issue-945-business-visual-boundaries
