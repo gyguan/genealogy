@@ -144,9 +144,9 @@ public class ImportApplicationService {
                 PersonEntity savedPerson = personRepository.save(
                         toPerson(clanId, branchId, actorId, row.cells())
                 );
-                jobRow.setDraftPersonId(savedPerson == null ? null : savedPerson.getId());
+                jobRow.setDraftPersonId(savedPerson.getId());
                 jobRow.setDraftTargetType(ImportJobEntity.TYPE_PERSON);
-                jobRow.setDraftTargetId(savedPerson == null ? null : savedPerson.getId());
+                jobRow.setDraftTargetId(savedPerson.getId());
                 jobRow.setRowStatus(ImportJobRowEntity.STATUS_DRAFT_CREATED);
                 success++;
             } catch (RuntimeException exception) {

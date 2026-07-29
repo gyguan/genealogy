@@ -80,8 +80,11 @@ public class ReviewQualityCheckApplicationService {
     @Transactional
     public ReviewQualityCheckAcceptedResponse trigger(Long clanId, ReviewQualityCheckTriggerRequest request, Long actorId) {
         authorizationApplicationService.requirePermission(clanId, actorId, REVIEW_APPROVE);
-        String requestedScope = upper(request == null ? null : request.scopeType());
-        String mode = upper(request == null ? null : request.mode());
+        if (request == null) {
+            throw new BusinessException("REVIEW_QUALITY_REQUEST_REQUIRED", "质量检查请求不能为空");
+        }
+        String requestedScope = upper(request.scopeType());
+        String mode = upper(request.mode());
         QualityCheckScopeType scopeType;
         try {
             scopeType = QualityCheckScopeType.parse(requestedScope);
@@ -97,10 +100,10 @@ public class ReviewQualityCheckApplicationService {
                         clanId,
                         actorId,
                         scopeType,
-                        request == null || request.reviewTaskIds() == null
+                        request.reviewTaskIds() == null
                                 ? List.of()
                                 : request.reviewTaskIds().stream().filter(Objects::nonNull).map(String::valueOf).toList(),
-                        queryMap(request == null ? null : request.query())
+                        queryMap(request.query())
                 )
         );
         if (scope.subjects().isEmpty()) {
@@ -110,7 +113,7 @@ public class ReviewQualityCheckApplicationService {
             throw new BusinessException("REVIEW_QUALITY_INVALID_SCOPE", "单次最多检查 200 个审核任务");
         }
 
-        List<String> requestedRules = normalizeRules(request == null ? null : request.ruleCodes(), mode);
+        List<String> requestedRules = normalizeRules(request.ruleCodes(), mode);
         String persistedScope = scopeType.persistedValue(requestedScope);
         String fingerprint = fingerprint(persistedScope, mode, scope.persistedSubjectIds(), queryMap(request.query()), requestedRules);
         if (qualityCheckRepository.existsByClanIdAndScopeFingerprintAndStatusIn(clanId, fingerprint, ACTIVE_STATUSES)) {
