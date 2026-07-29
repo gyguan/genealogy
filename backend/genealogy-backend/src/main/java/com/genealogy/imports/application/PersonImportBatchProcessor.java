@@ -72,7 +72,7 @@ public class PersonImportBatchProcessor {
                 success++;
             } catch (BusinessException exception) {
                 failure++;
-                captureFailure(jobRow, errors, jobId, row, exception.getCode(), exception.getMessage());
+                captureFailure(jobRow, errors, jobId, row, "IMPORT_ROW_INVALID", exception.getMessage());
             } catch (IllegalArgumentException exception) {
                 failure++;
                 captureFailure(jobRow, errors, jobId, row, "IMPORT_ROW_INVALID", safeMessage(exception));
