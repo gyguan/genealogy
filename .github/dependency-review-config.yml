@@ -1,4 +1,0 @@
-fail-on-severity: critical
-comment-summary-in-pr: always
-warn-only: false
-allow-ghsas: []
