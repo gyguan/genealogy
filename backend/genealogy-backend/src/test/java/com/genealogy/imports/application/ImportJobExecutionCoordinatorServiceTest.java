@@ -22,10 +22,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ImportJobExecutionCoordinatorServiceTest {
 
-    @Mock
-    private ImportJobRepository jobRepository;
-    @Mock
-    private ImportJobPayloadRepository payloadRepository;
+    @Mock private ImportJobRepository jobRepository;
+    @Mock private ImportJobPayloadRepository payloadRepository;
 
     private ImportExecutionProperties properties;
     private ImportJobExecutionCoordinatorService service;
@@ -90,20 +88,22 @@ class ImportJobExecutionCoordinatorServiceTest {
     }
 
     @Test
-    void cancellationAtSafePointShouldBecomePauseAfterChunkSideEffects() {
+    void cancellationAtSafePointShouldPreserveCommittedChunksAsPartialCancelled() {
         ImportJobEntity job = job(10L, ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.STAGE_DRAFTING);
         job.setProcessedCount(100);
         job.setCursorRowNo(101);
         job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
         when(jobRepository.findNextExecutableForUpdate(any(LocalDateTime.class))).thenReturn(Optional.of(job));
+        when(payloadRepository.existsById(10L)).thenReturn(true);
 
         assertThat(service.claimNext()).isEmpty();
 
-        assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_PAUSED);
-        assertThat(job.getExecutionStage()).isEqualTo(ImportJobEntity.STAGE_DRAFTING);
+        assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_PARTIAL_CANCELLED);
+        assertThat(job.getExecutionStage()).isEqualTo(ImportJobEntity.STAGE_CANCELLED);
         assertThat(job.getRequestedAction()).isNull();
-        assertThat(job.getErrorSummary()).contains("已自动转为暂停");
-        verify(payloadRepository, never()).deleteById(10L);
+        assertThat(job.getProcessedCount()).isEqualTo(100);
+        assertThat(job.getCursorRowNo()).isEqualTo(101);
+        verify(payloadRepository).deleteById(10L);
         verify(jobRepository).save(job);
     }
 
