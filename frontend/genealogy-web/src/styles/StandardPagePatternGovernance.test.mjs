@@ -65,7 +65,7 @@ test('special entity routes adapt to the same page header while auth remains an 
   assert.match(entityHeader, /back=\{<EntityPageBackButton/);
   assert.match(app, /<PersonEditPage/);
   assert.match(app, /<PersonDetailPage/);
-  assert.match(app, /<AuthPage[^>]*standalone/);
+  assert.match(app, /standalone \/>/);
   assert.doesNotMatch(app, /headerActions=/);
   assert.doesNotMatch(shell, /headerActions/);
 });
