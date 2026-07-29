@@ -2,6 +2,7 @@ package com.genealogy.source.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.source.domain.SourceBindingTargetType;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
@@ -27,11 +28,17 @@ public class SourceBindingQueryApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<SourceBindingResponse> listByTarget(String targetType, Long targetId, Long actorId) {
-        return sourceBindingRepository.findByTargetTypeAndTargetIdOrderByCreatedAtDesc(targetType, targetId).stream()
+    public List<SourceBindingResponse> listByTarget(SourceBindingTargetType targetType, Long targetId, Long actorId) {
+        return sourceBindingRepository
+                .findByTargetTypeAndTargetIdOrderByCreatedAtDesc(targetType.apiValue(), targetId)
+                .stream()
                 .filter(binding -> canView(binding, actorId))
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public List<SourceBindingResponse> listByTarget(String targetType, Long targetId, Long actorId) {
+        return listByTarget(SourceBindingTargetType.fromApi(targetType), targetId, actorId);
     }
 
     private boolean canView(SourceBindingEntity binding, Long actorId) {
