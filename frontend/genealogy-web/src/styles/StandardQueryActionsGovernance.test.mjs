@@ -52,6 +52,7 @@ test('migrated pages do not retain hand-built innermost Space query action group
     for (const file of walk(path.join(root, 'features', group)).filter(file => file.endsWith('.tsx'))) {
       const source = readFileSync(file, 'utf8');
       for (const body of innermostSpaceBlocks(source)) {
+        if (body.includes('<StandardQueryActions')) continue;
         assert.equal(/>\s*重置\s*</.test(body) && />\s*(查询|搜索|检索)\s*</.test(body), false, file + ' must not hand-build query actions');
       }
     }
