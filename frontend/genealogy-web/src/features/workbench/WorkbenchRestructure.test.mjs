@@ -62,6 +62,27 @@ test('workbench provides responsive, empty, error and keyboard states', async ()
   assert.match(page, /role: 'button'/);
   assert.match(page, /tabIndex: 0/);
   assert.match(page, /event\.key === 'Enter'/);
-  assert.match(page, /scroll=\{\{ x: 1230 \}\}/);
+  assert.match(page, /scroll=\{\{ x: 970 \}\}/);
   assert.match(page, /width=\{screens\.md \? 720 : '100%'\}/);
+});
+
+test('desktop task table keeps critical information visible and exposes low-frequency details', async () => {
+  const page = await source('features/workbench/EditingWorkspacePage.tsx');
+
+  for (const key of ['taskName', 'status', 'risk', 'creator', 'updatedAt', 'actions']) {
+    assert.match(page, new RegExp(`key: '${key}'`), `${key} should remain a primary desktop column`);
+  }
+
+  assert.match(page, /columnTitle: '完整信息'/);
+  assert.match(page, /expandedRowRender: expandedTaskInformation/);
+  assert.match(page, /label="谱书名称"/);
+  assert.match(page, /label="任务类型"/);
+  assert.match(page, /label="创建时间"/);
+  assert.match(page, /label="涉及对象"/);
+  assert.match(page, /label="所属范围"/);
+  assert.match(page, /tableLayout="fixed"/);
+  assert.match(page, /columnWidth: 48/);
+  assert.doesNotMatch(page, /fixed: 'right'/);
+  assert.doesNotMatch(page, /responsive:\s*\[/);
+  assert.doesNotMatch(page, /scroll=\{\{ x: 1230 \}\}/);
 });
