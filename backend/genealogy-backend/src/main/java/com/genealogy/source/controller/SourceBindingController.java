@@ -1,6 +1,7 @@
 package com.genealogy.source.controller;
 
 import com.genealogy.auth.application.RequestContextApplicationService;
+import com.genealogy.auth.dto.ActorContext;
 import com.genealogy.auth.dto.RequestUserContext;
 import com.genealogy.common.api.ApiResponse;
 import com.genealogy.common.api.PageQuery;
@@ -8,6 +9,7 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.source.application.SourceApplicationService;
 import com.genealogy.source.application.SourceBindingCommandApplicationService;
 import com.genealogy.source.application.SourceBindingQueryApplicationService;
+import com.genealogy.source.domain.SourceBindingTargetType;
 import com.genealogy.source.dto.SourceBindingCreateRequest;
 import com.genealogy.source.dto.SourceBindingResponse;
 import com.genealogy.source.dto.SourceBindingRevisionDeleteRequest;
@@ -58,8 +60,8 @@ public class SourceBindingController {
             @Valid @RequestBody SourceBindingCreateRequest request,
             HttpServletRequest servletRequest
     ) {
-        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.bind(clanId, request, context.userId()));
+        ActorContext actor = requestContextApplicationService.requireActor(clanId, servletRequest);
+        return ApiResponse.success(sourceBindingCommandApplicationService.bind(clanId, request, actor));
     }
 
     @PostMapping("/clans/{clanId}/source-bindings/revisions")
@@ -68,10 +70,8 @@ public class SourceBindingController {
             @Valid @RequestBody SourceBindingRevisionSubmitRequest request,
             HttpServletRequest servletRequest
     ) {
-        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
-        return ApiResponse.success(sourceBindingCommandApplicationService.submitCreate(
-                clanId, request, context.userId(), context.requestId(), context.clientIp()
-        ));
+        ActorContext actor = requestContextApplicationService.requireActor(clanId, servletRequest);
+        return ApiResponse.success(sourceBindingCommandApplicationService.submitCreate(clanId, request, actor));
     }
 
     @PostMapping("/source-bindings/{bindingId}/replace-revision")
@@ -140,8 +140,11 @@ public class SourceBindingController {
             HttpServletRequest servletRequest
     ) {
         RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        String normalizedTargetType = targetType == null || targetType.isBlank()
+                ? null
+                : SourceBindingTargetType.fromApi(targetType).apiValue();
         return ApiResponse.success(sourceApplicationService.listBindingSummariesBySource(
-                sourceId, targetType, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), context.userId()
+                sourceId, normalizedTargetType, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), context.userId()
         ));
     }
 
@@ -161,14 +164,16 @@ public class SourceBindingController {
             @RequestParam(required = false) Long clanId,
             HttpServletRequest servletRequest
     ) {
-        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
+        SourceBindingTargetType parsedTargetType = SourceBindingTargetType.fromApi(targetType);
         if (clanId != null) {
+            ActorContext actor = requestContextApplicationService.requireActor(clanId, servletRequest);
             return ApiResponse.success(sourceApplicationService.listBindingsByTarget(
-                    targetType, targetId, clanId, context.userId()
+                    parsedTargetType.apiValue(), targetId, clanId, actor.userId()
             ));
         }
+        RequestUserContext context = requestContextApplicationService.requireLogin(servletRequest);
         return ApiResponse.success(sourceBindingQueryApplicationService.listByTarget(
-                targetType, targetId, context.userId()
+                parsedTargetType, targetId, context.userId()
         ));
     }
 }
