@@ -10,26 +10,59 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TreeReadModelQueryContractTest {
 
-    private static final Path SOURCE_ROOT = Path.of("src/main/java/com/genealogy/tree/repository");
+    private static final Path REPOSITORY_ROOT = Path.of("src/main/java/com/genealogy/tree/repository");
+    private static final Path QUERY_ROOT = Path.of("src/main/java/com/genealogy/tree/query");
 
     @Test
-    void treeQueriesMustUseFieldLevelReadModelsInsteadOfManagedEntitySelects() throws IOException {
-        String people = Files.readString(SOURCE_ROOT.resolve("TreePersonQueryRepositoryImpl.java"));
-        String relationships = Files.readString(SOURCE_ROOT.resolve("TreeRelationshipQueryRepositoryImpl.java"));
+    void treeQueriesMustUseTypedImmutableConstructorProjections() throws IOException {
+        String people = Files.readString(REPOSITORY_ROOT.resolve("TreePersonQueryRepositoryImpl.java"));
+        String relationships = Files.readString(REPOSITORY_ROOT.resolve("TreeRelationshipQueryRepositoryImpl.java"));
 
         assertThat(people)
-                .contains("select p.id, p.clanId, p.branchId")
-                .doesNotContain("select p\n", "select p from PersonEntity");
+                .contains("select new com.genealogy.tree.query.TreePersonSnapshot(")
+                .contains("TypedQuery<TreePersonSnapshot>")
+                .doesNotContain("PersonEntity person = new PersonEntity()", "Object[]", "int i = 0");
         assertThat(relationships)
-                .contains("select r.id, r.clanId, r.fromPersonId")
-                .doesNotContain("select r\n", "select r from RelationshipEntity");
+                .contains("select new com.genealogy.tree.query.TreeRelationshipSnapshot(")
+                .contains("TypedQuery<TreeRelationshipSnapshot>")
+                .doesNotContain("RelationshipEntity relationship = new RelationshipEntity()", "Object[]", "int i = 0");
+    }
+
+    @Test
+    void treeQueryRepositoryContractsMustNotExposePersistenceEntities() throws IOException {
+        String peopleContract = Files.readString(REPOSITORY_ROOT.resolve("TreePersonQueryRepository.java"));
+        String relationshipsContract = Files.readString(REPOSITORY_ROOT.resolve("TreeRelationshipQueryRepository.java"));
+
+        assertThat(peopleContract)
+                .contains("List<TreePersonSnapshot>")
+                .doesNotContain("PersonEntity");
+        assertThat(relationshipsContract)
+                .contains("List<TreeRelationshipSnapshot>")
+                .doesNotContain("RelationshipEntity");
+    }
+
+    @Test
+    void topologyQueriesMustNotLoadLargeNarrativeFields() throws IOException {
+        String people = Files.readString(REPOSITORY_ROOT.resolve("TreePersonQueryRepositoryImpl.java"));
+
+        assertThat(people)
+                .doesNotContain("p.biography", "p.epitaph", "p.tombPlace", "p.education", "p.occupation", "p.titleOrHonor");
+    }
+
+    @Test
+    void snapshotsMustBeRecordsAndRemainOutsidePersistenceModel() throws IOException {
+        String people = Files.readString(QUERY_ROOT.resolve("TreePersonSnapshot.java"));
+        String relationships = Files.readString(QUERY_ROOT.resolve("TreeRelationshipSnapshot.java"));
+
+        assertThat(people).contains("public record TreePersonSnapshot(").doesNotContain("@Entity");
+        assertThat(relationships).contains("public record TreeRelationshipSnapshot(").doesNotContain("@Entity");
     }
 
     @Test
     void highVolumeTreeQueriesMustRemainBoundedAndDeterministicallyOrdered() throws IOException {
-        String people = Files.readString(SOURCE_ROOT.resolve("TreePersonQueryRepositoryImpl.java"));
-        String relationships = Files.readString(SOURCE_ROOT.resolve("TreeRelationshipQueryRepositoryImpl.java"));
-        String batcher = Files.readString(SOURCE_ROOT.resolve("TreeQueryBatcher.java"));
+        String people = Files.readString(REPOSITORY_ROOT.resolve("TreePersonQueryRepositoryImpl.java"));
+        String relationships = Files.readString(REPOSITORY_ROOT.resolve("TreeRelationshipQueryRepositoryImpl.java"));
+        String batcher = Files.readString(REPOSITORY_ROOT.resolve("TreeQueryBatcher.java"));
 
         assertThat(batcher).contains("DEFAULT_BATCH_SIZE = 500");
         assertThat(people).contains("query.setMaxResults(targetSize)", "p.generationNo, p.personCode, p.id");
