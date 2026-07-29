@@ -1,18 +1,15 @@
 package com.genealogy.tree.repository;
 
-import com.genealogy.relationship.entity.RelationshipEntity;
+import com.genealogy.tree.query.TreeRelationshipSnapshot;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.List;
 
-/**
- * Dedicated read model for graph traversal. Relationship CRUD repositories
- * inherit this fragment without owning the complex graph JPQL.
- */
+/** Dedicated Tree relationship read-model fragment. */
 public interface TreeRelationshipQueryRepository {
 
-    List<RelationshipEntity> findTreeOutgoing(
+    List<TreeRelationshipSnapshot> findTreeOutgoingSnapshots(
             Long clanId,
             Collection<Long> personIds,
             Collection<String> statuses,
@@ -20,7 +17,7 @@ public interface TreeRelationshipQueryRepository {
             boolean lineageOnly
     );
 
-    List<RelationshipEntity> findTreeIncoming(
+    List<TreeRelationshipSnapshot> findTreeIncomingSnapshots(
             Long clanId,
             Collection<Long> personIds,
             Collection<String> statuses,
@@ -28,7 +25,7 @@ public interface TreeRelationshipQueryRepository {
             boolean lineageOnly
     );
 
-    List<RelationshipEntity> findTreeWithinPeople(
+    List<TreeRelationshipSnapshot> findTreeWithinPeopleSnapshots(
             Long clanId,
             Collection<Long> personIds,
             Collection<String> statuses,
