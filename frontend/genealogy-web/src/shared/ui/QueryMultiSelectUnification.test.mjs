@@ -79,11 +79,10 @@ test('member permission OpenAPI serializes multi-value filters as CSV arrays', (
   assert.equal(parameterByName.status.schema.items.$ref, '#/components/schemas/MembershipStatus');
 });
 
-test('global styles preserve Ant-native selector and tag states', () => {
+test('QueryMultiSelect styling uses public props without Ant internal selectors', () => {
   assert.match(globalStyleEntry, /@import '\.\/shared\/ui\/query-multi-select\.css';/);
-  assert.match(unifiedStyles, /\.ant-select-multiple/);
-  assert.doesNotMatch(unifiedStyles, /\.ant-select-selector\s*\{/);
-  assert.doesNotMatch(unifiedStyles, /\.ant-select-selection-item\s*\{/);
+  assert.match(queryMultiSelectSource, /style=\{\{ width: '100%', \.\.\.style \}\}/);
+  assert.doesNotMatch(unifiedStyles, /\.ant-/);
   assert.doesNotMatch(unifiedStyles, /query-multi-select-popup-actions/);
   assert.doesNotMatch(unifiedStyles, /lineage-select-all-actions|lineage-select-all-divider/);
 });
