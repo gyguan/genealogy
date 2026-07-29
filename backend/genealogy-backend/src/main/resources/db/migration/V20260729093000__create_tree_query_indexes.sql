@@ -22,5 +22,4 @@ CREATE INDEX IF NOT EXISTS idx_person_tree_by_branch
     WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_branch_tree_subtree
-    ON branch (clan_id, parent_branch_id, id)
-    WHERE deleted_at IS NULL;
+    ON branch (clan_id, parent_id, id);
