@@ -13,12 +13,11 @@ type AuthenticatedShellProps = {
   active: ModuleKey;
   pageKey: string;
   page: ReactNode;
-  headerActions?: ReactNode;
   onNavigate: (key: ModuleKey) => void;
   onLogout: () => void;
 };
 
-export function AuthenticatedShell({ active, pageKey, page, headerActions, onNavigate, onLogout }: AuthenticatedShellProps) {
+export function AuthenticatedShell({ active, pageKey, page, onNavigate, onLogout }: AuthenticatedShellProps) {
   const activeModule = getModule(active);
   const { clanId } = useWorkspace();
   const menuItems = groupOrder.map(group => ({
@@ -46,7 +45,7 @@ export function AuthenticatedShell({ active, pageKey, page, headerActions, onNav
             <div className="github-like-header-title"><Typography.Text type="secondary">当前模块</Typography.Text><Typography.Text strong>{activeModule.label}</Typography.Text></div>
             <Tag icon={<ApartmentOutlined />} color={clanId ? 'processing' : 'default'}>{clanId ? '已选择当前宗族' : '尚未选择宗族'}</Tag>
           </Space>
-          <Space>{headerActions}<CurrentUserMenu onLogout={onLogout} /></Space>
+          <CurrentUserMenu onLogout={onLogout} />
         </Header>
         <Content className="content content--compact antd-content"><div className={`business-page business-page--${active}`} key={pageKey}>{page}</div></Content>
       </Layout>
