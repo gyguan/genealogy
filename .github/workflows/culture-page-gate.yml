@@ -10,6 +10,7 @@ on:
       - "frontend/genealogy-web/src/features/**"
       - "frontend/genealogy-web/e2e/culture-*.spec.ts"
       - "frontend/genealogy-web/e2e/css-desktop-viewport-matrix.spec.ts"
+      - "frontend/genealogy-web/e2e/css-responsive-release-matrix.spec.ts"
       - "frontend/genealogy-web/package.json"
       - ".github/workflows/culture-page-gate.yml"
   workflow_dispatch:
@@ -22,7 +23,7 @@ jobs:
   visual-release-gate:
     name: Visual Shell and Chromium Matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -74,7 +75,7 @@ jobs:
           cat /tmp/visual-release-vite.log
           exit 1
 
-      - name: Run Chromium visual release E2E
+      - name: Run Chromium desktop mobile and tablet release E2E
         working-directory: frontend/genealogy-web
         run: npm run test:culture
 
