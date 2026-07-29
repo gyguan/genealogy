@@ -4,36 +4,8 @@
   width: 100%;
 }
 
-.lineage-double-card-page .ant-card {
-  border-radius: 12px;
-}
-
-.lineage-double-card-query > .ant-card-head,
-.lineage-double-card-result > .ant-card-head {
-  min-height: 48px;
-}
-
-.lineage-double-card-query > .ant-card-head .ant-card-head-title,
-.lineage-double-card-result > .ant-card-head .ant-card-head-title {
-  position: relative;
-  padding-left: 14px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.lineage-double-card-query > .ant-card-head .ant-card-head-title::before,
-.lineage-double-card-result > .ant-card-head .ant-card-head-title::before {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 4px;
-  height: 22px;
-  border-radius: 4px;
-  background: #1677ff;
-  content: '';
-  transform: translateY(-50%);
-}
-
+.lineage-double-card-query,
+.lineage-double-card-result,
 .lineage-double-card-form,
 .lineage-result-pane {
   min-width: 0;
@@ -44,26 +16,6 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 16px;
   align-items: start;
-}
-
-.lineage-double-card-grid .ant-form-item,
-.lineage-result-toolbar--double-card .ant-form-item {
-  margin-bottom: 12px;
-}
-
-.lineage-double-card-grid .ant-select,
-.lineage-result-toolbar--double-card .ant-select {
-  width: 100%;
-}
-
-.lineage-double-card-query .lineage-double-card-grid .ant-form-item-label > label::before {
-  display: inline-block;
-  margin-inline-end: 4px;
-  color: #ff4d4f;
-  font-family: SimSun, sans-serif;
-  font-size: 14px;
-  line-height: 1;
-  content: '*';
 }
 
 .lineage-double-card-actions {
@@ -88,32 +40,8 @@
   padding: 4px 8px 0;
 }
 
-.lineage-select-all-divider {
-  margin: 4px 0 !important;
-}
-
 .lineage-double-card-result {
   position: relative;
-}
-
-.lineage-double-card-result > .ant-card-head {
-  padding-right: 400px;
-}
-
-.lineage-double-card-result .ant-card-body,
-.lineage-double-card-result .ant-tabs,
-.lineage-double-card-result .ant-tabs-content-holder,
-.lineage-double-card-result .ant-tabs-content,
-.lineage-double-card-result .ant-tabs-tabpane {
-  overflow: visible;
-}
-
-.lineage-result-tabs > .ant-tabs-nav {
-  margin-bottom: 16px;
-}
-
-.lineage-result-tabs .ant-tabs-tab {
-  min-height: 32px;
 }
 
 .lineage-result-meta {
@@ -142,36 +70,6 @@
   display: none;
 }
 
-.lineage-result-toolbar--double-card > .ant-form-item {
-  width: 100%;
-  margin-bottom: 0;
-}
-
-.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-}
-
-.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label {
-  flex: 0 0 auto;
-  padding: 0 12px 0 0;
-  white-space: nowrap;
-}
-
-.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-label > label {
-  height: 32px;
-}
-
-.lineage-result-toolbar--double-card > .ant-form-item .ant-form-item-control {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.lineage-result-toolbar--double-card.is-person .ant-form-item-extra {
-  display: none;
-}
-
 .lineage-double-card-result .lineage-logic-card {
   min-height: 520px;
   margin-top: 4px;
@@ -184,32 +82,10 @@
 }
 
 @media (max-width: 767px) {
-  .lineage-double-card-page {
-    gap: 12px;
-  }
-
-  .lineage-double-card-grid {
-    grid-template-columns: 1fr;
-    gap: 0;
-  }
-
-  .lineage-double-card-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .lineage-double-card-actions .ant-btn {
-    width: 100%;
-  }
-
-  .lineage-query-dirty {
-    text-align: left;
-  }
-
-  .lineage-double-card-result > .ant-card-head {
-    padding-right: 16px;
-  }
-
+  .lineage-double-card-page { gap: 12px; }
+  .lineage-double-card-grid { grid-template-columns: 1fr; gap: 0; }
+  .lineage-double-card-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .lineage-query-dirty { text-align: left; }
   .lineage-result-toolbar--double-card,
   .lineage-result-toolbar--double-card.is-person {
     position: static;
@@ -219,8 +95,5 @@
     gap: 0;
     margin-bottom: 4px;
   }
-
-  .lineage-double-card-result .lineage-logic-card {
-    min-height: 420px;
-  }
+  .lineage-double-card-result .lineage-logic-card { min-height: 420px; }
 }
