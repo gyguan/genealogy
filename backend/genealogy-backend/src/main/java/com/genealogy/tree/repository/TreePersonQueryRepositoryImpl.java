@@ -59,7 +59,9 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
                 deduplicated.putIfAbsent(person.id(), person);
             }
         }
-        return List.copyOf(deduplicated.values());
+        List<TreePersonSnapshot> result = new ArrayList<>(deduplicated.values());
+        result.sort(Comparator.comparing(TreePersonSnapshot::id, Comparator.nullsLast(Long::compareTo)));
+        return List.copyOf(result);
     }
 
     @Override
@@ -72,36 +74,28 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
         if (branchIds == null || branchIds.isEmpty()) {
             return List.of();
         }
-        Map<Long, TreePersonSnapshot> deduplicated = new LinkedHashMap<>();
-        int targetSize = pageable == null ? Integer.MAX_VALUE : pageable.getPageSize();
-        for (List<Long> batch : TreeQueryBatcher.partition(branchIds, TreeQueryBatcher.DEFAULT_BATCH_SIZE)) {
-            TypedQuery<TreePersonSnapshot> query = entityManager.createQuery(PERSON_READ_SELECT + """
-                    where p.clanId = :clanId
-                      and p.branchId in :branchIds
-                      and p.dataStatus in :statuses
-                      and p.deletedAt is null
-                    order by
-                      case when p.generationNo is null then 1 else 0 end,
-                      p.generationNo, p.personCode, p.id
-                    """, TreePersonSnapshot.class);
-            query.setParameter("clanId", clanId);
-            query.setParameter("branchIds", batch);
-            query.setParameter("statuses", statuses);
-            if (pageable != null) {
-                query.setMaxResults(targetSize);
-            }
-            for (TreePersonSnapshot person : query.getResultList()) {
-                deduplicated.putIfAbsent(person.id(), person);
-            }
+        TypedQuery<TreePersonSnapshot> query = entityManager.createQuery(PERSON_READ_SELECT + """
+                where p.clanId = :clanId
+                  and p.branchId in :branchIds
+                  and p.dataStatus in :statuses
+                  and p.deletedAt is null
+                order by
+                  case when p.generationNo is null then 1 else 0 end,
+                  p.generationNo, p.personCode, p.id
+                """, TreePersonSnapshot.class);
+        query.setParameter("clanId", clanId);
+        query.setParameter("branchIds", List.copyOf(branchIds));
+        query.setParameter("statuses", statuses);
+        if (pageable != null) {
+            query.setFirstResult(Math.toIntExact(pageable.getOffset()));
+            query.setMaxResults(pageable.getPageSize());
         }
-        List<TreePersonSnapshot> result = new ArrayList<>(deduplicated.values());
-        result.sort(PERSON_ORDER);
+        List<TreePersonSnapshot> result = query.getResultList();
         if (pageable == null) {
-            return List.copyOf(result);
+            result = new ArrayList<>(result);
+            result.sort(PERSON_ORDER);
         }
-        int from = Math.min(Math.toIntExact(pageable.getOffset()), result.size());
-        int to = Math.min(from + pageable.getPageSize(), result.size());
-        return List.copyOf(result.subList(from, to));
+        return List.copyOf(result);
     }
 
     private void bind(
