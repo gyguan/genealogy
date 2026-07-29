@@ -14,21 +14,30 @@ type QueryResultProps = Omit<HTMLAttributes<HTMLElement>, 'title' | 'children'> 
   children: ReactNode;
 };
 
+type ActionElementProps = {
+  type?: string;
+  children?: ReactNode;
+  menu?: unknown;
+  overlay?: unknown;
+};
+
 type ActionSplit = { pageAction?: ReactNode; resultActions?: ReactNode };
 
 function splitFirstPrimaryAction(node: ReactNode): ActionSplit {
   let pageAction: ReactNode;
   function visit(value: ReactNode): ReactNode {
     if (pageAction || value === null || value === undefined || typeof value === 'boolean') return value;
-    if (Array.isArray(value)) return value.map(visit);
+    if (Array.isArray(value)) return value.map(visit).filter(item => item !== null);
     if (!isValidElement(value)) return value;
-    const element = value as ReactElement<{ type?: string; children?: ReactNode }>;
+    const element = value as ReactElement<ActionElementProps>;
     if (element.props.type === 'primary') {
       pageAction = element;
       return null;
     }
-    if (!('children' in element.props)) return element;
-    return cloneElement(element, undefined, Children.map(element.props.children, child => visit(child)));
+    if (element.props.menu || element.props.overlay || !('children' in element.props)) return element;
+    const children = Children.map(element.props.children, child => visit(child));
+    if (Children.toArray(children).length === 0) return null;
+    return cloneElement(element, undefined, children);
   }
   const resultActions = visit(node);
   return { pageAction, resultActions };
