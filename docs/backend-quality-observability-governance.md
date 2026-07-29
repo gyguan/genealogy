@@ -38,7 +38,7 @@ Maven Enforcer 要求：
 - POM 不得声明重复依赖版本。
 - 依赖解析必须满足上界收敛要求。
 
-PR 使用 GitHub Dependency Review 对新增和升级依赖执行增量扫描，`critical` 严重度问题直接阻断。例外登记在 `.github/dependency-review-config.yml` 的 `allow-ghsas` 中，每条例外必须关联跟踪 Issue，并定期复核。
+CI 使用 Trivy 文件系统扫描后端依赖，存在已有修复版本的 `CRITICAL` 漏洞时直接阻断。扫描结果以 JSON Artifact 保留 14 天。例外登记在仓库根目录 `.trivyignore`，每个 CVE 必须附到期时间和跟踪 Issue 注释，禁止按包名或目录整体忽略。
 
 OWASP Dependency-Check 保留为本地或专项深度扫描 Profile，CVSS 9.0 及以上问题阻断；例外登记在 `config/dependency-check-suppressions.xml`，每条例外必须包含 CVE、到期时间和跟踪 Issue。该深度扫描不放入每次 PR 的快速反馈链路，避免重复下载完整漏洞数据库。
 
@@ -65,6 +65,7 @@ Backend CI 无论成功或失败都会上传：
 
 - Surefire 测试报告；
 - JaCoCo HTML 报告；
-- SpotBugs XML/HTML 报告。
+- SpotBugs XML/HTML 报告；
+- Trivy JSON 漏洞报告。
 
-依赖增量扫描结果直接写入 PR 检查与摘要。本地 OWASP 深度扫描会在 `target` 目录生成 HTML/JSON 报告。质量报告保留 7 天。
+本地 OWASP 深度扫描会在 `target` 目录生成 HTML/JSON 报告。质量报告保留 7 天，漏洞报告保留 14 天。
