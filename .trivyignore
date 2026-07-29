@@ -1,0 +1,2 @@
+# Trivy vulnerability exception registry.
+# Keep empty by default. Every future CVE exception must include expiry and tracking Issue comments.
