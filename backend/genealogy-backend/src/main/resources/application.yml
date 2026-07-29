@@ -76,6 +76,9 @@ genealogy:
     reset-delivery-url: ${GENEALOGY_AUTH_RESET_DELIVERY_URL:}
   import:
     batch-size: ${GENEALOGY_IMPORT_BATCH_SIZE:200}
+  operation-log:
+    health:
+      consecutive-failure-threshold: ${GENEALOGY_OPERATION_LOG_FAILURE_THRESHOLD:3}
   tree:
     observability:
       slow-query-ms: ${GENEALOGY_TREE_SLOW_QUERY_MS:1000}
