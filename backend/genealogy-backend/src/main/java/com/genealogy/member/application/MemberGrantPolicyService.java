@@ -3,6 +3,7 @@ package com.genealogy.member.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.member.domain.MemberGrantPolicyService.ActorScope;
 import com.genealogy.member.entity.ClanMembershipEntity;
 import com.genealogy.member.entity.MemberRoleEntity;
 import com.genealogy.member.entity.RoleEntity;
@@ -22,7 +23,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-public class MemberGrantPolicyService {
+public class MemberGrantPolicyService implements com.genealogy.member.domain.MemberGrantPolicyService {
 
     private static final String STATUS_ACTIVE = "active";
     private static final Set<String> CLAN_ADMIN_GRANTABLE_ROLES = Set.of(
@@ -57,6 +58,7 @@ public class MemberGrantPolicyService {
         this.branchRepository = branchRepository;
     }
 
+    @Override
     @Transactional(readOnly = true)
     public void validateCreate(Long clanId, Long actorId, String targetRoleCode,
                                MemberRoleScopeType targetScopeType, Long targetScopeId, String reason) {
@@ -65,6 +67,7 @@ public class MemberGrantPolicyService {
         requireActorCanManageTarget(clanId, actorId, targetRoleCode, targetScopeType, targetScopeId);
     }
 
+    @Override
     @Transactional
     public void validateUpdate(Long clanId, Long actorId, MemberRoleEntity existingGrant,
                                String targetRoleCode, MemberRoleScopeType targetScopeType,
@@ -77,21 +80,18 @@ public class MemberGrantPolicyService {
         boolean remainsClanAdmin = AuthorizationApplicationService.ROLE_CLAN_ADMIN.equals(targetRoleCode)
                 && targetScopeType == MemberRoleScopeType.clan
                 && clanId.equals(targetScopeId);
-        if (isClanAdminGrant(existingGrant, existingRoleCode) && !remainsClanAdmin) {
-            requireAnotherClanAdmin(clanId);
-        }
+        if (isClanAdminGrant(existingGrant, existingRoleCode) && !remainsClanAdmin) requireAnotherClanAdmin(clanId);
     }
 
+    @Override
     @Transactional
     public void validateRevoke(Long clanId, Long actorId, MemberRoleEntity existingGrant, String reason) {
         requireReason(reason);
         requireActorCanManageExisting(clanId, actorId, existingGrant);
-        String existingRoleCode = roleCode(existingGrant.getRoleId());
-        if (isClanAdminGrant(existingGrant, existingRoleCode)) {
-            requireAnotherClanAdmin(clanId);
-        }
+        if (isClanAdminGrant(existingGrant, roleCode(existingGrant.getRoleId()))) requireAnotherClanAdmin(clanId);
     }
 
+    @Override
     @Transactional
     public void validateMemberStatusChange(Long clanId, Long actorId, Long membershipId,
                                            MemberStatus targetStatus, String reason) {
@@ -102,15 +102,12 @@ public class MemberGrantPolicyService {
         ActorScope scope = actorScope(clanId, actorId);
         List<MemberRoleEntity> grants = memberRoleRepository.findByMembershipIdAndStatus(membershipId, STATUS_ACTIVE);
         Map<Long, RoleEntity> roles = rolesById(grants);
-        if (!canManageMembership(scope, grants, roles)) {
-            throw forbidden("目标成员超出当前操作者的管理范围");
-        }
+        if (!canManageMembership(scope, grants, roles)) throw forbidden("目标成员超出当前操作者的管理范围");
         if ((targetStatus == MemberStatus.disabled || targetStatus == MemberStatus.removed)
-                && containsClanAdminGrant(grants, roles)) {
-            requireAnotherClanAdmin(clanId);
-        }
+                && containsClanAdminGrant(grants, roles)) requireAnotherClanAdmin(clanId);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<String> grantableRoleCodes(Long clanId, Long actorId) {
         ActorScope scope = actorScope(clanId, actorId);
@@ -119,11 +116,10 @@ public class MemberGrantPolicyService {
         return List.of();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public ActorScope actorScope(Long clanId, Long actorId) {
-        if (authorizationApplicationService.isCrossClanAdmin(actorId)) {
-            return ActorScope.full(true, false);
-        }
+        if (authorizationApplicationService.isCrossClanAdmin(actorId)) return ActorScope.full(true, false);
         ClanMembershipEntity membership = clanMembershipRepository
                 .findByClanIdAndUserIdAndMemberStatus(clanId, actorId, MemberStatus.active)
                 .orElseThrow(() -> forbidden("当前用户不是该宗族的有效成员"));
@@ -154,33 +150,36 @@ public class MemberGrantPolicyService {
         return new ActorScope(false, false, Set.copyOf(exactBranchIds), Set.copyOf(subtreeBranchIds));
     }
 
-    public boolean canViewGrant(ActorScope actorScope, MemberRoleScopeType targetScopeType, Long targetScopeId) {
-        if (actorScope.fullClanAccess()) return true;
+    @Override
+    public boolean canViewGrant(ActorScope scope, MemberRoleScopeType targetScopeType, Long targetScopeId) {
+        if (scope.fullClanAccess()) return true;
         if (targetScopeId == null) return false;
-        if (targetScopeType == MemberRoleScopeType.branch) return actorScope.visibleBranchIds().contains(targetScopeId);
-        if (targetScopeType == MemberRoleScopeType.branch_subtree) return actorScope.visibleSubtreeIds().contains(targetScopeId);
+        if (targetScopeType == MemberRoleScopeType.branch) return scope.visibleBranchIds().contains(targetScopeId);
+        if (targetScopeType == MemberRoleScopeType.branch_subtree) return scope.visibleSubtreeIds().contains(targetScopeId);
         return false;
     }
 
-    public boolean canManageGrant(ActorScope actorScope, String targetRoleCode,
+    @Override
+    public boolean canManageGrant(ActorScope scope, String targetRoleCode,
                                   MemberRoleScopeType targetScopeType, Long targetScopeId) {
-        if (actorScope.fullClanAccess()) return CLAN_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode);
+        if (scope.fullClanAccess()) return CLAN_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode);
         if (!BRANCH_ADMIN_GRANTABLE_ROLES.contains(targetRoleCode) || targetScopeId == null) return false;
-        if (targetScopeType == MemberRoleScopeType.branch) return actorScope.visibleBranchIds().contains(targetScopeId);
-        if (targetScopeType == MemberRoleScopeType.branch_subtree) return actorScope.visibleSubtreeIds().contains(targetScopeId);
+        if (targetScopeType == MemberRoleScopeType.branch) return scope.visibleBranchIds().contains(targetScopeId);
+        if (targetScopeType == MemberRoleScopeType.branch_subtree) return scope.visibleSubtreeIds().contains(targetScopeId);
         return false;
     }
 
-    public boolean canManageMembership(ActorScope actorScope, List<MemberRoleEntity> activeGrants,
-                                       Map<Long, RoleEntity> roles) {
-        if (actorScope.fullClanAccess()) return true;
-        if (activeGrants.isEmpty()) return false;
-        return activeGrants.stream().allMatch(grant -> {
+    @Override
+    public boolean canManageMembership(ActorScope scope, List<MemberRoleEntity> grants, Map<Long, RoleEntity> roles) {
+        if (scope.fullClanAccess()) return true;
+        if (grants.isEmpty()) return false;
+        return grants.stream().allMatch(grant -> {
             RoleEntity role = roles.get(grant.getRoleId());
-            return role != null && canManageGrant(actorScope, role.getRoleCode(), grant.getScopeType(), grant.getScopeId());
+            return role != null && canManageGrant(scope, role.getRoleCode(), grant.getScopeType(), grant.getScopeId());
         });
     }
 
+    @Override
     public boolean containsClanAdminGrant(List<MemberRoleEntity> grants, Map<Long, RoleEntity> roles) {
         return grants.stream().anyMatch(grant -> {
             RoleEntity role = roles.get(grant.getRoleId());
@@ -188,6 +187,7 @@ public class MemberGrantPolicyService {
         });
     }
 
+    @Override
     @Transactional(readOnly = true)
     public long activeClanAdminCount(Long clanId) {
         return memberRoleRepository.countActiveRoleGrants(
@@ -196,14 +196,13 @@ public class MemberGrantPolicyService {
         );
     }
 
-    private void requireActorCanManageExisting(Long clanId, Long actorId, MemberRoleEntity existingGrant) {
-        requireActorCanManageTarget(clanId, actorId, roleCode(existingGrant.getRoleId()),
-                existingGrant.getScopeType(), existingGrant.getScopeId());
+    private void requireActorCanManageExisting(Long clanId, Long actorId, MemberRoleEntity grant) {
+        requireActorCanManageTarget(clanId, actorId, roleCode(grant.getRoleId()), grant.getScopeType(), grant.getScopeId());
     }
 
-    private void requireActorCanManageTarget(Long clanId, Long actorId, String targetRoleCode,
-                                             MemberRoleScopeType targetScopeType, Long targetScopeId) {
-        if (!canManageGrant(actorScope(clanId, actorId), targetRoleCode, targetScopeType, targetScopeId)) {
+    private void requireActorCanManageTarget(Long clanId, Long actorId, String roleCode,
+                                             MemberRoleScopeType scopeType, Long scopeId) {
+        if (!canManageGrant(actorScope(clanId, actorId), roleCode, scopeType, scopeId)) {
             throw forbidden("目标授权角色或范围超出当前操作者的管理边界");
         }
     }
@@ -224,11 +223,8 @@ public class MemberGrantPolicyService {
             requireBranchSubtreeScope(clanId, scopeType, scopeId);
             return;
         }
-        if (scopeType == MemberRoleScopeType.clan) {
-            requireClanScope(clanId, scopeType, scopeId);
-            return;
-        }
-        requireBranchSubtreeScope(clanId, scopeType, scopeId);
+        if (scopeType == MemberRoleScopeType.clan) requireClanScope(clanId, scopeType, scopeId);
+        else requireBranchSubtreeScope(clanId, scopeType, scopeId);
     }
 
     private void requireClanScope(Long clanId, MemberRoleScopeType scopeType, Long scopeId) {
@@ -277,19 +273,5 @@ public class MemberGrantPolicyService {
 
     private BusinessException forbidden(String message) {
         return new BusinessException("MEMBER_GRANT_FORBIDDEN", message);
-    }
-
-    public record ActorScope(boolean crossClanAdmin, boolean clanAdmin,
-                             Set<Long> visibleBranchIds, Set<Long> visibleSubtreeIds) {
-        public static ActorScope full(boolean crossClanAdmin, boolean clanAdmin) {
-            return new ActorScope(crossClanAdmin, clanAdmin, Set.of(), Set.of());
-        }
-        public boolean fullClanAccess() { return crossClanAdmin || clanAdmin; }
-        public List<Long> queryVisibleBranchIds() {
-            return visibleBranchIds.isEmpty() ? List.of(-1L) : visibleBranchIds.stream().sorted().toList();
-        }
-        public List<Long> queryVisibleSubtreeIds() {
-            return visibleSubtreeIds.isEmpty() ? List.of(-1L) : visibleSubtreeIds.stream().sorted().toList();
-        }
     }
 }
