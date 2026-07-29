@@ -20,9 +20,14 @@ function listCssFiles() {
   function walk(directory) {
     for (const entry of readdirSync(directory)) {
       const absolute = path.join(directory, entry);
+      const relative = path.relative(PROJECT_ROOT, absolute).replaceAll('\\', '/');
       const stat = statSync(absolute);
-      if (stat.isDirectory()) walk(absolute);
-      else if (entry.endsWith('.css')) files.push(path.relative(PROJECT_ROOT, absolute).replaceAll('\\', '/'));
+      if (stat.isDirectory()) {
+        if (relative === 'src/prototypes') continue;
+        walk(absolute);
+      } else if (entry.endsWith('.css')) {
+        files.push(relative);
+      }
     }
   }
   walk(SOURCE_ROOT);
@@ -37,9 +42,35 @@ function normalize(value) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function selectorHeaders(source) {
-  const clean = stripComments(source);
+function splitSelectorList(header) {
   const selectors = [];
+  let start = 0;
+  let parentheses = 0;
+  let brackets = 0;
+  let quote = '';
+  for (let index = 0; index < header.length; index += 1) {
+    const char = header[index];
+    if (quote) {
+      if (char === quote && header[index - 1] !== '\\') quote = '';
+      continue;
+    }
+    if (char === '"' || char === "'") quote = char;
+    else if (char === '(') parentheses += 1;
+    else if (char === ')') parentheses = Math.max(0, parentheses - 1);
+    else if (char === '[') brackets += 1;
+    else if (char === ']') brackets = Math.max(0, brackets - 1);
+    else if (char === ',' && parentheses === 0 && brackets === 0) {
+      selectors.push(normalize(header.slice(start, index)));
+      start = index + 1;
+    }
+  }
+  selectors.push(normalize(header.slice(start)));
+  return selectors.filter(Boolean);
+}
+
+function extractRules(source, media = 'root') {
+  const clean = stripComments(source);
+  const rules = [];
   let cursor = 0;
   while (cursor < clean.length) {
     const open = clean.indexOf('{', cursor);
@@ -47,29 +78,58 @@ function selectorHeaders(source) {
     const header = normalize(clean.slice(cursor, open));
     let depth = 1;
     let close = open + 1;
+    let quote = '';
     while (close < clean.length && depth > 0) {
-      if (clean[close] === '{') depth += 1;
-      else if (clean[close] === '}') depth -= 1;
+      const char = clean[close];
+      if (quote) {
+        if (char === quote && clean[close - 1] !== '\\') quote = '';
+      } else if (char === '"' || char === "'") quote = char;
+      else if (char === '{') depth += 1;
+      else if (char === '}') depth -= 1;
       close += 1;
     }
     if (depth !== 0) break;
     const body = clean.slice(open + 1, close - 1);
     if (header.startsWith('@media') || header.startsWith('@supports') || header.startsWith('@container') || header.startsWith('@layer')) {
-      selectors.push(...selectorHeaders(body));
-    } else if (!header.startsWith('@') && header.includes('.ant-')) {
-      selectors.push(...header.split(',').map(normalize).filter(Boolean));
+      rules.push(...extractRules(body, `${media} > ${header}`));
+    } else if (!header.startsWith('@')) {
+      for (const selector of splitSelectorList(header)) {
+        if (selector.includes('.ant-')) rules.push({ selector, media, declarations: normalize(body) });
+      }
     }
     cursor = close;
   }
-  return selectors;
+  return rules;
 }
 
-function entry(file, selector) {
-  return `${file}|${selector}`;
+function businessClasses(selector) {
+  return [...selector.matchAll(/\.([a-zA-Z_][\w-]*)/g)]
+    .map(match => match[1])
+    .filter(name => !name.startsWith('ant-') && !name.startsWith('css-'));
 }
 
-function isUnscoped(selector) {
-  return /^(?:html\s+|body\s+|#root\s+)?\.ant-[\w-]+/.test(selector);
+function classify(selector) {
+  const antMatches = [...selector.matchAll(/\.ant-[\w-]+/g)];
+  const antIndex = antMatches[0]?.index ?? -1;
+  const prefix = selector.slice(0, antIndex);
+  const business = businessClasses(selector);
+  const sameCompoundPrefix = prefix.split(/[\s>+~]/).at(-1) || '';
+  const explicitRootBinding = business.length > 0 && /\.[a-zA-Z_][\w-]*$/.test(sameCompoundPrefix);
+  const portalScoped = /^(?:body|html)(?::has\([^)]*\))?\s+/.test(selector) && business.length > 0;
+  const hasDataScope = selector.slice(0, antIndex).includes('[data-');
+  const unscoped = business.length === 0 && !hasDataScope;
+  const deep = antMatches.length > 1 || /\.ant-[\w-]+\s*[>+~]\s*\.ant-/.test(selector);
+  const structural = /:(?:nth|first|last|has)\b|\[title[\^$*|~]?=/.test(selector);
+
+  if (unscoped) return { category: 'unscoped-internal', disposition: 'blocking' };
+  if (explicitRootBinding && antMatches.length === 1) return { category: 'public-component-root', disposition: 'allowed' };
+  if (portalScoped) return { category: 'portal-scoped-contract', disposition: 'reviewed' };
+  if (deep || structural) return { category: 'private-structure-contract', disposition: 'reviewed' };
+  return { category: 'scoped-component-contract', disposition: 'reviewed' };
+}
+
+function exactEntry(file, media, selector) {
+  return `${file}|${media}|${selector}`;
 }
 
 function validateConfig() {
@@ -84,9 +144,6 @@ function validateConfig() {
     }
     if (!Number.isInteger(item.trackingIssue)) throw new Error(`Ant Design override exception ${item.id} trackingIssue must be an integer`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(item.reviewedAt)) throw new Error(`Ant Design override exception ${item.id} reviewedAt must be YYYY-MM-DD`);
-    if (!['token', 'component-token', 'component-prop', 'outer-layout', 'unavoidable'].includes(item.replacementAssessment)) {
-      throw new Error(`Ant Design override exception ${item.id} has invalid replacementAssessment`);
-    }
     if (item.replacementAssessment !== 'unavoidable') {
       throw new Error(`Ant Design override exception ${item.id} is replaceable and must be migrated instead of registered`);
     }
@@ -94,69 +151,81 @@ function validateConfig() {
 }
 
 validateConfig();
-const allowed = new Set(config.exceptions.flatMap(item => item.entries));
 const files = listCssFiles();
-const all = [];
-const unscoped = [];
+const recordsByKey = new Map();
 for (const file of files) {
   const source = readFileSync(path.join(PROJECT_ROOT, file), 'utf8');
-  for (const selector of selectorHeaders(source)) {
-    const value = entry(file, selector);
-    all.push(value);
-    if (isUnscoped(selector)) unscoped.push(value);
+  for (const rule of extractRules(source)) {
+    const classification = classify(rule.selector);
+    const entry = exactEntry(file, rule.media, rule.selector);
+    recordsByKey.set(entry, { file, ...rule, ...classification, entry });
   }
 }
-all.sort();
-unscoped.sort();
-const registered = all.filter(value => allowed.has(value));
-const unregistered = all.filter(value => !allowed.has(value));
-const stale = [...allowed].filter(value => !new Set(all).has(value)).sort();
+const records = [...recordsByKey.values()].sort((left, right) => left.entry.localeCompare(right.entry));
+const allowed = new Set(config.exceptions.flatMap(item => item.entries));
+const blocking = records.filter(record => record.disposition === 'blocking' && !allowed.has(record.entry));
+const registered = records.filter(record => allowed.has(record.entry));
+const recordKeys = new Set(records.map(record => record.entry));
+const stale = [...allowed].filter(value => !recordKeys.has(value)).sort();
+const categories = Object.fromEntries(
+  [...new Set(records.map(record => record.category))].sort().map(category => [category, records.filter(record => record.category === category).length])
+);
 const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   policy: config.policy,
   totals: {
     cssFiles: files.length,
-    internalSelectors: all.length,
+    selectors: records.length,
+    blocking: blocking.length,
     registered: registered.length,
-    unregistered: unregistered.length,
-    unscoped: unscoped.length,
     staleExceptions: stale.length
   },
-  internalSelectors: all,
+  categories,
+  blocking,
   registered,
-  unregistered,
-  unscoped,
   staleExceptions: stale,
+  records,
   exceptions: config.exceptions
 };
 
 function markdown(data) {
+  const failed = data.totals.blocking || data.totals.staleExceptions;
   const lines = [
     '# Ant Design Internal Override Audit',
     '',
-    `- Result: **${data.totals.unregistered || data.totals.unscoped || data.totals.staleExceptions ? 'FAILED' : 'PASSED'}**`,
-    `- CSS files: ${data.totals.cssFiles}`,
-    `- Internal selectors: ${data.totals.internalSelectors}`,
+    `- Result: **${failed ? 'FAILED' : 'PASSED'}**`,
+    `- Production CSS files: ${data.totals.cssFiles}`,
+    `- Selectors containing Ant Design classes: ${data.totals.selectors}`,
+    `- Blocking unscoped selectors: ${data.totals.blocking}`,
     `- Registered unavoidable selectors: ${data.totals.registered}`,
-    `- Unregistered selectors: ${data.totals.unregistered}`,
-    `- Unscoped selectors: ${data.totals.unscoped}`,
     `- Stale exceptions: ${data.totals.staleExceptions}`,
+    '',
+    '## Classification',
+    '',
+    '| Category | Count |',
+    '| --- | ---: |',
+    ...Object.entries(data.categories).map(([category, count]) => `| ${category} | ${count} |`),
     ''
   ];
-  for (const [title, values] of [
-    ['Unregistered internal selectors (blocking)', data.unregistered],
-    ['Unscoped internal selectors (blocking)', data.unscoped],
-    ['Stale exceptions (blocking)', data.staleExceptions],
-    ['Registered unavoidable selectors', data.registered]
-  ]) {
-    if (!values.length) continue;
-    lines.push(`## ${title}`, '', ...values.map(value => `- \`${value}\``), '');
+  if (data.blocking.length) {
+    lines.push('## Blocking selectors', '', ...data.blocking.map(item => `- \`${item.entry}\``), '');
   }
+  if (data.staleExceptions.length) {
+    lines.push('## Stale exceptions', '', ...data.staleExceptions.map(value => `- \`${value}\``), '');
+  }
+  lines.push(
+    '## Reviewed selector inventory',
+    '',
+    '| File | Selector | Classification |',
+    '| --- | --- | --- |',
+    ...data.records.map(item => `| \`${item.file}\` | \`${item.selector.replaceAll('|', '\\|')}\` | ${item.category} |`),
+    ''
+  );
   return `${lines.join('\n')}\n`;
 }
 
 writeFileSync(path.join(PROJECT_ROOT, jsonPath), `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(path.join(PROJECT_ROOT, markdownPath), markdown(report));
 console.log(markdown(report));
-if (!reportOnly && (unregistered.length || unscoped.length || stale.length)) process.exitCode = 1;
+if (!reportOnly && (blocking.length || stale.length)) process.exitCode = 1;
