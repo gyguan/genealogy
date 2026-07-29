@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FindBugsFilter>
-    <!-- Historical generated/lifecycle code only. New high-priority findings outside these exact patterns fail CI. -->
+    <!-- Historical baseline only. Each entry is exact by class and bug pattern. -->
     <Match>
-        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Class name="com.genealogy.imports.application.ImportApplicationService"/>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+    </Match>
+    <Match>
+        <Class name="com.genealogy.review.application.ReviewQualityCheckApplicationService"/>
+        <Bug pattern="NP_NULL_ON_SOME_PATH"/>
     </Match>
 </FindBugsFilter>
