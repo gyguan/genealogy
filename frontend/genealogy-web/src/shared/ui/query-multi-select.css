@@ -1,4 +1,5 @@
-/* Keep all query multi-selects on the native Ant Design visual system. */
-.ant-select-multiple {
-  width: 100%;
-}
+/*
+ * QueryMultiSelect intentionally uses the native Ant Design visual system.
+ * Width is supplied through the component's public style prop; internal
+ * Ant Design selectors are forbidden in this ownership file.
+ */

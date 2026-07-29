@@ -171,7 +171,7 @@ test('feedback styling normalizes alerts, field help, empty states and full-page
   assert.match(css, /\.business-page \.ant-form-item-extra/);
   assert.match(css, /\.business-page \.ant-empty/);
   assert.match(css, /\.business-page > \.ant-result/);
-  assert.match(css, /\.ant-popconfirm \.ant-popconfirm-message-title/);
+  assert.doesNotMatch(css, /(^|\n)\s*\.ant-popconfirm\b/m);
   assert.match(css, /border-radius:\s*8px/);
 });
 
