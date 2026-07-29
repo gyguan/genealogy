@@ -1,5 +1,5 @@
-/* Unified tabbed module prototype for tree, [data-genealogy-app] culture, [data-genealogy-app] imports and audit pages. */
-.tabbed-module-page {
+/* Unified tabbed module shell for tree, culture, imports and audit pages. */
+[data-genealogy-app] .tabbed-module-page {
   display: grid;
   gap: 16px;
   min-width: 0;
