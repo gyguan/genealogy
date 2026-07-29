@@ -1,0 +1,5 @@
+/*
+ * QueryMultiSelect intentionally uses the native Ant Design visual system.
+ * Width is supplied through the component's public style prop; internal
+ * `.ant-*` selectors are forbidden in this ownership file.
+ */
