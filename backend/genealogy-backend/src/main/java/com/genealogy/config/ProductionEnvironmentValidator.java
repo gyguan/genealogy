@@ -1,7 +1,7 @@
 package com.genealogy.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 
@@ -10,18 +10,22 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Validates production-only requirements before the application context creates
- * the datasource. This produces a deterministic error instead of a late JDBC
- * or unresolved-placeholder failure.
+ * Validates production-only requirements after configuration data has been
+ * loaded but before the application context creates the datasource.
  */
-public final class ProductionEnvironmentValidator implements EnvironmentPostProcessor, Ordered {
+public final class ProductionEnvironmentValidator
+        implements ApplicationListener<ApplicationEnvironmentPreparedEvent>, Ordered {
 
     private static final List<String> REQUIRED_SECRETS = List.of(
             "DB_URL", "DB_USERNAME", "DB_PASSWORD"
     );
 
     @Override
-    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
+        validate(event.getEnvironment());
+    }
+
+    void validate(ConfigurableEnvironment environment) {
         boolean production = Arrays.stream(environment.getActiveProfiles())
                 .anyMatch("prod"::equalsIgnoreCase);
         if (!production) {
