@@ -1,0 +1,119 @@
+name: Backend Configuration Governance
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/src/main/resources/application*.yml"
+      - "backend/genealogy-backend/src/main/resources/db/migration/**"
+      - "backend/genealogy-backend/src/main/java/com/genealogy/config/**"
+      - "backend/genealogy-backend/src/test/java/com/genealogy/config/**"
+      - ".github/workflows/backend-config-governance.yml"
+      - "docs/backend-environment-configuration.md"
+  push:
+    branches: ["main"]
+    paths:
+      - "backend/genealogy-backend/**"
+      - ".github/workflows/backend-config-governance.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  configuration-and-migrations:
+    name: Production config and Flyway upgrade
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: genealogy_ci
+          POSTGRES_PASSWORD: genealogy_ci_password
+          POSTGRES_DB: genealogy_empty
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U genealogy_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Verify production profile rejects missing Secrets
+        working-directory: backend/genealogy-backend
+        run: |
+          set +e
+          output=$(mvn -q -DskipTests spring-boot:run \
+            -Dspring-boot.run.profiles=prod \
+            -Dspring-boot.run.arguments=--spring.main.web-application-type=none 2>&1)
+          status=$?
+          set -e
+          test "$status" -ne 0
+          echo "$output" | grep -q "Missing required Secret variables"
+
+      - name: Build backend
+        working-directory: backend/genealogy-backend
+        run: mvn -B -DskipTests package
+
+      - name: Verify empty database full migration and schema validation
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_URL: jdbc:postgresql://localhost:5432/genealogy_empty
+          DB_USERNAME: genealogy_ci
+          DB_PASSWORD: genealogy_ci_password
+        run: |
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar \
+            --spring.main.web-application-type=none
+
+      - name: Prepare historical-version database
+        env:
+          PGPASSWORD: genealogy_ci_password
+        run: |
+          psql -h localhost -U genealogy_ci -d postgres -c "CREATE DATABASE genealogy_upgrade"
+
+      - name: Resolve previous Flyway version
+        id: flyway
+        shell: bash
+        run: |
+          mapfile -t versions < <(find backend/genealogy-backend/src/main/resources/db/migration \
+            -maxdepth 1 -name 'V*__*.sql' -printf '%f\n' | sort -V)
+          test "${#versions[@]}" -ge 2
+          previous="${versions[$((${#versions[@]}-2))]}"
+          previous="${previous#V}"
+          previous="${previous%%__*}"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+
+      - name: Migrate historical database to supported previous version
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_URL: jdbc:postgresql://localhost:5432/genealogy_upgrade
+          DB_USERNAME: genealogy_ci
+          DB_PASSWORD: genealogy_ci_password
+          SPRING_FLYWAY_TARGET: ${{ steps.flyway.outputs.previous }}
+          SPRING_JPA_HIBERNATE_DDL_AUTO: none
+        run: |
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar \
+            --spring.main.web-application-type=none
+
+      - name: Upgrade historical database and validate schema
+        working-directory: backend/genealogy-backend
+        env:
+          SPRING_PROFILES_ACTIVE: prod
+          DB_URL: jdbc:postgresql://localhost:5432/genealogy_upgrade
+          DB_USERNAME: genealogy_ci
+          DB_PASSWORD: genealogy_ci_password
+        run: |
+          java -jar target/genealogy-backend-0.1.0-SNAPSHOT.jar \
+            --spring.main.web-application-type=none
