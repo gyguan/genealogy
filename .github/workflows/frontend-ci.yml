@@ -13,40 +13,11 @@ on:
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  issue-961-comment-repair:
-    if: github.event_name == 'pull_request' && github.head_ref == 'agent/issue-961-retire-c-style-debt'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/issue-961-retire-c-style-debt
-          fetch-depth: 0
-      - name: Remove application-root prefixes before comments
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          for path in Path('frontend/genealogy-web/src').rglob('*.css'):
-              text = path.read_text()
-              fixed = text.replace('[data-genealogy-app] /*', '/*')
-              if fixed != text:
-                  path.write_text(fixed)
-          PY
-          git checkout origin/main -- .github/workflows/frontend-ci.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: remove malformed application root comment prefixes"
-          git push origin HEAD:agent/issue-961-retire-c-style-debt
-
   frontend-build:
     name: Frontend Typecheck and Build
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-[data-genealogy-app] /* Page-specific cleanup for redundant explanatory/context content. */
+/* Page-specific cleanup for redundant explanatory/context content. */
 
 /* The global module header already identifies the page; the home dashboard starts
    directly with clan context and metrics. */
@@ -14,14 +14,14 @@
   display: none;
 }
 
-[data-genealogy-app] /* Keep the expanded person archive filters visually consistent with other query pages. */
+/* Keep the expanded person archive filters visually consistent with other query pages. */
 .business-page--personArchive .person-archive-filter-grid--advanced {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
 }
 
-[data-genealogy-app] /* Wide query pages must consume the complete width offered by AppShell. */
+/* Wide query pages must consume the complete width offered by AppShell. */
 .antd-content:has(.business-page--imports), [data-genealogy-app] .antd-content:has(.business-page--auditTrace), [data-genealogy-app] .business-page--imports, [data-genealogy-app] .business-page--auditTrace, [data-genealogy-app] .business-page--imports > .import-center-page, [data-genealogy-app] .business-page--auditTrace > .audit-trace-page, [data-genealogy-app] .business-page--auditTrace .tracking-double-card-page {
   width: 100%;
   min-width: 0;
@@ -29,7 +29,7 @@
   margin-inline: 0;
 }
 
-[data-genealogy-app] /* Match the audit result heading to the standard query-result card title pattern. */
+/* Match the audit result heading to the standard query-result card title pattern. */
 .business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
   min-height: unset;
 }
