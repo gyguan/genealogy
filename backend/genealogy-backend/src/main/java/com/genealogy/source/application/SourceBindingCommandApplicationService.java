@@ -140,7 +140,7 @@ public class SourceBindingCommandApplicationService {
             throw new BusinessException("SOURCE_BINDING_REQUEST_INVALID", "来源绑定请求不能为空");
         }
         SourceBindingTargetType targetType = SourceBindingTargetType.fromApi(request.targetType());
-        targetValidationService.validate(clanId, targetType, request.targetId());
+        targetValidationService.validate(clanId, targetType.apiValue(), request.targetId());
     }
 
     private void validateRevisionTarget(Long revisionId) {
@@ -156,7 +156,7 @@ public class SourceBindingCommandApplicationService {
             JsonNode data = objectMapper.readTree(revision.getAfterData());
             SourceBindingTargetType targetType = SourceBindingTargetType.fromApi(data.path("targetType").asText(null));
             Long targetId = data.hasNonNull("targetId") ? data.get("targetId").longValue() : null;
-            targetValidationService.validate(revision.getClanId(), targetType, targetId);
+            targetValidationService.validate(revision.getClanId(), targetType.apiValue(), targetId);
         } catch (JsonProcessingException exception) {
             throw new BusinessException("SOURCE_BINDING_REVISION_DATA_INVALID", "来源绑定变更数据无法解析");
         }
