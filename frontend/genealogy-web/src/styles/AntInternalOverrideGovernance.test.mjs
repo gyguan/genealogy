@@ -15,16 +15,18 @@ function runAudit(...args) {
   });
 }
 
-test('production CSS contains no unregistered Ant Design internal selectors', () => {
+test('production CSS contains no unscoped Ant Design internal selectors', () => {
   try {
     runAudit(`--json=${jsonReport}`, `--markdown=${markdownReport}`, '--report-only');
     const report = JSON.parse(readFileSync(new URL(`../../${jsonReport}`, import.meta.url), 'utf8'));
     const failures = [
-      ...report.unregistered.map(value => `unregistered: ${value}`),
-      ...report.unscoped.map(value => `unscoped: ${value}`),
+      ...report.blocking.map(item => `blocking: ${item.entry}`),
       ...report.staleExceptions.map(value => `stale exception: ${value}`)
     ];
     assert.deepEqual(failures, [], failures.join('\n'));
+    assert.equal(report.categories['unscoped-internal'] ?? 0, 0);
+    assert.ok(report.totals.selectors > 0, 'audit must inventory production Ant Design selector usage');
+    assert.ok(report.records.every(item => item.file.startsWith('src/') && !item.file.startsWith('src/prototypes/')));
   } finally {
     rmSync(new URL(`../../${jsonReport}`, import.meta.url), { force: true });
     rmSync(new URL(`../../${markdownReport}`, import.meta.url), { force: true });
@@ -39,6 +41,6 @@ test('override registry only accepts unavoidable exact exceptions', () => {
     assert.equal(item.replacementAssessment, 'unavoidable');
     assert.ok(Number.isInteger(item.trackingIssue));
     assert.match(item.reviewedAt, /^\d{4}-\d{2}-\d{2}$/);
-    assert.ok(item.entries.every(entry => entry.includes('|') && entry.includes('.ant-')));
+    assert.ok(item.entries.every(entry => entry.split('|').length >= 3 && entry.includes('.ant-')));
   }
 });
