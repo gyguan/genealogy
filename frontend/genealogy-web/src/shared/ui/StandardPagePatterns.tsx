@@ -1,17 +1,14 @@
 import type { ReactNode } from 'react';
 import {
-  Alert,
-  Button,
   Card,
   Drawer,
-  Empty,
-  Result,
   Space,
   Spin,
   Table,
   Typography
 } from 'antd';
-import type { AlertProps, ButtonProps, CardProps, DrawerProps, ResultProps, TableProps } from 'antd';
+import type { CardProps, DrawerProps, ResultProps, TableProps } from 'antd';
+import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
 
 export type StandardPageProps = {
@@ -126,20 +123,13 @@ export type StandardPageStateProps = {
   title?: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
-  alertType?: AlertProps['type'];
   resultStatus?: ResultProps['status'];
 };
 
-export function StandardPageState({ state, title, description, action, alertType, resultStatus }: StandardPageStateProps) {
+export function StandardPageState({ state, title, description, action, resultStatus }: StandardPageStateProps) {
   if (state === 'loading') return <div className="standard-page-state standard-page-state--loading" role="status"><Spin size="large" /><Typography.Text type="secondary">{title || '正在加载…'}</Typography.Text></div>;
-  if (state === 'empty') return <div className="standard-page-state"><Empty description={description || title || '暂无数据'}>{action}</Empty></div>;
-  if (state === 'warning') return <Alert className="standard-page-state" type={alertType || 'warning'} showIcon message={title || '请注意'} description={description} action={action} />;
+  if (state === 'empty') return <div className="standard-page-state"><EmptyState title={title} description={description} action={action} /></div>;
+  if (state === 'warning') return <PageFeedback className="standard-page-state" tone="warning" title={title || '请注意'} description={description} action={action} />;
   const forbidden = state === 'forbidden';
-  return <Result className="standard-page-state" status={resultStatus || (forbidden ? '403' : 'error')} title={title || (forbidden ? '暂无访问权限' : '加载失败')} subTitle={description} extra={action} />;
-}
-
-export type StandardActionButtonProps = ButtonProps & { label: ReactNode };
-
-export function StandardActionButton({ label, ...props }: StandardActionButtonProps) {
-  return <Button {...props}>{label}</Button>;
+  return <FullPageFeedback className="standard-page-state" status={resultStatus || (forbidden ? '403' : 'error')} title={title || (forbidden ? '暂无访问权限' : '加载失败')} subTitle={description} extra={action} />;
 }
