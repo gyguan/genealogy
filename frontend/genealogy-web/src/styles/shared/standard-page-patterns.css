@@ -1,0 +1,106 @@
+.standard-page {
+  display: grid;
+  gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.standard-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.standard-page-header__copy {
+  min-width: 0;
+}
+
+.standard-page-header__title.ant-typography {
+  margin: 0;
+}
+
+.standard-page-header__description.ant-typography {
+  margin: var(--ant-margin-xs) 0 0;
+  max-width: 72ch;
+}
+
+.standard-page-header__extra {
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
+.standard-page__content {
+  display: grid;
+  gap: var(--ant-padding-lg);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.standard-page__content > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.standard-query-panel,
+.standard-result-section,
+.standard-editor-page__card {
+  min-width: 0;
+}
+
+.standard-query-panel__description.ant-typography,
+.standard-detail-drawer__description.ant-typography {
+  margin-top: 0;
+}
+
+.standard-query-panel__body,
+.standard-result-section .ant-card-body,
+.standard-editor-page__body {
+  min-width: 0;
+}
+
+.standard-query-panel__actions,
+.standard-editor-page__actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: var(--ant-margin-md);
+}
+
+.standard-table__viewport {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.standard-table__viewport:focus-visible {
+  outline: var(--ant-line-width-focus) solid var(--ant-color-primary-border);
+  outline-offset: var(--ant-line-width-focus);
+}
+
+.standard-page-state--loading {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ant-margin-sm);
+}
+
+@media (max-width: 767px) {
+  .standard-page-header {
+    flex-direction: column;
+  }
+
+  .standard-page-header__extra,
+  .standard-query-panel__actions,
+  .standard-editor-page__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
