@@ -22,6 +22,7 @@ import {
 import type { PersonArchiveSearchState } from './personArchiveUrlState';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type Props = {  };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
@@ -317,11 +318,11 @@ export function PersonArchiveSearchPage({}: Props) {
             </div>
           }]}
         />
-        <Space className="person-archive-query-actions">
-          <Button type="link" className="person-archive-more-filter" aria-expanded={advancedOpen} aria-controls="person-archive-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-          <Button onClick={reset}>重置</Button>
-          <Button type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
-        </Space>
+        <StandardQueryActions className="person-archive-query-actions">
+<Button data-query-action="more" type="link" className="person-archive-more-filter" aria-expanded={advancedOpen} aria-controls="person-archive-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+<Button data-query-action="reset" onClick={reset}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
+</StandardQueryActions>
       </Form>
     </Card>
     <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total}>

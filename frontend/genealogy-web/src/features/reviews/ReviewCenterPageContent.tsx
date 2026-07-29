@@ -19,6 +19,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type Props = {  };
 type ReviewTabKey = 'pending' | 'submitted' | 'processed';
@@ -695,7 +696,10 @@ export function ReviewCenterPage({}: Props) {
               {activeTab !== 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="submittedRange" label={currentFilterCopy.submittedLabel}><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
               {activeTab === 'processed' ? <Col xs={24} sm={12} lg={6}><Form.Item name="processedRange" label="处理时间"><DatePicker.RangePicker style={{ width: '100%' }} /></Form.Item></Col> : null}
             </Row>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><Space><Button onClick={resetFilters}>重置</Button><Button type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button></Space></div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><StandardQueryActions>
+<Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+<Button data-query-action="submit" type="primary" loading={loading} onClick={() => void applyFilters()}>查询</Button>
+</StandardQueryActions></div>
           </Form></Space>
         </Card>
 

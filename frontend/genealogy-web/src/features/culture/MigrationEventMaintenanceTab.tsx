@@ -51,6 +51,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -494,7 +495,10 @@ export function MigrationEventMaintenanceTab() {
           <Col xs={24} md={8} xl={4}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={4}><Form.Item name="sort" label="排序"><Select options={migrationSortOptions} /></Form.Item></Col>
-          <Col xs={24}><Space style={{ marginBottom: 16 }}><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button onClick={resetSearch}>重置</Button></Space></Col>
+          <Col xs={24}><StandardQueryActions style={{ marginBottom: 16 }}>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></Col>
         </Row>
       </Form>
 

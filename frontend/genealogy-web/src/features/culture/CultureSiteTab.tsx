@@ -51,6 +51,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback, ConfirmAction, confirmAction } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -489,7 +490,10 @@ export function CultureSiteTab() {
           <Col xs={24} md={8} xl={3}><Form.Item name="currentStatus" label="当前状态"><Input allowClear placeholder="存续、遗址等" /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="dataStatus" label="数据状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
           <Col xs={24} md={8} xl={3}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
-          <Col xs={24} xl={6} className="culture-search-actions"><Space><Button type="primary" htmlType="submit" loading={listLoading}>查询</Button><Button onClick={resetSearch}>重置</Button></Space></Col>
+          <Col xs={24} xl={6} className="culture-search-actions"><StandardQueryActions>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></Col>
         </Row>
       </Form>
     </Card>

@@ -29,6 +29,7 @@ import {
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -217,10 +218,10 @@ export function RiskAuditPanel({
           </div>
         </Form>
         <div className="tracking-filter-actions">
-          <Space wrap>
-            <Button type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
-            <Button disabled={loading} onClick={reset}>重置</Button>
-          </Space>
+          <StandardQueryActions wrap>
+<Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
+<Button data-query-action="submit" type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
+</StandardQueryActions>
           <Text type="secondary">风险事件分页由服务端在权限范围内计算。</Text>
         </div>
       </Card>

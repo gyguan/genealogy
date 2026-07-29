@@ -20,6 +20,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -433,11 +434,11 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
           }]}
         />
         <Row justify={screens.xl ? 'end' : 'start'} style={{ marginTop: 8 }}>
-          <Space wrap>
-            <Button type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-            <Button onClick={resetFilters}>重置</Button>
-            <Button type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
-          </Space>
+          <StandardQueryActions wrap>
+<Button data-query-action="more" type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
+<Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
+</StandardQueryActions>
         </Row>
       </Form>
     </Card>

@@ -29,6 +29,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -296,7 +297,10 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
           <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col>
         </Row>
         <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="currentStatus" label="当前状态"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
-        <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+        <div className="culture-search-actions"><StandardQueryActions>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></div>
       </Form>
     </Card>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="文化场所排序" className="culture-result-sort" value={search.sort} options={siteSortOptions} onChange={changeSort} />}>

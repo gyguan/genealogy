@@ -84,6 +84,7 @@ import './lineage-tabbed-page.css';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -746,10 +747,10 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
         </Field>
       </div>
       <div className="lineage-tab-query-actions">
-        <Space>
-          <Button onClick={resetCurrentQuery}>重置</Button>
-          <Button type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyPersonQuery()}>查询</Button>
-        </Space>
+        <StandardQueryActions>
+<Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
+<Button data-query-action="submit" type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyPersonQuery()}>查询</Button>
+</StandardQueryActions>
       </div>
     </div>
   );
@@ -794,10 +795,10 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
         </Field>
       </div>
       <div className="lineage-tab-query-actions">
-        <Space>
-          <Button onClick={resetCurrentQuery}>重置</Button>
-          <Button type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyBranchQuery()}>查询</Button>
-        </Space>
+        <StandardQueryActions>
+<Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
+<Button data-query-action="submit" type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyBranchQuery()}>查询</Button>
+</StandardQueryActions>
       </div>
     </div>
   );

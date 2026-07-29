@@ -28,6 +28,7 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { EmptyState, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
@@ -569,8 +570,8 @@ export function MemberPage({}: {  }) {
           </Col>
         </Row>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <Space>
-            <Button onClick={() => {
+          <StandardQueryActions>
+<Button data-query-action="reset" onClick={() => {
               setKeyword('');
               setRoleFilter([]);
               setScopeFilter([]);
@@ -579,7 +580,7 @@ export function MemberPage({}: {  }) {
               writeUrlState(nextQuery, undefined);
               void loadMembers(selectedClanId, nextQuery);
             }}>重置</Button>
-            <Button type="primary" loading={queryLoading} onClick={() => {
+<Button data-query-action="submit" type="primary" loading={queryLoading} onClick={() => {
               const nextQuery = createMemberQuery({
                 keyword,
                 roleCode: joinFilter(roleFilter),
@@ -589,7 +590,7 @@ export function MemberPage({}: {  }) {
               writeUrlState(nextQuery, undefined);
               void loadMembers(selectedClanId, nextQuery);
             }}>查询</Button>
-          </Space>
+</StandardQueryActions>
         </div>
       </Card>
 

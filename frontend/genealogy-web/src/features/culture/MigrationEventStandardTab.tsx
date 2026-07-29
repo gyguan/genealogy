@@ -29,6 +29,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -274,7 +275,10 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
           <Col xs={24} sm={12} lg={6}><Form.Item name="migrationTimeText" label="历史时期"><Input allowClear placeholder="如明洪武年间" /></Form.Item></Col>
         </Row>
         <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
-        <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+        <div className="culture-search-actions"><StandardQueryActions>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></div>
       </Form>
     </Card>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} />}>

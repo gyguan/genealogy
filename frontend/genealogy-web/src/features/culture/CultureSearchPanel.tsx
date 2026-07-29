@@ -5,6 +5,7 @@ import type { CultureBranchOption } from './cultureLibraryService';
 import { booleanOptions, categoryOptions, privacyOptions, sortOptions, statusOptions } from './cultureOptions';
 import type { CultureSearchState } from './cultureUrlState';
 import { defaultCultureSearch } from './cultureUrlState';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 type BooleanText = 'true' | 'false';
 
@@ -103,7 +104,10 @@ export function CultureSearchPanel(props: Props) {
           <Col xs={24} sm={12} lg={4}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={4}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
           <Col xs={24} lg={8} className="culture-search-actions">
-            <Space><Button onClick={reset}>重置</Button><Button type="primary" htmlType="submit" loading={props.loading}>查询</Button></Space>
+            <StandardQueryActions>
+<Button data-query-action="reset" onClick={reset}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={props.loading}>查询</Button>
+</StandardQueryActions>
           </Col>
         </Row>
       </Form>

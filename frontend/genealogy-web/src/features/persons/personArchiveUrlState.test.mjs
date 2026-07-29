@@ -98,7 +98,7 @@ test('person detail tabs replace the current history entry instead of stacking r
   }
 });
 
-test('renders advanced filters with Collapse before the trailing query actions', () => {
+test('renders advanced filters with Collapse before the standard trailing query actions', () => {
   assert.match(personArchivePageSource, /Card, Collapse, Dropdown/);
   assert.match(personArchivePageSource, /className="person-archive-advanced-collapse"/);
   assert.match(personArchivePageSource, /activeKey=\{advancedOpen \? \['advanced'\] : \[\]\}/);
@@ -106,6 +106,6 @@ test('renders advanced filters with Collapse before the trailing query actions',
   assert.match(personArchivePageSource, /aria-expanded=\{advancedOpen\}/);
   assert.match(personArchivePageSource, /aria-controls="person-archive-advanced-filters"/);
   const collapseIndex = personArchivePageSource.indexOf('className="person-archive-advanced-collapse"');
-  const actionsIndex = personArchivePageSource.indexOf('<Space className="person-archive-query-actions">');
+  const actionsIndex = personArchivePageSource.indexOf('<StandardQueryActions className="person-archive-query-actions">');
   assert.ok(collapseIndex >= 0 && actionsIndex > collapseIndex);
 });

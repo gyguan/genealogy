@@ -64,6 +64,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 type BooleanText = 'true' | 'false';
@@ -503,7 +504,10 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
               )
             }]}
           />
-          <div className="culture-search-actions"><Space><Button onClick={resetSearch}>重置</Button><Button htmlType="submit" loading={listLoading}>查询</Button></Space></div>
+          <div className="culture-search-actions"><StandardQueryActions>
+<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
+</StandardQueryActions></div>
         </Form>
       </Card>
 
