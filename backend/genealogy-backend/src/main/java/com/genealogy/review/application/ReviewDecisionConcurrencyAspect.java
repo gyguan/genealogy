@@ -12,6 +12,8 @@ import com.genealogy.review.repository.CheckTaskRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -30,6 +32,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ReviewDecisionConcurrencyAspect {
+
+    private static final Logger log = LoggerFactory.getLogger(ReviewDecisionConcurrencyAspect.class);
 
     private final CheckTaskRepository checkTaskRepository;
     private final AuditRecordRepository auditRecordRepository;
@@ -73,8 +77,17 @@ public class ReviewDecisionConcurrencyAspect {
             AuditRecordEntity revision = auditRecordRepository.findById(task.getRevisionId())
                     .orElseThrow(() -> new BusinessException("REVIEW_RECORD_NOT_FOUND", "review record not found"));
 
-            reviewStateMachine.target(task.getStatus(), revision.getStatus(), action);
-            reviewStateMachine.requireIndependentReviewer(revision.getSubmitterId(), request.reviewerId());
+            try {
+                reviewStateMachine.target(task.getStatus(), revision.getStatus(), action);
+                reviewStateMachine.requireIndependentReviewer(revision.getSubmitterId(), request.reviewerId());
+            } catch (BusinessException exception) {
+                log.warn(
+                        "event=review_transition_rejected traceId={} revisionId={} reviewTaskId={} targetType={} targetId={} actorId={} clanId={} fromStatus={} action={} result=rejected reasonCode={} costMs=0",
+                        revision.getTraceId(), revision.getId(), task.getId(), revision.getTargetType(), revision.getTargetId(),
+                        request.reviewerId(), revision.getClanId(), task.getStatus(), action.name().toLowerCase(), exception.getCode()
+                );
+                throw exception;
+            }
 
             try {
                 return joinPoint.proceed();
