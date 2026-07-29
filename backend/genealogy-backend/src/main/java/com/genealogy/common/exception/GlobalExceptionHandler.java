@@ -1,6 +1,7 @@
 package com.genealogy.common.exception;
 
 import com.genealogy.common.api.ApiResponse;
+import com.genealogy.common.logging.RequestLogContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -20,7 +21,6 @@ import java.util.Set;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final String REQUEST_ID_HEADER = "X-Request-Id";
 
     private static final Set<String> UNAUTHORIZED_CODES = Set.of(
             "AUTH_UNAUTHORIZED",
@@ -55,7 +55,7 @@ public class GlobalExceptionHandler {
                 exception.getCode(),
                 status.value(),
                 path(request),
-                requestId(request)
+                RequestLogContext.currentRequestId(request)
         );
         return ResponseEntity.status(status)
                 .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
         log.warn(
                 "api_validation_exception path={} requestId={} message={}",
                 path(request),
-                requestId(request),
+                RequestLogContext.currentRequestId(request),
                 limit(message, 300)
         );
         return ApiResponse.fail(ErrorCode.COMMON_BAD_REQUEST.code(), message);
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
         log.warn(
                 "api_constraint_violation path={} requestId={} message={}",
                 path(request),
-                requestId(request),
+                RequestLogContext.currentRequestId(request),
                 limit(exception.getMessage(), 300)
         );
         return ApiResponse.fail(ErrorCode.COMMON_BAD_REQUEST.code(), exception.getMessage());
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
         log.error(
                 "api_unexpected_exception path={} requestId={} exceptionType={}",
                 path(request),
-                requestId(request),
+                RequestLogContext.currentRequestId(request),
                 exception.getClass().getName(),
                 exception
         );
@@ -126,14 +126,6 @@ public class GlobalExceptionHandler {
             return "";
         }
         return limit(request.getRequestURI(), 300);
-    }
-
-    private String requestId(HttpServletRequest request) {
-        if (request == null) {
-            return "";
-        }
-        String value = request.getHeader(REQUEST_ID_HEADER);
-        return value == null || value.isBlank() ? "" : limit(value.trim(), 128);
     }
 
     private String limit(String value, int max) {
