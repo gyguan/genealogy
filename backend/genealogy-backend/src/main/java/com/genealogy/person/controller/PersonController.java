@@ -6,18 +6,15 @@ import com.genealogy.common.api.PageQuery;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.person.application.PersonApplicationService;
+import com.genealogy.person.application.PersonDuplicateDetectionService;
 import com.genealogy.person.application.PersonRevisionApplicationService;
 import com.genealogy.person.dto.PersonCreateRequest;
 import com.genealogy.person.dto.PersonResponse;
 import com.genealogy.person.dto.PersonRevisionUpdateRequest;
 import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.dto.PersonUpdateRequest;
-import com.genealogy.person.entity.PersonEntity;
-import com.genealogy.person.repository.PersonRepository;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Validated
@@ -42,19 +38,19 @@ public class PersonController {
 
     private final PersonApplicationService personApplicationService;
     private final PersonRevisionApplicationService personRevisionApplicationService;
+    private final PersonDuplicateDetectionService duplicateDetectionService;
     private final AuthorizationApplicationService authorizationApplicationService;
-    private final PersonRepository personRepository;
 
     public PersonController(
             PersonApplicationService personApplicationService,
             PersonRevisionApplicationService personRevisionApplicationService,
-            AuthorizationApplicationService authorizationApplicationService,
-            PersonRepository personRepository
+            PersonDuplicateDetectionService duplicateDetectionService,
+            AuthorizationApplicationService authorizationApplicationService
     ) {
         this.personApplicationService = personApplicationService;
         this.personRevisionApplicationService = personRevisionApplicationService;
+        this.duplicateDetectionService = duplicateDetectionService;
         this.authorizationApplicationService = authorizationApplicationService;
-        this.personRepository = personRepository;
     }
 
     @PostMapping("/clans/{clanId}/persons")
@@ -65,7 +61,7 @@ public class PersonController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         authorizationApplicationService.requireBranchPermission(clanId, actorId, request.branchId(), PERSON_CREATE);
-        if (!Boolean.TRUE.equals(request.confirmDuplicate()) && duplicateCount(clanId, request) > 0) {
+        if (!Boolean.TRUE.equals(request.confirmDuplicate()) && duplicateDetectionService.exists(clanId, request)) {
             throw new BusinessException("PERSON_DUPLICATE_CONFIRM_REQUIRED", "发现疑似重复人物，请确认后再创建");
         }
         return ApiResponse.success(personRevisionApplicationService.create(clanId, request, actorId));
@@ -90,21 +86,10 @@ public class PersonController {
                 ? List.of("official")
                 : dataStatuses;
         PersonSearchQuery query = new PersonSearchQuery(
-                clanId,
-                branchId,
-                keyword,
-                name,
-                genders,
-                generationNos,
-                generationWords,
-                effectiveStatuses,
-                sort
+                clanId, branchId, keyword, name, genders, generationNos, generationWords, effectiveStatuses, sort
         );
         return ApiResponse.success(personApplicationService.search(
-                query,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                actorId
+                query, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), actorId
         ));
     }
 
@@ -125,10 +110,7 @@ public class PersonController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(personApplicationService.listByClan(
-                clanId,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                actorId
+                clanId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), actorId
         ));
     }
 
@@ -141,11 +123,7 @@ public class PersonController {
     ) {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         return ApiResponse.success(personApplicationService.listByClanAndBranch(
-                clanId,
-                branchId,
-                pageQuery.normalizedPageNo(),
-                pageQuery.normalizedPageSize(),
-                actorId
+                clanId, branchId, pageQuery.normalizedPageNo(), pageQuery.normalizedPageSize(), actorId
         ));
     }
 
@@ -177,20 +155,5 @@ public class PersonController {
         Long actorId = authorizationApplicationService.requireLogin(authorization);
         personRevisionApplicationService.delete(id, actorId);
         return ApiResponse.success();
-    }
-
-    private long duplicateCount(Long clanId, PersonCreateRequest request) {
-        Specification<PersonEntity> spec = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), request.name().trim().toLowerCase()));
-            if (request.branchId() != null) predicates.add(criteriaBuilder.equal(root.get("branchId"), request.branchId()));
-            if (request.generationNo() != null) predicates.add(criteriaBuilder.equal(root.get("generationNo"), request.generationNo()));
-            if (request.generationWord() != null && !request.generationWord().isBlank()) predicates.add(criteriaBuilder.equal(root.get("generationWord"), request.generationWord().trim()));
-            if (request.birthDate() != null) predicates.add(criteriaBuilder.equal(root.get("birthDate"), request.birthDate()));
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
-        return personRepository.count(spec);
     }
 }
