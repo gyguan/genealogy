@@ -1,7 +1,6 @@
 package com.genealogy.config;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.SpringApplication;
 import org.springframework.mock.env.MockEnvironment;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -17,7 +16,7 @@ class ProductionEnvironmentValidatorTest {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("local");
 
-        assertDoesNotThrow(() -> validator.postProcessEnvironment(environment, new SpringApplication()));
+        assertDoesNotThrow(() -> validator.validate(environment));
     }
 
     @Test
@@ -28,7 +27,7 @@ class ProductionEnvironmentValidatorTest {
 
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,
-                () -> validator.postProcessEnvironment(environment, new SpringApplication())
+                () -> validator.validate(environment)
         );
 
         assertTrue(error.getMessage().contains("DB_USERNAME"));
@@ -43,6 +42,6 @@ class ProductionEnvironmentValidatorTest {
         environment.setProperty("DB_USERNAME", "genealogy_app");
         environment.setProperty("DB_PASSWORD", "from-secret-store");
 
-        assertDoesNotThrow(() -> validator.postProcessEnvironment(environment, new SpringApplication()));
+        assertDoesNotThrow(() -> validator.validate(environment));
     }
 }
