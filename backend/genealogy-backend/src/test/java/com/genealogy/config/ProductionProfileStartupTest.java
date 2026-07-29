@@ -20,7 +20,7 @@ class ProductionProfileStartupTest {
             System.setProperty("DB_USERNAME", "");
             System.setProperty("DB_PASSWORD", "");
 
-            SpringApplication application = new SpringApplication(GenealogyApplication.class);
+            SpringApplication application = GenealogyApplication.createApplication();
             application.setWebApplicationType(WebApplicationType.NONE);
             application.setAdditionalProfiles("prod");
 
