@@ -21,6 +21,7 @@ import java.util.Set;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final String EMPTY = "";
 
     private static final Set<String> UNAUTHORIZED_CODES = Set.of(
             "AUTH_UNAUTHORIZED",
@@ -45,18 +46,31 @@ public class GlobalExceptionHandler {
             "LAST_CLAN_ADMIN_REQUIRED",
             "USER_ALREADY_JOINED_ANOTHER_CLAN"
     );
+    private static final Set<String> SECURITY_WARNING_CODES = Set.of(
+            "AUTH_LOGIN_FAILED",
+            "AUTH_LOGIN_THROTTLED",
+            "AUTH_CSRF_INVALID",
+            "AUTH_FORBIDDEN",
+            "MEMBER_GRANT_FORBIDDEN",
+            "CROSS_CLAN_ADMIN_ASSIGN_FORBIDDEN",
+            "SOURCE_ATTACHMENT_PREVIEW_FORBIDDEN"
+    );
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
         HttpServletRequest request = currentRequest();
         HttpStatus status = statusFor(exception.getCode());
-        log.warn(
-                "api_business_exception code={} status={} path={} requestId={}",
-                exception.getCode(),
-                status.value(),
-                path(request),
-                RequestLogContext.currentRequestId(request)
-        );
+        String template = "event=api_business_exception requestId={} traceId={} actorId={} clanId={} "
+                + "targetType={} targetId={} result=rejected errorCode={} status={} path={} costMs=0";
+        if (SECURITY_WARNING_CODES.contains(exception.getCode())) {
+            log.warn(template,
+                    RequestLogContext.currentRequestId(request), EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                    exception.getCode(), status.value(), path(request));
+        } else {
+            log.info(template,
+                    RequestLogContext.currentRequestId(request), EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                    exception.getCode(), status.value(), path(request));
+        }
         return ResponseEntity.status(status)
                 .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
     }
@@ -69,11 +83,11 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .orElse(ErrorCode.COMMON_BAD_REQUEST.message());
         HttpServletRequest request = currentRequest();
-        log.warn(
-                "api_validation_exception path={} requestId={} message={}",
-                path(request),
-                RequestLogContext.currentRequestId(request),
-                limit(message, 300)
+        log.info(
+                "event=api_validation_exception requestId={} traceId={} actorId={} clanId={} targetType={} "
+                        + "targetId={} result=rejected errorCode={} status=400 path={} costMs=0 message={}",
+                RequestLogContext.currentRequestId(request), EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                ErrorCode.COMMON_BAD_REQUEST.code(), path(request), limit(message, 300)
         );
         return ApiResponse.fail(ErrorCode.COMMON_BAD_REQUEST.code(), message);
     }
@@ -82,11 +96,11 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleConstraintViolationException(ConstraintViolationException exception) {
         HttpServletRequest request = currentRequest();
-        log.warn(
-                "api_constraint_violation path={} requestId={} message={}",
-                path(request),
-                RequestLogContext.currentRequestId(request),
-                limit(exception.getMessage(), 300)
+        log.info(
+                "event=api_constraint_violation requestId={} traceId={} actorId={} clanId={} targetType={} "
+                        + "targetId={} result=rejected errorCode={} status=400 path={} costMs=0 message={}",
+                RequestLogContext.currentRequestId(request), EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                ErrorCode.COMMON_BAD_REQUEST.code(), path(request), limit(exception.getMessage(), 300)
         );
         return ApiResponse.fail(ErrorCode.COMMON_BAD_REQUEST.code(), exception.getMessage());
     }
@@ -96,11 +110,10 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleException(Exception exception) {
         HttpServletRequest request = currentRequest();
         log.error(
-                "api_unexpected_exception path={} requestId={} exceptionType={}",
-                path(request),
-                RequestLogContext.currentRequestId(request),
-                exception.getClass().getName(),
-                exception
+                "event=api_unexpected_exception requestId={} traceId={} actorId={} clanId={} targetType={} "
+                        + "targetId={} result=failed errorCode={} status=500 path={} costMs=0 exceptionType={}",
+                RequestLogContext.currentRequestId(request), EMPTY, EMPTY, EMPTY, EMPTY, EMPTY,
+                ErrorCode.COMMON_SYSTEM_ERROR.code(), path(request), exception.getClass().getName(), exception
         );
         return ApiResponse.fail(ErrorCode.COMMON_SYSTEM_ERROR.code(), ErrorCode.COMMON_SYSTEM_ERROR.message());
     }
@@ -123,7 +136,7 @@ public class GlobalExceptionHandler {
 
     private String path(HttpServletRequest request) {
         if (request == null || request.getRequestURI() == null || request.getRequestURI().isBlank()) {
-            return "";
+            return EMPTY;
         }
         return limit(request.getRequestURI(), 300);
     }
