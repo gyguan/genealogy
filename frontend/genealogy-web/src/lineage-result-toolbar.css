@@ -4,10 +4,6 @@
   display: contents;
 }
 
-.lineage-double-card-result > .ant-card-head {
-  padding-right: 16px;
-}
-
 .lineage-result-toolbar--double-card,
 .lineage-result-toolbar--double-card.is-person {
   display: flex;
@@ -34,18 +30,13 @@
   flex-wrap: nowrap;
 }
 
-.lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .ant-space {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
 .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field,
 .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
   align-self: center;
   flex: 0 1 360px;
   width: min(360px, 100%);
   min-width: 280px;
-  margin: 0 0 0 auto !important;
+  margin-left: auto;
 }
 
 .lineage-result-pane:has(> .lineage-result-toolbar--double-card.is-person)
@@ -53,68 +44,22 @@
   display: none;
 }
 
-.lineage-graph-toolbar-field .ant-form-item-row {
-  display: flex !important;
-  flex-flow: row nowrap !important;
-  align-items: center !important;
+.lineage-graph-toolbar-field {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
   width: 100%;
   min-height: 32px;
 }
 
-.lineage-graph-toolbar-field .ant-form-item-label {
-  flex: 0 0 auto !important;
-  width: auto !important;
-  max-width: none !important;
-  padding: 0 8px 0 0 !important;
-  overflow: visible;
-  text-align: right;
-  white-space: nowrap;
+.lineage-graph-toolbar-field--locator::before {
+  flex: 0 0 auto;
+  margin-inline-end: 8px;
+  content: '圈内定位：';
 }
 
-.lineage-graph-toolbar-field .ant-form-item-label > label {
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  line-height: 32px;
-  white-space: nowrap;
-}
-
-.lineage-graph-toolbar-field .ant-form-item-label > label::after {
-  margin-inline-start: 2px;
-  font-size: 14px;
-  content: '：';
-}
-
-.lineage-graph-toolbar-field--locator .ant-form-item-label > label {
-  font-size: 0;
-}
-
-.lineage-graph-toolbar-field--locator .ant-form-item-label > label::before {
-  font-size: 14px;
-  content: '圈内定位';
-}
-
-.lineage-graph-toolbar-field .ant-form-item-control {
-  flex: 0 1 280px !important;
-  width: 280px;
-  max-width: 280px;
-  min-width: 180px;
-}
-
-.lineage-graph-toolbar-field .ant-form-item-control-input,
-.lineage-graph-toolbar-field .ant-form-item-control-input-content {
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-.lineage-graph-toolbar-field .ant-select {
-  width: 100%;
-}
-
-.lineage-graph-toolbar-field .ant-form-item-extra,
 .lineage-graph-help {
-  display: none !important;
+  display: none;
 }
 
 @media (max-width: 900px) {
@@ -123,12 +68,6 @@
     flex-basis: 330px;
     width: min(330px, 100%);
     min-width: 250px;
-  }
-
-  .lineage-graph-toolbar-field .ant-form-item-control {
-    flex-basis: 250px !important;
-    width: 250px;
-    max-width: 250px;
   }
 }
 
@@ -139,28 +78,12 @@
     flex-wrap: nowrap;
   }
 
-  .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .ant-space {
-    width: 100%;
-  }
-
   .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field,
   .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
     flex: 1 1 auto;
     width: 100%;
     min-width: 0;
-    margin-left: 0 !important;
-  }
-
-  .lineage-graph-toolbar-field .ant-form-item-row {
-    display: flex !important;
-    flex-flow: row nowrap !important;
-  }
-
-  .lineage-graph-toolbar-field .ant-form-item-control {
-    flex: 1 1 auto !important;
-    width: auto;
-    max-width: none;
-    min-width: 0;
+    margin-left: 0;
   }
 }
