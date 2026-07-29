@@ -78,17 +78,19 @@ public class ImportJobExecutionCoordinatorService {
         int retryCount = value(job.getExecutionRetryCount()) + 1;
         int maxRetries = Math.max(1, value(job.getExecutionMaxRetries(), properties.getMaxRetries()));
         LocalDateTime now = LocalDateTime.now();
-        String message = safeMessage(exception);
         job.setExecutionRetryCount(retryCount);
         job.setFailureStage(job.getExecutionStage());
         job.setLastErrorCode(errorCode(exception));
-        job.setErrorSummary(message);
+        job.setErrorSummary(safeMessage(exception));
         job.setLeaseOwner(null);
         job.setLeaseExpiresAt(null);
         job.setHeartbeatAt(now);
         job.setUpdatedAt(now);
         if (retryCount >= maxRetries) {
-            job.setExecutionStatus(ImportJobEntity.EXECUTION_DEAD_LETTER);
+            boolean partial = value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
+            job.setExecutionStatus(partial
+                    ? ImportJobEntity.EXECUTION_PARTIAL_FAILED
+                    : ImportJobEntity.EXECUTION_DEAD_LETTER);
             job.setExecutionStage(ImportJobEntity.STAGE_FAILED);
             job.setManualInterventionRequired(true);
             job.setCompletedAt(now);
@@ -112,20 +114,13 @@ public class ImportJobExecutionCoordinatorService {
     }
 
     private void cancelAtSafePoint(ImportJobEntity job, LocalDateTime now) {
-        if (hasSideEffects(job)) {
-            job.setRequestedAction(null);
-            job.setExecutionStatus(ImportJobEntity.EXECUTION_PAUSED);
-            job.setErrorSummary("任务在取消请求生效前已生成草稿或开始发布，已自动转为暂停以保护数据完整性");
-            job.setLeaseOwner(null);
-            job.setLeaseExpiresAt(null);
-            job.setHeartbeatAt(now);
-            job.setUpdatedAt(now);
-            jobRepository.save(job);
-            return;
-        }
+        boolean partial = value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
         job.setRequestedAction(null);
-        job.setExecutionStatus(ImportJobEntity.EXECUTION_CANCELLED);
+        job.setExecutionStatus(partial
+                ? ImportJobEntity.EXECUTION_PARTIAL_CANCELLED
+                : ImportJobEntity.EXECUTION_CANCELLED);
         job.setExecutionStage(ImportJobEntity.STAGE_CANCELLED);
+        job.setStatus(partial ? "partial_cancelled" : "cancelled");
         job.setLeaseOwner(null);
         job.setLeaseExpiresAt(null);
         job.setCompletedAt(now);
@@ -135,14 +130,8 @@ public class ImportJobExecutionCoordinatorService {
         deletePayloadIfPresent(job.getId());
     }
 
-    private boolean hasSideEffects(ImportJobEntity job) {
-        return value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
-    }
-
     private void deletePayloadIfPresent(Long jobId) {
-        if (payloadRepository.existsById(jobId)) {
-            payloadRepository.deleteById(jobId);
-        }
+        if (payloadRepository.existsById(jobId)) payloadRepository.deleteById(jobId);
     }
 
     private String errorCode(RuntimeException exception) {
