@@ -1,3 +1,4 @@
+# Triggered after workflow registration.
 name: Issue 945 Final Fix
 on:
   push:
@@ -62,8 +63,7 @@ jobs:
           source = governance.read_text().replace('assert.match(source, /<Layout\\.Sider className="commercial-auth-brand"/);', 'assert.match(source, /<Layout\\.Content className="commercial-auth-brand"/);')
           governance.write_text(source)
 
-          workflow = Path('.github/workflows/issue-945-final-fix.yml')
-          workflow.unlink()
+          Path('.github/workflows/issue-945-final-fix.yml').unlink()
           PY
       - name: Commit fixes
         run: |
