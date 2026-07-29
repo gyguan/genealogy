@@ -5,7 +5,7 @@
 ```bash
 cd backend/genealogy-backend
 mvn verify
-mvn -Pdependency-vulnerability-scan -DskipTests verify
+mvn -Pdependency-vulnerability-scan -DskipTests -Dspotbugs.skip=true -Djacoco.skip=true verify
 ```
 
 `mvn verify` 会依次执行构建环境校验、单元测试、ArchUnit、JaCoCo 覆盖率门禁和 SpotBugs 高优先级缺陷检查。集成测试仍由现有 PostgreSQL 流水线执行。
@@ -19,7 +19,7 @@ mvn -Pdependency-vulnerability-scan -DskipTests verify
 - Application 不得依赖 Controller。
 - Domain 不得依赖 Controller 或 Repository。
 
-规则失败时，ArchUnit 会在 Surefire 报告中列出具体非法依赖。
+现有精确例外只允许按全限定类名登记，不允许整包排除。规则失败时，ArchUnit 会在 Surefire 报告中列出具体非法依赖。
 
 ## 覆盖率
 
@@ -38,7 +38,9 @@ Maven Enforcer 要求：
 - POM 不得声明重复依赖版本。
 - 依赖解析必须满足上界收敛要求。
 
-OWASP Dependency-Check 在 CI 独立 Job 中执行，CVSS 9.0 及以上问题阻断合入。例外登记在 `config/dependency-check-suppressions.xml`，每条例外必须包含 CVE、到期时间和跟踪 Issue。
+PR 使用 GitHub Dependency Review 对新增和升级依赖执行增量扫描，`critical` 严重度问题直接阻断。例外登记在 `.github/dependency-review-config.yml` 的 `allow-ghsas` 中，每条例外必须关联跟踪 Issue，并定期复核。
+
+OWASP Dependency-Check 保留为本地或专项深度扫描 Profile，CVSS 9.0 及以上问题阻断；例外登记在 `config/dependency-check-suppressions.xml`，每条例外必须包含 CVE、到期时间和跟踪 Issue。该深度扫描不放入每次 PR 的快速反馈链路，避免重复下载完整漏洞数据库。
 
 ## 图谱查询指标
 
@@ -63,7 +65,6 @@ Backend CI 无论成功或失败都会上传：
 
 - Surefire 测试报告；
 - JaCoCo HTML 报告；
-- SpotBugs XML/HTML 报告；
-- Dependency-Check HTML/JSON 报告。
+- SpotBugs XML/HTML 报告。
 
-质量报告保留 7 天，漏洞报告保留 14 天。
+依赖增量扫描结果直接写入 PR 检查与摘要。本地 OWASP 深度扫描会在 `target` 目录生成 HTML/JSON 报告。质量报告保留 7 天。
