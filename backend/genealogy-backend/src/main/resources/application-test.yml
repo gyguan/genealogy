@@ -1,0 +1,20 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: ${TEST_DB_URL:${DB_URL}}
+    username: ${TEST_DB_USERNAME:${DB_USERNAME}}
+    password: ${TEST_DB_PASSWORD:${DB_PASSWORD}}
+  flyway:
+    enabled: true
+
+genealogy:
+  auth:
+    cookie-secure: false
+    expose-bearer-token: true
+    expose-reset-token: true
+
+logging:
+  level:
+    com.genealogy: INFO
