@@ -7,6 +7,7 @@ import com.genealogy.imports.entity.ImportJobErrorEntity;
 import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,11 @@ public class ImportJobLifecycleService {
         this.errorRepository = errorRepository;
     }
 
-    @Transactional
+    /**
+     * The job is the parent of every batch row. Persist and flush it in an independent
+     * transaction so subsequent REQUIRES_NEW batch transactions can always resolve the FK.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ImportJobEntity start(
             Long clanId,
             Long branchId,
@@ -55,10 +60,10 @@ public class ImportJobLifecycleService {
         job.setCreatedBy(actorId);
         job.setCreatedAt(now);
         job.setUpdatedAt(now);
-        return jobRepository.save(job);
+        return jobRepository.saveAndFlush(job);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ImportJobResponse complete(Long jobId, ImportBatchSummary summary) {
         ImportJobEntity job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new IllegalStateException("import job not found: " + jobId));
