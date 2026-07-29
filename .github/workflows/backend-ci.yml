@@ -69,7 +69,7 @@ jobs:
 
       - name: Scan dependencies and block critical findings
         working-directory: backend/genealogy-backend
-        run: mvn -B -Pdependency-vulnerability-scan -DskipTests verify
+        run: mvn -B -Pdependency-vulnerability-scan -DskipTests -Dspotbugs.skip=true -Djacoco.skip=true verify
 
       - name: Upload vulnerability reports
         if: always()
