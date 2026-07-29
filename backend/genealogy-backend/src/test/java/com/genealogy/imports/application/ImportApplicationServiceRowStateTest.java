@@ -4,26 +4,33 @@ import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.imports.dto.ImportJobResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobRowEntity;
+import com.genealogy.imports.observability.ImportMetrics;
 import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.person.application.PersonDuplicateDetectionService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,30 +54,46 @@ class ImportApplicationServiceRowStateTest {
     private AuthorizationApplicationService authorizationApplicationService;
 
     private ImportApplicationService service;
+    private ImportJobEntity lastSavedJob;
 
     @BeforeEach
     void setUp() {
-        service = new ImportApplicationService(
-                importJobRepository,
-                importJobErrorRepository,
-                importJobRowRepository,
+        PersonImportParser parser = new PersonImportParser();
+        PersonDuplicateDetectionService duplicateDetectionService = new PersonDuplicateDetectionService(personRepository);
+        PersonImportBatchProcessor batchProcessor = new PersonImportBatchProcessor(
+                parser,
                 personRepository,
+                importJobRowRepository,
+                importJobErrorRepository
+        );
+        ImportJobLifecycleService lifecycleService = new ImportJobLifecycleService(
+                importJobRepository,
+                importJobErrorRepository
+        );
+        service = new ImportApplicationService(
                 authorizationApplicationService,
-                new PersonImportFilePolicyService()
+                new PersonImportFilePolicyService(),
+                parser,
+                duplicateDetectionService,
+                batchProcessor,
+                lifecycleService,
+                new ImportMetrics(new SimpleMeterRegistry()),
+                200
         );
         when(importJobRepository.save(any(ImportJobEntity.class))).thenAnswer(invocation -> {
             ImportJobEntity entity = invocation.getArgument(0);
-            if (entity.getId() == null) {
-                entity.setId(101L);
-            }
+            if (entity.getId() == null) entity.setId(101L);
+            lastSavedJob = entity;
             return entity;
         });
-        lenient().when(personRepository.count(any(Specification.class))).thenReturn(0L);
+        lenient().when(importJobRepository.findById(anyLong()))
+                .thenAnswer(invocation -> Optional.ofNullable(lastSavedJob));
+        lenient().when(importJobErrorRepository.findByJobIdOrderByRowNoAsc(anyLong())).thenReturn(List.of());
+        lenient().when(personRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(Page.empty());
         lenient().when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity entity = invocation.getArgument(0);
-            if (entity.getId() == null) {
-                entity.setId(1001L);
-            }
+            if (entity.getId() == null) entity.setId(1001L);
             return entity;
         });
     }
@@ -82,13 +105,7 @@ class ImportApplicationServiceRowStateTest {
                 张三,男,5,德,1980-01-01,是
                 """);
 
-        ImportJobResponse result = service.importPersonsCsv(
-                1L,
-                5L,
-                file,
-                false,
-                9L
-        );
+        ImportJobResponse result = service.importPersonsCsv(1L, 5L, file, false, 9L);
 
         assertThat(result.status()).isEqualTo("completed");
         assertThat(result.importType()).isEqualTo("person");
@@ -130,23 +147,13 @@ class ImportApplicationServiceRowStateTest {
                 李四,男,六,明,1982-01-01,是
                 """);
 
-        ImportJobResponse result = service.importPersonsCsv(
-                1L,
-                5L,
-                file,
-                false,
-                9L
-        );
+        ImportJobResponse result = service.importPersonsCsv(1L, 5L, file, false, 9L);
 
         assertThat(result.status()).isEqualTo("partial_completed");
         assertThat(result.successCount()).isEqualTo(1);
         assertThat(result.failureCount()).isEqualTo(1);
-
-        ArgumentCaptor<ImportJobEntity> jobCaptor = ArgumentCaptor.forClass(ImportJobEntity.class);
-        verify(importJobRepository, org.mockito.Mockito.atLeast(2)).save(jobCaptor.capture());
-        ImportJobEntity savedJob = jobCaptor.getAllValues().get(jobCaptor.getAllValues().size() - 1);
-        assertThat(savedJob.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
-        assertThat(savedJob.getErrorSummary()).contains("修正后再提交审核");
+        assertThat(lastSavedJob.getProcessingStatus()).isEqualTo(ImportJobEntity.PROCESSING_CORRECTION_REQUIRED);
+        assertThat(lastSavedJob.getErrorSummary()).contains("修正后再提交审核");
 
         List<ImportJobRowEntity> rows = capturedRows();
         assertThat(rows).hasSize(2);
@@ -168,13 +175,7 @@ class ImportApplicationServiceRowStateTest {
                 王五,男,0,承,1985-01-01,否
                 """);
 
-        ImportJobResponse result = service.importPersonsCsv(
-                1L,
-                5L,
-                file,
-                false,
-                9L
-        );
+        ImportJobResponse result = service.importPersonsCsv(1L, 5L, file, false, 9L);
 
         assertThat(result.status()).isEqualTo("failed");
         assertThat(result.successCount()).isZero();
