@@ -10,6 +10,7 @@ const boundaryFiles = {
   auth: ['auth-commercial.css'],
   culture: ['features/culture/culture.css'],
   tree: [
+    'lineage-result-toolbar.css',
     'features/tree/lineage-workbench-issue376.css',
     'features/tree/lineage-double-card.css',
     'features/tree/lineage-tabbed-page.css'
