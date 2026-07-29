@@ -5,10 +5,7 @@
   min-width: 0;
 }
 
-.lineage-tabbed-query-card,
-.lineage-tabbed-result-card,
-.lineage-tabbed-result-card .lineage-result-pane,
-.lineage-tabbed-result-card .lineage-logic-card {
+.lineage-tabbed-query-card, .lineage-tabbed-result-card, .lineage-tabbed-result-card .lineage-result-pane, .lineage-tabbed-result-card .lineage-logic-card {
   width: 100%;
   min-width: 0;
 }

@@ -23,8 +23,7 @@
 }
 
 .business-page--treeProduct .lineage-page:has(.lineage-query-toolbar--branch)
-  .lineage-search-grid--workbench > :nth-child(3),
-.business-page--treeProduct .lineage-page:has(.lineage-query-toolbar--branch)
+  .lineage-search-grid--workbench > :nth-child(3), .business-page--treeProduct .lineage-page:has(.lineage-query-toolbar--branch)
   .lineage-search-results {
   display: none;
 }

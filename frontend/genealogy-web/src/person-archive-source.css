@@ -1,8 +1,8 @@
-/* Person detail source evidence table. */
+/* Person detail source evidence .ant-table. */
 .person-archive-source-table-wrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 10px;
   background: #fff;
 }
@@ -15,13 +15,12 @@
   font-size: 14px;
 }
 
-.person-archive-source-table th,
-.person-archive-source-table td {
+.person-archive-source-table th, .person-archive-source-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
   text-align: left;
   vertical-align: top;
-  color: rgba(0, 0, 0, .88);
+  color: var(--genealogy-color-text);
   line-height: 1.55;
   white-space: normal;
   word-break: break-word;
@@ -33,37 +32,33 @@
 
 .person-archive-source-table th {
   background: #fafafa;
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.person-archive-source-table th:nth-child(1),
-.person-archive-source-table td:nth-child(1) {
+.person-archive-source-table th:nth-child(1), .person-archive-source-table td:nth-child(1) {
   width: 34%;
 }
 
-.person-archive-source-table th:nth-child(2),
-.person-archive-source-table td:nth-child(2) {
+.person-archive-source-table th:nth-child(2), .person-archive-source-table td:nth-child(2) {
   width: 16%;
 }
 
-.person-archive-source-table th:nth-child(3),
-.person-archive-source-table td:nth-child(3) {
+.person-archive-source-table th:nth-child(3), .person-archive-source-table td:nth-child(3) {
   width: 18%;
 }
 
-.person-archive-source-table th:nth-child(4),
-.person-archive-source-table td:nth-child(4) {
+.person-archive-source-table th:nth-child(4), .person-archive-source-table td:nth-child(4) {
   width: 32%;
 }
 
 .person-archive-source-empty {
   padding: 18px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed var(--genealogy-color-border);
   border-radius: 10px;
-  color: rgba(0, 0, 0, .45);
+  color: var(--genealogy-color-text-tertiary);
   text-align: center;
   background: #fafafa;
 }

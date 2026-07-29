@@ -35,7 +35,7 @@
   padding-block: 0;
 }
 
-.lineage-search-grid--workbench .ant-input-search input.ant-input {
+.lineage-search-grid--workbench .ant-input-search .ant-input.ant-input {
   min-height: 34px;
   padding-block: 0;
   line-height: 34px;
@@ -57,7 +57,9 @@
   padding-inline: 14px;
 }
 
-.lineage-search-grid--workbench :is(.ant-input-affix-wrapper, .ant-select-selector, .ant-btn):focus-visible {
+.lineage-search-grid--workbench .ant-input-affix-wrapper:focus-visible,
+.lineage-search-grid--workbench .ant-select-selector:focus-visible,
+.lineage-search-grid--workbench .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }

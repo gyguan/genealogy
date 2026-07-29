@@ -55,12 +55,8 @@
   margin-bottom: 4px;
 }
 
-[data-wizard-field-error="true"] input,
-[data-wizard-field-error="true"] textarea,
-[data-wizard-field-error="true"] select,
-[data-wizard-field-error="true"] .ant-select-selector,
-[data-wizard-field-error="true"] .ant-picker {
-  border-color: #ff4d4f !important;
+[data-wizard-field-error="true"] .ant-input, [data-wizard-field-error="true"] .ant-input, [data-wizard-field-error="true"] .ant-select, [data-wizard-field-error="true"] .ant-select-selector, [data-wizard-field-error="true"] .ant-picker {
+  border-color: #ff4d4f;
   box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.1);
 }
 

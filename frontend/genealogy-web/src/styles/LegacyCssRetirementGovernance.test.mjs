@@ -45,7 +45,7 @@ test('retired native component systems do not return to active JSX', () => {
     'proto-tree-canvas',
     'modal-mask',
     'modal-panel',
-    'toast-stack',
+    'feedback-stack',
     'toast__close',
     'data-table'
   ];

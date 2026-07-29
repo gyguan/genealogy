@@ -1,49 +1,38 @@
 /* MVP 建谱向导：维护字辈步骤增强。 */
-.wizard-generation-section,
-.wizard-generation-section h4,
-.wizard-generation-section label,
-.wizard-generation-section .ant-form-item-label > label,
-.wizard-generation-section--items,
-.wizard-generation-section--items h4,
-.wizard-generation-section--items label,
-.wizard-generation-section--items .ant-form-item-label > label {
-  color: #111 !important;
+.wizard-generation-section, .wizard-generation-section h4, .wizard-generation-section label, .wizard-generation-section .ant-form-item-label > label, .wizard-generation-section--items, .wizard-generation-section--items h4, .wizard-generation-section--items label, .wizard-generation-section--items .ant-form-item-label > label {
+  color: #111;
 }
 
-.wizard-generation-section--scheme-enhanced,
-.wizard-generation-section--items-enhanced {
+.wizard-generation-section--scheme-enhanced, .wizard-generation-section--items-enhanced {
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
-  background: transparent !important;
+  background: transparent;
 }
 
-.wizard-generation-section--scheme-enhanced h4,
-.wizard-generation-section--items-enhanced h4 {
+.wizard-generation-section--scheme-enhanced h4, .wizard-generation-section--items-enhanced h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
 
-.wizard-generation-section--scheme-enhanced .wizard-form-grid,
-.wizard-generation-section--items-enhanced .wizard-form-grid {
+.wizard-generation-section--scheme-enhanced .wizard-form-grid, .wizard-generation-section--items-enhanced .wizard-form-grid {
   margin: 0;
   padding: 14px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
-  background: #fff !important;
+  background: #fff;
   box-shadow: none;
 }
 
-.wizard-generation-section--scheme-enhanced .actions,
-.wizard-generation-section--items-enhanced .actions {
+.wizard-generation-section--scheme-enhanced .actions, .wizard-generation-section--items-enhanced .actions {
   justify-content: flex-end;
   width: 100%;
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
-  background: #fafafa !important;
+  background: #fafafa;
   box-shadow: none;
 }
 
@@ -51,8 +40,7 @@
   order: -1;
 }
 
-.wizard-relationship-list-enhanced,
-.wizard-person-list-enhanced {
+.wizard-relationship-list-enhanced, .wizard-person-list-enhanced {
   margin-top: 18px;
   padding: 16px;
   border: 1px solid rgba(120, 90, 48, 0.14);
@@ -64,17 +52,15 @@
 .wizard-generation-items-list-enhanced {
   margin-top: 16px;
   padding: 0;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
-  background: #fff !important;
+  background: #fff;
   color: #111;
   overflow: hidden;
   box-shadow: none;
 }
 
-.wizard-generation-list-header,
-.wizard-relationship-list-header,
-.wizard-person-list-header {
+.wizard-generation-list-header, .wizard-relationship-list-header, .wizard-person-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -86,66 +72,49 @@
 .wizard-generation-list-header {
   margin: 0;
   padding: 12px 14px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa !important;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
+  background: #fafafa;
 }
 
-.wizard-generation-list-header h4,
-.wizard-relationship-list-header h4,
-.wizard-person-list-header h4 {
+.wizard-generation-list-header h4, .wizard-relationship-list-header h4, .wizard-person-list-header h4 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
-  color: #111 !important;
+  color: #111;
 }
 
-.wizard-generation-list-header span,
-.wizard-relationship-list-header span,
-.wizard-person-list-header span {
+.wizard-generation-list-header span, .wizard-relationship-list-header span, .wizard-person-list-header span {
   color: #333;
   font-size: 13px;
 }
 
-.wizard-generation-list-table-wrap,
-.wizard-relationship-list-table-wrap,
-.wizard-person-list-table-wrap {
+.wizard-generation-list-table-wrap, .wizard-relationship-list-table-wrap, .wizard-person-list-table-wrap {
   overflow-x: auto;
-  background: #fff !important;
+  background: #fff;
 }
 
-.wizard-generation-list-table,
-.wizard-relationship-list-table,
-.wizard-person-list-table {
+.wizard-generation-list-table, .wizard-relationship-list-table, .wizard-person-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
   color: #111;
-  background: #fff !important;
+  background: #fff;
 }
 
-.wizard-generation-list-table th,
-.wizard-generation-list-table td,
-.wizard-relationship-list-table th,
-.wizard-relationship-list-table td,
-.wizard-person-list-table th,
-.wizard-person-list-table td {
+.wizard-generation-list-table th, .wizard-generation-list-table td, .wizard-relationship-list-table th, .wizard-relationship-list-table td, .wizard-person-list-table th, .wizard-person-list-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
   text-align: left;
   color: #111;
 }
 
-.wizard-generation-list-table th,
-.wizard-relationship-list-table th,
-.wizard-person-list-table th {
+.wizard-generation-list-table th, .wizard-relationship-list-table th, .wizard-person-list-table th {
   color: rgba(0, 0, 0, 0.65);
   font-weight: 600;
-  background: #fafafa !important;
+  background: #fafafa;
 }
 
-.wizard-generation-list-table td.empty,
-.wizard-relationship-list-table td.empty,
-.wizard-person-list-table td.empty {
+.wizard-generation-list-table td.empty, .wizard-relationship-list-table td.empty, .wizard-person-list-table td.empty {
   color: #333;
   text-align: center;
 }
@@ -177,13 +146,12 @@
   gap: 0 12px;
   margin: 0;
   padding: 14px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
   background: #fff;
 }
 
-.wizard-source-section-grid .field,
-.wizard-source-section-grid .ant-form-item {
+.wizard-source-section-grid .field, .wizard-source-section-grid .ant-form-item {
   margin-bottom: 4px;
 }
 
@@ -194,7 +162,7 @@
   width: 100%;
   margin: 0;
   padding: 12px 14px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
   background: #fafafa;
 }
@@ -218,25 +186,21 @@
 
 /* MVP 建谱向导：录入人物教育程度下拉增强。 */
 .wizard-person-education-origin-input {
-  display: none !important;
+  display: none;
 }
 
 .wizard-person-education-select {
   width: 100%;
   height: 32px;
   min-height: 32px;
-  border: 1px solid #d9d9d9;
+  border: 1px solid var(--genealogy-color-border);
   border-radius: 6px;
   padding: 4px 11px;
   color: rgba(0, 0, 0, 0.88);
 }
 
 /* MVP 建谱向导：步骤内操作按钮统一右对齐。 */
-.mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > button),
-.mvp1-wizard-page .wizard-step-content .actions,
-.mvp1-wizard-page .wizard-step-content .antd-actions,
-.mvp1-wizard-page .wizard-step-content .source-stage-actions,
-.mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
+.mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > .ant-btn), .mvp1-wizard-page .wizard-step-content .actions, .mvp1-wizard-page .wizard-step-content .antd-actions, .mvp1-wizard-page .wizard-step-content .source-stage-actions, .mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
   justify-content: flex-end;
   width: 100%;
 }
@@ -245,19 +209,12 @@
   display: flex;
 }
 
-.mvp1-wizard-page .wizard-step-content .actions .ant-space-item,
-.mvp1-wizard-page .wizard-step-content .antd-actions .ant-space-item,
-.mvp1-wizard-page .wizard-step-content .source-stage-actions .ant-space-item,
-.mvp1-wizard-page .wizard-step-content .wizard-source-section-actions .ant-space-item {
+.mvp1-wizard-page .wizard-step-content .actions .ant-space-item, .mvp1-wizard-page .wizard-step-content .antd-actions .ant-space-item, .mvp1-wizard-page .wizard-step-content .source-stage-actions .ant-space-item, .mvp1-wizard-page .wizard-step-content .wizard-source-section-actions .ant-space-item {
   display: inline-flex;
 }
 
 @media (max-width: 767px) {
-  .mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > button),
-  .mvp1-wizard-page .wizard-step-content .actions,
-  .mvp1-wizard-page .wizard-step-content .antd-actions,
-  .mvp1-wizard-page .wizard-step-content .source-stage-actions,
-  .mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
+  .mvp1-wizard-page .wizard-step-content .relationship-step-panel > .ant-space-vertical > .ant-space-item > .ant-space:has(> .ant-space-item > .ant-btn), .mvp1-wizard-page .wizard-step-content .actions, .mvp1-wizard-page .wizard-step-content .antd-actions, .mvp1-wizard-page .wizard-step-content .source-stage-actions, .mvp1-wizard-page .wizard-step-content .wizard-source-section-actions {
     justify-content: flex-end;
   }
 }

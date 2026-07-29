@@ -5,7 +5,10 @@ import { App } from './app/App';
 import { RuntimeErrorBoundary } from './shared/ui/RuntimeErrorBoundary';
 import './styles/index.css';
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+const applicationRoot = document.getElementById('root') as HTMLElement;
+applicationRoot.dataset.genealogyApp = 'true';
+
+ReactDOM.createRoot(applicationRoot).render(
   React.createElement(
     RuntimeErrorBoundary,
     null,

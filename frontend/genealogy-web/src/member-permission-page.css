@@ -95,8 +95,7 @@
     justify-content: stretch;
   }
 
-  .member-management-page__actions .ant-space,
-  .member-management-page__actions .ant-btn {
+  .member-management-page__actions .ant-space, .member-management-page__actions .ant-btn {
     width: 100%;
   }
 

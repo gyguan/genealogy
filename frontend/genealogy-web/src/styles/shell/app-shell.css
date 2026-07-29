@@ -1,15 +1,26 @@
-.antd-admin-layout {
+[data-genealogy-app] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+[data-genealogy-app] .antd-admin-layout {
   min-height: 100vh;
+  max-width: 100%;
   background: var(--genealogy-color-bg-layout);
 }
 
-.antd-main-layout {
+[data-genealogy-app] .antd-main-layout {
   min-width: 0;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--genealogy-color-bg-layout);
 }
 
-.antd-sidebar {
+[data-genealogy-app] .antd-sidebar {
   position: sticky;
   top: 0;
   display: flex;
@@ -21,24 +32,24 @@
   background: var(--genealogy-color-bg-container);
 }
 
-.antd-brand {
+[data-genealogy-app] .antd-brand {
   padding: 8px 12px 18px;
   margin-bottom: 8px;
 }
 
-.antd-brand .ant-typography {
+[data-genealogy-app] .antd-brand .ant-typography {
   margin: 0;
 }
 
-.antd-sidebar .ant-menu {
+[data-genealogy-app] .antd-sidebar .ant-menu {
   flex: 1 1 auto;
 }
 
-.antd-sidebar-footer {
+[data-genealogy-app] .antd-sidebar-footer {
   display: none;
 }
 
-.github-like-header {
+[data-genealogy-app] .github-like-header {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -52,36 +63,40 @@
   box-shadow: var(--genealogy-box-shadow-tertiary);
 }
 
-.github-like-header-title {
+[data-genealogy-app] .github-like-header-title {
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
 }
 
-.github-like-header-title .ant-typography:last-child {
+[data-genealogy-app] .github-like-header-title .ant-typography:last-child {
   max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.antd-content {
+[data-genealogy-app] .antd-content {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   padding: 18px 24px 24px;
   background: var(--genealogy-color-bg-layout);
 }
 
 @media (max-width: 760px) {
-  .antd-content {
+  [data-genealogy-app] .antd-content {
     padding: 12px;
   }
 
-  .github-like-header {
+  [data-genealogy-app] .github-like-header {
     padding: 0 12px;
   }
 
-  .github-like-header-title .ant-typography:last-child {
+  [data-genealogy-app] .github-like-header-title .ant-typography:last-child {
     max-width: 180px;
   }
 }

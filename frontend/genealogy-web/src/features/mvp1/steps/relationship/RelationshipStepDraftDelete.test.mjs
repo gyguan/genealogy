@@ -33,6 +33,6 @@ test('relationship delete remains in the existing operation column with tracking
 test('relationship save actions are right aligned within the wizard step', () => {
   assert.match(
     wizardGenerationStyles,
-    /\.relationship-step-panel > \.ant-space-vertical > \.ant-space-item > \.ant-space:has\(> \.ant-space-item > button\),[\s\S]*?\{\s*justify-content:\s*flex-end;\s*width:\s*100%;/
+    /\.mvp1-wizard-page \.wizard-step-content \.relationship-step-panel > \.ant-space-vertical > \.ant-space-item > \.ant-space:has\(> \.ant-space-item > \.ant-btn\),[\s\S]*?\{\s*justify-content:\s*flex-end;\s*width:\s*100%;/
   );
 });

@@ -1,45 +1,42 @@
-.ant-card.panel,
-.ant-card.antd-panel {
+[data-genealogy-app] .ant-card.panel, [data-genealogy-app] .ant-card.antd-panel {
   padding: 0;
   border-color: var(--genealogy-color-border-secondary);
   border-radius: 12px;
   box-shadow: var(--genealogy-box-shadow-tertiary);
 }
 
-.ant-card.panel .ant-card-head {
+[data-genealogy-app] .ant-card.panel .ant-card-head {
   min-height: 44px;
   padding: 0 16px;
   border-bottom-color: var(--genealogy-color-border-secondary);
 }
 
-.ant-card.panel .ant-card-body {
+[data-genealogy-app] .ant-card.panel .ant-card-body {
   padding: 16px;
 }
 
-.panel-description {
+[data-genealogy-app] .panel-description {
   margin-bottom: 12px;
 }
 
-.antd-field.ant-form-item {
+[data-genealogy-app] .antd-field.ant-form-item {
   width: 100%;
   min-width: 0;
   margin: 0 0 12px;
 }
 
-.antd-field .ant-form-item-row,
-.antd-field .ant-form-item-label,
-.antd-field .ant-form-item-control {
+[data-genealogy-app] .antd-field .ant-form-item-row, [data-genealogy-app] .antd-field .ant-form-item-label, [data-genealogy-app] .antd-field .ant-form-item-control {
   display: block;
   width: 100%;
   max-width: none;
 }
 
-.antd-field .ant-form-item-label {
+[data-genealogy-app] .antd-field .ant-form-item-label {
   padding: 0 0 4px;
   text-align: left;
 }
 
-.antd-field .ant-form-item-label > label {
+[data-genealogy-app] .antd-field .ant-form-item-label > label {
   display: inline-flex;
   min-height: 22px;
   color: var(--genealogy-color-text-secondary);
@@ -48,92 +45,88 @@
   line-height: 22px;
 }
 
-.antd-field .ant-form-item-control-input {
+[data-genealogy-app] .antd-field .ant-form-item-control-input {
   min-height: 32px;
 }
 
-.antd-field .ant-form-item-extra {
+[data-genealogy-app] .antd-field .ant-form-item-extra {
   color: var(--genealogy-color-text-tertiary);
   font-size: 12px;
   line-height: 20px;
 }
 
-.antd-field .ant-input,
-.antd-field .ant-input-affix-wrapper,
-.antd-field .ant-select,
-.antd-field .ant-picker {
+[data-genealogy-app] .antd-field .ant-input, [data-genealogy-app] .antd-field .ant-input-affix-wrapper, [data-genealogy-app] .antd-field .ant-select, [data-genealogy-app] .antd-field .ant-picker {
   width: 100%;
 }
 
-.antd-field textarea.ant-input {
+[data-genealogy-app] .antd-field .ant-input.ant-input {
   min-height: 96px;
 }
 
-.antd-field .ant-select-selection-item,
-.antd-field .ant-select-selection-placeholder {
+[data-genealogy-app] .antd-field .ant-select-selection-item, [data-genealogy-app] .antd-field .ant-select-selection-placeholder {
   display: flex;
   align-items: center;
   margin-bottom: 0;
 }
 
-.antd-actions {
+[data-genealogy-app] .antd-actions {
   display: flex;
   align-items: center;
   margin-top: 0;
 }
 
-.antd-actions .ant-space-item {
+[data-genealogy-app] .antd-actions .ant-space-item {
   display: flex;
 }
 
-.person-step-form > .antd-actions .ant-space-item:nth-child(2) {
+[data-genealogy-app] .person-step-form > .antd-actions .ant-space-item:nth-child(2) {
   display: none;
 }
 
-.antd-table-wrap {
+[data-genealogy-app] .antd-table-wrap {
   overflow: auto;
   border: 0;
   border-radius: 8px;
 }
 
-.antd-table-wrap .table-hint {
+[data-genealogy-app] .antd-table-wrap .table-hint {
   display: block;
   padding: 0 0 8px;
   border-bottom: 0;
   background: transparent;
 }
 
-.antd-table-wrap .ant-table {
+[data-genealogy-app] .antd-table-wrap .ant-table {
   overflow: hidden;
   border-radius: 8px;
 }
 
-.antd-table-wrap .ant-table-tbody > tr.clickable {
+[data-genealogy-app] .antd-table-wrap .ant-table-tbody > tr.clickable {
   cursor: pointer;
 }
 
-.antd-table-wrap .ant-table-tbody > tr.clickable:hover > td {
+[data-genealogy-app] .antd-table-wrap .ant-table-tbody > tr.clickable:hover > td {
   background: var(--genealogy-color-primary-bg);
 }
 
-.antd-empty {
+[data-genealogy-app] .antd-empty {
   padding: 18px;
   border: 1px dashed var(--genealogy-color-border);
   border-radius: 8px;
   background: var(--genealogy-color-fill-alter);
 }
 
-.antd-detail-card {
+[data-genealogy-app] .antd-detail-card {
   margin-top: 0;
   padding: 0;
   background: var(--genealogy-color-bg-container);
 }
 
-.antd-detail-card .ant-card-body {
+[data-genealogy-app] .antd-detail-card .ant-card-body {
   padding: 12px;
 }
 
-.antd-toast-stack {
+[data-genealogy-app] .antd-toast-stack {
   position: fixed;
   top: 22px;
   right: 24px;
@@ -141,6 +134,6 @@
   width: 360px;
 }
 
-.system-management .ant-tabs-nav {
+[data-genealogy-app] .system-management .ant-tabs-nav {
   margin-bottom: 14px;
 }

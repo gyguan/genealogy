@@ -1,11 +1,9 @@
 /* Ant Design form density contract for the genealogy wizard. */
-.mvp1-wizard-page .ant-form-item,
-.mvp1-wizard .ant-form-item {
+.mvp1-wizard-page .ant-form-item, .mvp1-wizard .ant-form-item {
   margin-bottom: 12px;
 }
 
-.mvp1-wizard-page .ant-form-item-label > label,
-.mvp1-wizard .ant-form-item-label > label {
+.mvp1-wizard-page .ant-form-item-label > label, .mvp1-wizard .ant-form-item-label > label {
   min-height: 22px;
   color: rgba(0, 0, 0, 0.65);
   font-size: 14px;
@@ -13,29 +11,17 @@
   line-height: 22px;
 }
 
-.mvp1-wizard-page .ant-form-item-extra,
-.mvp1-wizard-page .ant-form-item-explain,
-.mvp1-wizard .ant-form-item-extra,
-.mvp1-wizard .ant-form-item-explain {
+.mvp1-wizard-page .ant-form-item-extra, .mvp1-wizard-page .ant-form-item-explain, .mvp1-wizard .ant-form-item-extra, .mvp1-wizard .ant-form-item-explain {
   font-size: 12px;
   line-height: 20px;
 }
 
-.mvp1-wizard-page .ant-input,
-.mvp1-wizard-page .ant-input-affix-wrapper,
-.mvp1-wizard-page .ant-picker,
-.mvp1-wizard-page .ant-select-selector,
-.mvp1-wizard .ant-input,
-.mvp1-wizard .ant-input-affix-wrapper,
-.mvp1-wizard .ant-picker,
-.mvp1-wizard .ant-select-selector {
+.mvp1-wizard-page .ant-input, .mvp1-wizard-page .ant-input-affix-wrapper, .mvp1-wizard-page .ant-picker, .mvp1-wizard-page .ant-select-selector, .mvp1-wizard .ant-input, .mvp1-wizard .ant-input-affix-wrapper, .mvp1-wizard .ant-picker, .mvp1-wizard .ant-select-selector {
   min-height: 32px;
   border-radius: 8px;
 }
 
-.mvp1-wizard-page .wizard-fixed-actions .ant-btn,
-.mvp1-wizard-page .ant-modal-footer .ant-btn,
-.mvp1-wizard .actions .ant-btn {
+.mvp1-wizard-page .wizard-fixed-actions .ant-btn, .mvp1-wizard-page .ant-modal-footer .ant-btn, .mvp1-wizard .actions .ant-btn {
   min-height: 32px;
 }
 

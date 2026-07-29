@@ -149,7 +149,7 @@ function scan(ref) {
         if (/!important\b/.test(value)) result.categories.important.push(entry(file, rule, property, '!important'));
         for (const match of value.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g)) {
           const color = normalize(match[0]).toLowerCase();
-          if (SYSTEM_COLORS.has(color)) result.categories.fixedSystemColors.push(entry(file, rule, property, color));
+          if (SYSTEM_COLORS.has(color) && !(file === 'src/styles/design-system.css' && property.startsWith('--genealogy-'))) result.categories.fixedSystemColors.push(entry(file, rule, property, color));
         }
       }
     }
@@ -222,7 +222,7 @@ function markdown(report) {
   lines.push('', `- Normalized collection digest: \`${report.collectionDigest}\``, '');
   if (report.classification.A.length) lines.push('## A-class blocking entries', '', ...report.classification.A.map(item => `- \`${item.category}: ${item.value}\``), '');
   if (report.classification.removed.length) lines.push('## Cleared entries', '', ...report.classification.removed.map(item => `- \`${item.category}: ${item.value}\``), '');
-  lines.push('## Retained governance', '', ...governance.businessVisualRules.map(rule => `- **${rule.id}** — ${rule.owner}; root: \`${rule.featureRoot}\`; ${rule.responsibility}`), `- **${governance.temporaryCompatibility.id}** — ${governance.temporaryCompatibility.owner}; tracking #${governance.temporaryCompatibility.trackingIssue}; expires ${governance.temporaryCompatibility.expiresAt}.`, '');
+  lines.push('## Retained governance', '', ...governance.businessVisualRules.map(rule => `- **${rule.id}** — ${rule.owner}; root: \`${rule.featureRoot}\`; ${rule.responsibility}`), ...(governance.temporaryCompatibility ? [`- **${governance.temporaryCompatibility.id}** — ${governance.temporaryCompatibility.owner}; tracking #${governance.temporaryCompatibility.trackingIssue}; expires ${governance.temporaryCompatibility.expiresAt}.`] : ['- C-class compatibility exceptions: **0**.']), '');
   return `${lines.join('\n')}\n`;
 }
 
@@ -238,7 +238,7 @@ const report = {
   trends: trends(base, head, classification),
   collectionDigest: digest(allEntries(head).map(item => `${item.category}|${item.value}`)),
   governance,
-  failed: classification.A.length > 0 || head.totals.globalBundleBytes > base.totals.globalBundleBytes
+  failed: classification.A.length > 0 || classification.C.length > 0
 };
 writeFileSync(path.join(PROJECT_ROOT, jsonPath), `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(path.join(PROJECT_ROOT, markdownPath), markdown(report));

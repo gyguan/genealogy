@@ -19,50 +19,34 @@
 .public-home-page__metric-card .ant-btn { height: auto; padding: 0; }
 .public-home-page__discovery-card { height: 100%; }
 .public-home-page__compact-list { display: grid; gap: 8px; }
-.public-home-page__compact-list > button,
-.public-home-page__feature-item,
-.public-home-page__timeline > button,
-.public-home-page__memory-grid > button,
-.public-home-page__lineage-branches > button { border: 1px solid #edf0f3; background: #fff; color: inherit; cursor: pointer; text-align: left; }
-.public-home-page__compact-list > button { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 9px; }
-.public-home-page__compact-list > button:hover,
-.public-home-page__compact-list > button:focus-visible,
-.public-home-page__feature-item:hover,
-.public-home-page__feature-item:focus-visible,
-.public-home-page__timeline > button:hover,
-.public-home-page__timeline > button:focus-visible,
-.public-home-page__memory-grid > button:hover,
-.public-home-page__memory-grid > button:focus-visible,
-.public-home-page__lineage-branches > button:hover,
-.public-home-page__lineage-branches > button:focus-visible { border-color: #91caff; background: #f7faff; outline: none; }
-.public-home-page__compact-list > button > span:first-child { display: grid; min-width: 0; gap: 4px; }
-.public-home-page__compact-list strong,
-.public-home-page__compact-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.public-home-page__compact-list > .ant-btn, .public-home-page__feature-item, .public-home-page__timeline > .ant-btn, .public-home-page__memory-grid > .ant-btn, .public-home-page__lineage-branches > .ant-btn { border: 1px solid #edf0f3; background: #fff; color: inherit; cursor: pointer; text-align: left; }
+.public-home-page__compact-list > .ant-btn { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 9px; }
+.public-home-page__compact-list > .ant-btn:hover, .public-home-page__compact-list > .ant-btn:focus-visible, .public-home-page__feature-item:hover, .public-home-page__feature-item:focus-visible, .public-home-page__timeline > .ant-btn:hover, .public-home-page__timeline > .ant-btn:focus-visible, .public-home-page__memory-grid > .ant-btn:hover, .public-home-page__memory-grid > .ant-btn:focus-visible, .public-home-page__lineage-branches > .ant-btn:hover, .public-home-page__lineage-branches > .ant-btn:focus-visible { border-color: #91caff; background: #f7faff; outline: none; }
+.public-home-page__compact-list > .ant-btn > span:first-child { display: grid; min-width: 0; gap: 4px; }
+.public-home-page__compact-list strong, .public-home-page__compact-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .public-home-page__compact-list small { color: #667085; font-size: 12px; }
 .public-home-page__lineage-preview { display: grid; min-height: 280px; align-content: center; gap: 34px; overflow: hidden; padding: 28px; background: linear-gradient(#fff,#fbfcfe); }
-.public-home-page__lineage-root { position: relative; display: grid; width: 210px; margin: auto; gap: 4px; padding: 14px 18px; border: 1px solid #1677ff; border-radius: 10px; background: #f5f9ff; text-align: center; }
+.public-home-page__lineage-root { position: relative; display: grid; width: 210px; margin: auto; gap: 4px; padding: 14px 18px; border: 1px solid var(--genealogy-color-primary); border-radius: 10px; background: #f5f9ff; text-align: center; }
 .public-home-page__lineage-root::after { position: absolute; top: 100%; left: 50%; width: 1px; height: 35px; background: #bfd6f5; content: ''; }
-.public-home-page__lineage-root small,
-.public-home-page__lineage-branches small { color: #667085; }
+.public-home-page__lineage-root small, .public-home-page__lineage-branches small { color: #667085; }
 .public-home-page__lineage-branches { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 14px; }
-.public-home-page__lineage-branches > button { position: relative; display: grid; min-height: 104px; align-content: start; gap: 6px; padding: 14px; border-radius: 10px; text-align: center; }
-.public-home-page__lineage-branches > button::before { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 18px; background: #bfd6f5; content: ''; }
+.public-home-page__lineage-branches > .ant-btn { position: relative; display: grid; min-height: 104px; align-content: start; gap: 6px; padding: 14px; border-radius: 10px; text-align: center; }
+.public-home-page__lineage-branches > .ant-btn::before { position: absolute; bottom: 100%; left: 50%; width: 1px; height: 18px; background: #bfd6f5; content: ''; }
 .public-home-page__lineage-share { display: block; width: 100%; height: 6px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: #edf1f5; }
-.public-home-page__lineage-share > span { display: block; height: 100%; border-radius: inherit; background: #1677ff; }
+.public-home-page__lineage-share > span { display: block; height: 100%; border-radius: inherit; background: var(--genealogy-color-primary); }
 .public-home-page__timeline { position: relative; display: grid; gap: 10px; padding-left: 18px; }
 .public-home-page__timeline::before { position: absolute; top: 8px; bottom: 8px; left: 6px; width: 2px; background: #dbe7f7; content: ''; }
-.public-home-page__timeline > button { position: relative; display: grid; gap: 3px; padding: 10px 12px; border-radius: 8px; }
-.public-home-page__timeline-dot { position: absolute; top: 15px; left: -18px; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: #1677ff; box-shadow: 0 0 0 2px #b8d6ff; }
+.public-home-page__timeline > .ant-btn { position: relative; display: grid; gap: 3px; padding: 10px 12px; border-radius: 8px; }
+.public-home-page__timeline-dot { position: absolute; top: 15px; left: -18px; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; background: var(--genealogy-color-primary); box-shadow: 0 0 0 2px #b8d6ff; }
 .public-home-page__timeline small { color: #667085; }
 .public-home-page__memory-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
-.public-home-page__memory-grid > button { display: grid; overflow: hidden; gap: 6px; padding: 0 0 12px; border-radius: 10px; }
-.public-home-page__memory-grid > button > span { display: grid; aspect-ratio: 16/9; place-items: center; background: linear-gradient(135deg,#94a3b8,#334155); color: #fff; font-family: serif; font-size: 30px; }
-.public-home-page__memory-grid strong,
-.public-home-page__memory-grid small { padding: 0 10px; }
+.public-home-page__memory-grid > .ant-btn { display: grid; overflow: hidden; gap: 6px; padding: 0 0 12px; border-radius: 10px; }
+.public-home-page__memory-grid > .ant-btn > span { display: grid; aspect-ratio: 16/9; place-items: center; background: linear-gradient(135deg,#94a3b8,#334155); color: #fff; font-family: serif; font-size: 30px; }
+.public-home-page__memory-grid strong, .public-home-page__memory-grid small { padding: 0 10px; }
 .public-home-page__memory-grid small { color: #667085; }
 .public-home-page__feature-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
 .public-home-page__feature-item { display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; }
-.public-home-page__feature-mark { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: #eaf3ff; color: #1677ff; font-size: 16px; font-weight: 700; }
+.public-home-page__feature-mark { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: #eaf3ff; color: var(--genealogy-color-primary); font-size: 16px; font-weight: 700; }
 .public-home-page__feature-copy { min-width: 0; }
 .public-home-page__feature-copy .ant-typography { margin-bottom: 0; }
 .public-home-page__feature-copy .ant-typography-secondary { margin-top: 4px; line-height: 1.6; }

@@ -27,8 +27,7 @@
   width: min(320px, 36vw);
 }
 
-.person-archive-query-card .ant-card-body,
-.person-archive-result-card .ant-card-body {
+.person-archive-query-card .ant-card-body, .person-archive-result-card .ant-card-body {
   padding: 16px;
 }
 
@@ -80,9 +79,7 @@
   padding-inline: 8px;
 }
 
-.person-archive-text-action:focus-visible,
-.person-archive-mobile-name:focus-visible,
-.person-archive-mobile-actions .ant-btn:focus-visible {
+.person-archive-text-action:focus-visible, .person-archive-mobile-name:focus-visible, .person-archive-mobile-actions .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
@@ -172,8 +169,7 @@
   font-size: 14px;
 }
 
-.person-archive-relationship-table th,
-.person-archive-relationship-table td {
+.person-archive-relationship-table th, .person-archive-relationship-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   text-align: left;
@@ -196,12 +192,12 @@
 
 /* The clan selector belongs to the query card; keep the standard independent-card treatment. */
 .business-page--personArchive .person-archive-query-card {
-  border-top: 1px solid var(--query-page-border) !important;
-  border-radius: var(--query-page-radius) !important;
+  border-top: 1px solid var(--query-page-border);
+  border-radius: var(--query-page-radius);
 }
 
 .business-page--personArchive .person-archive-query-card > .ant-card-head {
-  display: flex !important;
+  display: flex;
 }
 
 @media (max-width: 1399px) {
@@ -248,8 +244,7 @@
     gap: 12px;
   }
 
-  .person-archive-result-card > .ant-card-head .ant-card-extra,
-  .person-archive-result-actions {
+  .person-archive-result-card > .ant-card-head .ant-card-extra, .person-archive-result-actions {
     width: 100%;
   }
 

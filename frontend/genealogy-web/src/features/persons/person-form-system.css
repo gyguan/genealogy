@@ -1,13 +1,9 @@
 /* Shared Ant Design density contract for person archive, detail and edit pages. */
-.person-archive-list-page .ant-form-item,
-.person-edit-page .ant-form-item,
-.person-detail-page .ant-form-item {
+.person-archive-list-page .ant-form-item, .person-edit-page .ant-form-item, .person-detail-page .ant-form-item {
   margin-bottom: 12px;
 }
 
-.person-archive-list-page .ant-form-item-label > label,
-.person-edit-page .ant-form-item-label > label,
-.person-detail-page .ant-form-item-label > label {
+.person-archive-list-page .ant-form-item-label > label, .person-edit-page .ant-form-item-label > label, .person-detail-page .ant-form-item-label > label {
   min-height: 22px;
   color: rgba(0, 0, 0, 0.65);
   font-size: 14px;
@@ -15,50 +11,26 @@
   line-height: 22px;
 }
 
-.person-archive-list-page .ant-form-item-extra,
-.person-archive-list-page .ant-form-item-explain,
-.person-edit-page .ant-form-item-extra,
-.person-edit-page .ant-form-item-explain,
-.person-detail-page .ant-form-item-extra,
-.person-detail-page .ant-form-item-explain {
+.person-archive-list-page .ant-form-item-extra, .person-archive-list-page .ant-form-item-explain, .person-edit-page .ant-form-item-extra, .person-edit-page .ant-form-item-explain, .person-detail-page .ant-form-item-extra, .person-detail-page .ant-form-item-explain {
   font-size: 12px;
   line-height: 20px;
 }
 
-.person-archive-list-page .ant-input,
-.person-archive-list-page .ant-input-affix-wrapper,
-.person-archive-list-page .ant-picker,
-.person-archive-list-page .ant-select-selector,
-.person-edit-page .ant-input,
-.person-edit-page .ant-input-affix-wrapper,
-.person-edit-page .ant-picker,
-.person-edit-page .ant-select-selector,
-.person-detail-page .ant-input,
-.person-detail-page .ant-input-affix-wrapper,
-.person-detail-page .ant-picker,
-.person-detail-page .ant-select-selector {
+.person-archive-list-page .ant-input, .person-archive-list-page .ant-input-affix-wrapper, .person-archive-list-page .ant-picker, .person-archive-list-page .ant-select-selector, .person-edit-page .ant-input, .person-edit-page .ant-input-affix-wrapper, .person-edit-page .ant-picker, .person-edit-page .ant-select-selector, .person-detail-page .ant-input, .person-detail-page .ant-input-affix-wrapper, .person-detail-page .ant-picker, .person-detail-page .ant-select-selector {
   min-height: 32px;
   border-radius: 8px;
 }
 
-.person-archive-query-actions .ant-btn,
-.person-archive-result-actions .ant-btn,
-.person-edit-actions .ant-btn,
-.person-detail-page .ant-card-extra .ant-btn {
+.person-archive-query-actions .ant-btn, .person-archive-result-actions .ant-btn, .person-edit-actions .ant-btn, .person-detail-page .ant-card-extra .ant-btn {
   min-height: 32px;
 }
 
-.person-archive-list-page .ant-table-wrapper,
-.person-edit-page .ant-card,
-.person-detail-page .ant-card {
+.person-archive-list-page .ant-table-wrapper, .person-edit-page .ant-card, .person-detail-page .ant-card {
   min-width: 0;
 }
 
 @media (max-width: 767px) {
-  .person-archive-query-actions .ant-btn,
-  .person-archive-result-actions .ant-btn,
-  .person-edit-actions .ant-btn,
-  .person-detail-page .ant-card-extra .ant-btn {
+  .person-archive-query-actions .ant-btn, .person-archive-result-actions .ant-btn, .person-edit-actions .ant-btn, .person-detail-page .ant-card-extra .ant-btn {
     min-height: 44px;
   }
 }

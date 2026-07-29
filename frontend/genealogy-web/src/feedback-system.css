@@ -4,31 +4,27 @@
  * page/section status, field help, transient toast, confirmation, and empty state.
  */
 
-.ui-feedback.ant-alert,
-.business-page .ant-alert {
+.ui-feedback.ant-alert, .business-page .ant-alert {
   border-width: 1px;
   border-radius: 8px;
   padding: 10px 12px;
 }
 
-.ui-feedback .ant-alert-message,
-.business-page .ant-alert .ant-alert-message {
-  color: rgba(0, 0, 0, .88);
+.ui-feedback .ant-alert-message, .business-page .ant-alert .ant-alert-message {
+  color: var(--genealogy-color-text);
   font-size: 14px;
   font-weight: 600;
   line-height: 22px;
 }
 
-.ui-feedback .ant-alert-description,
-.business-page .ant-alert .ant-alert-description {
+.ui-feedback .ant-alert-description, .business-page .ant-alert .ant-alert-description {
   margin-top: 2px;
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   font-size: 13px;
   line-height: 20px;
 }
 
-.ui-feedback .ant-alert-action,
-.business-page .ant-alert .ant-alert-action {
+.ui-feedback .ant-alert-action, .business-page .ant-alert .ant-alert-action {
   align-self: center;
   margin-inline-start: 16px;
 }
@@ -46,8 +42,8 @@
   width: fit-content;
   max-width: 100%;
   margin-top: 8px;
-  padding-block: 6px !important;
-  background: transparent !important;
+  padding-block: 6px;
+  background: transparent;
 }
 
 .ui-feedback--inline .ant-alert-message {
@@ -61,13 +57,11 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
 }
 
-.antd-toast-stack,
-.toast-stack {
+.antd-toast-stack {
   width: min(360px, calc(100vw - 32px));
 }
 
-.business-page .ant-form-item-extra,
-.business-page .ant-form-item-explain {
+.business-page .ant-form-item-extra, .business-page .ant-form-item-explain {
   min-height: 18px;
   margin-top: 3px;
   font-size: 12px;
@@ -75,18 +69,17 @@
 }
 
 .business-page .ant-form-item-extra {
-  color: rgba(0, 0, 0, .45);
+  color: var(--genealogy-color-text-tertiary);
 }
 
 .business-page .ant-form-item-explain-error {
   color: #ff4d4f;
 }
 
-.ui-empty-state,
-.business-page .ant-empty {
+.ui-empty-state, .business-page .ant-empty {
   margin: 0;
   padding: 28px 16px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed var(--genealogy-color-border);
   border-radius: 8px;
   background: #fafafa;
 }
@@ -98,45 +91,38 @@
 .ui-empty-state__content {
   display: grid;
   gap: 4px;
-  color: rgba(0, 0, 0, .45);
+  color: var(--genealogy-color-text-tertiary);
   font-size: 13px;
 }
 
 .ui-empty-state__content strong {
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   font-size: 14px;
   font-weight: 600;
 }
 
-.ui-full-page-feedback,
-.business-page > .ant-result {
+.ui-full-page-feedback, .business-page > .ant-result {
   padding: 48px 24px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
   background: #fff;
 }
 
 /* Legacy custom strips remain visually aligned while being migrated incrementally. */
-.business-page [class*="-notice"],
-.business-page [class*="-alert"],
-.business-page [class*="-warning"],
-.business-page [class*="-note"] {
+.business-page [class*="-notice"], .business-page [class*="-alert"], .business-page [class*="-warning"], .business-page [class*="-note"] {
   border-radius: 8px;
 }
 
 @media (max-width: 767px) {
-  .ui-feedback.ant-alert,
-  .business-page .ant-alert {
+  .ui-feedback.ant-alert, .business-page .ant-alert {
     align-items: flex-start;
   }
 
-  .ui-feedback .ant-alert-action,
-  .business-page .ant-alert .ant-alert-action {
+  .ui-feedback .ant-alert-action, .business-page .ant-alert .ant-alert-action {
     margin-inline-start: 8px;
   }
 
-  .ui-full-page-feedback,
-  .business-page > .ant-result {
+  .ui-full-page-feedback, .business-page > .ant-result {
     padding: 32px 16px;
   }
 }

@@ -1,11 +1,9 @@
-.wizard-result-list-boundary .step-draft-review-header .ant-btn-primary:disabled,
-.wizard-result-list-boundary .branch-step-list-header .ant-btn-primary:disabled,
-.wizard-result-list-boundary .wizard-inline-list-header .ant-btn-primary:disabled {
+.wizard-result-list-boundary .step-draft-review-header .ant-btn-primary:disabled, .wizard-result-list-boundary .branch-step-list-header .ant-btn-primary:disabled, .wizard-result-list-boundary .wizard-inline-list-header .ant-btn-primary:disabled {
   display: none;
 }
 
 @media (max-width: 767px) {
-  .wizard-result-list-boundary button {
+  .wizard-result-list-boundary .ant-btn {
     min-height: 44px;
   }
 }

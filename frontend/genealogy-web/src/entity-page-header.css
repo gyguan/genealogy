@@ -1,164 +1,156 @@
-.entity-page-header {
+[data-genealogy-app] .entity-page-header {
   display: grid;
   gap: 10px;
   padding: 4px 0;
 }
 
-.entity-page-header__back {
+[data-genealogy-app] .entity-page-header__back {
   min-height: 32px;
   display: flex;
   align-items: center;
 }
 
-.entity-page-back-button.ant-btn-link {
+[data-genealogy-app] .entity-page-back-button.ant-btn-link {
   height: 32px;
   padding: 0;
   font-weight: 400;
 }
 
-.entity-page-header__main {
+[data-genealogy-app] .entity-page-header__main {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
 }
 
-.entity-page-header__copy {
+[data-genealogy-app] .entity-page-header__copy {
   min-width: 0;
   display: grid;
   gap: 6px;
 }
 
-.entity-page-header__title-row.ant-space {
+[data-genealogy-app] .entity-page-header__title-row.ant-space {
   min-width: 0;
 }
 
-.entity-page-header__title-row .ant-typography {
+[data-genealogy-app] .entity-page-header__title-row .ant-typography {
   margin: 0;
 }
 
-.entity-page-header__subtitle {
+[data-genealogy-app] .entity-page-header__subtitle {
   display: block;
 }
 
-.entity-page-header__actions,
-.entity-detail-actions {
+[data-genealogy-app] .entity-page-header__actions, [data-genealogy-app] .entity-detail-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 8px !important;
+  gap: 8px;
 }
 
-.entity-page-header__actions > .ant-space-item,
-.entity-detail-actions > .ant-space-item {
-  margin: 0 !important;
+[data-genealogy-app] .entity-page-header__actions > .ant-space-item, [data-genealogy-app] .entity-detail-actions > .ant-space-item {
+  margin: 0;
 }
 
-.entity-page-header__actions .ant-btn,
-.entity-detail-actions .ant-btn {
+[data-genealogy-app] .entity-page-header__actions .ant-btn, [data-genealogy-app] .entity-detail-actions .ant-btn {
   min-height: 32px;
 }
 
-.entity-detail-drawer .ant-drawer-header {
+[data-genealogy-app] .entity-detail-drawer .ant-drawer-header {
   align-items: flex-start;
   gap: 16px;
 }
 
-.entity-detail-drawer .ant-drawer-header-title {
+[data-genealogy-app] .entity-detail-drawer .ant-drawer-header-title {
   min-width: 0;
 }
 
-.entity-detail-drawer .ant-drawer-extra {
+[data-genealogy-app] .entity-detail-drawer .ant-drawer-extra {
   min-width: 0;
   margin-inline-start: auto;
 }
 
-.entity-detail-source-action-host:empty {
+[data-genealogy-app] .entity-detail-source-action-host:empty {
   display: none;
 }
 
 /* 来源详情保留现有结构，但返回入口与统一页头保持一致。 */
-.source-library-query-page .source-library-detail-title {
+[data-genealogy-app] .source-library-query-page .source-library-detail-title {
   margin-bottom: 0;
 }
 
-.source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
+[data-genealogy-app] .source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
   height: 32px;
   padding: 0;
   border: 0;
   box-shadow: none;
-  color: #1677ff;
+  color: var(--genealogy-color-primary);
   background: transparent;
 }
 
-.source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn:hover {
-  color: #4096ff;
+[data-genealogy-app] .source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn:hover {
+  color: var(--genealogy-color-primary-hover);
   background: transparent;
 }
 
-.entity-detail-source-header .ant-card-body > .ant-space,
-.entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child,
-.entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row {
+[data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space, [data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child, [data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row {
   width: 100%;
 }
 
-.entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row > .ant-col:last-child {
+[data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row > .ant-col:last-child {
   margin-inline-start: auto;
 }
 
 @media (max-width: 767px) {
-  .entity-page-header {
+  [data-genealogy-app] .entity-page-header {
     gap: 8px;
   }
 
-  .entity-page-header__back {
+  [data-genealogy-app] .entity-page-header__back {
     min-height: 44px;
   }
 
-  .entity-page-back-button.ant-btn-link {
+  [data-genealogy-app] .entity-page-back-button.ant-btn-link {
     min-height: 44px;
   }
 
-  .entity-page-header__main {
+  [data-genealogy-app] .entity-page-header__main {
     flex-direction: column;
     gap: 12px;
   }
 
-  .entity-page-header__actions,
-  .entity-detail-actions {
+  [data-genealogy-app] .entity-page-header__actions, [data-genealogy-app] .entity-detail-actions {
     width: 100%;
     justify-content: flex-start;
   }
 
-  .entity-page-header__actions .ant-btn,
-  .entity-detail-actions .ant-btn {
+  [data-genealogy-app] .entity-page-header__actions .ant-btn, [data-genealogy-app] .entity-detail-actions .ant-btn {
     min-height: 40px;
   }
 
-  .entity-detail-drawer .ant-drawer-header {
+  [data-genealogy-app] .entity-detail-drawer .ant-drawer-header {
     flex-wrap: wrap;
   }
 
-  .entity-detail-drawer .ant-drawer-header-title,
-  .entity-detail-drawer .ant-drawer-extra {
+  [data-genealogy-app] .entity-detail-drawer .ant-drawer-header-title, [data-genealogy-app] .entity-detail-drawer .ant-drawer-extra {
     width: 100%;
   }
 
-  .entity-detail-drawer .ant-drawer-extra {
+  [data-genealogy-app] .entity-detail-drawer .ant-drawer-extra {
     margin-inline-start: 0;
   }
 
-  .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row {
+  [data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row {
     row-gap: 12px;
   }
 
-  .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row > .ant-col {
+  [data-genealogy-app] .entity-detail-source-header .ant-card-body > .ant-space > .ant-space-item:last-child > .ant-row > .ant-col {
     flex: 0 0 100%;
     max-width: 100%;
   }
 
-  .source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
+  [data-genealogy-app] .source-library-query-page .source-library-stack > .ant-space-item:first-child > .ant-card:first-child .ant-card-body > .ant-space > .ant-space-item:first-child > .ant-btn {
     min-height: 44px;
   }
 }
