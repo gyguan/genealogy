@@ -7,6 +7,8 @@ import {
   Checkbox,
   Form,
   Input,
+  Layout,
+  Card,
   Modal,
   Space,
   Tag,
@@ -319,8 +321,8 @@ export function AuthPage({ onChanged, standalone = false }: Props) {
   }
 
   const content = (
-    <div className="commercial-auth-layout">
-      <section className="commercial-auth-brand" aria-label="族谱管理平台介绍">
+    <Layout className="commercial-auth-layout">
+      <Layout.Sider className="commercial-auth-brand" width="48%" breakpoint="lg" collapsedWidth={0} aria-label="族谱管理平台介绍">
         <div className="commercial-auth-brand-top">
           <div className="commercial-auth-mark" aria-hidden="true">谱</div>
           <div>
@@ -344,10 +346,10 @@ export function AuthPage({ onChanged, standalone = false }: Props) {
         <div className="commercial-auth-lineage" aria-hidden="true">
           <span /><span /><span /><span /><span />
         </div>
-      </section>
+      </Layout.Sider>
 
-      <section className="commercial-auth-panel" aria-label="账号认证">
-        <div className="commercial-auth-card">
+      <Layout.Content className="commercial-auth-panel" aria-label="账号认证">
+        <Card className="commercial-auth-card" bordered={false}>
           {notice ? <PageFeedback tone={notice.type} title={notice.message} description={notice.description} closable onClose={() => setNotice(null)} /> : null}
           {inlineError ? <PageFeedback tone="error" title="操作未完成" description={inlineError} closable onClose={() => setInlineError('')} /> : null}
           {mode === 'login' ? renderLogin() : null}
@@ -355,7 +357,7 @@ export function AuthPage({ onChanged, standalone = false }: Props) {
           {mode === 'reset' ? renderReset() : null}
           {mode === 'invite' ? renderInvitation() : null}
           <div className="commercial-auth-security-note"><span aria-hidden="true">✓</span> 使用加密连接和服务端安全会话保护您的账号</div>
-        </div>
+        </Card>
         <footer className="commercial-auth-footer">
           <Text type="secondary">© 2026 Genealogy</Text>
           <Space split={<Text type="secondary">·</Text>}>
@@ -363,8 +365,8 @@ export function AuthPage({ onChanged, standalone = false }: Props) {
             <Button type="link" onClick={() => showPolicy('服务协议', '使用平台前，请确认已获得宗族授权，并遵守在世人员隐私、来源证据和审核规则。')}>服务协议</Button>
           </Space>
         </footer>
-      </section>
-    </div>
+      </Layout.Content>
+    </Layout>
   );
 
   if (standalone) return <main className="commercial-auth-shell">{content}</main>;
