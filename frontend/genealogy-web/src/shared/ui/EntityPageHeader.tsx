@@ -1,16 +1,15 @@
 import type { ReactNode } from 'react';
-import { Button, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
+import { StandardPageHeader } from './StandardPagePatterns';
 
-const { Text, Title } = Typography;
-
-type BackButtonProps = {
+export type EntityPageBackButtonProps = {
   label: string;
   onBack: () => void;
   disabled?: boolean;
 };
 
-export function EntityPageBackButton({ label, onBack, disabled = false }: BackButtonProps) {
+export function EntityPageBackButton({ label, onBack, disabled = false }: EntityPageBackButtonProps) {
   return (
     <Button
       type="link"
@@ -24,7 +23,7 @@ export function EntityPageBackButton({ label, onBack, disabled = false }: BackBu
   );
 }
 
-type HeaderProps = {
+export type EntityPageHeaderProps = {
   backLabel: string;
   onBack: () => void;
   title: ReactNode;
@@ -44,22 +43,12 @@ export function EntityPageHeader({
   actions,
   backDisabled = false,
   className = ''
-}: HeaderProps) {
-  return (
-    <header className={`entity-page-header ${className}`.trim()}>
-      <div className="entity-page-header__back">
-        <EntityPageBackButton label={backLabel} onBack={onBack} disabled={backDisabled} />
-      </div>
-      <div className="entity-page-header__main">
-        <div className="entity-page-header__copy">
-          <Space align="center" wrap size={8} className="entity-page-header__title-row">
-            <Title level={3}>{title}</Title>
-            {status}
-          </Space>
-          {subtitle ? <Text type="secondary" className="entity-page-header__subtitle">{subtitle}</Text> : null}
-        </div>
-        {actions ? <Space wrap className="entity-page-header__actions">{actions}</Space> : null}
-      </div>
-    </header>
-  );
+}: EntityPageHeaderProps) {
+  return <StandardPageHeader
+    className={`entity-page-header ${className}`.trim()}
+    back={<EntityPageBackButton label={backLabel} onBack={onBack} disabled={backDisabled} />}
+    title={<Space align="center" wrap size={8}>{title}{status}</Space>}
+    description={subtitle}
+    extra={actions}
+  />;
 }
