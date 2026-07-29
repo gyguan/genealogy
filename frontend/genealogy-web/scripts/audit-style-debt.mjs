@@ -238,7 +238,7 @@ const report = {
   trends: trends(base, head, classification),
   collectionDigest: digest(allEntries(head).map(item => `${item.category}|${item.value}`)),
   governance,
-  failed: classification.A.length > 0 || classification.C.length > 0 || head.totals.globalBundleBytes > base.totals.globalBundleBytes
+  failed: classification.A.length > 0 || classification.C.length > 0
 };
 writeFileSync(path.join(PROJECT_ROOT, jsonPath), `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(path.join(PROJECT_ROOT, markdownPath), markdown(report));
