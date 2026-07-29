@@ -3,7 +3,7 @@ package com.genealogy.tree.repository;
 import com.genealogy.relationship.entity.RelationshipEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import jakarta.persistence.Query;
 import org.springframework.data.domain.Pageable;
 
 import java.util.ArrayList;
@@ -13,6 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Tree relationship read repository backed by minimal detached snapshots. */
 public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQueryRepository {
 
     private static final Comparator<RelationshipEntity> OUTGOING_ORDER = Comparator
@@ -24,6 +25,15 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
             .comparing(RelationshipEntity::getToPersonId)
             .thenComparing(RelationshipEntity::getFromPersonId)
             .thenComparing(entity -> entity.getId() == null ? Long.MAX_VALUE : entity.getId());
+
+    private static final String RELATIONSHIP_READ_SELECT = """
+            select r.id, r.clanId, r.fromPersonId, r.toPersonId,
+                   r.relationType, r.relationLabel, r.relationCategory,
+                   r.ritualRelationType, r.successionReason, r.successorBranchId,
+                   r.isLineageRelation, r.isBiological, r.isPrimary,
+                   r.description, r.confidenceLevel, r.dataStatus, r.createdBy
+            from RelationshipEntity r
+            """;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -61,9 +71,7 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
         if (personIds == null || personIds.isEmpty()) {
             return List.of();
         }
-        TypedQuery<RelationshipEntity> query = entityManager.createQuery("""
-                select r
-                from RelationshipEntity r
+        Query query = entityManager.createQuery(RELATIONSHIP_READ_SELECT + """
                 where r.clanId = :clanId
                   and r.fromPersonId in :personIds
                   and r.toPersonId in :personIds
@@ -71,13 +79,13 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
                   and r.deletedAt is null
                   and r.relationCategory in :categories
                 order by r.fromPersonId, r.toPersonId, r.id
-                """, RelationshipEntity.class);
+                """);
         bindCommon(query, clanId, personIds, statuses, categories);
         if (pageable != null) {
             query.setFirstResult(Math.toIntExact(pageable.getOffset()));
             query.setMaxResults(pageable.getPageSize());
         }
-        return query.getResultList();
+        return rows(query).stream().map(this::snapshot).toList();
     }
 
     private List<RelationshipEntity> findDirectional(
@@ -93,10 +101,11 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
         }
         Map<Long, RelationshipEntity> deduplicated = new LinkedHashMap<>();
         for (List<Long> batch : TreeQueryBatcher.partition(personIds, TreeQueryBatcher.DEFAULT_BATCH_SIZE)) {
-            TypedQuery<RelationshipEntity> query = entityManager.createQuery(directionalJpql(outgoing), RelationshipEntity.class);
+            Query query = entityManager.createQuery(directionalJpql(outgoing));
             bindCommon(query, clanId, batch, statuses, categories);
             query.setParameter("lineageOnly", lineageOnly);
-            for (RelationshipEntity relationship : query.getResultList()) {
+            for (Object[] row : rows(query)) {
+                RelationshipEntity relationship = snapshot(row);
                 Long key = relationship.getId();
                 if (key == null) {
                     key = syntheticKey(relationship);
@@ -114,7 +123,7 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
         String order = outgoing
                 ? "r.fromPersonId, r.toPersonId, r.id"
                 : "r.toPersonId, r.fromPersonId, r.id";
-        return "select r from RelationshipEntity r "
+        return RELATIONSHIP_READ_SELECT
                 + "where r.clanId = :clanId "
                 + "and " + endpoint + " in :personIds "
                 + "and r.dataStatus in :statuses "
@@ -125,7 +134,7 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
     }
 
     private void bindCommon(
-            TypedQuery<RelationshipEntity> query,
+            Query query,
             Long clanId,
             Collection<Long> personIds,
             Collection<String> statuses,
@@ -135,6 +144,34 @@ public class TreeRelationshipQueryRepositoryImpl implements TreeRelationshipQuer
         query.setParameter("personIds", personIds);
         query.setParameter("statuses", statuses);
         query.setParameter("categories", categories);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object[]> rows(Query query) {
+        return (List<Object[]>) query.getResultList();
+    }
+
+    private RelationshipEntity snapshot(Object[] row) {
+        RelationshipEntity relationship = new RelationshipEntity();
+        int i = 0;
+        relationship.setId((Long) row[i++]);
+        relationship.setClanId((Long) row[i++]);
+        relationship.setFromPersonId((Long) row[i++]);
+        relationship.setToPersonId((Long) row[i++]);
+        relationship.setRelationType((String) row[i++]);
+        relationship.setRelationLabel((String) row[i++]);
+        relationship.setRelationCategory((String) row[i++]);
+        relationship.setRitualRelationType((String) row[i++]);
+        relationship.setSuccessionReason((String) row[i++]);
+        relationship.setSuccessorBranchId((Long) row[i++]);
+        relationship.setIsLineageRelation((Boolean) row[i++]);
+        relationship.setIsBiological((Boolean) row[i++]);
+        relationship.setIsPrimary((Boolean) row[i++]);
+        relationship.setDescription((String) row[i++]);
+        relationship.setConfidenceLevel((String) row[i++]);
+        relationship.setDataStatus((String) row[i++]);
+        relationship.setCreatedBy((Long) row[i]);
+        return relationship;
     }
 
     private long syntheticKey(RelationshipEntity relationship) {
