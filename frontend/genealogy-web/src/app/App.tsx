@@ -115,9 +115,8 @@ function AppShell() {
   if (authStatus === 'anonymous') return <AuthPage onChanged={() => setAuthStatus('authenticated')} standalone />;
 
   const activeModule = getModule(active);
-  const specialRoute = Boolean(personDetailRoute || personEditRoute);
   const page = personEditRoute ? <PersonEditPage personId={personEditRoute.personId} onCancel={navigateBackFromPersonEdit} onNavigationGuardChange={setNavigationGuard} /> : personDetailRoute ? <PersonDetailPage personId={personDetailRoute.personId} onBack={navigateBackFromPersonDetail} /> : activeModule.render(enterPage);
   const routeKey = personEditRoute?.personId ? `edit-${personEditRoute.personId}` : personDetailRoute?.personId ? `detail-${personDetailRoute.personId}` : 'list';
 
-  return <AuthenticatedShell active={active} pageKey={`${active}-${routeKey}-${pageEntryVersion}`} page={page} headerActions={specialRoute ? null : activeModule.renderHeaderActions?.()} onNavigate={enterPage} onLogout={logout} />;
+  return <AuthenticatedShell active={active} pageKey={`${active}-${routeKey}-${pageEntryVersion}`} page={page} onNavigate={enterPage} onLogout={logout} />;
 }
