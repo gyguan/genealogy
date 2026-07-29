@@ -29,7 +29,7 @@ public class MemberPermissionRuntimeLoggingAspect {
         String action = ((MethodSignature) joinPoint.getSignature()).getMethod().getName();
         try {
             Object result = joinPoint.proceed();
-            Long targetId = result instanceof MemberGrantResponse grant ? grant.id() : requestedTargetId;
+            Long targetId = result instanceof MemberGrantResponse grant ? grant.grantId() : requestedTargetId;
             log.info(
                     "event=member_permission_changed actorId={} clanId={} targetType={} targetId={} action={} result=success costMs={}",
                     actorId, clanId, targetType(action), targetId, action, costMs(startedAt)
