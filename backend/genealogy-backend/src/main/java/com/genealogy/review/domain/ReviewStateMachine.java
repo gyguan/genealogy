@@ -30,6 +30,9 @@ public class ReviewStateMachine {
         }
         ReviewStatus target = TRANSITIONS.getOrDefault(task, Map.of()).get(action);
         if (target == null) {
+            if (action == ReviewAction.APPROVE || action == ReviewAction.REJECT) {
+                throw new BusinessException("REVIEW_TASK_ALREADY_HANDLED", "review task already handled");
+            }
             throw new BusinessException(
                     "REVIEW_ILLEGAL_TRANSITION",
                     "不允许的审核状态转换: " + task.value() + " --" + action.name().toLowerCase() + "--> ?"
@@ -40,7 +43,7 @@ public class ReviewStateMachine {
 
     public void requireIndependentReviewer(Long submitterId, Long reviewerId) {
         if (submitterId != null && Objects.equals(submitterId, reviewerId)) {
-            throw new BusinessException("REVIEW_SELF_APPROVAL_FORBIDDEN", "提交人不能审核本人提交的内容");
+            throw new BusinessException("REVIEW_SELF_DECISION_FORBIDDEN", "提交人不能审核本人提交的内容");
         }
     }
 
