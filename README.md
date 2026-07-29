@@ -28,6 +28,10 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 - [21. 前端页面模式规范](docs/21-frontend-page-pattern-spec.md)
 - [22. 多 TAB 页面设计与实现规范](docs/22-multi-tab-page-spec.md)
 - [数据库开发与 Flyway 迁移规范](docs/database-development-standard.md)
+- [后端工程 README](backend/genealogy-backend/README.md)
+- [后端模块导航 README](backend/genealogy-backend/src/main/java/com/genealogy/README.md)
+- [前端工程 README](frontend/genealogy-web/README.md)
+- [前端 Feature 导航 README](frontend/genealogy-web/src/features/README.md)
 - [AI 工程流程适配方案](docs/ai/ai-engineering-workflow.md)
 - [AI Skill 映射表](docs/ai/skill-mapping.md)
 - [通用 AI 提问模板库](docs/ai/prompt-templates.md)
@@ -42,13 +46,17 @@ MVP 1 聚焦“让一个宗族真正上线使用”的核心闭环：
 
 ## AI 辅助研发入口
 
-规则采用分层结构，AI 应先读取根规则，再读取目标目录最近的 `AGENTS.md`：
+规则采用分层结构，AI 应先读取根规则，再读取目标目录最近的 `AGENTS.md` 和模块 README：
 
 - 全仓优先级、P0 红线与 P1 门禁：`AGENTS.md`
+- 后端启动、验证和模块入口：`backend/genealogy-backend/README.md`
 - 后端分层、数据库、权限、测试与代码可理解性细则：`backend/genealogy-backend/AGENTS.md`
+- 后端模块职责、调用边界与关键不变量：`backend/genealogy-backend/src/main/java/com/genealogy/README.md`
 - 后端代码复杂度、命名、Query/Command、显式上下文与模块导航经验：`docs/ai/code-understanding-and-maintainability-standard.md`
 - 数据库对象、SQL 与 Flyway 迁移规范：`docs/database-development-standard.md`
+- 前端启动、目录和验证入口：`frontend/genealogy-web/README.md`
 - 前端组件、契约、状态、Hook、交互、性能与可理解性细则：`frontend/genealogy-web/AGENTS.md`
+- 前端 Feature 职责、状态归属和性能边界：`frontend/genealogy-web/src/features/README.md`
 - 前端组件拆分、状态归属、Effect、ViewModel、测试和模块导航经验：`docs/ai/frontend-code-understanding-and-maintainability-standard.md`
 - AI 工程流程：`docs/ai/ai-engineering-workflow.md`
 - AI Skill 映射表：`docs/ai/skill-mapping.md`
