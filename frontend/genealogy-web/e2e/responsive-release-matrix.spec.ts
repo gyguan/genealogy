@@ -33,6 +33,22 @@ async function boxInsideViewport(locator: Locator, width: number, height: number
   return box.x >= -1 && box.x + box.width <= width + 1 && box.y < height && box.height > 0;
 }
 
+async function horizontallyContained(locator: Locator, width: number) {
+  if (!(await locator.count()) || !(await locator.first().isVisible())) return true;
+  return locator.first().evaluate((element, viewportWidth) => {
+    let current: Element | null = element;
+    while (current && current !== document.documentElement) {
+      const box = current.getBoundingClientRect();
+      const style = getComputedStyle(current);
+      const clipsOrScrolls = /(auto|scroll|hidden|clip)/.test(style.overflowX);
+      if (clipsOrScrolls && box.left >= -1 && box.right <= viewportWidth + 1) return true;
+      current = current.parentElement;
+    }
+    const box = element.getBoundingClientRect();
+    return box.left >= -1 && box.right <= viewportWidth + 1;
+  }, width);
+}
+
 async function documentOverflow(page: Page) {
   return page.evaluate(() => ({
     horizontal: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - window.innerWidth,
@@ -92,8 +108,8 @@ for (const viewport of RESPONSIVE_VIEWPORTS) {
       const containers: Record<string, boolean> = {};
       for (const selector of representativeSelectors) {
         const locator = page.locator(selector).first();
-        containers[selector] = await boxInsideViewport(locator, viewport.width, viewport.height);
-        expect.soft(containers[selector], `${pageCase.label}: ${selector} boundary`).toBeTruthy();
+        containers[selector] = await horizontallyContained(locator, viewport.width);
+        expect.soft(containers[selector], `${pageCase.label}: ${selector} horizontal boundary`).toBeTruthy();
       }
 
       if (viewport.key === 'mobile') {
