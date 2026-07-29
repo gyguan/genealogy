@@ -1,4 +1,4 @@
-import { requestConfirmation } from '../../shared/ui/confirmationEvents';
+import { requestConfirmation } from '../../shared/ui/confirmationEvents.js';
 
 export type CultureEditorTarget = 'item' | 'migration' | 'site';
 export type CultureEditorMode = 'create' | 'edit';
