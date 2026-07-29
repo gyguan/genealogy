@@ -11,8 +11,7 @@
   cursor: pointer;
 }
 
-.lineage-scope-summary,
-.lineage-canvas-view-bar {
+.lineage-scope-summary, .lineage-canvas-view-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -86,9 +85,7 @@
   gap: 12px;
 }
 
-.lineage-query-console-head,
-.lineage-query-console-actions,
-.lineage-result-toolbar {
+.lineage-query-console-head, .lineage-query-console-actions, .lineage-result-toolbar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -132,9 +129,7 @@
 }
 
 @media (max-width: 1199px) {
-  .lineage-query-toolbar--standardized,
-  .lineage-query-grid--person,
-  .lineage-query-grid--branch {
+  .lineage-query-toolbar--standardized, .lineage-query-grid--person, .lineage-query-grid--branch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -144,18 +139,11 @@
 }
 
 @media (max-width: 767px) {
-  .lineage-query-toolbar--standardized,
-  .lineage-query-grid--person,
-  .lineage-query-grid--branch,
-  .lineage-inspector-actions,
-  .lineage-query-action {
+  .lineage-query-toolbar--standardized, .lineage-query-grid--person, .lineage-query-grid--branch, .lineage-inspector-actions, .lineage-query-action {
     grid-template-columns: 1fr;
   }
 
-  .lineage-query-action,
-  .lineage-query-console-head,
-  .lineage-query-console-actions,
-  .lineage-result-toolbar {
+  .lineage-query-action, .lineage-query-console-head, .lineage-query-console-actions, .lineage-result-toolbar {
     width: 100%;
   }
 

@@ -1,92 +1,85 @@
 /* MVP1 wizard lineage result tables. */
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .antd-table-wrap {
   width: 100%;
   margin-top: 12px;
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 10px;
   background: #fff;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap::before {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .antd-table-wrap::before {
   display: block;
   padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
   background: #fafafa;
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   font-size: 13px;
   font-weight: 600;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap:nth-of-type(1)::before {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .antd-table-wrap:nth-of-type(1)::before {
   content: "人物节点";
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap:nth-of-type(2)::before {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .antd-table-wrap:nth-of-type(2)::before {
   content: "关系边";
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .antd-table-wrap .table-hint {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .antd-table-wrap .table-hint {
   display: none;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table {
   min-width: 720px;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table table {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table .ant-table {
   width: 100%;
   min-width: 720px;
-  table-layout: fixed !important;
+  table-layout: fixed;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-container,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-content,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-container, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-content, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr {
   width: 100%;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-cell {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-cell {
   vertical-align: middle;
-  white-space: nowrap !important;
+  white-space: nowrap;
   word-break: keep-all;
   line-height: 1.55;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-tbody > tr {
-  display: table-row !important;
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-tbody > tr {
+  display: table-row;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr > th,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-tbody > tr > td {
-  display: table-cell !important;
-  white-space: nowrap !important;
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr > th, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-tbody > tr > td {
+  display: table-cell;
+  white-space: nowrap;
   word-break: keep-all;
   vertical-align: middle;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr > th .ant-table-cell-content,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr > th .ant-table-column-title {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr > th .ant-table-cell-content, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr > th .ant-table-column-title {
   display: inline-block;
   max-width: 100%;
-  white-space: nowrap !important;
+  white-space: nowrap;
   word-break: keep-all;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-tbody > tr > td:last-child,
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-table-thead > tr > th:last-child {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-tbody > tr > td:last-child, .mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-table-thead > tr > th:last-child {
   min-width: 120px;
   width: 120px;
 }
 
-.mvp1-wizard-page .panel:has(select option[value="family"]):has(select option[value="ancestors"]):has(select option[value="descendants"]) .ant-empty {
+.mvp1-wizard-page .panel:has(.ant-select option[value="family"]):has(.ant-select option[value="ancestors"]):has(.ant-select option[value="descendants"]) .ant-empty {
   margin-top: 12px;
 }

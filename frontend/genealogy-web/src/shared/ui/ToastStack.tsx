@@ -11,7 +11,7 @@ export type ToastItem = {
 export function ToastStack({ items, onClose }: { items: ToastItem[]; onClose: (id: number) => void }) {
   if (!items.length) return null;
   return (
-    <Space className="toast-stack antd-toast-stack" direction="vertical" size="small">
+    <Space className="feedback-stack antd-feedback-stack" direction="vertical" size="small">
       {items.map(item => (
         <PageFeedback
           key={item.id}

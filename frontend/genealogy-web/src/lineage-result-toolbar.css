@@ -4,8 +4,7 @@
   display: contents;
 }
 
-.lineage-result-toolbar--double-card,
-.lineage-result-toolbar--double-card.is-person {
+.lineage-result-toolbar--double-card, .lineage-result-toolbar--double-card.is-person {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -30,8 +29,7 @@
   flex-wrap: nowrap;
 }
 
-.lineage-result-toolbar--double-card > .lineage-graph-toolbar-field,
-.lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
+.lineage-result-toolbar--double-card > .lineage-graph-toolbar-field, .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
   align-self: center;
   flex: 0 1 360px;
   width: min(360px, 100%);
@@ -63,8 +61,7 @@
 }
 
 @media (max-width: 900px) {
-  .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field,
-  .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
+  .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field, .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     flex-basis: 330px;
     width: min(330px, 100%);
     min-width: 250px;
@@ -78,8 +75,7 @@
     flex-wrap: nowrap;
   }
 
-  .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field,
-  .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
+  .lineage-result-toolbar--double-card > .lineage-graph-toolbar-field, .lineage-tree-page--standardized .lineage-result-pane .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
     flex: 1 1 auto;
     width: 100%;

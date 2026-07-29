@@ -21,9 +21,7 @@
   --genealogy-box-shadow-tertiary: var(--ant-box-shadow-tertiary, 0 1px 2px rgba(0, 0, 0, .03));
 }
 
-html,
-body,
-#root {
+html, body, #root {
   min-height: 100%;
 }
 
@@ -36,9 +34,6 @@ body {
   background: var(--genealogy-color-bg-layout);
 }
 
-button,
-input,
-select,
-textarea {
+.ant-btn, .ant-input, .ant-select, .ant-input {
   font: inherit;
 }

@@ -1,4 +1,4 @@
-.runtime-status-panel {
+[data-genealogy-app] .runtime-status-panel {
   display: grid;
   gap: 10px;
   max-width: 720px;
@@ -7,23 +7,23 @@
   border: 1px solid #ffccc7;
   border-radius: 12px;
   background: #fff2f0;
-  color: rgba(0, 0, 0, .88);
+  color: var(--genealogy-color-text);
 }
 
-.runtime-status-panel h3 {
+[data-genealogy-app] .runtime-status-panel h3 {
   margin: 0;
   color: #cf1322;
   font-size: 18px;
   font-weight: 600;
 }
 
-.runtime-status-panel p {
+[data-genealogy-app] .runtime-status-panel p {
   margin: 0;
-  color: rgba(0, 0, 0, .65);
+  color: var(--genealogy-color-text-secondary);
   line-height: 1.7;
 }
 
-.runtime-status-panel button {
+[data-genealogy-app] .runtime-status-panel .ant-btn {
   justify-self: start;
   min-height: 32px;
   padding: 4px 15px;

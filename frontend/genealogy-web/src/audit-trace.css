@@ -37,10 +37,7 @@
   align-items: end;
 }
 
-.tracking-filter-grid .ant-picker,
-.tracking-filter-grid .ant-select,
-.tracking-filter-grid .ant-input-affix-wrapper,
-.tracking-filter-grid .ant-input {
+.tracking-filter-grid .ant-picker, .tracking-filter-grid .ant-select, .tracking-filter-grid .ant-input-affix-wrapper, .tracking-filter-grid .ant-input {
   width: 100%;
 }
 
@@ -50,7 +47,7 @@
   justify-content: flex-start;
   gap: 12px 24px;
   padding-top: 4px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--genealogy-color-border-secondary);
 }
 
 .tracking-filter-actions > .ant-space {
@@ -67,8 +64,7 @@
   cursor: pointer;
 }
 
-.tracking-clickable-row:focus-within,
-.tracking-clickable-row:hover {
+.tracking-clickable-row:focus-within, .tracking-clickable-row:hover {
   background: #f5faff;
 }
 
@@ -109,8 +105,7 @@
     gap: 12px;
   }
 
-  .tracking-center-tabs-card > .ant-card-body,
-  .tracking-filter-card > .ant-card-body {
+  .tracking-center-tabs-card > .ant-card-body, .tracking-filter-card > .ant-card-body {
     padding-inline: 12px;
   }
 

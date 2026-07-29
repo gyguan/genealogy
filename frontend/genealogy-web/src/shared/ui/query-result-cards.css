@@ -3,7 +3,7 @@
   overflow: hidden;
   padding: 0 16px 16px;
   background: #fff;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 8px;
 }
 
@@ -16,7 +16,7 @@
   margin: 0 -16px 16px;
   padding: 12px 16px;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
 }
 
 .query-result-card__title {
@@ -39,8 +39,7 @@
   margin-left: auto;
 }
 
-.query-result-outer-card__result-extra,
-.query-result-outer-card__extra {
+.query-result-outer-card__result-extra, .query-result-outer-card__extra {
   min-width: 0;
 }
 
@@ -58,10 +57,7 @@
     padding: 16px 12px;
   }
 
-  .query-result-card__title,
-  .query-result-outer-card__actions,
-  .query-result-outer-card__result-extra,
-  .query-result-outer-card__extra {
+  .query-result-card__title, .query-result-outer-card__actions, .query-result-outer-card__result-extra, .query-result-outer-card__extra {
     width: 100%;
     margin: 0;
   }

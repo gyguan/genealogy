@@ -43,7 +43,7 @@
   gap: 16px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--genealogy-color-border-secondary);
 }
 
 .wizard-progress-summary .ant-typography:last-child {
@@ -75,40 +75,37 @@
   gap: 16px;
 }
 
-.wizard-fixed-actions__secondary,
-.wizard-fixed-actions__primary {
+.wizard-fixed-actions__secondary, .wizard-fixed-actions__primary {
   display: flex;
   align-items: center;
 }
 
-/* The old .field input rule must not style the internal search input of AntD Select. */
+/* The old .field .ant-input rule must not style the internal search .ant-input of AntD .ant-select. */
 .mvp1-wizard-page .antd-field .ant-select .ant-select-selection-search-input {
-  width: 100% !important;
-  height: 30px !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
+  width: 100%;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 .mvp1-wizard-page .antd-field .ant-select-selection-search {
-  inset-inline-start: 11px !important;
-  inset-inline-end: 28px !important;
+  inset-inline-start: 11px;
+  inset-inline-end: 28px;
 }
 
-.mvp1-wizard-page .antd-field .ant-select-selection-item,
-.mvp1-wizard-page .antd-field .ant-select-selection-placeholder {
+.mvp1-wizard-page .antd-field .ant-select-selection-item, .mvp1-wizard-page .antd-field .ant-select-selection-placeholder {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.branch-step-list-panel,
-.step-object-result-panel {
+.branch-step-list-panel, .step-object-result-panel {
   margin-top: 16px;
   padding: 14px;
   border: 1px solid #e8eef7;
@@ -121,9 +118,7 @@
   gap: 12px;
 }
 
-.branch-step-list-header,
-.step-draft-review-header,
-.wizard-inline-list-header {
+.branch-step-list-header, .step-draft-review-header, .wizard-inline-list-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -131,14 +126,11 @@
   flex-wrap: wrap;
 }
 
-.branch-step-list-header h5,
-.step-draft-review-header h5,
-.wizard-inline-list-header h4 {
+.branch-step-list-header h5, .step-draft-review-header h5, .wizard-inline-list-header h4 {
   margin: 0 0 4px;
 }
 
-.branch-step-list-header .ant-typography,
-.step-draft-review-header .ant-typography {
+.branch-step-list-header .ant-typography, .step-draft-review-header .ant-typography {
   margin-bottom: 0;
 }
 
@@ -154,7 +146,7 @@
 .wizard-branch-list {
   margin-top: 18px;
   padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--genealogy-color-border-secondary);
 }
 
 .wizard-branch-list h4 {
@@ -168,11 +160,10 @@
   margin-top: 16px;
 }
 
-.wizard-generation-section,
-.relationship-step-panel {
+.wizard-generation-section, .relationship-step-panel {
   margin-top: 14px;
   padding: 14px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 12px;
   background: #fff;
 }
@@ -181,8 +172,7 @@
   margin-top: 0;
 }
 
-.wizard-generation-section h4,
-.relationship-step-panel h5 {
+.wizard-generation-section h4, .relationship-step-panel h5 {
   margin: 0 0 12px;
   color: rgba(0,0,0,.88);
   font-size: 14px;
@@ -201,11 +191,10 @@
 .wizard-generation-section .actions {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--genealogy-color-border-secondary);
 }
 
-.wizard-generation-scheme-grid,
-.wizard-generation-word-grid {
+.wizard-generation-scheme-grid, .wizard-generation-word-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -215,8 +204,7 @@
   margin-bottom: 10px;
 }
 
-.wizard-inline-form-field,
-.relationship-step-field {
+.wizard-inline-form-field, .relationship-step-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -224,8 +212,7 @@
   font-size: 14px;
 }
 
-.wizard-inline-form-field > span,
-.relationship-step-field > span {
+.wizard-inline-form-field > span, .relationship-step-field > span {
   font-weight: 500;
 }
 
@@ -254,8 +241,7 @@
 }
 
 @media (max-width: 980px) {
-  .wizard-generation-scheme-grid,
-  .wizard-generation-word-grid {
+  .wizard-generation-scheme-grid, .wizard-generation-word-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -285,13 +271,11 @@
     gap: 8px;
   }
 
-  .wizard-fixed-actions__secondary,
-  .wizard-fixed-actions__primary {
+  .wizard-fixed-actions__secondary, .wizard-fixed-actions__primary {
     width: 100%;
   }
 
-  .wizard-fixed-actions__secondary .ant-space-item,
-  .wizard-fixed-actions__primary .ant-space-item {
+  .wizard-fixed-actions__secondary .ant-space-item, .wizard-fixed-actions__primary .ant-space-item {
     flex: 1 1 120px;
   }
 

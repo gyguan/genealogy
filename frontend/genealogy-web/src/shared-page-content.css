@@ -1,4 +1,4 @@
-/* Page-specific cleanup for redundant explanatory/context content. */
+[data-genealogy-app] /* Page-specific cleanup for redundant explanatory/context content. */
 
 /* The global module header already identifies the page; the home dashboard starts
    directly with clan context and metrics. */
@@ -6,49 +6,42 @@
   padding-top: 12px;
 }
 
-.business-page--home .statistics-home-page.ant-space-vertical {
+[data-genealogy-app] .business-page--home .statistics-home-page.ant-space-vertical {
   row-gap: 12px;
 }
 
-.business-page--home .statistics-home-page__heading > .ant-typography {
+[data-genealogy-app] .business-page--home .statistics-home-page__heading > .ant-typography {
   display: none;
 }
 
-/* Keep the expanded person archive filters visually consistent with other query pages. */
+[data-genealogy-app] /* Keep the expanded person archive filters visually consistent with other query pages. */
 .business-page--personArchive .person-archive-filter-grid--advanced {
-  background: transparent !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-/* Wide query pages must consume the complete width offered by AppShell. */
-.antd-content:has(.business-page--imports),
-.antd-content:has(.business-page--auditTrace),
-.business-page--imports,
-.business-page--auditTrace,
-.business-page--imports > .import-center-page,
-.business-page--auditTrace > .audit-trace-page,
-.business-page--auditTrace .tracking-double-card-page {
+[data-genealogy-app] /* Wide query pages must consume the complete width offered by AppShell. */
+.antd-content:has(.business-page--imports), [data-genealogy-app] .antd-content:has(.business-page--auditTrace), [data-genealogy-app] .business-page--imports, [data-genealogy-app] .business-page--auditTrace, [data-genealogy-app] .business-page--imports > .import-center-page, [data-genealogy-app] .business-page--auditTrace > .audit-trace-page, [data-genealogy-app] .business-page--auditTrace .tracking-double-card-page {
   width: 100%;
   min-width: 0;
   max-width: none;
   margin-inline: 0;
 }
 
-/* Match the audit result heading to the standard query-result card title pattern. */
+[data-genealogy-app] /* Match the audit result heading to the standard query-result card title pattern. */
 .business-page--auditTrace .tracking-result-card .ant-card-head-wrapper {
   min-height: unset;
 }
 
-.business-page--auditTrace .tracking-result-title {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title {
   display: flex;
   align-items: baseline;
   gap: 0;
   white-space: nowrap;
 }
 
-.business-page--auditTrace .tracking-result-title > h4.ant-typography,
-.business-page--auditTrace .tracking-result-title > .ant-typography-secondary {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title > h4.ant-typography, [data-genealogy-app] .business-page--auditTrace .tracking-result-title > .ant-typography-secondary {
   margin: 0;
   color: rgba(0, 0, 0, 0.88);
   font-size: 16px;
@@ -56,10 +49,10 @@
   line-height: 24px;
 }
 
-.business-page--auditTrace .tracking-result-title > .ant-typography-secondary::before {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title > .ant-typography-secondary::before {
   content: '（';
 }
 
-.business-page--auditTrace .tracking-result-title > .ant-typography-secondary::after {
+[data-genealogy-app] .business-page--auditTrace .tracking-result-title > .ant-typography-secondary::after {
   content: '）';
 }

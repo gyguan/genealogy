@@ -66,9 +66,7 @@
   white-space: nowrap;
 }
 
-.source-library-query-page .source-library-query-status,
-.source-library-query-page .source-library-result-status,
-.source-library-query-page .source-library-form-status {
+.source-library-query-page .source-library-query-status, .source-library-query-page .source-library-result-status, .source-library-query-page .source-library-form-status {
   margin-bottom: 16px;
 }
 
@@ -78,9 +76,7 @@
   text-align: left;
 }
 
-.source-library-query-page .source-library-name-link:focus-visible,
-.source-library-query-page .source-library-mobile-card__title:focus-visible,
-.source-library-query-page .source-library-mobile-card__actions .ant-btn:focus-visible {
+.source-library-query-page .source-library-name-link:focus-visible, .source-library-query-page .source-library-mobile-card__title:focus-visible, .source-library-query-page .source-library-mobile-card__actions .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
@@ -90,12 +86,11 @@
 }
 
 .source-library-query-page .source-library-result-card .ant-table-row:hover > .ant-table-cell {
-  background: var(--ant-color-fill-tertiary, #f5f5f5);
+  background: var(--ant-color-fill-tertiary, var(--genealogy-color-bg-layout));
 }
 
-.source-library-query-page .source-library-result-card .ant-table-row[aria-selected='true'] > .ant-table-cell,
-.source-library-query-page .source-library-result-card .ant-table-row.is-active > .ant-table-cell {
-  background: var(--ant-color-primary-bg, #e6f4ff);
+.source-library-query-page .source-library-result-card .ant-table-row[aria-selected='true'] > .ant-table-cell, .source-library-query-page .source-library-result-card .ant-table-row.is-active > .ant-table-cell {
+  background: var(--ant-color-primary-bg, var(--genealogy-color-primary-bg));
 }
 
 .source-library-query-page .source-library-loading {
@@ -107,8 +102,7 @@
   margin: 0;
 }
 
-.source-library-query-page button[aria-label="刷新查询结果"],
-.source-library-query-page .ant-card:has(.source-library-detail-title) .ant-row > .ant-col:last-child > .ant-space > .ant-space-item:nth-child(2) {
+.source-library-query-page .ant-btn[aria-label="刷新查询结果"], .source-library-query-page .ant-card:has(.source-library-detail-title) .ant-row > .ant-col:last-child > .ant-space > .ant-space-item:nth-child(2) {
   display: none;
 }
 
@@ -122,7 +116,7 @@
 }
 
 .source-library-query-page .source-library-mobile-card:focus-within {
-  border-color: var(--ant-color-primary, #1677ff);
+  border-color: var(--ant-color-primary, var(--genealogy-color-primary));
   box-shadow: 0 0 0 2px var(--ant-color-primary-border, #91caff);
 }
 
@@ -182,8 +176,7 @@
 }
 
 @media (max-width: 767px) {
-  .source-library-query-page .source-library-query-grid--primary,
-  .source-library-query-page .source-library-query-grid--advanced {
+  .source-library-query-page .source-library-query-grid--primary, .source-library-query-page .source-library-query-grid--advanced {
     grid-template-columns: minmax(0, 1fr);
   }
 

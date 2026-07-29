@@ -4,10 +4,7 @@
   width: 100%;
 }
 
-.lineage-double-card-query,
-.lineage-double-card-result,
-.lineage-double-card-form,
-.lineage-result-pane {
+.lineage-double-card-query, .lineage-double-card-result, .lineage-double-card-form, .lineage-result-pane {
   min-width: 0;
 }
 
@@ -86,8 +83,7 @@
   .lineage-double-card-grid { grid-template-columns: 1fr; gap: 0; }
   .lineage-double-card-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .lineage-query-dirty { text-align: left; }
-  .lineage-result-toolbar--double-card,
-  .lineage-result-toolbar--double-card.is-person {
+  .lineage-result-toolbar--double-card, .lineage-result-toolbar--double-card.is-person {
     position: static;
     width: 100%;
     grid-template-columns: 1fr;

@@ -14,8 +14,7 @@
 .culture-editor-content { display: flex; flex-direction: column; gap: 16px; }
 .culture-editor-actions { position: sticky; bottom: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 12px 16px; backdrop-filter: blur(8px); }
 
-.culture-product-page,
-.culture-managed-tab {
+.culture-product-page, .culture-managed-tab {
   max-width: 100%;
   min-width: 0;
 }

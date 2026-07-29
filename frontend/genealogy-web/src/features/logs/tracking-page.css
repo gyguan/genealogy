@@ -4,18 +4,15 @@
   width: 100%;
 }
 
-.tracking-query-card,
-.tracking-result-card {
+.tracking-query-card, .tracking-result-card {
   min-width: 0;
 }
 
-.tracking-query-card > .ant-card-head,
-.tracking-result-card > .ant-card-head {
+.tracking-query-card > .ant-card-head, .tracking-result-card > .ant-card-head {
   padding-inline: 16px;
 }
 
-.tracking-query-card > .ant-card-body,
-.tracking-result-card > .ant-card-body {
+.tracking-query-card > .ant-card-body, .tracking-result-card > .ant-card-body {
   padding: 16px;
 }
 
@@ -43,10 +40,7 @@
   margin-bottom: 0;
 }
 
-.tracking-query-grid .ant-picker,
-.tracking-query-grid .ant-select,
-.tracking-query-grid .ant-input-affix-wrapper,
-.tracking-query-grid > .ant-form-item .ant-input {
+.tracking-query-grid .ant-picker, .tracking-query-grid .ant-select, .tracking-query-grid .ant-input-affix-wrapper, .tracking-query-grid > .ant-form-item .ant-input {
   width: 100%;
 }
 
@@ -76,7 +70,7 @@
   height: 32px;
   padding-inline: 4px;
   margin: 0;
-  color: #1677ff;
+  color: var(--genealogy-color-primary);
   font-size: 14px;
   font-weight: 400;
 }
@@ -85,13 +79,12 @@
   display: none;
 }
 
-.tracking-more-button:hover,
-.tracking-more-button:focus-visible {
-  color: #4096ff !important;
+.tracking-more-button:hover, .tracking-more-button:focus-visible {
+  color: var(--genealogy-color-primary-hover);
 }
 
 .tracking-more-button:active {
-  color: #0958d9 !important;
+  color: #0958d9;
 }
 
 .tracking-result-card .ant-card-head-wrapper {
@@ -99,8 +92,7 @@
   align-items: center;
 }
 
-.tracking-result-card .ant-card-head-title,
-.tracking-result-card .ant-card-extra {
+.tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
   padding-block: 16px;
 }
 
@@ -120,7 +112,7 @@
 }
 
 .tracking-multi-popup-divider {
-  margin: 0 0 4px !important;
+  margin: 0 0 4px;
 }
 
 .tracking-clickable-row {
@@ -144,8 +136,7 @@
     gap: 12px;
   }
 
-  .tracking-query-card > .ant-card-body,
-  .tracking-result-card > .ant-card-body {
+  .tracking-query-card > .ant-card-body, .tracking-result-card > .ant-card-body {
     padding: 16px;
   }
 
@@ -154,15 +145,14 @@
     row-gap: 12px;
   }
 
-  .tracking-query-actions,
-  .tracking-query-actions .ant-space {
+  .tracking-query-actions, .tracking-query-actions .ant-space {
     width: 100%;
   }
 
   .tracking-query-actions .ant-space {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px !important;
+    gap: 8px;
   }
 
   .tracking-query-actions .ant-space-item:first-child {
@@ -184,8 +174,7 @@
     padding-block: 16px;
   }
 
-  .tracking-result-card .ant-card-head-title,
-  .tracking-result-card .ant-card-extra {
+  .tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
     width: 100%;
     margin: 0;
     padding: 0;

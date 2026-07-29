@@ -1,97 +1,60 @@
-/*
+[data-genealogy-app] /*
  * Query-management page standard
  *
  * The global header owns the module title. Business pages use the same visual
- * hierarchy: query conditions first, query results second. Existing request,
- * URL, permission, drawer and table logic remains owned by each feature.
+ * hierarchy: query conditions first, [data-genealogy-app] query results second. Existing request, [data-genealogy-app] * URL, [data-genealogy-app] permission, [data-genealogy-app] drawer and .ant-table logic remains owned by each feature.
  */
 
 /* -------------------------------------------------------------------------- */
 /* Keep the global header as the single module title                           */
 /* -------------------------------------------------------------------------- */
 
-.business-page--home .statistics-home-page__heading > h3,
-.business-page--personArchive #person-archive-title,
-.business-page--culture .culture-page-heading > h3,
-.business-page--imports .import-page-header h3,
-.business-page--editingWorkspace > .ant-space > .ant-card:first-child h3,
-.business-page--editingWorkspace > .ant-space > .ant-space-item:first-child h3,
-.business-page--reviewCenter .review-center-page > .ant-space > div:first-child h3,
-.business-page--memberManage .member-role-page > .ant-card:first-child h3 {
+.business-page--home .statistics-home-page__heading > h3, [data-genealogy-app] .business-page--personArchive #person-archive-title, [data-genealogy-app] .business-page--culture .culture-page-heading > h3, [data-genealogy-app] .business-page--imports .import-page-header h3, [data-genealogy-app] .business-page--editingWorkspace > .ant-space > .ant-card:first-child h3, [data-genealogy-app] .business-page--editingWorkspace > .ant-space > .ant-space-item:first-child h3, [data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space > div:first-child h3, [data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card:first-child h3 {
   display: none;
 }
 
-.business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography-secondary:first-child,
-.business-page--personArchive .person-archive-page-header .ant-breadcrumb {
+[data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card:first-child .ant-typography-secondary:first-child, [data-genealogy-app] .business-page--personArchive .person-archive-page-header .ant-breadcrumb {
   display: none;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Shared page tokens and card rhythm                                          */
 /* -------------------------------------------------------------------------- */
 
-.business-page--personArchive,
-.business-page--treeProduct,
-.business-page--sourceLibrary,
-.business-page--editingWorkspace,
-.business-page--reviewCenter,
-.business-page--memberManage {
+.business-page--personArchive, [data-genealogy-app] .business-page--treeProduct, [data-genealogy-app] .business-page--sourceLibrary, [data-genealogy-app] .business-page--editingWorkspace, [data-genealogy-app] .business-page--reviewCenter, [data-genealogy-app] .business-page--memberManage {
   --query-page-gap: 16px;
   --query-page-radius: 12px;
-  --query-page-border: #d9d9d9;
+  --query-page-border: var(--genealogy-color-border);
   --query-page-muted: rgba(0, 0, 0, 0.65);
   --query-page-soft-bg: #fafafa;
 }
 
-.business-page--personArchive .ant-card,
-.business-page--treeProduct .ant-card,
-.business-page--sourceLibrary .ant-card,
-.business-page--editingWorkspace .ant-card,
-.business-page--reviewCenter .ant-card,
-.business-page--memberManage .ant-card {
+[data-genealogy-app] .business-page--personArchive .ant-card, [data-genealogy-app] .business-page--treeProduct .ant-card, [data-genealogy-app] .business-page--sourceLibrary .ant-card, [data-genealogy-app] .business-page--editingWorkspace .ant-card, [data-genealogy-app] .business-page--reviewCenter .ant-card, [data-genealogy-app] .business-page--memberManage .ant-card {
   border-radius: var(--query-page-radius);
 }
 
-.business-page--personArchive .ant-card-head,
-.business-page--treeProduct .ant-card-head,
-.business-page--sourceLibrary .ant-card-head,
-.business-page--editingWorkspace .ant-card-head,
-.business-page--reviewCenter .ant-card-head,
-.business-page--memberManage .ant-card-head {
+[data-genealogy-app] .business-page--personArchive .ant-card-head, [data-genealogy-app] .business-page--treeProduct .ant-card-head, [data-genealogy-app] .business-page--sourceLibrary .ant-card-head, [data-genealogy-app] .business-page--editingWorkspace .ant-card-head, [data-genealogy-app] .business-page--reviewCenter .ant-card-head, [data-genealogy-app] .business-page--memberManage .ant-card-head {
   min-height: 48px;
   padding-inline: 16px;
 }
 
-.business-page--personArchive .ant-card-body,
-.business-page--treeProduct .ant-card-body,
-.business-page--sourceLibrary .ant-card-body,
-.business-page--editingWorkspace .ant-card-body,
-.business-page--reviewCenter .ant-card-body,
-.business-page--memberManage .ant-card-body {
+[data-genealogy-app] .business-page--personArchive .ant-card-body, [data-genealogy-app] .business-page--treeProduct .ant-card-body, [data-genealogy-app] .business-page--sourceLibrary .ant-card-body, [data-genealogy-app] .business-page--editingWorkspace .ant-card-body, [data-genealogy-app] .business-page--reviewCenter .ant-card-body, [data-genealogy-app] .business-page--memberManage .ant-card-body {
   padding: 16px;
 }
 
-/* Unified query action alignment. */
-.business-page--personArchive .person-archive-query-actions,
-.business-page--sourceLibrary .source-library-page form > .ant-row:last-child,
-.business-page--reviewCenter .ant-card[title='审核中心'] form > div:last-child,
-.business-page--memberManage .ant-card[title='成员与权限'] > .ant-card-body > div:last-child {
+[data-genealogy-app] /* Unified query action alignment. */
+.business-page--personArchive .person-archive-query-actions, [data-genealogy-app] .business-page--sourceLibrary .source-library-page form > .ant-row:last-child, [data-genealogy-app] .business-page--reviewCenter .ant-card[title='审核中心'] form > div:last-child, [data-genealogy-app] .business-page--memberManage .ant-card[title='成员与权限'] > .ant-card-body > div:last-child {
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
 }
 
-/* Consistent field density across query areas. */
-.business-page--personArchive .person-archive-query-card .ant-form-item,
-.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-form-item,
-.business-page--sourceLibrary .source-library-page .source-library-query-card .ant-form-item,
-.business-page--editingWorkspace .ant-card[title='修谱工作台'] .ant-space-vertical,
-.business-page--reviewCenter .ant-card[title='审核中心'] .ant-form-item,
-.business-page--memberManage .ant-card[title='成员与权限'] .ant-col > .ant-typography {
+[data-genealogy-app] /* Consistent field density across query areas. */
+.business-page--personArchive .person-archive-query-card .ant-form-item, [data-genealogy-app] .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-form-item, [data-genealogy-app] .business-page--sourceLibrary .source-library-page .source-library-query-card .ant-form-item, [data-genealogy-app] .business-page--editingWorkspace .ant-card[title='修谱工作台'] .ant-space-vertical, [data-genealogy-app] .business-page--reviewCenter .ant-card[title='审核中心'] .ant-form-item, [data-genealogy-app] .business-page--memberManage .ant-card[title='成员与权限'] .ant-col > .ant-typography {
   margin-bottom: 12px;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Person archive: context + filters form one query block                      */
 /* -------------------------------------------------------------------------- */
 
@@ -105,7 +68,7 @@
   border-radius: var(--query-page-radius) var(--query-page-radius) 0 0;
 }
 
-.business-page--personArchive .person-archive-page-header::before {
+[data-genealogy-app] .business-page--personArchive .person-archive-page-header::before {
   content: '人物档案查询';
   position: absolute;
   top: 16px;
@@ -115,31 +78,31 @@
   line-height: 22px;
 }
 
-.business-page--personArchive .person-archive-page-header .ant-typography-paragraph {
+[data-genealogy-app] .business-page--personArchive .person-archive-page-header .ant-typography-paragraph {
   margin: 0 0 8px;
 }
 
-.business-page--personArchive .person-archive-query-card {
+[data-genealogy-app] .business-page--personArchive .person-archive-query-card {
   margin-top: 0;
 }
 
 
-.business-page--personArchive .person-archive-result-card {
+[data-genealogy-app] .business-page--personArchive .person-archive-result-card {
   margin-top: var(--query-page-gap);
 }
 
-.business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title {
+[data-genealogy-app] .business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title {
   font-size: 0;
 }
 
-.business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title::before {
+[data-genealogy-app] .business-page--personArchive .person-archive-result-card > .ant-card-head .ant-card-head-title::before {
   content: '查询结果';
   font-size: 14px;
   font-weight: 600;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Lineage: query panel above, graph/list result below                         */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
+/* Lineage: query panel above, [data-genealogy-app] graph/list result below                         */
 /* -------------------------------------------------------------------------- */
 
 .business-page--treeProduct .lineage-page {
@@ -148,41 +111,40 @@
   gap: var(--query-page-gap);
 }
 
-.business-page--treeProduct .lineage-page > .antd-panel:first-child {
+[data-genealogy-app] .business-page--treeProduct .lineage-page > .antd-panel:first-child {
   margin: 0;
 }
 
-.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child {
+[data-genealogy-app] .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child {
   font-size: 0;
 }
 
-.business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child::after {
+[data-genealogy-app] .business-page--treeProduct .lineage-page > .antd-panel:first-child .ant-card-head-title .ant-space > .ant-typography:first-child::after {
   content: '查询图谱';
   font-size: 14px;
   font-weight: 600;
 }
 
-.business-page--treeProduct .lineage-search-grid--workbench,
-.business-page--treeProduct .lineage-query-toolbar--standardized {
+[data-genealogy-app] .business-page--treeProduct .lineage-search-grid--workbench, [data-genealogy-app] .business-page--treeProduct .lineage-query-toolbar--standardized {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px 16px;
 }
 
-.business-page--treeProduct .lineage-query-toolbar--standardized {
+[data-genealogy-app] .business-page--treeProduct .lineage-query-toolbar--standardized {
   margin-top: 16px;
   padding: 16px;
   background: var(--query-page-soft-bg);
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--genealogy-color-border-secondary);
   border-radius: 8px;
 }
 
-.business-page--treeProduct .lineage-query-action {
+[data-genealogy-app] .business-page--treeProduct .lineage-query-action {
   align-self: end;
   justify-content: flex-end;
 }
 
-.business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title::before {
+[data-genealogy-app] .business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title::before {
   content: '查询结果';
   display: block;
   margin-bottom: 2px;
@@ -190,78 +152,76 @@
   font-weight: 600;
 }
 
-.business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title {
+[data-genealogy-app] .business-page--treeProduct .lineage-workbench-card > .ant-card-head .ant-card-head-title {
   font-size: 12px;
   color: var(--query-page-muted);
   font-weight: 400;
 }
 
-.business-page--treeProduct .lineage-scope-summary {
+[data-genealogy-app] .business-page--treeProduct .lineage-scope-summary {
   padding: 0 0 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--genealogy-color-border-secondary);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Source library: remove intro card, standardize filters/results              */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
+/* Source library: remove intro card, [data-genealogy-app] standardize filters/results              */
 /* -------------------------------------------------------------------------- */
 
 .business-page--sourceLibrary .source-library-page .ant-card-head-title {
   white-space: normal;
 }
 
-.business-page--sourceLibrary .source-library-page .source-library-query-card > .ant-card-head {
+[data-genealogy-app] .business-page--sourceLibrary .source-library-page .source-library-query-card > .ant-card-head {
   display: flex;
 }
 
-.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title {
+[data-genealogy-app] .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title {
   font-size: 0;
 }
 
-.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::before {
+[data-genealogy-app] .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::before {
   content: '查询结果';
   font-size: 14px;
   font-weight: 600;
 }
 
-.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::after {
+[data-genealogy-app] .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] .ant-card-head-title::after {
   content: ' · 来源资料列表';
   font-size: 12px;
   color: var(--query-page-muted);
   font-weight: 400;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Editing workbench: unified query section and result list                    */
 /* -------------------------------------------------------------------------- */
 
-.business-page--editingWorkspace > .ant-space,
-.business-page--editingWorkspace > .ant-space-vertical {
+.business-page--editingWorkspace > .ant-space, [data-genealogy-app] .business-page--editingWorkspace > .ant-space-vertical {
   width: 100%;
 }
 
-.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title {
+[data-genealogy-app] .business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title {
   font-size: 0;
 }
 
-.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::before {
+[data-genealogy-app] .business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::before {
   content: '查询结果';
   font-size: 14px;
   font-weight: 600;
 }
 
-.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::after {
+[data-genealogy-app] .business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-head .ant-card-head-title::after {
   content: ' · 修谱问题任务池';
   font-size: 12px;
   color: var(--query-page-muted);
   font-weight: 400;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Review center: segmented queue stays in the result header, cards align      */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
+/* Review center: segmented queue stays in the result header, [data-genealogy-app] cards align      */
 /* -------------------------------------------------------------------------- */
 
-.business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:nth-child(3) > .ant-card > .ant-card-body::before,
-.business-page--reviewCenter .review-center-page > .ant-space > .ant-card:nth-of-type(2) > .ant-card-body::before {
+.business-page--reviewCenter .review-center-page > .ant-space > .ant-space-item:nth-child(3) > .ant-card > .ant-card-body::before, [data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space > .ant-card:nth-of-type(2) > .ant-card-body::before {
   content: '查询结果';
   display: block;
   margin-bottom: 12px;
@@ -269,104 +229,81 @@
   font-weight: 600;
 }
 
-.business-page--reviewCenter .review-center-page .ant-tabs-nav {
+[data-genealogy-app] .business-page--reviewCenter .review-center-page .ant-tabs-nav {
   margin-bottom: 8px;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Members and permissions: context + filters form one query block             */
 /* -------------------------------------------------------------------------- */
 
 .business-page--memberManage .member-role-page > .ant-card[title='成员列表'] {
-  margin-top: var(--query-page-gap) !important;
+  margin-top: var(--query-page-gap);
 }
 
-.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title {
+[data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title {
   font-size: 0;
 }
 
-.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::before {
+[data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::before {
   content: '查询结果';
   font-size: 14px;
   font-weight: 600;
 }
 
-.business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::after {
+[data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card[title='成员列表'] .ant-card-head-title::after {
   content: ' · 成员授权列表';
   font-size: 12px;
   color: var(--query-page-muted);
   font-weight: 400;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Result toolbars and batch bars                                               */
 /* -------------------------------------------------------------------------- */
 
-.business-page--treeProduct .lineage-scope-summary,
-.business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] > .ant-card-body > .ant-alert,
-.business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-body > .ant-alert,
-.business-page--reviewCenter .review-center-page .ant-card > .ant-card-body > .ant-space > .ant-alert,
-.business-page--memberManage .ant-card[title='成员列表'] > .ant-card-body > .ant-alert {
+.business-page--treeProduct .lineage-scope-summary, [data-genealogy-app] .business-page--sourceLibrary .source-library-page .ant-card[title^='来源资料（'] > .ant-card-body > .ant-alert, [data-genealogy-app] .business-page--editingWorkspace .ant-card[title='修谱问题任务池'] > .ant-card-body > .ant-alert, [data-genealogy-app] .business-page--reviewCenter .review-center-page .ant-card > .ant-card-body > .ant-space > .ant-alert, [data-genealogy-app] .business-page--memberManage .ant-card[title='成员列表'] > .ant-card-body > .ant-alert {
   margin-bottom: 12px;
 }
 
-/* Secondary/help content should not dominate the main query-result hierarchy. */
+[data-genealogy-app] /* Secondary/help content should not dominate the main query-result hierarchy. */
 .business-page--memberManage .member-role-page > .ant-alert {
   border-style: dashed;
 }
 
-/* -------------------------------------------------------------------------- */
+[data-genealogy-app] /* -------------------------------------------------------------------------- */
 /* Responsive grid and mobile behavior                                         */
 /* -------------------------------------------------------------------------- */
 
 @media (max-width: 1199px) {
-  .business-page--treeProduct .lineage-search-grid--workbench,
-  .business-page--treeProduct .lineage-query-toolbar--standardized {
+  [data-genealogy-app] .business-page--treeProduct .lineage-search-grid--workbench, [data-genealogy-app] .business-page--treeProduct .lineage-query-toolbar--standardized {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 767px) {
-  .business-page--personArchive,
-  .business-page--treeProduct,
-  .business-page--sourceLibrary,
-  .business-page--editingWorkspace,
-  .business-page--reviewCenter,
-  .business-page--memberManage {
+  [data-genealogy-app] .business-page--personArchive, [data-genealogy-app] .business-page--treeProduct, [data-genealogy-app] .business-page--sourceLibrary, [data-genealogy-app] .business-page--editingWorkspace, [data-genealogy-app] .business-page--reviewCenter, [data-genealogy-app] .business-page--memberManage {
     --query-page-gap: 12px;
     --query-page-radius: 8px;
   }
 
-  .business-page--personArchive .person-archive-page-header,
-  .business-page--personArchive .ant-card-body,
-  .business-page--treeProduct .ant-card-body,
-  .business-page--sourceLibrary .ant-card-body,
-  .business-page--editingWorkspace .ant-card-body,
-  .business-page--reviewCenter .ant-card-body,
-  .business-page--memberManage .ant-card-body {
+  [data-genealogy-app] .business-page--personArchive .person-archive-page-header, [data-genealogy-app] .business-page--personArchive .ant-card-body, [data-genealogy-app] .business-page--treeProduct .ant-card-body, [data-genealogy-app] .business-page--sourceLibrary .ant-card-body, [data-genealogy-app] .business-page--editingWorkspace .ant-card-body, [data-genealogy-app] .business-page--reviewCenter .ant-card-body, [data-genealogy-app] .business-page--memberManage .ant-card-body {
     padding-inline: 12px;
   }
 
-  .business-page--treeProduct .lineage-search-grid--workbench,
-  .business-page--treeProduct .lineage-query-toolbar--standardized {
+  [data-genealogy-app] .business-page--treeProduct .lineage-search-grid--workbench, [data-genealogy-app] .business-page--treeProduct .lineage-query-toolbar--standardized {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .business-page--treeProduct .lineage-query-action,
-  .business-page--personArchive .person-archive-query-actions {
+  [data-genealogy-app] .business-page--treeProduct .lineage-query-action, [data-genealogy-app] .business-page--personArchive .person-archive-query-actions {
     width: 100%;
   }
 
-  .business-page--treeProduct .lineage-query-action .ant-btn-primary,
-  .business-page--personArchive .person-archive-query-actions .ant-btn-primary,
-  .business-page--sourceLibrary form .ant-btn-primary,
-  .business-page--reviewCenter form .ant-btn-primary,
-  .business-page--memberManage .ant-card[title='成员与权限'] .ant-btn-primary {
+  [data-genealogy-app] .business-page--treeProduct .lineage-query-action .ant-btn-primary, [data-genealogy-app] .business-page--personArchive .person-archive-query-actions .ant-btn-primary, [data-genealogy-app] .business-page--sourceLibrary form .ant-btn-primary, [data-genealogy-app] .business-page--reviewCenter form .ant-btn-primary, [data-genealogy-app] .business-page--memberManage .ant-card[title='成员与权限'] .ant-btn-primary {
     min-width: 96px;
   }
 
-  .business-page--memberManage .member-role-page > .ant-card:first-child .ant-row,
-  .business-page--personArchive .person-archive-page-header {
+  [data-genealogy-app] .business-page--memberManage .member-role-page > .ant-card:first-child .ant-row, [data-genealogy-app] .business-page--personArchive .person-archive-page-header {
     align-items: stretch;
   }
 }

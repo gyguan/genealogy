@@ -35,20 +35,18 @@
   padding-block: 0;
 }
 
-.lineage-search-grid--workbench .ant-input-search input.ant-input {
+.lineage-search-grid--workbench .ant-input-search .ant-input.ant-input {
   min-height: 34px;
   padding-block: 0;
   line-height: 34px;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon,
-.lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
+.lineage-search-grid--workbench .ant-input-search .ant-input-clear-icon, .lineage-search-grid--workbench .ant-input-search .ant-btn-icon {
   display: inline-flex;
   align-items: center;
 }
 
-.lineage-search-grid--workbench .ant-input-search .ant-input-search-btn,
-.lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
+.lineage-search-grid--workbench .ant-input-search .ant-input-search-btn, .lineage-search-grid--workbench .ant-input-search .ant-input-group-addon .ant-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;

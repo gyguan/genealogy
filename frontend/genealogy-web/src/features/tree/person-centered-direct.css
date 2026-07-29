@@ -18,19 +18,18 @@
 }
 
 .lineage-logic-card--person .lineage-graph-node > rect {
-  fill: #ffffff;
+  fill: var(--genealogy-color-bg-container);
   stroke: #adc6ff;
 }
 
 .lineage-logic-card--person .lineage-graph-node.is-active > rect {
-  fill: #e6f4ff;
-  stroke: #1677ff;
+  fill: var(--genealogy-color-primary-bg);
+  stroke: var(--genealogy-color-primary);
   stroke-width: 3;
   filter: drop-shadow(0 7px 16px rgba(22, 119, 255, 0.2));
 }
 
-.lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-name,
-.lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-status {
+.lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-name, .lineage-logic-card--person .lineage-graph-node.is-active .lineage-graph-node-status {
   fill: #0958d9;
   font-weight: 700;
 }
