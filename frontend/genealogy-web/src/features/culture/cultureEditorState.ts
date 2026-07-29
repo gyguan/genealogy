@@ -1,4 +1,4 @@
-import { confirmAction } from '../../shared/ui/Feedback';
+import { requestConfirmation } from '../../shared/ui/confirmationEvents';
 
 export type CultureEditorTarget = 'item' | 'migration' | 'site';
 export type CultureEditorMode = 'create' | 'edit';
@@ -66,10 +66,9 @@ export function isSameCultureEditor(left: CultureEditorState | null, right: Cult
 }
 
 /**
- * Keeps the existing synchronous navigation-guard contract while delegating
- * the user decision to the shared Ant Design modal. After confirmation the
- * editor parameters are removed and the normal popstate handlers complete the
- * state transition exactly once.
+ * Preserves the existing synchronous navigation-guard contract while routing
+ * the actual decision through the application-level Ant Design confirmation
+ * bridge. A confirmed leave replays the normal popstate transition once.
  */
 export function confirmCultureEditorLeave(dirty: boolean) {
   if (!dirty) return true;
@@ -80,22 +79,19 @@ export function confirmCultureEditorLeave(dirty: boolean) {
   if (confirmationOpen) return false;
 
   confirmationOpen = true;
-  confirmAction({
+  void requestConfirmation({
     title: '确认离开编辑页面？',
     content: '当前修改尚未保存，离开后本次修改将不会保留。',
     okText: '离开页面',
     cancelText: '继续编辑',
-    okButtonProps: { danger: true },
-    onOk: () => {
-      confirmationOpen = false;
-      confirmedLeave = true;
-      const href = buildCultureEditorLocation(window.location.href, null);
-      window.history.replaceState(window.history.state, '', href);
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    },
-    onCancel: () => {
-      confirmationOpen = false;
-    }
+    danger: true
+  }).then(confirmed => {
+    confirmationOpen = false;
+    if (!confirmed) return;
+    confirmedLeave = true;
+    const href = buildCultureEditorLocation(window.location.href, null);
+    window.history.replaceState(window.history.state, '', href);
+    window.dispatchEvent(new PopStateEvent('popstate'));
   });
   return false;
 }
