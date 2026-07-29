@@ -265,7 +265,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
     
-    <Card size="small" className="culture-page-header culture-search-card" title="宗族文化">
+    <Card size="small" className="culture-page-header culture-search-card" title="迁徙事件查询">
       <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
       <Form form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[16, 0]}>
