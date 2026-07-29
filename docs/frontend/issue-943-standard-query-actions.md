@@ -6,4 +6,6 @@ Migrated groups: persons, tree, sources, culture, workbench, reviews, members an
 
 Governance: StandardQueryActionsGovernance.test.mjs blocks hand-built query action groups and verifies canonical source order. Existing real-browser suites cover submit, reset, URL refresh and history navigation.
 
+The migration targets the innermost Ant Design `Space` that directly owns reset and submit buttons, so nested page layout containers remain unchanged.
+
 Acceptance requires Frontend CI, DOM/CSS Governance, Style Debt Audit, Visual Release Gate, Functional E2E, API Contract, Security Penetration and Multi-Browser Compatibility to pass on the final human-authored branch head.
