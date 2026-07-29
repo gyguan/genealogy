@@ -49,8 +49,10 @@ public class ImportJobEntity {
     public static final String EXECUTION_PAUSED = "paused";
     public static final String EXECUTION_RETRY_WAIT = "retry_wait";
     public static final String EXECUTION_COMPLETED = "completed";
+    public static final String EXECUTION_PARTIAL_FAILED = "partial_failed";
     public static final String EXECUTION_FAILED = "failed";
     public static final String EXECUTION_CANCELLED = "cancelled";
+    public static final String EXECUTION_PARTIAL_CANCELLED = "partial_cancelled";
     public static final String EXECUTION_DEAD_LETTER = "dead_letter";
 
     public static final String STAGE_QUEUED = "queued";
@@ -84,6 +86,9 @@ public class ImportJobEntity {
     @Column(name = "original_filename")
     private String originalFilename;
 
+    @Column(name = "idempotency_key", length = 96)
+    private String idempotencyKey;
+
     @Column(name = "total_count")
     private Integer totalCount;
 
@@ -92,6 +97,9 @@ public class ImportJobEntity {
 
     @Column(name = "failure_count")
     private Integer failureCount;
+
+    @Column(name = "skipped_count", nullable = false)
+    private Integer skippedCount;
 
     /**
      * Legacy execution status retained for existing API and UI compatibility.
@@ -219,6 +227,7 @@ public class ImportJobEntity {
         if (cursorRowNo == null) cursorRowNo = 0;
         if (processedCount == null) processedCount = 0;
         if (publishedCount == null) publishedCount = 0;
+        if (skippedCount == null) skippedCount = 0;
         if (chunkSize == null || chunkSize <= 0) chunkSize = 200;
         if (executionRetryCount == null || executionRetryCount < 0) executionRetryCount = 0;
         if (executionMaxRetries == null || executionMaxRetries <= 0) executionMaxRetries = 3;
