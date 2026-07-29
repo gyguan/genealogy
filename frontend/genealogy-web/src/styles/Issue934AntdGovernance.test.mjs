@@ -37,11 +37,15 @@ test('issue 934 keeps browser-native blocking dialogs out of production source',
   }
   const app = await source('src/app/App.tsx');
   const providers = await source('src/app/AppProviders.tsx');
+  const confirmationEvents = await source('src/shared/ui/confirmationEvents.ts');
+  const cultureEditor = await source('src/features/culture/cultureEditorState.ts');
   const client = await source('src/shared/api/client.ts');
   assert.match(app, /confirmAction\s*\(/);
-  assert.match(await source('src/features/culture/cultureEditorState.ts'), /confirmAction\s*\(/);
+  assert.match(cultureEditor, /requestConfirmation\s*\(/);
+  assert.match(confirmationEvents, /CONFIRMATION_EVENT\s*=\s*'genealogy:confirm-action'/);
+  assert.match(providers, /CONFIRMATION_EVENT/);
+  assert.match(providers, /confirmAction\s*\(/);
   assert.match(client, /genealogy:confirm-action/);
-  assert.match(providers, /genealogy:confirm-action/);
   assert.match(client, /确认创建疑似重复人物/);
 });
 
