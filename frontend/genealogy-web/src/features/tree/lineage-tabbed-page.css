@@ -6,25 +6,11 @@
 }
 
 .lineage-tabbed-query-card,
-.lineage-tabbed-result-card {
+.lineage-tabbed-result-card,
+.lineage-tabbed-result-card .lineage-result-pane,
+.lineage-tabbed-result-card .lineage-logic-card {
   width: 100%;
   min-width: 0;
-}
-
-.lineage-tabbed-query-card > .ant-card-head {
-  min-height: 48px;
-}
-
-.lineage-tabbed-query-card > .ant-card-body {
-  padding-top: 0;
-}
-
-.lineage-query-tabs > .ant-tabs-nav {
-  margin-bottom: 16px;
-}
-
-.lineage-query-tabs .ant-tabs-tab {
-  padding-block: 12px;
 }
 
 .lineage-tab-query-form {
@@ -39,16 +25,6 @@
   grid-template-columns: repeat(5, minmax(160px, 1fr));
   gap: 0 16px;
   min-width: 0;
-}
-
-.lineage-tab-query-grid .ant-form-item {
-  min-width: 0;
-  margin-bottom: 0;
-}
-
-.lineage-tab-query-grid .ant-select,
-.lineage-tab-query-grid .query-multi-select {
-  width: 100%;
 }
 
 .lineage-tab-query-actions {
@@ -70,20 +46,6 @@
   gap: 12px;
   margin-top: 12px;
   padding: 8px 12px;
-  border-radius: 6px;
-  background: #fafafa;
-}
-
-.lineage-tab-query-note > .ant-typography-secondary:first-child {
-  display: none;
-}
-
-.lineage-tab-query-note:not(:has(.ant-typography-warning)) {
-  display: none;
-}
-
-.lineage-tabbed-result-card .lineage-result-pane {
-  min-width: 0;
 }
 
 .lineage-tabbed-result-card .lineage-result-meta {
@@ -101,10 +63,6 @@
   display: none;
 }
 
-.lineage-tabbed-result-card .lineage-logic-card {
-  min-width: 0;
-}
-
 .lineage-tabbed-page .lineage-graph-toolbar {
   min-height: 50px;
   align-items: center;
@@ -113,21 +71,12 @@
   flex-wrap: nowrap;
 }
 
-.lineage-tabbed-page .lineage-graph-toolbar > .ant-space {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
 .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
   align-self: center;
   flex: 0 1 360px;
   width: min(360px, 100%);
   min-width: 280px;
-  margin: 0 0 0 auto !important;
-}
-
-.lineage-inspector-drawer .ant-drawer-body {
-  position: relative;
+  margin-left: auto;
 }
 
 .lineage-inspector-drawer .lineage-drawer-content {
@@ -136,47 +85,23 @@
 }
 
 .lineage-inspector-drawer .lineage-inspector-actions {
-  order: -1;
   position: sticky;
   top: 0;
   z-index: 2;
   justify-content: flex-end;
   margin: -8px -8px 16px;
   padding: 8px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fff;
-}
-
-.lineage-inspector-drawer .lineage-inspector-actions + .ant-divider,
-.lineage-inspector-drawer .lineage-drawer-content > .ant-divider:last-of-type {
-  display: none;
 }
 
 @media (max-width: 1280px) {
-  .lineage-tab-query-form {
-    grid-template-columns: 1fr;
-  }
-
-  .lineage-tab-query-grid {
-    grid-template-columns: repeat(3, minmax(180px, 1fr));
-  }
-
-  .lineage-tab-query-actions {
-    display: flex;
-    justify-content: flex-end;
-  }
+  .lineage-tab-query-form { grid-template-columns: 1fr; }
+  .lineage-tab-query-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+  .lineage-tab-query-actions { display: flex; justify-content: flex-end; }
 }
 
 @media (max-width: 900px) {
-  .lineage-tab-query-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lineage-tab-query-note {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
+  .lineage-tab-query-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lineage-tab-query-note { align-items: flex-start; flex-direction: column; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     flex-basis: 330px;
     width: min(330px, 100%);
@@ -185,52 +110,16 @@
 }
 
 @media (max-width: 767px) {
-  .lineage-tabbed-page {
-    gap: 12px;
-  }
-
-  .lineage-tabbed-query-card > .ant-card-body {
-    padding-inline: 12px;
-  }
-
-  .lineage-tab-query-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .lineage-tab-query-actions,
-  .lineage-tab-query-actions .ant-space,
-  .lineage-tab-query-actions .ant-btn {
-    width: 100%;
-  }
-
-  .lineage-tab-query-actions .ant-space-item {
-    flex: 1;
-  }
-
-  .lineage-tabbed-page .lineage-graph-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-
-  .lineage-tabbed-page .lineage-graph-toolbar > .ant-space {
-    width: 100%;
-  }
-
+  .lineage-tabbed-page { gap: 12px; }
+  .lineage-tab-query-grid { grid-template-columns: 1fr; }
+  .lineage-tab-query-actions { width: 100%; }
+  .lineage-tabbed-page .lineage-graph-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
     flex: 1 1 auto;
     width: 100%;
     min-width: 0;
-    margin-left: 0 !important;
+    margin-left: 0;
   }
-
-  .lineage-inspector-drawer .lineage-inspector-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .lineage-inspector-drawer .lineage-inspector-actions .ant-btn {
-    min-height: 40px;
-  }
+  .lineage-inspector-drawer .lineage-inspector-actions { justify-content: flex-start; flex-wrap: wrap; }
 }
