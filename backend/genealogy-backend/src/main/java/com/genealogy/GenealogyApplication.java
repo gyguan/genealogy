@@ -1,6 +1,7 @@
 package com.genealogy;
 
 import com.genealogy.auth.config.AuthProperties;
+import com.genealogy.config.ProductionEnvironmentValidator;
 import com.genealogy.person.application.PersonCodeRuleProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -13,6 +14,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class GenealogyApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(GenealogyApplication.class, args);
+        createApplication().run(args);
+    }
+
+    public static SpringApplication createApplication() {
+        SpringApplication application = new SpringApplication(GenealogyApplication.class);
+        application.addListeners(new ProductionEnvironmentValidator());
+        return application;
     }
 }
