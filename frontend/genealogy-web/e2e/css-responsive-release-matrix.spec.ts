@@ -79,7 +79,6 @@ async function expectCriticalActionsReachable(page: Page, width: number) {
     const action = actions.nth(index);
     if (!(await action.isVisible())) continue;
     await expectInsideViewport(action, width);
-    await expect(action).toBeEnabled({ timeout: 2_000 }).catch(() => undefined);
   }
 }
 
