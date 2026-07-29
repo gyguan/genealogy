@@ -1,6 +1,22 @@
 # Genealogy Backend
 
-中国式族谱系统 MVP 1 后端工程。
+中国式族谱系统后端，采用 Java 17、Spring Boot 3、PostgreSQL、Spring Data JPA 与 Flyway，按模块化单体组织。
+
+## 开始之前
+
+AI 或开发者进入后端目录后，按以下顺序阅读：
+
+1. 仓库根 `AGENTS.md`
+2. `backend/genealogy-backend/AGENTS.md`
+3. `docs/database-development-standard.md`
+4. 与当前任务相关的模块 README、Issue 与 Spec
+
+代码可理解性与维护经验见：
+
+- `docs/ai/code-understanding-and-maintainability-standard.md`
+- `docs/backend-repository-performance-governance.md`
+- `docs/backend-quality-observability-governance.md`
+- `docs/backend-environment-configuration.md`
 
 ## 技术栈
 
@@ -8,73 +24,56 @@
 Java 17
 Spring Boot 3.x
 PostgreSQL 16
-Flyway
 Spring Data JPA
+Flyway
 OpenAPI / Swagger UI
+Actuator / Micrometer / Prometheus
+Maven
 ```
 
 ## 本地启动
 
-### 1. 环境要求
+### 环境要求
 
 ```text
 JDK 17+
-Maven 3.8+
+Maven 3.9+
 Docker / Docker Compose
 curl
-python3，用于执行 MVP1 API 验收脚本
+python3（执行部分验收与治理脚本）
 ```
 
-### 2. 数据库配置
-
-默认 PostgreSQL 配置：
-
-```text
-数据库名：genealogy
-用户名：genealogy
-密码：123456
-连接串：jdbc:postgresql://localhost:5432/genealogy
-```
-
-配置文件：
-
-```text
-src/main/resources/application.yml
-```
-
-### 3. 启动 PostgreSQL
+### 启动 PostgreSQL
 
 ```bash
 cd backend/genealogy-backend
 docker compose up -d
 ```
 
-如果本地旧库和当前 Flyway 脚本不一致，建议清库重建：
+### 配置本地环境
+
+本地配置使用 `local` Profile。数据库连接与凭据通过环境变量或本地安全配置注入，不在默认配置中提交固定密码。
+
+常用变量示例：
 
 ```bash
-docker compose down -v
-docker compose up -d
+export SPRING_PROFILES_ACTIVE=local
+export DB_URL=jdbc:postgresql://localhost:5432/genealogy
+export DB_USERNAME=genealogy
+export DB_PASSWORD='<local-password>'
 ```
 
-### 4. 启动后端
+实际变量和生产启动要求以 `docs/backend-environment-configuration.md` 与配置文件为准。
+
+### 启动应用
 
 ```bash
 mvn spring-boot:run
 ```
 
-启动时 Flyway 默认自动执行：
+Flyway 默认负责 Schema 演进，Hibernate 使用 `ddl-auto=validate` 校验实体与数据库一致性。不得通过关闭 Flyway、使用 `flyway repair` 或手工修改 `flyway_schema_history` 掩盖迁移问题。
 
-```text
-src/main/resources/db/migration
-```
-
-该目录包含建表、索引、系统角色、系统权限、角色权限绑定等自动迁移脚本。Flyway 完成后，Hibernate 再通过 `ddl-auto=validate` 校验实体与数据库结构；因此正常本地启动不要关闭 Flyway。只有在数据库已由外部流程完成迁移、且明确知道 Schema 与当前代码一致时，才可临时设置：
-
-```text
-SPRING_FLYWAY_ENABLED=false
-```
-
-### 5. 健康检查与 Swagger
+### 健康检查与 OpenAPI
 
 ```text
 GET http://localhost:8080/api/v1/health
@@ -82,227 +81,152 @@ http://localhost:8080/swagger-ui.html
 http://localhost:8080/api-docs
 ```
 
-## 常见启动问题
+## 模块导航
 
-### 1. Flyway 报 schema 非空但没有 history 表
-
-错误类似：
+详细模块职责与调用边界见：
 
 ```text
-Found non-empty schema(s) "genealogy" but no schema history table
+src/main/java/com/genealogy/README.md
 ```
 
-本地验证环境建议直接清库重建：
+主要模块：
 
-```bash
-docker compose down -v
-docker compose up -d
-mvn spring-boot:run
-```
+| 模块 | 核心职责 |
+|---|---|
+| `auth` | 登录、会话、ActorContext 与请求身份 |
+| `clan` | 宗族主数据 |
+| `branch` | 支派及支派范围 |
+| `generation` | 字辈方案与字辈项 |
+| `person` | 人物档案及重复检测 |
+| `relationship` | 关系模型与关系分类 |
+| `source` | 来源资料、来源绑定与访问策略 |
+| `review` | Revision、审核任务与生效闭环 |
+| `tree` | 只读世系图查询、遍历、读模型与组装 |
+| `member` | 宗族成员、角色、权限与支派授权 |
+| `importexport` | 导入任务、校验、批处理、导出 |
+| `attachment` | 附件元数据与存储访问 |
+| `operationlog` | 操作日志、审计查询与监控 |
+| `common` | 统一响应、异常和跨模块基础能力 |
 
-不建议在本地 MVP 验证阶段开启 `baselineOnMigrate`，否则可能跳过部分迁移脚本，导致表结构与 JPA 实体不一致。
-
-### 2. 数据库密码错误
-
-确认 `docker-compose.yml` 与 `application.yml` 都使用：
+## 分层约定
 
 ```text
-username: genealogy
-password: 123456
+Controller
+  → Application Service
+  → Domain Policy / State Machine
+  → Repository / QueryRepository
+  → Assembler / Response
 ```
 
-### 3. `entityManagerFactory` 或认证 Bean 创建失败
+- Controller 仅做协议适配、鉴权入口和参数转换。
+- Application Service 负责用例编排、事务和事实装载。
+- Domain Policy/State Machine 负责纯业务决策。
+- Repository 负责持久化；复杂读取进入 QueryRepository。
+- DTO、Entity、View/Read Model 和 Command/Query 不混用。
 
-出现以下 Bean 链时：
+强制规则以 `backend/genealogy-backend/AGENTS.md` 为准。
+
+## API 契约
+
+公共 API 变更必须先更新：
 
 ```text
-authCookieBridgeFilter
-  -> authApplicationService
-  -> appUserRepository
-  -> jpaSharedEM_entityManagerFactory
-  -> entityManagerFactory
+docs/api/openapi.json
 ```
 
-不要先修改认证 Filter、Application Service 或 Repository。它们通常只是被底层数据库初始化失败连带影响。请继续查看日志中最深层的 `Caused by`，重点关注：
+不得手工修改前端类型来掩盖后端契约不一致。
+
+## 数据库与 Flyway
+
+迁移目录：
 
 ```text
-flywayInitializer
-FlywayException
-Schema-validation
-PSQLException
+src/main/resources/db/migration
 ```
 
-### 4. Flyway 版本冲突
-
-如果日志包含：
+迁移命名、版本、前向补偿、历史数据兼容和索引规则见：
 
 ```text
-Found more than one migration with version ...
+docs/database-development-standard.md
 ```
 
-先执行迁移元数据检查：
+常用治理检查：
 
 ```bash
 bash ./scripts/check-flyway-migrations.sh
 ```
 
-脚本会输出重复版本及具体文件名。不要使用 `flyway repair`、手工修改 `flyway_schema_history`、关闭 Flyway 或修改认证依赖链来绕过冲突。应在独立数据库治理 Issue 中，将重复脚本收敛为一个规范基线文件，并用更高版本的前向迁移完整保留被移除脚本的 SQL 职责。
-
-如果当前代码已经修复迁移版本，但本地数据库来自旧分支或旧 Docker volume，执行：
+本地可重建数据库出现历史 Volume 与当前迁移不一致时，可在确认无需保留数据后执行：
 
 ```bash
 docker compose down -v
 docker compose up -d
-mvn spring-boot:run
 ```
 
-该操作会删除本地容器数据卷，仅适用于可重建的本地开发数据库；有需要保留的数据时先完成备份。
+## 验证命令
+
+聚焦测试：
+
+```bash
+mvn test
+```
+
+交付级验证：
+
+```bash
+mvn verify
+```
+
+CI 还会根据变更范围执行：
+
+- ArchUnit
+- JaCoCo 分模块门禁
+- SpotBugs
+- Maven Enforcer
+- Trivy
+- Flyway 空库迁移和历史库升级
+- PostgreSQL Integration
+- Security Penetration
+- Member Branch Scope E2E
+- Real Playwright Functional E2E
 
 ## MVP1 API 验收
 
-仓库内置端到端 API 验收脚本：
-
-```text
-scripts/mvp1-api-test.sh
-```
-
-执行：
-
 ```bash
-cd backend/genealogy-backend
 chmod +x scripts/mvp1-api-test.sh
 ./scripts/mvp1-api-test.sh
 ```
 
-脚本覆盖：
-
-```text
-注册、登录、匿名写接口拦截、创建宗族、创建支派、创建字辈、录入人物、隐私脱敏、建立关系、创建来源、绑定来源、上传附件、下载附件、提交审核、审核通过、查看世系、查询日志、下载模板、导出 CSV
-```
-
-验收说明：
+说明：
 
 ```text
 docs/test/mvp1-api-acceptance.md
 ```
 
-## 可选：导入演示数据
+## 常见问题定位
 
-演示数据脚本不会被 Flyway 自动执行，需手动导入：
+### Bean 创建失败
 
-```bash
-psql -h localhost -p 5432 -U genealogy -d genealogy -f src/main/resources/db/seed/demo-data.sql
-```
+认证、Repository 或 Controller Bean 失败时，优先查看最深层 `Caused by`。常见根因通常是：
 
-演示账号：
+- Flyway 迁移失败
+- Schema Validate 失败
+- PostgreSQL 连接或凭据错误
+- 配置变量缺失
 
-```text
-用户名：demo_admin
-密码：Demo@123456
-```
+不要先修改被连带影响的上层 Bean。
 
-## 认证登录接口
+### Flyway 版本冲突
 
-```text
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-GET  /api/v1/auth/me
-POST /api/v1/auth/logout
-```
+出现重复版本时执行迁移检查脚本，使用更高版本的前向迁移修复。禁止修改已经执行过的共享迁移或关闭迁移绕过问题。
 
-当前采用轻量 token 会话机制：密码使用 PBKDF2 哈希存储；登录后生成不透明 token，服务端保存 token hash，调用 `/me` 和 `/logout` 时通过 `Authorization: Bearer {token}` 识别当前用户。
+## README 维护规则
 
-## 审核闭环接口
+出现以下变化时必须同步刷新 README：
 
-```text
-POST /api/v1/persons/{personId}/submit-review
-POST /api/v1/relationships/{relationshipId}/submit-review
-POST /api/v1/sources/{sourceId}/submit-review
-POST /api/v1/branches/{branchId}/submit-review
-POST /api/v1/generation-schemes/{schemeId}/submit-review
-GET  /api/v1/clans/{clanId}/review-tasks/pending
-GET  /api/v1/review-tasks/{taskId}
-POST /api/v1/review-tasks/{taskId}/approve
-POST /api/v1/review-tasks/{taskId}/reject
-GET  /api/v1/persons/{personId}/review-records
-```
-
-审核通过/驳回要求 `clan_admin`。
-
-## 来源证据链与附件接口
-
-```text
-POST   /api/v1/clans/{clanId}/sources
-POST   /api/v1/source-bindings
-GET    /api/v1/source-bindings?targetType=person&targetId={id}
-GET    /api/v1/sources/{sourceId}/bindings
-DELETE /api/v1/source-bindings/{bindingId}
-POST   /api/v1/clans/{clanId}/attachments/upload
-GET    /api/v1/attachments/{attachmentId}/download
-GET    /api/v1/sources/{sourceId}/attachments
-```
-
-附件默认本地存储：
-
-```yaml
-genealogy:
-  attachment:
-    storage-root: ./data/attachments
-```
-
-## 字辈接口
-
-```text
-POST /api/v1/clans/{clanId}/generation-schemes
-GET  /api/v1/clans/{clanId}/generation-schemes
-PUT  /api/v1/generation-schemes/{schemeId}/items
-POST /api/v1/generation-schemes/{schemeId}/items
-GET  /api/v1/generation-schemes/{schemeId}/items
-GET  /api/v1/generation-schemes/{schemeId}/items/{generationNo}
-```
-
-## 人物与关系导入导出
-
-```text
-GET  /api/v1/imports/templates/persons.csv
-GET  /api/v1/imports/templates/relations.csv
-POST /api/v1/clans/{clanId}/imports/persons.csv/preview
-POST /api/v1/clans/{clanId}/imports/persons.csv
-POST /api/v1/clans/{clanId}/imports/relations.csv/preview
-POST /api/v1/clans/{clanId}/imports/relations.csv
-GET  /api/v1/clans/{clanId}/exports/persons.csv
-GET  /api/v1/clans/{clanId}/branches/{branchId}/exports/persons.csv
-GET  /api/v1/clans/{clanId}/exports/relations.csv
-GET  /api/v1/exports/types
-```
-
-当前使用 Excel 可直接打开的 UTF-8 BOM CSV。
-
-## 操作日志接口
-
-```text
-GET /api/v1/logs/operations
-GET /api/v1/logs/operations?clanId={clanId}
-GET /api/v1/logs/operations?actionType=person_create
-GET /api/v1/logs/operations?targetType=person&targetId={personId}
-```
-
-支持按宗族、操作者、动作类型、目标类型、目标 ID、时间范围、关键词分页查询。
-
-## 模块规划
-
-```text
-common            公共能力
-auth              认证登录
-clan              宗族管理
-branch            支派管理
-generation        字辈管理
-person            人物管理
-relationship      关系管理
-source            资料来源
-review            审核中心
-tree              世系图查询
-member            成员权限
-importexport      导入导出
-operationlog      操作日志
-```
+- 新增或调整模块边界
+- 主调用链变化
+- 权限、审核或状态机不变量变化
+- 新增关键 QueryRepository 或批处理策略
+- 本地启动、环境变量或验证命令变化
+- 新增复杂模块但缺少入口导航
