@@ -25,3 +25,5 @@ The standard Ant Design periphery remains responsible for control sizing and acc
 ## Regression enforcement
 
 `BusinessVisualBoundaryGovernance.test.mjs` blocks boundary violations. Existing Visual Release, Functional E2E, Security, Style Debt, API Contract, Tracking Page, and Multi-Browser gates provide release evidence.
+
+The final human-authored PR head is the release candidate. Bot-authored cleanup commits are followed by a human-authored evidence commit so every required pull-request gate executes against the exact merge tree.
