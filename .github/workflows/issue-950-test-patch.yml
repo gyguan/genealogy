@@ -1,0 +1,41 @@
+name: Issue 950 Test Patch
+
+on:
+  push:
+    branches: ["agent/issue-950-clear-architecture-baseline"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-950-clear-architecture-baseline
+          fetch-depth: 0
+      - name: Update tests for application implementation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          paths = [
+              Path('backend/genealogy-backend/src/test/java/com/genealogy/member/domain/MemberGrantPolicyServiceTest.java'),
+              Path('backend/genealogy-backend/src/test/java/com/genealogy/member/domain/MemberGrantVisibilityPolicyTest.java'),
+          ]
+          for path in paths:
+              text = path.read_text()
+              text = text.replace(
+                  'private final MemberGrantPolicyService service = new MemberGrantPolicyService(',
+                  'private final com.genealogy.member.application.MemberGrantPolicyService service = new com.genealogy.member.application.MemberGrantPolicyService('
+              )
+              path.write_text(text)
+          Path('.github/workflows/issue-950-test-patch.yml').unlink()
+          PY
+      - name: Commit test updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: instantiate member grant application policy"
+          git push origin HEAD:agent/issue-950-clear-architecture-baseline
