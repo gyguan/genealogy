@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,34 @@ public interface PersonRepository extends
         JpaRepository<PersonEntity, Long>,
         JpaSpecificationExecutor<PersonEntity>,
         TreePersonQueryRepository {
+
+    /**
+     * Compatibility adapter for the existing graph policy and assembly chain.
+     * The repository fragment itself exposes only immutable Tree projections.
+     */
+    default List<PersonEntity> findTreePeopleByIds(
+            Long clanId,
+            Collection<Long> personIds,
+            Collection<String> statuses
+    ) {
+        return findTreePersonSnapshotsByIds(clanId, personIds, statuses).stream()
+                .map(snapshot -> snapshot.toDetachedEntity())
+                .toList();
+    }
+
+    /**
+     * Compatibility adapter for the existing bounded branch graph flow.
+     */
+    default List<PersonEntity> findTreePeopleByBranches(
+            Long clanId,
+            Collection<Long> branchIds,
+            Collection<String> statuses,
+            Pageable pageable
+    ) {
+        return findTreePersonSnapshotsByBranches(clanId, branchIds, statuses, pageable).stream()
+                .map(snapshot -> snapshot.toDetachedEntity())
+                .toList();
+    }
 
     List<PersonEntity> findByClanIdAndDeletedAtIsNull(Long clanId);
 

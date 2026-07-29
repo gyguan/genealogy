@@ -2,16 +2,57 @@ package com.genealogy.relationship.repository;
 
 import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.tree.repository.TreeRelationshipQueryRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface RelationshipRepository extends
         JpaRepository<RelationshipEntity, Long>,
         TreeRelationshipQueryRepository {
+
+    /** Compatibility adapter for the existing graph traversal chain. */
+    default List<RelationshipEntity> findTreeOutgoing(
+            Long clanId,
+            Collection<Long> personIds,
+            Collection<String> statuses,
+            Collection<String> categories,
+            boolean lineageOnly
+    ) {
+        return findTreeOutgoingSnapshots(clanId, personIds, statuses, categories, lineageOnly).stream()
+                .map(snapshot -> snapshot.toDetachedEntity())
+                .toList();
+    }
+
+    /** Compatibility adapter for the existing graph traversal chain. */
+    default List<RelationshipEntity> findTreeIncoming(
+            Long clanId,
+            Collection<Long> personIds,
+            Collection<String> statuses,
+            Collection<String> categories,
+            boolean lineageOnly
+    ) {
+        return findTreeIncomingSnapshots(clanId, personIds, statuses, categories, lineageOnly).stream()
+                .map(snapshot -> snapshot.toDetachedEntity())
+                .toList();
+    }
+
+    /** Compatibility adapter for the existing bounded branch graph flow. */
+    default List<RelationshipEntity> findTreeWithinPeople(
+            Long clanId,
+            Collection<Long> personIds,
+            Collection<String> statuses,
+            Collection<String> categories,
+            Pageable pageable
+    ) {
+        return findTreeWithinPeopleSnapshots(clanId, personIds, statuses, categories, pageable).stream()
+                .map(snapshot -> snapshot.toDetachedEntity())
+                .toList();
+    }
 
     List<RelationshipEntity> findByFromPersonIdAndDeletedAtIsNull(Long fromPersonId);
 
