@@ -55,8 +55,9 @@ public class SourceBindingCommandApplicationService {
 
     @Transactional
     public SourceBindingResponse bind(Long clanId, SourceBindingCreateRequest request, Long actorId) {
-        validateTarget(clanId, request);
-        return sourceApplicationService.bind(clanId, request, actorId);
+        SourceBindingCreateRequest canonicalRequest = canonicalize(request);
+        validateTarget(clanId, canonicalRequest);
+        return sourceApplicationService.bind(clanId, canonicalRequest, actorId);
     }
 
     @Transactional
@@ -77,10 +78,11 @@ public class SourceBindingCommandApplicationService {
             String requestId,
             String clientIp
     ) {
+        SourceBindingRevisionSubmitRequest canonicalRequest = canonicalize(request);
         SourceBindingRevisionResponse response = sourceBindingReviewApplicationService.submitCreate(
-                clanId, request, actorId, requestId, clientIp
+                clanId, canonicalRequest, actorId, requestId, clientIp
         );
-        validateTarget(clanId, request.binding());
+        validateTarget(clanId, canonicalRequest.binding());
         return response;
     }
 
@@ -92,10 +94,11 @@ public class SourceBindingCommandApplicationService {
             String requestId,
             String clientIp
     ) {
+        SourceBindingRevisionSubmitRequest canonicalRequest = canonicalize(request);
         SourceBindingRevisionResponse response = sourceBindingReviewApplicationService.submitReplace(
-                bindingId, request, actorId, requestId, clientIp
+                bindingId, canonicalRequest, actorId, requestId, clientIp
         );
-        validateTarget(response.clanId(), request.binding());
+        validateTarget(response.clanId(), canonicalRequest.binding());
         return response;
     }
 
@@ -133,6 +136,30 @@ public class SourceBindingCommandApplicationService {
             String clientIp
     ) {
         return sourceBindingReviewApplicationService.reject(revisionId, request, actorId, requestId, clientIp);
+    }
+
+    private SourceBindingRevisionSubmitRequest canonicalize(SourceBindingRevisionSubmitRequest request) {
+        if (request == null) {
+            throw new BusinessException("SOURCE_BINDING_REQUEST_INVALID", "来源绑定请求不能为空");
+        }
+        return new SourceBindingRevisionSubmitRequest(canonicalize(request.binding()), request.changeReason());
+    }
+
+    private SourceBindingCreateRequest canonicalize(SourceBindingCreateRequest request) {
+        if (request == null) {
+            throw new BusinessException("SOURCE_BINDING_REQUEST_INVALID", "来源绑定请求不能为空");
+        }
+        SourceBindingTargetType targetType = SourceBindingTargetType.fromApi(request.targetType());
+        return new SourceBindingCreateRequest(
+                request.sourceId(),
+                targetType.apiValue(),
+                request.targetId(),
+                request.bindingReason(),
+                request.excerpt(),
+                request.confidenceLevel(),
+                request.submitReview(),
+                request.createdBy()
+        );
     }
 
     private void validateTarget(Long clanId, SourceBindingCreateRequest request) {
