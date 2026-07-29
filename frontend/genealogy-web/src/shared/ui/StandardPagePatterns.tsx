@@ -12,6 +12,7 @@ import {
   Typography
 } from 'antd';
 import type { AlertProps, ButtonProps, CardProps, DrawerProps, ResultProps, TableProps } from 'antd';
+import '../../styles/shared/standard-page-patterns.css';
 
 export type StandardPageProps = {
   title: ReactNode;
