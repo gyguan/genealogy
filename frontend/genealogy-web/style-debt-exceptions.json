@@ -1,6 +1,32 @@
 {
-  "schemaVersion": 1,
-  "reviewedAt": "2026-07-28",
-  "policy": "Exceptions are exact entries, temporary, and require an open tracking issue.",
-  "exceptions": []
+  "schemaVersion": 2,
+  "reviewedAt": "2026-07-29",
+  "policy": "A 类系统样式债必须为零；B 类仅允许稳定 Feature 根作用域下的业务可视化；C 类必须关联开放 Issue、完整责任信息和有效退出期限。新增、移动、重命名或改变规范化条目均视为新的 A 类债务。",
+  "businessVisualRules": [
+    {
+      "id": "b-lineage-visuals",
+      "owner": "frontend-lineage",
+      "filePattern": "^(src/lineage-(?:graph|tree)\\.css|src/features/tree/.+\\.css)$",
+      "selectorPattern": "(node|edge|canvas|graph)",
+      "featureRoot": ".lineage-tree-page / .lineage-graph",
+      "responsibility": "世系节点、连线和画布业务可视化；不得覆盖标准 Ant Design 控件外围。"
+    },
+    {
+      "id": "b-auth-brand",
+      "owner": "frontend-auth",
+      "filePattern": "^src/auth-commercial\\.css$",
+      "selectorPattern": "(brand|hero|visual|eyebrow|product)",
+      "featureRoot": ".commercial-auth-shell",
+      "responsibility": "登录页品牌标识、品牌文案和装饰视觉；不得覆盖登录表单控件。"
+    }
+  ],
+  "temporaryCompatibility": {
+    "id": "c-legacy-style-compatibility",
+    "owner": "frontend-platform",
+    "reason": "历史页面仍依赖既有样式契约；先以精确基线集合冻结，后续按跟踪 Issue 分批迁移到 Token、组件属性或稳定业务布局。",
+    "exitCondition": "Issue #961 完成并删除所有剩余 C 类条目。",
+    "trackingIssue": 961,
+    "reviewedAt": "2026-07-29",
+    "expiresAt": "2026-10-31"
+  }
 }

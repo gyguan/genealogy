@@ -1,33 +1,32 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 
 const PROJECT_ROOT = process.cwd();
 const REPO_ROOT = path.resolve(PROJECT_ROOT, '../..');
 const SOURCE_PREFIX = 'frontend/genealogy-web/src/';
-const CONFIG_PATH = path.join(PROJECT_ROOT, 'style-debt-baseline.json');
-const config = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
+const baseline = JSON.parse(readFileSync(path.join(PROJECT_ROOT, 'style-debt-baseline.json'), 'utf8'));
+const governance = JSON.parse(readFileSync(path.join(PROJECT_ROOT, baseline.exceptionsFile), 'utf8'));
 
 function arg(name, fallback = '') {
   const prefix = `--${name}=`;
   return process.argv.find(value => value.startsWith(prefix))?.slice(prefix.length) || fallback;
 }
 
-const baseRef = arg('base', process.env.STYLE_AUDIT_BASE_SHA || config.referenceCommit);
+const baseRef = arg('base', process.env.STYLE_AUDIT_BASE_SHA || baseline.referenceCommit);
 const headRef = arg('head', process.env.STYLE_AUDIT_HEAD_SHA || 'WORKTREE');
 const jsonPath = arg('json', 'style-debt-audit.json');
 const markdownPath = arg('markdown', 'style-debt-audit.md');
 const check = !process.argv.includes('--report-only');
-
-const SYSTEM_COLORS = new Set(config.systemColors.map(value => value.toLowerCase()));
-const excludedFiles = new Set(config.excludedFiles || []);
+const SYSTEM_COLORS = new Set(baseline.systemColors.map(value => value.toLowerCase()));
+const excludedFiles = new Set(baseline.excludedFiles || []);
 
 function git(args) {
   return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
 function listWorktreeCss() {
-  const root = path.join(PROJECT_ROOT, 'src');
   const files = [];
   function walk(directory) {
     for (const entry of readdirSync(directory)) {
@@ -37,7 +36,7 @@ function listWorktreeCss() {
       else if (entry.endsWith('.css')) files.push(path.relative(PROJECT_ROOT, absolute).replaceAll('\\', '/'));
     }
   }
-  walk(root);
+  walk(path.join(PROJECT_ROOT, 'src'));
   return files.sort();
 }
 
@@ -62,9 +61,7 @@ function normalize(value) {
 function parseRules(source) {
   const clean = stripComments(source);
   const rules = [];
-  const stack = [];
   let cursor = 0;
-  let pending = '';
   while (cursor < clean.length) {
     const open = clean.indexOf('{', cursor);
     if (open < 0) break;
@@ -78,17 +75,13 @@ function parseRules(source) {
     }
     if (depth !== 0) break;
     const body = clean.slice(open + 1, close - 1);
-    if (header.startsWith('@media') || header.startsWith('@supports') || header.startsWith('@container')) {
-      stack.push(header);
-      const nested = parseRules(body);
-      for (const rule of nested) rules.push({ ...rule, context: [...stack, ...(rule.context || [])] });
-      stack.pop();
+    if (/^@(media|supports|container|layer)\b/.test(header)) {
+      for (const rule of parseRules(body)) rules.push({ ...rule, context: [header, ...(rule.context || [])] });
     } else if (!header.startsWith('@')) {
       const declarations = body.split(';').map(normalize).filter(value => value.includes(':') && !value.includes('{'));
-      if (declarations.length) rules.push({ selector: header || pending, declarations, context: [] });
+      if (declarations.length) rules.push({ selector: header, declarations, context: [] });
     }
     cursor = close;
-    pending = '';
   }
   return rules;
 }
@@ -99,8 +92,7 @@ function declarationParts(declaration) {
 }
 
 function entry(file, rule, property, value = '') {
-  const context = (rule.context || []).map(normalize).join(' > ');
-  return [file, context, normalize(rule.selector), property, value].join('|');
+  return [file, (rule.context || []).map(normalize).join(' > '), normalize(rule.selector), property, value].join('|');
 }
 
 function isUnscopedAnt(selector) {
@@ -117,13 +109,10 @@ function isLegacySelector(selector) {
 }
 
 function importedGlobalFiles(ref) {
-  let source;
-  if (ref === 'WORKTREE') source = readFileSync(path.join(PROJECT_ROOT, 'src/styles/index.css'), 'utf8');
-  else source = git(['show', `${ref}:frontend/genealogy-web/src/styles/index.css`]);
-  return [...source.matchAll(/@import\s+['"]([^'"]+)['"]/g)].map(match => {
-    const absolute = path.posix.normalize(path.posix.join('src/styles', match[1]));
-    return absolute.replace(/^src\/styles\/\.\.\//, 'src/');
-  });
+  const source = ref === 'WORKTREE'
+    ? readFileSync(path.join(PROJECT_ROOT, 'src/styles/index.css'), 'utf8')
+    : git(['show', `${ref}:frontend/genealogy-web/src/styles/index.css`]);
+  return [...source.matchAll(/@import\s+['"]([^'"]+)['"]/g)].map(match => path.posix.normalize(path.posix.join('src/styles', match[1])).replace(/^src\/styles\/\.\.\//, 'src/'));
 }
 
 function isGlobalBusinessSelector(selector) {
@@ -142,18 +131,14 @@ function scan(ref) {
     ref,
     generatedAt: new Date().toISOString(),
     categories: { important: [], fixedSystemColors: [], nativeControls: [], unscopedAnt: [], globalBusiness: [], legacyPrototype: [] },
-    files: {},
     totals: { cssFiles: 0, cssLines: 0, cssBytes: 0, globalBundleBytes: 0 }
   };
   for (const file of files) {
     const source = readCss(ref, file);
-    const lines = source.split(/\r?\n/).length;
-    const bytes = Buffer.byteLength(source);
-    result.files[file] = { lines, bytes };
     result.totals.cssFiles += 1;
-    result.totals.cssLines += lines;
-    result.totals.cssBytes += bytes;
-    if (globalFiles.has(file)) result.totals.globalBundleBytes += bytes;
+    result.totals.cssLines += source.split(/\r?\n/).length;
+    result.totals.cssBytes += Buffer.byteLength(source);
+    if (globalFiles.has(file)) result.totals.globalBundleBytes += Buffer.byteLength(source);
     for (const rule of parseRules(source)) {
       if (isUnscopedAnt(rule.selector)) result.categories.unscopedAnt.push(entry(file, rule, 'selector'));
       if (hasNativeControlSelector(rule.selector)) result.categories.nativeControls.push(entry(file, rule, 'selector'));
@@ -173,57 +158,89 @@ function scan(ref) {
   return result;
 }
 
-function loadExceptions() {
-  const exceptionsPath = path.join(PROJECT_ROOT, config.exceptionsFile);
-  const data = JSON.parse(readFileSync(exceptionsPath, 'utf8'));
-  const required = ['id', 'category', 'entries', 'owner', 'reason', 'trackingIssue', 'reviewedAt', 'exitCondition'];
-  for (const item of data.exceptions) {
-    for (const field of required) if (item[field] === undefined || item[field] === '') throw new Error(`style exception ${item.id || '<unknown>'} missing ${field}`);
-    if (!Number.isInteger(item.trackingIssue)) throw new Error(`style exception ${item.id} trackingIssue must be an integer`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(item.reviewedAt)) throw new Error(`style exception ${item.id} reviewedAt must be YYYY-MM-DD`);
+function allEntries(scanResult) {
+  return Object.entries(scanResult.categories).flatMap(([category, values]) => values.map(value => ({ category, value })));
+}
+
+function businessRuleFor(item) {
+  const [file, , selector] = item.value.split('|');
+  return governance.businessVisualRules.find(rule => new RegExp(rule.filePattern, 'i').test(file) && new RegExp(rule.selectorPattern, 'i').test(selector));
+}
+
+function digest(values) {
+  return createHash('sha256').update([...values].sort().join('\n')).digest('hex');
+}
+
+function classify(base, head) {
+  const baseValues = new Set(allEntries(base).map(item => item.value));
+  const result = { A: [], B: [], C: [], removed: [] };
+  for (const item of allEntries(head)) {
+    const rule = businessRuleFor(item);
+    if (rule) result.B.push({ ...item, ruleId: rule.id });
+    else if (baseValues.has(item.value)) result.C.push(item);
+    else result.A.push(item);
   }
-  return data;
+  const headValues = new Set(allEntries(head).map(item => item.value));
+  for (const item of allEntries(base)) if (!headValues.has(item.value)) result.removed.push(item);
+  for (const key of ['A', 'B', 'C', 'removed']) result[key].sort((a, b) => a.value.localeCompare(b.value));
+  return result;
 }
 
-function exceptionEntries(exceptions, category) {
-  return new Set(exceptions.exceptions.filter(item => item.category === category).flatMap(item => item.entries));
-}
-
-function compare(base, head, exceptions) {
-  const comparisons = {};
-  let failed = false;
+function trends(base, head, classified) {
+  const categories = {};
   for (const category of Object.keys(head.categories)) {
-    const before = new Set(base.categories[category]);
-    const allowed = exceptionEntries(exceptions, category);
-    const added = head.categories[category].filter(value => !before.has(value) && !allowed.has(value));
-    const removed = base.categories[category].filter(value => !new Set(head.categories[category]).has(value));
-    comparisons[category] = { before: before.size, after: head.categories[category].length, added, removed };
-    if (added.length) failed = true;
+    const before = base.categories[category].length;
+    const after = head.categories[category].length;
+    categories[category] = { baseline: before, current: after, delta: after - before };
   }
-  const globalBundleDelta = head.totals.globalBundleBytes - base.totals.globalBundleBytes;
-  if (globalBundleDelta > 0) failed = true;
-  return { failed, globalBundleDelta, categories: comparisons };
+  return {
+    categories,
+    classes: {
+      A: { baseline: 0, current: classified.A.length, delta: classified.A.length },
+      B: { baseline: classified.B.length, current: classified.B.length, delta: 0 },
+      C: { baseline: classified.C.length + classified.removed.length, current: classified.C.length, delta: -classified.removed.length }
+    },
+    globalBundleBytes: { baseline: base.totals.globalBundleBytes, current: head.totals.globalBundleBytes, delta: head.totals.globalBundleBytes - base.totals.globalBundleBytes }
+  };
 }
 
 function markdown(report) {
-  const lines = ['# Style Debt Audit', '', `- Base: \`${report.base.ref}\``, `- Head: \`${report.head.ref}\``, `- Result: **${report.comparison.failed ? 'FAILED' : 'PASSED'}**`, '', '| Metric | Base | Head | Delta |', '| --- | ---: | ---: | ---: |'];
-  for (const [name, value] of Object.entries(report.comparison.categories)) lines.push(`| ${name} | ${value.before} | ${value.after} | ${value.after - value.before} |`);
-  lines.push(`| globalBundleBytes | ${report.base.totals.globalBundleBytes} | ${report.head.totals.globalBundleBytes} | ${report.comparison.globalBundleDelta} |`, '');
-  for (const [name, value] of Object.entries(report.comparison.categories)) {
-    if (!value.added.length && !value.removed.length) continue;
-    lines.push(`## ${name}`, '', `Added: ${value.added.length}; Removed: ${value.removed.length}.`, '');
-    if (value.added.length) lines.push('### Added (blocking)', ...value.added.map(item => `- \`${item}\``), '');
-    if (value.removed.length) lines.push('### Removed', ...value.removed.map(item => `- \`${item}\``), '');
-  }
+  const lines = [
+    '# Style Debt Classification Audit', '',
+    `- Base: \`${report.base.ref}\``,
+    `- Head: \`${report.head.ref}\``,
+    `- Result: **${report.failed ? 'FAILED' : 'PASSED'}**`,
+    `- A-class system debt: **${report.classification.A.length}**`,
+    `- B-class business visual exceptions: **${report.classification.B.length}**`,
+    `- C-class temporary compatibility exceptions: **${report.classification.C.length}**`,
+    `- Removed historical entries: **${report.classification.removed.length}**`, '',
+    '| Raw category | Baseline | Current | Delta |', '| --- | ---: | ---: | ---: |'
+  ];
+  for (const [name, value] of Object.entries(report.trends.categories)) lines.push(`| ${name} | ${value.baseline} | ${value.current} | ${value.delta} |`);
+  lines.push('', '| Governance class | Baseline | Current | Delta |', '| --- | ---: | ---: | ---: |');
+  for (const [name, value] of Object.entries(report.trends.classes)) lines.push(`| ${name} | ${value.baseline} | ${value.current} | ${value.delta} |`);
+  lines.push('', `- Normalized collection digest: \`${report.collectionDigest}\``, '');
+  if (report.classification.A.length) lines.push('## A-class blocking entries', '', ...report.classification.A.map(item => `- \`${item.category}: ${item.value}\``), '');
+  if (report.classification.removed.length) lines.push('## Cleared entries', '', ...report.classification.removed.map(item => `- \`${item.category}: ${item.value}\``), '');
+  lines.push('## Retained governance', '', ...governance.businessVisualRules.map(rule => `- **${rule.id}** — ${rule.owner}; root: \`${rule.featureRoot}\`; ${rule.responsibility}`), `- **${governance.temporaryCompatibility.id}** — ${governance.temporaryCompatibility.owner}; tracking #${governance.temporaryCompatibility.trackingIssue}; expires ${governance.temporaryCompatibility.expiresAt}.`, '');
   return `${lines.join('\n')}\n`;
 }
 
-const exceptions = loadExceptions();
 const base = scan(baseRef);
 const head = scan(headRef);
-const comparison = compare(base, head, exceptions);
-const report = { schemaVersion: 1, policy: config.policy, base, head, comparison, exceptions };
+const classification = classify(base, head);
+const report = {
+  schemaVersion: 2,
+  policy: governance.policy,
+  base,
+  head,
+  classification,
+  trends: trends(base, head, classification),
+  collectionDigest: digest(allEntries(head).map(item => `${item.category}|${item.value}`)),
+  governance,
+  failed: classification.A.length > 0 || head.totals.globalBundleBytes > base.totals.globalBundleBytes
+};
 writeFileSync(path.join(PROJECT_ROOT, jsonPath), `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(path.join(PROJECT_ROOT, markdownPath), markdown(report));
 console.log(markdown(report));
-if (check && comparison.failed) process.exitCode = 1;
+if (check && report.failed) process.exitCode = 1;
