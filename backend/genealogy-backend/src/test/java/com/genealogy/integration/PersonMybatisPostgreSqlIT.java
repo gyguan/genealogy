@@ -5,7 +5,6 @@ import com.genealogy.branch.repository.BranchRepository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.persistence.PageQuery;
-import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
@@ -108,9 +107,9 @@ class PersonMybatisPostgreSqlIT {
         second.setCreatedAt(LocalDateTime.now());
         personRepository.save(second);
 
-        assertThat(personRepository.countDuplicates(PersonDuplicateQuery.of(
+        assertThat(personRepository.countDuplicates(
                 fixture.clan().getId(), fixture.branch().getId(), "黄同名", 3, "启", LocalDate.of(1970, 2, 1)
-        ))).isEqualTo(1);
+        )).isEqualTo(1);
 
         PersonDashboardData dashboard = personRepository.loadDashboardData(
                 fixture.clan().getId(), "official", LocalDateTime.now().minusDays(29), 4
