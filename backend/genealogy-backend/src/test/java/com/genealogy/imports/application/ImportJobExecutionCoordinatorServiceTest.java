@@ -1,5 +1,6 @@
 package com.genealogy.imports.application;
 
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.imports.config.ImportExecutionProperties;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +48,7 @@ class ImportJobExecutionCoordinatorServiceTest {
         assertThat(claim.jobId()).isEqualTo(10L);
         assertThat(claim.stage()).isEqualTo(ImportJobEntity.STAGE_DRAFTING);
         assertThat(claim.owner()).isNotBlank();
+        assertThat(claim.claimedAt()).isEqualTo(job.getHeartbeatAt());
         assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_RUNNING);
         assertThat(job.getLeaseOwner()).isEqualTo(claim.owner());
         assertThat(job.getLeaseExpiresAt()).isAfter(job.getHeartbeatAt());
@@ -54,8 +57,7 @@ class ImportJobExecutionCoordinatorServiceTest {
 
     @Test
     void recordFailureShouldMoveToDeadLetterAtRetryLimit() {
-        ImportJobEntity job = job(10L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PUBLISHING);
-        job.setLeaseOwner("worker-1");
+        ImportJobEntity job = activeLease(job(10L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PUBLISHING), "worker-1");
         job.setExecutionRetryCount(2);
         job.setExecutionMaxRetries(3);
         when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
@@ -70,6 +72,35 @@ class ImportJobExecutionCoordinatorServiceTest {
         assertThat(job.getLeaseOwner()).isNull();
         assertThat(job.getErrorSummary()).isEqualTo("database unavailable");
         verify(jobRepository).save(job);
+    }
+
+    @Test
+    void wrongLeaseOwnerCannotReleaseJob() {
+        ImportJobEntity job = activeLease(job(10L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_DRAFTING), "worker-1");
+        when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> service.release(10L, "worker-2"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo("IMPORT_JOB_LEASE_OWNER_MISMATCH");
+
+        verify(jobRepository, never()).save(any());
+        assertThat(job.getExecutionStatus()).isEqualTo(ImportJobEntity.EXECUTION_RUNNING);
+    }
+
+    @Test
+    void expiredLeaseCannotSubmitFailureResult() {
+        ImportJobEntity job = activeLease(job(10L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_DRAFTING), "worker-1");
+        job.setLeaseExpiresAt(LocalDateTime.now().minusSeconds(1));
+        when(jobRepository.findById(10L)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> service.recordFailure(10L, "worker-1", new IllegalStateException("late")))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo("IMPORT_JOB_LEASE_EXPIRED");
+
+        verify(jobRepository, never()).save(any());
+        assertThat(job.getExecutionRetryCount()).isZero();
     }
 
     @Test
@@ -105,6 +136,13 @@ class ImportJobExecutionCoordinatorServiceTest {
         assertThat(job.getCursorRowNo()).isEqualTo(101);
         verify(payloadRepository).deleteById(10L);
         verify(jobRepository).save(job);
+    }
+
+    private ImportJobEntity activeLease(ImportJobEntity job, String owner) {
+        job.setLeaseOwner(owner);
+        job.setLeaseExpiresAt(LocalDateTime.now().plusMinutes(1));
+        job.setHeartbeatAt(LocalDateTime.now());
+        return job;
     }
 
     private ImportJobEntity job(Long id, String status, String stage) {
