@@ -1,91 +1,82 @@
-# 04. 技术架构建议
+# 系统架构
 
-## 总体架构
+本文描述 Genealogy 当前长期有效的系统架构与边界。具体编码规则由根及前后端 `AGENTS.md` 承载，启动和验证命令由工程 README 承载。
 
-MVP 1 建议采用模块化单体架构，先保证领域模型、审核流程、权限模型和数据可信链路稳定，再考虑微服务拆分。
+## 1. 架构目标
+
+Genealogy 采用模块化单体，优先保证领域模型、审核流程、权限范围、来源证据和数据可信链路清晰稳定，再根据真实业务和运行需求演进部署形态。
 
 ```text
-React + Ant Design Web
-  ↓
-REST API
-  ↓
-Spring Boot 模块化单体
-  ↓
-PostgreSQL + 文件存储
+React + TypeScript + Ant Design
+  → OpenAPI Client
+  → Spring Boot 模块化单体
+  → PostgreSQL + 文件存储
 ```
 
-## 推荐技术栈
+## 2. 关键技术基线
 
-| 层级 | 技术 |
+| 层级 | 当前基线 |
 |---|---|
-| 后端 | Java 17 + Spring Boot 3.x |
-| 数据库 | PostgreSQL |
-| ORM | Spring Data JPA，按模块需要可补充 MyBatis / MyBatis Plus |
-| 认证 | JWT |
-| 数据迁移 | Flyway |
-| 文件存储 | 本地存储起步，预留 MinIO |
-| API 文档 | springdoc-openapi |
-| Excel | EasyExcel |
-| 前端框架 | React + TypeScript + Vite |
-| 前端设计体系 | Ant Design 5.x |
-| 前端组件原则 | 统一优先使用 Ant Design 的 Layout、Menu、Tabs、Card、Form、Input、Select、Button、Table、Descriptions、Alert、Empty 等组件；除 Ant Design 无法满足的树谱画布、族谱关系可视化、特殊图表交互外，不自研基础 UI 组件 |
+| 前端 | React、TypeScript、Vite、Ant Design 5 |
+| 后端 | Java 17、Spring Boot 3、Spring Data JPA |
+| 数据库 | PostgreSQL 16、Flyway |
+| 契约 | OpenAPI |
+| 可观测性 | Actuator、Micrometer、Prometheus |
+| 验证 | Maven、PostgreSQL Integration、Playwright、CI Governance |
 
-## 前端架构原则
+技术栈发生变化时，以工程 README、构建文件和实际代码为准，并同步刷新本文。
 
-1. **Ant Design 优先**：业务页面必须优先使用 Ant Design 组件和官方设计模式，保持中后台产品的一致性、确定性和低学习成本。
-2. **共享组件轻封装**：`shared/ui` 只做薄封装，例如统一 `Panel`、`DataTable`、`Field`、`Actions`、`DetailCard`、`ToastStack`，底层仍基于 Ant Design。
-3. **自定义组件受控**：仅在 Ant Design 无法直接满足时允许自定义，如世系树节点、树谱画布、族谱关系连线、统计条形图等业务可视化场景。
-4. **样式扩展收敛**：页面样式只补充业务布局和可视化表达，不覆盖 Ant Design 基础交互语义；全局兼容样式统一放在 `antd-bridge.css`。
-5. **组件风格一致**：统一使用白底容器、弱边框、轻阴影、标准圆角、Ant Design 默认主色和语义色。
-
-## 后端模块
+## 3. 标准调用链
 
 ```text
-auth              认证登录
-clan              宗族管理
-branch            支派管理
-generation        字辈管理
-person            人物管理
-relationship      关系管理
-source            资料来源
-review            审核中心
-tree              世系图查询
-member            成员权限
-importexport      导入导出
-operationlog      操作日志
+Controller
+  → Application Service
+  → Domain Policy / State Machine
+  → Repository / QueryRepository
+  → PostgreSQL
 ```
 
-## 数据存储
+- Controller 负责协议适配、参数校验和鉴权入口。
+- Application Service 负责编排用例、事务和跨模块协作。
+- Domain Policy / State Machine 承载可独立测试的业务规则和状态迁移。
+- Repository 负责领域持久化；复杂查询、Projection 和批次策略进入 QueryRepository。
+- Assembler / ViewModel 转换负责跨边界模型适配，不承载业务决策。
 
-MVP 1 先使用 PostgreSQL 完成全部核心能力。
+## 4. 模块边界
 
-后续如果出现复杂亲属路径计算、五服计算、跨支派寻祖推荐，可引入图数据库作为查询加速层。
+核心模块包括认证、宗族、支派、字辈、人物、关系、来源、审核、世系查询、成员权限、导入导出、文化资料与操作日志。
 
-## 文件存储
+稳定边界：
 
-MVP 1 可以使用本地文件存储，但业务代码应抽象 `FileStorageService`，后续可切换 MinIO 或对象存储。
+1. Review 统一承载正式数据修订、审核和生效路径。
+2. Tree 只负责查询，不修改正式数据。
+3. Member / Permission 统一承载宗族、支派和对象级授权事实。
+4. Source 是证据中心，不是普通附件目录。
+5. Import 先进入批次或草稿，不直接进入正式库。
 
-## 安全与权限
+详细模块入口见 `backend/genealogy-backend/src/main/java/com/genealogy/README.md`。
 
-权限判断需要同时考虑：
+## 5. 数据与存储
+
+- PostgreSQL 是核心事实存储。
+- Schema 变更通过 Flyway 前向迁移。
+- 文件访问通过存储抽象隔离，业务代码不直接绑定具体本地路径或对象存储实现。
+- 图数据库只可作为未来复杂路径查询的加速层，不取代 PostgreSQL 中的权威业务事实。
+
+## 6. 安全与可信边界
+
+权限判断至少结合用户、宗族成员身份、角色能力、支派范围、对象范围、隐私级别和流程状态。
 
 ```text
-userId
-clanId
-branchId
-roleCode
-scopeType
-scopeId
-dataStatus
-isLiving
-privacyLevel
+身份有效
+  AND 动作被角色允许
+  AND 数据范围覆盖目标对象
+  AND 隐私规则允许披露
+  AND 当前流程状态允许动作
 ```
 
-## 关键架构原则
+后端是权限、审核状态和隐私结果的唯一可信来源。
 
-1. Controller 不写复杂业务逻辑。
-2. Application Service 负责编排业务流程和事务。
-3. Domain Service 集中处理领域规则。
-4. Repository 只负责数据访问。
-5. Review 模块统一处理正式数据修改流程。
-6. Tree 模块只做查询，不承载修改逻辑。
+## 7. 架构演进原则
+
+只有出现明确证据时才拆分服务，例如独立扩缩容、故障隔离、发布节奏、数据所有权或团队边界已经稳定。不得仅因文件数量、模块名称或“微服务更先进”而拆分。
