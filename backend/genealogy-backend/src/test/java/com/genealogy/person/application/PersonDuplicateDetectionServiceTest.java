@@ -10,6 +10,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,8 +29,9 @@ class PersonDuplicateDetectionServiceTest {
         candidate.setBirthDate(LocalDate.of(1980, 1, 1));
         candidate.setGender("male");
         candidate.setDataStatus("official");
-        when(repository.findDuplicateCandidates(any(PersonDuplicateQuery.class)))
-                .thenReturn(List.of(candidate));
+        when(repository.findDuplicateCandidates(
+                any(), any(), any(), any(), any(), any(), anyInt()
+        )).thenReturn(List.of(candidate));
 
         PersonDuplicateDetectionService service = new PersonDuplicateDetectionService(repository);
         PersonDuplicateQuery query = PersonDuplicateQuery.of(

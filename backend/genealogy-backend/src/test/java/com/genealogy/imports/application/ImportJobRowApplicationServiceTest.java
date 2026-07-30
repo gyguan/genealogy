@@ -88,7 +88,7 @@ class ImportJobRowApplicationServiceTest {
         ImportJobRowEntity row = failedRow();
         when(importJobRepository.findByIdAndClanId(101L, 1L)).thenReturn(Optional.of(job));
         when(importJobRowRepository.findByIdAndJobId(201L, 101L)).thenReturn(Optional.of(row));
-        when(personRepository.countDuplicates(any())).thenReturn(0L);
+        when(personRepository.countDuplicates(any(), any(), any(), any(), any(), any())).thenReturn(0L);
         when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity person = invocation.getArgument(0);
             person.setId(1001L);

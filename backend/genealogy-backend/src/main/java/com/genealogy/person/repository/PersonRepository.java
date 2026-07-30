@@ -96,7 +96,11 @@ public class PersonRepository {
                 throw new IllegalArgumentException("Person saveAll contains duplicate id " + item.getId());
             }
         }
-        int updated = persistenceMapper.updateAllBatch(items);
+        int updated = 0;
+        for (int start = 0; start < items.size(); start += ID_BATCH_SIZE) {
+            List<PersonEntity> batch = items.subList(start, Math.min(start + ID_BATCH_SIZE, items.size()));
+            updated += persistenceMapper.updateAllBatch(batch);
+        }
         if (updated != items.size()) {
             throw new IllegalStateException("Person batch update expected " + items.size() + " rows but updated " + updated);
         }
@@ -206,7 +210,7 @@ public class PersonRepository {
     }
 
     public long count() {
-        return persistenceMapper.selectCount(Wrappers.emptyWrapper());
+        return persistenceMapper.selectCount(Wrappers.<PersonEntity>lambdaQuery());
     }
 
     public long countDuplicates(

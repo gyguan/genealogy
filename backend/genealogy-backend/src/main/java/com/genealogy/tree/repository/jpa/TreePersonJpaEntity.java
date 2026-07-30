@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @Setter
 @Entity(name = "TreePersonJpaEntity")
 @Table(name = "person")
+@Immutable
 public class TreePersonJpaEntity {
 
     @Id

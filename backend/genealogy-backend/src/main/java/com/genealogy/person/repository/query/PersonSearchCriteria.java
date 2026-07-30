@@ -3,7 +3,6 @@ package com.genealogy.person.repository.query;
 import com.genealogy.person.dto.PersonSearchQuery;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /** Framework-neutral, normalized search contract consumed by Person SQL mappers. */
@@ -52,10 +51,10 @@ public final class PersonSearchCriteria {
                 query.branchId(),
                 text(query.keyword()),
                 text(query.name()),
-                strings(query.genders(), true),
+                strings(query.genders(), false),
                 query.generationNos(),
                 strings(query.generationWords(), false),
-                strings(query.dataStatuses(), true),
+                strings(query.dataStatuses(), false),
                 switch (query.sort()) {
                     case "name,asc" -> SORT_NAME_ASC;
                     case "generationNo,asc" -> SORT_GENERATION_ASC;
@@ -68,13 +67,12 @@ public final class PersonSearchCriteria {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    private static List<String> strings(List<String> values, boolean lowerCase) {
+    private static List<String> strings(List<String> values, boolean ignoredLowerCase) {
         if (values == null || values.isEmpty()) return List.of();
         return values.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
-                .map(value -> lowerCase ? value.toLowerCase(Locale.ROOT) : value)
                 .distinct()
                 .toList();
     }
