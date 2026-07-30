@@ -1,0 +1,356 @@
+name: Apply Issue 1028
+
+on:
+  push:
+    branches:
+      - agent/issue-1028-query-card-consistency
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-query-cards:
+    if: "!contains(github.event.head_commit.message, '[issue-1028 applied]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1028-query-card-consistency
+          fetch-depth: 0
+
+      - name: Apply focused query-card migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('frontend/genealogy-web/src')
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'missing replacement anchor: {label}')
+              return text.replace(old, new, 1)
+
+          # Lineage tree query card
+          path = root / 'features/tree/LineageTreeTabbedPage.tsx'
+          text = path.read_text()
+          text = text.replace('  SearchOutlined,\n', '')
+          text = replace_once(
+              text,
+              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';",
+              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';\nimport { StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';",
+              'tree shared query imports'
+          )
+          person_start = text.index('  const personQueryForm = (')
+          branch_start = text.index('  const branchQueryForm = (', person_start)
+          result_start = text.index('  const resultMeta = (', branch_start)
+          person_block = """  const personQueryForm = (
+    <StandardQueryGrid>
+      <StandardQueryField label="宗族">{clanSelect}</StandardQueryField>
+      <StandardQueryField label="支派">
+        <Select
+          aria-label="人物中心支派"
+          showSearch
+          allowClear
+          optionFilterProp="label"
+          disabled={!workspace.clanId || loadState.clan.loading}
+          value={personDraft.branchId || undefined}
+          placeholder="请选择支派"
+          options={branchOptions}
+          onChange={value => void handlePersonBranchChange(value || '')}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="中心人物" hint="仅影响人物中心图谱">
+        <Select
+          aria-label="切换中心人物"
+          showSearch
+          value={personDraft.personId || undefined}
+          searchValue={personSearchInput}
+          placeholder="输入姓名、谱名或字号"
+          filterOption={false}
+          loading={loadState.search.loading}
+          options={personOptions}
+          onSearch={value => void handlePersonSearch(value)}
+          onChange={value => {
+            const item = searchPage.records.find(record => record.id === value);
+            setPersonDraft(previous => ({ ...previous, personId: value }));
+            setPersonSearchInput(item?.name || (center?.id === value ? center.name : ''));
+          }}
+          notFoundContent={loadState.search.error || (personSearchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="关系范围" hint={!personDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+        <RelationScopeSelect value={personDraft.relationScopes} onChange={value => setPersonDraft(previous => ({ ...previous, relationScopes: value }))} />
+      </StandardQueryField>
+      <StandardQueryField label="展开深度" hint="默认 1 代，最多 3 代">
+        <Select
+          aria-label="人物中心展开深度"
+          value={personDraft.depth}
+          options={PERSON_DEPTH_OPTIONS}
+          onChange={value => setPersonDraft(previous => ({ ...previous, depth: value }))}
+        />
+      </StandardQueryField>
+    </StandardQueryGrid>
+  );
+
+"""
+          branch_block = """  const branchQueryForm = (
+    <StandardQueryGrid>
+      <StandardQueryField label="宗族">{clanSelect}</StandardQueryField>
+      <StandardQueryField label="支派">
+        <Select
+          aria-label="支派全局支派"
+          showSearch
+          allowClear
+          optionFilterProp="label"
+          disabled={!workspace.clanId || loadState.clan.loading}
+          value={branchDraft.branchId || undefined}
+          placeholder="请选择支派"
+          options={branchOptions}
+          onChange={value => setBranchDraft(previous => ({ ...previous, branchId: value || '' }))}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="关系范围" hint={!branchDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+        <RelationScopeSelect value={branchDraft.relationScopes} onChange={value => setBranchDraft(previous => ({ ...previous, relationScopes: value }))} />
+      </StandardQueryField>
+      <StandardQueryField label="展开深度">
+        <Select
+          aria-label="支派全局展开深度"
+          value={branchDraft.depth}
+          options={BRANCH_DEPTH_OPTIONS}
+          onChange={value => setBranchDraft(previous => ({ ...previous, depth: value }))}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="包含下级支派">
+        <div className="lineage-tab-switch-field">
+          <Switch
+            aria-label="包含下级支派"
+            checked={branchDraft.includeSubBranches}
+            onChange={value => setBranchDraft(previous => ({ ...previous, includeSubBranches: value }))}
+          />
+          <Typography.Text type="secondary">{branchDraft.includeSubBranches ? '包含' : '仅当前支派'}</Typography.Text>
+        </div>
+      </StandardQueryField>
+    </StandardQueryGrid>
+  );
+
+"""
+          text = text[:person_start] + person_block + branch_block + text[result_start:]
+          old_card = re.compile(r'''      <Card className="lineage-tabbed-query-card" title="世系图谱" size="small">.*?      </Card>\n\n      <QueryResultCard''', re.S)
+          new_card = """      <StandardQueryPanel
+        className="lineage-tabbed-query-card"
+        size="small"
+        tabs={(
+          <Tabs
+            className="lineage-query-tabs"
+            activeKey={mode}
+            onChange={value => void handleModeChange(value)}
+            items={[
+              { key: 'person', label: <Space size={6}><UserOutlined />人物中心图谱</Space>, children: personQueryForm },
+              { key: 'branch', label: <Space size={6}><BranchesOutlined />支派全局图谱</Space>, children: branchQueryForm }
+            ]}
+          />
+        )}
+        actions={(
+          <StandardQueryActions>
+            <Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
+            <Button data-query-action="submit" loading={activeLoading} disabled={activeDisabled} onClick={() => mode === 'person' ? void applyPersonQuery() : void applyBranchQuery()}>查询</Button>
+          </StandardQueryActions>
+        )}
+      >
+        {loadState.clan.error ? <PageFeedback tone="error" title={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
+        <div className="lineage-tab-query-note">
+          <Typography.Text type="secondary">
+            {mode === 'person'
+              ? '以中心人物为核心，按 1～3 代深度展示相关亲属；查询只刷新人物中心图谱。'
+              : '按支派范围和展开深度浏览整体世系结构；不受中心人物影响。'}
+          </Typography.Text>
+          {activeDirty ? <InlineFeedback tone="warning" title={<>查询条件已调整，点击“查询”后刷新当前 TAB 结果。</>} /> : null}
+        </div>
+      </StandardQueryPanel>
+
+      <QueryResultCard"""
+          text, count = old_card.subn(new_card, text, count=1)
+          if count != 1:
+              raise SystemExit('tree query card replacement failed')
+          path.write_text(text)
+
+          # Member query card
+          path = root / 'features/members/MemberPage.tsx'
+          text = path.read_text()
+          text = replace_once(
+              text,
+              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';",
+              "import { StandardQueryActions, StandardMoreFiltersButton } from '../../shared/ui/StandardQueryActions';\nimport { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';",
+              'member shared query imports'
+          )
+          text = replace_once(text, "  const [statusFilter, setStatusFilter] = useState<string[]>(() => splitFilter(initialUrlState.status));", "  const [statusFilter, setStatusFilter] = useState<string[]>(() => splitFilter(initialUrlState.status));\n  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(() => Boolean(initialUrlState.status));", 'member advanced state')
+          old_member = re.compile(r'''      <Card title="成员与权限">.*?      </Card>\n\n      <PageFeedback''', re.S)
+          new_member = """      <StandardQueryPanel
+        actions={(
+          <StandardQueryActions>
+            <StandardMoreFiltersButton expanded={advancedFiltersOpen} activeFilterCount={statusFilter.length} onClick={() => setAdvancedFiltersOpen(value => !value)} />
+            <Button data-query-action="reset" onClick={() => {
+              setKeyword('');
+              setRoleFilter([]);
+              setScopeFilter([]);
+              setStatusFilter([]);
+              const nextQuery = resetMemberQuery(query.pageSize);
+              writeUrlState(nextQuery, undefined);
+              void loadMembers(selectedClanId, nextQuery);
+            }}>重置</Button>
+            <Button data-query-action="submit" loading={queryLoading} onClick={() => {
+              const nextQuery = createMemberQuery({
+                keyword,
+                roleCode: joinFilter(roleFilter),
+                scopeType: joinFilter(scopeFilter),
+                status: joinFilter(statusFilter)
+              }, 1, query.pageSize);
+              writeUrlState(nextQuery, undefined);
+              void loadMembers(selectedClanId, nextQuery);
+            }}>查询</Button>
+          </StandardQueryActions>
+        )}
+      >
+        <StandardQueryGrid>
+          <StandardQueryField label="当前宗族">
+            <Select
+              showSearch
+              optionFilterProp="label"
+              value={selectedClanId}
+              onChange={changeClan}
+              options={clans.map(clan => ({
+                value: String(clan.id),
+                label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
+              }))}
+            />
+          </StandardQueryField>
+          <StandardQueryField label="成员关键词">
+            <Input allowClear value={keyword} onChange={event => setKeyword(event.target.value)} onPressEnter={() => {
+              const nextQuery = createMemberQuery({ keyword, roleCode: joinFilter(roleFilter), scopeType: joinFilter(scopeFilter), status: joinFilter(statusFilter) }, 1, query.pageSize);
+              writeUrlState(nextQuery, undefined);
+              void loadMembers(selectedClanId, nextQuery);
+            }} placeholder="姓名 / 账号" />
+          </StandardQueryField>
+          <StandardQueryField label="角色">
+            <QueryMultiSelect value={roleFilter} onChange={setRoleFilter} options={roles.map(role => ({ value: role.roleCode, label: role.roleName }))} placeholder="请选择角色（可多选）" />
+          </StandardQueryField>
+          <StandardQueryField label="授权范围">
+            <QueryMultiSelect value={scopeFilter} onChange={setScopeFilter} options={[{ value: 'clan', label: '全宗族' }, { value: 'branch_subtree', label: '支派及下级支派' }]} placeholder="请选择授权范围（可多选）" />
+          </StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters expanded={advancedFiltersOpen}>
+          <StandardQueryField label="成员状态">
+            <QueryMultiSelect value={statusFilter} onChange={setStatusFilter} options={[{ value: 'active', label: '有效' }, { value: 'disabled', label: '已停用' }, { value: 'removed', label: '已移除' }]} placeholder="请选择成员状态（可多选）" />
+          </StandardQueryField>
+        </StandardAdvancedFilters>
+      </StandardQueryPanel>
+
+      <PageFeedback"""
+          text, count = old_member.subn(new_member, text, count=1)
+          if count != 1:
+              raise SystemExit('member query card replacement failed')
+          path.write_text(text)
+
+          # Review center query card
+          path = root / 'features/reviews/ReviewCenterPageContent.tsx'
+          text = path.read_text()
+          text = replace_once(
+              text,
+              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';",
+              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';\nimport { StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';",
+              'review shared query imports'
+          )
+          old_review = re.compile(r'''        <Card title="审核中心">.*?        </Card>\n\n        <QueryResultCard''', re.S)
+          new_review = """        <StandardQueryPanel
+          actions={(
+            <StandardQueryActions>
+              <Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+              <Button data-query-action="submit" loading={loading} onClick={() => void applyFilters()}>查询</Button>
+            </StandardQueryActions>
+          )}
+        >
+          <Form form={form} layout="vertical" initialValues={filtersForTab(initialState.filters, initialState.activeTab)} onFinish={() => void applyFilters()}>
+            <StandardQueryGrid>
+              <StandardQueryField name="targetType" label="审核对象"><Select allowClear placeholder="全部对象" options={targetTypeOptions} /></StandardQueryField>
+              {activeTab !== 'pending' ? <StandardQueryField name="status" label={activeTab === 'processed' ? '审核结果' : '审核进展'}><Select allowClear placeholder={currentFilterCopy.statusPlaceholder} options={currentStatusOptions} /></StandardQueryField> : null}
+              <StandardQueryField name="branchId" label="目标支派"><Select allowClear showSearch optionFilterProp="label" placeholder="全部支派" options={branches.map(branch => ({ value: String(branch.id), label: branch.branchName || '未命名支派' }))} /></StandardQueryField>
+              {activeTab !== 'processed' ? <StandardQueryField name="submittedRange" label={currentFilterCopy.submittedLabel}><DatePicker.RangePicker /></StandardQueryField> : null}
+              {activeTab === 'processed' ? <StandardQueryField name="processedRange" label="处理时间"><DatePicker.RangePicker /></StandardQueryField> : null}
+            </StandardQueryGrid>
+          </Form>
+        </StandardQueryPanel>
+
+        <QueryResultCard"""
+          text, count = old_review.subn(new_review, text, count=1)
+          if count != 1:
+              raise SystemExit('review query card replacement failed')
+          path.write_text(text)
+
+          # Focused governance test
+          test_path = root / 'styles/Issue1028QueryCardMigration.test.mjs'
+          test_path.write_text("""import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          import test from 'node:test';
+
+          const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
+          const tree = read('../features/tree/LineageTreeTabbedPage.tsx');
+          const members = read('../features/members/MemberPage.tsx');
+          const reviews = read('../features/reviews/ReviewCenterPageContent.tsx');
+
+          test('Issue #1028 migrates lineage queries to the shared four-column query contract', () => {
+            assert.match(tree, /StandardQueryPanel/);
+            assert.match(tree, /StandardQueryGrid/);
+            assert.match(tree, /StandardQueryField/);
+            assert.doesNotMatch(tree, /SearchOutlined/);
+            assert.doesNotMatch(tree, /title=\"世系图谱\"/);
+            assert.doesNotMatch(tree, /lineage-tab-query-grid/);
+            assert.match(tree, /data-query-action=\"submit\"/);
+          });
+
+          test('Issue #1028 removes manual member query labels and isolates low-frequency status', () => {
+            assert.match(members, /StandardQueryPanel/);
+            assert.match(members, /StandardAdvancedFilters/);
+            assert.match(members, /StandardMoreFiltersButton/);
+            const queryPanel = members.slice(members.indexOf('<StandardQueryPanel'), members.indexOf('<PageFeedback'));
+            assert.doesNotMatch(queryPanel, /<Typography\.Text type=\"secondary\">当前宗族/);
+            assert.doesNotMatch(queryPanel, /<Row gutter=/);
+            assert.match(queryPanel, /label=\"成员状态\"/);
+          });
+
+          test('Issue #1028 stabilizes review tabs on the shared query grid', () => {
+            assert.match(reviews, /StandardQueryPanel/);
+            assert.match(reviews, /StandardQueryGrid/);
+            assert.match(reviews, /StandardQueryField/);
+            assert.doesNotMatch(reviews, /<Card title=\"审核中心\">/);
+            assert.match(reviews, /loading=\{loading\}/);
+          });
+          """)
+          PY
+
+      - name: Install frontend dependencies
+        working-directory: frontend/genealogy-web
+        run: npm ci
+
+      - name: Validate focused migration
+        working-directory: frontend/genealogy-web
+        run: |
+          node --test src/styles/Issue1028QueryCardMigration.test.mjs
+          npm run test:tree
+          npm run test:members
+          npm run test:reviews
+          npm run typecheck
+          npm run build
+
+      - name: Commit validated migration
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/tree/LineageTreeTabbedPage.tsx \
+                  frontend/genealogy-web/src/features/members/MemberPage.tsx \
+                  frontend/genealogy-web/src/features/reviews/ReviewCenterPageContent.tsx \
+                  frontend/genealogy-web/src/styles/Issue1028QueryCardMigration.test.mjs
+          git commit -m "feat: unify query cards for issue 1028 [issue-1028 applied]"
+          git push origin HEAD:agent/issue-1028-query-card-consistency
