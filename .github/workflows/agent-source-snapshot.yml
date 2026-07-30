@@ -1,0 +1,26 @@
+name: Agent Source Snapshot
+
+on:
+  push:
+    branches:
+      - agent/issue-1033-person-mybatis
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package source
+        run: |
+          tar --exclude=.git --exclude='**/target' --exclude='**/node_modules' -czf genealogy-source.tgz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genealogy-source
+          path: genealogy-source.tgz
+          retention-days: 1
