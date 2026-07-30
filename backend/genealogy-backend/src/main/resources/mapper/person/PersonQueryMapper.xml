@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.person.repository.mybatis.PersonQueryMapper">
+
+    <sql id="PersonColumns">
+        p.id, p.clan_id, p.branch_id, p.person_code, p.name,
+        p.genealogy_name, p.courtesy_name, p.alias_name, p.gender,
+        p.generation_no, p.generation_word, p.rank_in_family,
+        p.birth_date, p.birth_date_precision, p.death_date, p.death_date_precision,
+        p.is_living, p.birth_place, p.residence_place, p.occupation, p.education,
+        p.title_or_honor, p.biography, p.tomb_place, p.epitaph, p.has_descendant,
+        p.lineage_status, p.privacy_level, p.data_status, p.created_by, p.created_at,
+        p.updated_by, p.updated_at, p.deleted_at
+    </sql>
+
+    <sql id="SearchWhere">
+        where p.clan_id = #{criteria.clanId}
+          and p.deleted_at is null
+        <if test="criteria.branchId != null">
+            and p.branch_id = #{criteria.branchId}
+        </if>
+        <if test="criteria.name != null and criteria.name != ''">
+            and lower(p.name) like concat('%', lower(#{criteria.name}), '%')
+        </if>
+        <if test="criteria.genders != null and !criteria.genders.isEmpty()">
+            and p.gender in
+            <foreach collection="criteria.genders" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="criteria.generationNos != null and !criteria.generationNos.isEmpty()">
+            and p.generation_no in
+            <foreach collection="criteria.generationNos" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="criteria.generationWords != null and !criteria.generationWords.isEmpty()">
+            and p.generation_word in
+            <foreach collection="criteria.generationWords" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="criteria.dataStatuses != null and !criteria.dataStatuses.isEmpty()">
+            and p.data_status in
+            <foreach collection="criteria.dataStatuses" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+        <if test="criteria.keyword != null and criteria.keyword != ''">
+            and (
+                lower(p.name) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.genealogy_name) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.courtesy_name) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.alias_name) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.generation_word) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.birth_place) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.residence_place) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.occupation) like concat('%', lower(#{criteria.keyword}), '%')
+                or lower(p.person_code) like concat('%', lower(#{criteria.keyword}), '%')
+            )
+        </if>
+    </sql>
+
+    <sql id="SearchOrderBy">
+        order by
+        <choose>
+            <when test="criteria.sortKey == 'name_asc'">
+                lower(p.name) asc, p.id desc
+            </when>
+            <when test="criteria.sortKey == 'generation_asc'">
+                p.generation_no asc nulls last, lower(p.name) asc, p.id desc
+            </when>
+            <otherwise>
+                p.updated_at desc nulls last, p.id desc
+            </otherwise>
+        </choose>
+    </sql>
+
+    <select id="countSearch" resultType="long">
+        select count(*)
+        from person p
+        <include refid="SearchWhere"/>
+    </select>
+
+    <select id="search" resultType="com.genealogy.person.entity.PersonEntity">
+        select <include refid="PersonColumns"/>
+        from person p
+        <include refid="SearchWhere"/>
+        <include refid="SearchOrderBy"/>
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="findForExport" resultType="com.genealogy.person.entity.PersonEntity">
+        select <include refid="PersonColumns"/>
+        from person p
+        <include refid="SearchWhere"/>
+        <include refid="SearchOrderBy"/>
+    </select>
+
+    <sql id="DuplicateWhere">
+        where p.clan_id = #{criteria.clanId}
+          and p.deleted_at is null
+          and lower(p.name) = #{criteria.normalizedName}
+        <if test="criteria.branchId != null">
+            and p.branch_id = #{criteria.branchId}
+        </if>
+        <if test="criteria.generationNo != null">
+            and p.generation_no = #{criteria.generationNo}
+        </if>
+        <if test="criteria.generationWord != null and criteria.generationWord != ''">
+            and p.generation_word = #{criteria.generationWord}
+        </if>
+        <if test="criteria.birthDate != null">
+            and p.birth_date = #{criteria.birthDate}
+        </if>
+    </sql>
+
+    <select id="countDuplicates" resultType="long">
+        select count(*)
+        from person p
+        <include refid="DuplicateWhere"/>
+    </select>
+
+    <select id="findDuplicateCandidates" resultType="com.genealogy.person.entity.PersonEntity">
+        select <include refid="PersonColumns"/>
+        from person p
+        <include refid="DuplicateWhere"/>
+        order by p.id desc
+        limit #{limit}
+    </select>
+
+    <resultMap id="DashboardSummaryMap" type="com.genealogy.person.repository.query.PersonDashboardSummary">
+        <constructor>
+            <arg column="people_total" javaType="java.lang.Long"/>
+            <arg column="generation_maintained" javaType="java.lang.Long"/>
+            <arg column="vital_dates_maintained" javaType="java.lang.Long"/>
+            <arg column="biography_maintained" javaType="java.lang.Long"/>
+            <arg column="key_info_missing" javaType="java.lang.Long"/>
+            <arg column="covered_branches" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectDashboardSummary" resultMap="DashboardSummaryMap">
+        select count(*) as people_total,
+               count(*) filter (
+                   where p.generation_no is not null
+                      or (p.generation_word is not null and p.generation_word &lt;&gt; '')
+               ) as generation_maintained,
+               count(*) filter (
+                   where p.birth_date is not null or p.death_date is not null
+               ) as vital_dates_maintained,
+               count(*) filter (
+                   where (p.biography is not null and p.biography &lt;&gt; '')
+                      or (p.epitaph is not null and p.epitaph &lt;&gt; '')
+                      or (p.title_or_honor is not null and p.title_or_honor &lt;&gt; '')
+               ) as biography_maintained,
+               count(*) filter (
+                   where (p.generation_no is null and (p.generation_word is null or p.generation_word = ''))
+                      or (p.birth_date is null and p.death_date is null)
+               ) as key_info_missing,
+               count(distinct p.branch_id) filter (where p.branch_id is not null) as covered_branches
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+    </select>
+
+    <resultMap id="DashboardBucketMap" type="com.genealogy.person.repository.query.PersonDashboardBucket">
+        <constructor>
+            <arg column="dimension" javaType="java.lang.String"/>
+            <arg column="bucket_key" javaType="java.lang.String"/>
+            <arg column="bucket_count" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectDashboardBuckets" resultMap="DashboardBucketMap">
+        select 'gender'::text as dimension,
+               coalesce(p.gender, 'unknown')::text as bucket_key,
+               count(*) as bucket_count
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+        group by p.gender
+        union all
+        select 'living'::text as dimension,
+               case when p.is_living is true then 'living'
+                    when p.is_living is false then 'deceased'
+                    else 'unknown' end as bucket_key,
+               count(*) as bucket_count
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+        group by p.is_living
+        union all
+        select 'generation'::text as dimension,
+               coalesce(p.generation_no::text, 'unmaintained') as bucket_key,
+               count(*) as bucket_count
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+        group by p.generation_no
+        union all
+        select 'branch'::text as dimension,
+               coalesce(p.branch_id::text, 'unmaintained') as bucket_key,
+               count(*) as bucket_count
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+        group by p.branch_id
+    </select>
+
+    <resultMap id="DashboardDailyCountMap" type="com.genealogy.person.repository.query.PersonDashboardDailyCount">
+        <constructor>
+            <arg column="created_day" javaType="java.time.LocalDate"/>
+            <arg column="created_count" javaType="java.lang.Long"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectCreatedDaily" resultMap="DashboardDailyCountMap">
+        select p.created_at::date as created_day,
+               count(*) as created_count
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+          and p.created_at &gt;= #{fromTime}
+        group by p.created_at::date
+        order by p.created_at::date
+    </select>
+
+    <select id="selectRecentDashboardPeople" resultType="com.genealogy.person.entity.PersonEntity">
+        select <include refid="PersonColumns"/>
+        from person p
+        where p.clan_id = #{clanId}
+          and p.data_status = #{dataStatus}
+          and p.deleted_at is null
+        order by p.updated_at desc nulls last,
+                 p.created_at desc nulls last,
+                 p.id desc
+        limit #{limit}
+    </select>
+
+</mapper>

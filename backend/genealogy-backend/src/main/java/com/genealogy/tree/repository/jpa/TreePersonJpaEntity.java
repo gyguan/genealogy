@@ -1,22 +1,28 @@
-package com.genealogy.person.entity;
+package com.genealogy.tree.repository.jpa;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Tree-only JPA read mapping retained during the staged persistence migration.
+ * Person write/search code no longer depends on this type.
+ */
 @Getter
 @Setter
-@TableName("person")
-public class PersonEntity {
+@Entity(name = "TreePersonJpaEntity")
+@Table(name = "person")
+@Immutable
+public class TreePersonJpaEntity {
 
-    @TableId(type = IdType.AUTO)
+    @Id
     private Long id;
-
     private Long clanId;
     private Long branchId;
     private String personCode;
@@ -35,19 +41,11 @@ public class PersonEntity {
     private Boolean isLiving;
     private String birthPlace;
     private String residencePlace;
-    private String occupation;
-    private String education;
-    private String titleOrHonor;
-    private String biography;
-    private String tombPlace;
-    private String epitaph;
     private Boolean hasDescendant;
     private String lineageStatus;
     private String privacyLevel;
     private String dataStatus;
     private Long createdBy;
-    private LocalDateTime createdAt;
     private Long updatedBy;
-    private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
 }

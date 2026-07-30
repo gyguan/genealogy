@@ -18,9 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -30,7 +27,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -85,8 +85,10 @@ class ImportApplicationServiceRowStateTest {
         lenient().when(importJobRepository.findById(anyLong()))
                 .thenAnswer(invocation -> Optional.ofNullable(lastSavedJob));
         lenient().when(importJobErrorRepository.findByJobIdOrderByRowNoAsc(anyLong())).thenReturn(List.of());
-        lenient().when(personRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(Page.empty());
+        lenient().when(personRepository.findDuplicateCandidates(
+                anyLong(), nullable(Long.class), anyString(), nullable(Integer.class),
+                nullable(String.class), nullable(java.time.LocalDate.class), anyInt()
+        )).thenReturn(List.of());
         lenient().when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity entity = invocation.getArgument(0);
             if (entity.getId() == null) entity.setId(1001L);

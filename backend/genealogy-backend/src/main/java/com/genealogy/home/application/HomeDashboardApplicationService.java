@@ -12,6 +12,10 @@ import com.genealogy.home.dto.HomeDashboardRiskResponse;
 import com.genealogy.home.dto.HomeDashboardTrendPointResponse;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
+import com.genealogy.person.repository.query.PersonDashboardBucket;
+import com.genealogy.person.repository.query.PersonDashboardDailyCount;
+import com.genealogy.person.repository.query.PersonDashboardData;
+import com.genealogy.person.repository.query.PersonDashboardSummary;
 import com.genealogy.review.entity.ReviewTaskEntity;
 import com.genealogy.review.repository.ReviewTaskRepository;
 import com.genealogy.source.entity.SourceEntity;
@@ -73,15 +77,17 @@ public class HomeDashboardApplicationService {
         authorizationApplicationService.requirePermission(clanId, actorId, PERSON_VIEW);
 
         LocalDateTime asOf = LocalDateTime.now();
-        long peopleTotal = personRepository.countByClanIdAndDeletedAtIsNullAndDataStatus(clanId, OFFICIAL_STATUS);
+        PersonDashboardData personData = personRepository.loadDashboardData(
+                clanId,
+                OFFICIAL_STATUS,
+                asOf.toLocalDate().minusDays(29).atStartOfDay(),
+                4
+        );
+        PersonDashboardSummary summary = personData.summary();
+        long peopleTotal = summary.peopleTotal();
         long branchCount = branchRepository.countByClanId(clanId);
         long sourceCount = sourceRepository.countByClanId(clanId);
         long pendingReviewCount = reviewTaskRepository.countByClanIdAndStatusIn(clanId, PENDING_REVIEW_STATUSES);
-        long generationMaintainedCount = personRepository.countDashboardGenerationMaintained(clanId, OFFICIAL_STATUS);
-        long vitalDatesMaintainedCount = personRepository.countDashboardVitalDatesMaintained(clanId, OFFICIAL_STATUS);
-        long biographyMaintainedCount = personRepository.countDashboardBiographyMaintained(clanId, OFFICIAL_STATUS);
-        long coveredBranchCount = personRepository.countDashboardCoveredBranches(clanId, OFFICIAL_STATUS);
-        long keyInfoMissingCount = personRepository.countDashboardKeyInfoMissing(clanId, OFFICIAL_STATUS);
         long overdueReviewCount = reviewTaskRepository.countByClanIdAndStatusInAndCreatedAtBefore(
                 clanId,
                 PENDING_REVIEW_STATUSES,
@@ -89,9 +95,6 @@ public class HomeDashboardApplicationService {
         );
 
         List<BranchEntity> branches = branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(clanId);
-        List<PersonEntity> people = personRepository.findByClanIdAndDeletedAtIsNull(clanId).stream()
-                .filter(person -> OFFICIAL_STATUS.equals(person.getDataStatus()))
-                .toList();
         List<SourceEntity> recentSources = sourceRepository.findRecentDashboardSources(clanId, PageRequest.of(0, 1000));
         List<ReviewTaskEntity> recentReviewTasks = reviewTaskRepository.findRecentDashboardTasks(clanId, PageRequest.of(0, 1000));
 
@@ -102,33 +105,48 @@ public class HomeDashboardApplicationService {
                 branchCount,
                 sourceCount,
                 pendingReviewCount,
-                normalizeGenderBuckets(personRepository.countDashboardByGender(clanId, OFFICIAL_STATUS)),
-                normalizeLivingBuckets(personRepository.countDashboardByLivingStatus(clanId, OFFICIAL_STATUS)),
-                normalizeGenerationBuckets(personRepository.countDashboardByGenerationNo(clanId, OFFICIAL_STATUS)),
-                normalizeBranchBuckets(branches, personRepository.countDashboardByBranch(clanId, OFFICIAL_STATUS)),
+                normalizeGenderBuckets(buckets(personData, "gender")),
+                normalizeLivingBuckets(buckets(personData, "living")),
+                normalizeGenerationBuckets(buckets(personData, "generation")),
+                normalizeBranchBuckets(branches, buckets(personData, "branch")),
                 normalizeSourceTypeBuckets(sourceRepository.countDashboardBySourceType(clanId)),
                 new HomeDashboardCompletenessResponse(
-                        generationMaintainedCount,
-                        rate(generationMaintainedCount, peopleTotal),
-                        vitalDatesMaintainedCount,
-                        rate(vitalDatesMaintainedCount, peopleTotal),
-                        biographyMaintainedCount,
-                        rate(biographyMaintainedCount, peopleTotal)
+                        summary.generationMaintained(),
+                        rate(summary.generationMaintained(), peopleTotal),
+                        summary.vitalDatesMaintained(),
+                        rate(summary.vitalDatesMaintained(), peopleTotal),
+                        summary.biographyMaintained(),
+                        rate(summary.biographyMaintained(), peopleTotal)
                 ),
-                new HomeDashboardBranchCoverageResponse(coveredBranchCount, branchCount, rate(coveredBranchCount, branchCount)),
-                buildTrendPoints(asOf.toLocalDate(), people, recentSources, recentReviewTasks),
-                buildRisks(pendingReviewCount, overdueReviewCount, keyInfoMissingCount, Math.max(0, branchCount - coveredBranchCount), peopleTotal, sourceCount),
-                buildRecentActivities(people, recentSources, recentReviewTasks)
+                new HomeDashboardBranchCoverageResponse(
+                        summary.coveredBranches(),
+                        branchCount,
+                        rate(summary.coveredBranches(), branchCount)
+                ),
+                buildTrendPoints(asOf.toLocalDate(), personData.createdDaily(), recentSources, recentReviewTasks),
+                buildRisks(
+                        pendingReviewCount,
+                        overdueReviewCount,
+                        summary.keyInfoMissing(),
+                        Math.max(0, branchCount - summary.coveredBranches()),
+                        peopleTotal,
+                        sourceCount
+                ),
+                buildRecentActivities(personData.recentPeople(), recentSources, recentReviewTasks)
         );
     }
 
-    private List<HomeDashboardBucketResponse> normalizeGenderBuckets(List<Object[]> rows) {
+    private List<PersonDashboardBucket> buckets(PersonDashboardData data, String dimension) {
+        return data.buckets().stream().filter(item -> dimension.equals(item.dimension())).toList();
+    }
+
+    private List<HomeDashboardBucketResponse> normalizeGenderBuckets(List<PersonDashboardBucket> rows) {
         List<HomeDashboardBucketResponse> buckets = new ArrayList<>();
         Set<String> seen = new java.util.HashSet<>();
-        for (Object[] row : rows) {
-            String key = normalizeString(row[0], "unknown");
+        for (PersonDashboardBucket row : rows) {
+            String key = normalizeString(row.key(), "unknown");
             seen.add(key);
-            buckets.add(new HomeDashboardBucketResponse(key, GENDER_LABELS.getOrDefault(key, key), count(row[1])));
+            buckets.add(new HomeDashboardBucketResponse(key, GENDER_LABELS.getOrDefault(key, key), row.count()));
         }
         for (String key : List.of("male", "female", "unknown")) {
             if (!seen.contains(key)) buckets.add(new HomeDashboardBucketResponse(key, GENDER_LABELS.getOrDefault(key, key), 0));
@@ -142,42 +160,46 @@ public class HomeDashboardApplicationService {
         return buckets;
     }
 
-    private List<HomeDashboardBucketResponse> normalizeLivingBuckets(List<Object[]> rows) {
-        long living = 0;
-        long deceased = 0;
-        long unknown = 0;
-        for (Object[] row : rows) {
-            if (Boolean.TRUE.equals(row[0])) living += count(row[1]);
-            else if (Boolean.FALSE.equals(row[0])) deceased += count(row[1]);
-            else unknown += count(row[1]);
-        }
+    private List<HomeDashboardBucketResponse> normalizeLivingBuckets(List<PersonDashboardBucket> rows) {
+        Map<String, Long> counts = rows.stream().collect(Collectors.toMap(
+                row -> normalizeString(row.key(), "unknown"),
+                PersonDashboardBucket::count,
+                Long::sum
+        ));
         return List.of(
-                new HomeDashboardBucketResponse("living", "在世", living),
-                new HomeDashboardBucketResponse("deceased", "已故", deceased),
-                new HomeDashboardBucketResponse("unknown", "未维护", unknown)
+                new HomeDashboardBucketResponse("living", "在世", counts.getOrDefault("living", 0L)),
+                new HomeDashboardBucketResponse("deceased", "已故", counts.getOrDefault("deceased", 0L)),
+                new HomeDashboardBucketResponse("unknown", "未维护", counts.getOrDefault("unknown", 0L))
         );
     }
 
-    private List<HomeDashboardBucketResponse> normalizeGenerationBuckets(List<Object[]> rows) {
-        List<HomeDashboardBucketResponse> buckets = new ArrayList<>();
-        for (Object[] row : rows) {
-            Integer generationNo = row[0] instanceof Number number ? number.intValue() : null;
-            long value = count(row[1]);
-            if (generationNo == null) buckets.add(new HomeDashboardBucketResponse("unmaintained", "未维护", value));
-            else buckets.add(new HomeDashboardBucketResponse(String.valueOf(generationNo), generationNo + "世", value));
-        }
-        buckets.sort(Comparator.comparingInt(item -> "unmaintained".equals(item.key()) ? Integer.MAX_VALUE : Integer.parseInt(item.key())));
+    private List<HomeDashboardBucketResponse> normalizeGenerationBuckets(List<PersonDashboardBucket> rows) {
+        List<HomeDashboardBucketResponse> buckets = rows.stream()
+                .map(row -> "unmaintained".equals(row.key())
+                        ? new HomeDashboardBucketResponse("unmaintained", "未维护", row.count())
+                        : new HomeDashboardBucketResponse(row.key(), row.key() + "世", row.count()))
+                .collect(Collectors.toCollection(ArrayList::new));
+        buckets.sort(Comparator.comparingInt(item -> "unmaintained".equals(item.key())
+                ? Integer.MAX_VALUE
+                : Integer.parseInt(item.key())));
         return buckets;
     }
 
-    private List<HomeDashboardBucketResponse> normalizeBranchBuckets(List<BranchEntity> branches, List<Object[]> rows) {
+    private List<HomeDashboardBucketResponse> normalizeBranchBuckets(
+            List<BranchEntity> branches,
+            List<PersonDashboardBucket> rows
+    ) {
         Map<String, Long> counts = new HashMap<>();
-        for (Object[] row : rows) counts.put(String.valueOf(row[0]), count(row[1]));
+        for (PersonDashboardBucket row : rows) counts.put(normalizeString(row.key(), "unmaintained"), row.count());
         List<HomeDashboardBucketResponse> buckets = new ArrayList<>();
         for (BranchEntity branch : branches) {
-            buckets.add(new HomeDashboardBucketResponse(String.valueOf(branch.getId()), safeText(branch.getBranchName(), "未命名支派"), counts.getOrDefault(String.valueOf(branch.getId()), 0L)));
+            buckets.add(new HomeDashboardBucketResponse(
+                    String.valueOf(branch.getId()),
+                    safeText(branch.getBranchName(), "未命名支派"),
+                    counts.getOrDefault(String.valueOf(branch.getId()), 0L)
+            ));
         }
-        long unmaintained = counts.getOrDefault("null", 0L);
+        long unmaintained = counts.getOrDefault("unmaintained", 0L);
         if (unmaintained > 0) buckets.add(new HomeDashboardBucketResponse("unmaintained", "未维护支派", unmaintained));
         buckets.sort(Comparator.comparingLong(HomeDashboardBucketResponse::count).reversed());
         return buckets;
@@ -195,10 +217,18 @@ public class HomeDashboardApplicationService {
         return buckets;
     }
 
-    private List<HomeDashboardTrendPointResponse> buildTrendPoints(LocalDate today, List<PersonEntity> people, List<SourceEntity> sources, List<ReviewTaskEntity> tasks) {
+    private List<HomeDashboardTrendPointResponse> buildTrendPoints(
+            LocalDate today,
+            List<PersonDashboardDailyCount> peopleDaily,
+            List<SourceEntity> sources,
+            List<ReviewTaskEntity> tasks
+    ) {
         Map<LocalDate, long[]> points = new LinkedHashMap<>();
         for (int index = 29; index >= 0; index--) points.put(today.minusDays(index), new long[]{0, 0, 0});
-        for (PersonEntity person : people) increment(points, person.getCreatedAt(), 0);
+        for (PersonDashboardDailyCount daily : peopleDaily) {
+            long[] values = points.get(daily.day());
+            if (values != null) values[0] += daily.count();
+        }
         for (SourceEntity source : sources) increment(points, source.getCreatedAt(), 1);
         for (ReviewTaskEntity task : tasks) {
             if (COMPLETED_REVIEW_STATUSES.contains(normalizeString(task.getStatus(), ""))) increment(points, task.getReviewedAt(), 2);
@@ -227,23 +257,25 @@ public class HomeDashboardApplicationService {
 
     private List<HomeDashboardActivityResponse> buildRecentActivities(List<PersonEntity> people, List<SourceEntity> sources, List<ReviewTaskEntity> tasks) {
         List<HomeDashboardActivityResponse> activities = new ArrayList<>();
-        people.stream()
-                .sorted(Comparator.comparing((PersonEntity person) -> safeTime(person.getUpdatedAt(), person.getCreatedAt())).reversed())
-                .limit(4)
-                .forEach(person -> activities.add(new HomeDashboardActivityResponse(
-                        "person", "人物档案更新", safeText(person.getName(), "未命名人物"), "修谱成员", safeTime(person.getUpdatedAt(), person.getCreatedAt()), statusLabel(person.getDataStatus()), "personArchive", "person=" + person.getId()
-                )));
-        sources.stream()
-                .limit(3)
-                .forEach(source -> activities.add(new HomeDashboardActivityResponse(
-                        "source", "来源资料更新", safeText(source.getSourceName(), "未命名资料"), "修谱成员", safeTime(source.getUpdatedAt(), source.getCreatedAt()), statusLabel(source.getVerificationStatus()), "sourceLibrary", "source=" + source.getId()
-                )));
-        tasks.stream()
-                .limit(5)
-                .forEach(task -> activities.add(new HomeDashboardActivityResponse(
-                        "review", "审核任务流转", "审核事项", "审核成员", safeTime(task.getReviewedAt(), task.getCreatedAt()), statusLabel(task.getStatus()), "reviewCenter", "task=" + task.getId()
-                )));
-        activities.sort(Comparator.comparing(HomeDashboardActivityResponse::occurredAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        people.stream().limit(4).forEach(person -> activities.add(new HomeDashboardActivityResponse(
+                "person", "人物档案更新", safeText(person.getName(), "未命名人物"), "修谱成员",
+                safeTime(person.getUpdatedAt(), person.getCreatedAt()), statusLabel(person.getDataStatus()),
+                "personArchive", "person=" + person.getId()
+        )));
+        sources.stream().limit(3).forEach(source -> activities.add(new HomeDashboardActivityResponse(
+                "source", "来源资料更新", safeText(source.getSourceName(), "未命名资料"), "修谱成员",
+                safeTime(source.getUpdatedAt(), source.getCreatedAt()), statusLabel(source.getVerificationStatus()),
+                "sourceLibrary", "source=" + source.getId()
+        )));
+        tasks.stream().limit(5).forEach(task -> activities.add(new HomeDashboardActivityResponse(
+                "review", "审核任务流转", "审核事项", "审核成员",
+                safeTime(task.getReviewedAt(), task.getCreatedAt()), statusLabel(task.getStatus()),
+                "reviewCenter", "task=" + task.getId()
+        )));
+        activities.sort(Comparator.comparing(
+                HomeDashboardActivityResponse::occurredAt,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        ).reversed());
         return activities.stream().limit(10).toList();
     }
 

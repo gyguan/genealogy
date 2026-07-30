@@ -1,20 +1,25 @@
 package com.genealogy.review.repository;
 
 import com.genealogy.person.entity.PersonEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import com.genealogy.person.repository.mybatis.PersonPersistenceMapper;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/**
- * Provides the database lock used to serialize review submission for one person.
- */
-public interface PersonReviewSubmissionLockRepository extends JpaRepository<PersonEntity, Long> {
+/** Provides the PostgreSQL row lock used to serialize review submission for one person. */
+@Repository
+@Transactional(readOnly = true)
+public class PersonReviewSubmissionLockRepository {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select person from PersonEntity person where person.id = :personId and person.deletedAt is null")
-    Optional<PersonEntity> findByIdForReviewSubmission(@Param("personId") Long personId);
+    private final PersonPersistenceMapper mapper;
+
+    public PersonReviewSubmissionLockRepository(PersonPersistenceMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Transactional
+    public Optional<PersonEntity> findByIdForReviewSubmission(Long personId) {
+        return Optional.ofNullable(mapper.selectActiveByIdForUpdate(personId));
+    }
 }

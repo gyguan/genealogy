@@ -32,7 +32,7 @@ Actuator / Micrometer / Prometheus
 Maven
 ```
 
-当前 Clan、Generation Scheme、Generation Word 已通过 Repository Adapter 使用 MyBatis-Plus/MyBatis；其他模块暂时保留 Spring Data JPA。持久化框架不得越过 Repository/QueryRepository 边界，具体规则和迁移清单见 `docs/backend/persistence-framework-migration.md`。
+当前 Clan、Generation Scheme、Generation Word、Person 写模型/动态检索/Dashboard 已通过 Repository Adapter 与专用 QueryMapper 使用 MyBatis-Plus/MyBatis；Tree 的 Person Snapshot 暂时保留独立 `@Immutable` 只读 JPA 映射，其他模块继续使用 Spring Data JPA。持久化框架不得越过 Repository/QueryRepository 边界，具体规则和迁移清单见 `docs/backend/persistence-framework-migration.md`。
 
 ## 本地启动
 

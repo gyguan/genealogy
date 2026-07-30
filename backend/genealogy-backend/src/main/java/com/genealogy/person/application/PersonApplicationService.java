@@ -9,6 +9,8 @@ import com.genealogy.common.domain.ApprovedStatusPolicy;
 import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.common.persistence.PageQuery;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.GenSchemeRepository;
@@ -21,17 +23,11 @@ import com.genealogy.person.dto.PersonUpdateRequest;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.person.repository.PersonRepository;
-import jakarta.persistence.criteria.Predicate;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -139,30 +135,28 @@ public class PersonApplicationService {
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> listByClan(Long clanId, int pageNo, int pageSize) {
         ensureClanExists(clanId);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findByClanIdAndDeletedAtIsNull(clanId, pageRequest)
+        PageResult<PersonResponse> page = personRepository.findPageByClan(clanId, new PageQuery(pageNo, pageSize))
                 .map(PersonMapper::toResponse);
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> listByClan(Long clanId, int pageNo, int pageSize, Long viewerId) {
         ensureClanExists(clanId);
         authorizationApplicationService.requirePermission(clanId, viewerId, PERSON_VIEW);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findAll(buildVisibleSpecification(clanId), pageRequest)
+        PageResult<PersonResponse> page = personRepository.findPageByClan(clanId, new PageQuery(pageNo, pageSize))
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> listByClanAndBranch(Long clanId, Long branchId, int pageNo, int pageSize) {
         ensureClanExists(clanId);
         ensureBranchBelongsToClan(clanId, branchId);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId, pageRequest)
+        PageResult<PersonResponse> page = personRepository.findPageByClanAndBranch(
+                        clanId, branchId, new PageQuery(pageNo, pageSize))
                 .map(PersonMapper::toResponse);
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
@@ -170,31 +164,24 @@ public class PersonApplicationService {
         ensureClanExists(clanId);
         ensureBranchBelongsToClan(clanId, branchId);
         authorizationApplicationService.requireBranchPermission(clanId, viewerId, branchId, PERSON_VIEW);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<PersonResponse> page = personRepository.findByClanIdAndBranchIdAndDeletedAtIsNull(clanId, branchId, pageRequest)
+        PageResult<PersonResponse> page = personRepository.findPageByClanAndBranch(
+                        clanId, branchId, new PageQuery(pageNo, pageSize))
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<PersonResponse> search(PersonSearchQuery query, int pageNo, int pageSize, Long viewerId) {
         validateSearchAccess(query, viewerId);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, sortOf(query.sort()));
-        Page<PersonResponse> page = personRepository.findAll(
-                        and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId())),
-                        pageRequest
-                )
+        PageResult<PersonResponse> page = personRepository.search(query, new PageQuery(pageNo, pageSize))
                 .map(person -> toPrivacyAwareResponse(person, viewerId));
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)
     public List<PersonEntity> findForExport(PersonSearchQuery query, Long viewerId) {
         validateSearchAccess(query, viewerId);
-        return personRepository.findAll(
-                and(buildSearchSpecification(query), buildVisibleSpecification(query.clanId())),
-                sortOf(query.sort())
-        );
+        return personRepository.findForExport(query);
     }
 
     @Transactional
@@ -252,74 +239,6 @@ public class PersonApplicationService {
         } else {
             authorizationApplicationService.requireBranchPermission(query.clanId(), viewerId, query.branchId(), PERSON_VIEW);
         }
-    }
-
-    private Specification<PersonEntity> buildSearchSpecification(PersonSearchQuery query) {
-        return (root, criteriaQuery, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), query.clanId()));
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-
-            if (query.branchId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("branchId"), query.branchId()));
-            }
-            if (hasText(query.name())) {
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), likePattern(query.name())));
-            }
-            if (!query.genders().isEmpty()) {
-                predicates.add(root.get("gender").in(query.genders().stream().map(this::normalize).toList()));
-            }
-            if (!query.generationNos().isEmpty()) {
-                predicates.add(root.get("generationNo").in(query.generationNos()));
-            }
-            if (!query.generationWords().isEmpty()) {
-                predicates.add(root.get("generationWord").in(query.generationWords()));
-            }
-            if (!query.dataStatuses().isEmpty()) {
-                predicates.add(root.get("dataStatus").in(query.dataStatuses().stream().map(this::normalize).toList()));
-            }
-            if (hasText(query.keyword())) {
-                String pattern = likePattern(query.keyword());
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("genealogyName")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("courtesyName")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("aliasName")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("generationWord")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("birthPlace")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("residencePlace")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("occupation")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("personCode")), pattern)
-                ));
-            }
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
-    private Sort sortOf(String value) {
-        return switch (value) {
-            case "name,asc" -> Sort.by(Sort.Order.asc("name").ignoreCase(), Sort.Order.desc("id"));
-            case "generationNo,asc" -> Sort.by(
-                    Sort.Order.asc("generationNo").nullsLast(),
-                    Sort.Order.asc("name").ignoreCase(),
-                    Sort.Order.desc("id")
-            );
-            default -> Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"));
-        };
-    }
-
-    private Specification<PersonEntity> buildVisibleSpecification(Long clanId) {
-        return (root, criteriaQuery, criteriaBuilder) -> criteriaBuilder.and(
-                criteriaBuilder.equal(root.get("clanId"), clanId),
-                criteriaBuilder.isNull(root.get("deletedAt"))
-        );
-    }
-
-    private Specification<PersonEntity> and(Specification<PersonEntity> left, Specification<PersonEntity> right) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.and(
-                left.toPredicate(root, query, criteriaBuilder),
-                right.toPredicate(root, query, criteriaBuilder)
-        );
     }
 
     private PersonResponse toPrivacyAwareResponse(PersonEntity entity, Long viewerId) {
@@ -514,11 +433,4 @@ public class PersonApplicationService {
         return value != null && !value.isBlank();
     }
 
-    private String normalize(String value) {
-        return value == null ? null : value.trim();
-    }
-
-    private String likePattern(String value) {
-        return "%" + normalize(value).toLowerCase() + "%";
-    }
 }
