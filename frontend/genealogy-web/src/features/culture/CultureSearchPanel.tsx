@@ -105,9 +105,9 @@ export function CultureSearchPanel(props: Props) {
           <Col xs={24} sm={12} lg={4}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
           <Col xs={24} lg={8} className="culture-search-actions">
             <StandardQueryActions>
-              <Button data-query-action="reset" onClick={reset}>重置</Button>
-              <Button data-query-action="submit" type="primary" htmlType="submit" loading={props.loading}>查询</Button>
-            </StandardQueryActions>
+<Button data-query-action="reset" onClick={reset}>重置</Button>
+<Button data-query-action="submit" type="primary" htmlType="submit" loading={props.loading}>查询</Button>
+</StandardQueryActions>
           </Col>
         </Row>
       </Form>
