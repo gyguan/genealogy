@@ -21,11 +21,18 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import subprocess
+          sha_by_path = {}
+          out = subprocess.check_output(['git', 'ls-tree', '-r', 'HEAD', 'docs'], text=True)
+          for line in out.splitlines():
+              meta, path = line.split('\t', 1)
+              _, _, sha = meta.split()
+              sha_by_path[path] = sha
           rows = []
           for path in sorted(Path('docs').rglob('*.md')):
               text = path.read_text(encoding='utf-8', errors='replace')
               title = next((line[2:].strip() for line in text.splitlines() if line.startswith('# ')), '')
-              rows.append(f"{path.as_posix()}\t{len(text.splitlines())}\t{title}")
+              rows.append(f"{path.as_posix()}\t{sha_by_path.get(path.as_posix(), '')}\t{len(text.splitlines())}\t{title}")
           Path('docs-inventory.tsv').write_text('\n'.join(rows) + '\n', encoding='utf-8')
           print('\n'.join(rows))
           PY
