@@ -28,7 +28,8 @@ import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { EmptyState, PageFeedback, confirmAction } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryActions, StandardMoreFiltersButton } from '../../shared/ui/StandardQueryActions';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
 const { TextArea } = Input;
 const { useBreakpoint } = Grid;
@@ -122,6 +123,7 @@ export function MemberPage({}: {  }) {
   const [roleFilter, setRoleFilter] = useState<string[]>(() => splitFilter(initialUrlState.roleCode));
   const [scopeFilter, setScopeFilter] = useState<string[]>(() => splitFilter(initialUrlState.scopeType));
   const [statusFilter, setStatusFilter] = useState<string[]>(() => splitFilter(initialUrlState.status));
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(() => Boolean(initialUrlState.status));
 
   const [initializing, setInitializing] = useState(false);
   const [queryLoading, setQueryLoading] = useState(false);
@@ -514,85 +516,65 @@ export function MemberPage({}: {  }) {
 
   return (
     <div className="member-role-page">
-      <Card title="成员与权限">
-        <Row gutter={[16, 12]}>
-          <Col xs={24} md={12} xl={6}>
-            <Typography.Text type="secondary">当前宗族</Typography.Text>
-            <Select
-              showSearch
-              optionFilterProp="label"
-              style={{ width: '100%' }}
-              value={selectedClanId}
-              onChange={changeClan}
-              options={clans.map(clan => ({
-                value: String(clan.id),
-                label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
-              }))}
-            />
-          </Col>
-          <Col xs={24} md={12} xl={6}>
-            <Typography.Text type="secondary">成员关键词</Typography.Text>
-            <Input allowClear value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="姓名 / 账号" />
-          </Col>
-          <Col xs={24} md={12} xl={6}>
-            <Typography.Text type="secondary">角色</Typography.Text>
-            <QueryMultiSelect
-              value={roleFilter}
-              onChange={setRoleFilter}
-              options={roles.map(role => ({ value: role.roleCode, label: role.roleName }))}
-              placeholder="请选择角色（可多选）"
-            />
-          </Col>
-          <Col xs={24} md={12} xl={6}>
-            <Typography.Text type="secondary">授权范围</Typography.Text>
-            <QueryMultiSelect
-              value={scopeFilter}
-              onChange={setScopeFilter}
-              options={[
-                { value: 'clan', label: '全宗族' },
-                { value: 'branch_subtree', label: '支派及下级支派' }
-              ]}
-              placeholder="请选择授权范围（可多选）"
-            />
-          </Col>
-          <Col xs={24} md={12} xl={6}>
-            <Typography.Text type="secondary">成员状态</Typography.Text>
-            <QueryMultiSelect
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: 'active', label: '有效' },
-                { value: 'disabled', label: '已停用' },
-                { value: 'removed', label: '已移除' }
-              ]}
-              placeholder="请选择成员状态（可多选）"
-            />
-          </Col>
-        </Row>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <StandardQueryActions>
-<Button data-query-action="reset" onClick={() => {
-              setKeyword('');
-              setRoleFilter([]);
-              setScopeFilter([]);
-              setStatusFilter([]);
-              const nextQuery = resetMemberQuery(query.pageSize);
-              writeUrlState(nextQuery, undefined);
-              void loadMembers(selectedClanId, nextQuery);
-            }}>重置</Button>
-<Button data-query-action="submit" type="primary" loading={queryLoading} onClick={() => {
-              const nextQuery = createMemberQuery({
-                keyword,
-                roleCode: joinFilter(roleFilter),
-                scopeType: joinFilter(scopeFilter),
-                status: joinFilter(statusFilter)
-              }, 1, query.pageSize);
-              writeUrlState(nextQuery, undefined);
-              void loadMembers(selectedClanId, nextQuery);
-            }}>查询</Button>
+      <StandardQueryPanel
+        actions={(
+<StandardQueryActions>
+  <StandardMoreFiltersButton expanded={advancedFiltersOpen} activeFilterCount={statusFilter.length} onClick={() => setAdvancedFiltersOpen(value => !value)} />
+  <Button data-query-action="reset" onClick={() => {
+    setKeyword('');
+    setRoleFilter([]);
+    setScopeFilter([]);
+    setStatusFilter([]);
+    const nextQuery = resetMemberQuery(query.pageSize);
+    writeUrlState(nextQuery, undefined);
+    void loadMembers(selectedClanId, nextQuery);
+  }}>重置</Button>
+  <Button data-query-action="submit" loading={queryLoading} onClick={() => {
+    const nextQuery = createMemberQuery({
+      keyword,
+      roleCode: joinFilter(roleFilter),
+      scopeType: joinFilter(scopeFilter),
+      status: joinFilter(statusFilter)
+    }, 1, query.pageSize);
+    writeUrlState(nextQuery, undefined);
+    void loadMembers(selectedClanId, nextQuery);
+  }}>查询</Button>
 </StandardQueryActions>
-        </div>
-      </Card>
+        )}
+      >
+        <StandardQueryGrid>
+<StandardQueryField label="当前宗族">
+  <Select
+    showSearch
+    optionFilterProp="label"
+    value={selectedClanId}
+    onChange={changeClan}
+    options={clans.map(clan => ({
+      value: String(clan.id),
+      label: `${clan.clanName}${clan.hallName ? ` · ${clan.hallName}` : ''}`
+    }))}
+  />
+</StandardQueryField>
+<StandardQueryField label="成员关键词">
+  <Input allowClear value={keyword} onChange={event => setKeyword(event.target.value)} onPressEnter={() => {
+    const nextQuery = createMemberQuery({ keyword, roleCode: joinFilter(roleFilter), scopeType: joinFilter(scopeFilter), status: joinFilter(statusFilter) }, 1, query.pageSize);
+    writeUrlState(nextQuery, undefined);
+    void loadMembers(selectedClanId, nextQuery);
+  }} placeholder="姓名 / 账号" />
+</StandardQueryField>
+<StandardQueryField label="角色">
+  <QueryMultiSelect value={roleFilter} onChange={setRoleFilter} options={roles.map(role => ({ value: role.roleCode, label: role.roleName }))} placeholder="请选择角色（可多选）" />
+</StandardQueryField>
+<StandardQueryField label="授权范围">
+  <QueryMultiSelect value={scopeFilter} onChange={setScopeFilter} options={[{ value: 'clan', label: '全宗族' }, { value: 'branch_subtree', label: '支派及下级支派' }]} placeholder="请选择授权范围（可多选）" />
+</StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters expanded={advancedFiltersOpen}>
+<StandardQueryField label="成员状态">
+  <QueryMultiSelect value={statusFilter} onChange={setStatusFilter} options={[{ value: 'active', label: '有效' }, { value: 'disabled', label: '已停用' }, { value: 'removed', label: '已移除' }]} placeholder="请选择成员状态（可多选）" />
+</StandardQueryField>
+        </StandardAdvancedFilters>
+      </StandardQueryPanel>
 
       <PageFeedback
         style={{ marginTop: 16 }}

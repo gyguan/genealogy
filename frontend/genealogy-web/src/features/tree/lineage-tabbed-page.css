@@ -10,25 +10,8 @@
   min-width: 0;
 }
 
-.lineage-tab-query-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 16px;
-}
 
-.lineage-tab-query-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(160px, 1fr));
-  gap: 0 16px;
-  min-width: 0;
-}
 
-.lineage-tab-query-actions {
-  align-self: end;
-  padding-bottom: 0;
-  white-space: nowrap;
-}
 
 .lineage-tab-switch-field {
   display: flex;
@@ -90,14 +73,8 @@
   padding: 8px;
 }
 
-@media (max-width: 1280px) {
-  .lineage-tab-query-form { grid-template-columns: 1fr; }
-  .lineage-tab-query-grid { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
-  .lineage-tab-query-actions { display: flex; justify-content: flex-end; }
-}
 
 @media (max-width: 900px) {
-  .lineage-tab-query-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lineage-tab-query-note { align-items: flex-start; flex-direction: column; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     flex-basis: 330px;
@@ -108,8 +85,6 @@
 
 @media (max-width: 767px) {
   .lineage-tabbed-page { gap: 12px; }
-  .lineage-tab-query-grid { grid-template-columns: 1fr; }
-  .lineage-tab-query-actions { width: 100%; }
   .lineage-tabbed-page .lineage-graph-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
