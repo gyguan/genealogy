@@ -1,9 +1,9 @@
 name: Agent Apply Issue 1033
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/issue-1033-person-mybatis
+      - main
   workflow_dispatch:
 
 permissions:
@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   apply:
+    if: github.event.pull_request.head.ref == 'agent/issue-1033-person-mybatis' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
