@@ -72,7 +72,7 @@ async function expectDesktopPageHeaderAction(page: Page) {
   const header = page.locator('.standard-page-header');
   const titleGroup = header.locator('.standard-page-header__copy');
   const actionHost = header.locator('.standard-page-header__actions');
-  const action = actionHost.getByRole('button', { name: '新建导入' });
+  const action = actionHost.getByRole('button', { name: '发起导入' });
   const [headerBox, titleGroupBox, actionHostBox, actionBox] = await Promise.all([
     header.boundingBox(),
     titleGroup.boundingBox(),
@@ -95,11 +95,11 @@ async function expectStrictTwoLayerResult(page: Page) {
   await expect(outerHeader).toHaveCount(1);
   await expect(outerCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(outerCard.locator('.business-result-card')).toHaveCount(0);
-  await expect(outerCard.getByRole('button', { name: '新建导入' })).toHaveCount(0);
+  await expect(outerCard.getByRole('button', { name: '发起导入' })).toHaveCount(0);
   await expect(page.locator('.import-execution-table')).toHaveCount(1);
 }
 
-test('data import page uses a strict two-layer query result with one new import drawer', async ({ page }) => {
+test('data import page uses a strict two-layer query result with one launch drawer', async ({ page }) => {
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
@@ -108,9 +108,9 @@ test('data import page uses a strict two-layer query result with one new import 
   await expect(page.locator('.import-result-card')).toHaveCount(1);
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
-  await expect(page.getByText('导入任务查询', { exact: true })).toBeVisible();
+  await expect(page.getByText('查询条件', { exact: true })).toBeVisible();
   const outerResultHeader = page.locator('.import-result-card > .query-result-outer-card__header');
-  await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(outerResultHeader.getByText('导入任务', { exact: true })).toBeVisible();
   await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();
   await expectDesktopPageHeaderAction(page);
   await expectStrictTwoLayerResult(page);
@@ -129,12 +129,12 @@ test('data import page uses a strict two-layer query result with one new import 
   await expect(taskTable.getByText('IMP-20260720-0101')).toBeVisible();
   await expect(taskTable.getByText('部分成功')).toBeVisible();
 
-  await page.getByRole('button', { name: '新建导入' }).click();
+  await page.getByRole('button', { name: '发起导入' }).click();
   const drawer = page.locator('.import-upload-workspace-drawer');
   await expect(drawer).toBeVisible();
   await expect(page.locator('.ant-drawer:visible')).toHaveCount(1);
   await expect(page.locator('.ant-modal-wrap:visible')).toHaveCount(0);
-  await expect(drawer.getByText('新建导入', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('发起导入', { exact: true })).toBeVisible();
   await expect(drawer.getByText('1. 选择导入对象', { exact: true })).toBeVisible();
   await expect(drawer.getByRole('button', { name: '人物导入' })).toHaveAttribute('aria-pressed', 'true');
   await expect(drawer.getByRole('button', { name: '关系导入' })).toBeVisible();
@@ -169,8 +169,8 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();
   await expect(taskCard).toBeVisible();
   expect(await taskCard.evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(390);
-  const createAction = page.locator('.standard-page-header__actions').getByRole('button', { name: '新建导入' });
-  await expect(createAction).toBeVisible();
-  expect((await createAction.boundingBox())?.height).toBeGreaterThanOrEqual(40);
+  const launchAction = page.locator('.standard-page-header__actions').getByRole('button', { name: '发起导入' });
+  await expect(launchAction).toBeVisible();
+  expect((await launchAction.boundingBox())?.height).toBeGreaterThanOrEqual(40);
   expect(await page.locator('.import-center-page').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 });
