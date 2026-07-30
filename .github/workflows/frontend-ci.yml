@@ -13,9 +13,6 @@ on:
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -27,23 +24,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-      - name: Repair Issue 1027 real E2E assertion
-        if: github.event.pull_request.head.ref == 'agent/issue-1027-query-card-person-source-workbench'
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          git checkout origin/main -- frontend/genealogy-web/e2e-real/full-business-chain.spec.ts
-          sed -i "s/getByText('人物档案查询', { exact: true })/getByText('查询条件', { exact: true })/" frontend/genealogy-web/e2e-real/full-business-chain.spec.ts
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git checkout origin/main -- .github/workflows/frontend-ci.yml
-          git add frontend/genealogy-web/e2e-real/full-business-chain.spec.ts .github/workflows/frontend-ci.yml
-          git commit -m "test: use standard person query card title"
-          git push origin HEAD:agent/issue-1027-query-card-person-source-workbench
+        with: { fetch-depth: 0 }
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
