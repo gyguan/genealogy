@@ -1,26 +1,34 @@
-name: Agent Source Snapshot
+name: Agent Apply Issue 1033
 
 on:
   push:
     branches:
       - agent/issue-1033-person-mybatis
-  pull_request:
-    branches:
-      - main
+    paths:
+      - .github/workflows/agent-source-snapshot.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  snapshot:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Package source
-        run: |
-          tar --exclude=.git --exclude='**/target' --exclude='**/node_modules' -czf /tmp/genealogy-source.tgz .
-      - uses: actions/upload-artifact@v4
         with:
-          name: genealogy-source
-          path: /tmp/genealogy-source.tgz
-          retention-days: 1
+          ref: agent/issue-1033-person-mybatis
+          fetch-depth: 0
+      - name: Apply implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/agent/issue-1033.patch.gz.b64 | gzip -d > /tmp/issue-1033.patch
+          git apply --check /tmp/issue-1033.patch
+          git apply /tmp/issue-1033.patch
+          rm -f .github/agent/issue-1033.patch.gz.b64
+          rm -f .github/workflows/agent-source-snapshot.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(person): migrate persistence to MyBatis Plus"
+          git push origin HEAD:agent/issue-1033-person-mybatis
