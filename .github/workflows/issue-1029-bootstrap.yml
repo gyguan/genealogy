@@ -3,7 +3,7 @@ name: Issue 1029 Bootstrap
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [synchronize, reopened]
 
 permissions:
   contents: write
@@ -16,272 +16,45 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-      - name: Apply issue 1029 migration
+      - name: Apply corrected migration
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json, re
+          import subprocess, textwrap
 
-          root = Path('frontend/genealogy-web')
-          log_path = root / 'src/features/logs/LogPage.tsx'
-          text = log_path.read_text()
-          text = text.replace("import { DownOutlined, UpOutlined } from '@ant-design/icons';\n", '')
-          text = text.replace(
-              "  Alert, Button, Card, DatePicker, Form, Input, Result, Select, Space, Table, Tabs, Tag, Typography } from 'antd';",
-              "  Alert, Button, DatePicker, Form, Input, Result, Select, Space, Table, Tag, Typography } from 'antd';"
-          )
-          text = text.replace(
-              "import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';",
-              "import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';\nimport { StandardAdvancedFilters, StandardPageTabs, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';"
-          )
-
-          query_region = '''  function hiddenFilterCount(tab: TrackingTab) {
-            if (tab === TRACKING_TABS.OBJECT) return workspace.branchId ? 1 : 0;
-            if (tab === TRACKING_TABS.AUDIT) return [auditFilters.resultStatus, auditFilters.keyword].filter(value => String(value || '').trim()).length;
-            return [riskFilters.actorId, riskFilters.branchId].filter(value => String(value || '').trim()).length;
-          }
-
-          function queryActions(reset: () => void, query: () => void, loading: boolean) {
-            const isExpanded = expanded[activeTab];
-            return <StandardQueryActions>
-              <StandardMoreFiltersButton
-                expanded={isExpanded}
-                activeFilterCount={hiddenFilterCount(activeTab)}
-                onClick={() => setExpanded(previous => ({ ...previous, [activeTab]: !isExpanded }))}
-              />
-              <Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
-              <Button data-query-action="submit" loading={loading} onClick={query}>查询</Button>
-            </StandardQueryActions>;
-          }
-
-          const objectFiltersView = (
-            <Form layout="vertical">
-              <StandardQueryGrid>
-                <StandardQueryField label="对象类型"><TrackingMultiSelect ariaLabel="对象类型" value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} placeholder="全部对象类型" onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></StandardQueryField>
-                <StandardQueryField label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadObjects({ ...objectFilters, pageNo: 1 })} /></StandardQueryField>
-                <StandardQueryField label="业务状态"><TrackingMultiSelect ariaLabel="业务状态" value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} placeholder="全部状态" onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></StandardQueryField>
-                <StandardQueryField label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></StandardQueryField>
-              </StandardQueryGrid>
-              <StandardAdvancedFilters expanded={expanded.object}>
-                <StandardQueryField label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></StandardQueryField>
-              </StandardAdvancedFilters>
-              {queryActions(() => { const next = { ...DEFAULT_OBJECT_FILTERS }; setObjectFilters(next); void loadObjects(next); }, () => { const next = { ...objectFilters, pageNo: 1 }; setObjectFilters(next); void loadObjects(next); }, objectLoading)}
-            </Form>
-          );
-
-          const auditFiltersView = (
-            <Form layout="vertical">
-              <StandardQueryGrid>
-                <StandardQueryField label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></StandardQueryField>
-                <StandardQueryField label="操作者"><TrackingMultiSelect ariaLabel="操作者" value={auditFilters.actorId} options={auditActorOptions} placeholder="全部操作者" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value }))} /></StandardQueryField>
-                <StandardQueryField label="动作分类"><TrackingMultiSelect ariaLabel="动作分类" value={auditFilters.actionType} options={ACTION_OPTIONS} placeholder="全部动作" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value }))} /></StandardQueryField>
-                <StandardQueryField label="对象类型"><TrackingMultiSelect ariaLabel="日志对象类型" value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} placeholder="全部对象" onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></StandardQueryField>
-              </StandardQueryGrid>
-              <StandardAdvancedFilters expanded={expanded.audit}>
-                <StandardQueryField label="执行结果"><TrackingMultiSelect ariaLabel="执行结果" value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} placeholder="全部结果" onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></StandardQueryField>
-                <StandardQueryField label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadAudit({ ...auditFilters, pageNo: 1 }, '')} /></StandardQueryField>
-              </StandardAdvancedFilters>
-              {queryActions(() => { const next = { ...DEFAULT_AUDIT_FILTERS }; setAuditFilters(next); setSelectedAuditLog(null); setSelectedAuditLogId(''); void loadAudit(next, ''); }, () => { const next = { ...auditFilters, pageNo: 1 }; setAuditFilters(next); void loadAudit(next, ''); }, auditLoading)}
-            </Form>
-          );
-
-          const riskFiltersView = (
-            <Form layout="vertical">
-              <StandardQueryGrid>
-                <StandardQueryField label="时间范围"><RangePicker value={rangeValue(riskFilters.startTime, riskFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setRiskFilters(previous => ({ ...previous, startTime, endTime })); }} /></StandardQueryField>
-                <StandardQueryField label="风险等级"><TrackingMultiSelect ariaLabel="风险等级" value={riskFilters.riskLevel} options={RISK_LEVEL_OPTIONS} placeholder="全部等级" onChange={value => setRiskFilters(previous => ({ ...previous, riskLevel: value }))} /></StandardQueryField>
-                <StandardQueryField label="事件类型"><TrackingMultiSelect ariaLabel="事件类型" value={riskFilters.eventType} options={RISK_EVENT_OPTIONS} placeholder="全部事件" onChange={value => setRiskFilters(previous => ({ ...previous, eventType: value }))} /></StandardQueryField>
-                <StandardQueryField label="处置状态"><TrackingMultiSelect ariaLabel="处置状态" value={riskFilters.dispositionStatus} options={RISK_DISPOSITION_OPTIONS} placeholder="全部处置状态" onChange={value => setRiskFilters(previous => ({ ...previous, dispositionStatus: value }))} /></StandardQueryField>
-              </StandardQueryGrid>
-              <StandardAdvancedFilters expanded={expanded.risk}>
-                <StandardQueryField label="操作者"><TrackingMultiSelect ariaLabel="风险操作者" value={riskFilters.actorId} options={riskActorOptions} placeholder="全部操作者" onChange={value => setRiskFilters(previous => ({ ...previous, actorId: value }))} /></StandardQueryField>
-                <StandardQueryField label="所属支派"><TrackingMultiSelect ariaLabel="风险所属支派" value={riskFilters.branchId} options={branchOptions} placeholder="本人可见支派范围" onChange={value => setRiskFilters(previous => ({ ...previous, branchId: value }))} /></StandardQueryField>
-              </StandardAdvancedFilters>
-              {queryActions(() => { const next = { ...DEFAULT_RISK_FILTERS }; setRiskFilters(next); setSelectedRiskLog(null); setSelectedRiskLogId(''); void loadRisk(next, ''); }, () => { const next = { ...riskFilters, pageNo: 1 }; setRiskFilters(next); void loadRisk(next, ''); }, riskLoading)}
-            </Form>
-          );
-
-          const objectResult ='''
-          text, count = re.subn(r"  function moreButton\(\) \{[\s\S]*?  const objectResult =", query_region, text, count=1)
-          if count != 1:
-              raise SystemExit('failed to replace tracking query region')
-
-          old_panel = '''      <Card className="tracking-query-card" title="审计追踪">
-                <Tabs className="tracking-query-tabs" activeKey={activeTab} onChange={changeTab} items={[
-                  { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
-                  { key: TRACKING_TABS.AUDIT, label: '操作日志' },
-                  { key: TRACKING_TABS.RISK, label: '风险事件' }
-                ]} />
-                {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
-              </Card>'''
-          new_panel = '''      <StandardPageTabs
-                ariaLabel="审计追踪视图"
-                activeKey={activeTab}
-                onChange={changeTab}
-                items={[
-                  { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
-                  { key: TRACKING_TABS.AUDIT, label: '操作日志' },
-                  { key: TRACKING_TABS.RISK, label: '风险事件' }
-                ]}
-              />
-              <StandardQueryPanel className="tracking-query-card">
-                {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
-              </StandardQueryPanel>'''
-          if old_panel not in text:
-              raise SystemExit('failed to locate tracking panel')
-          text = text.replace(old_panel, new_panel)
-          log_path.write_text(text)
-
-          css_path = root / 'src/features/logs/tracking-page.css'
-          css_path.write_text('''.tracking-double-card-page {
-            display: grid;
-            gap: 16px;
-            width: 100%;
-          }
-
-          .tracking-query-card, .tracking-result-card {
-            min-width: 0;
-          }
-
-          .tracking-result-card .ant-card-head-wrapper {
-            min-height: 76px;
-            align-items: center;
-          }
-
-          .tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
-            padding-block: 16px;
-          }
-
-          .tracking-result-title {
-            display: grid;
-            gap: 2px;
-          }
-
-          .tracking-result-title .ant-typography {
-            margin: 0;
-          }
-
-          .tracking-multi-popup-actions {
-            display: flex;
-            justify-content: flex-end;
-            padding: 0 8px 4px;
-          }
-
-          .tracking-multi-popup-divider {
-            margin: 0 0 4px;
-          }
-
-          .tracking-clickable-row {
-            cursor: pointer;
-          }
-
-          @media (max-width: 767px) {
-            .tracking-double-card-page { gap: 12px; }
-            .tracking-result-card .ant-card-head-wrapper {
-              min-height: 0;
-              align-items: stretch;
-              flex-direction: column;
-              gap: 12px;
-              padding-block: 16px;
-            }
-            .tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
-              width: 100%;
-              margin: 0;
-              padding: 0;
-            }
-            .tracking-result-card .ant-card-extra .ant-btn {
-              width: 100%;
-              min-height: 44px;
-            }
-          }
-          ''')
-
-          culture_files = [
-              root / 'src/features/culture/CultureItemStandardTab.tsx',
-              root / 'src/features/culture/CultureSiteStandardTab.tsx',
-              root / 'src/features/culture/MigrationEventStandardTab.tsx'
-          ]
-          for path in culture_files:
-              source = path.read_text()
-              source = re.sub(r"import \{ CultureSearchHeader \} from './CultureSearchHeader';\n", '', source)
-              source = re.sub(r"\n\s*description=\{<CultureSearchHeader activeTab=\{activeTab\} onTabChange=\{onTabChange\} />\}", '', source)
-              source = source.replace("  onTabChange: (tab: string) => void;\n", '')
-              source = source.replace(', activeTab, onTabChange }: Props)', ', activeTab }: Props)')
-              path.write_text(source)
-
-          maintenance = root / 'src/features/culture/CultureItemMaintenanceTab.tsx'
-          source = maintenance.read_text().replace("  onTabChange: (tab: string) => void;\n", '')
-          source = source.replace(', activeTab, onTabChange }: Props)', ', activeTab }: Props)')
-          source = source.replace(' activeTab={activeTab} onTabChange={onTabChange}', ' activeTab={activeTab}')
-          maintenance.write_text(source)
-
-          product = root / 'src/features/culture/CultureProductPage.tsx'
-          source = product.read_text().replace(' activeTab={activeTab} onTabChange={changeTab}', ' activeTab={activeTab}')
-          product.write_text(source)
-
-          test_path = root / 'src/styles/Issue1029QueryCardMigration.test.mjs'
-          test_path.write_text('''import assert from 'node:assert/strict';
-          import { readFileSync } from 'node:fs';
-          import test from 'node:test';
-
-          const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
-          const audit = read('../features/logs/LogPage.tsx');
-          const auditCss = read('../features/logs/tracking-page.css');
-          const cultureProduct = read('../features/culture/CultureProductPage.tsx');
-          const cultureTabs = [
-            read('../features/culture/CultureItemStandardTab.tsx'),
-            read('../features/culture/CultureSiteStandardTab.tsx'),
-            read('../features/culture/MigrationEventStandardTab.tsx')
-          ];
-          const imports = read('../features/imports/ImportPage.tsx');
-
-          test('audit views use page-level tabs and one shared query contract', () => {
-            assert.match(audit, /<StandardPageTabs[\\s\\S]*ariaLabel="审计追踪视图"/);
-            assert.match(audit, /<StandardQueryPanel className="tracking-query-card">/);
-            assert.equal((audit.match(/<StandardQueryGrid>/g) || []).length, 3);
-            assert.equal((audit.match(/<StandardAdvancedFilters/g) || []).length, 3);
-            assert.match(audit, /<StandardMoreFiltersButton[\\s\\S]*activeFilterCount=/);
-            assert.doesNotMatch(audit, /DownOutlined|UpOutlined|tracking-more-button|tracking-query-grid|tracking-query-actions/);
-            assert.doesNotMatch(audit, /<Card className="tracking-query-card"|<Tabs className="tracking-query-tabs"/);
-          });
-
-          test('audit feature css no longer owns query grid, arrows, or mobile actions', () => {
-            assert.doesNotMatch(auditCss, /tracking-query-grid|tracking-query-actions|tracking-more-button|tracking-query-tabs/);
-            assert.doesNotMatch(auditCss, /display:\\s*none[\\s\\S]*anticon/);
-          });
-
-          test('culture tabs keep business tabs at page level and share query actions', () => {
-            assert.match(cultureProduct, /<StandardPageTabs/);
-            for (const source of cultureTabs) {
-              assert.match(source, /<StandardQueryPanel/);
-              assert.match(source, /<StandardQueryGrid>/);
-              assert.match(source, /<StandardAdvancedFilters/);
-              assert.match(source, /<StandardMoreFiltersButton[\\s\\S]*activeFilterCount=/);
-              assert.match(source, /data-query-action="reset"/);
-              assert.match(source, /data-query-action="submit"/);
-              assert.doesNotMatch(source, /CultureSearchHeader|description=\{<CultureSearchHeader/);
-            }
-          });
-
-          test('import query remains protected by the shared four-field contract', () => {
-            const query = imports.slice(imports.indexOf('<StandardQueryPanel'), imports.indexOf('<QueryResultCard'));
-            assert.match(query, /<StandardQueryPanel/);
-            assert.match(query, /<StandardQueryGrid>/);
-            assert.equal((query.match(/<StandardQueryField/g) || []).length, 4);
-            assert.match(query, /data-query-action="reset"/);
-            assert.match(query, /data-query-action="submit"/);
-            assert.doesNotMatch(query, /<Card|<Row|<Col|SearchOutlined/);
-          });
-          ''')
-
-          package_path = root / 'package.json'
-          package = json.loads(package_path.read_text())
-          marker = 'src/styles/Issue1029QueryCardMigration.test.mjs'
-          command = package['scripts']['test:dom-governance']
-          if marker not in command:
-              package['scripts']['test:dom-governance'] = command + ' ' + marker
-          package_path.write_text(json.dumps(package, ensure_ascii=False, indent=2) + '\n')
+          previous = subprocess.check_output([
+              'git', 'show', 'HEAD^:.github/workflows/issue-1029-bootstrap.yml'
+          ], text=True)
+          start = previous.index("          from pathlib import Path")
+          end = previous.index("\n          PY", start)
+          script = textwrap.dedent(previous[start:end])
+          block_start = script.index("old_panel = '''")
+          block_end = script.index("log_path.write_text(text)", block_start)
+          replacement = '''new_panel = ''' + "'''" + '''      <StandardPageTabs
+        ariaLabel="审计追踪视图"
+        activeKey={activeTab}
+        onChange={changeTab}
+        items={[
+          { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
+          { key: TRACKING_TABS.AUDIT, label: '操作日志' },
+          { key: TRACKING_TABS.RISK, label: '风险事件' }
+        ]}
+      />
+      <StandardQueryPanel className="tracking-query-card">
+        {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
+      </StandardQueryPanel>''' + "'''" + '''
+text, panel_count = re.subn(
+    r'      <Card className="tracking-query-card" title="审计追踪">[\\s\\S]*?      </Card>',
+    new_panel,
+    text,
+    count=1
+)
+if panel_count != 1:
+    raise SystemExit('failed to replace tracking panel')
+'''
+          script = script[:block_start] + replacement + script[block_end:]
+          exec(compile(script, 'issue-1029-migration', 'exec'))
           PY
       - name: Install and validate
         working-directory: frontend/genealogy-web
@@ -298,7 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm .github/workflows/issue-1029-bootstrap.yml
+          rm -f .github/workflows/issue-1029-bootstrap.yml .github/workflows/issue-1029-fixup.yml tasks/issue-1029-trigger.md
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
