@@ -1,47 +1,10 @@
-[data-genealogy-app] .entity-page-header {
-  display: grid;
-  gap: 10px;
-  padding: 4px 0;
-}
-
-[data-genealogy-app] .entity-page-header__back {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-}
-
 [data-genealogy-app] .entity-page-back-button.ant-btn-link {
   height: 32px;
   padding: 0;
   font-weight: 400;
 }
 
-[data-genealogy-app] .entity-page-header__main {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-[data-genealogy-app] .entity-page-header__copy {
-  min-width: 0;
-  display: grid;
-  gap: 6px;
-}
-
-[data-genealogy-app] .entity-page-header__title-row.ant-space {
-  min-width: 0;
-}
-
-[data-genealogy-app] .entity-page-header__title-row .ant-typography {
-  margin: 0;
-}
-
-[data-genealogy-app] .entity-page-header__subtitle {
-  display: block;
-}
-
-[data-genealogy-app] .entity-page-header__actions, [data-genealogy-app] .entity-detail-actions {
+[data-genealogy-app] .entity-detail-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -49,11 +12,11 @@
   gap: 8px;
 }
 
-[data-genealogy-app] .entity-page-header__actions > .ant-space-item, [data-genealogy-app] .entity-detail-actions > .ant-space-item {
+[data-genealogy-app] .entity-detail-actions > .ant-space-item {
   margin: 0;
 }
 
-[data-genealogy-app] .entity-page-header__actions .ant-btn, [data-genealogy-app] .entity-detail-actions .ant-btn {
+[data-genealogy-app] .entity-detail-actions .ant-btn {
   min-height: 32px;
 }
 
@@ -103,29 +66,16 @@
 }
 
 @media (max-width: 767px) {
-  [data-genealogy-app] .entity-page-header {
-    gap: 8px;
-  }
-
-  [data-genealogy-app] .entity-page-header__back {
-    min-height: 44px;
-  }
-
   [data-genealogy-app] .entity-page-back-button.ant-btn-link {
     min-height: 44px;
   }
 
-  [data-genealogy-app] .entity-page-header__main {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  [data-genealogy-app] .entity-page-header__actions, [data-genealogy-app] .entity-detail-actions {
+  [data-genealogy-app] .entity-detail-actions {
     width: 100%;
     justify-content: flex-start;
   }
 
-  [data-genealogy-app] .entity-page-header__actions .ant-btn, [data-genealogy-app] .entity-detail-actions .ant-btn {
+  [data-genealogy-app] .entity-detail-actions .ant-btn {
     min-height: 40px;
   }
 

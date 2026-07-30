@@ -68,24 +68,25 @@ async function mockImportApi(page: Page) {
   });
 }
 
-async function expectDesktopResultHeaderSpacing(page: Page) {
-  const resultCard = page.locator('.import-result-card');
-  const header = resultCard.locator(':scope > .query-result-outer-card__header');
-  const titleGroup = resultCard.locator(':scope > .query-result-outer-card__header > .query-result-card__title');
-  const action = resultCard.getByRole('button', { name: '新建导入' });
-  const [headerBox, titleGroupBox, actionBox] = await Promise.all([
+async function expectDesktopPageHeaderAction(page: Page) {
+  const header = page.locator('.standard-page-header');
+  const titleGroup = header.locator('.standard-page-header__copy');
+  const actionHost = header.locator('.standard-page-header__actions');
+  const action = actionHost.getByRole('button', { name: '新建导入' });
+  const [headerBox, titleGroupBox, actionHostBox, actionBox] = await Promise.all([
     header.boundingBox(),
     titleGroup.boundingBox(),
+    actionHost.boundingBox(),
     action.boundingBox()
   ]);
   expect(headerBox).not.toBeNull();
   expect(titleGroupBox).not.toBeNull();
+  expect(actionHostBox).not.toBeNull();
   expect(actionBox).not.toBeNull();
-  if (!headerBox || !titleGroupBox || !actionBox) return;
-  expect(actionBox.y - headerBox.y).toBeGreaterThanOrEqual(12);
-  const titleCenter = titleGroupBox.y + titleGroupBox.height / 2;
-  const actionCenter = actionBox.y + actionBox.height / 2;
-  expect(Math.abs(titleCenter - actionCenter)).toBeLessThanOrEqual(2);
+  if (!headerBox || !titleGroupBox || !actionHostBox || !actionBox) return;
+  expect(actionHostBox.x).toBeGreaterThan(titleGroupBox.x);
+  expect(actionBox.x).toBeGreaterThanOrEqual(actionHostBox.x - 1);
+  expect(actionBox.x + actionBox.width).toBeLessThanOrEqual(headerBox.x + headerBox.width + 1);
 }
 
 async function expectStrictTwoLayerResult(page: Page) {
@@ -94,6 +95,7 @@ async function expectStrictTwoLayerResult(page: Page) {
   await expect(outerHeader).toHaveCount(1);
   await expect(outerCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(outerCard.locator('.business-result-card')).toHaveCount(0);
+  await expect(outerCard.getByRole('button', { name: '新建导入' })).toHaveCount(0);
   await expect(page.locator('.import-execution-table')).toHaveCount(1);
 }
 
@@ -101,6 +103,7 @@ test('data import page uses a strict two-layer query result with one new import 
   await mockImportApi(page);
   await page.goto('/?view=imports&branchId=2');
 
+  await expect(page.getByRole('heading', { name: '数据导入', exact: true })).toBeVisible();
   await expect(page.locator('.import-query-card')).toHaveCount(1);
   await expect(page.locator('.import-result-card')).toHaveCount(1);
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
@@ -109,7 +112,7 @@ test('data import page uses a strict two-layer query result with one new import 
   const outerResultHeader = page.locator('.import-result-card > .query-result-outer-card__header');
   await expect(outerResultHeader.getByText('查询结果', { exact: true })).toBeVisible();
   await expect(outerResultHeader.getByText('（共 3 个任务）', { exact: true })).toBeVisible();
-  await expectDesktopResultHeaderSpacing(page);
+  await expectDesktopPageHeaderAction(page);
   await expectStrictTwoLayerResult(page);
 
   const labels = await page.locator('.import-query-card .ant-form-item-label label').allTextContents();
@@ -166,6 +169,8 @@ test('390px viewport uses task cards without horizontal scrolling', async ({ pag
   const taskCard = page.locator('.import-execution-card-list > .ant-card').first();
   await expect(taskCard).toBeVisible();
   expect(await taskCard.evaluate(element => element.getBoundingClientRect().width)).toBeLessThanOrEqual(390);
-  await expect(page.getByRole('button', { name: '新建导入' })).toBeVisible();
+  const createAction = page.locator('.standard-page-header__actions').getByRole('button', { name: '新建导入' });
+  await expect(createAction).toBeVisible();
+  expect((await createAction.boundingBox())?.height).toBeGreaterThanOrEqual(40);
   expect(await page.locator('.import-center-page').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 });

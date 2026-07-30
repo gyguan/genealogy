@@ -1,7 +1,6 @@
 import { ExportOutlined } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { feedback } from '../../shared/ui/OperationFeedback';
@@ -15,18 +14,6 @@ type BookletScope = 'clan' | 'branch';
 export function BookletActions(_props: Props) {
   const workspace = useWorkspace();
   const [loading, setLoading] = useState(false);
-  const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    function locateToolbar() {
-      setToolbar(document.querySelector<HTMLElement>('.lineage-canvas-view-bar'));
-    }
-
-    locateToolbar();
-    const observer = new MutationObserver(locateToolbar);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
 
   async function generateBooklet(scope: BookletScope) {
     if (loading) return;
@@ -56,7 +43,7 @@ export function BookletActions(_props: Props) {
     }
   }
 
-  const action = (
+  return (
     <Dropdown
       disabled={!workspace.clanId || loading}
       menu={{
@@ -70,8 +57,4 @@ export function BookletActions(_props: Props) {
       <Button icon={<ExportOutlined />} loading={loading}>导出族谱</Button>
     </Dropdown>
   );
-
-  return toolbar
-    ? createPortal(<span className="lineage-result-export-action">{action}</span>, toolbar)
-    : action;
 }
