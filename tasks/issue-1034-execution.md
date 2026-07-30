@@ -17,10 +17,10 @@
 |---|---|---|---|
 | 1 | 核对依赖、主干、分支和 Draft PR | ✅ 已完成 | 基于最新 `main` 建立独立分支 |
 | 2 | 盘点 Member/Review/Source Entity、Repository、锁与调用面 | ✅ 已完成 | 已识别 JPA、JPQL、EntityManager、Dirty Checking、锁和跨模块依赖 |
-| 3 | 迁移 Member 与权限范围查询 | 🔄 进行中 | 已完成本地实现，正在通过校验归档写入分支 |
-| 4 | 迁移 Review/Revision 与并发锁 | 🔄 进行中 | 已完成本地实现，等待分支解包和 CI 验证 |
-| 5 | 迁移 Source/Binding/Attachment | 🔄 进行中 | 已完成本地实现，等待分支解包和 CI 验证 |
-| 6 | PostgreSQL 专项测试和全量 CI | ⏳ 待开始 | Backend、Integration、Security、Member Scope、Functional E2E |
+| 3 | 迁移 Member 与权限范围查询 | ✅ 已完成 | 动态 SQL、count 共用筛选、空集合、显式更新与成员锁已切换 |
+| 4 | 迁移 Review/Revision 与并发锁 | ✅ 已完成 | FOR UPDATE、JSONB 显式更新、审核查询与并发边界已切换 |
+| 5 | 迁移 Source/Binding/Attachment | ✅ 已完成 | 来源、绑定、附件和聚合查询已切换，公共接口保持不变 |
+| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | 可信 Head 已形成，正在执行 Backend、Integration、Security、Member Scope、Functional E2E |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
 
 ## 风险控制
@@ -33,5 +33,6 @@
 
 ## 恢复检查点
 
-- 当前阶段：80 个限定范围文件已形成校验归档，Base64 与 tar.gz 均使用固定 SHA-256；默认分支受控 Workflow 已注册，现以第二次 `synchronize` 事件触发原子应用。
-- 下一步最小任务：确认解包提交完成且 `.agent`/辅助 Workflow 已自清理，随后读取首次 Backend CI 与 PostgreSQL Integration 结果。
+- 当前阶段：80 个限定范围文件已通过 Base64/tar.gz 双重 SHA-256、文件数量校验并原子应用；所有 `.agent`、临时 Workflow 和触发文件均已清理。
+- 当前可信 Head：本看板提交形成新的正常仓库身份 Head，以该 Head 的全量 CI 为最终验收基准。
+- 下一步最小任务：读取 Backend CI 与 PostgreSQL Integration 首轮结果，修复编译、SQL 映射或事务语义问题。
