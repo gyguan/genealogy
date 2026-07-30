@@ -1,6 +1,7 @@
 package com.genealogy.imports.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.common.exception.BusinessException;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.PersonImportRowRetryRequest;
 import com.genealogy.imports.entity.ImportJobEntity;
@@ -17,13 +18,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -56,7 +56,7 @@ class ImportJobRowApplicationServiceTest {
                 operationLogApplicationService
         );
         job = new ImportJobEntity();
-        job.setId(10Lk);
+        job.setId(10L);
         job.setClanId(1L);
         job.setBranchId(2L);
         job.setImportType(ImportJobEntity.TYPE_PERSON);
