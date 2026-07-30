@@ -7,9 +7,10 @@ import {
   Space,
   Spin,
   Table,
+  Tabs,
   Typography
 } from 'antd';
-import type { CardProps, DrawerProps, ResultProps, TableProps } from 'antd';
+import type { CardProps, DrawerProps, ResultProps, TableProps, TabsProps } from 'antd';
 import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
 
@@ -74,19 +75,33 @@ export function StandardPageActions({ children }: StandardPageActionsProps) {
   return target ? createPortal(children, target) : null;
 }
 
+export type StandardPageTabsProps = Omit<TabsProps, 'tabPosition'> & {
+  ariaLabel?: string;
+};
+
+export function StandardPageTabs({ className = '', ariaLabel = '页面内容导航', animated = false, ...props }: StandardPageTabsProps) {
+  return (
+    <nav className={['standard-page-tabs', className].filter(Boolean).join(' ')} aria-label={ariaLabel} data-page-tabs-level="page">
+      <Tabs {...props} animated={animated} tabPosition="top" />
+    </nav>
+  );
+}
+
 export type StandardQueryPanelProps = Omit<CardProps, 'title' | 'children'> & {
   title?: ReactNode;
   description?: ReactNode;
+  tabs?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
 };
 
-export function StandardQueryPanel({ title = '查询条件', description, actions, children, className = '', ...cardProps }: StandardQueryPanelProps) {
+export function StandardQueryPanel({ title = '查询条件', description, tabs, actions, children, className = '', ...cardProps }: StandardQueryPanelProps) {
   const classes = ['standard-query-panel', className].filter(Boolean).join(' ');
-  return <Card {...cardProps} className={classes} title={title}>
+  return <Card {...cardProps} className={classes} title={title} data-query-panel-role="query">
     {description ? <Typography.Paragraph type="secondary" className="standard-query-panel__description">{description}</Typography.Paragraph> : null}
+    {tabs ? <div className="standard-query-panel__tabs" data-query-tabs-level="parallel">{tabs}</div> : null}
     <div className="standard-query-panel__body">{children}</div>
-    {actions ? <Space className="standard-query-panel__actions" wrap>{actions}</Space> : null}
+    {actions ? <div className="standard-query-panel__actions">{actions}</div> : null}
   </Card>;
 }
 
@@ -99,8 +114,8 @@ export type StandardResultSectionProps = Omit<CardProps, 'title' | 'children'> &
 
 export function StandardResultSection({ title = '查询结果', total, extra, children, className = '', ...cardProps }: StandardResultSectionProps) {
   const classes = ['standard-result-section', className].filter(Boolean).join(' ');
-  const heading = <Space size={8}><span>{title}</span>{typeof total === 'number' ? <Typography.Text type="secondary">共 {total} 条</Typography.Text> : null}</Space>;
-  return <Card {...cardProps} className={classes} title={heading} extra={extra}>
+  const heading = <Space size={4}><span>{title}</span>{typeof total === 'number' ? <Typography.Text type="secondary">（共 {total} 条）</Typography.Text> : null}</Space>;
+  return <Card {...cardProps} className={classes} title={heading} extra={extra} data-query-result-role="section">
     {children}
   </Card>;
 }
