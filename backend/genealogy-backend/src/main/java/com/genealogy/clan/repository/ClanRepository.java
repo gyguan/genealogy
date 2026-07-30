@@ -7,6 +7,7 @@ import com.genealogy.clan.repository.mybatis.ClanPersistenceMapper;
 import com.genealogy.common.persistence.PageQuery;
 import com.genealogy.common.persistence.PageResult;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,6 +23,7 @@ import java.util.Optional;
  * surrounding Spring transaction.</p>
  */
 @Repository
+@Transactional(readOnly = true)
 public class ClanRepository {
 
     private final ClanPersistenceMapper mapper;
@@ -30,6 +32,7 @@ public class ClanRepository {
         this.mapper = mapper;
     }
 
+    @Transactional
     public ClanEntity save(ClanEntity entity) {
         Objects.requireNonNull(entity, "entity");
         if (entity.getId() == null) {
@@ -44,10 +47,12 @@ public class ClanRepository {
     }
 
     /** Compatibility alias for existing integration fixtures; MyBatis writes immediately. */
+    @Transactional
     public ClanEntity saveAndFlush(ClanEntity entity) {
         return save(entity);
     }
 
+    @Transactional
     public List<ClanEntity> saveAll(Iterable<ClanEntity> entities) {
         List<ClanEntity> saved = new ArrayList<>();
         for (ClanEntity entity : entities) {
@@ -92,17 +97,20 @@ public class ClanRepository {
         return mapper.selectCount(Wrappers.emptyWrapper());
     }
 
+    @Transactional
     public void delete(ClanEntity entity) {
         Objects.requireNonNull(entity, "entity");
         deleteById(entity.getId());
     }
 
+    @Transactional
     public void deleteById(Long id) {
         if (id != null) {
             mapper.deleteById(id);
         }
     }
 
+    @Transactional
     public void deleteAll(Iterable<ClanEntity> entities) {
         List<Long> ids = new ArrayList<>();
         for (ClanEntity entity : entities) {
@@ -115,6 +123,7 @@ public class ClanRepository {
         }
     }
 
+    @Transactional
     public void deleteAll() {
         mapper.delete(Wrappers.emptyWrapper());
     }
