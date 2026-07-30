@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/full-docs-audit
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
