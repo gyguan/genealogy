@@ -16,10 +16,10 @@
 | 序号 | 任务 | 状态 | 结果 |
 |---|---|---|---|
 | 1 | 核对依赖、主干、分支和 Draft PR | ✅ 已完成 | 基于最新 `main` 建立独立分支 |
-| 2 | 盘点 Member/Review/Source Entity、Repository、锁与调用面 | 🔄 进行中 | 识别 JPA、JPQL、EntityManager、Dirty Checking 和跨模块依赖 |
-| 3 | 迁移 Member 与权限范围查询 | ⏳ 待开始 | 动态 SQL、count 一致性、空集合、最后管理员和宗族锁 |
-| 4 | 迁移 Review/Revision 与并发锁 | ⏳ 待开始 | FOR UPDATE、显式更新、单次 apply 与并发决策 |
-| 5 | 迁移 Source/Binding/Attachment | ⏳ 待开始 | 来源证据、绑定、附件权限、审核链路 |
+| 2 | 盘点 Member/Review/Source Entity、Repository、锁与调用面 | ✅ 已完成 | 已识别 JPA、JPQL、EntityManager、Dirty Checking、锁和跨模块依赖 |
+| 3 | 迁移 Member 与权限范围查询 | 🔄 进行中 | 已完成本地实现，正在通过校验归档写入分支 |
+| 4 | 迁移 Review/Revision 与并发锁 | 🔄 进行中 | 已完成本地实现，等待分支解包和 CI 验证 |
+| 5 | 迁移 Source/Binding/Attachment | 🔄 进行中 | 已完成本地实现，等待分支解包和 CI 验证 |
 | 6 | PostgreSQL 专项测试和全量 CI | ⏳ 待开始 | Backend、Integration、Security、Member Scope、Functional E2E |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
 
@@ -33,5 +33,5 @@
 
 ## 恢复检查点
 
-- 当前阶段：分支和执行看板已建立，正在盘点三个模块的持久化边界。
-- 下一步最小任务：形成 Entity/Repository/调用面清单，并先迁移 Member 的基础 CRUD 与动态分页查询。
+- 当前阶段：80 个限定范围文件已形成校验归档，Base64 与 tar.gz 均使用固定 SHA-256，正在由主干受控 Workflow 原子应用。
+- 下一步最小任务：确认解包提交完成且 `.agent`/辅助 Workflow 已自清理，随后读取首次 Backend CI 与 PostgreSQL Integration 结果。
