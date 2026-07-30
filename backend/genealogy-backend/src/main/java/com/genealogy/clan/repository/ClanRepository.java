@@ -60,6 +60,17 @@ public class ClanRepository {
         return Optional.ofNullable(mapper.selectById(id));
     }
 
+    public List<ClanEntity> findAllById(Iterable<Long> ids) {
+        List<Long> values = new ArrayList<>();
+        ids.forEach(values::add);
+        if (values.isEmpty()) {
+            return List.of();
+        }
+        return mapper.selectList(Wrappers.<ClanEntity>lambdaQuery()
+                .in(ClanEntity::getId, values)
+                .orderByAsc(ClanEntity::getId));
+    }
+
     public boolean existsById(Long id) {
         return id != null && mapper.selectCount(Wrappers.<ClanEntity>lambdaQuery()
                 .eq(ClanEntity::getId, id)) > 0;
