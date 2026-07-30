@@ -50,7 +50,8 @@
   margin-top: 0;
 }
 
-.standard-query-panel__actions {
+/* Two-class scope intentionally outranks the generic rule in standard-page-patterns.css. */
+.standard-query-panel .standard-query-panel__actions {
   margin-top: var(--standard-query-row-gap, var(--ant-margin-xxs));
 }
 
