@@ -52,7 +52,7 @@ class HomeDashboardApplicationServiceTest {
     void setUp() {
         service = new HomeDashboardApplicationService(personRepository, branchRepository, sourceRepository, reviewTaskRepository, authorizationApplicationService);
         lenient().when(personRepository.loadDashboardData(eq(CLAN_ID), eq("official"), any(LocalDateTime.class), eq(4)))
-                .thenReturn(data(new PersonDashboardSummary(0, 0, 0, 0, 0, 0), List.of(), List.of(), List.of()));
+                .thenReturn(data(new PersonDashboardSummary(0L, 0L, 0L, 0L, 0L, 0L), List.of(), List.of(), List.of()));
         lenient().when(branchRepository.findByClanIdOrderByLevelAscSortOrderAscIdAsc(CLAN_ID)).thenReturn(List.of());
         lenient().when(sourceRepository.countDashboardBySourceType(CLAN_ID)).thenReturn(List.of());
         lenient().when(reviewTaskRepository.countByClanIdAndStatusInAndCreatedAtBefore(eq(CLAN_ID), anyCollection(), any(LocalDateTime.class))).thenReturn(0L);
@@ -74,7 +74,7 @@ class HomeDashboardApplicationServiceTest {
 
     @Test
     void usesStronglyTypedPersonDashboardReadModel() {
-        PersonDashboardSummary summary = new PersonDashboardSummary(200, 150, 120, 90, 50, 7);
+        PersonDashboardSummary summary = new PersonDashboardSummary(200L, 150L, 120L, 90L, 50L, 7L);
         List<PersonDashboardBucket> buckets = List.of(
                 bucket("gender", "male", 110), bucket("gender", "female", 90),
                 bucket("living", "living", 180), bucket("living", "deceased", 20),
@@ -103,13 +103,13 @@ class HomeDashboardApplicationServiceTest {
         LocalDateTime now = LocalDateTime.now();
         PersonEntity person = person("黄一", now.minusDays(1), now);
         PersonDashboardData dashboardData = data(
-                new PersonDashboardSummary(201, 151, 121, 91, 80, 8),
+                new PersonDashboardSummary(201L, 151L, 121L, 91L, 80L, 8L),
                 List.of(
                         bucket("gender", "male", 100), bucket("gender", "female", 100), bucket("gender", "unknown", 1),
                         bucket("living", "living", 180), bucket("living", "deceased", 20), bucket("living", "unknown", 1),
                         bucket("generation", "1", 100), bucket("generation", "2", 100), bucket("generation", "unmaintained", 1)
                 ),
-                List.of(new PersonDashboardDailyCount(LocalDate.now().minusDays(1), 3)),
+                List.of(new PersonDashboardDailyCount(LocalDate.now().minusDays(1), 3L)),
                 List.of(person)
         );
         when(personRepository.loadDashboardData(eq(CLAN_ID), eq("official"), any(LocalDateTime.class), eq(4))).thenReturn(dashboardData);
