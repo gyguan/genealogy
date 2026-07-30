@@ -53,7 +53,8 @@
 | 导入类型扩展 | `docs/backend/import-type-extension.md` | P2 |
 | 前端设计体系 | `docs/frontend/design-system.md` | P2 |
 | 前端页面模式 | `docs/frontend/page-patterns.md` | P2 |
-| 查询类页面 | `docs/frontend/query-pages.md` | P2 |
+| 查询类页面业务行为 | `docs/frontend/query-pages.md` | P2 |
+| 查询 Card 视觉契约 | `docs/frontend/query-card-visual-contract.md` | P2 |
 | 提示与反馈 | `docs/frontend/feedback-patterns.md` | P2 |
 | 多 Tab 页面 | `docs/frontend/multi-tab-pages.md` | P2 |
 | 功能测试方法与覆盖 | `docs/testing/functional-test-*.md` | P2 |
@@ -88,7 +89,7 @@
 | 数据库变更 | 上述集合 + 数据库与 Flyway + 脚本治理 + 环境配置 |
 | 后端性能治理 | 后端规则 + 对应查询性能规范 + 测试 |
 | 普通前端实现 | 根规则 → 前端规则 → Feature README → Issue/Spec |
-| 页面视觉整改 | 上述集合 + 设计体系 + 页面/查询/反馈模式 |
+| 页面视觉整改 | 上述集合 + 设计体系 + 页面/查询/反馈模式；查询 Card 尺寸与动作外观增加视觉契约 |
 | API 变更 | 根规则 + OpenAPI + API 设计规则 + 前后端目录规则 |
 | 权限、隐私、审核 | 根规则 + 权限隐私 + 统一权限决策 + 相关模块 README |
 | 发布验收 | 根规则 + `docs/testing/README.md` 中对应测试 + 部署文档 |

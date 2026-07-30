@@ -122,8 +122,15 @@ async function expectMoreFiltersBeforeReset(page: Page) {
   if (!moreBox || !resetBox || !queryBox) return;
   const moreCenterY = moreBox.y + moreBox.height / 2;
   const resetCenterY = resetBox.y + resetBox.height / 2;
-  expect(Math.abs(moreCenterY - resetCenterY)).toBeLessThanOrEqual(4);
-  expect(moreBox.x + moreBox.width).toBeLessThanOrEqual(resetBox.x + 1);
+  const queryCenterY = queryBox.y + queryBox.height / 2;
+  if ((page.viewportSize()?.width || 0) < 768) {
+    expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(resetBox.y + 1);
+    expect(Math.abs(resetCenterY - queryCenterY)).toBeLessThanOrEqual(4);
+    expect(Math.abs(resetBox.width - queryBox.width)).toBeLessThanOrEqual(4);
+  } else {
+    expect(Math.abs(moreCenterY - resetCenterY)).toBeLessThanOrEqual(4);
+    expect(moreBox.x + moreBox.width).toBeLessThanOrEqual(resetBox.x + 1);
+  }
   expect(resetBox.x + resetBox.width).toBeLessThanOrEqual(queryBox.x + 1);
 }
 

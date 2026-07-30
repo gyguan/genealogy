@@ -4,13 +4,14 @@ import { createPortal } from 'react-dom';
 import {
   Card,
   Drawer,
+  Form,
   Space,
   Spin,
   Table,
   Tabs,
   Typography
 } from 'antd';
-import type { CardProps, DrawerProps, ResultProps, TableProps, TabsProps } from 'antd';
+import type { CardProps, DrawerProps, FormItemProps, ResultProps, TableProps, TabsProps } from 'antd';
 import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
 
@@ -103,6 +104,49 @@ export function StandardQueryPanel({ title = '查询条件', description, tabs, 
     <div className="standard-query-panel__body">{children}</div>
     {actions ? <div className="standard-query-panel__actions">{actions}</div> : null}
   </Card>;
+}
+
+export type StandardQueryGridProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+export function StandardQueryGrid({ children, className = '' }: StandardQueryGridProps) {
+  return <div className={['standard-query-grid', className].filter(Boolean).join(' ')} data-query-grid-role="fields">{children}</div>;
+}
+
+export type StandardQueryFieldProps = Omit<FormItemProps, 'children' | 'extra'> & {
+  children: ReactNode;
+  hint?: ReactNode;
+  reserveHintSpace?: boolean;
+  wrapperClassName?: string;
+};
+
+export function StandardQueryField({
+  children,
+  hint,
+  reserveHintSpace = true,
+  wrapperClassName = '',
+  className = '',
+  ...formItemProps
+}: StandardQueryFieldProps) {
+  const wrapperClasses = ['standard-query-field', wrapperClassName].filter(Boolean).join(' ');
+  const itemClasses = ['standard-query-field__item', className].filter(Boolean).join(' ');
+  return <div className={wrapperClasses} data-query-field-role="field">
+    <Form.Item {...formItemProps} className={itemClasses}>{children}</Form.Item>
+    {reserveHintSpace || hint ? <div className="standard-query-field__hint">{hint || <span aria-hidden="true">&nbsp;</span>}</div> : null}
+  </div>;
+}
+
+export type StandardAdvancedFiltersProps = {
+  children: ReactNode;
+  expanded?: boolean;
+  className?: string;
+};
+
+export function StandardAdvancedFilters({ children, expanded = true, className = '' }: StandardAdvancedFiltersProps) {
+  if (!expanded) return null;
+  return <div className={['standard-query-grid', 'standard-query-advanced', className].filter(Boolean).join(' ')} data-query-advanced-role="filters">{children}</div>;
 }
 
 export type StandardResultSectionProps = Omit<CardProps, 'title' | 'children'> & {

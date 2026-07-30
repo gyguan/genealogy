@@ -95,6 +95,15 @@
   min-width: 0;
 }
 
+.standard-query-panel > .ant-card-head {
+  min-height: var(--ant-card-header-height);
+  padding-inline: var(--ant-padding-md);
+}
+
+.standard-query-panel > .ant-card-body {
+  padding: var(--ant-padding-md);
+}
+
 .standard-query-panel__description.ant-typography, .standard-detail-drawer__description.ant-typography {
   margin-top: 0;
 }
@@ -107,6 +116,67 @@
 
 .standard-query-panel__body, .standard-result-section .ant-card-body, .standard-editor-page__body {
   min-width: 0;
+}
+
+.standard-query-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--ant-margin-sm) var(--ant-margin-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.standard-query-advanced {
+  margin-top: var(--ant-margin-md);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.standard-query-field {
+  display: grid;
+  grid-template-rows: auto minmax(20px, auto);
+  min-width: 0;
+}
+
+.standard-query-field__item.ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.standard-query-field__item .ant-form-item-label {
+  min-height: 22px;
+  padding: 0 0 var(--ant-margin-xxs);
+}
+
+.standard-query-field__item .ant-form-item-control-input {
+  min-height: var(--ant-control-height);
+}
+
+.standard-query-field__item .ant-form-item-control-input-content, .standard-query-field__item .ant-form-item-control-input-content > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.standard-query-field__item .ant-input, .standard-query-field__item .ant-input-affix-wrapper, .standard-query-field__item .ant-input-number, .standard-query-field__item .ant-picker, .standard-query-field__item .ant-select-selector {
+  width: 100%;
+  min-height: var(--ant-control-height);
+}
+
+.standard-query-field__item .ant-select-multiple .ant-select-selector {
+  max-height: var(--ant-control-height);
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.standard-query-field__hint {
+  min-height: 20px;
+  padding-top: var(--ant-margin-xxs);
+  color: var(--ant-color-text-secondary);
+  font-size: var(--ant-font-size-sm);
+  line-height: 20px;
 }
 
 .standard-query-panel__actions, .standard-editor-page__actions {
@@ -138,6 +208,12 @@
   padding-inline: 0;
 }
 
+@media (max-width: 1199px) {
+  .standard-query-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 767px) {
   .standard-page-header {
     flex-direction: column;
@@ -158,5 +234,9 @@
 
   .standard-page-tabs {
     padding-inline: var(--ant-padding-sm);
+  }
+
+  .standard-query-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
