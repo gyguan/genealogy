@@ -60,6 +60,7 @@ docs/
 - [数据库初始化与预置](backend/database-initialization.md)
 - [数据库脚本治理](backend/database-script-governance.md)
 - [环境配置](backend/environment-configuration.md)
+- [持久化框架分阶段迁移](backend/persistence-framework-migration.md)
 - [Repository 查询性能](backend/repository-query-performance.md)
 - [Tree 查询性能基线](backend/tree-query-performance.md)
 - [日志与审计](backend/logging-and-audit.md)
