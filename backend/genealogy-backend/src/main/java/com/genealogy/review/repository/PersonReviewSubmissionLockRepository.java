@@ -18,6 +18,7 @@ public class PersonReviewSubmissionLockRepository {
         this.mapper = mapper;
     }
 
+    @Transactional
     public Optional<PersonEntity> findByIdForReviewSubmission(Long personId) {
         return Optional.ofNullable(mapper.selectActiveByIdForUpdate(personId));
     }
