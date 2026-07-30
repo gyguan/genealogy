@@ -1,0 +1,45 @@
+name: Temporary Issue 1028 Dispatch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/temporary-issue-1028-dispatch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1028-query-card-consistency
+          fetch-depth: 0
+      - name: Extract and execute branch migration
+        shell: bash
+        run: |
+          awk '/^[[:space:]]+python3 - <<'"'"'PY'"'"'/{capture=1} capture{sub(/^[[:space:]]{10}/, ""); print} capture && /^PY$/{exit}' .github/workflows/issue-1028-apply.yml > /tmp/apply-1028.sh
+          bash /tmp/apply-1028.sh
+      - name: Install dependencies and validate
+        working-directory: frontend/genealogy-web
+        run: |
+          npm ci
+          node --test src/styles/Issue1028QueryCardMigration.test.mjs
+          npm run test:tree
+          npm run test:members
+          npm run test:reviews
+          npm run typecheck
+          npm run build
+      - name: Commit and push target branch
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/tree/LineageTreeTabbedPage.tsx \
+                  frontend/genealogy-web/src/features/members/MemberPage.tsx \
+                  frontend/genealogy-web/src/features/reviews/ReviewCenterPageContent.tsx \
+                  frontend/genealogy-web/src/styles/Issue1028QueryCardMigration.test.mjs
+          git commit -m "feat: unify query cards for issue 1028 [issue-1028 applied]"
+          git push origin HEAD:agent/issue-1028-query-card-consistency
