@@ -1,0 +1,34 @@
+name: Agent Apply Issue 1033 Architecture Fix
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'agent/issue-1033-person-mybatis' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1033-person-mybatis
+          fetch-depth: 0
+      - name: Apply architecture fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/agent/issue-1033-arch.patch.part* | base64 -d > /tmp/issue-1033-arch.patch
+          git apply --check /tmp/issue-1033-arch.patch
+          git apply /tmp/issue-1033-arch.patch
+          rm -f .github/agent/issue-1033-arch.patch.part*
+          rm -f .github/workflows/agent-issue-1033-arch-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(person): preserve repository architecture boundary"
+          git push origin HEAD:agent/issue-1033-person-mybatis
