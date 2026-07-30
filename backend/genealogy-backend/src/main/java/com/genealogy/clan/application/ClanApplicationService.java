@@ -12,6 +12,8 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.domain.DraftDeletePolicy;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.common.exception.ErrorCode;
+import com.genealogy.common.persistence.PageQuery;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.member.entity.ClanMembershipEntity;
 import com.genealogy.member.entity.MemberRoleEntity;
 import com.genealogy.member.entity.RoleEntity;
@@ -20,9 +22,6 @@ import com.genealogy.member.enums.MemberStatus;
 import com.genealogy.member.repository.ClanMembershipRepository;
 import com.genealogy.member.repository.MemberRoleRepository;
 import com.genealogy.member.repository.RoleRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,9 +101,9 @@ public class ClanApplicationService {
 
     @Transactional(readOnly = true)
     public PageResponse<ClanResponse> list(int pageNo, int pageSize) {
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-        Page<ClanResponse> page = clanRepository.findAll(pageRequest).map(ClanMapper::toResponse);
-        return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
+        PageResult<ClanResponse> page = clanRepository.findPage(new PageQuery(pageNo, pageSize))
+                .map(ClanMapper::toResponse);
+        return PageResponse.of(page.records(), page.total(), pageNo, pageSize);
     }
 
     @Transactional(readOnly = true)

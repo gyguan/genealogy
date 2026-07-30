@@ -4,7 +4,7 @@
 
 ## 1. 技术与分层
 
-技术基线：Java 17、Spring Boot 3、PostgreSQL、Spring Data JPA、Flyway、OpenAPI、模块化单体。
+技术基线：Java 17、Spring Boot 3、PostgreSQL、Spring Data JPA + MyBatis-Plus/MyBatis 分阶段迁移、Flyway、OpenAPI、模块化单体。
 
 标准调用链：
 
@@ -18,6 +18,9 @@ Controller → Application Service → Domain Policy / State Machine
 - Domain Policy / State Machine 承载业务判断和状态迁移，应能脱离 Spring 与数据库测试。
 - 普通 Repository 负责清晰 CRUD；复杂查询、Projection 和批次策略进入 QueryRepository。
 - Assembler 负责模型转换；Mapper 不查询数据库、不执行业务决策。
+- MyBatis `BaseMapper`、Wrapper、`Page/IPage` 只能存在于持久化适配层，不得进入 Controller、Application 或 Domain。
+- 双栈期间 MyBatis Mapper 必须位于模块 `repository.mybatis` 包并显式使用 `@Mapper`；JPA 与 MyBatis 共用 Spring 管理的 DataSource 和事务边界。
+- 持久化迁移规则与当前清单见 `docs/backend/persistence-framework-migration.md`。
 
 ## 2. API、类型与正式数据
 
@@ -43,6 +46,7 @@ Controller → Application Service → Domain Policy / State Machine
 
 - 数据库与 Flyway：`docs/backend/database-and-flyway.md`
 - 环境配置：`docs/backend/environment-configuration.md`
+- 持久化框架迁移：`docs/backend/persistence-framework-migration.md`
 - Repository 查询性能：`docs/backend/repository-query-performance.md`
 - 日志、审计与可观测性：`docs/backend/observability-and-audit.md`
 
@@ -54,6 +58,8 @@ Controller → Application Service → Domain Policy / State Machine
 - 避免无条件全表读取、内存分页、N+1、循环 Repository 调用和无界递归。
 - 大 ID 集合遵循统一分批策略。
 - 高数据量查询提供 SQL、执行计划或相应集成测试证据。
+- MyBatis-Plus 默认更新策略不得被当成清空 nullable 字段的保证；需要清空字段时使用明确 XML SQL 或受测试保护的专用更新方法。
+- 双栈迁移不得改变软删除、审核生效、悲观锁、批次原子性和操作日志语义。
 
 ## 5. 测试与可理解性
 
@@ -64,6 +70,8 @@ Controller → Application Service → Domain Policy / State Machine
 - Repository：PostgreSQL 集成测试；
 - Controller/API：契约、参数和稳定错误码；
 - 关键用户链路：真实 E2E。
+
+持久化迁移还必须验证 Mapper/XML 加载、Identity 回填、显式 null 更新、稳定分页、删除语义以及 JPA/MyBatis 跨框架事务整体回滚。
 
 测试名称应描述业务条件和期望结果。不得删除断言或跳过失败测试。
 

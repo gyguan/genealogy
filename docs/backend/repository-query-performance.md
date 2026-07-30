@@ -2,16 +2,26 @@
 
 ## Scope
 
-This baseline applies to Tree, Import, Review, Source, Member, Attachment, Culture and Audit Log repositories.
+This baseline applies to Tree, Import, Review, Source, Member, Attachment, Culture and Audit Log repositories, and to every repository migrated between Spring Data JPA and MyBatis-Plus/MyBatis.
 
 ## Query rules
 
-1. User-facing lists must accept `Pageable`, use `Page`/`Slice`, or enforce a documented hard limit.
-2. Stable ordering must end with a unique key, normally `id`.
-3. Collection parameters larger than 500 IDs must use a shared deterministic batcher.
-4. Repository calls must not execute inside loops unless the loop is explicitly bounded and the query count is asserted.
-5. Filtering, sorting and truncation that can be expressed by PostgreSQL must not be deferred to unbounded in-memory processing.
-6. Tree queries use field-level detached read snapshots; normal CRUD repositories remain entity based.
+1. User-facing lists must accept the framework-neutral `PageQuery`, return `PageResult`, use the existing Spring Data `Pageable`/`Page`/`Slice` inside unmigrated repositories, or enforce a documented hard limit.
+2. MyBatis-Plus `Page`, `IPage`, Wrapper and `BaseMapper` must remain inside the persistence adapter; they must not escape into Application, Domain or API layers.
+3. Stable ordering must end with a unique key, normally `id`.
+4. Collection parameters larger than 500 IDs must use a shared deterministic batcher.
+5. Repository calls must not execute inside loops unless the loop is explicitly bounded and the query count is asserted.
+6. Filtering, sorting and truncation that can be expressed by PostgreSQL must not be deferred to unbounded in-memory processing.
+7. Tree queries use field-level detached read snapshots; normal CRUD repositories remain entity based.
+8. Nullable field clearing must use explicit, tested update SQL instead of relying on a framework's default non-null update policy.
+
+## Dual-stack repository rules
+
+- Spring Data JPA and MyBatis-Plus may coexist only during the staged migration described in `persistence-framework-migration.md`.
+- Both stacks reuse the same Spring-managed DataSource and transaction manager; cross-stack writes require a PostgreSQL rollback test.
+- MyBatis Mapper interfaces live under module `repository.mybatis` packages and are hidden behind Repository/QueryRepository adapters.
+- Flyway remains the only Schema authority. No persistence framework may create or modify tables automatically.
+- Simple bounded collections may use ordered per-row writes when Identity values are required and the outer transaction is verified; large imports require dedicated batch SQL and fixed batch limits.
 
 ## Tree read model
 

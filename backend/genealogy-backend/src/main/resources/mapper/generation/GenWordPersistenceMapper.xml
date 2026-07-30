@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.generation.repository.mybatis.GenWordPersistenceMapper">
+
+    <update id="updateAllById" parameterType="com.genealogy.generation.entity.GenerationWordEntity">
+        update generation_word
+        set scheme_id = #{schemeId},
+            generation_no = #{generationNo},
+            word = #{word},
+            description = #{description},
+            sort_order = #{sortOrder}
+        where id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.clan.repository.mybatis.ClanPersistenceMapper">
+
+    <update id="updateAllById" parameterType="com.genealogy.clan.entity.ClanEntity">
+        update clan
+        set clan_code = #{clanCode},
+            clan_name = #{clanName},
+            surname = #{surname},
+            hall_name = #{hallName},
+            commandery = #{commandery},
+            ancestor_person_id = #{ancestorPersonId},
+            origin_place = #{originPlace},
+            description = #{description},
+            status = #{status},
+            created_by = #{createdBy},
+            created_at = #{createdAt},
+            updated_at = #{updatedAt}
+        where id = #{id}
+    </update>
+
+</mapper>

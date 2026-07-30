@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.generation.repository.mybatis.GenSchemePersistenceMapper">
+
+    <update id="updateAllById" parameterType="com.genealogy.generation.entity.GenerationSchemeEntity">
+        update generation_scheme
+        set clan_id = #{clanId},
+            branch_id = #{branchId},
+            scheme_name = #{schemeName},
+            poem_text = #{poemText},
+            start_generation = #{startGeneration},
+            is_default = #{isDefault},
+            validation_enabled = #{validationEnabled},
+            strict_mode = #{strictMode},
+            status = #{status},
+            created_at = #{createdAt}
+        where id = #{id}
+    </update>
+
+</mapper>
