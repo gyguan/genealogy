@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react';
-import type { ReactNode, Ref } from 'react';
+import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Card,
@@ -138,15 +138,14 @@ export function StandardQueryField({
   </div>;
 }
 
-export type StandardAdvancedFiltersProps = {
+export type StandardAdvancedFiltersProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   children: ReactNode;
   expanded?: boolean;
-  className?: string;
 };
 
-export function StandardAdvancedFilters({ children, expanded = true, className = '' }: StandardAdvancedFiltersProps) {
+export function StandardAdvancedFilters({ children, expanded = true, className = '', ...props }: StandardAdvancedFiltersProps) {
   if (!expanded) return null;
-  return <div className={['standard-query-grid', 'standard-query-advanced', className].filter(Boolean).join(' ')} data-query-advanced-role="filters">{children}</div>;
+  return <div {...props} className={['standard-query-grid', 'standard-query-advanced', className].filter(Boolean).join(' ')} data-query-advanced-role="filters">{children}</div>;
 }
 
 export type StandardResultSectionProps = Omit<CardProps, 'title' | 'children'> & {
