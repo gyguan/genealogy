@@ -105,7 +105,11 @@ class MemberReviewSourceMybatisPostgreSqlIT {
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getContent()).extracting(ClanMembershipEntity::getId).containsExactly(visible.getId());
 
-        visible.setPersonId(999L);
+        Long personId = jdbcTemplate.queryForObject(
+                "insert into person(clan_id,name,gender,lineage_status,privacy_level,data_status,created_at,updated_at) "
+                        + "values (?,?,'unknown','normal','clan_only','draft',now(),now()) returning id",
+                Long.class, clan.getId(), "成员关联人物-" + token());
+        visible.setPersonId(personId);
         membershipRepository.save(visible);
         visible.setPersonId(null);
         membershipRepository.save(visible);
