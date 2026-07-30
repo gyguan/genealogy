@@ -1,12 +1,17 @@
 import {
-  SearchOutlined } from '@ant-design/icons';
+  SearchOutlined,
+  UploadOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { useCallback,
+import {
+  useCallback,
   useEffect,
   useMemo,
-  useState } from 'react';
-import { Alert,
+  useState
+} from 'react';
+import {
+  Alert,
   Button,
   Card,
   Col,
@@ -22,6 +27,9 @@ import { Alert,
 } from 'antd';
 import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
 import { ImportFilterMultiSelect } from './ImportFilterMultiSelect';
 import { ImportHistoryOverviewPanel } from './ImportHistoryOverviewPanel';
@@ -42,9 +50,6 @@ import {
 } from './import-task-query-state';
 import { importTypeRegistry, type ImportTypeKey } from './import-type-registry';
 import './import-workbench.css';
-import { QueryResultCard } from '../../shared/ui/QueryResultCards';
-
-import { PageFeedback } from '../../shared/ui/Feedback';
 
 const { RangePicker } = DatePicker;
 type Props = {  };
@@ -183,7 +188,8 @@ export function ImportPage({}: Props) {
     refreshJobs();
   }
 
-  const workspaceProps = { clanId: workspace.clanId,
+  const workspaceProps = {
+    clanId: workspace.clanId,
     branchId: selectedBranchId,
     branchName: selectedBranch?.branchName || '',
     onBatchCreated: handleBatchCreated
@@ -191,7 +197,7 @@ export function ImportPage({}: Props) {
 
   return (
     <div className="import-center-page import-double-card-page">
-      <Card className="import-query-card" title="导入任务查询">
+      <Card className="import-query-card" title="查询条件">
         <Form<QueryFormValues> form={queryForm} layout="vertical" onFinish={applySearch}>
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12} xl={6}>
@@ -215,13 +221,18 @@ export function ImportPage({}: Props) {
               </Form.Item>
             </Col>
           </Row>
-          <div className="import-query-actions"><Space><Button onClick={resetSearch}>重置</Button><Button type="primary" htmlType="submit">查询</Button></Space></div>
+          <div className="import-query-actions">
+            <StandardQueryActions>
+              <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+              <Button data-query-action="submit" type="primary" htmlType="submit">查询</Button>
+            </StandardQueryActions>
+          </div>
         </Form>
       </Card>
 
       <QueryResultCard
         className="import-result-card"
-        extra={<Button type="primary" disabled={!workspace.clanId} onClick={() => setImportDrawerOpen(true)}>新建导入</Button>}
+        extra={<Button type="primary" icon={<UploadOutlined />} disabled={!workspace.clanId} onClick={() => setImportDrawerOpen(true)}>发起导入</Button>}
         total={taskTotal}
         totalSuffix="个任务"
       >
@@ -241,7 +252,7 @@ export function ImportPage({}: Props) {
       <Drawer
         open={importDrawerOpen}
         width={960}
-        title="新建导入"
+        title="发起导入"
         className="import-upload-workspace-drawer"
         destroyOnHidden
         onClose={() => setImportDrawerOpen(false)}
