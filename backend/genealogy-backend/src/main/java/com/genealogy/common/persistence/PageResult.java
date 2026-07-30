@@ -16,7 +16,8 @@ public record PageResult<T>(List<T> records, long total) {
         }
     }
 
-    public <R> PageResult<R> map(Function<? super T, ? extends R> converter) {
-        return new PageResult<>(records.stream().map(converter).toList(), total);
+    public <R> PageResult<R> map(Function<? super T, R> converter) {
+        List<R> mapped = records.stream().map(converter).toList();
+        return new PageResult<>(mapped, total);
     }
 }
