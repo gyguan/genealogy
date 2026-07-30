@@ -40,12 +40,12 @@ async function expectDefaultFourFields(page: Page, labels: string[]) {
   expect(await fields.locator('.ant-form-item-label label').allTextContents()).toEqual(labels);
 }
 
-async function expectResultHeader(page: Page, total: string) {
+async function expectResultHeader(page: Page, title: string, total: string) {
   const resultCard = page.locator('.tracking-result-card');
   const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
   await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(resultCard.locator('.business-result-card')).toHaveCount(0);
-  await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(outerHeader.getByText(title, { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
 }
 
@@ -60,8 +60,7 @@ test('audit tracking uses strict two-layer results and consistent expandable fil
   await expect(page.locator('.tracking-query-card .ant-card')).toHaveCount(0);
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
   await expect(page.locator('.tracking-query-card > .ant-card-head').getByText('审计追踪', { exact: true })).toBeVisible();
-  await expect(page.locator('.tracking-result-card > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
-  await expectResultHeader(page, '（共 1 个对象）');
+  await expectResultHeader(page, '追踪对象', '（共 1 个对象）');
 
   await expectDefaultFourFields(page, ['对象类型', '业务关键词', '业务状态', '最近变更时间']);
   const actionButtons = page.locator('.tracking-query-actions button');
@@ -70,10 +69,10 @@ test('audit tracking uses strict two-layer results and consistent expandable fil
   const grid = page.locator('.tracking-query-grid');
   const beforeGap = await grid.evaluate(element => getComputedStyle(element).rowGap);
   await page.getByRole('button', { name: '更多筛选' }).click();
-  await expect(page.getByRole('button', { name: '收起' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '收起筛选' })).toBeVisible();
   await expect(page.locator('.tracking-query-grid > .ant-form-item')).toHaveCount(5);
   expect(await grid.evaluate(element => getComputedStyle(element).rowGap)).toBe(beforeGap);
-  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起筛选', '重置', '查询']);
   await expect(page.locator('.tracking-query-card .ant-divider')).toHaveCount(0);
 
   await page.getByLabel('对象类型').click();
@@ -94,15 +93,15 @@ test('audit tracking uses strict two-layer results and consistent expandable fil
 
   await page.getByRole('tab', { name: '操作日志' }).click();
   await expectDefaultFourFields(page, ['时间范围', '操作者', '动作分类', '对象类型']);
-  await expectResultHeader(page, '（共 1 条记录）');
+  await expectResultHeader(page, '操作日志', '（共 1 条记录）');
   await expect(page.getByText('更新人物资料')).toBeVisible();
   await page.getByRole('button', { name: '更多筛选' }).click();
   await expect(page.locator('.tracking-query-grid > .ant-form-item')).toHaveCount(6);
-  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起筛选', '重置', '查询']);
 
   await page.getByRole('tab', { name: '风险事件' }).click();
   await expectDefaultFourFields(page, ['时间范围', '风险等级', '事件类型', '处置状态']);
-  await expectResultHeader(page, '（共 1 条风险事件）');
+  await expectResultHeader(page, '风险事件', '（共 1 条风险事件）');
   await expect(page.getByText('批量导出在世人员数据')).toBeVisible();
 });
 
@@ -115,6 +114,6 @@ test('390px viewport keeps single-column filters and action order', async ({ pag
   expect(gridColumns.split(' ').length).toBe(1);
   expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['更多筛选', '重置', '查询']);
   await page.getByRole('button', { name: '更多筛选' }).click();
-  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起', '重置', '查询']);
+  expect(await buttonTexts(page.locator('.tracking-query-actions button'))).toEqual(['收起筛选', '重置', '查询']);
   expect(await page.locator('.audit-trace-page').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBeTruthy();
 });
