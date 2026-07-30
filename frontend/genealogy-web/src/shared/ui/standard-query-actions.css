@@ -23,6 +23,29 @@
   min-height: var(--ant-control-height);
 }
 
+/*
+ * Some query pages place Form inside StandardQueryPanel while others wrap the
+ * panel with Form. Normalize both DOM shapes to the Person Archive 4px rhythm.
+ */
+.standard-query-panel__body > form {
+  display: grid;
+  row-gap: var(--standard-query-row-gap, var(--ant-margin-xxs));
+  width: 100%;
+  min-width: 0;
+}
+
+.standard-query-panel__body > form > .standard-query-grid,
+.standard-query-panel__body > form > .standard-query-advanced,
+.standard-query-panel__body > .standard-query-grid,
+.standard-query-panel__body > .standard-query-advanced {
+  margin-block: 0;
+}
+
+.standard-query-panel__body > form > .standard-query-grid + .standard-query-advanced,
+.standard-query-panel__body > .standard-query-grid + .standard-query-advanced {
+  margin-top: 0;
+}
+
 @media (max-width: 767px) {
   .standard-query-actions {
     display: grid;
