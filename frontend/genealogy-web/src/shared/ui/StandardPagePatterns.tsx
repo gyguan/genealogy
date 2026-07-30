@@ -14,6 +14,7 @@ import {
 import type { CardProps, DrawerProps, FormItemProps, ResultProps, TableProps, TabsProps } from 'antd';
 import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
+import '../../styles/shared/standard-query-card.css';
 
 const StandardPageActionTarget = createContext<HTMLElement | null | undefined>(undefined);
 
