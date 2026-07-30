@@ -1,9 +1,11 @@
+@import '../../styles/shared/standard-query-card.css';
+
 .standard-query-actions {
   display: flex;
   width: 100%;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: var(--standard-query-action-gap, 8px);
 }
 
 .standard-query-actions--wrap {
@@ -15,44 +17,13 @@
   justify-content: center;
 }
 
-.standard-query-actions [data-query-action="reset"], .standard-query-actions [data-query-action="submit"] {
+.standard-query-actions [data-query-action="reset"],
+.standard-query-actions [data-query-action="submit"] {
   min-width: 72px;
 }
 
 .standard-query-actions [data-query-action] {
-  min-height: var(--ant-control-height);
-}
-
-/*
- * Query pages currently use three valid DOM shapes:
- * 1. Form wraps StandardQueryPanel (person archive and workbench).
- * 2. Form lives inside StandardQueryPanel (tracking and culture tabs).
- * 3. StandardQueryPanel owns actions through its actions prop (members,
- *    workbench and culture tabs).
- * Keep fields, advanced filters and actions on the same 4px vertical rhythm.
- */
-.standard-query-panel__body > form {
-  display: grid;
-  row-gap: var(--standard-query-row-gap, var(--ant-margin-xxs));
-  width: 100%;
-  min-width: 0;
-}
-
-.standard-query-panel__body > form > .standard-query-grid,
-.standard-query-panel__body > form > .standard-query-advanced,
-.standard-query-panel__body > .standard-query-grid,
-.standard-query-panel__body > .standard-query-advanced {
-  margin-block: 0;
-}
-
-.standard-query-panel__body > form > .standard-query-grid + .standard-query-advanced,
-.standard-query-panel__body > .standard-query-grid + .standard-query-advanced {
-  margin-top: 0;
-}
-
-/* Two-class scope intentionally outranks the generic rule in standard-page-patterns.css. */
-.standard-query-panel .standard-query-panel__actions {
-  margin-top: var(--standard-query-row-gap, var(--ant-margin-xxs));
+  min-height: var(--standard-query-control-height, var(--ant-control-height));
 }
 
 @media (max-width: 767px) {
@@ -67,7 +38,8 @@
     width: 100%;
   }
 
-  .standard-query-actions [data-query-action="reset"], .standard-query-actions [data-query-action="submit"] {
+  .standard-query-actions [data-query-action="reset"],
+  .standard-query-actions [data-query-action="submit"] {
     width: 100%;
     min-width: 0;
   }

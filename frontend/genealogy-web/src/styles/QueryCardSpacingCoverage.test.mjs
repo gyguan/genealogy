@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
+const prototypeCss = read('./shared/standard-query-card.css');
 const actionCss = read('../shared/ui/standard-query-actions.css');
-const patternCss = read('./shared/standard-page-patterns.css');
 const workbench = read('../features/workbench/EditingWorkspacePage.tsx');
 const members = read('../features/members/MemberPage.tsx');
 const tracking = read('../features/logs/LogPage.tsx');
@@ -16,11 +16,12 @@ function count(source, pattern) {
   return (source.match(pattern) || []).length;
 }
 
-test('all query panel DOM shapes share the same compact vertical rhythm', () => {
-  assert.match(patternCss, /--standard-query-row-gap:\s*var\(--ant-margin-xxs\)/);
-  assert.match(actionCss, /standard-query-panel__body > form\s*\{[^}]*display:\s*grid[^}]*row-gap:\s*var\(--standard-query-row-gap/s);
-  assert.match(actionCss, /standard-query-panel__actions\s*\{[^}]*margin-top:\s*var\(--standard-query-row-gap/s);
-  assert.doesNotMatch(actionCss, /standard-query-panel__actions\s*\{[^}]*margin-top:\s*var\(--ant-margin-md\)/s);
+test('all query panel DOM shapes share the prototype spacing contract', () => {
+  assert.match(prototypeCss, /--standard-query-row-gap:\s*4px/);
+  assert.match(prototypeCss, /--standard-query-section-gap:\s*24px/);
+  assert.match(prototypeCss, /standard-query-panel__body,\s*\n\.standard-query-panel__body > form\s*\{[^}]*display:\s*grid[^}]*row-gap:\s*var\(--standard-query-row-gap/s);
+  assert.match(prototypeCss, /standard-query-panel \.standard-query-panel__actions\s*\{[^}]*margin-top:\s*var\(--standard-query-section-gap/s);
+  assert.match(actionCss, /^@import '\.\.\/\.\.\/styles\/shared\/standard-query-card\.css';/);
 });
 
 test('workbench and member permissions use the covered panel-actions structure', () => {

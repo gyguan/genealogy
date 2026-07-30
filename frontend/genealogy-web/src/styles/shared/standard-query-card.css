@@ -1,0 +1,236 @@
+/*
+ * Canonical query-card prototype contract.
+ * All business query cards must consume these rules through StandardPagePatterns.
+ * Page-level CSS must not redefine query-card sizing, grid, spacing or actions.
+ */
+.standard-query-panel {
+  --standard-query-card-padding: 24px;
+  --standard-query-control-height: 32px;
+  --standard-query-column-gap: 16px;
+  --standard-query-row-gap: 4px;
+  --standard-query-section-gap: 24px;
+  --standard-query-action-gap: 8px;
+  --standard-query-control-radius: 8px;
+  --standard-query-button-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.standard-query-panel > .ant-card-head {
+  min-height: 48px;
+  padding-inline: var(--standard-query-card-padding);
+  border-bottom-color: var(--ant-color-border-secondary);
+}
+
+.standard-query-panel > .ant-card-head .ant-card-head-title {
+  padding-block: 12px;
+  color: var(--ant-color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.standard-query-panel > .ant-card-body {
+  padding: var(--standard-query-card-padding);
+}
+
+.standard-query-panel__description.ant-typography {
+  margin: 0 0 12px;
+  color: var(--ant-color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.standard-query-panel__tabs {
+  margin: calc(var(--standard-query-card-padding) * -1) calc(var(--standard-query-card-padding) * -1) var(--standard-query-section-gap);
+  padding-inline: var(--standard-query-card-padding);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.standard-query-panel__body,
+.standard-query-panel__body > form {
+  display: grid;
+  row-gap: var(--standard-query-row-gap);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.standard-query-panel__body > .standard-query-grid,
+.standard-query-panel__body > form > .standard-query-grid,
+.standard-query-panel__body > .standard-query-advanced,
+.standard-query-panel__body > form > .standard-query-advanced {
+  margin-block: 0;
+}
+
+.standard-query-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  row-gap: var(--standard-query-row-gap);
+  column-gap: var(--standard-query-column-gap);
+}
+
+.standard-query-advanced {
+  margin-top: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.standard-query-field {
+  display: grid;
+  grid-template-rows: auto;
+  min-width: 0;
+}
+
+.standard-query-field__item.ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.standard-query-field__item .ant-form-item-label {
+  min-height: 24px;
+  padding: 0 0 4px;
+}
+
+.standard-query-field__item .ant-form-item-label > label {
+  height: 20px;
+  color: var(--ant-color-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.standard-query-field__item .ant-form-item-control-input {
+  min-height: var(--standard-query-control-height);
+}
+
+.standard-query-field__item .ant-form-item-control-input-content,
+.standard-query-field__item .ant-form-item-control-input-content > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.standard-query-field__item .ant-input,
+.standard-query-field__item .ant-input-affix-wrapper,
+.standard-query-field__item .ant-input-number,
+.standard-query-field__item .ant-picker,
+.standard-query-field__item .ant-select-selector {
+  width: 100%;
+  height: var(--standard-query-control-height);
+  min-height: var(--standard-query-control-height);
+  border-radius: var(--standard-query-control-radius);
+  font-size: 13px;
+}
+
+.standard-query-field__item input.ant-input:not(textarea) {
+  padding-block: 0;
+  line-height: calc(var(--standard-query-control-height) - 2px);
+}
+
+.standard-query-field__item .ant-input-affix-wrapper {
+  align-items: center;
+  padding-block: 0;
+}
+
+.standard-query-field__item .ant-input-affix-wrapper > input.ant-input {
+  height: auto;
+  line-height: normal;
+}
+
+.standard-query-field__item .ant-select-multiple .ant-select-selector {
+  max-height: var(--standard-query-control-height);
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.standard-query-field__item .ant-input::placeholder,
+.standard-query-field__item .ant-picker-input > input::placeholder,
+.standard-query-field__item .ant-select-selection-placeholder {
+  color: var(--ant-color-text-placeholder);
+  font-size: 12px;
+}
+
+.standard-query-field__hint {
+  min-height: 20px;
+  padding-top: 4px;
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.standard-query-field__hint:has(> span[aria-hidden="true"]:only-child) {
+  display: none;
+}
+
+.standard-query-panel .standard-query-panel__actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: var(--standard-query-section-gap);
+  padding-top: 0;
+}
+
+.standard-query-panel .standard-query-actions {
+  gap: var(--standard-query-action-gap);
+}
+
+.standard-query-panel .standard-query-actions [data-query-action] {
+  min-height: var(--standard-query-control-height);
+  border-radius: var(--standard-query-button-radius);
+  font-size: 13px;
+}
+
+.standard-query-panel .standard-query-actions [data-query-action="more"] {
+  min-width: 112px;
+}
+
+.standard-query-panel .standard-query-actions [data-query-action="reset"],
+.standard-query-panel .standard-query-actions [data-query-action="submit"] {
+  min-width: 72px;
+}
+
+@media (max-width: 1199px) {
+  .standard-query-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .standard-query-panel {
+    --standard-query-card-padding: 16px;
+    --standard-query-section-gap: 16px;
+  }
+
+  .standard-query-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .standard-query-panel .standard-query-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .standard-query-panel .standard-query-actions [data-query-action="more"] {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .standard-query-panel .standard-query-actions [data-query-action="reset"],
+  .standard-query-panel .standard-query-actions [data-query-action="submit"] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .standard-query-panel .standard-query-actions [data-query-action] {
+    min-height: 44px;
+  }
+}
