@@ -1,5 +1,5 @@
 import { ApartmentOutlined, FolderOpenOutlined, UserOutlined } from '@ant-design/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Descriptions, Drawer, Progress, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { PageResponse } from '../../shared/api/client';
@@ -22,6 +22,7 @@ import type { ImportTaskQueryState } from './import-task-query-state';
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 const LOAD_LIMIT = 200;
+const EMPTY_JOBS: ImportTaskRecord[] = [];
 const actionLabels: Record<ImportExecutionAction, string> = { pause: '暂停', resume: '继续', cancel: '取消', retry: '重试' };
 const typeLabels = { person: '人物', relationship: '关系', source: '来源' } as const;
 
@@ -72,15 +73,21 @@ export function AsyncImportExecutionPanel({
   const [refreshError, setRefreshError] = useState('');
   const [forbidden, setForbidden] = useState(false);
   const [selectedJob, setSelectedJob] = useState<ImportTaskRecord>();
+  const successfulScopeRef = useRef('');
+  const requestSequence = useRef(0);
+  const scopeKey = `${clanId}:${branchId}`;
+  const hasLoadedCurrentScope = hasLoaded && successfulScopeRef.current === scopeKey;
+  const scopedRecords = successfulScopeRef.current === scopeKey ? records : EMPTY_JOBS;
+  const activeSelectedJob = successfulScopeRef.current === scopeKey ? selectedJob : undefined;
 
-  const filteredJobs = useMemo(() => records.filter(job => matchesImportTask(job, query)), [records, query]);
+  const filteredJobs = useMemo(() => scopedRecords.filter(job => matchesImportTask(job, query)), [scopedRecords, query]);
   const visibleJobs = useMemo(() => {
     const start = (query.pageNo - 1) * query.pageSize;
     return filteredJobs.slice(start, start + query.pageSize);
   }, [filteredJobs, query.pageNo, query.pageSize]);
   const hasActiveJob = useMemo(
-    () => records.some(job => ['queued', 'running', 'retry_wait'].includes(importTaskStatus(job))),
-    [records]
+    () => scopedRecords.some(job => ['queued', 'running', 'retry_wait'].includes(importTaskStatus(job))),
+    [scopedRecords]
   );
   const hasQueryFilters = Boolean(
     query.importTypes.length
@@ -91,16 +98,20 @@ export function AsyncImportExecutionPanel({
   );
 
   async function load() {
+    const requestId = ++requestSequence.current;
+    const requestScope = scopeKey;
     if (!clanId) {
+      successfulScopeRef.current = '';
       setRecords([]);
       setServerTotal(0);
       setHasLoaded(false);
       setErrorMessage('');
       setRefreshError('');
       setForbidden(false);
+      setSelectedJob(undefined);
       return;
     }
-    const hadSuccessfulData = hasLoaded;
+    const hadSuccessfulData = hasLoaded && successfulScopeRef.current === requestScope;
     setLoading(true);
     setErrorMessage('');
     setRefreshError('');
@@ -111,26 +122,34 @@ export function AsyncImportExecutionPanel({
       if (query.importTypes.length === 1) params.set('importType', query.importTypes[0]);
       if (query.statuses.length === 1) params.set('status', query.statuses[0]);
       const page = await apiClient.get<PageResponse<ImportTaskRecord>>(`/clans/${clanId}/imports?${params.toString()}`);
+      if (requestId !== requestSequence.current) return;
+      successfulScopeRef.current = requestScope;
       setRecords(page.records || []);
       setServerTotal(page.total || 0);
       setHasLoaded(true);
+      setSelectedJob(undefined);
     } catch (error) {
-      const message = (error as Error).message || '导入任务加载失败';
+      if (requestId !== requestSequence.current) return;
+      const safeMessage = '暂时无法获取导入任务，请稍后重试。';
       if (error instanceof ApiRequestError && error.status === 403) {
+        successfulScopeRef.current = '';
         setRecords([]);
         setServerTotal(0);
         setHasLoaded(false);
         setForbidden(true);
+        setSelectedJob(undefined);
       } else if (hadSuccessfulData) {
-        setRefreshError(message);
+        setRefreshError(safeMessage);
       } else {
+        successfulScopeRef.current = '';
         setRecords([]);
         setServerTotal(0);
         setHasLoaded(false);
-        setErrorMessage(message);
+        setErrorMessage(safeMessage);
+        setSelectedJob(undefined);
       }
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   }
 
@@ -248,105 +267,109 @@ export function AsyncImportExecutionPanel({
     { key: 'actions', title: '操作', width: 230, fixed: 'right', render: (_value, job) => renderActions(job) }
   ];
 
-  let blockingState = null;
-  if (!clanId) {
-    blockingState = <PageState kind="prerequisite" title="请先选择所属宗族" description="选择宗族后可查看对应的导入任务。" />;
-  } else if (forbidden) {
-    blockingState = <PageState kind="forbidden" title="无权查看导入任务" description="当前账号没有查看当前宗族导入任务的权限。" />;
-  } else if (!hasLoaded && loading) {
-    blockingState = <PageState kind="loading" title="正在加载导入任务" />;
-  } else if (errorMessage) {
-    blockingState = <PageState kind="error" title="导入任务加载失败" description={errorMessage} action={<Button type="primary" onClick={() => void load()}>重新加载</Button>} />;
-  } else if (hasLoaded && filteredJobs.length === 0) {
-    blockingState = hasQueryFilters
-      ? <PageState kind="no-results" title="未找到符合条件的导入任务" description="请调整或使用上方重置按钮清除查询条件。" />
-      : <PageState kind="first-empty" title="当前宗族暂无导入任务" description="可使用页面头的“新建导入”开始导入人物、关系或来源资料。" />;
+  function renderBlockingState() {
+    if (!clanId) return <PageState kind="prerequisite" title="请先选择所属宗族" description="选择宗族后可查看对应的导入任务。" />;
+    if (forbidden) return <PageState kind="forbidden" title="无权查看导入任务" description="当前账号没有查看当前宗族导入任务的权限。" />;
+    if (errorMessage) return <PageState kind="error" title="导入任务加载失败" description={errorMessage} action={<Button type="primary" onClick={() => void load()}>重新加载</Button>} />;
+    if (!hasLoadedCurrentScope) return <PageState kind="loading" title="正在加载导入任务" />;
+    return null;
   }
+
+  const blockingState = renderBlockingState();
+  const emptyState = hasLoadedCurrentScope && !loading && filteredJobs.length === 0
+    ? hasQueryFilters
+      ? <PageState kind="no-results" title="未找到符合条件的导入任务" description="请调整或使用上方重置按钮清除查询条件。" />
+      : <PageState kind="first-empty" title="当前宗族暂无导入任务" description="可使用页面头的“新建导入”开始导入人物、关系或来源资料。" />
+    : null;
 
   return (
     <>
       {blockingState || (
         <>
           {refreshError ? <RetainedDataFeedback description={refreshError} action={<Button size="small" onClick={() => void load()}>重试</Button>} /> : null}
-          {records.some(job => job.manualInterventionRequired) ? (
-            <PageFeedback
-              tone="warning"
-              title="部分任务需要人工处理"
-              description="任务已超过自动重试上限，请查看失败摘要后重试。"
-            />
-          ) : null}
-          {serverTotal > records.length ? (
-            <PageFeedback
-              tone="info"
-              title={`当前展示最近 ${records.length} 条任务`}
-              description="请使用查询条件缩小范围。"
-            />
-          ) : null}
+          {emptyState || (
+            <>
+              {scopedRecords.some(job => job.manualInterventionRequired) ? (
+                <PageFeedback
+                  tone="warning"
+                  title="部分任务需要人工处理"
+                  description="任务已超过自动重试上限，请查看失败摘要后重试。"
+                />
+              ) : null}
+              {serverTotal > scopedRecords.length ? (
+                <PageFeedback
+                  tone="info"
+                  title={`当前展示最近 ${scopedRecords.length} 条任务`}
+                  description="请使用查询条件缩小范围。"
+                />
+              ) : null}
 
-          <div className="import-execution-table">
-            <Table<ImportTaskRecord>
-              size="middle"
-              loading={loading}
-              rowKey="id"
-              dataSource={visibleJobs}
-              columns={columns}
-              scroll={{ x: 1310 }}
-              pagination={{
-                current: query.pageNo,
-                pageSize: query.pageSize,
-                total: filteredJobs.length,
-                showSizeChanger: true,
-                pageSizeOptions: [10, 20, 50],
-                showTotal: total => `共 ${total} 个任务`,
-                onChange: (pageNo, pageSize) => onPageChange(pageNo, pageSize)
-              }}
-            />
-          </div>
+              <div className="import-execution-table">
+                <Table<ImportTaskRecord>
+                  size="middle"
+                  loading={loading}
+                  rowKey="id"
+                  dataSource={visibleJobs}
+                  columns={columns}
+                  scroll={{ x: 1310 }}
+                  pagination={{
+                    current: query.pageNo,
+                    pageSize: query.pageSize,
+                    total: filteredJobs.length,
+                    showSizeChanger: true,
+                    pageSizeOptions: [10, 20, 50],
+                    showTotal: total => `共 ${total} 个任务`,
+                    onChange: (pageNo, pageSize) => onPageChange(pageNo, pageSize)
+                  }}
+                />
+              </div>
 
-          <div className="import-execution-card-list">
-            {loading && !visibleJobs.length ? <Card loading /> : visibleJobs.map(job => {
-              const presentation = typePresentation(job);
-              const status = importTaskStatus(job);
-              return (
-                <Card key={job.id} size="small" title={<Space><span className={`import-task-type-icon import-task-type-icon--${presentation.className}`}>{presentation.icon}</span>{presentation.label}</Space>} extra={<Tag color={importTaskStatusColor(status)}>{importTaskStatusText[status]}</Tag>}>
-                  <Space direction="vertical" size={6} className="import-workbench-stack">
-                    <Typography.Text strong>{job.originalFilename || '未命名文件'}</Typography.Text>
-                    <Typography.Text type="secondary">任务编号：{importTaskNumber(job)}</Typography.Text>
-                    <Typography.Text type="secondary">目标：{job.clanName || clanName || '当前宗族'} / {job.branchName || branchName || '全部支派'}</Typography.Text>
-                    <Typography.Text type="secondary">阶段：{importTaskStage(job)}</Typography.Text>
-                    <Progress percent={importTaskProgress(job)} size="small" status={status === 'failed' || status === 'dead_letter' ? 'exception' : undefined} />
-                    <Typography.Text type="secondary">成功 {job.successCount || 0} · 失败 {job.failureCount || 0}</Typography.Text>
-                    <Typography.Text type="secondary">创建时间：{formatDateTime(job.createdAt || job.updatedAt)}</Typography.Text>
-                    {job.errorSummary ? <InlineFeedback tone="error" title="任务执行失败" description={job.errorSummary} /> : null}
-                    {renderActions(job)}
-                  </Space>
-                </Card>
-              );
-            })}
-          </div>
+              <div className="import-execution-card-list">
+                {loading && !visibleJobs.length ? <Card loading /> : visibleJobs.map(job => {
+                  const presentation = typePresentation(job);
+                  const status = importTaskStatus(job);
+                  return (
+                    <Card key={job.id} size="small" title={<Space><span className={`import-task-type-icon import-task-type-icon--${presentation.className}`}>{presentation.icon}</span>{presentation.label}</Space>} extra={<Tag color={importTaskStatusColor(status)}>{importTaskStatusText[status]}</Tag>}>
+                      <Space direction="vertical" size={6} className="import-workbench-stack">
+                        <Typography.Text strong>{job.originalFilename || '未命名文件'}</Typography.Text>
+                        <Typography.Text type="secondary">任务编号：{importTaskNumber(job)}</Typography.Text>
+                        <Typography.Text type="secondary">目标：{job.clanName || clanName || '当前宗族'} / {job.branchName || branchName || '全部支派'}</Typography.Text>
+                        <Typography.Text type="secondary">阶段：{importTaskStage(job)}</Typography.Text>
+                        <Progress percent={importTaskProgress(job)} size="small" status={status === 'failed' || status === 'dead_letter' ? 'exception' : undefined} />
+                        <Typography.Text type="secondary">成功 {job.successCount || 0} · 失败 {job.failureCount || 0}</Typography.Text>
+                        <Typography.Text type="secondary">创建时间：{formatDateTime(job.createdAt || job.updatedAt)}</Typography.Text>
+                        {job.errorSummary ? <InlineFeedback tone="error" title="任务执行失败" description={job.errorSummary} /> : null}
+                        {renderActions(job)}
+                      </Space>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
 
-      <Drawer width={720} title={selectedJob ? `${typePresentation(selectedJob).label}导入任务` : '导入任务详情'} open={Boolean(selectedJob)} onClose={() => setSelectedJob(undefined)}>
-        {selectedJob ? <Space direction="vertical" size={16} className="import-workbench-stack">
+      <Drawer width={720} title={activeSelectedJob ? `${typePresentation(activeSelectedJob).label}导入任务` : '导入任务详情'} open={Boolean(activeSelectedJob)} onClose={() => setSelectedJob(undefined)}>
+        {activeSelectedJob ? <Space direction="vertical" size={16} className="import-workbench-stack">
           <Descriptions column={1} bordered size="small" items={[
-            { key: 'number', label: '任务编号', children: importTaskNumber(selectedJob) },
-            { key: 'file', label: '文件', children: selectedJob.originalFilename || '-' },
-            { key: 'scope', label: '目标范围', children: `${selectedJob.clanName || clanName || '当前宗族'} / ${selectedJob.branchName || branchName || '全部支派'}` },
-            { key: 'status', label: '状态', children: <Tag color={importTaskStatusColor(importTaskStatus(selectedJob))}>{importTaskStatusText[importTaskStatus(selectedJob)]}</Tag> },
-            { key: 'stage', label: '当前阶段', children: importTaskStage(selectedJob) },
-            { key: 'count', label: '处理结果', children: `总数 ${selectedJob.totalCount || 0}，已处理 ${selectedJob.processedCount || 0}，成功 ${selectedJob.successCount || 0}，失败 ${selectedJob.failureCount || 0}` },
-            { key: 'created', label: '创建时间', children: formatDateTime(selectedJob.createdAt) },
-            { key: 'updated', label: '最近更新', children: formatDateTime(selectedJob.updatedAt || selectedJob.heartbeatAt) },
-            { key: 'retry', label: '恢复信息', children: `已重试 ${selectedJob.executionRetryCount || 0}/${selectedJob.executionMaxRetries || 0}${selectedJob.nextRetryAt ? `，下次重试 ${formatDateTime(selectedJob.nextRetryAt)}` : ''}` }
+            { key: 'number', label: '任务编号', children: importTaskNumber(activeSelectedJob) },
+            { key: 'file', label: '文件', children: activeSelectedJob.originalFilename || '-' },
+            { key: 'scope', label: '目标范围', children: `${activeSelectedJob.clanName || clanName || '当前宗族'} / ${activeSelectedJob.branchName || branchName || '全部支派'}` },
+            { key: 'status', label: '状态', children: <Tag color={importTaskStatusColor(importTaskStatus(activeSelectedJob))}>{importTaskStatusText[importTaskStatus(activeSelectedJob)]}</Tag> },
+            { key: 'stage', label: '当前阶段', children: importTaskStage(activeSelectedJob) },
+            { key: 'count', label: '处理结果', children: `总数 ${activeSelectedJob.totalCount || 0}，已处理 ${activeSelectedJob.processedCount || 0}，成功 ${activeSelectedJob.successCount || 0}，失败 ${activeSelectedJob.failureCount || 0}` },
+            { key: 'created', label: '创建时间', children: formatDateTime(activeSelectedJob.createdAt) },
+            { key: 'updated', label: '最近更新', children: formatDateTime(activeSelectedJob.updatedAt || activeSelectedJob.heartbeatAt) },
+            { key: 'retry', label: '恢复信息', children: `已重试 ${activeSelectedJob.executionRetryCount || 0}/${activeSelectedJob.executionMaxRetries || 0}${activeSelectedJob.nextRetryAt ? `，下次重试 ${formatDateTime(activeSelectedJob.nextRetryAt)}` : ''}` }
           ]} />
-          {selectedJob.errorSummary ? <PageFeedback tone="error" title="失败摘要" description={selectedJob.errorSummary} /> : null}
+          {activeSelectedJob.errorSummary ? <PageFeedback tone="error" title="失败摘要" description={activeSelectedJob.errorSummary} /> : null}
           <Card size="small" title="技术执行信息"><Descriptions column={1} size="small" items={[
-            { key: 'chunk', label: '分片大小', children: selectedJob.chunkSize || '-' },
-            { key: 'heartbeat', label: '最近心跳', children: formatDateTime(selectedJob.heartbeatAt) },
-            { key: 'intervention', label: '人工介入', children: selectedJob.manualInterventionRequired ? '需要' : '不需要' }
+            { key: 'chunk', label: '分片大小', children: activeSelectedJob.chunkSize || '-' },
+            { key: 'heartbeat', label: '最近心跳', children: formatDateTime(activeSelectedJob.heartbeatAt) },
+            { key: 'intervention', label: '人工介入', children: activeSelectedJob.manualInterventionRequired ? '需要' : '不需要' }
           ]} /></Card>
-          {(selectedJob.failureCount || 0) > 0 ? (
+          {(activeSelectedJob.failureCount || 0) > 0 ? (
             <PageFeedback
               tone="info"
               title="可查看失败明细"
