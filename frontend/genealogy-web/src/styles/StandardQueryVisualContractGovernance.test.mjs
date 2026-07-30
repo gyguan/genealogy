@@ -39,8 +39,12 @@ test('standard query grids retain the 4 to 2 to 1 responsive column contract', (
   assert.doesNotMatch(patternCss, /standard-query-grid[^}]*repeat\((3|5),/s);
 });
 
-test('query fields share token-driven control sizing and advanced filters have no container chrome', () => {
+test('query fields share exact control height and compact vertical spacing', () => {
   assert.match(patternCss, /standard-query-field__item[^}]*min-height:\s*var\(--ant-control-height\)/s);
+  assert.match(patternCss, /standard-query-field__item \.ant-input[\s\S]*?height:\s*var\(--ant-control-height\)/);
+  assert.match(patternCss, /standard-query-field__item \.ant-input[\s\S]*?\.ant-select-selector[\s\S]*?min-height:\s*var\(--ant-control-height\)/);
+  assert.match(patternCss, /standard-query-grid[^}]*row-gap:\s*var\(--ant-margin-xs\)/s);
+  assert.match(patternCss, /standard-query-advanced[^}]*margin-top:\s*var\(--ant-margin-xs\)/s);
   assert.match(patternCss, /standard-query-field__hint[^}]*min-height:\s*20px/s);
   assert.match(patternCss, /standard-query-advanced[^}]*background:\s*transparent/s);
   assert.match(patternCss, /standard-query-advanced[^}]*border:\s*0/s);
