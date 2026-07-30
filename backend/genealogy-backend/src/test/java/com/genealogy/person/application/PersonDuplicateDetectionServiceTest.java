@@ -4,9 +4,6 @@ import com.genealogy.person.dto.PersonDuplicateCheckRequest;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -31,8 +28,8 @@ class PersonDuplicateDetectionServiceTest {
         candidate.setBirthDate(LocalDate.of(1980, 1, 1));
         candidate.setGender("male");
         candidate.setDataStatus("official");
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(candidate)));
+        when(repository.findDuplicateCandidates(any(PersonDuplicateQuery.class)))
+                .thenReturn(List.of(candidate));
 
         PersonDuplicateDetectionService service = new PersonDuplicateDetectionService(repository);
         PersonDuplicateQuery query = PersonDuplicateQuery.of(

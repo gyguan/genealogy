@@ -18,9 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.nio.charset.StandardCharsets;
@@ -85,8 +82,7 @@ class ImportApplicationServiceRowStateTest {
         lenient().when(importJobRepository.findById(anyLong()))
                 .thenAnswer(invocation -> Optional.ofNullable(lastSavedJob));
         lenient().when(importJobErrorRepository.findByJobIdOrderByRowNoAsc(anyLong())).thenReturn(List.of());
-        lenient().when(personRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(Page.empty());
+        lenient().when(personRepository.findDuplicateCandidates(any())).thenReturn(List.of());
         lenient().when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity entity = invocation.getArgument(0);
             if (entity.getId() == null) entity.setId(1001L);

@@ -22,7 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -89,7 +88,7 @@ class ImportJobRowApplicationServiceTest {
         ImportJobRowEntity row = failedRow();
         when(importJobRepository.findByIdAndClanId(101L, 1L)).thenReturn(Optional.of(job));
         when(importJobRowRepository.findByIdAndJobId(201L, 101L)).thenReturn(Optional.of(row));
-        when(personRepository.count(any(Specification.class))).thenReturn(0L);
+        when(personRepository.countDuplicates(any())).thenReturn(0L);
         when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity person = invocation.getArgument(0);
             person.setId(1001L);

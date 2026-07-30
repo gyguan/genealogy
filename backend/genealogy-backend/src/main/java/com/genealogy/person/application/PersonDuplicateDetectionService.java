@@ -6,16 +6,11 @@ import com.genealogy.person.dto.PersonDuplicateCheckResponse;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.mapper.PersonMapper;
 import com.genealogy.person.repository.PersonRepository;
-import jakarta.persistence.criteria.Predicate;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -29,10 +24,7 @@ public class PersonDuplicateDetectionService {
 
     @Transactional(readOnly = true)
     public PersonDuplicateResult detect(PersonDuplicateQuery query) {
-        List<PersonEntity> entities = personRepository.findAll(
-                specification(query),
-                PageRequest.of(0, query.candidateLimit())
-        ).getContent();
+        List<PersonEntity> entities = personRepository.findDuplicateCandidates(query);
         Set<String> matchedFields = matchedFields(query);
         int score = score(matchedFields);
         PersonDuplicateResult.RiskLevel risk = riskLevel(entities.isEmpty(), score);
@@ -80,31 +72,6 @@ public class PersonDuplicateDetectionService {
                 request.birthDate(),
                 1
         )).duplicated();
-    }
-
-    private Specification<PersonEntity> specification(PersonDuplicateQuery query) {
-        return (root, criteriaQuery, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), query.clanId()));
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-            predicates.add(criteriaBuilder.equal(
-                    criteriaBuilder.lower(root.get("name")),
-                    query.name().trim().toLowerCase(Locale.ROOT)
-            ));
-            if (query.branchId() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("branchId"), query.branchId()));
-            }
-            if (query.generationNo() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("generationNo"), query.generationNo()));
-            }
-            if (query.generationWord() != null && !query.generationWord().isBlank()) {
-                predicates.add(criteriaBuilder.equal(root.get("generationWord"), query.generationWord().trim()));
-            }
-            if (query.birthDate() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("birthDate"), query.birthDate()));
-            }
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
     }
 
     private Set<String> matchedFields(PersonDuplicateQuery query) {

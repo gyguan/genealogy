@@ -12,22 +12,19 @@ import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
+import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
-import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -247,24 +244,16 @@ public class ImportJobRowApplicationService {
     }
 
     private void ensureDuplicateConfirmed(ImportJobEntity job, PersonEntity person, boolean confirmed) {
-        Specification<PersonEntity> specification = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), job.getClanId()));
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
-            predicates.add(criteriaBuilder.equal(criteriaBuilder.lower(root.get("name")), person.getName().toLowerCase(Locale.ROOT)));
-            predicates.add(criteriaBuilder.equal(root.get("branchId"), job.getBranchId()));
-            if (person.getGenerationNo() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("generationNo"), person.getGenerationNo()));
-            }
-            if (person.getGenerationWord() != null && !person.getGenerationWord().isBlank()) {
-                predicates.add(criteriaBuilder.equal(root.get("generationWord"), person.getGenerationWord()));
-            }
-            if (person.getBirthDate() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("birthDate"), person.getBirthDate()));
-            }
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
-        if (personRepository.count(specification) > 0 && !confirmed) {
+        long duplicateCount = personRepository.countDuplicates(new PersonDuplicateQuery(
+                job.getClanId(),
+                job.getBranchId(),
+                person.getName(),
+                person.getGenerationNo(),
+                person.getGenerationWord(),
+                person.getBirthDate(),
+                1
+        ));
+        if (duplicateCount > 0 && !confirmed) {
             throw new BusinessException("IMPORT_DUPLICATE_CONFIRM_REQUIRED", "修正后的人物疑似重复，请确认后再重试");
         }
     }

@@ -1,11 +1,8 @@
 package com.genealogy.person.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,23 +11,16 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "person")
+@TableName("person")
 public class PersonEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
-    @Column(nullable = false)
     private Long clanId;
-
     private Long branchId;
     private String personCode;
-
-    @Column(nullable = false)
     private String name;
-
     private String genealogyName;
     private String courtesyName;
     private String aliasName;
@@ -48,15 +38,9 @@ public class PersonEntity {
     private String occupation;
     private String education;
     private String titleOrHonor;
-
-    @Column(columnDefinition = "text")
     private String biography;
-
     private String tombPlace;
-
-    @Column(columnDefinition = "text")
     private String epitaph;
-
     private Boolean hasDescendant;
     private String lineageStatus;
     private String privacyLevel;

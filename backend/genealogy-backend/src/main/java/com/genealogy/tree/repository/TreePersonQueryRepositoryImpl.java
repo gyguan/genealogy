@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Tree-specific person read repository backed by immutable constructor projections. */
+@Repository
 public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository {
 
     private static final Comparator<TreePersonSnapshot> PERSON_ORDER = Comparator
@@ -30,7 +32,7 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
                    p.isLiving, p.birthPlace, p.residencePlace,
                    p.hasDescendant, p.lineageStatus, p.privacyLevel, p.dataStatus,
                    p.createdBy, p.updatedBy)
-            from PersonEntity p
+            from TreePersonJpaEntity p
             """;
 
     @PersistenceContext

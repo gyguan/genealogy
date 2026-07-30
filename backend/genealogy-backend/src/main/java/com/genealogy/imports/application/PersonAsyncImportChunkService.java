@@ -11,16 +11,15 @@ import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
-import jakarta.persistence.criteria.Predicate;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -276,18 +275,15 @@ public class PersonAsyncImportChunkService {
     }
 
     private int countDuplicates(ImportJobEntity job, ParsedPerson person) {
-        Specification<PersonEntity> specification = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("clanId"), job.getClanId()));
-            predicates.add(cb.isNull(root.get("deletedAt")));
-            predicates.add(cb.equal(cb.lower(root.get("name")), person.name().toLowerCase(Locale.ROOT)));
-            if (job.getBranchId() != null) predicates.add(cb.equal(root.get("branchId"), job.getBranchId()));
-            if (person.generationNo() != null) predicates.add(cb.equal(root.get("generationNo"), person.generationNo()));
-            if (!person.generationWord().isBlank()) predicates.add(cb.equal(root.get("generationWord"), person.generationWord()));
-            if (person.birthDate() != null) predicates.add(cb.equal(root.get("birthDate"), person.birthDate()));
-            return cb.and(predicates.toArray(Predicate[]::new));
-        };
-        return safeInt(personRepository.count(specification));
+        return safeInt(personRepository.countDuplicates(new PersonDuplicateQuery(
+                job.getClanId(),
+                job.getBranchId(),
+                person.name(),
+                person.generationNo(),
+                person.generationWord(),
+                person.birthDate(),
+                1
+        )));
     }
 
     private Map<String, Object> normalizedData(ImportJobEntity job, ParsedPerson person, int duplicateCount) {
