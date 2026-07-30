@@ -1,0 +1,53 @@
+name: Issue 1028 PR Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: "!contains(github.event.pull_request.head.sha, '0000000') && !contains(github.event.pull_request.title, '[bootstrap complete]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Skip when migration already exists
+        id: migration
+        shell: bash
+        run: |
+          if test -f frontend/genealogy-web/src/styles/Issue1028QueryCardMigration.test.mjs; then echo "needed=false" >> "$GITHUB_OUTPUT"; else echo "needed=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Extract and execute migration
+        if: steps.migration.outputs.needed == 'true'
+        shell: bash
+        run: |
+          awk '/^[[:space:]]+python3 - <<'"'"'PY'"'"'/{capture=1} capture{sub(/^[[:space:]]{10}/, ""); print} capture && /^PY$/{exit}' .github/workflows/issue-1028-apply.yml > /tmp/apply-1028.sh
+          bash /tmp/apply-1028.sh
+      - name: Install and validate
+        if: steps.migration.outputs.needed == 'true'
+        working-directory: frontend/genealogy-web
+        run: |
+          npm ci
+          node --test src/styles/Issue1028QueryCardMigration.test.mjs
+          npm run test:tree
+          npm run test:members
+          npm run test:reviews
+          npm run typecheck
+          npm run build
+      - name: Commit validated migration
+        if: steps.migration.outputs.needed == 'true'
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/genealogy-web/src/features/tree/LineageTreeTabbedPage.tsx \
+                  frontend/genealogy-web/src/features/members/MemberPage.tsx \
+                  frontend/genealogy-web/src/features/reviews/ReviewCenterPageContent.tsx \
+                  frontend/genealogy-web/src/styles/Issue1028QueryCardMigration.test.mjs
+          git commit -m "feat: unify query cards for issue 1028 [issue-1028 applied]"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
