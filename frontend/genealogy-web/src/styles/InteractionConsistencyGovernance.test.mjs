@@ -13,6 +13,7 @@ const culturePattern = read('../features/culture/culturePagePattern.ts');
 const cultureItems = read('../features/culture/CultureItemStandardTab.tsx');
 const cultureMigrations = read('../features/culture/MigrationEventStandardTab.tsx');
 const cultureSites = read('../features/culture/CultureSiteStandardTab.tsx');
+const importPage = read('../features/imports/ImportPage.tsx');
 const trackingPage = read('../features/logs/LogPage.tsx');
 const memberPage = read('../features/members/MemberPage.tsx');
 const memberManagement = read('../features/members/MemberManagementPage.tsx');
@@ -53,6 +54,7 @@ test('result cards promote opted-in page actions and reserve the toolbar for res
   assert.match(resultCards, /StandardPageActions/);
   assert.match(resultCards, /PlusOutlined/);
   assert.match(resultCards, /replace\(\/\^\(新增\|新建\)\//);
+  assert.match(resultCards, /创建\|新增\|新建\|邀请\|发起/);
   assert.match(resultCards, /type: 'default'/);
   assert.match(resultCards, /member-result-card/);
   assert.match(resultCards, /pageAlreadyOwnsPrimaryAction/);
@@ -82,6 +84,16 @@ test('all routed culture tabs use governed query panels and low-frequency filter
     assert.doesNotMatch(source, /<Collapse/);
     assert.doesNotMatch(source, /title="(文化资料|迁徙事件|宗族场所)查询"/);
   }
+});
+
+test('data import uses governed query actions and process-start vocabulary', () => {
+  assert.match(importPage, /className="import-query-card" title="查询条件"/);
+  assert.match(importPage, /<StandardQueryActions>/);
+  assert.match(importPage, /data-query-action="reset"/);
+  assert.match(importPage, /data-query-action="submit"/);
+  assert.match(importPage, />发起导入<\/Button>/);
+  assert.match(importPage, /title="发起导入"/);
+  assert.doesNotMatch(importPage, /(新建|新增)导入/);
 });
 
 test('tracking page uses governed actions and business result titles', () => {
