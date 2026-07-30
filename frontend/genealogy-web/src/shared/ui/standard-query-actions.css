@@ -3,46 +3,8 @@
   width: 100%;
   justify-content: flex-end;
   align-items: center;
-  gap: var(--standard-query-action-gap, 8px);
 }
 
 .standard-query-actions--wrap {
   flex-wrap: wrap;
-}
-
-.standard-query-actions [data-query-action="more"] {
-  min-width: 112px;
-  justify-content: center;
-}
-
-.standard-query-actions [data-query-action="reset"],
-.standard-query-actions [data-query-action="submit"] {
-  min-width: 72px;
-}
-
-.standard-query-actions [data-query-action] {
-  min-height: var(--standard-query-control-height, var(--ant-control-height));
-}
-
-@media (max-width: 767px) {
-  .standard-query-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .standard-query-actions [data-query-action="more"] {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .standard-query-actions [data-query-action="reset"],
-  .standard-query-actions [data-query-action="submit"] {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .standard-query-actions [data-query-action] {
-    min-height: 44px;
-  }
 }

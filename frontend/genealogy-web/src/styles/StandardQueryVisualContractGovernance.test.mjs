@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const patterns = read('../shared/ui/StandardPagePatterns.tsx');
 const prototypeCss = read('./shared/standard-query-card.css');
+const legacyPageCss = read('./shared/standard-page-patterns.css');
 const actions = read('../shared/ui/StandardQueryActions.tsx');
 const actionCss = read('../shared/ui/standard-query-actions.css');
 const visualContract = read('../../../../docs/frontend/query-card-visual-contract.md');
@@ -58,7 +59,7 @@ test('query fields use the detailed prototype dimensions', () => {
   assert.doesNotMatch(prototypeCss, /#[0-9a-f]{3,8}\b/i);
 });
 
-test('query actions uniquely decide order hierarchy and mobile sizing', () => {
+test('query actions uniquely decide order hierarchy and prototype sizing', () => {
   assert.match(actions, /type="text"/);
   assert.match(actions, /type: 'default'/);
   assert.match(actions, /type: 'primary'/);
@@ -69,15 +70,18 @@ test('query actions uniquely decide order hierarchy and mobile sizing', () => {
   assert.match(actions, /disabled: busy \|\| item\.props\.disabled/);
   assert.match(actions, /\['more', 'reset', 'submit'\]/);
   assert.doesNotMatch(actions, /<Space/);
-  assert.match(actionCss, /^@import '\.\.\/\.\.\/styles\/shared\/standard-query-card\.css';/);
   assert.match(actionCss, /standard-query-actions[^}]*justify-content:\s*flex-end/s);
-  assert.match(actionCss, /data-query-action="more"[^}]*min-width:\s*112px/s);
-  assert.match(actionCss, /data-query-action="reset"[^}]*min-width:\s*72px/s);
-  assert.match(actionCss, /data-query-action="submit"[^}]*min-width:\s*72px/s);
-  assert.match(actionCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(actionCss, /data-query-action="more"[^}]*grid-column:\s*1\s*\/\s*-1/s);
-  assert.match(actionCss, /min-height:\s*44px/);
-  assert.doesNotMatch(actionCss, /!important\b/);
+  assert.doesNotMatch(actionCss, /data-query-action|min-width|min-height|@media|grid-template-columns/);
+  assert.match(prototypeCss, /data-query-action="more"[^}]*min-width:\s*112px/s);
+  assert.match(prototypeCss, /data-query-action="reset"[^}]*min-width:\s*72px/s);
+  assert.match(prototypeCss, /data-query-action="submit"[^}]*min-width:\s*72px/s);
+  assert.match(prototypeCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(prototypeCss, /data-query-action="more"[^}]*grid-column:\s*1\s*\/\s*-1/s);
+  assert.match(prototypeCss, /min-height:\s*44px/);
+});
+
+test('legacy page styles cannot redefine any query-card selector', () => {
+  assert.doesNotMatch(legacyPageCss, /\.standard-query-(panel|grid|field|advanced|actions)/);
 });
 
 test('the visual contract documents the prototype as the authority', () => {
