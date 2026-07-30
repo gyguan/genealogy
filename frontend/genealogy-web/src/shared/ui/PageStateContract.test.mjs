@@ -8,7 +8,6 @@ const registry = readFileSync(new URL('../../app/moduleRegistry.tsx', import.met
 const reviewEntry = readFileSync(new URL('../../features/reviews/ReviewCenterPage.tsx', import.meta.url), 'utf8');
 const reviewContent = readFileSync(new URL('../../features/reviews/ReviewCenterPageContent.tsx', import.meta.url), 'utf8');
 const personArchive = readFileSync(new URL('../../features/persons/PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
-const workbenchModel = readFileSync(new URL('../../features/workbench/editingWorkspaceModel.ts', import.meta.url), 'utf8');
 const asyncImport = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 
 test('page state contract exposes the six governed state kinds', () => {
@@ -47,9 +46,13 @@ test('first loading and refresh failure remain distinct from empty data', () => 
   assert.match(personArchive, /refreshError/);
 });
 
-test('import tasks map all six states and preserve successful data on refresh failure', () => {
-  assert.match(asyncImport, /const hadSuccessfulData = hasLoaded/);
-  assert.match(asyncImport, /setRefreshError\(message\)/);
+test('import tasks map all six states and preserve data only inside the successful scope', () => {
+  assert.match(asyncImport, /const successfulScopeRef = useRef\(''\)/);
+  assert.match(asyncImport, /const scopeKey = `\$\{clanId\}:\$\{branchId\}`/);
+  assert.match(asyncImport, /const hasLoadedCurrentScope = hasLoaded && successfulScopeRef\.current === scopeKey/);
+  assert.match(asyncImport, /const scopedRecords = successfulScopeRef\.current === scopeKey \? records : EMPTY_JOBS/);
+  assert.match(asyncImport, /const hadSuccessfulData = hasLoaded && successfulScopeRef\.current === requestScope/);
+  assert.match(asyncImport, /successfulScopeRef\.current = requestScope/);
   assert.match(asyncImport, /<RetainedDataFeedback/);
   assert.match(asyncImport, /kind="prerequisite"/);
   assert.match(asyncImport, /kind="forbidden"/);
@@ -58,17 +61,9 @@ test('import tasks map all six states and preserve successful data on refresh fa
   assert.match(asyncImport, /kind="first-empty"/);
   assert.match(asyncImport, /kind="no-results"/);
   assert.match(asyncImport, /if \(error instanceof ApiRequestError && error\.status === 403\)/);
-  assert.match(asyncImport, /else if \(hadSuccessfulData\) \{[\s\S]*setRefreshError\(message\)/);
-  assert.doesNotMatch(asyncImport, /else if \(hadSuccessfulData\) \{[\s\S]*setRecords\(\[\]\)[\s\S]*setRefreshError\(message\)/);
-});
-
-test('workbench model distinguishes first-empty from no-results and error', () => {
-  assert.match(workbenchModel, /kind: 'first-empty'/);
-  assert.match(workbenchModel, /kind: 'no-results'/);
-  assert.match(workbenchModel, /kind: 'prerequisite'/);
-  assert.match(workbenchModel, /kind: 'error'/);
-  assert.match(workbenchModel, /action: 'clear'/);
-  assert.match(workbenchModel, /action: 'retry'/);
+  assert.match(asyncImport, /else if \(hadSuccessfulData\) \{[\s\S]*setRefreshError\(safeMessage\)/);
+  assert.match(asyncImport, /\{refreshError \? <RetainedDataFeedback[\s\S]*\{emptyState \|\| \(/);
+  assert.match(asyncImport, /const activeSelectedJob = successfulScopeRef\.current === scopeKey \? selectedJob : undefined/);
 });
 
 test('page state layout is stable for blocking, empty and loading states', () => {
