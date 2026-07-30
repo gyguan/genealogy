@@ -22,10 +22,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d .github/agent/issue-1033.patch.gz.b64 | gzip -d > /tmp/issue-1033.patch
+          cat .github/agent/issue-1033.patch.part* | base64 -d | gzip -d > /tmp/issue-1033.patch
           git apply --check /tmp/issue-1033.patch
           git apply /tmp/issue-1033.patch
           rm -f .github/agent/issue-1033.patch.gz.b64
+          rm -f .github/agent/issue-1033.patch.part*
           rm -f .github/workflows/agent-source-snapshot.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
