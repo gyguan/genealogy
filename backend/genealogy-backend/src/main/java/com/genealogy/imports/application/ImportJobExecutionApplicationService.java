@@ -3,6 +3,7 @@ package com.genealogy.imports.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.imports.domain.ImportExecutionState;
+import com.genealogy.imports.domain.ImportJobStateMachine;
 import com.genealogy.imports.dto.ImportJobExecutionResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
@@ -14,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -26,6 +26,7 @@ public class ImportJobExecutionApplicationService {
     private final ImportJobPayloadRepository payloadRepository;
     private final AuthorizationApplicationService authorizationApplicationService;
     private final OperationLogApplicationService operationLogApplicationService;
+    private final ImportJobStateMachine stateMachine = new ImportJobStateMachine();
 
     public ImportJobExecutionApplicationService(
             ImportJobRepository jobRepository,
@@ -47,25 +48,12 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse pause(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        String fromStatus = job.getExecutionStatus();
-        if (ImportJobEntity.EXECUTION_PAUSED.equals(fromStatus)) return toResponse(job);
-        if (!List.of(ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.EXECUTION_RUNNING,
-                ImportJobEntity.EXECUTION_RETRY_WAIT).contains(fromStatus)) {
-            throw new BusinessException("IMPORT_JOB_PAUSE_NOT_ALLOWED", "当前任务状态不能暂停");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (ImportJobEntity.EXECUTION_RUNNING.equals(fromStatus)) job.setRequestedAction(ImportJobEntity.ACTION_PAUSE);
-        else {
-            job.setExecutionStatus(ImportJobEntity.EXECUTION_PAUSED);
-            job.setRequestedAction(null);
-            job.setNextRetryAt(null);
-        }
-        job.setUpdatedAt(now);
+        ImportJobStateMachine.Transition transition = stateMachine.pause(job, LocalDateTime.now());
         jobRepository.save(job);
         record(job, actorId, "import_job_pause", "暂停导入任务");
         log.info(
                 "event=import_job_pause_requested jobId={} stage={} fromStatus={} toStatus={} actorId={} clanId={} cursorRowNo={} processedCount={} publishedCount={} result=success",
-                job.getId(), job.getExecutionStage(), fromStatus, job.getExecutionStatus(), actorId, clanId,
+                job.getId(), job.getExecutionStage(), transition.from().value(), transition.to().value(), actorId, clanId,
                 job.getCursorRowNo(), job.getProcessedCount(), job.getPublishedCount()
         );
         return toResponse(job);
@@ -74,22 +62,12 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse resume(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        String fromStatus = job.getExecutionStatus();
-        if (!ImportJobEntity.EXECUTION_PAUSED.equals(fromStatus)) {
-            throw new BusinessException("IMPORT_JOB_RESUME_NOT_ALLOWED", "只有已暂停任务可以继续");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        job.setExecutionStatus(ImportJobEntity.EXECUTION_QUEUED);
-        job.setRequestedAction(null);
-        job.setNextRetryAt(null);
-        job.setLeaseOwner(null);
-        job.setLeaseExpiresAt(null);
-        job.setUpdatedAt(now);
+        ImportJobStateMachine.Transition transition = stateMachine.resume(job, LocalDateTime.now());
         jobRepository.save(job);
         record(job, actorId, "import_job_resume", "继续导入任务");
         log.info(
                 "event=import_job_resumed jobId={} stage={} fromStatus={} toStatus={} actorId={} clanId={} cursorRowNo={} processedCount={} publishedCount={} result=success",
-                job.getId(), job.getExecutionStage(), fromStatus, job.getExecutionStatus(), actorId, clanId,
+                job.getId(), job.getExecutionStage(), transition.from().value(), transition.to().value(), actorId, clanId,
                 job.getCursorRowNo(), job.getProcessedCount(), job.getPublishedCount()
         );
         return toResponse(job);
@@ -98,23 +76,13 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse cancel(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        String fromStatus = job.getExecutionStatus();
-        ImportExecutionState state = ImportExecutionState.from(fromStatus);
-        if (state.terminal()) {
-            throw new BusinessException("IMPORT_JOB_CANCEL_NOT_ALLOWED", "终态任务不能再次取消");
-        }
-        LocalDateTime now = LocalDateTime.now();
-        if (ImportJobEntity.EXECUTION_RUNNING.equals(fromStatus)) {
-            job.setRequestedAction(ImportJobEntity.ACTION_CANCEL);
-        } else {
-            completeCancellation(job, now);
-        }
-        job.setUpdatedAt(now);
+        ImportJobStateMachine.Transition transition = stateMachine.cancel(job, LocalDateTime.now());
+        if (transition.changed()) deletePayloadIfPresent(job.getId());
         jobRepository.save(job);
         record(job, actorId, "import_job_cancel", "取消导入任务");
         log.info(
                 "event=import_job_cancel_requested jobId={} stage={} fromStatus={} toStatus={} actorId={} clanId={} cursorRowNo={} processedCount={} publishedCount={} result=success",
-                job.getId(), job.getExecutionStage(), fromStatus, job.getExecutionStatus(), actorId, clanId,
+                job.getId(), job.getExecutionStage(), transition.from().value(), transition.to().value(), actorId, clanId,
                 job.getCursorRowNo(), job.getProcessedCount(), job.getPublishedCount()
         );
         return toResponse(job);
@@ -123,51 +91,19 @@ public class ImportJobExecutionApplicationService {
     @Transactional
     public ImportJobExecutionResponse retry(Long clanId, Long jobId, Long actorId) {
         ImportJobEntity job = requireAsyncJob(clanId, jobId, actorId);
-        String fromStatus = job.getExecutionStatus();
         String failureStage = job.getFailureStage();
-        ImportExecutionState state = ImportExecutionState.from(fromStatus);
-        if (!state.retryable()) {
-            throw new BusinessException("IMPORT_JOB_RETRY_NOT_ALLOWED", "只有部分失败、失败或待人工介入任务可以重试");
-        }
         if (!ImportJobEntity.STAGE_PUBLISHING.equals(failureStage) && !payloadRepository.existsById(jobId)) {
             throw new BusinessException("IMPORT_JOB_PAYLOAD_NOT_FOUND", "原始文件已不存在，无法恢复解析，请重新上传");
         }
-        LocalDateTime now = LocalDateTime.now();
-        job.setExecutionStage(normalizeStage(failureStage));
-        job.setExecutionStatus(ImportJobEntity.EXECUTION_QUEUED);
-        job.setExecutionRetryCount(0);
-        job.setRequestedAction(null);
-        job.setFailureStage(null);
-        job.setLastErrorCode(null);
-        job.setErrorSummary(null);
-        job.setNextRetryAt(null);
-        job.setManualInterventionRequired(false);
-        job.setCompletedAt(null);
-        job.setLeaseOwner(null);
-        job.setLeaseExpiresAt(null);
-        job.setUpdatedAt(now);
+        ImportJobStateMachine.Transition transition = stateMachine.retry(job, LocalDateTime.now());
         jobRepository.save(job);
         record(job, actorId, "import_job_retry", "重试失败批次或失败行");
         log.info(
                 "event=import_job_recovered jobId={} stage={} failureStage={} fromStatus={} toStatus={} actorId={} clanId={} cursorRowNo={} processedCount={} publishedCount={} result=queued",
-                job.getId(), job.getExecutionStage(), failureStage, fromStatus, job.getExecutionStatus(), actorId, clanId,
-                job.getCursorRowNo(), job.getProcessedCount(), job.getPublishedCount()
+                job.getId(), job.getExecutionStage(), failureStage, transition.from().value(), transition.to().value(), actorId,
+                clanId, job.getCursorRowNo(), job.getProcessedCount(), job.getPublishedCount()
         );
         return toResponse(job);
-    }
-
-    private void completeCancellation(ImportJobEntity job, LocalDateTime now) {
-        boolean partial = hasSideEffects(job);
-        job.setExecutionStatus(partial
-                ? ImportJobEntity.EXECUTION_PARTIAL_CANCELLED
-                : ImportJobEntity.EXECUTION_CANCELLED);
-        job.setExecutionStage(ImportJobEntity.STAGE_CANCELLED);
-        job.setStatus(partial ? "partial_cancelled" : "cancelled");
-        job.setRequestedAction(null);
-        job.setCompletedAt(now);
-        job.setLeaseOwner(null);
-        job.setLeaseExpiresAt(null);
-        deletePayloadIfPresent(job.getId());
     }
 
     private ImportJobEntity requireAsyncJob(Long clanId, Long jobId, Long actorId) {
@@ -191,7 +127,7 @@ public class ImportJobExecutionApplicationService {
                 ? Math.max(0, value(job.getSuccessCount())) : total;
         int remaining = Math.max(0, denominator - progress);
         int percent = denominator <= 0 ? 0 : Math.min(100, (int) Math.round(progress * 100.0d / denominator));
-        if (ImportExecutionState.from(job.getExecutionStatus()).terminal()) percent = Math.max(percent, 100);
+        if (stateMachine.state(job).terminal()) percent = Math.max(percent, 100);
         return new ImportJobExecutionResponse(
                 job.getId(), job.getExecutionMode(), job.getExecutionStatus(), job.getExecutionStage(),
                 job.getTotalCount(), job.getProcessedCount(), job.getPublishedCount(), remaining, percent,
@@ -203,31 +139,7 @@ public class ImportJobExecutionApplicationService {
     }
 
     private List<String> allowedActions(ImportJobEntity job) {
-        if (!job.isAsyncExecution()) return List.of();
-        String status = job.getExecutionStatus();
-        List<String> actions = new ArrayList<>();
-        if (List.of(ImportJobEntity.EXECUTION_QUEUED, ImportJobEntity.EXECUTION_RUNNING,
-                ImportJobEntity.EXECUTION_RETRY_WAIT).contains(status)) {
-            actions.add("pause");
-            actions.add("cancel");
-        } else if (ImportJobEntity.EXECUTION_PAUSED.equals(status)) {
-            actions.add("resume");
-            actions.add("cancel");
-        } else if (ImportExecutionState.from(status).retryable()) {
-            actions.add("retry");
-            actions.add("cancel");
-        }
-        return List.copyOf(actions);
-    }
-
-    private boolean hasSideEffects(ImportJobEntity job) {
-        return value(job.getProcessedCount()) > 0 || value(job.getPublishedCount()) > 0;
-    }
-
-    private String normalizeStage(String failureStage) {
-        if (ImportJobEntity.STAGE_PUBLISHING.equals(failureStage)) return ImportJobEntity.STAGE_PUBLISHING;
-        if (ImportJobEntity.STAGE_DRAFTING.equals(failureStage)) return ImportJobEntity.STAGE_DRAFTING;
-        return ImportJobEntity.STAGE_PARSING;
+        return stateMachine.allowedActions(job);
     }
 
     private void deletePayloadIfPresent(Long jobId) {
