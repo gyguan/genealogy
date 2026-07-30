@@ -15,6 +15,7 @@ const cultureMigrations = read('../features/culture/MigrationEventStandardTab.ts
 const cultureSites = read('../features/culture/CultureSiteStandardTab.tsx');
 const trackingPage = read('../features/logs/LogPage.tsx');
 const memberPage = read('../features/members/MemberPage.tsx');
+const memberManagement = read('../features/members/MemberManagementPage.tsx');
 
 function index(source, token) {
   const value = source.indexOf(token);
@@ -55,7 +56,7 @@ test('result cards promote opted-in page actions and reserve the toolbar for res
   assert.match(resultCards, /type: 'default'/);
   assert.match(resultCards, /member-result-card/);
   assert.match(resultCards, /pageAlreadyOwnsPrimaryAction/);
-  assert.match(memberPage, /<StandardPageActions>/);
+  assert.match(memberManagement, /<StandardPageActions><MemberInvitationAction/);
   assert.match(memberPage, /className="member-result-card"/);
   assert.match(resultCards, /aria-label="结果操作"/);
   assert.match(resultCards, /data-result-toolbar-group="view"/);
