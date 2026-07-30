@@ -27,7 +27,6 @@ import { SourceLibraryQueryPage } from '../features/sources/SourceLibraryQueryPa
 import { LineageTreeProductPage } from '../features/tree/LineageTreeProductPagePortal';
 import { EditingWorkspacePage } from '../features/workbench/EditingWorkspacePage';
 import { useWorkspace } from '../shared/context/WorkspaceContext';
-import { PageState } from '../shared/ui/Feedback';
 import { StandardPage } from '../shared/ui/StandardPagePatterns';
 
 export type ModuleKey = 'home' | 'mvp1Wizard' | 'personArchive' | 'treeProduct' | 'sourceLibrary' | 'culture' | 'imports' | 'editingWorkspace' | 'reviewCenter' | 'memberManage' | 'auditTrace';
@@ -52,18 +51,6 @@ type RegisteredModulePageProps = {
   extra?: ReactNode;
 };
 
-const clanRequiredModules = new Set<ModuleKey>([
-  'personArchive',
-  'treeProduct',
-  'sourceLibrary',
-  'culture',
-  'imports',
-  'editingWorkspace',
-  'reviewCenter',
-  'memberManage',
-  'auditTrace'
-]);
-
 function ModuleScope() {
   const workspace = useWorkspace();
   return <Space size={8} wrap>
@@ -74,19 +61,7 @@ function ModuleScope() {
 }
 
 function RegisteredModulePage({ pageKey, title, description, content, extra }: RegisteredModulePageProps) {
-  const workspace = useWorkspace();
-  const missingClan = clanRequiredModules.has(pageKey) && !workspace.clanId;
-  return (
-    <StandardPage pageKey={pageKey} title={title} description={description} scope={<ModuleScope />} extra={missingClan ? undefined : extra}>
-      {missingClan ? (
-        <PageState
-          kind="prerequisite"
-          title="请先选择宗族"
-          description="当前页面的数据和操作均按宗族隔离。请在页面顶部选择宗族后继续。"
-        />
-      ) : content}
-    </StandardPage>
-  );
+  return <StandardPage pageKey={pageKey} title={title} description={description} scope={<ModuleScope />} extra={extra}>{content}</StandardPage>;
 }
 
 function standardModulePage(key: ModuleKey, title: string, description: string, content: ReactNode, extra?: ReactNode) {
