@@ -1,0 +1,12 @@
+diff --git a/backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java b/backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/source/application/SourceApplicationService.java
+@@ -262,7 +262,7 @@ public class SourceApplicationService {
+         SourceEntity source = getEntity(sourceId);
+         authorizationApplicationService.requirePermission(source.getClanId(), actorId, SOURCE_VIEW);
+         String normalizedTargetType = normalizeOptionalTargetType(targetType);
+-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
++        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize);
+         Page<SourceBindingEntity> page = normalizedTargetType == null
+                 ? sourceBindingRepository.findBySourceIdOrderByCreatedAtDesc(sourceId, pageRequest)
+                 : sourceBindingRepository.findBySourceIdAndTargetTypeOrderByCreatedAtDesc(sourceId, normalizedTargetType, pageRequest);
