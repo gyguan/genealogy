@@ -1,0 +1,31 @@
+name: Issue 1029 Bootstrap
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Inspect current query implementations
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== LOG PAGE ==='
+          grep -nE 'StandardQuery|更多筛选|收起筛选|DownOutlined|UpOutlined|<Tabs|<Card|tracking-query|query-card' frontend/genealogy-web/src/features/logs/LogPage.tsx || true
+          echo '=== TRACKING CSS ==='
+          grep -nE 'query|filter|more|arrow|action|Tabs|tabs' frontend/genealogy-web/src/features/logs/tracking-page.css || true
+          echo '=== CULTURE TABS ==='
+          for f in frontend/genealogy-web/src/features/culture/*StandardTab.tsx; do echo "--- $f"; grep -nE 'StandardQuery|MoreFilters|data-query-action|CultureSearchHeader|description=' "$f" || true; done
+          echo '=== IMPORT PAGE ==='
+          grep -nE 'StandardQuery|data-query-action|import-query-card|<Card|<Row|<Col' frontend/genealogy-web/src/features/imports/ImportPage.tsx || true
+          exit 1
