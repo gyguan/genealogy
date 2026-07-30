@@ -43,6 +43,14 @@ test('all reported pages render the canonical query component chain', () => {
   }
 });
 
+test('inner and outer Form variants share one row formatting context', () => {
+  assert.match(prototypeCss, /standard-query-panel__body\s*>\s*form\s*\{[^}]*display:\s*contents/s);
+  assert.match(prototypeCss, /standard-query-panel__body\s*\{[^}]*row-gap:\s*var\(--standard-query-row-gap\)/s);
+  assert.match(prototypeCss, /standard-query-grid\s*\{[^}]*row-gap:\s*var\(--standard-query-row-gap\)/s);
+  assert.match(prototypeCss, /standard-query-field__item\s*>\s*\.ant-form-item-row\s*\{[^}]*display:\s*block/s);
+  assert.match(prototypeCss, /standard-query-field__item\s+\.ant-form-item-control\s*\{[^}]*max-width:\s*100%/s);
+});
+
 test('old page-specific action hooks cannot return', () => {
   assert.doesNotMatch(globalEntry, /culture-search-actions|tracking-query-actions|member-role-page|editingWorkspace/);
   assert.doesNotMatch(prototypeCss, /culture-search-actions|tracking-query-actions|member-role-page|editingWorkspace|ant-collapse-header/);
