@@ -1,7 +1,7 @@
 import { Children, cloneElement, isValidElement } from 'react';
 import type { AriaAttributes, ReactElement, ReactNode } from 'react';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Space } from 'antd';
+import { Button, Space } from 'antd';
 import type { ButtonProps, SpaceProps } from 'antd';
 import './standard-query-actions.css';
 
@@ -16,6 +16,7 @@ export type StandardMoreFiltersButtonProps = Omit<ButtonProps, 'children' | 'ico
 type ActionElementProps = Pick<ButtonProps, 'loading' | 'disabled' | 'type' | 'icon'> & AriaAttributes & {
   'data-query-action'?: StandardQueryActionKind;
   'data-active-filter-count'?: number | string;
+  'data-query-more-state'?: 'expanded' | 'collapsed';
   children?: ReactNode;
 };
 
@@ -35,20 +36,23 @@ function normalizeMoreAction(item: ActionElement) {
     icon: expanded ? <UpOutlined /> : <DownOutlined />,
     'aria-label': label,
     'data-query-more-state': expanded ? 'expanded' : 'collapsed'
-  } as ActionElementProps, label);
+  }, label);
 }
 
 export function StandardMoreFiltersButton({ expanded, activeFilterCount = 0, ...props }: StandardMoreFiltersButtonProps) {
   return (
-    <StandardQueryActions>
-      <button
-        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-        type="button"
-        data-query-action="more"
-        data-active-filter-count={activeFilterCount}
-        aria-expanded={expanded}
-      />
-    </StandardQueryActions>
+    <Button
+      {...props}
+      type={props.type || 'text'}
+      icon={expanded ? <UpOutlined /> : <DownOutlined />}
+      data-query-action="more"
+      data-active-filter-count={activeFilterCount}
+      data-query-more-state={expanded ? 'expanded' : 'collapsed'}
+      aria-expanded={expanded}
+      aria-label={`${expanded ? '收起筛选' : '更多筛选'}${activeFilterCount ? `（${activeFilterCount}）` : ''}`}
+    >
+      {`${expanded ? '收起筛选' : '更多筛选'}${activeFilterCount ? `（${activeFilterCount}）` : ''}`}
+    </Button>
   );
 }
 
