@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
 const prototypeCss = read('./shared/standard-query-card.css');
+const legacyPageCss = read('./shared/standard-page-patterns.css');
 const actionCss = read('../shared/ui/standard-query-actions.css');
 const workbench = read('../features/workbench/EditingWorkspacePage.tsx');
 const members = read('../features/members/MemberPage.tsx');
@@ -21,7 +22,15 @@ test('all query panel DOM shapes share the prototype spacing contract', () => {
   assert.match(prototypeCss, /--standard-query-section-gap:\s*24px/);
   assert.match(prototypeCss, /standard-query-panel__body,\s*\n\.standard-query-panel__body > form\s*\{[^}]*display:\s*grid[^}]*row-gap:\s*var\(--standard-query-row-gap/s);
   assert.match(prototypeCss, /standard-query-panel \.standard-query-panel__actions\s*\{[^}]*margin-top:\s*var\(--standard-query-section-gap/s);
-  assert.match(actionCss, /^@import '\.\.\/\.\.\/styles\/shared\/standard-query-card\.css';/);
+});
+
+test('prototype css is the only source of query-card dimensions and responsive layout', () => {
+  assert.doesNotMatch(legacyPageCss, /\.standard-query-(panel|grid|field|advanced|actions)/);
+  assert.doesNotMatch(actionCss, /data-query-action|min-width|min-height|@media|grid-template-columns/);
+  assert.match(prototypeCss, /data-query-action="more"[^}]*min-width:\s*112px/s);
+  assert.match(prototypeCss, /data-query-action="reset"[^}]*min-width:\s*72px/s);
+  assert.match(prototypeCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(prototypeCss, /min-height:\s*44px/);
 });
 
 test('workbench and member permissions use the covered panel-actions structure', () => {
