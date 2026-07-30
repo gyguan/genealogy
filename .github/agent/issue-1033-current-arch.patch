@@ -1,0 +1,75 @@
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/person/application/PersonDuplicateDetectionService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/person/application/PersonDuplicateDetectionService.java
+@@ -26,7 +26,15 @@
+ 
+     @Transactional(readOnly = true)
+     public PersonDuplicateResult detect(PersonDuplicateQuery query) {
+-        List<PersonEntity> entities = personRepository.findDuplicateCandidates(query);
++        List<PersonEntity> entities = personRepository.findDuplicateCandidates(
++                query.clanId(),
++                query.branchId(),
++                query.name(),
++                query.generationNo(),
++                query.generationWord(),
++                query.birthDate(),
++                query.candidateLimit()
++        );
+         Set<String> matchedFields = matchedFields(query);
+         int score = score(matchedFields);
+         PersonDuplicateResult.RiskLevel risk = riskLevel(entities.isEmpty(), score);
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobRowApplicationService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobRowApplicationService.java
+@@ -14,7 +14,6 @@
+ import com.genealogy.imports.repository.ImportJobRowRepository;
+ import com.genealogy.operationlog.application.OperationLogApplicationService;
+-import com.genealogy.person.application.PersonDuplicateQuery;
+ import com.genealogy.person.entity.PersonEntity;
+ import com.genealogy.person.repository.PersonRepository;
+ import org.springframework.data.domain.Page;
+@@ -244,14 +243,13 @@
+     }
+ 
+     private void ensureDuplicateConfirmed(ImportJobEntity job, PersonEntity person, boolean confirmed) {
+-        long duplicateCount = personRepository.countDuplicates(new PersonDuplicateQuery(
++        long duplicateCount = personRepository.countDuplicates(
+                 job.getClanId(),
+                 job.getBranchId(),
+                 person.getName(),
+                 person.getGenerationNo(),
+                 person.getGenerationWord(),
+-                person.getBirthDate(),
+-                1
+-        ));
++                person.getBirthDate()
++        );
+         if (duplicateCount > 0 && !confirmed) {
+             throw new BusinessException("IMPORT_DUPLICATE_CONFIRM_REQUIRED", "修正后的人物疑似重复，请确认后再重试");
+         }
+--- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/PersonAsyncImportChunkService.java
++++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/PersonAsyncImportChunkService.java
+@@ -13,7 +13,6 @@
+ import com.genealogy.imports.repository.ImportJobRepository;
+ import com.genealogy.imports.repository.ImportJobRowRepository;
+-import com.genealogy.person.application.PersonDuplicateQuery;
+ import com.genealogy.person.entity.PersonEntity;
+ import com.genealogy.person.repository.PersonRepository;
+ import org.apache.poi.ss.usermodel.Cell;
+@@ -274,14 +273,13 @@
+     }
+ 
+     private int countDuplicates(ImportJobEntity job, ParsedPerson person) {
+-        return safeInt(personRepository.countDuplicates(new PersonDuplicateQuery(
++        return safeInt(personRepository.countDuplicates(
+                 job.getClanId(),
+                 job.getBranchId(),
+                 person.name(),
+                 person.generationNo(),
+                 person.generationWord(),
+-                person.birthDate(),
+-                1
+-        )));
++                person.birthDate()
++        ));
+     }
+ 
+     private Map<String, Object> normalizedData(ImportJobEntity job, ParsedPerson person, int duplicateCount) {
