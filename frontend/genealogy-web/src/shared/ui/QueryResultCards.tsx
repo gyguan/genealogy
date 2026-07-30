@@ -109,6 +109,18 @@ function titleFromClassName(className: string) {
   return mappings.find(([pattern]) => pattern.test(className))?.[1] || '';
 }
 
+function titleFromTotalSuffix(totalSuffix: string) {
+  const known: Record<string, string> = {
+    个对象: '追踪对象',
+    条记录: '操作日志',
+    条风险事件: '风险事件',
+    个人物: '人物列表',
+    条来源: '来源资料',
+    条任务: '任务列表'
+  };
+  return known[totalSuffix] || '';
+}
+
 export function QueryResultCard({
   title,
   total,
@@ -125,7 +137,7 @@ export function QueryResultCard({
   const split = splitFirstPrimaryAction(extra);
   const resolvedPageAction = normalizePageAction(pageAction || split.pageAction);
   const resolvedToolbar = normalizeResultActions(toolbar || split.resultActions);
-  const resolvedTitle = title || titleFromAction(resolvedPageAction) || titleFromClassName(className) || '查询结果';
+  const resolvedTitle = title || titleFromAction(resolvedPageAction) || titleFromTotalSuffix(totalSuffix) || titleFromClassName(className) || '查询结果';
   return <>
     {resolvedPageAction ? <StandardPageActions>{resolvedPageAction}</StandardPageActions> : null}
     <section
