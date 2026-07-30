@@ -1,8 +1,7 @@
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  Alert, Button, Card, DatePicker, Form, Input, Result, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
+  Alert, Button, DatePicker, Form, Input, Result, Select, Space, Table, Tag, Typography } from 'antd';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogPage,
@@ -52,15 +51,18 @@ import { OperationLogDrawer } from './TrackingDetailDrawers';
 import { TrackingTraceDetailPage } from './TrackingTraceDetailPage';
 import './tracking-page.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
-
 import { feedback } from '../../shared/ui/OperationFeedback';
+import { PageFeedback, EmptyState } from '../../shared/ui/Feedback';
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import {
+  StandardAdvancedFilters,
+  StandardPageTabs,
+  StandardQueryField,
+  StandardQueryGrid,
+  StandardQueryPanel
+} from '../../shared/ui/StandardPagePatterns';
 
-import { PageFeedback } from '../../shared/ui/Feedback';
-
-import { EmptyState } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
-
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { RangePicker } = DatePicker;
 const TRACEABLE_TYPES = new Set(['person', 'relationship', 'source', 'branch', 'review_task', 'culture_item', 'migration_event', 'culture_site']);
 
@@ -120,7 +122,11 @@ export function LogPage({}: {  }) {
   const workspace = useWorkspace();
   const initial = useRef(readTrackingCenterState(window.location.search)).current;
   const [activeTab, setActiveTab] = useState<TrackingTab>(initial.activeTab);
-  const [expanded, setExpanded] = useState<ExpandedState>({ object: false, audit: false, risk: false });
+  const [expanded, setExpanded] = useState<ExpandedState>({
+    object: Boolean(workspace.branchId),
+    audit: Boolean(initial.auditFilters.resultStatus || initial.auditFilters.keyword),
+    risk: Boolean(initial.riskFilters.actorId || initial.riskFilters.branchId)
+  });
   const [objectFilters, setObjectFilters] = useState<ObjectFilters>(initial.objectFilters);
   const [auditFilters, setAuditFilters] = useState<AuditFilters>(initial.auditFilters);
   const [riskFilters, setRiskFilters] = useState<RiskFilters>(initial.riskFilters);
@@ -180,6 +186,11 @@ export function LogPage({}: {  }) {
       setObjectFilters(restored.objectFilters);
       setAuditFilters(restored.auditFilters);
       setRiskFilters(restored.riskFilters);
+      setExpanded({
+        object: Boolean(workspace.branchId),
+        audit: Boolean(restored.auditFilters.resultStatus || restored.auditFilters.keyword),
+        risk: Boolean(restored.riskFilters.actorId || restored.riskFilters.branchId)
+      });
       setSelectedTrace(restored.selectedTrace);
       setSelectedAuditLogId(restored.selectedAuditLogId);
       setSelectedRiskLogId(restored.selectedRiskLogId);
@@ -345,54 +356,70 @@ export function LogPage({}: {  }) {
     return <TrackingTraceDetailPage clanId={workspace.clanId} targetType={selectedTrace.targetType} targetId={selectedTrace.targetId} reviewTaskId={selectedTrace.reviewTaskId} selectedObject={selectedObject} onBack={closeTrace} />;
   }
 
-  function moreButton() {
-    const isExpanded = expanded[activeTab];
-    return (
-      <Button data-query-action="more" type="link" className="tracking-more-button" icon={isExpanded ? <UpOutlined /> : <DownOutlined />} iconPosition="end" onClick={() => setExpanded(previous => ({ ...previous, [activeTab]: !isExpanded }))}>
-        {isExpanded ? '收起' : '更多筛选'}
-      </Button>
-    );
+  function hiddenFilterCount(tab: TrackingTab) {
+    if (tab === TRACKING_TABS.OBJECT) return 0;
+    if (tab === TRACKING_TABS.AUDIT) return [auditFilters.resultStatus, auditFilters.keyword].filter(value => String(value || '').trim()).length;
+    return [riskFilters.actorId, riskFilters.branchId].filter(value => String(value || '').trim()).length;
   }
 
   function queryActions(reset: () => void, query: () => void, loading: boolean) {
-    return <div className="tracking-query-actions"><StandardQueryActions wrap>{moreButton()}<Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button><Button data-query-action="submit" type="primary" loading={loading} onClick={query}>查询</Button></StandardQueryActions></div>;
+    const isExpanded = expanded[activeTab];
+    return (
+      <StandardQueryActions>
+        <StandardMoreFiltersButton
+          expanded={isExpanded}
+          activeFilterCount={hiddenFilterCount(activeTab)}
+          onClick={() => setExpanded(previous => ({ ...previous, [activeTab]: !isExpanded }))}
+        />
+        <Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
+        <Button data-query-action="submit" loading={loading} onClick={query}>查询</Button>
+      </StandardQueryActions>
+    );
   }
 
   const objectFiltersView = (
-    <Form layout="vertical" className="tracking-query-form">
-      <div className="tracking-query-grid">
-        <Form.Item label="对象类型"><TrackingMultiSelect ariaLabel="对象类型" value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} placeholder="全部对象类型" onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></Form.Item>
-        <Form.Item label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadObjects({ ...objectFilters, pageNo: 1 })} /></Form.Item>
-        <Form.Item label="业务状态"><TrackingMultiSelect ariaLabel="业务状态" value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} placeholder="全部状态" onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></Form.Item>
-        <Form.Item label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></Form.Item>
-        {expanded.object ? <Form.Item label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></Form.Item> : null}
-      </div>
+    <Form layout="vertical">
+      <StandardQueryGrid>
+        <StandardQueryField label="对象类型"><TrackingMultiSelect ariaLabel="对象类型" value={objectFilters.objectType} options={OBJECT_TYPE_OPTIONS} placeholder="全部对象类型" onChange={value => setObjectFilters(previous => ({ ...previous, objectType: value }))} /></StandardQueryField>
+        <StandardQueryField label="业务关键词"><Input value={objectFilters.keyword} placeholder="姓名、谱名、来源名称、支派名称或审核摘要" allowClear maxLength={100} onChange={event => setObjectFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadObjects({ ...objectFilters, pageNo: 1 })} /></StandardQueryField>
+        <StandardQueryField label="业务状态"><TrackingMultiSelect ariaLabel="业务状态" value={objectFilters.status} options={OBJECT_STATUS_OPTIONS} placeholder="全部状态" onChange={value => setObjectFilters(previous => ({ ...previous, status: value }))} /></StandardQueryField>
+        <StandardQueryField label="最近变更时间"><RangePicker value={rangeValue(objectFilters.changedFrom, objectFilters.changedTo)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [changedFrom, changedTo] = rangeStrings(values); setObjectFilters(previous => ({ ...previous, changedFrom, changedTo })); }} /></StandardQueryField>
+      </StandardQueryGrid>
+      <StandardAdvancedFilters expanded={expanded.object}>
+        <StandardQueryField label="所属支派"><Input value={workspace.branchId ? '当前工作区支派' : '本人可见支派范围'} disabled /></StandardQueryField>
+      </StandardAdvancedFilters>
       {queryActions(() => { const next = { ...DEFAULT_OBJECT_FILTERS }; setObjectFilters(next); void loadObjects(next); }, () => { const next = { ...objectFilters, pageNo: 1 }; setObjectFilters(next); void loadObjects(next); }, objectLoading)}
     </Form>
   );
 
   const auditFiltersView = (
-    <Form layout="vertical" className="tracking-query-form">
-      <div className="tracking-query-grid">
-        <Form.Item label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
-        <Form.Item label="操作者"><TrackingMultiSelect ariaLabel="操作者" value={auditFilters.actorId} options={auditActorOptions} placeholder="全部操作者" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value }))} /></Form.Item>
-        <Form.Item label="动作分类"><TrackingMultiSelect ariaLabel="动作分类" value={auditFilters.actionType} options={ACTION_OPTIONS} placeholder="全部动作" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value }))} /></Form.Item>
-        <Form.Item label="对象类型"><TrackingMultiSelect ariaLabel="日志对象类型" value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} placeholder="全部对象" onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></Form.Item>
-        {expanded.audit ? <><Form.Item label="执行结果"><TrackingMultiSelect ariaLabel="执行结果" value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} placeholder="全部结果" onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></Form.Item><Form.Item label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadAudit({ ...auditFilters, pageNo: 1 }, '')} /></Form.Item></> : null}
-      </div>
+    <Form layout="vertical">
+      <StandardQueryGrid>
+        <StandardQueryField label="时间范围"><RangePicker value={rangeValue(auditFilters.startTime, auditFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setAuditFilters(previous => ({ ...previous, startTime, endTime })); }} /></StandardQueryField>
+        <StandardQueryField label="操作者"><TrackingMultiSelect ariaLabel="操作者" value={auditFilters.actorId} options={auditActorOptions} placeholder="全部操作者" notFoundContent="先查询日志后可按当前结果中的操作者筛选" onChange={value => setAuditFilters(previous => ({ ...previous, actorId: value }))} /></StandardQueryField>
+        <StandardQueryField label="动作分类"><TrackingMultiSelect ariaLabel="动作分类" value={auditFilters.actionType} options={ACTION_OPTIONS} placeholder="全部动作" onChange={value => setAuditFilters(previous => ({ ...previous, actionType: value }))} /></StandardQueryField>
+        <StandardQueryField label="对象类型"><TrackingMultiSelect ariaLabel="日志对象类型" value={auditFilters.targetType} options={AUDIT_TARGET_OPTIONS} placeholder="全部对象" onChange={value => setAuditFilters(previous => ({ ...previous, targetType: value }))} /></StandardQueryField>
+      </StandardQueryGrid>
+      <StandardAdvancedFilters expanded={expanded.audit}>
+        <StandardQueryField label="执行结果"><TrackingMultiSelect ariaLabel="执行结果" value={auditFilters.resultStatus} options={AUDIT_RESULT_OPTIONS} placeholder="全部结果" onChange={value => setAuditFilters(previous => ({ ...previous, resultStatus: value }))} /></StandardQueryField>
+        <StandardQueryField label="业务关键词"><Input value={auditFilters.keyword} placeholder="业务名称、摘要或动作说明" allowClear maxLength={100} onChange={event => setAuditFilters(previous => ({ ...previous, keyword: event.target.value }))} onPressEnter={() => void loadAudit({ ...auditFilters, pageNo: 1 }, '')} /></StandardQueryField>
+      </StandardAdvancedFilters>
       {queryActions(() => { const next = { ...DEFAULT_AUDIT_FILTERS }; setAuditFilters(next); setSelectedAuditLog(null); setSelectedAuditLogId(''); void loadAudit(next, ''); }, () => { const next = { ...auditFilters, pageNo: 1 }; setAuditFilters(next); void loadAudit(next, ''); }, auditLoading)}
     </Form>
   );
 
   const riskFiltersView = (
-    <Form layout="vertical" className="tracking-query-form">
-      <div className="tracking-query-grid">
-        <Form.Item label="时间范围"><RangePicker value={rangeValue(riskFilters.startTime, riskFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setRiskFilters(previous => ({ ...previous, startTime, endTime })); }} /></Form.Item>
-        <Form.Item label="风险等级"><TrackingMultiSelect ariaLabel="风险等级" value={riskFilters.riskLevel} options={RISK_LEVEL_OPTIONS} placeholder="全部等级" onChange={value => setRiskFilters(previous => ({ ...previous, riskLevel: value }))} /></Form.Item>
-        <Form.Item label="事件类型"><TrackingMultiSelect ariaLabel="事件类型" value={riskFilters.eventType} options={RISK_EVENT_OPTIONS} placeholder="全部事件" onChange={value => setRiskFilters(previous => ({ ...previous, eventType: value }))} /></Form.Item>
-        <Form.Item label="处置状态"><TrackingMultiSelect ariaLabel="处置状态" value={riskFilters.dispositionStatus} options={RISK_DISPOSITION_OPTIONS} placeholder="全部处置状态" onChange={value => setRiskFilters(previous => ({ ...previous, dispositionStatus: value }))} /></Form.Item>
-        {expanded.risk ? <><Form.Item label="操作者"><TrackingMultiSelect ariaLabel="风险操作者" value={riskFilters.actorId} options={riskActorOptions} placeholder="全部操作者" onChange={value => setRiskFilters(previous => ({ ...previous, actorId: value }))} /></Form.Item><Form.Item label="所属支派"><TrackingMultiSelect ariaLabel="风险所属支派" value={riskFilters.branchId} options={branchOptions} placeholder="本人可见支派范围" onChange={value => setRiskFilters(previous => ({ ...previous, branchId: value }))} /></Form.Item></> : null}
-      </div>
+    <Form layout="vertical">
+      <StandardQueryGrid>
+        <StandardQueryField label="时间范围"><RangePicker value={rangeValue(riskFilters.startTime, riskFilters.endTime)} showTime format="YYYY-MM-DD HH:mm" allowClear onChange={values => { const [startTime, endTime] = rangeStrings(values); setRiskFilters(previous => ({ ...previous, startTime, endTime })); }} /></StandardQueryField>
+        <StandardQueryField label="风险等级"><TrackingMultiSelect ariaLabel="风险等级" value={riskFilters.riskLevel} options={RISK_LEVEL_OPTIONS} placeholder="全部等级" onChange={value => setRiskFilters(previous => ({ ...previous, riskLevel: value }))} /></StandardQueryField>
+        <StandardQueryField label="事件类型"><TrackingMultiSelect ariaLabel="事件类型" value={riskFilters.eventType} options={RISK_EVENT_OPTIONS} placeholder="全部事件" onChange={value => setRiskFilters(previous => ({ ...previous, eventType: value }))} /></StandardQueryField>
+        <StandardQueryField label="处置状态"><TrackingMultiSelect ariaLabel="处置状态" value={riskFilters.dispositionStatus} options={RISK_DISPOSITION_OPTIONS} placeholder="全部处置状态" onChange={value => setRiskFilters(previous => ({ ...previous, dispositionStatus: value }))} /></StandardQueryField>
+      </StandardQueryGrid>
+      <StandardAdvancedFilters expanded={expanded.risk}>
+        <StandardQueryField label="操作者"><TrackingMultiSelect ariaLabel="风险操作者" value={riskFilters.actorId} options={riskActorOptions} placeholder="全部操作者" onChange={value => setRiskFilters(previous => ({ ...previous, actorId: value }))} /></StandardQueryField>
+        <StandardQueryField label="所属支派"><TrackingMultiSelect ariaLabel="风险所属支派" value={riskFilters.branchId} options={branchOptions} placeholder="本人可见支派范围" onChange={value => setRiskFilters(previous => ({ ...previous, branchId: value }))} /></StandardQueryField>
+      </StandardAdvancedFilters>
       {queryActions(() => { const next = { ...DEFAULT_RISK_FILTERS }; setRiskFilters(next); setSelectedRiskLog(null); setSelectedRiskLogId(''); void loadRisk(next, ''); }, () => { const next = { ...riskFilters, pageNo: 1 }; setRiskFilters(next); void loadRisk(next, ''); }, riskLoading)}
     </Form>
   );
@@ -441,22 +468,27 @@ export function LogPage({}: {  }) {
 
   return (
     <div className="audit-trace-page tracking-double-card-page">
-      <Card className="tracking-query-card" title="审计追踪">
-        <Tabs className="tracking-query-tabs" activeKey={activeTab} onChange={changeTab} items={[
+      <StandardPageTabs
+        ariaLabel="审计追踪视图"
+        activeKey={activeTab}
+        onChange={changeTab}
+        items={[
           { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
           { key: TRACKING_TABS.AUDIT, label: '操作日志' },
           { key: TRACKING_TABS.RISK, label: '风险事件' }
-        ]} />
+        ]}
+      />
+      <StandardQueryPanel className="tracking-query-card">
         {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
-      </Card>
+      </StandardQueryPanel>
       {workspace.clanId ? (
         <QueryResultCard
           className="tracking-result-card"
           extra={activeTab === TRACKING_TABS.AUDIT && canExportAudit ? <Button loading={auditExporting} onClick={() => void exportAuditCsv()}>导出 CSV</Button> : null}
-         total={resultTotal} totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}>
-          
-            {activeResult}
-          
+          total={resultTotal}
+          totalSuffix={activeTab === TRACKING_TABS.OBJECT ? '个对象' : activeTab === TRACKING_TABS.AUDIT ? '条记录' : '条风险事件'}
+        >
+          {activeResult}
         </QueryResultCard>
       ) : null}
 
