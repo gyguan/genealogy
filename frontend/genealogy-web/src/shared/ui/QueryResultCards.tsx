@@ -14,6 +14,7 @@ type QueryResultProps = Omit<HTMLAttributes<HTMLElement>, 'title' | 'children'> 
   toolbar?: ReactNode;
   extra?: ReactNode;
   resultExtra?: ReactNode;
+  promotePrimaryAction?: boolean;
   size?: CardProps['size'];
   children: ReactNode;
 };
@@ -57,7 +58,8 @@ function normalizeResultActions(node: ReactNode): ReactNode {
   return cloneElement(element, element.props.type === 'primary' ? { type: 'default', 'data-result-action': 'secondary' } : undefined, children);
 }
 
-function splitFirstPrimaryAction(node: ReactNode): ActionSplit {
+function splitFirstPrimaryAction(node: ReactNode, promote: boolean): ActionSplit {
+  if (!promote) return { resultActions: normalizeResultActions(node) };
   let pageAction: ReactNode;
   function visit(value: ReactNode): ReactNode {
     if (pageAction || value === null || value === undefined || typeof value === 'boolean') return value;
@@ -131,10 +133,12 @@ export function QueryResultCard({
   toolbar,
   extra,
   resultExtra,
+  promotePrimaryAction = true,
   size = 'small',
   ...sectionProps
 }: QueryResultProps) {
-  const split = splitFirstPrimaryAction(extra);
+  const pageAlreadyOwnsPrimaryAction = /(?:^|\s)member-result-card(?:\s|$)/.test(className);
+  const split = splitFirstPrimaryAction(extra, promotePrimaryAction && !pageAlreadyOwnsPrimaryAction);
   const resolvedPageAction = normalizePageAction(pageAction || split.pageAction);
   const resolvedToolbar = normalizeResultActions(toolbar || split.resultActions);
   const resolvedTitle = title || titleFromAction(resolvedPageAction) || titleFromTotalSuffix(totalSuffix) || titleFromClassName(className) || '查询结果';
