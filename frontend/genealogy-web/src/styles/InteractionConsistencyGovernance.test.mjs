@@ -11,7 +11,7 @@ const cultureShell = read('../features/culture/CultureProductPage.tsx');
 const cultureHeader = read('../features/culture/CultureSearchHeader.tsx');
 const culturePattern = read('../features/culture/culturePagePattern.ts');
 const cultureQuery = read('../features/culture/CultureSearchPanel.tsx');
-const riskAudit = read('../features/logs/RiskAuditPanel.tsx');
+const trackingPage = read('../features/logs/LogPage.tsx');
 
 function index(source, token) {
   const value = source.indexOf(token);
@@ -53,6 +53,7 @@ test('result cards promote page actions and reserve the toolbar for secondary re
   assert.match(resultCards, /data-result-toolbar-group="view"/);
   assert.match(resultCards, /data-result-toolbar-group="actions"/);
   assert.match(resultCards, /（共 \{total\} \{totalSuffix\}）/);
+  assert.match(resultCards, /titleFromTotalSuffix/);
 });
 
 test('culture uses one page-level tab navigation and no duplicate query-card tabs', () => {
@@ -63,13 +64,17 @@ test('culture uses one page-level tab navigation and no duplicate query-card tab
   assert.doesNotMatch(cultureHeader, /cultureTabItems/);
 });
 
-test('representative query pages use standard panels and low-frequency filter disclosure', () => {
+test('representative query pages use governed actions and low-frequency filter disclosure', () => {
   assert.match(cultureQuery, /<StandardQueryPanel/);
   assert.match(cultureQuery, /<StandardMoreFiltersButton/);
   assert.match(cultureQuery, /activeFilterCount=\{activeMoreCount\}/);
   assert.match(cultureQuery, /setMoreOpen\(false\)/);
-  assert.match(riskAudit, /<StandardQueryPanel/);
-  assert.match(riskAudit, /<StandardResultSection title="高风险操作事件" total=\{page\?\.total\}/);
+  assert.match(trackingPage, /<StandardQueryActions wrap>/);
+  assert.match(trackingPage, /data-query-action="more"/);
+  assert.match(trackingPage, /expanded\.object/);
+  assert.match(trackingPage, /expanded\.audit/);
+  assert.match(trackingPage, /expanded\.risk/);
+  assert.match(trackingPage, /totalSuffix=\{activeTab === TRACKING_TABS\.OBJECT/);
 });
 
 test('page-level culture actions use create vocabulary', () => {
