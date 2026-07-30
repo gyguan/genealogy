@@ -27,7 +27,7 @@ Genealogy 不只是绘制家谱树，而是围绕宗族主数据、支派房支�
 
 ```text
 前端：React + TypeScript + Vite + Ant Design 5
-后端：Java 17 + Spring Boot 3 + Spring Data JPA
+后端：Java 17 + Spring Boot 3 + Spring Data JPA / MyBatis-Plus 分阶段迁移
 数据库：PostgreSQL 16 + Flyway
 接口契约：OpenAPI
 验证：Maven、PostgreSQL Integration、Playwright、CI Governance
@@ -96,6 +96,7 @@ http://localhost:5174
 - [后端工程说明](backend/genealogy-backend/README.md)
 - [前端工程说明](frontend/genealogy-web/README.md)
 - [后端环境配置](docs/backend/environment-configuration.md)
+- [持久化框架分阶段迁移](docs/backend/persistence-framework-migration.md)
 
 ## 工程结构
 
