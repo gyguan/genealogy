@@ -56,10 +56,12 @@ test('global toast uses the same semantic feedback primitive', () => {
 test('async import execution panel uses only standard feedback primitives', () => {
   assert.match(asyncImportExecutionPanel, /PageFeedback/);
   assert.match(asyncImportExecutionPanel, /InlineFeedback/);
-  assert.match(asyncImportExecutionPanel, /EmptyState/);
+  assert.match(asyncImportExecutionPanel, /PageState/);
+  assert.match(asyncImportExecutionPanel, /RetainedDataFeedback/);
   assert.match(asyncImportExecutionPanel, /ConfirmAction/);
   assert.doesNotMatch(asyncImportExecutionPanel, /<Alert\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /<Empty\b/);
+  assert.doesNotMatch(asyncImportExecutionPanel, /<Result\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /<Popconfirm\b/);
   assert.doesNotMatch(asyncImportExecutionPanel, /className="import-panel-alert"/);
 });
