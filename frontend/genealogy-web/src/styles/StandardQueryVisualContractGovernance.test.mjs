@@ -39,13 +39,14 @@ test('standard query grids retain the 4 to 2 to 1 responsive column contract', (
   assert.doesNotMatch(patternCss, /standard-query-grid[^}]*repeat\((3|5),/s);
 });
 
-test('query fields share exact control height and compact vertical spacing', () => {
+test('query fields center placeholders and keep compact vertical spacing', () => {
   assert.match(patternCss, /standard-query-field__item[^}]*min-height:\s*var\(--ant-control-height\)/s);
   assert.match(patternCss, /standard-query-field__item \.ant-input[\s\S]*?height:\s*var\(--ant-control-height\)/);
-  assert.match(patternCss, /standard-query-field__item \.ant-input[\s\S]*?\.ant-select-selector[\s\S]*?min-height:\s*var\(--ant-control-height\)/);
-  assert.match(patternCss, /standard-query-grid[^}]*row-gap:\s*var\(--ant-margin-xs\)/s);
-  assert.match(patternCss, /standard-query-advanced[^}]*margin-top:\s*var\(--ant-margin-xs\)/s);
-  assert.match(patternCss, /standard-query-field__hint[^}]*min-height:\s*20px/s);
+  assert.match(patternCss, /input\.ant-input:not\(textarea\)[^}]*padding-block:\s*0[^}]*line-height:\s*calc\(var\(--ant-control-height\) - 2px\)/s);
+  assert.match(patternCss, /ant-input-affix-wrapper[^}]*align-items:\s*center[^}]*padding-block:\s*0/s);
+  assert.match(patternCss, /standard-query-grid[^}]*row-gap:\s*var\(--ant-margin-xxs\)/s);
+  assert.match(patternCss, /standard-query-advanced[^}]*margin-top:\s*var\(--ant-margin-xxs\)/s);
+  assert.match(patternCss, /standard-query-field__hint:has\([^}]*display:\s*none/s);
   assert.match(patternCss, /standard-query-advanced[^}]*background:\s*transparent/s);
   assert.match(patternCss, /standard-query-advanced[^}]*border:\s*0/s);
   assert.match(patternCss, /standard-query-advanced[^}]*box-shadow:\s*none/s);
@@ -63,10 +64,13 @@ test('query actions uniquely decide labels icons hierarchy sizing and loading li
   assert.match(actions, /UpOutlined/);
   assert.match(actions, /activeFilterCount/);
   assert.match(actions, /disabled: busy \|\| item\.props\.disabled/);
+  assert.match(actions, /\['more', 'reset', 'submit'\]/);
   assert.match(actions, /<div \{\.\.\.props\} className=/);
   assert.doesNotMatch(actions, /<Space/);
 
+  assert.match(actionCss, /standard-query-actions[^}]*justify-content:\s*flex-end/s);
   assert.match(actionCss, /data-query-action="more"[^}]*min-width:\s*112px/s);
+  assert.doesNotMatch(actionCss, /data-query-action="more"[^}]*margin-right:\s*auto/s);
   assert.match(actionCss, /data-query-action="reset"[^}]*min-width:\s*72px/s);
   assert.match(actionCss, /data-query-action="submit"[^}]*min-width:\s*72px/s);
   assert.match(actionCss, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);

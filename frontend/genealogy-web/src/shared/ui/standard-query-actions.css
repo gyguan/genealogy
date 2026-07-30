@@ -12,8 +12,7 @@
 
 .standard-query-actions [data-query-action="more"] {
   min-width: 112px;
-  margin-right: auto;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .standard-query-actions [data-query-action="reset"], .standard-query-actions [data-query-action="submit"] {
@@ -34,7 +33,6 @@
   .standard-query-actions [data-query-action="more"] {
     grid-column: 1 / -1;
     width: 100%;
-    margin-right: 0;
   }
 
   .standard-query-actions [data-query-action="reset"], .standard-query-actions [data-query-action="submit"] {
