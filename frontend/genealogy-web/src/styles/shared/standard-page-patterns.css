@@ -122,13 +122,14 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: start;
-  gap: var(--ant-margin-sm) var(--ant-margin-md);
+  row-gap: var(--ant-margin-xs);
+  column-gap: var(--ant-margin-md);
   width: 100%;
   min-width: 0;
 }
 
 .standard-query-advanced {
-  margin-top: var(--ant-margin-md);
+  margin-top: var(--ant-margin-xs);
   padding: 0;
   background: transparent;
   border: 0;
@@ -162,6 +163,7 @@
 
 .standard-query-field__item .ant-input, .standard-query-field__item .ant-input-affix-wrapper, .standard-query-field__item .ant-input-number, .standard-query-field__item .ant-picker, .standard-query-field__item .ant-select-selector {
   width: 100%;
+  height: var(--ant-control-height);
   min-height: var(--ant-control-height);
 }
 
