@@ -114,9 +114,9 @@ class PersonMybatisPostgreSqlIT {
         PersonDashboardData dashboard = personRepository.loadDashboardData(
                 fixture.clan().getId(), "official", LocalDateTime.now().minusDays(29), 4
         );
-        assertThat(dashboard.summary().peopleTotal()).isEqualTo(2);
-        assertThat(dashboard.summary().generationMaintained()).isEqualTo(1);
-        assertThat(dashboard.summary().biographyMaintained()).isEqualTo(1);
+        assertThat(dashboard.summary().peopleTotal()).isEqualTo(2L);
+        assertThat(dashboard.summary().generationMaintained()).isEqualTo(1L);
+        assertThat(dashboard.summary().biographyMaintained()).isEqualTo(1L);
         assertThat(dashboard.recentPeople()).extracting(PersonEntity::getId).containsExactly(second.getId(), first.getId());
 
         assertThat(treePersonQueryRepository.findTreePersonSnapshotsByBranches(

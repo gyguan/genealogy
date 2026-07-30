@@ -250,7 +250,7 @@ public class PersonRepository {
     ) {
         PersonDashboardSummary summary = queryMapper.selectDashboardSummary(clanId, dataStatus);
         if (summary == null) {
-            summary = new PersonDashboardSummary(0, 0, 0, 0, 0, 0);
+            summary = new PersonDashboardSummary(0L, 0L, 0L, 0L, 0L, 0L);
         }
         int boundedLimit = Math.max(1, Math.min(recentLimit, 1000));
         return new PersonDashboardData(
