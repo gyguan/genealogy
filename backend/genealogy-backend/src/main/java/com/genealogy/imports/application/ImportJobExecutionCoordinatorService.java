@@ -75,21 +75,32 @@ public class ImportJobExecutionCoordinatorService {
         return Optional.of(new Claim(job.getId(), owner, job.getExecutionStage(), now));
     }
 
+    /** Preferred completion API because the claim carries the true chunk start time. */
+    @Transactional
+    public void release(Claim claim) {
+        if (claim == null) throw new BusinessException("IMPORT_JOB_CLAIM_REQUIRED", "缺少任务领取上下文");
+        release(claim.jobId(), claim.owner(), claim.claimedAt());
+    }
+
+    /** Compatibility API. It deliberately emits costMs=0 rather than reusing heartbeat time as a fake start time. */
     @Transactional
     public void release(Long jobId, String owner) {
+        release(jobId, owner, null);
+    }
+
+    private void release(Long jobId, String owner, LocalDateTime claimedAt) {
         ImportJobEntity job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_NOT_FOUND", "导入任务不存在"));
         LocalDateTime now = LocalDateTime.now();
         leaseGuard.requireCurrentOwner(job, owner, now);
         String fromStatus = job.getExecutionStatus();
-        LocalDateTime chunkStartedAt = job.getHeartbeatAt();
         job.setExecutionStatus(ImportJobEntity.EXECUTION_QUEUED);
         job.setLeaseOwner(null);
         job.setLeaseExpiresAt(null);
         job.setHeartbeatAt(now);
         job.setUpdatedAt(now);
         jobRepository.save(job);
-        long costMs = chunkStartedAt == null ? 0L : Math.max(0L, Duration.between(chunkStartedAt, now).toMillis());
+        long costMs = claimedAt == null ? 0L : Math.max(0L, Duration.between(claimedAt, now).toMillis());
         log.info(
                 "event=import_chunk_completed jobId={} stage={} fromStatus={} toStatus={} cursorRowNo={} successCount={} failureCount={} skippedCount={} processedCount={} publishedCount={} costMs={} result=success",
                 job.getId(), job.getExecutionStage(), fromStatus, job.getExecutionStatus(), job.getCursorRowNo(),
