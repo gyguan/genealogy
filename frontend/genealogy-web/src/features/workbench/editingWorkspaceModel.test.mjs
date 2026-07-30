@@ -71,17 +71,9 @@ test('summarizes partial bulk operation results', () => {
   ]), { succeeded: 2, failed: 1 });
 });
 
-test('distinguishes prerequisite, first-empty, no-results and error states', () => {
-  assert.deepEqual(workbenchEmptyState({ hasClan: false, loading: false, error: false, hasFilters: false, count: 0 }), {
-    kind: 'prerequisite', title: '请先选择宗族', description: '选择宗族后可查看对应的修谱任务。', action: ''
-  });
-  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: true, count: 0 }), {
-    kind: 'no-results', title: '未找到符合条件的修谱任务', description: '请调整或清除筛选条件后重试。', action: 'clear'
-  });
-  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: true, hasFilters: false, count: 0 }), {
-    kind: 'error', title: '修谱任务加载失败', description: '未能获取任务列表，请重试。', action: 'retry'
-  });
-  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: false, count: 0 }), {
-    kind: 'first-empty', title: '当前宗族暂无修谱任务', description: '新产生的审核跟进、来源缺失和关系复核任务会显示在这里。', action: ''
-  });
+test('distinguishes workbench empty states', () => {
+  assert.deepEqual(workbenchEmptyState({ hasClan: false, loading: false, error: false, hasFilters: false, count: 0 }), { description: '请选择宗族后查看修谱任务', action: '' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: true, count: 0 }), { description: '当前筛选条件下暂无修谱任务', action: 'clear' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: true, hasFilters: false, count: 0 }), { description: '任务列表加载失败', action: 'retry' });
+  assert.deepEqual(workbenchEmptyState({ hasClan: true, loading: false, error: false, hasFilters: false, count: 0 }), { description: '当前宗族暂无待处理修谱任务', action: '' });
 });
