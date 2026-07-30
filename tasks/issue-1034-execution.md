@@ -20,8 +20,8 @@
 | 3 | 迁移 Member 与权限范围查询 | ✅ 已完成 | 动态 SQL、count 共用筛选、空集合、显式更新与成员锁已切换 |
 | 4 | 迁移 Review/Revision 与并发锁 | ✅ 已完成 | FOR UPDATE、JSONB 显式更新、审核查询与并发边界已切换 |
 | 5 | 迁移 Source/Binding/Attachment | ✅ 已完成 | 来源、绑定、附件和聚合查询已切换，公共接口保持不变 |
-| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | Backend、Security、Member Scope 已通过；已修复 UUID 写入与专项外键夹具，正在执行第五轮可信门禁 |
-| 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
+| 6 | PostgreSQL 专项测试和全量 CI | ✅ 已完成 | Backend、PostgreSQL Integration、Security、配置治理、Member Scope 与真实 Functional E2E 全部通过 |
+| 7 | 文档、Review 与 PR 收口 | ✅ 已完成 | 迁移清单、README、风险、回滚和最终验收已同步；待正式 Review/合并 |
 
 ## 已处理问题
 
@@ -42,6 +42,6 @@
 
 ## 恢复检查点
 
-- 当前阶段：应用启动、Backend CI、Security 和 Member Scope 已通过；第五轮验证 UUID 写入、成员 Nullable 外键、审核锁竞争、JSONB 回滚和来源证据聚合。
-- 当前可信 Head：本看板提交形成正常仓库身份 Head，以其全量 CI 为准。
-- 下一步最小任务：读取第五轮 PostgreSQL Integration 结果；通过后进入真实 Functional Playwright 与 PR 收口。
+- 当前阶段：实现、专项测试、全量门禁与文档均已完成，PR 可进入正式 Review。
+- 最终验证：Backend CI、PostgreSQL Integration、Security、Backend Configuration Governance、Member Branch Scope E2E、Functional E2E 全部成功。
+- 下一步最小任务：核对最终 Head 的 Review Thread 与合并状态，标记 Ready for Review 并合入 `main`。
