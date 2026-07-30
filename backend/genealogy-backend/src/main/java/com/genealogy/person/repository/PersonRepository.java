@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.genealogy.common.persistence.PageQuery;
 import com.genealogy.common.persistence.PageResult;
-import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.dto.PersonSearchQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.mybatis.PersonPersistenceMapper;
@@ -18,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -209,13 +209,33 @@ public class PersonRepository {
         return persistenceMapper.selectCount(Wrappers.emptyWrapper());
     }
 
-    public long countDuplicates(PersonDuplicateQuery query) {
-        return queryMapper.countDuplicates(PersonDuplicateCriteria.from(query));
+    public long countDuplicates(
+            Long clanId,
+            Long branchId,
+            String name,
+            Integer generationNo,
+            String generationWord,
+            LocalDate birthDate
+    ) {
+        return queryMapper.countDuplicates(PersonDuplicateCriteria.of(
+                clanId, branchId, name, generationNo, generationWord, birthDate
+        ));
     }
 
-    public List<PersonEntity> findDuplicateCandidates(PersonDuplicateQuery query) {
-        PersonDuplicateCriteria criteria = PersonDuplicateCriteria.from(query);
-        return List.copyOf(queryMapper.findDuplicateCandidates(criteria, query.candidateLimit()));
+    public List<PersonEntity> findDuplicateCandidates(
+            Long clanId,
+            Long branchId,
+            String name,
+            Integer generationNo,
+            String generationWord,
+            LocalDate birthDate,
+            int candidateLimit
+    ) {
+        PersonDuplicateCriteria criteria = PersonDuplicateCriteria.of(
+                clanId, branchId, name, generationNo, generationWord, birthDate
+        );
+        int boundedLimit = Math.max(1, Math.min(candidateLimit, 50));
+        return List.copyOf(queryMapper.findDuplicateCandidates(criteria, boundedLimit));
     }
 
     public PersonDashboardData loadDashboardData(
