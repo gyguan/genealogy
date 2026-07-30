@@ -3,6 +3,7 @@ package com.genealogy.generation.repository;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import org.springframework.stereotype.Repository;
 
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -24,7 +25,7 @@ public class GenerationSchemeRepository {
 
     public Optional<GenerationSchemeEntity> findByIdAndClanId(Long id, Long clanId) {
         return delegate.findById(id)
-                .filter(entity -> entity.getClanId().equals(clanId));
+                .filter(entity -> Objects.equals(entity.getClanId(), clanId));
     }
 
     public boolean existsById(Long id) {
