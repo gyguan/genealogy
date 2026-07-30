@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography
+  Alert, Button, Card, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, CultureSiteDetailResponse, CultureSiteSummaryResponse, CultureSiteType } from '../../shared/api/generated/culture-types';
@@ -25,7 +25,7 @@ import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
-import { StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback, EmptyState } from '../../shared/ui/Feedback';
 
@@ -296,17 +296,17 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
       </StandardQueryActions>}
     >
       <Form id="culture-site-query-form" form={searchForm} layout="vertical" onFinish={applySearch}>
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="siteType" label="场所类型"><CultureMultiSelect aria-label="场所类型" options={siteTypeOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branchOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col>
-        </Row>
-        {moreOpen ? <Row gutter={[16, 0]} id="culture-site-more-filters">
-          <Col xs={24} sm={12} lg={6}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="currentStatus" label="当前状态"><Input allowClear /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col>
-        </Row> : null}
+        <StandardQueryGrid>
+          <StandardQueryField label="宗族"><Form.Item noStyle><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="场所类型"><Form.Item name="siteType" noStyle><CultureMultiSelect aria-label="场所类型" options={siteTypeOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="支派"><Form.Item name="branchId" noStyle><CultureMultiSelect aria-label="支派" options={branchOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="关键词"><Form.Item name="keyword" noStyle><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters expanded={moreOpen} id="culture-site-more-filters">
+          <StandardQueryField label="地址"><Form.Item name="addressText" noStyle><Input allowClear /></Form.Item></StandardQueryField>
+          <StandardQueryField label="当前状态"><Form.Item name="currentStatus" noStyle><Input allowClear /></Form.Item></StandardQueryField>
+          <StandardQueryField label="状态"><Form.Item name="dataStatus" noStyle><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></StandardQueryField>
+        </StandardAdvancedFilters>
       </Form>
     </StandardQueryPanel>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="文化场所排序" className="culture-result-sort" value={search.sort} options={siteSortOptions} onChange={changeSort} />}>

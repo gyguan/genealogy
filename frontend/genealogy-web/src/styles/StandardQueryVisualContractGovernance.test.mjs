@@ -12,6 +12,10 @@ const standardsIndex = read('../../../../docs/standards/README.md');
 const personArchive = read('../features/persons/PersonArchiveSearchPage.tsx');
 const sourceLibrary = read('../features/sources/SourceLibraryQueryPage.tsx');
 const workbench = read('../features/workbench/EditingWorkspacePage.tsx');
+const cultureItem = read('../features/culture/CultureItemStandardTab.tsx');
+const cultureSite = read('../features/culture/CultureSiteStandardTab.tsx');
+const migrationEvent = read('../features/culture/MigrationEventStandardTab.tsx');
+const importCenter = read('../features/imports/ImportPage.tsx');
 
 test('Issue #1026 exposes one typed query panel field and advanced-filter contract', () => {
   for (const component of ['StandardQueryPanel', 'StandardQueryGrid', 'StandardQueryField', 'StandardAdvancedFilters']) {
@@ -93,4 +97,23 @@ test('Issue #1027 migrates person source and workbench to the shared query contr
   assert.doesNotMatch(workbench, /<Col[^>]+xl=\{(4|8)\}/);
   assert.doesNotMatch(workbench, /<Collapse\b/);
   assert.match(workbench, /<StandardQueryField label="创建时间"><DatePicker\.RangePicker/);
+});
+
+test('Issue #1029 migrates culture and import queries to the shared visual contract', () => {
+  for (const [name, source] of [
+    ['文化资料', cultureItem],
+    ['文化场所', cultureSite],
+    ['迁徙脉络', migrationEvent]
+  ]) {
+    assert.match(source, /<StandardQueryGrid>/, `${name} must use the standard four-column grid`);
+    assert.match(source, /<StandardAdvancedFilters expanded=\{moreOpen\}/, `${name} must keep advanced filters in the shared region`);
+    assert.match(source, /StandardQueryField label="宗族"/, `${name} must use standard field sizing`);
+    assert.doesNotMatch(source, /<Row gutter=|<Col\b/, `${name} must not retain a page-specific query grid`);
+  }
+
+  assert.match(importCenter, /<StandardQueryPanel className="import-query-card"/);
+  assert.match(importCenter, /<StandardQueryGrid>/);
+  assert.match(importCenter, /StandardQueryField label="任务创建时间"/);
+  assert.doesNotMatch(importCenter, /<Row gutter=|<Col\b|SearchOutlined/);
+  assert.doesNotMatch(importCenter, /data-query-action="submit"[^>]*type="primary"/);
 });
