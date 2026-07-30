@@ -33,7 +33,7 @@ jobs:
         run: node scripts/uat/validate-uat-pack.mjs
       - name: Verify signoff is not fabricated
         run: |
-          grep -q '自动化账号、开发人员或 AI 不得代签' docs/testing/uat/issue-874-signoff-template.md
+          grep -q '自动化账号、开发人员或 AI 不得代签' docs/testing/uat/signoff-template.md
           jq -e '.readyForBusinessUat == true and .automatedSignoff == false and .roles == 5 and .p0Tasks >= 8' uat-results/uat-readiness.json
       - name: Upload UAT readiness evidence
         uses: actions/upload-artifact@v4
