@@ -1,11 +1,3 @@
 package com.genealogy.member.repository;
-
-import com.genealogy.member.entity.PermissionEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface PermissionRepository extends JpaRepository<PermissionEntity, Long> {
-
-    Optional<PermissionEntity> findByPermissionCode(String permissionCode);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.member.entity.PermissionEntity; import com.genealogy.member.repository.mybatis.PermissionPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class PermissionRepository { private final PermissionPersistenceMapper mapper; public PermissionRepository(PermissionPersistenceMapper mapper){this.mapper=mapper;} @Transactional public PermissionEntity save(PermissionEntity e){if(e.getId()==null)mapper.insert(e);else mapper.updateAllById(e);return e;} public Optional<PermissionEntity> findByPermissionCode(String code){return Optional.ofNullable(mapper.selectOne(Wrappers.<PermissionEntity>lambdaQuery().eq(PermissionEntity::getPermissionCode,code)));} public Optional<PermissionEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public List<PermissionEntity> findAll(){return mapper.selectList(Wrappers.<PermissionEntity>lambdaQuery().orderByAsc(PermissionEntity::getId));} }

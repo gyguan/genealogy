@@ -34,20 +34,12 @@ import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceAttachmentRepository;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +78,6 @@ public class SourceApplicationService {
     private static final Set<String> CONFIDENCE_LEVELS = Set.of("high", "medium", "low", CONFIDENCE_UNKNOWN);
     private static final Set<String> PRIVACY_LEVELS = Set.of("public", PRIVACY_CLAN_ONLY, "branch_only", "relatives_only", "private", "sealed");
     private static final Set<String> SENSITIVE_LEVELS = Set.of(SENSITIVE_NORMAL, "sensitive", "highly_sensitive");
-    private static final Set<String> SORT_FIELDS = Set.of("id", "sourceName", "sourceType", "verificationStatus", "privacyLevel", "createdAt", "updatedAt");
 
     private final SourceRepository sourceRepository;
     private final SourceBindingRepository sourceBindingRepository;
@@ -196,8 +187,7 @@ public class SourceApplicationService {
             authorizationApplicationService.requirePermission(clanId, actorId, SOURCE_VIEW);
         }
         SourceSearchCriteria normalizedCriteria = normalizeSearchCriteria(criteria);
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize, resolveSort(normalizedCriteria.sort()));
-        Page<SourceResponse> page = sourceRepository.findAll(buildSourceSearchSpec(clanId, normalizedCriteria), pageRequest).map(this::toResponse);
+        Page<SourceResponse> page = sourceRepository.search(clanId, normalizedCriteria, pageNo, pageSize).map(this::toResponse);
         return PageResponse.of(page.getContent(), page.getTotalElements(), pageNo, pageSize);
     }
 
@@ -290,73 +280,6 @@ public class SourceApplicationService {
                 .filter(binding -> clanId.equals(binding.getClanId()))
                 .map(this::toBindingResponse)
                 .toList();
-    }
-
-    private Specification<SourceEntity> buildSourceSearchSpec(Long clanId, SourceSearchCriteria criteria) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("clanId"), clanId));
-
-            if (criteria.keyword() != null) {
-                String pattern = "%" + criteria.keyword().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.or(
-                        likeIgnoreCase(cb, root, "sourceName", pattern),
-                        likeIgnoreCase(cb, root, "providerName", pattern),
-                        likeIgnoreCase(cb, root, "bookTitle", pattern),
-                        likeIgnoreCase(cb, root, "volumeNo", pattern),
-                        likeIgnoreCase(cb, root, "pageNo", pattern),
-                        likeIgnoreCase(cb, root, "excerpt", pattern),
-                        likeIgnoreCase(cb, root, "description", pattern)
-                ));
-            }
-            if (criteria.sourceType() != null) {
-                predicates.add(cb.equal(root.get("sourceType"), criteria.sourceType()));
-            }
-            if (criteria.verificationStatus() != null) {
-                predicates.add(cb.equal(root.get("verificationStatus"), criteria.verificationStatus()));
-            }
-            if (criteria.privacyLevel() != null) {
-                predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
-            }
-            if (criteria.targetType() != null) {
-                predicates.add(cb.exists(sourceBindingExists(root, query, cb, criteria.targetType())));
-            }
-            if (criteria.hasAttachment() != null) {
-                Predicate exists = cb.exists(sourceAttachmentExists(root, query, cb));
-                predicates.add(criteria.hasAttachment() ? exists : cb.not(exists));
-            }
-            if (criteria.hasBinding() != null) {
-                Predicate exists = cb.exists(sourceBindingExists(root, query, cb, null));
-                predicates.add(criteria.hasBinding() ? exists : cb.not(exists));
-            }
-            return cb.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
-    private Predicate likeIgnoreCase(CriteriaBuilder cb, Root<SourceEntity> root, String field, String pattern) {
-        return cb.like(cb.lower(root.get(field)), pattern);
-    }
-
-    private Subquery<Long> sourceBindingExists(Root<SourceEntity> root, CriteriaQuery<?> query, CriteriaBuilder cb, String targetType) {
-        Subquery<Long> subquery = query.subquery(Long.class);
-        Root<SourceBindingEntity> binding = subquery.from(SourceBindingEntity.class);
-        List<Predicate> predicates = new ArrayList<>();
-        predicates.add(cb.equal(binding.get("sourceId"), root.get("id")));
-        if (targetType != null) {
-            predicates.add(cb.equal(binding.get("targetType"), targetType));
-        }
-        subquery.select(binding.get("id")).where(predicates.toArray(Predicate[]::new));
-        return subquery;
-    }
-
-    private Subquery<Long> sourceAttachmentExists(Root<SourceEntity> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
-        Subquery<Long> subquery = query.subquery(Long.class);
-        Root<SourceAttachmentEntity> attachment = subquery.from(SourceAttachmentEntity.class);
-        subquery.select(attachment.get("id")).where(
-                cb.equal(attachment.get("sourceId"), root.get("id")),
-                cb.isNull(attachment.get("deletedAt"))
-        );
-        return subquery;
     }
 
     private SourceEntity getEntity(Long id) {
@@ -515,16 +438,6 @@ public class SourceApplicationService {
             return defaultValue;
         }
         return value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private Sort resolveSort(String sort) {
-        if (sort == null) {
-            return Sort.by(Sort.Direction.DESC, "updatedAt");
-        }
-        String[] parts = sort.split(",", 2);
-        String field = SORT_FIELDS.contains(parts[0]) ? parts[0] : "updatedAt";
-        Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1]) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        return Sort.by(direction, field);
     }
 
     private SourceDetailResponse toDetailResponse(SourceEntity entity, Long actorId) {

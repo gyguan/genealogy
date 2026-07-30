@@ -14,17 +14,15 @@ import com.genealogy.member.repository.ClanMembershipRepository;
 import com.genealogy.member.repository.MemberRoleRepository;
 import com.genealogy.member.repository.RoleRepository;
 import com.genealogy.operationlog.entity.OperationLogEntity;
-import com.genealogy.operationlog.repository.OperationLogRepository;
-import jakarta.persistence.criteria.Predicate;
+import com.genealogy.operationlog.repository.OperationLogMemberAuditQueryRepository;
+import com.genealogy.operationlog.repository.query.OperationLogMemberAuditCriteria;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -46,7 +44,7 @@ public class MemberPermissionAuditApplicationService {
             "member_status_update"
     );
 
-    private final OperationLogRepository operationLogRepository;
+    private final OperationLogMemberAuditQueryRepository operationLogRepository;
     private final ClanMembershipRepository clanMembershipRepository;
     private final MemberRoleRepository memberRoleRepository;
     private final RoleRepository roleRepository;
@@ -54,7 +52,7 @@ public class MemberPermissionAuditApplicationService {
     private final MemberGrantPolicyService memberGrantPolicyService;
 
     public MemberPermissionAuditApplicationService(
-            OperationLogRepository operationLogRepository,
+            OperationLogMemberAuditQueryRepository operationLogRepository,
             ClanMembershipRepository clanMembershipRepository,
             MemberRoleRepository memberRoleRepository,
             RoleRepository roleRepository,
@@ -96,8 +94,18 @@ public class MemberPermissionAuditApplicationService {
                 normalizedPageSize,
                 Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        Page<OperationLogEntity> page = operationLogRepository.findAll(
-                buildSpecification(clanId, filterActorId, normalizedAction, startTime, endTime, targetFilter),
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                new OperationLogMemberAuditCriteria(
+                        clanId,
+                        filterActorId,
+                        normalizedAction,
+                        startTime,
+                        endTime,
+                        targetFilter.membershipId(),
+                        List.copyOf(targetFilter.grantIds()),
+                        targetFilter.includeMembershipLogs(),
+                        targetFilter.unrestricted()
+                ),
                 pageable
         );
         List<MemberPermissionAuditResponse> records = toResponses(clanId, page.getContent());
@@ -164,65 +172,6 @@ public class MemberPermissionAuditApplicationService {
         return clanMembershipRepository.findById(membershipId)
                 .filter(membership -> clanId.equals(membership.getClanId()))
                 .orElseThrow(() -> new BusinessException("MEMBER_NOT_FOUND", "宗族成员不存在"));
-    }
-
-    private Specification<OperationLogEntity> buildSpecification(
-            Long clanId,
-            Long filterActorId,
-            String actionType,
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            AuditTargetFilter targetFilter
-    ) {
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            predicates.add(root.get("actionType").in(ACTION_TYPES));
-            if (filterActorId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("actorId"), filterActorId));
-            }
-            if (actionType != null) {
-                predicates.add(criteriaBuilder.equal(root.get("actionType"), actionType));
-            }
-            if (startTime != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
-            }
-            if (endTime != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
-            }
-            predicates.add(targetPredicate(criteriaBuilder, root.<String>get("targetType"), root.<Long>get("targetId"), targetFilter));
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
-    }
-
-    private Predicate targetPredicate(
-            jakarta.persistence.criteria.CriteriaBuilder criteriaBuilder,
-            jakarta.persistence.criteria.Path<String> targetType,
-            jakarta.persistence.criteria.Path<Long> targetId,
-            AuditTargetFilter filter
-    ) {
-        if (filter.unrestricted()) {
-            return targetType.in(List.of(TARGET_MEMBERSHIP, TARGET_GRANT));
-        }
-        List<Predicate> targets = new ArrayList<>();
-        if (filter.includeMembershipLogs() && filter.membershipId() != null) {
-            targets.add(criteriaBuilder.and(
-                    criteriaBuilder.equal(targetType, TARGET_MEMBERSHIP),
-                    criteriaBuilder.equal(targetId, filter.membershipId())
-            ));
-        }
-        if (!filter.grantIds().isEmpty()) {
-            targets.add(criteriaBuilder.and(
-                    criteriaBuilder.equal(targetType, TARGET_GRANT),
-                    targetId.in(filter.grantIds())
-            ));
-        }
-        if (targets.isEmpty()) {
-            return criteriaBuilder.disjunction();
-        }
-        return targets.size() == 1
-                ? targets.get(0)
-                : criteriaBuilder.or(targets.toArray(new Predicate[0]));
     }
 
     private List<MemberPermissionAuditResponse> toResponses(Long clanId, List<OperationLogEntity> logs) {

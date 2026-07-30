@@ -1,0 +1,14 @@
+package com.genealogy.member.repository.mybatis;
+
+import com.genealogy.member.entity.ClanMembershipEntity;
+import com.genealogy.member.repository.query.ClanMembershipSearchCriteria;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+@Mapper
+public interface ClanMembershipQueryMapper {
+    List<ClanMembershipEntity> search(@Param("criteria") ClanMembershipSearchCriteria criteria, @Param("offset") long offset, @Param("limit") int limit);
+    long count(@Param("criteria") ClanMembershipSearchCriteria criteria);
+}

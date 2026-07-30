@@ -1,18 +1,3 @@
 package com.genealogy.source.attachment.repository;
-
-import com.genealogy.source.attachment.entity.LegacySourceAttachmentEntity;
-import org.springframework.context.annotation.Profile;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
-
-@Profile("legacy-source-attachment")
-@Repository("legacySourceAttachmentRepository")
-public interface LegacySourceAttachmentRepository extends JpaRepository<LegacySourceAttachmentEntity, Long> {
-
-    List<LegacySourceAttachmentEntity> findBySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long sourceId);
-
-    Optional<LegacySourceAttachmentEntity> findByIdAndDeletedAtIsNull(Long id);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.source.attachment.entity.LegacySourceAttachmentEntity; import com.genealogy.source.attachment.repository.mybatis.LegacySourceAttachmentPersistenceMapper; import org.springframework.context.annotation.Profile; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Profile("legacy-source-attachment") @Repository("legacySourceAttachmentRepository") @Transactional(readOnly=true) public class LegacySourceAttachmentRepository { private final LegacySourceAttachmentPersistenceMapper mapper; public LegacySourceAttachmentRepository(LegacySourceAttachmentPersistenceMapper mapper){this.mapper=mapper;} @Transactional public LegacySourceAttachmentEntity save(LegacySourceAttachmentEntity e){if(e.getId()==null)mapper.insert(e);else mapper.updateAllById(e);return e;} public List<LegacySourceAttachmentEntity> findBySourceIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long id){return mapper.selectList(Wrappers.<LegacySourceAttachmentEntity>lambdaQuery().eq(LegacySourceAttachmentEntity::getSourceId,id).isNull(LegacySourceAttachmentEntity::getDeletedAt).orderByDesc(LegacySourceAttachmentEntity::getCreatedAt).orderByDesc(LegacySourceAttachmentEntity::getId));} public Optional<LegacySourceAttachmentEntity> findByIdAndDeletedAtIsNull(Long id){return Optional.ofNullable(mapper.selectOne(Wrappers.<LegacySourceAttachmentEntity>lambdaQuery().eq(LegacySourceAttachmentEntity::getId,id).isNull(LegacySourceAttachmentEntity::getDeletedAt)));} }

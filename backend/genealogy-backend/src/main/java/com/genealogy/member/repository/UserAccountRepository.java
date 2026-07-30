@@ -1,7 +1,3 @@
 package com.genealogy.member.repository;
-
-import com.genealogy.member.entity.UserAccountEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface UserAccountRepository extends JpaRepository<UserAccountEntity, Long> {
-}
+import com.genealogy.member.entity.UserAccountEntity; import com.genealogy.member.repository.mybatis.UserAccountPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class UserAccountRepository { private final UserAccountPersistenceMapper mapper; public UserAccountRepository(UserAccountPersistenceMapper mapper){this.mapper=mapper;} @Transactional public UserAccountEntity save(UserAccountEntity e){if(e.getId()==null)mapper.insert(e);else mapper.updateAllById(e);return e;} public Optional<UserAccountEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} }

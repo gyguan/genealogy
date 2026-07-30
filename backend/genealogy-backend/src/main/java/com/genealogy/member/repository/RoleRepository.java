@@ -1,11 +1,3 @@
 package com.genealogy.member.repository;
-
-import com.genealogy.member.entity.RoleEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Optional;
-
-public interface RoleRepository extends JpaRepository<RoleEntity, Long> {
-
-    Optional<RoleEntity> findByRoleCode(String roleCode);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.member.entity.RoleEntity; import com.genealogy.member.repository.mybatis.RolePersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class RoleRepository { private final RolePersistenceMapper mapper; public RoleRepository(RolePersistenceMapper mapper){this.mapper=mapper;} @Transactional public RoleEntity save(RoleEntity e){if(e.getId()==null)mapper.insert(e);else if(mapper.updateAllById(e)!=1)throw new IllegalStateException("Role update expected one row");return e;} public Optional<RoleEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public Optional<RoleEntity> findByRoleCode(String code){return Optional.ofNullable(mapper.selectOne(Wrappers.<RoleEntity>lambdaQuery().eq(RoleEntity::getRoleCode,code)));} public List<RoleEntity> findAll(){return mapper.selectList(Wrappers.<RoleEntity>lambdaQuery().orderByAsc(RoleEntity::getId));} public List<RoleEntity> findAllById(Iterable<Long> ids){List<Long>v=new ArrayList<>();if(ids!=null)ids.forEach(v::add);return v.isEmpty()?List.of():mapper.selectBatchIds(v);} public boolean existsById(Long id){return id!=null&&mapper.selectById(id)!=null;} }

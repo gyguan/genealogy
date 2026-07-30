@@ -1,11 +1,3 @@
 package com.genealogy.source.repository;
-
-import com.genealogy.source.entity.AttachmentEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
-
-public interface AttachmentRepository extends JpaRepository<AttachmentEntity, Long> {
-
-    List<AttachmentEntity> findBySourceIdOrderByUploadedAtDesc(Long sourceId);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.source.entity.AttachmentEntity; import com.genealogy.source.repository.mybatis.AttachmentPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class AttachmentRepository { private final AttachmentPersistenceMapper mapper; public AttachmentRepository(AttachmentPersistenceMapper mapper){this.mapper=mapper;} @Transactional public AttachmentEntity save(AttachmentEntity e){if(e.getId()==null)mapper.insert(e);else mapper.updateAllById(e);return e;} public Optional<AttachmentEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public List<AttachmentEntity> findBySourceIdOrderByUploadedAtDesc(Long sourceId){return mapper.selectList(Wrappers.<AttachmentEntity>lambdaQuery().eq(AttachmentEntity::getSourceId,sourceId).orderByDesc(AttachmentEntity::getUploadedAt).orderByDesc(AttachmentEntity::getId));} }

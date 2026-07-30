@@ -1,18 +1,3 @@
 package com.genealogy.review.repository;
-
-import com.genealogy.review.entity.ReviewQualityCheckEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-public interface ReviewQualityCheckRepository extends JpaRepository<ReviewQualityCheckEntity, UUID> {
-
-    Optional<ReviewQualityCheckEntity> findByIdAndClanId(UUID id, Long clanId);
-
-    boolean existsByClanIdAndScopeFingerprintAndStatusIn(Long clanId, String scopeFingerprint, Collection<String> statuses);
-
-    List<ReviewQualityCheckEntity> findByClanIdOrderByQueuedAtDesc(Long clanId);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.review.entity.ReviewQualityCheckEntity; import com.genealogy.review.repository.mybatis.ReviewQualityCheckPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class ReviewQualityCheckRepository { private final ReviewQualityCheckPersistenceMapper mapper; public ReviewQualityCheckRepository(ReviewQualityCheckPersistenceMapper mapper){this.mapper=mapper;} @Transactional public ReviewQualityCheckEntity save(ReviewQualityCheckEntity e){if(e.getId()==null)throw new IllegalArgumentException("Review quality check id is required");if(mapper.selectById(e.getId())==null)mapper.insert(e);else if(mapper.updateAllById(e)!=1)throw new IllegalStateException("Quality check update expected one row");return e;} public Optional<ReviewQualityCheckEntity> findByIdAndClanId(UUID id,Long clanId){return Optional.ofNullable(mapper.selectOne(Wrappers.<ReviewQualityCheckEntity>lambdaQuery().eq(ReviewQualityCheckEntity::getId,id).eq(ReviewQualityCheckEntity::getClanId,clanId)));} public boolean existsByClanIdAndScopeFingerprintAndStatusIn(Long clanId,String fingerprint,Collection<String> statuses){if(statuses==null||statuses.isEmpty())return false;return mapper.selectCount(Wrappers.<ReviewQualityCheckEntity>lambdaQuery().eq(ReviewQualityCheckEntity::getClanId,clanId).eq(ReviewQualityCheckEntity::getScopeFingerprint,fingerprint).in(ReviewQualityCheckEntity::getStatus,statuses))>0;} public List<ReviewQualityCheckEntity> findByClanIdOrderByQueuedAtDesc(Long clanId){return mapper.selectList(Wrappers.<ReviewQualityCheckEntity>lambdaQuery().eq(ReviewQualityCheckEntity::getClanId,clanId).orderByDesc(ReviewQualityCheckEntity::getQueuedAt).orderByDesc(ReviewQualityCheckEntity::getId));} }
