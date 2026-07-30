@@ -25,7 +25,6 @@ import {
   AimOutlined,
   BranchesOutlined,
   MoreOutlined,
-  SearchOutlined,
   UserOutlined
 } from '@ant-design/icons';
 import type {
@@ -85,6 +84,7 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
 import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
 type NavigateTarget = 'personArchive' | 'sourceLibrary' | 'reviewCenter' | 'editingWorkspace';
 type Props = {
@@ -699,108 +699,92 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
   const branchOptions = branches.map(branch => ({ value: text(branch.id), label: branch.branchName || '未命名支派' }));
 
   const personQueryForm = (
-    <div className="lineage-tab-query-form lineage-tab-query-form--person">
-      <div className="lineage-tab-query-grid">
-        <Field label="宗族">{clanSelect}</Field>
-        <Field label="支派">
-          <Select
-            aria-label="人物中心支派"
-            showSearch
-            allowClear
-            optionFilterProp="label"
-            disabled={!workspace.clanId || loadState.clan.loading}
-            value={personDraft.branchId || undefined}
-            placeholder="请选择支派"
-            options={branchOptions}
-            onChange={value => void handlePersonBranchChange(value || '')}
-          />
-        </Field>
-        <Field label="中心人物" hint="仅影响人物中心图谱">
-          <Select
-            aria-label="切换中心人物"
-            showSearch
-            value={personDraft.personId || undefined}
-            searchValue={personSearchInput}
-            placeholder="输入姓名、谱名或字号"
-            filterOption={false}
-            loading={loadState.search.loading}
-            options={personOptions}
-            onSearch={value => void handlePersonSearch(value)}
-            onChange={value => {
-              const item = searchPage.records.find(record => record.id === value);
-              setPersonDraft(previous => ({ ...previous, personId: value }));
-              setPersonSearchInput(item?.name || (center?.id === value ? center.name : ''));
-            }}
-            notFoundContent={loadState.search.error || (personSearchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
-          />
-        </Field>
-        <Field label="关系范围" hint={!personDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
-          <RelationScopeSelect value={personDraft.relationScopes} onChange={value => setPersonDraft(previous => ({ ...previous, relationScopes: value }))} />
-        </Field>
-        <Field label="展开深度" hint="默认 1 代，最多 3 代">
-          <Select
-            aria-label="人物中心展开深度"
-            value={personDraft.depth}
-            options={PERSON_DEPTH_OPTIONS}
-            onChange={value => setPersonDraft(previous => ({ ...previous, depth: value }))}
-          />
-        </Field>
-      </div>
-      <div className="lineage-tab-query-actions">
-        <StandardQueryActions>
-<Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
-<Button data-query-action="submit" type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyPersonQuery()}>查询</Button>
-</StandardQueryActions>
-      </div>
-    </div>
+    <StandardQueryGrid>
+      <StandardQueryField label="宗族">{clanSelect}</StandardQueryField>
+      <StandardQueryField label="支派">
+        <Select
+aria-label="人物中心支派"
+showSearch
+allowClear
+optionFilterProp="label"
+disabled={!workspace.clanId || loadState.clan.loading}
+value={personDraft.branchId || undefined}
+placeholder="请选择支派"
+options={branchOptions}
+onChange={value => void handlePersonBranchChange(value || '')}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="中心人物" hint="仅影响人物中心图谱">
+        <Select
+aria-label="切换中心人物"
+showSearch
+value={personDraft.personId || undefined}
+searchValue={personSearchInput}
+placeholder="输入姓名、谱名或字号"
+filterOption={false}
+loading={loadState.search.loading}
+options={personOptions}
+onSearch={value => void handlePersonSearch(value)}
+onChange={value => {
+  const item = searchPage.records.find(record => record.id === value);
+  setPersonDraft(previous => ({ ...previous, personId: value }));
+  setPersonSearchInput(item?.name || (center?.id === value ? center.name : ''));
+}}
+notFoundContent={loadState.search.error || (personSearchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="关系范围" hint={!personDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+        <RelationScopeSelect value={personDraft.relationScopes} onChange={value => setPersonDraft(previous => ({ ...previous, relationScopes: value }))} />
+      </StandardQueryField>
+      <StandardQueryField label="展开深度" hint="默认 1 代，最多 3 代">
+        <Select
+aria-label="人物中心展开深度"
+value={personDraft.depth}
+options={PERSON_DEPTH_OPTIONS}
+onChange={value => setPersonDraft(previous => ({ ...previous, depth: value }))}
+        />
+      </StandardQueryField>
+    </StandardQueryGrid>
   );
 
   const branchQueryForm = (
-    <div className="lineage-tab-query-form lineage-tab-query-form--branch">
-      <div className="lineage-tab-query-grid">
-        <Field label="宗族">{clanSelect}</Field>
-        <Field label="支派">
-          <Select
-            aria-label="支派全局支派"
-            showSearch
-            allowClear
-            optionFilterProp="label"
-            disabled={!workspace.clanId || loadState.clan.loading}
-            value={branchDraft.branchId || undefined}
-            placeholder="请选择支派"
-            options={branchOptions}
-            onChange={value => setBranchDraft(previous => ({ ...previous, branchId: value || '' }))}
-          />
-        </Field>
-        <Field label="关系范围" hint={!branchDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
-          <RelationScopeSelect value={branchDraft.relationScopes} onChange={value => setBranchDraft(previous => ({ ...previous, relationScopes: value }))} />
-        </Field>
-        <Field label="展开深度">
-          <Select
-            aria-label="支派全局展开深度"
-            value={branchDraft.depth}
-            options={BRANCH_DEPTH_OPTIONS}
-            onChange={value => setBranchDraft(previous => ({ ...previous, depth: value }))}
-          />
-        </Field>
-        <Field label="包含下级支派">
-          <div className="lineage-tab-switch-field">
-            <Switch
-              aria-label="包含下级支派"
-              checked={branchDraft.includeSubBranches}
-              onChange={value => setBranchDraft(previous => ({ ...previous, includeSubBranches: value }))}
-            />
-            <Typography.Text type="secondary">{branchDraft.includeSubBranches ? '包含' : '仅当前支派'}</Typography.Text>
-          </div>
-        </Field>
-      </div>
-      <div className="lineage-tab-query-actions">
-        <StandardQueryActions>
-<Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
-<Button data-query-action="submit" type="primary" icon={<SearchOutlined />} loading={activeLoading} disabled={activeDisabled} onClick={() => void applyBranchQuery()}>查询</Button>
-</StandardQueryActions>
-      </div>
-    </div>
+    <StandardQueryGrid>
+      <StandardQueryField label="宗族">{clanSelect}</StandardQueryField>
+      <StandardQueryField label="支派">
+        <Select
+aria-label="支派全局支派"
+showSearch
+allowClear
+optionFilterProp="label"
+disabled={!workspace.clanId || loadState.clan.loading}
+value={branchDraft.branchId || undefined}
+placeholder="请选择支派"
+options={branchOptions}
+onChange={value => setBranchDraft(previous => ({ ...previous, branchId: value || '' }))}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="关系范围" hint={!branchDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+        <RelationScopeSelect value={branchDraft.relationScopes} onChange={value => setBranchDraft(previous => ({ ...previous, relationScopes: value }))} />
+      </StandardQueryField>
+      <StandardQueryField label="展开深度">
+        <Select
+aria-label="支派全局展开深度"
+value={branchDraft.depth}
+options={BRANCH_DEPTH_OPTIONS}
+onChange={value => setBranchDraft(previous => ({ ...previous, depth: value }))}
+        />
+      </StandardQueryField>
+      <StandardQueryField label="包含下级支派">
+        <div className="lineage-tab-switch-field">
+<Switch
+  aria-label="包含下级支派"
+  checked={branchDraft.includeSubBranches}
+  onChange={value => setBranchDraft(previous => ({ ...previous, includeSubBranches: value }))}
+/>
+<Typography.Text type="secondary">{branchDraft.includeSubBranches ? '包含' : '仅当前支派'}</Typography.Text>
+        </div>
+      </StandardQueryField>
+    </StandardQueryGrid>
   );
 
   const resultMeta = (
@@ -832,26 +816,37 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
 
   return (
     <div className="lineage-page lineage-tree-page lineage-tabbed-page">
-      <Card className="lineage-tabbed-query-card" title="世系图谱" size="small">
+      <StandardQueryPanel
+        className="lineage-tabbed-query-card"
+        size="small"
+        tabs={(
+<Tabs
+  className="lineage-query-tabs"
+  activeKey={mode}
+  onChange={value => void handleModeChange(value)}
+  items={[
+    { key: 'person', label: <Space size={6}><UserOutlined />人物中心图谱</Space>, children: personQueryForm },
+    { key: 'branch', label: <Space size={6}><BranchesOutlined />支派全局图谱</Space>, children: branchQueryForm }
+  ]}
+/>
+        )}
+        actions={(
+<StandardQueryActions>
+  <Button data-query-action="reset" onClick={resetCurrentQuery}>重置</Button>
+  <Button data-query-action="submit" loading={activeLoading} disabled={activeDisabled} onClick={() => mode === 'person' ? void applyPersonQuery() : void applyBranchQuery()}>查询</Button>
+</StandardQueryActions>
+        )}
+      >
         {loadState.clan.error ? <PageFeedback tone="error" title={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
-        <Tabs
-          className="lineage-query-tabs"
-          activeKey={mode}
-          onChange={value => void handleModeChange(value)}
-          items={[
-            { key: 'person', label: <Space size={6}><UserOutlined />人物中心图谱</Space>, children: personQueryForm },
-            { key: 'branch', label: <Space size={6}><BranchesOutlined />支派全局图谱</Space>, children: branchQueryForm }
-          ]}
-        />
         <div className="lineage-tab-query-note">
-          <Typography.Text type="secondary">
-            {mode === 'person'
-              ? '以中心人物为核心，按 1～3 代深度展示相关亲属；查询只刷新人物中心图谱。'
-              : '按支派范围和展开深度浏览整体世系结构；不受中心人物影响。'}
-          </Typography.Text>
-          {activeDirty ? <InlineFeedback tone="warning" title={<>查询条件已调整，点击“查询”后刷新当前 TAB 结果。</>} /> : null}
+<Typography.Text type="secondary">
+  {mode === 'person'
+    ? '以中心人物为核心，按 1～3 代深度展示相关亲属；查询只刷新人物中心图谱。'
+    : '按支派范围和展开深度浏览整体世系结构；不受中心人物影响。'}
+</Typography.Text>
+{activeDirty ? <InlineFeedback tone="warning" title={<>查询条件已调整，点击“查询”后刷新当前 TAB 结果。</>} /> : null}
         </div>
-      </Card>
+      </StandardQueryPanel>
 
       <QueryResultCard
         className="lineage-tabbed-result-card"

@@ -22,11 +22,11 @@ function between(source, start, end) {
 }
 
 test('lineage page uses standard query and result components with feature-owned layout', () => {
-  assert.match(pageSource, /<Card className="lineage-tabbed-query-card" title="世系图谱"/);
+  assert.match(pageSource, /<StandardQueryPanel[\s\S]*className="lineage-tabbed-query-card"/);
   assert.match(pageSource, /<QueryResultCard[\s\S]*className="lineage-tabbed-result-card"/);
   assert.match(pageSource, /className="lineage-query-tabs"/);
   assert.match(pageCss, /\.lineage-tabbed-page\s*\{[\s\S]*?flex-direction:\s*column;/);
-  assert.match(pageCss, /\.lineage-tab-query-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,/);
+  assert.doesNotMatch(pageCss, /lineage-tab-query-grid|repeat\((3|5),/);
   assert.doesNotMatch(pageCss, /\.ant-|!important/);
 });
 
@@ -83,7 +83,7 @@ test('tree-specific wrapper owns only the graph locator portal lifecycle', () =>
 });
 
 test('center selector remains in the person tab while graph locator is portaled', () => {
-  assert.match(pageSource, /<Field label="中心人物" hint="仅影响人物中心图谱">/);
+  assert.match(pageSource, /<StandardQueryField label="中心人物" hint="仅影响人物中心图谱">/);
   assert.match(pageSource, /aria-label="切换中心人物"/);
   assert.match(pageSource, /<Field label="图内定位">/);
   assert.match(pageSource, /aria-label="图内定位人物"/);
@@ -96,9 +96,7 @@ test('locator uses stable feature layout and no Ant internal selector dependency
 });
 
 test('narrow screens keep query actions and locator usable', () => {
-  assert.match(pageCss, /@media \(max-width: 1280px\)[\s\S]*?grid-template-columns:\s*repeat\(3,/);
-  assert.match(pageCss, /@media \(max-width: 900px\)[\s\S]*?grid-template-columns:\s*repeat\(2,/);
-  assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?grid-template-columns:\s*1fr;/);
+  assert.doesNotMatch(pageCss, /lineage-tab-query-grid|lineage-tab-query-actions/);
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?flex-direction:\s*column;/);
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?align-self:\s*stretch;/);
   assert.match(pageCss, /@media \(max-width: 767px\)[\s\S]*?margin-left:\s*0;/);
