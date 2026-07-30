@@ -75,7 +75,8 @@ function splitFirstPrimaryAction(node: ReactNode, promote: boolean): ActionSplit
     if (Children.toArray(children).length === 0) return null;
     return cloneElement(element, undefined, children);
   }
-  return { pageAction, resultActions: normalizeResultActions(visit(node)) };
+  const resultActions = normalizeResultActions(visit(node));
+  return { pageAction, resultActions };
 }
 
 function titleFromAction(action: ReactNode) {
