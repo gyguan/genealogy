@@ -23,6 +23,9 @@ test('Issue #1026 exposes one typed query panel field and advanced-filter contra
   assert.match(patterns, /data-query-field-role="field"/);
   assert.match(patterns, /data-query-advanced-role="filters"/);
   assert.match(patterns, /reserveHintSpace = true/);
+  assert.match(patterns, /hidden=\{!expanded\}/);
+  assert.match(patterns, /aria-hidden=\{!expanded\}/);
+  assert.doesNotMatch(patterns, /if \(!expanded\) return null/);
 });
 
 test('standard query grids retain the 4 to 2 to 1 responsive column contract', () => {
