@@ -13,9 +13,6 @@ on:
       - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -27,25 +24,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-      - name: Apply one-time Issue 1027 patch
-        if: github.event.pull_request.head.ref == 'agent/issue-1027-query-card-person-source-workbench'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python .github/scripts/issue-1027-patch.py
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git fetch origin main
-          git checkout origin/main -- .github/workflows/frontend-ci.yml
-          git rm .github/workflows/issue-1027-apply-patch.yml .github/scripts/issue-1027-patch.py
-          git add frontend/genealogy-web/src/features/persons/PersonArchiveSearchPage.tsx \
-                  frontend/genealogy-web/src/features/sources/SourceLibraryQueryPage.tsx \
-                  frontend/genealogy-web/src/features/workbench/EditingWorkspacePage.tsx
-          git commit -m "feat: migrate issue 1027 query cards"
-          git push origin HEAD:agent/issue-1027-query-card-person-source-workbench
+        with: { fetch-depth: 0 }
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
