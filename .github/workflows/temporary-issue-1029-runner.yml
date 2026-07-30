@@ -3,14 +3,14 @@ name: Temporary Issue 1029 Runner
 on:
   pull_request:
     branches: [main]
-    types: [synchronize, reopened]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   migrate:
-    if: github.event.pull_request.head.ref == 'agent/issue-1029-query-card-consistency-v2'
+    if: startsWith(github.event.pull_request.head.ref, 'agent/issue-1029-query-card-consistency')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +72,7 @@ if panel_count != 1:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/issue-1029-bootstrap.yml .github/workflows/issue-1029-fixup.yml tasks/issue-1029-trigger.md tasks/issue-1029-trigger-2.md tasks/issue-1029-v2-trigger.md
+          rm -f .github/workflows/issue-1029-bootstrap.yml .github/workflows/issue-1029-fixup.yml tasks/issue-1029-trigger.md tasks/issue-1029-trigger-2.md tasks/issue-1029-v2-trigger.md tasks/issue-1029-main-runner-trigger.md tasks/issue-1029-v2-trigger.md
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
