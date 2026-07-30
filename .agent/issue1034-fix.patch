@@ -1,0 +1,60 @@
+--- a/backend/genealogy-backend/src/test/java/com/genealogy/member/application/MemberPermissionAuditApplicationServiceTest.java
++++ b/backend/genealogy-backend/src/test/java/com/genealogy/member/application/MemberPermissionAuditApplicationServiceTest.java
+@@ -12,11 +12,10 @@
+ import com.genealogy.member.repository.MemberRoleRepository;
+ import com.genealogy.member.repository.RoleRepository;
+ import com.genealogy.operationlog.entity.OperationLogEntity;
+-import com.genealogy.operationlog.repository.OperationLogRepository;
++import com.genealogy.operationlog.repository.OperationLogMemberAuditQueryRepository;
+ import org.junit.jupiter.api.Test;
+ import org.springframework.data.domain.Page;
+ import org.springframework.data.domain.Pageable;
+-import org.springframework.data.jpa.domain.Specification;
+ 
+ import java.time.LocalDateTime;
+ import java.util.List;
+@@ -31,7 +30,7 @@
+ 
+ class MemberPermissionAuditApplicationServiceTest {
+ 
+-    private final OperationLogRepository operationLogRepository = mock(OperationLogRepository.class);
++    private final OperationLogMemberAuditQueryRepository operationLogRepository = mock(OperationLogMemberAuditQueryRepository.class);
+     private final ClanMembershipRepository clanMembershipRepository = mock(ClanMembershipRepository.class);
+     private final MemberRoleRepository memberRoleRepository = mock(MemberRoleRepository.class);
+     private final RoleRepository roleRepository = mock(RoleRepository.class);
+@@ -74,7 +73,7 @@
+         when(clanMembershipRepository.findById(20L)).thenReturn(Optional.of(membership));
+         when(memberRoleRepository.findByMembershipIdIn(List.of(20L))).thenReturn(List.of(grant));
+         when(policyService.canViewGrant(scope, MemberRoleScopeType.branch_subtree, 10L)).thenReturn(true);
+-        when(operationLogRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
++        when(operationLogRepository.search(any(), any(Pageable.class))).thenReturn(Page.empty());
+ 
+         var result = service.search(1L, 9L, 20L, null, null, null, null, null, 2, 25);
+ 
+--- a/backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceApplicationServiceTest.java
++++ b/backend/genealogy-backend/src/test/java/com/genealogy/source/application/SourceApplicationServiceTest.java
+@@ -35,7 +35,6 @@
+ import org.springframework.data.domain.PageImpl;
+ import org.springframework.data.domain.PageRequest;
+ import org.springframework.data.domain.Pageable;
+-import org.springframework.data.jpa.domain.Specification;
+ 
+ import java.time.LocalDateTime;
+ import java.util.List;
+@@ -44,6 +43,7 @@
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.when;
+ 
+ @ExtendWith(MockitoExtension.class)
+@@ -222,7 +222,7 @@
+         source.setUpdatedAt(LocalDateTime.now());
+ 
+         when(clanRepository.existsById(1L)).thenReturn(true);
+-        when(sourceRepository.findAll(any(Specification.class), any(Pageable.class)))
++        when(sourceRepository.search(eq(1L), any(SourceSearchCriteria.class), eq(1), eq(20)))
+                 .thenReturn(new PageImpl<>(List.of(source), PageRequest.of(0, 20), 1));
+         when(sourceBindingRepository.countBySourceId(10L)).thenReturn(3);
+         when(sourceAttachmentRepository.countBySourceIdAndDeletedAtIsNull(10L)).thenReturn(2);
