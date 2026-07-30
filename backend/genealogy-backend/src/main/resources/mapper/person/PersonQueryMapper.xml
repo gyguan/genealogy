@@ -133,12 +133,12 @@
 
     <resultMap id="DashboardSummaryMap" type="com.genealogy.person.repository.query.PersonDashboardSummary">
         <constructor>
-            <arg column="people_total" javaType="long"/>
-            <arg column="generation_maintained" javaType="long"/>
-            <arg column="vital_dates_maintained" javaType="long"/>
-            <arg column="biography_maintained" javaType="long"/>
-            <arg column="key_info_missing" javaType="long"/>
-            <arg column="covered_branches" javaType="long"/>
+            <arg column="people_total" javaType="_long"/>
+            <arg column="generation_maintained" javaType="_long"/>
+            <arg column="vital_dates_maintained" javaType="_long"/>
+            <arg column="biography_maintained" javaType="_long"/>
+            <arg column="key_info_missing" javaType="_long"/>
+            <arg column="covered_branches" javaType="_long"/>
         </constructor>
     </resultMap>
 
@@ -171,7 +171,7 @@
         <constructor>
             <arg column="dimension" javaType="java.lang.String"/>
             <arg column="bucket_key" javaType="java.lang.String"/>
-            <arg column="bucket_count" javaType="long"/>
+            <arg column="bucket_count" javaType="_long"/>
         </constructor>
     </resultMap>
 
@@ -218,7 +218,7 @@
     <resultMap id="DashboardDailyCountMap" type="com.genealogy.person.repository.query.PersonDashboardDailyCount">
         <constructor>
             <arg column="created_day" javaType="java.time.LocalDate"/>
-            <arg column="created_count" javaType="long"/>
+            <arg column="created_count" javaType="_long"/>
         </constructor>
     </resultMap>
 
