@@ -3,7 +3,7 @@ import {
   ArrowLeftOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, UploadOutlined
 } from '@ant-design/icons';
 import {
-  Alert, Button, Card, Col, Collapse, Descriptions, Drawer, Dropdown, Form, Grid, Input, List, Modal, Pagination, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography, Upload } from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Grid, Input, List, Modal, Pagination, Result, Row, Select, Space, Spin, Table, Tabs, Tag, Tooltip, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { TrackingLinkButton } from '../../shared/navigation/TrackingLinkButton';
@@ -41,6 +41,8 @@ import type {
 } from './sourceLibraryService';
 import './source-library-query-page.css';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
@@ -339,6 +341,10 @@ export function SourceLibraryQueryPage({}: Props) {
   const [lastRevision, setLastRevision] = useState<BindingRevisionResponse | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [sourceForm] = Form.useForm<SourceSearchFormValues>();
+  const watchedPrivacyLevel = Form.useWatch('privacyLevel', sourceForm) || [];
+  const watchedHasAttachment = Form.useWatch('hasAttachment', sourceForm) || [];
+  const watchedHasBinding = Form.useWatch('hasBinding', sourceForm) || [];
+  const advancedFilterCount = [watchedPrivacyLevel.length, watchedHasAttachment.length, watchedHasBinding.length].filter(Boolean).length;
   const [createForm] = Form.useForm<SourceCreateFormValues>();
   const [bindingForm] = Form.useForm<BindingFormValues>();
   const [attachmentForm] = Form.useForm<AttachmentFormValues>();
@@ -893,40 +899,31 @@ export function SourceLibraryQueryPage({}: Props) {
   return (
     <div className="source-library-page source-library-query-page">
       <Space direction="vertical" size="middle" className="source-library-stack">
-        <Card className="source-library-query-card" title="来源资料查询">
-          {clanError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clanError} action={<Button size="small" onClick={() => void loadClans()}>重新加载</Button>} className="source-library-query-status" /> : null}
-          <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search, clanId)}>
-            <div className="source-library-query-grid source-library-query-grid--primary">
-              <Form.Item name="clanId" label="宗族" rules={[{ required: true, message: '请选择宗族' }]}>
+        <Form form={sourceForm} layout="vertical" onFinish={submitSearch} initialValues={searchFormValues(search, clanId)}>
+          <StandardQueryPanel
+            className="source-library-query-card"
+            actions={<StandardQueryActions>
+              <StandardMoreFiltersButton expanded={advancedOpen} activeFilterCount={advancedFilterCount} aria-controls="source-library-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)} />
+              <Button data-query-action="reset" onClick={resetSearch} disabled={loading}>重置</Button>
+              <Button data-query-action="submit" htmlType="submit" loading={loading}>查询</Button>
+            </StandardQueryActions>}
+          >
+            {clanError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clanError} action={<Button size="small" onClick={() => void loadClans()}>重新加载</Button>} className="source-library-query-status" /> : null}
+            <StandardQueryGrid>
+              <StandardQueryField name="clanId" label="宗族" rules={[{ required: true, message: '请选择宗族' }]}>
                 <Select showSearch optionFilterProp="label" loading={clanLoading} placeholder="请选择宗族" options={clans.filter(row => row.id).map(row => ({ value: String(row.id), label: clanOptionLabel(row) }))} />
-              </Form.Item>
-              <Form.Item name="keyword" label="关键词"><Input allowClear placeholder="资料名称、提供者、书名或摘录" /></Form.Item>
-              <Form.Item name="sourceType" label="来源类型"><QueryMultiSelect placeholder="全部类型" options={sourceTypeOptions} /></Form.Item>
-              <Form.Item name="verificationStatus" label="资料状态"><QueryMultiSelect placeholder="全部状态" options={statusOptions} /></Form.Item>
-            </div>
-            <Collapse
-              ghost
-              className="source-library-more-filters"
-              activeKey={advancedOpen ? ['advanced'] : []}
-              onChange={keys => setAdvancedOpen(Array.isArray(keys) ? keys.includes('advanced') : keys === 'advanced')}
-              items={[{
-                key: 'advanced',
-                label: advancedOpen ? '收起筛选' : '更多筛选',
-                children: (
-                  <div className="source-library-query-grid source-library-query-grid--advanced">
-                    <Form.Item name="privacyLevel" label="可见范围"><QueryMultiSelect placeholder="全部范围" options={privacyOptions} /></Form.Item>
-                    <Form.Item name="hasAttachment" label="附件情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.attachment} /></Form.Item>
-                    <Form.Item name="hasBinding" label="引用情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.binding} /></Form.Item>
-                  </div>
-                )
-              }]}
-            />
-            <div className="source-library-query-actions">
-              <Button onClick={resetSearch} disabled={loading}>重置</Button>
-              <Button type="primary" htmlType="submit" loading={loading}>查询</Button>
-            </div>
-          </Form>
-        </Card>
+              </StandardQueryField>
+              <StandardQueryField name="keyword" label="关键词"><Input allowClear placeholder="资料名称、提供者、书名或摘录" /></StandardQueryField>
+              <StandardQueryField name="sourceType" label="来源类型"><QueryMultiSelect placeholder="全部类型" options={sourceTypeOptions} /></StandardQueryField>
+              <StandardQueryField name="verificationStatus" label="资料状态"><QueryMultiSelect placeholder="全部状态" options={statusOptions} /></StandardQueryField>
+            </StandardQueryGrid>
+            <StandardAdvancedFilters id="source-library-advanced-filters" expanded={advancedOpen}>
+              <StandardQueryField name="privacyLevel" label="可见范围"><QueryMultiSelect placeholder="全部范围" options={privacyOptions} /></StandardQueryField>
+              <StandardQueryField name="hasAttachment" label="附件情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.attachment} /></StandardQueryField>
+              <StandardQueryField name="hasBinding" label="引用情况"><QueryMultiSelect placeholder="全部" options={booleanOptions.binding} /></StandardQueryField>
+            </StandardAdvancedFilters>
+          </StandardQueryPanel>
+        </Form>
 
         <QueryResultCard className="source-library-result-card" extra={resultActions} total={sourceTotal}>
           

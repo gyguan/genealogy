@@ -98,14 +98,18 @@ test('person detail tabs replace the current history entry instead of stacking r
   }
 });
 
-test('renders advanced filters with Collapse before the standard trailing query actions', () => {
-  assert.match(personArchivePageSource, /Card, Collapse, Dropdown/);
-  assert.match(personArchivePageSource, /className="person-archive-advanced-collapse"/);
-  assert.match(personArchivePageSource, /activeKey=\{advancedOpen \? \['advanced'\] : \[\]\}/);
-  assert.match(personArchivePageSource, /styles: \{ header: \{ display: 'none' \}, body: \{ padding: 0 \} \}/);
-  assert.match(personArchivePageSource, /aria-expanded=\{advancedOpen\}/);
-  assert.match(personArchivePageSource, /aria-controls="person-archive-advanced-filters"/);
-  const collapseIndex = personArchivePageSource.indexOf('className="person-archive-advanced-collapse"');
-  const actionsIndex = personArchivePageSource.indexOf('<StandardQueryActions className="person-archive-query-actions">');
-  assert.ok(collapseIndex >= 0 && actionsIndex > collapseIndex);
+test('renders the shared four-column query and advanced-filter contract', () => {
+  assert.match(personArchivePageSource, /StandardQueryPanel/);
+  assert.match(personArchivePageSource, /<StandardQueryGrid>/);
+  assert.match(personArchivePageSource, /<StandardAdvancedFilters id="person-archive-advanced-filters" expanded=\{advancedOpen\}>/);
+  assert.match(personArchivePageSource, /<StandardMoreFiltersButton expanded=\{advancedOpen\} activeFilterCount=\{advancedFilterCount\}/);
+  assert.match(personArchivePageSource, /<StandardQueryField label="姓名"><Input/);
+  assert.match(personArchivePageSource, /<StandardQueryField label="关键词"><Input/);
+  assert.doesNotMatch(personArchivePageSource, /person-archive-advanced-collapse/);
+  assert.doesNotMatch(personArchivePageSource, /\bCollapse\b/);
+  assert.doesNotMatch(personArchivePageSource, /title="人物档案查询"/);
+  const gridIndex = personArchivePageSource.indexOf('<StandardQueryGrid>');
+  const advancedIndex = personArchivePageSource.indexOf('<StandardAdvancedFilters');
+  const actionsIndex = personArchivePageSource.indexOf('actions={<StandardQueryActions');
+  assert.ok(actionsIndex >= 0 && gridIndex > actionsIndex && advancedIndex > gridIndex);
 });

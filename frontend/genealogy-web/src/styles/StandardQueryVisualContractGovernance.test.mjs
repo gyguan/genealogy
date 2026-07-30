@@ -9,6 +9,9 @@ const actions = read('../shared/ui/StandardQueryActions.tsx');
 const actionCss = read('../shared/ui/standard-query-actions.css');
 const visualContract = read('../../../../docs/frontend/query-card-visual-contract.md');
 const standardsIndex = read('../../../../docs/standards/README.md');
+const personArchive = read('../features/persons/PersonArchiveSearchPage.tsx');
+const sourceLibrary = read('../features/sources/SourceLibraryQueryPage.tsx');
+const workbench = read('../features/workbench/EditingWorkspacePage.tsx');
 
 test('Issue #1026 exposes one typed query panel field and advanced-filter contract', () => {
   for (const component of ['StandardQueryPanel', 'StandardQueryGrid', 'StandardQueryField', 'StandardAdvancedFilters']) {
@@ -20,6 +23,9 @@ test('Issue #1026 exposes one typed query panel field and advanced-filter contra
   assert.match(patterns, /data-query-field-role="field"/);
   assert.match(patterns, /data-query-advanced-role="filters"/);
   assert.match(patterns, /reserveHintSpace = true/);
+  assert.match(patterns, /hidden=\{!expanded\}/);
+  assert.match(patterns, /aria-hidden=\{!expanded\}/);
+  assert.doesNotMatch(patterns, /if \(!expanded\) return null/);
 });
 
 test('standard query grids retain the 4 to 2 to 1 responsive column contract', () => {
@@ -71,4 +77,20 @@ test('the visual contract is indexed as the authority for query card sizing and 
   assert.match(visualContract, /查询 \| `primary` \| 无 \| 72px/);
   assert.match(visualContract, /不使用 `Collapse` Header/);
   assert.match(visualContract, /页面特有图标/);
+});
+
+test('Issue #1027 migrates person source and workbench to the shared query contract', () => {
+  for (const [name, source] of [['人物档案', personArchive], ['来源资料库', sourceLibrary], ['修谱任务', workbench]]) {
+    assert.match(source, /StandardQueryPanel/, `${name} must use StandardQueryPanel`);
+    assert.match(source, /<StandardQueryGrid>/, `${name} must use StandardQueryGrid`);
+    assert.match(source, /<StandardAdvancedFilters/, `${name} must use StandardAdvancedFilters`);
+    assert.match(source, /StandardMoreFiltersButton/, `${name} must use the standard more-filter action`);
+    assert.match(source, /activeFilterCount=\{advancedFilterCount\}/, `${name} must expose hidden active-filter count`);
+    assert.doesNotMatch(source, /title="(人物档案查询|来源资料查询|修谱工作台)"/, `${name} query title must not repeat the module title`);
+  }
+  assert.doesNotMatch(personArchive, /person-archive-advanced-collapse|\bCollapse\b/);
+  assert.doesNotMatch(sourceLibrary, /source-library-more-filters|\bCollapse\b/);
+  assert.doesNotMatch(workbench, /<Col[^>]+xl=\{(4|8)\}/);
+  assert.doesNotMatch(workbench, /<Collapse\b/);
+  assert.match(workbench, /<StandardQueryField label="创建时间"><DatePicker\.RangePicker/);
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExportOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Collapse, Dropdown, Form, Input, Pagination, Result, Select, Space, Table, Tag } from 'antd';
+import { Button, Card, Dropdown, Form, Input, Pagination, Result, Select, Space, Table, Tag } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -22,7 +22,8 @@ import {
 import type { PersonArchiveSearchState } from './personArchiveUrlState';
 
 import { EmptyState } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
 type Props = {  };
 type SearchForm = Omit<PersonArchiveSearchState, 'pageNo'>;
@@ -288,43 +289,41 @@ export function PersonArchiveSearchPage({}: Props) {
     <Button type="primary" icon={<PlusOutlined />} onClick={createPerson}>创建人物</Button>
     <Button icon={<ExportOutlined />} loading={exporting} disabled={!hasQueried || total === 0 || querying} onClick={() => void exportPersons()}>导出人物</Button>
   </Space>;
+  const advancedFilterCount = [
+    form.dataStatuses.join(',') !== emptySearch.dataStatuses.join(','),
+    form.genders.length > 0,
+    form.generationWords.length > 0,
+    form.generationNos.length > 0
+  ].filter(Boolean).length;
 
   return <div className="person-archive-search person-archive-list-page">
-    <Card className="person-archive-query-card" title="人物档案查询" loading={filterLoading}>
-      {clansError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clansError} action={<Button size="small" onClick={() => void loadClans()}>重试</Button>} /> : null}
-      {branchesError ? <PageFeedback tone="warning" title="支派选项加载失败" description={branchesError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
-      {generationError ? <PageFeedback tone="warning" title="字辈与代次选项加载不完整" description={generationError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
-      <Form layout="vertical" onFinish={() => void search(1)}>
-        <div className="person-archive-filter-grid person-archive-filter-grid--primary">
-          <Form.Item label="宗族"><Select aria-label="宗族" showSearch optionFilterProp="label" value={workspace.clanId} onChange={value => void changeClan(value)} options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></Form.Item>
-          <Form.Item label="支派"><Select aria-label="支派" showSearch optionFilterProp="label" value={form.branchId} disabled={!workspace.clanId || !!branchesError} onChange={changeBranch} options={[{ value: '', label: '全部支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></Form.Item>
-          <Form.Item label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="请输入姓名" allowClear /></Form.Item>
-          <Form.Item label="关键词"><Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名、别名、谱名、字号、籍贯等" allowClear /></Form.Item>
-        </div>
-        <Collapse
-          className="person-archive-advanced-collapse"
-          bordered={false}
-          activeKey={advancedOpen ? ['advanced'] : []}
-          items={[{
-            key: 'advanced',
-            label: null,
-            showArrow: false,
-            styles: { header: { display: 'none' }, body: { padding: 0 } },
-            children: <div id="person-archive-advanced-filters" className="person-archive-filter-grid person-archive-filter-grid--advanced">
-              <Form.Item label="档案状态"><Select mode="multiple" maxTagCount="responsive" value={form.dataStatuses} onChange={values => patchMulti('dataStatuses', values, statusOptions.map(item => item.value))} options={withSelectAll(statusOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-              <Form.Item label="性别"><Select mode="multiple" maxTagCount="responsive" value={form.genders} onChange={values => patchMulti('genders', values, genderOptions.map(item => item.value))} options={withSelectAll(genderOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-              <Form.Item label="字辈"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={form.generationWords} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationWords', values, generationWordOptions)} options={withSelectAll(generationWordSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-              <Form.Item label="代次"><Select mode="multiple" maxTagCount="responsive" value={form.generationNos} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationNos', values, generationNoOptions)} options={withSelectAll(generationNoSelectOptions)} placeholder="请选择（多选）" allowClear /></Form.Item>
-            </div>
-          }]}
-        />
-        <StandardQueryActions className="person-archive-query-actions">
-<Button data-query-action="more" type="link" className="person-archive-more-filter" aria-expanded={advancedOpen} aria-controls="person-archive-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-<Button data-query-action="reset" onClick={reset}>重置</Button>
-<Button data-query-action="submit" type="primary" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
-</StandardQueryActions>
-      </Form>
-    </Card>
+    <Form layout="vertical" onFinish={() => void search(1)}>
+      <StandardQueryPanel
+        className="person-archive-query-card"
+        loading={filterLoading}
+        actions={<StandardQueryActions className="person-archive-query-actions">
+          <StandardMoreFiltersButton expanded={advancedOpen} activeFilterCount={advancedFilterCount} aria-controls="person-archive-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)} />
+          <Button data-query-action="reset" onClick={reset}>重置</Button>
+          <Button data-query-action="submit" htmlType="submit" loading={querying} disabled={!workspace.clanId}>查询</Button>
+        </StandardQueryActions>}
+      >
+        {clansError ? <PageFeedback tone="error" title="宗族列表加载失败" description={clansError} action={<Button size="small" onClick={() => void loadClans()}>重试</Button>} /> : null}
+        {branchesError ? <PageFeedback tone="warning" title="支派选项加载失败" description={branchesError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
+        {generationError ? <PageFeedback tone="warning" title="字辈与代次选项加载不完整" description={generationError} action={<Button size="small" onClick={() => void loadClanFilterOptions(workspace.clanId)}>重试</Button>} /> : null}
+        <StandardQueryGrid>
+          <StandardQueryField label="宗族"><Select aria-label="宗族" showSearch optionFilterProp="label" value={workspace.clanId} onChange={value => void changeClan(value)} options={[{ value: '', label: '请选择宗族' }, ...clanOptions.map(clan => ({ value: String(clan.id), label: clanLabel(clan) }))]} /></StandardQueryField>
+          <StandardQueryField label="支派"><Select aria-label="支派" showSearch optionFilterProp="label" value={form.branchId} disabled={!workspace.clanId || !!branchesError} onChange={changeBranch} options={[{ value: '', label: '全部支派' }, ...branchOptions.map(branch => ({ value: String(branch.id), label: branchLabel(branch) }))]} /></StandardQueryField>
+          <StandardQueryField label="姓名"><Input value={form.name} onChange={event => patch('name', event.target.value)} placeholder="请输入姓名" allowClear /></StandardQueryField>
+          <StandardQueryField label="关键词"><Input value={form.keyword} onChange={event => patch('keyword', event.target.value)} placeholder="姓名、别名、谱名、字号、籍贯等" allowClear /></StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters id="person-archive-advanced-filters" expanded={advancedOpen}>
+          <StandardQueryField label="档案状态"><Select mode="multiple" maxTagCount="responsive" value={form.dataStatuses} onChange={values => patchMulti('dataStatuses', values, statusOptions.map(item => item.value))} options={withSelectAll(statusOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="性别"><Select mode="multiple" maxTagCount="responsive" value={form.genders} onChange={values => patchMulti('genders', values, genderOptions.map(item => item.value))} options={withSelectAll(genderOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="字辈"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={form.generationWords} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationWords', values, generationWordOptions)} options={withSelectAll(generationWordSelectOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="代次"><Select mode="multiple" maxTagCount="responsive" value={form.generationNos} disabled={!workspace.clanId || !!generationError} onChange={values => patchMulti('generationNos', values, generationNoOptions)} options={withSelectAll(generationNoSelectOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+        </StandardAdvancedFilters>
+      </StandardQueryPanel>
+    </Form>
     <QueryResultCard className="person-archive-result-card" extra={resultActions} total={total}>
       {refreshError ? <PageFeedback tone="warning" title="刷新失败，当前仍展示上一次成功结果" description={refreshError} action={<Button size="small" onClick={() => void search(pageNo)}>重试</Button>} /> : null}
       {forbidden ? <Result status="403" title="无权查询人物档案" subTitle="当前账号没有查看该宗族人物档案的权限。受限人物名称、数量和摘要均未展示。" /> : queryError ? <Result status="error" title="人物档案查询失败" subTitle={queryError} extra={<Button type="primary" onClick={() => void search(pageNo)}>重新查询</Button>} /> : <>

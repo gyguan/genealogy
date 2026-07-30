@@ -49,8 +49,10 @@ test('workbench preserves query, task list and navigation workflows', async () =
     'exportTasks',
     'goRelatedEntry',
     '任务模板管理',
-    '修谱工作台'
+    'StandardQueryPanel',
+    'StandardAdvancedFilters'
   ]) assert.match(page, new RegExp(marker.replace(/[?]/g, '\\?')));
+  assert.doesNotMatch(page, /<Card title="修谱工作台">/);
 });
 
 test('workbench provides responsive, empty, error and keyboard states', async () => {

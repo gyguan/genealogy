@@ -3,7 +3,7 @@ import type { Key } from 'react';
 import dayjs from 'dayjs';
 import { ExportOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import {
-  Alert, Button, Card, Checkbox, Col, Collapse, DatePicker, Descriptions, Drawer, Dropdown, Form, Grid, Input, Modal, Pagination, Row, Select, Skeleton, Space, Table, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Checkbox, Col, DatePicker, Descriptions, Drawer, Dropdown, Form, Grid, Input, Modal, Pagination, Row, Select, Skeleton, Space, Table, Tag, Timeline, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import { ApiRequestError, apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
@@ -20,7 +20,8 @@ import { feedback } from '../../shared/ui/OperationFeedback';
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 import { EmptyState } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
 type WorkbenchRisk = 'high' | 'medium' | 'low';
 type WorkbenchStatus = 'pending' | 'processing' | 'ready' | 'blocked';
@@ -404,6 +405,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     </Descriptions>;
   }
 
+  const advancedFilterCount = [filters.statuses.length, filters.taskTypes.length, filters.risks.length, filters.creator, filters.createdFrom || filters.createdTo].filter(Boolean).length;
   const hasFilters = filterLabels(filters).length > 0;
   const emptyState = workbenchEmptyState({ hasClan: Boolean(currentClanId), loading: taskLoading, error: Boolean(taskError), hasFilters, count: tasks.length });
   const emptyNode = <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description={emptyState.description}>
@@ -417,41 +419,29 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
   </Space>;
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    <Card title="修谱工作台">
-      <Form layout="vertical" onFinish={searchWorkbench}>
-        <Row gutter={[16, 0]} align="bottom">
-          <Col xs={24} sm={12} xl={6}><Form.Item label="宗族"><Select showSearch optionFilterProp="label" value={currentClanId} onChange={changeClan} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanLabel(clan) }))} placeholder="请选择宗族" /></Form.Item></Col>
-          <Col xs={24} sm={12} xl={6}><Form.Item label="谱书"><Select value={currentClanId || undefined} disabled={!currentClanId} options={currentClanId ? [{ value: currentClanId, label: bookLabel(activeClan) }] : []} placeholder="请选择谱书" /></Form.Item></Col>
-          <Col xs={24} sm={12} xl={6}><Form.Item label="任务名称"><Input value={filters.taskName} onChange={event => patchFilter('taskName', event.target.value)} placeholder="请输入任务名称" allowClear /></Form.Item></Col>
-          <Col xs={24} sm={12} xl={6}><Form.Item label="关键词"><Input value={filters.keyword} onChange={event => patchFilter('keyword', event.target.value)} placeholder="任务描述、涉及对象或所属范围" allowClear /></Form.Item></Col>
-        </Row>
-        <Collapse
-          ghost
-          activeKey={advancedOpen ? ['advanced'] : []}
-          items={[{
-            key: 'advanced',
-            showArrow: false,
-            collapsible: 'disabled',
-            label: null,
-            styles: { header: { display: 'none' }, body: { padding: 0 } },
-            children: <Row gutter={[16, 0]}>
-              <Col xs={24} sm={12} xl={4}><Form.Item label="任务状态"><Select mode="multiple" maxTagCount="responsive" value={filters.statuses} onChange={values => patchMulti('statuses', values, statusOptions.map(item => item.value))} options={optionsWithAll(statusOptions)} placeholder="请选择（多选）" allowClear /></Form.Item></Col>
-              <Col xs={24} sm={12} xl={4}><Form.Item label="任务类型"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={filters.taskTypes} onChange={values => patchMulti('taskTypes', values, taskTypeOptions.map(item => item.value))} options={optionsWithAll(taskTypeOptions)} placeholder="请选择（多选）" allowClear /></Form.Item></Col>
-              <Col xs={24} sm={12} xl={4}><Form.Item label="优先级"><Select mode="multiple" maxTagCount="responsive" value={filters.risks} onChange={values => patchMulti('risks', values, riskOptions.map(item => item.value))} options={optionsWithAll(riskOptions)} placeholder="请选择（多选）" allowClear /></Form.Item></Col>
-              <Col xs={24} sm={12} xl={4}><Form.Item label="创建人"><Select showSearch optionFilterProp="label" value={filters.creator} onChange={value => patchFilter('creator', value)} options={creatorOptions} placeholder="请输入或选择" /></Form.Item></Col>
-              <Col xs={24} xl={8}><Form.Item label="创建时间"><DatePicker.RangePicker style={{ width: '100%' }} value={filters.createdFrom || filters.createdTo ? [filters.createdFrom ? dayjs(filters.createdFrom) : null, filters.createdTo ? dayjs(filters.createdTo) : null] : null} onChange={values => setFilters(previous => ({ ...previous, createdFrom: values?.[0]?.format('YYYY-MM-DD') || '', createdTo: values?.[1]?.format('YYYY-MM-DD') || '' }))} /></Form.Item></Col>
-            </Row>
-          }]}
-        />
-        <Row justify={screens.xl ? 'end' : 'start'} style={{ marginTop: 8 }}>
-          <StandardQueryActions wrap>
-            <Button data-query-action="more" type="link" onClick={() => setAdvancedOpen(previous => !previous)}>{advancedOpen ? '收起筛选' : '更多筛选'}</Button>
-            <Button data-query-action="reset" onClick={resetFilters}>重置</Button>
-            <Button data-query-action="submit" type="primary" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
-          </StandardQueryActions>
-        </Row>
-      </Form>
-    </Card>
+    <Form layout="vertical" onFinish={searchWorkbench}>
+      <StandardQueryPanel
+        actions={<StandardQueryActions>
+          <StandardMoreFiltersButton expanded={advancedOpen} activeFilterCount={advancedFilterCount} aria-controls="workbench-advanced-filters" onClick={() => setAdvancedOpen(previous => !previous)} />
+          <Button data-query-action="reset" onClick={resetFilters}>重置</Button>
+          <Button data-query-action="submit" htmlType="submit" loading={taskLoading} disabled={!currentClanId}>查询</Button>
+        </StandardQueryActions>}
+      >
+        <StandardQueryGrid>
+          <StandardQueryField label="宗族"><Select showSearch optionFilterProp="label" value={currentClanId} onChange={changeClan} options={clans.map(clan => ({ value: String(clan.id || ''), label: clanLabel(clan) }))} placeholder="请选择宗族" /></StandardQueryField>
+          <StandardQueryField label="谱书"><Select value={currentClanId || undefined} disabled={!currentClanId} options={currentClanId ? [{ value: currentClanId, label: bookLabel(activeClan) }] : []} placeholder="请选择谱书" /></StandardQueryField>
+          <StandardQueryField label="任务名称"><Input value={filters.taskName} onChange={event => patchFilter('taskName', event.target.value)} placeholder="请输入任务名称" allowClear /></StandardQueryField>
+          <StandardQueryField label="关键词"><Input value={filters.keyword} onChange={event => patchFilter('keyword', event.target.value)} placeholder="任务描述、涉及对象或所属范围" allowClear /></StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters id="workbench-advanced-filters" expanded={advancedOpen}>
+          <StandardQueryField label="任务状态"><Select mode="multiple" maxTagCount="responsive" value={filters.statuses} onChange={values => patchMulti('statuses', values, statusOptions.map(item => item.value))} options={optionsWithAll(statusOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="任务类型"><Select mode="multiple" showSearch optionFilterProp="label" maxTagCount="responsive" value={filters.taskTypes} onChange={values => patchMulti('taskTypes', values, taskTypeOptions.map(item => item.value))} options={optionsWithAll(taskTypeOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="优先级"><Select mode="multiple" maxTagCount="responsive" value={filters.risks} onChange={values => patchMulti('risks', values, riskOptions.map(item => item.value))} options={optionsWithAll(riskOptions)} placeholder="请选择（多选）" allowClear /></StandardQueryField>
+          <StandardQueryField label="创建人"><Select showSearch optionFilterProp="label" value={filters.creator} onChange={value => patchFilter('creator', value)} options={creatorOptions} placeholder="请输入或选择" /></StandardQueryField>
+          <StandardQueryField label="创建时间"><DatePicker.RangePicker value={filters.createdFrom || filters.createdTo ? [filters.createdFrom ? dayjs(filters.createdFrom) : null, filters.createdTo ? dayjs(filters.createdTo) : null] : null} onChange={values => setFilters(previous => ({ ...previous, createdFrom: values?.[0]?.format('YYYY-MM-DD') || '', createdTo: values?.[1]?.format('YYYY-MM-DD') || '' }))} /></StandardQueryField>
+        </StandardAdvancedFilters>
+      </StandardQueryPanel>
+    </Form>
 
     <QueryResultCard className="workbench-result-card" extra={resultActions} total={total}>
       {selectedKeys.length ? <PageFeedback tone="info" title={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
