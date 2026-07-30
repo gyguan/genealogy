@@ -33,5 +33,5 @@
 
 ## 恢复检查点
 
-- 当前阶段：80 个限定范围文件已形成校验归档，Base64 与 tar.gz 均使用固定 SHA-256，正在由主干受控 Workflow 原子应用。
+- 当前阶段：80 个限定范围文件已形成校验归档，Base64 与 tar.gz 均使用固定 SHA-256；默认分支受控 Workflow 已注册，现以第二次 `synchronize` 事件触发原子应用。
 - 下一步最小任务：确认解包提交完成且 `.agent`/辅助 Workflow 已自清理，随后读取首次 Backend CI 与 PostgreSQL Integration 结果。
