@@ -20,7 +20,7 @@
 | 3 | 迁移 Member 与权限范围查询 | ✅ 已完成 | 动态 SQL、count 共用筛选、空集合、显式更新与成员锁已切换 |
 | 4 | 迁移 Review/Revision 与并发锁 | ✅ 已完成 | FOR UPDATE、JSONB 显式更新、审核查询与并发边界已切换 |
 | 5 | 迁移 Source/Binding/Attachment | ✅ 已完成 | 来源、绑定、附件和聚合查询已切换，公共接口保持不变 |
-| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | Backend CI 已通过；已修复 Review Query Row UUID TypeHandler 启动问题，正在执行第四轮可信门禁 |
+| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | Backend、Security、Member Scope 已通过；已修复 UUID 写入与专项外键夹具，正在执行第五轮可信门禁 |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
 
 ## 已处理问题
@@ -29,6 +29,8 @@
 2. 成员权限审计测试仍注入旧 `OperationLogRepository`：切换到 `OperationLogMemberAuditQueryRepository.search`。
 3. 来源搜索测试仍模拟 JPA `Specification`：切换到强类型 `SourceRepository.search` 契约。
 4. `ReviewTaskQueryMapper` 直接映射 UUID setter，MyBatis 启动期找不到 TypeHandler：SQL 显式转为文本，Query Row 接收 `String` 并在组装 Entity 时恢复 `UUID`。
+5. MyBatis-Plus 自动生成写入无法绑定 PostgreSQL UUID：新增全局 `PostgreSqlUuidTypeHandler` 并通过 `type-handlers-package` 注册。
+6. 成员专项使用不存在的 `person_id=999`：改为先写入真实 Person，再验证非空到 `null` 的显式更新。
 
 ## 风险控制
 
@@ -40,6 +42,6 @@
 
 ## 恢复检查点
 
-- 当前阶段：Backend CI 已成功；MyBatis Mapper XML 启动级阻塞已修复，第四轮将验证真实 PostgreSQL SQL、行锁和 JSONB 语义。
+- 当前阶段：应用启动、Backend CI、Security 和 Member Scope 已通过；第五轮验证 UUID 写入、成员 Nullable 外键、审核锁竞争、JSONB 回滚和来源证据聚合。
 - 当前可信 Head：本看板提交形成正常仓库身份 Head，以其全量 CI 为准。
-- 下一步最小任务：优先读取 PostgreSQL Integration 结果；启动通过后继续处理 SQL 列名、类型转换、锁竞争或事务回滚问题。
+- 下一步最小任务：读取第五轮 PostgreSQL Integration 结果；通过后进入真实 Functional Playwright 与 PR 收口。
