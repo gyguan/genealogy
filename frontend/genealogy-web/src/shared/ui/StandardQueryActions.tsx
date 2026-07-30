@@ -56,16 +56,22 @@ export function StandardMoreFiltersButton({ expanded, activeFilterCount = 0, ...
   );
 }
 
+function isAction(item: ReactNode, kind: StandardQueryActionKind): item is ActionElement {
+  if (!isValidElement(item)) return false;
+  if ((item as ActionElement).props['data-query-action'] === kind) return true;
+  return kind === 'more' && item.type === StandardMoreFiltersButton;
+}
+
 export function StandardQueryActions({ children, className = '', ...props }: StandardQueryActionsProps) {
   const items = Children.toArray(children);
-  const action = (kind: StandardQueryActionKind) => items.find(item => isValidElement(item) && (item as ActionElement).props['data-query-action'] === kind) as ActionElement | undefined;
+  const action = (kind: StandardQueryActionKind) => items.find(item => isAction(item, kind)) as ActionElement | undefined;
   const submit = action('submit');
   const busy = Boolean(submit?.props.loading);
   const ordered = (['more', 'reset', 'submit'] as const).flatMap(kind => {
     const item = action(kind);
     if (!item) return [];
     if (kind === 'submit') return [item];
-    const normalized = kind === 'more' ? normalizeMoreAction(item) : item;
+    const normalized = kind === 'more' && item.type !== StandardMoreFiltersButton ? normalizeMoreAction(item) : item;
     return [cloneElement(normalized, { disabled: busy || normalized.props.disabled })];
   });
   return <Space {...props} className={['standard-query-actions', className].filter(Boolean).join(' ')} aria-busy={busy}>{ordered}</Space>;
