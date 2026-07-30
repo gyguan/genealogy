@@ -124,6 +124,7 @@ function titleFromTotalSuffix(totalSuffix: string) {
     个人物: '人物列表',
     条关系: '亲属关系',
     条来源: '来源资料',
+    条绑定记录: '来源绑定记录',
     条任务: '任务列表'
   };
   return known[totalSuffix] || '';
