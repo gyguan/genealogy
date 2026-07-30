@@ -16,12 +16,7 @@ export type WorkbenchUrlState = WorkbenchFilters & {
 };
 
 export type WorkbenchKpiKey = 'pending' | 'high' | 'source' | 'generation';
-export type WorkbenchEmptyState = {
-  kind: '' | 'prerequisite' | 'first-empty' | 'no-results' | 'error';
-  title: string;
-  description: string;
-  action: '' | 'clear' | 'retry';
-};
+export type WorkbenchEmptyState = { description: string; action: '' | 'clear' | 'retry' };
 
 export function workbenchTotalText(total: number) {
   const safeTotal = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
@@ -158,9 +153,9 @@ export function workbenchEmptyState(input: {
   hasFilters: boolean;
   count: number;
 }): WorkbenchEmptyState {
-  if (input.loading || input.count > 0) return { kind: '', title: '', description: '', action: '' };
-  if (input.error) return { kind: 'error', title: '修谱任务加载失败', description: '未能获取任务列表，请重试。', action: 'retry' };
-  if (!input.hasClan) return { kind: 'prerequisite', title: '请先选择宗族', description: '选择宗族后可查看对应的修谱任务。', action: '' };
-  if (input.hasFilters) return { kind: 'no-results', title: '未找到符合条件的修谱任务', description: '请调整或清除筛选条件后重试。', action: 'clear' };
-  return { kind: 'first-empty', title: '当前宗族暂无修谱任务', description: '新产生的审核跟进、来源缺失和关系复核任务会显示在这里。', action: '' };
+  if (input.loading || input.count > 0) return { description: '', action: '' };
+  if (input.error) return { description: '任务列表加载失败', action: 'retry' };
+  if (!input.hasClan) return { description: '请选择宗族后查看修谱任务', action: '' };
+  if (input.hasFilters) return { description: '当前筛选条件下暂无修谱任务', action: 'clear' };
+  return { description: '当前宗族暂无待处理修谱任务', action: '' };
 }
