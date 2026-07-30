@@ -108,6 +108,26 @@
   background: #fff;
 }
 
+.ui-page-state {
+  width: 100%;
+}
+
+.ui-page-state--loading {
+  display: grid;
+  min-height: 240px;
+  place-items: center;
+  border: 1px solid var(--genealogy-color-border-secondary);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.ui-page-state--first-empty .ui-empty-state,
+.ui-page-state--no-results .ui-empty-state {
+  min-height: 180px;
+  display: grid;
+  align-content: center;
+}
+
 /* Legacy custom strips remain visually aligned while being migrated incrementally. */
 .business-page [class*="-notice"], .business-page [class*="-alert"], .business-page [class*="-warning"], .business-page [class*="-note"] {
   border-radius: 8px;
@@ -124,5 +144,9 @@
 
   .ui-full-page-feedback, .business-page > .ant-result {
     padding: 32px 16px;
+  }
+
+  .ui-page-state--loading {
+    min-height: 180px;
   }
 }
