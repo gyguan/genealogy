@@ -9,6 +9,7 @@ const reviewEntry = readFileSync(new URL('../../features/reviews/ReviewCenterPag
 const reviewContent = readFileSync(new URL('../../features/reviews/ReviewCenterPageContent.tsx', import.meta.url), 'utf8');
 const personArchive = readFileSync(new URL('../../features/persons/PersonArchiveSearchPage.tsx', import.meta.url), 'utf8');
 const workbenchModel = readFileSync(new URL('../../features/workbench/editingWorkspaceModel.ts', import.meta.url), 'utf8');
+const asyncImport = readFileSync(new URL('../../features/imports/AsyncImportExecutionPanel.tsx', import.meta.url), 'utf8');
 
 test('page state contract exposes the six governed state kinds', () => {
   for (const kind of ['prerequisite', 'first-empty', 'no-results', 'forbidden', 'loading', 'error']) {
@@ -44,6 +45,21 @@ test('first loading and refresh failure remain distinct from empty data', () => 
   assert.match(reviewContent, /刷新失败，当前展示的是上次成功数据/);
   assert.match(personArchive, /const \[refreshError, setRefreshError\]/);
   assert.match(personArchive, /refreshError/);
+});
+
+test('import tasks map all six states and preserve successful data on refresh failure', () => {
+  assert.match(asyncImport, /const hadSuccessfulData = hasLoaded/);
+  assert.match(asyncImport, /setRefreshError\(message\)/);
+  assert.match(asyncImport, /<RetainedDataFeedback/);
+  assert.match(asyncImport, /kind="prerequisite"/);
+  assert.match(asyncImport, /kind="forbidden"/);
+  assert.match(asyncImport, /kind="loading"/);
+  assert.match(asyncImport, /kind="error"/);
+  assert.match(asyncImport, /kind="first-empty"/);
+  assert.match(asyncImport, /kind="no-results"/);
+  assert.match(asyncImport, /if \(error instanceof ApiRequestError && error\.status === 403\)/);
+  assert.match(asyncImport, /else if \(hadSuccessfulData\) \{[\s\S]*setRefreshError\(message\)/);
+  assert.doesNotMatch(asyncImport, /else if \(hadSuccessfulData\) \{[\s\S]*setRecords\(\[\]\)[\s\S]*setRefreshError\(message\)/);
 });
 
 test('workbench model distinguishes first-empty from no-results and error', () => {
