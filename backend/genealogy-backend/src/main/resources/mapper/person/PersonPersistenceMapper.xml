@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.person.repository.mybatis.PersonPersistenceMapper">
+
+    <update id="updateAllById" parameterType="com.genealogy.person.entity.PersonEntity">
+        update person
+        set clan_id = #{clanId},
+            branch_id = #{branchId},
+            person_code = #{personCode},
+            name = #{name},
+            genealogy_name = #{genealogyName},
+            courtesy_name = #{courtesyName},
+            alias_name = #{aliasName},
+            gender = #{gender},
+            generation_no = #{generationNo},
+            generation_word = #{generationWord},
+            rank_in_family = #{rankInFamily},
+            birth_date = #{birthDate},
+            birth_date_precision = #{birthDatePrecision},
+            death_date = #{deathDate},
+            death_date_precision = #{deathDatePrecision},
+            is_living = #{isLiving},
+            birth_place = #{birthPlace},
+            residence_place = #{residencePlace},
+            occupation = #{occupation},
+            education = #{education},
+            title_or_honor = #{titleOrHonor},
+            biography = #{biography},
+            tomb_place = #{tombPlace},
+            epitaph = #{epitaph},
+            has_descendant = #{hasDescendant},
+            lineage_status = #{lineageStatus},
+            privacy_level = #{privacyLevel},
+            data_status = #{dataStatus},
+            created_by = #{createdBy},
+            created_at = #{createdAt},
+            updated_by = #{updatedBy},
+            updated_at = #{updatedAt},
+            deleted_at = #{deletedAt}
+        where id = #{id}
+    </update>
+
+    <update id="updateAllBatch">
+        update person as p
+        set clan_id = v.clan_id,
+            branch_id = v.branch_id,
+            person_code = v.person_code,
+            name = v.name,
+            genealogy_name = v.genealogy_name,
+            courtesy_name = v.courtesy_name,
+            alias_name = v.alias_name,
+            gender = v.gender,
+            generation_no = v.generation_no,
+            generation_word = v.generation_word,
+            rank_in_family = v.rank_in_family,
+            birth_date = v.birth_date,
+            birth_date_precision = v.birth_date_precision,
+            death_date = v.death_date,
+            death_date_precision = v.death_date_precision,
+            is_living = v.is_living,
+            birth_place = v.birth_place,
+            residence_place = v.residence_place,
+            occupation = v.occupation,
+            education = v.education,
+            title_or_honor = v.title_or_honor,
+            biography = v.biography,
+            tomb_place = v.tomb_place,
+            epitaph = v.epitaph,
+            has_descendant = v.has_descendant,
+            lineage_status = v.lineage_status,
+            privacy_level = v.privacy_level,
+            data_status = v.data_status,
+            created_by = v.created_by,
+            created_at = v.created_at,
+            updated_by = v.updated_by,
+            updated_at = v.updated_at,
+            deleted_at = v.deleted_at
+        from (
+            values
+            <foreach collection="items" item="item" separator=",">
+                (
+                    cast(#{item.id} as bigint),
+                    cast(#{item.clanId} as bigint),
+                    cast(#{item.branchId} as bigint),
+                    cast(#{item.personCode} as varchar),
+                    cast(#{item.name} as varchar),
+                    cast(#{item.genealogyName} as varchar),
+                    cast(#{item.courtesyName} as varchar),
+                    cast(#{item.aliasName} as varchar),
+                    cast(#{item.gender} as varchar),
+                    cast(#{item.generationNo} as integer),
+                    cast(#{item.generationWord} as varchar),
+                    cast(#{item.rankInFamily} as varchar),
+                    cast(#{item.birthDate} as date),
+                    cast(#{item.birthDatePrecision} as varchar),
+                    cast(#{item.deathDate} as date),
+                    cast(#{item.deathDatePrecision} as varchar),
+                    cast(#{item.isLiving} as boolean),
+                    cast(#{item.birthPlace} as varchar),
+                    cast(#{item.residencePlace} as varchar),
+                    cast(#{item.occupation} as varchar),
+                    cast(#{item.education} as varchar),
+                    cast(#{item.titleOrHonor} as varchar),
+                    cast(#{item.biography} as text),
+                    cast(#{item.tombPlace} as varchar),
+                    cast(#{item.epitaph} as text),
+                    cast(#{item.hasDescendant} as boolean),
+                    cast(#{item.lineageStatus} as varchar),
+                    cast(#{item.privacyLevel} as varchar),
+                    cast(#{item.dataStatus} as varchar),
+                    cast(#{item.createdBy} as bigint),
+                    cast(#{item.createdAt} as timestamp),
+                    cast(#{item.updatedBy} as bigint),
+                    cast(#{item.updatedAt} as timestamp),
+                    cast(#{item.deletedAt} as timestamp)
+                )
+            </foreach>
+        ) as v(
+            id, clan_id, branch_id, person_code, name,
+            genealogy_name, courtesy_name, alias_name, gender,
+            generation_no, generation_word, rank_in_family,
+            birth_date, birth_date_precision, death_date, death_date_precision,
+            is_living, birth_place, residence_place, occupation, education,
+            title_or_honor, biography, tomb_place, epitaph, has_descendant,
+            lineage_status, privacy_level, data_status, created_by, created_at,
+            updated_by, updated_at, deleted_at
+        )
+        where p.id = v.id
+    </update>
+
+    <select id="selectActiveByIdForUpdate" resultType="com.genealogy.person.entity.PersonEntity">
+        select
+            id, clan_id, branch_id, person_code, name, genealogy_name, courtesy_name, alias_name,
+            gender, generation_no, generation_word, rank_in_family, birth_date, birth_date_precision,
+            death_date, death_date_precision, is_living, birth_place, residence_place, occupation,
+            education, title_or_honor, biography, tomb_place, epitaph, has_descendant, lineage_status,
+            privacy_level, data_status, created_by, created_at, updated_by, updated_at, deleted_at
+        from person
+        where id = #{personId}
+          and deleted_at is null
+        for update
+    </select>
+
+</mapper>
