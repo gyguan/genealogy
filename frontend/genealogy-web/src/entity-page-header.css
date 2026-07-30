@@ -4,6 +4,15 @@
   font-weight: 400;
 }
 
+[data-genealogy-app] .entity-page-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
 [data-genealogy-app] .entity-detail-actions {
   display: flex;
   align-items: center;
@@ -70,7 +79,7 @@
     min-height: 44px;
   }
 
-  [data-genealogy-app] .entity-detail-actions {
+  [data-genealogy-app] .entity-page-header__actions, [data-genealogy-app] .entity-detail-actions {
     width: 100%;
     justify-content: flex-start;
   }
