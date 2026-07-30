@@ -1,0 +1,77 @@
+name: Issue 1029 Fixup
+
+on:
+  pull_request:
+    branches: [main]
+    types: [synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  fixup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply corrected migration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path('.github/workflows/issue-1029-bootstrap.yml').read_text()
+          start = workflow.index("          from pathlib import Path")
+          end = workflow.index("\n          PY", start)
+          script = textwrap.dedent(workflow[start:end])
+          block_start = script.index("old_panel = '''")
+          block_end = script.index("log_path.write_text(text)", block_start)
+          replacement = '''new_panel = ''' + "'''" + '''      <StandardPageTabs
+        ariaLabel="审计追踪视图"
+        activeKey={activeTab}
+        onChange={changeTab}
+        items={[
+          { key: TRACKING_TABS.OBJECT, label: '对象追踪' },
+          { key: TRACKING_TABS.AUDIT, label: '操作日志' },
+          { key: TRACKING_TABS.RISK, label: '风险事件' }
+        ]}
+      />
+      <StandardQueryPanel className="tracking-query-card">
+        {!workspace.clanId ? <PageFeedback tone="warning" title="请先选择宗族" description="追踪和审计数据均按当前宗族及本人可见范围加载。" /> : activeFilters}
+      </StandardQueryPanel>''' + "'''" + '''
+text, panel_count = re.subn(
+    r'      <Card className="tracking-query-card" title="审计追踪">[\\s\\S]*?      </Card>',
+    new_panel,
+    text,
+    count=1
+)
+if panel_count != 1:
+    raise SystemExit('failed to replace tracking panel')
+'''
+          script = script[:block_start] + replacement + script[block_end:]
+          exec(compile(script, 'issue-1029-migration', 'exec'))
+          PY
+      - name: Install and validate
+        working-directory: frontend/genealogy-web
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+          node --test src/styles/Issue1029QueryCardMigration.test.mjs
+          npm run test:dom-governance
+          npm run test:imports
+          npm run typecheck
+          npm run build
+      - name: Commit validated migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/issue-1029-bootstrap.yml .github/workflows/issue-1029-fixup.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "feat: complete query card consistency for issue 1029"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
