@@ -18,7 +18,7 @@ const sourceLibraryFocusBridge = readFileSync(new URL('../../features/sources/So
 const css = readFileSync(new URL('../../feedback-system.css', import.meta.url), 'utf8');
 const audit = readFileSync(new URL('../../../scripts/audit-ui-feedback.mjs', import.meta.url), 'utf8');
 const baseline = JSON.parse(readFileSync(new URL('../../../feedback-audit-baseline.json', import.meta.url), 'utf8'));
-const spec = readFileSync(new URL('../../../../../docs/22-frontend-feedback-pattern-spec.md', import.meta.url), 'utf8');
+const designSystem = readFileSync(new URL('../../../../../docs/frontend/design-system.md', import.meta.url), 'utf8');
 
 test('feedback system exposes five standard user-facing forms', () => {
   assert.match(component, /export function PageFeedback/);
@@ -26,12 +26,11 @@ test('feedback system exposes five standard user-facing forms', () => {
   assert.match(component, /export function EmptyState/);
   assert.match(component, /export function FullPageFeedback/);
   assert.match(component, /export function ConfirmAction/);
-  assert.match(spec, /统一后的五种形式/);
-  assert.match(spec, /页面\/区块状态/);
-  assert.match(spec, /字段辅助与校验/);
-  assert.match(spec, /短暂操作反馈/);
-  assert.match(spec, /高风险确认/);
-  assert.match(spec, /空状态/);
+  assert.match(designSystem, /按钮与反馈/);
+  assert.match(designSystem, /成功\/失败使用 `message`/);
+  assert.match(designSystem, /需用户决策使用 `Modal\/Popconfirm`/);
+  assert.match(designSystem, /空态使用 `Empty`/);
+  assert.match(designSystem, /异常使用 `Alert\/Result`/);
 });
 
 test('operation feedback exposes one semantic API for transient results', () => {
