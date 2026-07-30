@@ -37,7 +37,7 @@ public enum ImportExecutionState {
     }
 
     public boolean claimable() {
-        return this == QUEUED || this == RETRY_WAIT;
+        return this == QUEUED || this == RUNNING || this == RETRY_WAIT;
     }
 
     public boolean pausable() {
