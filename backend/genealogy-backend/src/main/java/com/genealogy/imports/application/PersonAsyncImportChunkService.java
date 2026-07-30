@@ -11,7 +11,6 @@ import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobPayloadRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
-import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import org.apache.poi.ss.usermodel.Cell;
@@ -275,15 +274,14 @@ public class PersonAsyncImportChunkService {
     }
 
     private int countDuplicates(ImportJobEntity job, ParsedPerson person) {
-        return safeInt(personRepository.countDuplicates(new PersonDuplicateQuery(
+        return safeInt(personRepository.countDuplicates(
                 job.getClanId(),
                 job.getBranchId(),
                 person.name(),
                 person.generationNo(),
                 person.generationWord(),
-                person.birthDate(),
-                1
-        )));
+                person.birthDate()
+        ));
     }
 
     private Map<String, Object> normalizedData(ImportJobEntity job, ParsedPerson person, int duplicateCount) {

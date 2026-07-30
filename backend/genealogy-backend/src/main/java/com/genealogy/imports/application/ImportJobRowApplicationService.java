@@ -12,7 +12,6 @@ import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
-import com.genealogy.person.application.PersonDuplicateQuery;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import org.springframework.data.domain.Page;
@@ -245,15 +244,14 @@ public class ImportJobRowApplicationService {
     }
 
     private void ensureDuplicateConfirmed(ImportJobEntity job, PersonEntity person, boolean confirmed) {
-        long duplicateCount = personRepository.countDuplicates(new PersonDuplicateQuery(
+        long duplicateCount = personRepository.countDuplicates(
                 job.getClanId(),
                 job.getBranchId(),
                 person.getName(),
                 person.getGenerationNo(),
                 person.getGenerationWord(),
-                person.getBirthDate(),
-                1
-        ));
+                person.getBirthDate()
+        );
         if (duplicateCount > 0 && !confirmed) {
             throw new BusinessException("IMPORT_DUPLICATE_CONFIRM_REQUIRED", "修正后的人物疑似重复，请确认后再重试");
         }

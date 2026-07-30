@@ -24,7 +24,15 @@ public class PersonDuplicateDetectionService {
 
     @Transactional(readOnly = true)
     public PersonDuplicateResult detect(PersonDuplicateQuery query) {
-        List<PersonEntity> entities = personRepository.findDuplicateCandidates(query);
+        List<PersonEntity> entities = personRepository.findDuplicateCandidates(
+                query.clanId(),
+                query.branchId(),
+                query.name(),
+                query.generationNo(),
+                query.generationWord(),
+                query.birthDate(),
+                query.candidateLimit()
+        );
         Set<String> matchedFields = matchedFields(query);
         int score = score(matchedFields);
         PersonDuplicateResult.RiskLevel risk = riskLevel(entities.isEmpty(), score);
