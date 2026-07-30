@@ -90,35 +90,32 @@ async function expectMobilePrimaryAction(page: Page, name: string) {
   expect(box?.width).toBeGreaterThanOrEqual(88);
 }
 
-async function expectStrictTwoLayerShell(page: Page, total: string, cardTitle: string) {
+async function expectStrictTwoLayerShell(page: Page, resultTitle: string, total: string) {
   await expect(page.locator('.tabbed-module-intro')).toHaveCount(0);
   await expect(page.locator('.tabbed-module-tabs-card')).toHaveCount(0);
   await expect(page.locator('.culture-search-card')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: '宗族文化资料', exact: true })).toBeVisible();
+  await expect(page.locator('.standard-page-tabs')).toHaveCount(1);
   const resultCard = page.locator('.culture-result-card');
   await expect(resultCard).toHaveCount(1);
   const outerHeader = resultCard.locator(':scope > .query-result-outer-card__header');
   await expect(resultCard.locator(':scope > .ant-card-body')).toHaveCount(0);
   await expect(resultCard.locator('.business-result-card')).toHaveCount(0);
-  await expect(outerHeader.getByText('查询结果', { exact: true })).toBeVisible();
+  await expect(outerHeader.getByText(resultTitle, { exact: true })).toBeVisible();
   await expect(outerHeader.getByText(total, { exact: true })).toBeVisible();
-  await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText(cardTitle);
+  await expect(page.locator('.culture-search-card .ant-card-head-title')).toHaveText('查询条件');
   const formBorder = await page.locator('.culture-search-card form').evaluate(element => getComputedStyle(element).borderTopWidth);
   expect(formBorder).toBe('0px');
 }
 
 async function expectMoreFiltersBeforeReset(page: Page) {
   const searchCard = page.locator('.culture-search-card');
-  const moreFilters = searchCard.locator('.culture-more-filters .ant-collapse-header');
+  const moreFilters = searchCard.getByRole('button', { name: /^更多筛选/ });
   const reset = searchCard.getByRole('button', { name: /重\s*置/ });
   const query = searchCard.getByRole('button', { name: /查\s*询/ });
   await expect(moreFilters).toBeVisible();
   await expect(moreFilters).toHaveAttribute('aria-expanded', 'false');
-  const [moreBox, resetBox, queryBox] = await Promise.all([
-    moreFilters.boundingBox(),
-    reset.boundingBox(),
-    query.boundingBox()
-  ]);
+  const [moreBox, resetBox, queryBox] = await Promise.all([moreFilters.boundingBox(), reset.boundingBox(), query.boundingBox()]);
   expect(moreBox).not.toBeNull();
   expect(resetBox).not.toBeNull();
   expect(queryBox).not.toBeNull();
@@ -135,21 +132,21 @@ test('culture shell uses strict two-layer results and mounts only the active dom
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
-  await expectStrictTwoLayerShell(page, '（共 1 条）', '文化资料查询');
-  const searchCard = page.locator('.culture-search-card');
-  await expect(searchCard.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
-  await expect(searchCard.getByRole('tab', { name: '迁徙脉络' })).toBeVisible();
-  await expect(searchCard.getByRole('tab', { name: '文化场所' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '新增文化资料' })).toHaveCount(1);
+  await expectStrictTwoLayerShell(page, '文化资料', '（共 1 条）');
+  await expect(page.getByRole('tab', { name: '文化资料' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: '迁徙脉络' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: '文化场所' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建文化资料' })).toHaveCount(1);
   await expect(page.getByText('敦本堂堂号源流').first()).toBeVisible();
   expect(requested.some(path => path.includes('migration-events'))).toBeFalsy();
   expect(requested.some(path => path.includes('culture-sites'))).toBeFalsy();
 
+  const searchCard = page.locator('.culture-search-card');
   const defaultLabels = await searchCard.locator('form > .ant-row').first().locator('.ant-form-item-label label').allTextContents();
   expect(defaultLabels).toEqual(['宗族', '分类', '支派', '关键词']);
   await expectMoreFiltersBeforeReset(page);
-  await searchCard.getByText('更多筛选', { exact: true }).click();
-  await expect(searchCard.locator('.culture-more-filters .ant-collapse-header')).toHaveAttribute('aria-expanded', 'true');
+  await searchCard.getByRole('button', { name: /^更多筛选/ }).click();
+  await expect(searchCard.getByRole('button', { name: /^收起筛选/ })).toHaveAttribute('aria-expanded', 'true');
   await expect(searchCard.getByLabel('状态')).toBeVisible();
   await expect(searchCard.getByLabel('可见范围')).toBeVisible();
   await expect(searchCard.getByLabel('已有来源')).toBeVisible();
@@ -161,17 +158,17 @@ test('culture shell uses strict two-layer results and mounts only the active dom
   await expect(categoryPopup.getByText('堂号', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  await searchCard.getByRole('tab', { name: '迁徙脉络' }).click();
-  await expectStrictTwoLayerShell(page, '（共 1 条）', '迁徙事件查询');
+  await page.getByRole('tab', { name: '迁徙脉络' }).click();
+  await expectStrictTwoLayerShell(page, '迁徙事件', '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
-  await expect(page.getByRole('button', { name: '新增迁徙事件' })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '创建迁徙事件' })).toHaveCount(1);
   await expect(page.getByText('江西吉安 → 湖南长沙').first()).toBeVisible();
   expect(requested.some(path => path.includes('culture-sites'))).toBeFalsy();
 
   await page.getByRole('tab', { name: '文化场所' }).click();
-  await expectStrictTwoLayerShell(page, '（共 1 条）', '宗族场所查询');
+  await expectStrictTwoLayerShell(page, '文化场所', '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
-  await expect(page.getByRole('button', { name: '新增文化场所' })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '创建文化场所' })).toHaveCount(1);
   await expect(page.getByText('敦本堂宗祠').first()).toBeVisible();
   await expect(page).toHaveURL(/tab=sites/);
 });
@@ -182,18 +179,18 @@ test('390px viewport keeps standard Ant tables contained without page overflow',
   await mockPatternApi(page, requested);
   await page.goto('/?view=culture&tab=items');
 
-  await expectStrictTwoLayerShell(page, '（共 1 条）', '文化资料查询');
+  await expectStrictTwoLayerShell(page, '文化资料', '（共 1 条）');
   await expectMoreFiltersBeforeReset(page);
   await expectMobileRecordView(page, 'culture-tab-items', '敦本堂堂号源流');
-  await expectMobilePrimaryAction(page, '新增文化资料');
+  await expectMobilePrimaryAction(page, '创建文化资料');
 
   await page.getByRole('tab', { name: '迁徙脉络' }).click();
   await expectMoreFiltersBeforeReset(page);
   await expectMobileRecordView(page, 'culture-tab-migrations', '江西吉安');
-  await expectMobilePrimaryAction(page, '新增迁徙事件');
+  await expectMobilePrimaryAction(page, '创建迁徙事件');
 
   await page.getByRole('tab', { name: '文化场所' }).click();
   await expectMoreFiltersBeforeReset(page);
   await expectMobileRecordView(page, 'culture-tab-sites', '敦本堂宗祠');
-  await expectMobilePrimaryAction(page, '新增文化场所');
+  await expectMobilePrimaryAction(page, '创建文化场所');
 });

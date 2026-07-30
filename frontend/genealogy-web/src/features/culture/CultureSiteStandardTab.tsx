@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Collapse, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography
+} from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, CultureSiteDetailResponse, CultureSiteSummaryResponse, CultureSiteType } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
@@ -23,13 +24,10 @@ import { buildCultureSiteLocation, cultureSiteSearchKey, defaultCultureSiteSearc
 import type { CultureSiteTabSearchState } from './cultureSiteUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
-
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 import { feedback } from '../../shared/ui/OperationFeedback';
-
-import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
-
-import { EmptyState } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { InlineFeedback, PageFeedback, EmptyState } from '../../shared/ui/Feedback';
 
 const { Paragraph, Text, Title } = Typography;
 const siteTypeOptions: Array<{ value: CultureSiteType; label: string }> = [
@@ -91,10 +89,10 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  
   const [searchForm] = Form.useForm<SearchValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<CultureSiteTabSearchState>(initialLocation.search);
+  const [moreOpen, setMoreOpen] = useState(() => Boolean(initialLocation.search.addressText || initialLocation.search.currentStatus || initialLocation.search.dataStatus?.length));
   const [items, setItems] = useState<CultureSiteSummaryResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(false);
@@ -117,6 +115,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   const branchOptions = useMemo(() => branches.filter(branch => branch.id).map(branch => ({ value: Number(branch.id), label: branch.name })), [branches]);
+  const activeMoreCount = [search.addressText, search.currentStatus, search.dataStatus?.length].filter(Boolean).length;
   const handleEditorDirtyChange = useCallback((dirty: boolean) => { editorDirtyRef.current = dirty; }, []);
 
   function buildLocation(nextSearch: CultureSiteTabSearchState, nextSelected?: number, nextEditor: CultureEditorState | null = editorRef.current) {
@@ -144,6 +143,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
       editorDirtyRef.current = false;
       editorRef.current = nextEditor;
       setSearch(nextLocation.search);
+      setMoreOpen(Boolean(nextLocation.search.addressText || nextLocation.search.currentStatus || nextLocation.search.dataStatus?.length));
       setSelectedId(nextLocation.selectedId);
       setEditor(nextEditor);
       if (nextEditor) editorHrefRef.current = relativeHref();
@@ -208,7 +208,7 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
     const next: CultureSiteTabSearchState = { ...search, keyword: values.keyword?.trim() || '', siteType: values.siteType, branchId: values.branchId, addressText: values.addressText?.trim() || '', currentStatus: values.currentStatus?.trim() || '', dataStatus: values.dataStatus, sort: search.sort || defaultCultureSiteSearch.sort, pageNo: 1 };
     setSearch(next); setSelectedId(undefined); writeLocation(next, undefined);
   }
-  function resetSearch() { const next = { ...defaultCultureSiteSearch, pageSize: search.pageSize }; searchForm.resetFields(); setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
+  function resetSearch() { const next = { ...defaultCultureSiteSearch, pageSize: search.pageSize }; searchForm.resetFields(); setMoreOpen(false); setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
   function changeSort(sort: string) { const next = { ...search, sort, pageNo: 1 }; setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
   function openDetail(item: CultureSiteSummaryResponse) { setSelectedId(item.id); writeLocation(search, item.id); }
   function closeDetail() { setSelectedId(undefined); setDetail(null); setTrace(null); writeLocation(search, undefined, 'replace'); }
@@ -281,36 +281,40 @@ export function CultureSiteStandardTab({ clanId, clans, clansLoading, onClanChan
   ];
 
   if (editor?.mode === 'edit' && clanId) return <><CultureSiteEditorPage clanId={clanId} editor={editor} branches={branches} onCancel={closeEditor} onSaved={editorSaved} onDirtyChange={handleEditorDirtyChange} /></>;
-
   const selectedSummary = detail || items.find(item => item.id === selectedId) || null;
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <InlineFeedback tone="error" title={<>删除</>} /> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    
-    <Card size="small" className="culture-page-header culture-search-card" title="宗族场所查询">
-      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
-      <Form form={searchForm} layout="vertical" onFinish={applySearch}>
+    <StandardQueryPanel
+      size="small"
+      className="culture-page-header culture-search-card"
+      description={<CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />}
+      actions={<StandardQueryActions>
+        <StandardMoreFiltersButton expanded={moreOpen} activeFilterCount={activeMoreCount} onClick={() => setMoreOpen(value => !value)} />
+        <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+        <Button data-query-action="submit" htmlType="submit" loading={listLoading} form="culture-site-query-form">查询</Button>
+      </StandardQueryActions>}
+    >
+      <Form id="culture-site-query-form" form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="siteType" label="场所类型"><CultureMultiSelect aria-label="场所类型" options={siteTypeOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branchOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="名称、摘要或历史说明" /></Form.Item></Col>
         </Row>
-        <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="currentStatus" label="当前状态"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
-        <div className="culture-search-actions"><StandardQueryActions>
-<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
-<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
-</StandardQueryActions></div>
+        {moreOpen ? <Row gutter={[16, 0]} id="culture-site-more-filters">
+          <Col xs={24} sm={12} lg={6}><Form.Item name="addressText" label="地址"><Input allowClear /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="currentStatus" label="当前状态"><Input allowClear /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col>
+        </Row> : null}
       </Form>
-    </Card>
+    </StandardQueryPanel>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'site', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="文化场所排序" className="culture-result-sort" value={search.sort} options={siteSortOptions} onChange={changeSort} />}>
-      
       {refreshError ? <PageFeedback tone="warning" closable title="文化场所刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <EmptyState description="请选择宗族后查看文化场所" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族文化场所'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="文化场所首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
       {clanId && !listForbidden && !listError ? <Table<CultureSiteSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <EmptyState description="没有符合当前条件的文化场所"><Button onClick={resetSearch}>重置筛选</Button></EmptyState> }} /> : null}
-      
     </QueryResultCard>
     <Drawer open={Boolean(selectedId)} width={720} title={<Space><Title level={4} style={{ margin: 0 }}>{detail?.name || selectedSummary?.name || '文化场所详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>} extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'site', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null} onClose={closeDetail} destroyOnHidden>
       {detailLoading && !detail ? <Skeleton active paragraph={{ rows: 10 }} /> : null}

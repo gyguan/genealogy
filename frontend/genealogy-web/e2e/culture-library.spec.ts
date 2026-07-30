@@ -110,7 +110,7 @@ test('culture item tab restores URL state and keeps inactive tabs unmounted', as
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: '宗族文化' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '新增文化资料' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建文化资料' })).toBeVisible();
 });
 
 test('culture item editor supports direct URL, refresh and submit', async ({ page }) => {

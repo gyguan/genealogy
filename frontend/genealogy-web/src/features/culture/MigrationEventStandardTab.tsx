@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Collapse, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
+  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type { CultureDataStatus, MigrationEventDetailResponse, MigrationEventSummaryResponse } from '../../shared/api/generated/culture-types';
 import type { TrackingTraceDetailResponse } from '../../shared/api/generated/tracking-types';
@@ -23,13 +23,11 @@ import { buildMigrationLocation, defaultMigrationSearch, migrationSearchKey, rea
 import type { MigrationSearchState } from './migrationEventUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
-
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 import { feedback } from '../../shared/ui/OperationFeedback';
-
 import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
-
 import { EmptyState } from '../../shared/ui/Feedback';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 
 const { Paragraph, Text, Title } = Typography;
 const migrationSortOptions = [
@@ -85,10 +83,10 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   const editorRef = useRef<CultureEditorState | null>(initialEditor);
   const editorHrefRef = useRef(initialEditor ? relativeHref() : '');
   const editorDirtyRef = useRef(false);
-  
   const [searchForm] = Form.useForm<SearchValues>();
   const [branches, setBranches] = useState<CultureBranchOption[]>([]);
   const [search, setSearch] = useState<MigrationSearchState>(initialLocation.search);
+  const [moreOpen, setMoreOpen] = useState(() => Boolean(initialLocation.search.fromLocation || initialLocation.search.toLocation || initialLocation.search.dataStatus?.length));
   const [items, setItems] = useState<MigrationEventSummaryResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(false);
@@ -111,6 +109,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   const branchOptions = useMemo(() => branches.filter(branch => branch.id).map(branch => ({ value: Number(branch.id), label: branch.name })), [branches]);
+  const activeMoreCount = [search.fromLocation, search.toLocation, search.dataStatus?.length].filter(Boolean).length;
   const handleEditorDirtyChange = useCallback((dirty: boolean) => { editorDirtyRef.current = dirty; }, []);
 
   function buildLocation(nextSearch: MigrationSearchState, nextSelected?: number, nextEditor: CultureEditorState | null = editorRef.current) {
@@ -138,6 +137,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
       editorDirtyRef.current = false;
       editorRef.current = nextEditor;
       setSearch(nextLocation.search);
+      setMoreOpen(Boolean(nextLocation.search.fromLocation || nextLocation.search.toLocation || nextLocation.search.dataStatus?.length));
       setSelectedId(nextLocation.selectedId);
       setEditor(nextEditor);
       if (nextEditor) editorHrefRef.current = relativeHref();
@@ -202,7 +202,7 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
     const next: MigrationSearchState = { ...search, keyword: values.keyword?.trim() || '', branchId: values.branchId, fromLocation: values.fromLocation?.trim() || '', toLocation: values.toLocation?.trim() || '', migrationTimeText: values.migrationTimeText?.trim() || '', dataStatus: values.dataStatus, sort: search.sort || defaultMigrationSearch.sort, pageNo: 1 };
     setSearch(next); setSelectedId(undefined); writeLocation(next, undefined);
   }
-  function resetSearch() { const next = { ...defaultMigrationSearch, pageSize: search.pageSize }; searchForm.resetFields(); setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
+  function resetSearch() { const next = { ...defaultMigrationSearch, pageSize: search.pageSize }; searchForm.resetFields(); setMoreOpen(false); setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
   function changeSort(sort: string) { const next = { ...search, sort, pageNo: 1 }; setSearch(next); setSelectedId(undefined); writeLocation(next, undefined); }
   function openDetail(item: MigrationEventSummaryResponse) { setSelectedId(item.id); writeLocation(search, item.id); }
   function closeDetail() { setSelectedId(undefined); setDetail(null); setTrace(null); writeLocation(search, undefined, 'replace'); }
@@ -264,31 +264,36 @@ export function MigrationEventStandardTab({ clanId, clans, clansLoading, onClanC
   const drawerMore: MenuProps['items'] = selectedSummary ? [can(selectedSummary, 'archive', 'request_archive') ? { key: 'archive', label: '归档' } : null, can(selectedSummary, 'delete', 'request_delete') ? { key: 'delete', label: <InlineFeedback tone="error" title={<>删除</>} /> } : null].filter(Boolean) as MenuProps['items'] : [];
 
   return <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-    
-    <Card size="small" className="culture-page-header culture-search-card" title="迁徙事件查询">
-      <CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />
-      <Form form={searchForm} layout="vertical" onFinish={applySearch}>
+    <StandardQueryPanel
+      size="small"
+      className="culture-page-header culture-search-card"
+      description={<CultureSearchHeader activeTab={activeTab} onTabChange={onTabChange} />}
+      actions={<StandardQueryActions>
+        <StandardMoreFiltersButton expanded={moreOpen} activeFilterCount={activeMoreCount} onClick={() => setMoreOpen(value => !value)} />
+        <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+        <Button data-query-action="submit" htmlType="submit" loading={listLoading} form="migration-query-form">查询</Button>
+      </StandardQueryActions>}
+    >
+      <Form id="migration-query-form" form={searchForm} layout="vertical" onFinish={applySearch}>
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branchOptions} /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="地点、时期、原因或始迁祖" /></Form.Item></Col>
           <Col xs={24} sm={12} lg={6}><Form.Item name="migrationTimeText" label="历史时期"><Input allowClear placeholder="如明洪武年间" /></Form.Item></Col>
         </Row>
-        <Collapse ghost className="culture-more-filters" items={[{ key: 'more', label: '更多筛选', children: <Row gutter={[16, 0]}><Col xs={24} sm={12} lg={6}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col><Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col></Row> }]} />
-        <div className="culture-search-actions"><StandardQueryActions>
-<Button data-query-action="reset" onClick={resetSearch}>重置</Button>
-<Button data-query-action="submit" htmlType="submit" loading={listLoading}>查询</Button>
-</StandardQueryActions></div>
+        {moreOpen ? <Row gutter={[16, 0]} id="migration-more-filters">
+          <Col xs={24} sm={12} lg={6}><Form.Item name="fromLocation" label="迁出地"><Input allowClear /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="toLocation" label="迁入地"><Input allowClear /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col>
+        </Row> : null}
       </Form>
-    </Card>
+    </StandardQueryPanel>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'migration', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={total} resultExtra={<Select aria-label="迁徙脉络排序" className="culture-result-sort" value={search.sort} options={migrationSortOptions} onChange={changeSort} />}>
-      
       {refreshError ? <PageFeedback tone="warning" closable title="迁徙事件刷新失败，仍显示上次结果" description={refreshError} onClose={() => setRefreshError('')} style={{ marginBottom: 16 }} /> : null}
       {!clanId ? <EmptyState description="请选择宗族后查看迁徙脉络" /> : null}
       {clanId && listForbidden ? <Result status="403" title="暂无权限" subTitle={listError || '当前账号无权查看该宗族迁徙事件'} /> : null}
       {clanId && listError && !listForbidden ? <Result status="error" title="迁徙事件首次加载失败" subTitle={listError} extra={<Button onClick={refresh}>重新加载</Button>} /> : null}
       {clanId && !listForbidden && !listError ? <Table<MigrationEventSummaryResponse> rowKey="id" size="middle" loading={listLoading} columns={columns} dataSource={items} scroll={{ x: 1300 }} onRow={item => ({ onClick: () => openDetail(item), tabIndex: 0, onKeyDown: event => { if (event.key === 'Enter') openDetail(item); } })} pagination={{ current: search.pageNo, pageSize: search.pageSize, total, showSizeChanger: true, pageSizeOptions: [10, 20, 50], showTotal: value => `共 ${value} 条`, onChange: (pageNo, pageSize) => { const next = { ...search, pageNo, pageSize }; setSearch(next); writeLocation(next, selectedId); } }} locale={{ emptyText: <EmptyState description="没有符合当前条件的迁徙事件"><Button onClick={resetSearch}>重置筛选</Button></EmptyState> }} /> : null}
-      
     </QueryResultCard>
     <Drawer open={Boolean(selectedId)} width={720} title={<Space><Title level={4} style={{ margin: 0 }}>{detail ? routeText(detail) : selectedSummary ? routeText(selectedSummary) : '迁徙事件详情'}</Title>{detail ? <Tag color={statusColor(detail.dataStatus)}>{optionLabel(statusOptions, detail.dataStatus)}</Tag> : null}</Space>} extra={selectedSummary ? <Space>{can(selectedSummary, 'update', 'request_update') ? <Button onClick={() => openEditor({ target: 'migration', mode: 'edit', id: selectedSummary.id })}>编辑</Button> : null}{can(selectedSummary, 'submit_review') ? <Button type="primary" onClick={() => openGovernance(selectedSummary, 'review')}>提交审核</Button> : null}{drawerMore?.length ? <Dropdown menu={{ items: drawerMore, onClick: ({ key }) => openGovernance(selectedSummary, key as CultureGovernanceTarget['kind']) }}><Button>更多</Button></Dropdown> : null}</Space> : null} onClose={closeDetail} destroyOnHidden>
       {detailLoading && !detail ? <Skeleton active paragraph={{ rows: 9 }} /> : null}

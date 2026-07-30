@@ -1,0 +1,35 @@
+.standard-query-actions {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.standard-query-actions [data-query-action="more"] {
+  margin-right: auto;
+}
+
+.standard-query-actions [data-query-action="submit"] {
+  min-width: 72px;
+}
+
+.standard-query-actions [data-query-more-state] {
+  min-width: 112px;
+  justify-content: flex-start;
+}
+
+@media (max-width: 767px) {
+  .standard-query-actions {
+    flex-wrap: wrap;
+  }
+
+  .standard-query-actions [data-query-action="more"] {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+
+  .standard-query-actions [data-query-action] {
+    min-height: 44px;
+  }
+}

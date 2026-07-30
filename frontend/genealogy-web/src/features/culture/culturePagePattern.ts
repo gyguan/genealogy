@@ -13,21 +13,21 @@ export const culturePagePatterns: Record<CultureTabKey, CulturePagePattern> = {
   items: {
     tab: 'items',
     label: '文化资料',
-    primaryAction: '新增文化资料',
+    primaryAction: '创建文化资料',
     editorTarget: 'item',
     mobileClass: 'culture-tab-items'
   },
   migrations: {
     tab: 'migrations',
     label: '迁徙脉络',
-    primaryAction: '新增迁徙事件',
+    primaryAction: '创建迁徙事件',
     editorTarget: 'migration',
     mobileClass: 'culture-tab-migrations'
   },
   sites: {
     tab: 'sites',
     label: '文化场所',
-    primaryAction: '新增文化场所',
+    primaryAction: '创建文化场所',
     editorTarget: 'site',
     mobileClass: 'culture-tab-sites'
   }

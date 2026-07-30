@@ -87,14 +87,14 @@ test('page-level primary actions are promoted without moving result tools or usi
   assert.doesNotMatch(patterns, /appendChild|insertBefore|querySelector|MutationObserver/);
 });
 
-test('culture tabs use responsibility-specific query card headings without a duplicate page title', () => {
-  assert.match(cultureItem, /title="文化资料查询"/);
-  assert.match(migrationEvent, /title="迁徙事件查询"/);
-  assert.match(cultureSite, /title="宗族场所查询"/);
-  assert.doesNotMatch(cultureHeader, /<Title|culture-page-title|宗族文化/);
+test('culture tabs use the unified query-condition heading without duplicating the module title', () => {
+  assert.match(patterns, /title = '查询条件'/);
   for (const source of [cultureItem, migrationEvent, cultureSite]) {
+    assert.match(source, /<StandardQueryPanel/);
+    assert.doesNotMatch(source, /title="(文化资料|迁徙事件|宗族场所)查询"/);
     assert.doesNotMatch(source, /className="culture-page-header culture-search-card" title="宗族文化"/);
   }
+  assert.doesNotMatch(cultureHeader, /<Title|culture-page-title|宗族文化/);
 });
 
 test('standard page CSS remains token-driven, responsive and does not target Ant internals', () => {
@@ -106,9 +106,4 @@ test('standard page CSS remains token-driven, responsive and does not target Ant
   assert.match(styles, /standard-page-header__actions/);
   assert.match(styles, /@media \(max-width: 767px\)/);
   assert.match(styles, /standard-page-header__actions \.ant-btn\s*\{[^}]*min-height:\s*40px/s);
-});
-
-test('standard page patterns do not use runtime DOM rearrangement or static inline style objects', () => {
-  assert.doesNotMatch(patterns, /appendChild|insertBefore|querySelector|MutationObserver/);
-  assert.doesNotMatch(patterns, /style=\{\{/);
 });

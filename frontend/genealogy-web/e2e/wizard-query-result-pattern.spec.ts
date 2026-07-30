@@ -114,15 +114,20 @@ async function expectStrictResultTables(page: Page, minimumCount = 1) {
   const count = await cards.count();
   for (let index = 0; index < count; index += 1) {
     const card = cards.nth(index);
-    await expect(card.locator(':scope > .query-result-outer-card__header')).toHaveCount(1);
+    const header = card.locator(':scope > .query-result-outer-card__header');
+    await expect(header).toHaveCount(1);
     await expect(card.locator(':scope > .ant-table-wrapper')).toHaveCount(1);
     await expect(card.locator(':scope > .ant-card-body')).toHaveCount(0);
     await expect(card.locator('.business-result-card')).toHaveCount(0);
-    await expect(card.locator(':scope > .query-result-outer-card__header').getByText('查询结果', { exact: true })).toBeVisible();
+    const title = header.locator('.query-result-card__title .ant-typography').first();
+    await expect(title).toBeVisible();
+    const titleText = (await title.textContent())?.trim() || '';
+    expect(titleText).not.toBe('');
+    expect(titleText).not.toBe('查询结果');
   }
 }
 
-test('all active genealogy wizard nodes use query result card plus direct table', async ({ page }) => {
+test('all active genealogy wizard nodes use business-titled result cards plus direct tables', async ({ page }) => {
   await mockWizardApi(page);
 
   for (const step of ['clan', 'branch', 'generation', 'person', 'relationship', 'source']) {
