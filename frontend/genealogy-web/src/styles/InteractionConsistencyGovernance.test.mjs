@@ -10,8 +10,11 @@ const queryActionCss = read('../shared/ui/standard-query-actions.css');
 const cultureShell = read('../features/culture/CultureProductPage.tsx');
 const cultureHeader = read('../features/culture/CultureSearchHeader.tsx');
 const culturePattern = read('../features/culture/culturePagePattern.ts');
-const cultureQuery = read('../features/culture/CultureSearchPanel.tsx');
+const cultureItems = read('../features/culture/CultureItemStandardTab.tsx');
+const cultureMigrations = read('../features/culture/MigrationEventStandardTab.tsx');
+const cultureSites = read('../features/culture/CultureSiteStandardTab.tsx');
 const trackingPage = read('../features/logs/LogPage.tsx');
+const memberPage = read('../features/members/MemberPage.tsx');
 
 function index(source, token) {
   const value = source.indexOf(token);
@@ -42,13 +45,18 @@ test('query panels tabs and result sections expose one stable hierarchy', () => 
   assert.match(pagePatterns, /（共 \{total\} 条）/);
 });
 
-test('result cards promote page actions and reserve the toolbar for secondary result operations', () => {
+test('result cards promote opted-in page actions and reserve the toolbar for result operations', () => {
   assert.match(resultCards, /pageAction\?: ReactNode/);
   assert.match(resultCards, /toolbar\?: ReactNode/);
+  assert.match(resultCards, /promotePrimaryAction\?: boolean/);
   assert.match(resultCards, /StandardPageActions/);
   assert.match(resultCards, /PlusOutlined/);
   assert.match(resultCards, /replace\(\/\^\(新增\|新建\)\//);
   assert.match(resultCards, /type: 'default'/);
+  assert.match(resultCards, /member-result-card/);
+  assert.match(resultCards, /pageAlreadyOwnsPrimaryAction/);
+  assert.match(memberPage, /<StandardPageActions>/);
+  assert.match(memberPage, /className="member-result-card"/);
   assert.match(resultCards, /aria-label="结果操作"/);
   assert.match(resultCards, /data-result-toolbar-group="view"/);
   assert.match(resultCards, /data-result-toolbar-group="actions"/);
@@ -64,11 +72,18 @@ test('culture uses one page-level tab navigation and no duplicate query-card tab
   assert.doesNotMatch(cultureHeader, /cultureTabItems/);
 });
 
-test('representative query pages use governed actions and low-frequency filter disclosure', () => {
-  assert.match(cultureQuery, /<StandardQueryPanel/);
-  assert.match(cultureQuery, /<StandardMoreFiltersButton/);
-  assert.match(cultureQuery, /activeFilterCount=\{activeMoreCount\}/);
-  assert.match(cultureQuery, /setMoreOpen\(false\)/);
+test('all routed culture tabs use governed query panels and low-frequency filter disclosure', () => {
+  for (const source of [cultureItems, cultureMigrations, cultureSites]) {
+    assert.match(source, /<StandardQueryPanel/);
+    assert.match(source, /<StandardMoreFiltersButton/);
+    assert.match(source, /activeFilterCount=\{activeMoreCount\}/);
+    assert.match(source, /setMoreOpen\(false\)/);
+    assert.doesNotMatch(source, /<Collapse/);
+    assert.doesNotMatch(source, /title="(文化资料|迁徙事件|宗族场所)查询"/);
+  }
+});
+
+test('tracking page uses governed actions and business result titles', () => {
   assert.match(trackingPage, /<StandardQueryActions wrap>/);
   assert.match(trackingPage, /data-query-action="more"/);
   assert.match(trackingPage, /expanded\.object/);
