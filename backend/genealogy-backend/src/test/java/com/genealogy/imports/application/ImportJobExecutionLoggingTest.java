@@ -59,7 +59,7 @@ class ImportJobExecutionLoggingTest {
         job.setFailureCount(1);
         job.setSkippedCount(1);
         job.setCursorRowNo(101);
-        service.release(10L, claim.owner());
+        service.release(claim);
 
         List<String> messages = messages();
         assertThat(messages).anyMatch(value -> value.contains("event=import_job_claimed"));
@@ -70,8 +70,7 @@ class ImportJobExecutionLoggingTest {
 
     @Test
     void recoverableFailureUsesWarnAndTerminalFailureUsesErrorWithStackTrace() {
-        ImportJobEntity retryJob = job(11L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PARSING);
-        retryJob.setLeaseOwner("worker-retry");
+        ImportJobEntity retryJob = activeLease(job(11L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PARSING), "worker-retry");
         retryJob.setExecutionRetryCount(0);
         when(jobRepository.findById(11L)).thenReturn(Optional.of(retryJob));
 
@@ -82,8 +81,7 @@ class ImportJobExecutionLoggingTest {
             assertThat(event.getFormattedMessage()).contains("event=import_job_retry_scheduled");
         });
 
-        ImportJobEntity terminalJob = job(12L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PUBLISHING);
-        terminalJob.setLeaseOwner("worker-terminal");
+        ImportJobEntity terminalJob = activeLease(job(12L, ImportJobEntity.EXECUTION_RUNNING, ImportJobEntity.STAGE_PUBLISHING), "worker-terminal");
         terminalJob.setExecutionRetryCount(2);
         terminalJob.setExecutionMaxRetries(3);
         when(jobRepository.findById(12L)).thenReturn(Optional.of(terminalJob));
@@ -114,6 +112,13 @@ class ImportJobExecutionLoggingTest {
 
         assertThat(messages()).anyMatch(value -> value.contains("event=import_job_paused") && value.contains("toStatus=paused"));
         assertThat(messages()).anyMatch(value -> value.contains("event=import_job_partial_cancelled") && value.contains("toStatus=partial_cancelled"));
+    }
+
+    private ImportJobEntity activeLease(ImportJobEntity job, String owner) {
+        job.setLeaseOwner(owner);
+        job.setLeaseExpiresAt(LocalDateTime.now().plusMinutes(1));
+        job.setHeartbeatAt(LocalDateTime.now());
+        return job;
     }
 
     private List<String> messages() {
