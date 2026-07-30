@@ -1,12 +1,10 @@
 package com.genealogy.generation.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,13 +12,11 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "generation_scheme")
+@TableName("generation_scheme")
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GenerationSchemeEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long clanId;
