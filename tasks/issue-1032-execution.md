@@ -13,6 +13,7 @@
 - 增加框架无关分页模型与 MyBatis-Plus 分页适配。
 - 将 Clan、Generation 的 Entity、Repository 和应用服务迁移为 MyBatis-Plus/MyBatis 实现。
 - 将 Source/Culture 使用的 Generation 兼容 Repository 切换到 MyBatis，避免继续注册已迁移实体的 JPA Repository。
+- 为迁移后的 Repository 恢复 Spring Data 等价的读写事务语义：类级只读、写方法显式事务。
 - 增加 Mapper 加载、Identity 主键回填、Nullable 更新、删除、唯一约束和跨框架事务回滚测试。
 - 更新 README、AGENTS、Repository 查询规范和持久化迁移清单。
 
@@ -39,8 +40,8 @@
 | 1 | 刷新规则、Issue、评论、分支和 PR 现场 | ✅ 已完成 | 约 7 分钟 | 无已有分支、PR 或评论；从 `main` 启动 |
 | 2 | 建立任务分支、执行看板、Draft PR 与 Issue 启动评论 | ✅ 已完成 | 约 4 分钟 | 分支与 PR #1038 已建立 |
 | 3 | 建立 MyBatis-Plus 双栈配置和框架无关分页适配 | ✅ 已完成 | 约 12 分钟 | Boot 依赖统一、限定 Mapper 扫描、PostgreSQL 分页、PageQuery/PageResult |
-| 4 | 迁移 Clan Entity、Mapper、Repository 与分页调用 | ✅ 已完成 | 约 10 分钟 | Identity、显式 null、CRUD、分页和兼容方法完成 |
-| 5 | 迁移 Generation Scheme/Word 与兼容仓储 | ✅ 已完成 | 约 12 分钟 | Scheme/Word、Source/Culture 兼容入口和事务语义完成 |
+| 4 | 迁移 Clan Entity、Mapper、Repository 与分页调用 | ✅ 已完成 | 约 12 分钟 | Identity、显式 null、CRUD、分页、兼容方法和 Repository 事务完成 |
+| 5 | 迁移 Generation Scheme/Word 与兼容仓储 | ✅ 已完成 | 约 14 分钟 | Scheme/Word、Source/Culture 兼容入口、批次与 Repository 事务完成 |
 | 6 | 增加聚焦测试并执行验证 | 🔄 进行中 | 约 15 分钟 | Backend CI/漏洞扫描已有成功结果；最终 Head 全量门禁运行中 |
 | 7 | 更新迁移清单、规范、README、PR 看板并完成 Review | 🔄 进行中 | 约 10 分钟 | 文档与 PR 描述已更新，待最终 CI 和差异复核 |
 
@@ -73,11 +74,13 @@
    - 处理：在 Repository Adapter 中提供框架无关兼容实现。
 3. Source/Culture 仍通过 `GenerationWordRepository`、`GenerationSchemeRepository` 注册 JPA Repository。
    - 处理：兼容仓储改为委托 canonical MyBatis Repository，空库启动不再要求迁移实体是 JPA managed type。
+4. Repository Adapter 最初只依赖上层事务，弱于 Spring Data Repository 方法本身的事务保证。
+   - 处理：Clan、Generation canonical Repository 增加类级 `readOnly` 和写方法显式 `@Transactional`，直接调用、测试夹具和跨模块调用保持原子性。
 
 ## 验证方案与当前证据
 
 1. 已迁移模块生产代码不再引用 `JpaRepository`、JPA Entity 注解和 Spring Data Page。
-2. Backend CI 已在实现 Head 上通过编译、测试、覆盖率、架构和静态分析；最终文档/兼容修复 Head 正在复验。
+2. Backend CI 已在实现 Head 上通过编译、测试、覆盖率、架构和静态分析；最终事务收口 Head 正在复验。
 3. Critical Dependency Vulnerability Scan 已通过。
 4. Database Migration Governance 已通过，且本 PR 没有 Schema/Flyway 文件变更。
 5. Backend Configuration Governance 已确认生产 Secret 拒绝和构建成功；首次空库启动暴露 Generation 兼容 JPA Repository，已修复并复验中。
@@ -95,10 +98,10 @@
 ## 恢复检查点
 
 - 当前阶段：实现和文档完成，最终 Head 全量 CI 验证中。
-- 最后完成任务：Generation Source/Culture 兼容仓储改为 MyBatis 委托，并完成 null-safe 收口。
+- 最后完成任务：Clan、Generation Repository 写入事务语义与本看板收口。
 - 当前进行中任务：最终 Backend Configuration、Backend CI、Security、Member Scope 和 Functional E2E 验证。
-- 最新代码 Commit：`25daaad5d0a2c67d2c6e3ec36cef73b739a24194`；本看板更新将成为新的 Head。
+- 最新代码 Commit：`5dfaef5d36eeb5d2a3096f7f63fba647287f6131`；本看板提交为最终 Head。
 - 已确认成功：Backend CI、Critical Dependency Vulnerability Scan、Database Migration Governance（前一有效 Head）。
 - 已知阻塞：无业务阻塞。
 - 下一步最小任务：读取最终 Head 的全部工作流结论；若成功，完成 Review、标记 PR Ready 并更新 Issue 评论。
-- 最后更新时间：2026-07-30 17:50（北京时间）
+- 最后更新时间：2026-07-30 17:56（北京时间）
