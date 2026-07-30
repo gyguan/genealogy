@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.genealogy.generation.entity.GenerationWordEntity;
 import com.genealogy.generation.repository.mybatis.GenWordPersistenceMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 /** Framework-neutral Generation Word persistence adapter. */
 @Repository
+@Transactional(readOnly = true)
 public class GenWordRepository {
 
     private final GenWordPersistenceMapper mapper;
@@ -20,6 +22,7 @@ public class GenWordRepository {
         this.mapper = mapper;
     }
 
+    @Transactional
     public GenerationWordEntity save(GenerationWordEntity entity) {
         Objects.requireNonNull(entity, "entity");
         if (entity.getId() == null) {
@@ -33,6 +36,7 @@ public class GenWordRepository {
         return entity;
     }
 
+    @Transactional
     public GenerationWordEntity saveAndFlush(GenerationWordEntity entity) {
         return save(entity);
     }
@@ -42,6 +46,7 @@ public class GenWordRepository {
      * receives its PostgreSQL Identity value and participates in the caller's
      * Spring transaction.
      */
+    @Transactional
     public List<GenerationWordEntity> saveAll(Iterable<GenerationWordEntity> entities) {
         List<GenerationWordEntity> saved = new ArrayList<>();
         for (GenerationWordEntity entity : entities) {
@@ -78,11 +83,13 @@ public class GenWordRepository {
                 .eq(GenerationWordEntity::getGenerationNo, generationNo)) > 0;
     }
 
+    @Transactional
     public void deleteBySchemeId(Long schemeId) {
         mapper.delete(Wrappers.<GenerationWordEntity>lambdaQuery()
                 .eq(GenerationWordEntity::getSchemeId, schemeId));
     }
 
+    @Transactional
     public void delete(GenerationWordEntity entity) {
         Objects.requireNonNull(entity, "entity");
         if (entity.getId() != null) {
@@ -90,6 +97,7 @@ public class GenWordRepository {
         }
     }
 
+    @Transactional
     public void deleteAll(Iterable<GenerationWordEntity> entities) {
         List<Long> ids = new ArrayList<>();
         for (GenerationWordEntity entity : entities) {
