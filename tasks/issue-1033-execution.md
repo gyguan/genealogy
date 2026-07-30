@@ -28,9 +28,9 @@
 | 2 | 建立分支、执行看板与 Draft PR | ✅ 已完成 | 分支与 PR #1044 已建立 |
 | 3 | 迁移 Person 写模型与 Repository Adapter | ✅ 已完成 | Identity、全字段 Nullable 更新、显式软删除、500 条批量分片和审核行锁已切换到 MyBatis |
 | 4 | 迁移动态查询、分页、排序与导出 | ✅ 已完成 | 专用 QueryMapper/XML；数据与 count 共用筛选片段；排序白名单并以 id 收口 |
-| 5 | 迁移 Dashboard 强类型聚合 | ✅ 已完成 | Object[] 已替换为强类型 Summary/Bucket/DailyCount/Recent read model |
-| 6 | 增加 PostgreSQL 集成测试并修复 CI | 🔄 进行中 | 生产代码编译通过；已修复三处旧 Mockito 方法桩，正在执行最终 Head 全量门禁 |
-| 7 | 更新规范、完成 Review 与收口 | 🔄 进行中 | 迁移清单和 README 待随最终验收结论同步 |
+| 5 | 迁移 Dashboard 强类型聚合 | ✅ 已完成 | Object[] 已替换为强类型 Summary/Bucket/DailyCount/Recent read model；JDBC 计数统一映射为 `Long` |
+| 6 | 增加 PostgreSQL 集成测试并修复 CI | 🔄 进行中 | Person PostgreSQL 专项 2/2 已通过；正在执行最新可信 Head 的全量门禁 |
+| 7 | 更新规范、完成 Review 与收口 | 🔄 进行中 | 迁移清单和 README 已同步，待最终 CI 与 Review 收口 |
 
 ## 已处理问题
 
@@ -40,6 +40,7 @@
 4. 首轮 CI 的生产代码编译通过，但三处测试仍模拟迁移前的单参数重复检测方法；已改为新的强类型参数契约。
 5. Person 批量快照更新改为固定 500 条分片，避免无界 `VALUES` SQL；`count()` 同时移除弃用 Wrapper API。
 6. 搜索条件仅执行 trim，不再额外改写 gender/dataStatus 大小写，保持迁移前筛选语义。
+7. Dashboard constructor projection 最初将 JDBC `Long` 映射到 primitive record；现已将 Summary、Bucket 和 DailyCount 统一为 `Long` 并由真实 PostgreSQL 专项测试验证。
 
 ## 风险控制
 
@@ -48,12 +49,12 @@
 - 排序仅接受后端枚举，所有排序以 `id` 作为唯一稳定键收口。
 - 权限校验和隐私脱敏继续在既有 Application Service 边界执行。
 - Tree Snapshot 不并入 Person 写 Mapper，避免扩大图谱查询风险。
-- 临时补丁和辅助工作流均已自清理，不进入最终 PR 文件范围。
+- 临时补丁、诊断文件和辅助工作流均已自清理，不进入最终 PR 文件范围。
 
 ## 恢复检查点
 
-- 当前阶段：正式实现、测试兼容和持久化边界修复完成，最终 Head 全量 CI 验证中。
-- 最新代码 Head：`6e685d08094d9b956bbdca2ce36b15bc52133b8e`；本看板提交将形成新的可信 CI Head。
-- 首轮失败根因：仅测试编译桩不兼容，生产代码编译成功。
+- 当前阶段：正式实现、测试兼容、Dashboard 映射和持久化边界修复完成，最终可信 Head 全量 CI 验证中。
+- 前一代码 Head：`f7dfa9fb6d6282c0a7fd2dd54ec32810020a9d56`；本看板提交将形成新的可信 CI Head。
+- 已确认：Person PostgreSQL 专项 2/2、Backend CI、Security、Member Scope E2E 曾在等价代码上通过。
 - 已知阻塞：无业务阻塞；本地无 Maven，构建与 PostgreSQL 验证以 PR CI 为准。
-- 下一步最小任务：读取 Backend CI、PostgreSQL Integration、Security、Member Scope、Functional E2E 结果，修复剩余问题并完成 PR Review 收口。
+- 下一步最小任务：确认最终 Head 的 Backend CI、PostgreSQL Integration、Security、Member Scope、Functional E2E 结果，完成 PR Review 收口。
