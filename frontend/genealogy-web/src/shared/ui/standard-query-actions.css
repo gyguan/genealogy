@@ -6,6 +6,10 @@
   gap: 8px;
 }
 
+.standard-query-actions--wrap {
+  flex-wrap: wrap;
+}
+
 .standard-query-actions [data-query-action="more"] {
   min-width: 112px;
   margin-right: auto;
@@ -27,15 +31,8 @@
     width: 100%;
   }
 
-  .standard-query-actions > .ant-space-item {
-    min-width: 0;
-  }
-
-  .standard-query-actions > .ant-space-item:has([data-query-action="more"]) {
-    grid-column: 1 / -1;
-  }
-
   .standard-query-actions [data-query-action="more"] {
+    grid-column: 1 / -1;
     width: 100%;
     margin-right: 0;
   }
