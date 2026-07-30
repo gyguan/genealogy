@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import {
-  Alert, Button, Card, DatePicker, Form, Result, Select, Space, Table, Tag, Typography } from 'antd';
+  Button, DatePicker, Form, Result, Select, Space, Table, Tag, Typography
+} from 'antd';
 import { apiClient, ApiRequestError } from '../../shared/api/client';
 import type {
   OperationLogResponse,
@@ -25,11 +26,10 @@ import {
   riskLevelText,
   targetTypeText
 } from './trackingCenterLabels';
-
 import { PageFeedback } from '../../shared/ui/Feedback';
-
 import { EmptyState } from '../../shared/ui/Feedback';
 import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryPanel, StandardResultSection } from '../../shared/ui/StandardPagePatterns';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -177,7 +177,16 @@ export function RiskAuditPanel({
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Card className="tracking-filter-card">
+      <StandardQueryPanel
+        className="tracking-filter-card"
+        description="风险事件分页由服务端在当前权限范围内计算。"
+        actions={(
+          <StandardQueryActions wrap>
+            <Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
+            <Button data-query-action="submit" type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
+          </StandardQueryActions>
+        )}
+      >
         <Form layout="vertical">
           <div className="tracking-filter-grid tracking-filter-grid--audit">
             <Form.Item label="时间范围">
@@ -217,68 +226,60 @@ export function RiskAuditPanel({
             </Form.Item>
           </div>
         </Form>
-        <div className="tracking-filter-actions">
-          <StandardQueryActions wrap>
-<Button data-query-action="reset" disabled={loading} onClick={reset}>重置</Button>
-<Button data-query-action="submit" type="primary" loading={loading} onClick={() => void load(filters, '')}>查询</Button>
-</StandardQueryActions>
-          <Text type="secondary">风险事件分页由服务端在权限范围内计算。</Text>
-        </div>
-      </Card>
+      </StandardQueryPanel>
 
       {forbidden ? (
         <Result status="403" title="无权查看高风险审计" subTitle="当前账号缺少高风险操作审计权限，风险事件不会返回。" />
       ) : error ? (
         <PageFeedback tone="error" title="风险审计查询失败" description={error} action={<Button size="small" onClick={() => void load()}>重试</Button>} />
       ) : (
-        <>
-          <Card title="高风险操作事件" extra={<Text type="secondary">点击记录查看原始日志；可追踪对象可直接跳转</Text>}>
-            <Table<RiskAuditEventResponse>
-              size="small"
-              rowKey={row => String(row.id)}
-              dataSource={page?.records || []}
-              loading={loading}
-              scroll={{ x: 1180 }}
-              onRow={row => ({ onClick: () => openLog(row) })}
-              rowClassName="tracking-clickable-row"
-              locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }}
-              pagination={{
-                current: page?.pageNo || filters.pageNo,
-                pageSize: TRACKING_PAGE_SIZE,
-                total: page?.total || 0,
-                showSizeChanger: false,
-                showTotal: total => `共 ${total} 条风险事件`,
-                onChange: pageNo => setFilters(previous => ({ ...previous, pageNo, pageSize: TRACKING_PAGE_SIZE }))
-              }}
-              columns={[
-                { key: 'time', title: '发生时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
-                { key: 'level', title: '风险等级', width: 100, render: (_value, row) => <Tag color={riskLevelColor(row.riskLevel)}>{riskLevelText(row.riskLevel)}</Tag> },
-                { key: 'event', title: '事件类型', width: 170, render: (_value, row) => riskEventText(row.eventType) },
-                { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
-                { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, targetTypeText(row.targetType))}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
-                { key: 'action', title: '动作', width: 150, render: (_value, row) => actionText(row.actionType) },
-                { key: 'disposition', title: '处置状态', width: 110, render: (_value, row) => <Tag color={riskDispositionColor(row.dispositionStatus)}>{riskDispositionText(row.dispositionStatus)}</Tag> },
-                { key: 'summary', title: '风险摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
-                {
-                  key: 'actions',
-                  title: '操作',
-                  width: 170,
-                  render: (_value, row) => (
-                    <Space size={4}>
-                      <Button type="link" onClick={event => { event.stopPropagation(); openLog(row); }}>日志详情</Button>
-                      {row.trackingTargetType && row.trackingTargetId != null && TRACEABLE_TYPES.has(row.trackingTargetType) ? (
-                        <Button type="link" onClick={event => {
-                          event.stopPropagation();
-                          onOpenTrace(row.trackingTargetType!, String(row.trackingTargetId), row.reviewTaskId ? String(row.reviewTaskId) : '');
-                        }}>对象追踪</Button>
-                      ) : null}
-                    </Space>
-                  )
-                }
-              ]}
-            />
-          </Card>
-        </>
+        <StandardResultSection title="高风险操作事件" total={page?.total}>
+          <Text type="secondary">点击记录查看原始日志；可追踪对象可直接跳转。</Text>
+          <Table<RiskAuditEventResponse>
+            size="small"
+            rowKey={row => String(row.id)}
+            dataSource={page?.records || []}
+            loading={loading}
+            scroll={{ x: 1180 }}
+            onRow={row => ({ onClick: () => openLog(row) })}
+            rowClassName="tracking-clickable-row"
+            locale={{ emptyText: <EmptyState image={EmptyState.PRESENTED_IMAGE_SIMPLE} description="当前条件下暂无高风险操作" /> }}
+            pagination={{
+              current: page?.pageNo || filters.pageNo,
+              pageSize: TRACKING_PAGE_SIZE,
+              total: page?.total || 0,
+              showSizeChanger: false,
+              showTotal: total => `共 ${total} 条风险事件`,
+              onChange: pageNo => setFilters(previous => ({ ...previous, pageNo, pageSize: TRACKING_PAGE_SIZE }))
+            }}
+            columns={[
+              { key: 'time', title: '发生时间', width: 180, render: (_value, row) => formatDateTime(row.createdAt) },
+              { key: 'level', title: '风险等级', width: 100, render: (_value, row) => <Tag color={riskLevelColor(row.riskLevel)}>{riskLevelText(row.riskLevel)}</Tag> },
+              { key: 'event', title: '事件类型', width: 170, render: (_value, row) => riskEventText(row.eventType) },
+              { key: 'actor', title: '操作者', width: 150, render: (_value, row) => display(row.actorDisplayName, '系统或未知操作者') },
+              { key: 'target', title: '业务对象', render: (_value, row) => <div><Text strong>{display(row.targetDisplayName || row.targetSummary, targetTypeText(row.targetType))}</Text><div><Text type="secondary">{targetTypeText(row.targetType)}{row.targetBranchName ? ` · ${row.targetBranchName}` : ''}</Text></div></div> },
+              { key: 'action', title: '动作', width: 150, render: (_value, row) => actionText(row.actionType) },
+              { key: 'disposition', title: '处置状态', width: 110, render: (_value, row) => <Tag color={riskDispositionColor(row.dispositionStatus)}>{riskDispositionText(row.dispositionStatus)}</Tag> },
+              { key: 'summary', title: '风险摘要', render: (_value, row) => display(row.summary, '暂无摘要') },
+              {
+                key: 'actions',
+                title: '操作',
+                width: 170,
+                render: (_value, row) => (
+                  <Space size={4}>
+                    <Button type="link" onClick={event => { event.stopPropagation(); openLog(row); }}>日志详情</Button>
+                    {row.trackingTargetType && row.trackingTargetId != null && TRACEABLE_TYPES.has(row.trackingTargetType) ? (
+                      <Button type="link" onClick={event => {
+                        event.stopPropagation();
+                        onOpenTrace(row.trackingTargetType!, String(row.trackingTargetId), row.reviewTaskId ? String(row.reviewTaskId) : '');
+                      }}>对象追踪</Button>
+                    ) : null}
+                  </Space>
+                )
+              }
+            ]}
+          />
+        </StandardResultSection>
       )}
 
       <OperationLogDrawer
