@@ -20,7 +20,7 @@
 | 3 | 迁移 Member 与权限范围查询 | ✅ 已完成 | 动态 SQL、count 共用筛选、空集合、显式更新与成员锁已切换 |
 | 4 | 迁移 Review/Revision 与并发锁 | ✅ 已完成 | FOR UPDATE、JSONB 显式更新、审核查询与并发边界已切换 |
 | 5 | 迁移 Source/Binding/Attachment | ✅ 已完成 | 来源、绑定、附件和聚合查询已切换，公共接口保持不变 |
-| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | 可信 Head 已形成，正在执行 Backend、Integration、Security、Member Scope、Functional E2E |
+| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | 首轮生产编译发现 Source 残留 Sort 依赖，已改为 Repository 固定稳定排序；正在执行第二轮可信门禁 |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
 
 ## 风险控制
@@ -33,6 +33,6 @@
 
 ## 恢复检查点
 
-- 当前阶段：80 个限定范围文件已通过 Base64/tar.gz 双重 SHA-256、文件数量校验并原子应用；所有 `.agent`、临时 Workflow 和触发文件均已清理。
-- 当前可信 Head：本看板提交形成新的正常仓库身份 Head，以该 Head 的全量 CI 为最终验收基准。
-- 下一步最小任务：读取 Backend CI 与 PostgreSQL Integration 首轮结果，修复编译、SQL 映射或事务语义问题。
+- 当前阶段：首轮可信 CI 的最早根因已修复；`SourceApplicationService` 不再依赖 Spring Data `Sort`，排序继续由 `SourceBindingRepository` 以 `created_at desc, id desc` 收口。
+- 当前可信 Head：本看板提交形成第二轮正常仓库身份 Head，以该 Head 的 Backend、PostgreSQL Integration、Security、Member Scope 和 Functional E2E 为验收基准。
+- 下一步最小任务：读取第二轮 Backend CI 最早失败点；生产编译通过后继续处理测试契约、Mapper/XML 或事务语义问题。
