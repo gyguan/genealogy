@@ -1,0 +1,37 @@
+version: 1
+items:
+  - id: T05
+    path: src/main/java/com/genealogy/tree/application/TreeApplicationService.java
+    reason: Preserve the historical tree application entry point during query-service migration.
+    trackingIssue: 1017
+    owner: tree-module
+    risk: New callers may continue to depend on the compatibility facade.
+    exitCondition: All controllers and cross-module callers use TreeQueryApplicationService or an explicit public API.
+    plannedRemoval: 2026-10-31
+
+  - id: T06
+    path: src/main/java/com/genealogy/tree/repository
+    reason: Detached entity adaptation remains while tree algorithms migrate to read-model snapshots.
+    trackingIssue: 1017
+    owner: tree-module
+    risk: Detached persistence entities can be mistaken for managed write models.
+    exitCondition: Tree graph, visibility and traversal code consume snapshots only.
+    plannedRemoval: 2026-11-30
+
+  - id: T07
+    path: src/main/java/com/genealogy/auth
+    reason: Permission normalization accepts both colon and dot separators for historical data.
+    trackingIssue: 1017
+    owner: auth-module
+    risk: Two permission-code formats increase authorization ambiguity.
+    exitCondition: Stored permission data is normalized and legacy-format hit metrics remain zero for one release.
+    plannedRemoval: 2026-10-31
+
+  - id: T09
+    path: src/main/java/com/genealogy/review
+    reason: TASK_IDS remains an API alias during quality-scope migration.
+    trackingIssue: 1017
+    owner: review-module
+    risk: The deprecated API vocabulary may become permanent.
+    exitCondition: OpenAPI marks the alias deprecated and usage remains zero for one release.
+    plannedRemoval: 2026-10-31
