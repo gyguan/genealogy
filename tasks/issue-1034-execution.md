@@ -20,7 +20,7 @@
 | 3 | 迁移 Member 与权限范围查询 | ✅ 已完成 | 动态 SQL、count 共用筛选、空集合、显式更新与成员锁已切换 |
 | 4 | 迁移 Review/Revision 与并发锁 | ✅ 已完成 | FOR UPDATE、JSONB 显式更新、审核查询与并发边界已切换 |
 | 5 | 迁移 Source/Binding/Attachment | ✅ 已完成 | 来源、绑定、附件和聚合查询已切换，公共接口保持不变 |
-| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | 生产代码和测试代码已完成编译兼容修复，正在执行第三轮可信门禁 |
+| 6 | PostgreSQL 专项测试和全量 CI | 🔄 进行中 | Backend CI 已通过；已修复 Review Query Row UUID TypeHandler 启动问题，正在执行第四轮可信门禁 |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 迁移清单、风险、回滚和最终验收 |
 
 ## 已处理问题
@@ -28,6 +28,7 @@
 1. `SourceApplicationService` 残留 Spring Data `Sort`：移除 Application 层排序依赖，继续由 Repository 以 `created_at desc, id desc` 稳定排序。
 2. 成员权限审计测试仍注入旧 `OperationLogRepository`：切换到 `OperationLogMemberAuditQueryRepository.search`。
 3. 来源搜索测试仍模拟 JPA `Specification`：切换到强类型 `SourceRepository.search` 契约。
+4. `ReviewTaskQueryMapper` 直接映射 UUID setter，MyBatis 启动期找不到 TypeHandler：SQL 显式转为文本，Query Row 接收 `String` 并在组装 Entity 时恢复 `UUID`。
 
 ## 风险控制
 
@@ -39,6 +40,6 @@
 
 ## 恢复检查点
 
-- 当前阶段：生产编译和测试编译已通过已知迁移契约修复，第三轮将验证单测、ArchUnit、SpotBugs、Mapper/XML 与 PostgreSQL 事务语义。
+- 当前阶段：Backend CI 已成功；MyBatis Mapper XML 启动级阻塞已修复，第四轮将验证真实 PostgreSQL SQL、行锁和 JSONB 语义。
 - 当前可信 Head：本看板提交形成正常仓库身份 Head，以其全量 CI 为准。
-- 下一步最小任务：读取第三轮 Backend CI 最早失败点；若 Backend 通过，则优先分析 PostgreSQL Integration 专项结果。
+- 下一步最小任务：优先读取 PostgreSQL Integration 结果；启动通过后继续处理 SQL 列名、类型转换、锁竞争或事务回滚问题。
