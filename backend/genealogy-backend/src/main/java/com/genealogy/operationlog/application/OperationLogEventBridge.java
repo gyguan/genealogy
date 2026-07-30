@@ -11,7 +11,11 @@ public class OperationLogEventBridge {
     private static volatile ApplicationEventPublisher publisher;
 
     public OperationLogEventBridge(ApplicationEventPublisher publisher) {
-        OperationLogEventBridge.publisher = publisher;
+        install(publisher);
+    }
+
+    private static void install(ApplicationEventPublisher eventPublisher) {
+        publisher = eventPublisher;
     }
 
     public static void publish(OperationLogEntity entity) {
