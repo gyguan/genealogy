@@ -1,7 +1,5 @@
 package com.genealogy.person.repository.query;
 
-import com.genealogy.person.application.PersonDuplicateQuery;
-
 import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Objects;
@@ -32,18 +30,25 @@ public final class PersonDuplicateCriteria {
         this.birthDate = birthDate;
     }
 
-    public static PersonDuplicateCriteria from(PersonDuplicateQuery query) {
-        Objects.requireNonNull(query, "query");
-        String word = query.generationWord() == null || query.generationWord().isBlank()
+    public static PersonDuplicateCriteria of(
+            Long clanId,
+            Long branchId,
+            String name,
+            Integer generationNo,
+            String generationWord,
+            LocalDate birthDate
+    ) {
+        Objects.requireNonNull(name, "name");
+        String word = generationWord == null || generationWord.isBlank()
                 ? null
-                : query.generationWord().trim();
+                : generationWord.trim();
         return new PersonDuplicateCriteria(
-                query.clanId(),
-                query.branchId(),
-                query.name().trim().toLowerCase(Locale.ROOT),
-                query.generationNo(),
+                clanId,
+                branchId,
+                name.trim().toLowerCase(Locale.ROOT),
+                generationNo,
                 word,
-                query.birthDate()
+                birthDate
         );
     }
 
