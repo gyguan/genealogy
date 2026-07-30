@@ -1,20 +1,20 @@
 import {
   useEffect,
   useRef,
-  useState } from 'react';
-import { Spin
-} from 'antd';
+  useState
+} from 'react';
+import { Spin } from 'antd';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
+import { StandardPageTabs } from '../../shared/ui/StandardPagePatterns';
 import { CultureItemMaintenanceTab } from './CultureItemMaintenanceTab';
 import { MigrationEventStandardTab } from './MigrationEventStandardTab';
 import { CultureSiteStandardTab } from './CultureSiteStandardTab';
-import { cultureMobileClass } from './culturePagePattern';
+import { cultureMobileClass, cultureTabItems } from './culturePagePattern';
 import { listCultureClans } from './cultureLibraryService';
 import type { CultureClanOption } from './cultureLibraryService';
 import { buildCultureTabLocation, readCultureTabLocation, resolveCultureTabMounts } from './cultureTabState';
 import type { CultureTabKey } from './cultureTabState';
 import './culture.css';
-
 import { feedback } from '../../shared/ui/OperationFeedback';
 
 function errorText(error: unknown, fallback: string) {
@@ -24,7 +24,6 @@ function errorText(error: unknown, fallback: string) {
 export function CultureProductPage() {
   const workspace = useWorkspace();
   const initialLocation = useRef(readCultureTabLocation()).current;
-  
   const [activeTab, setActiveTab] = useState<CultureTabKey>(initialLocation.tab);
   const [clans, setClans] = useState<CultureClanOption[]>([]);
   const [clansLoading, setClansLoading] = useState(true);
@@ -96,7 +95,12 @@ export function CultureProductPage() {
 
   return (
     <div className="tabbed-module-page culture-product-page">
-      
+      <StandardPageTabs
+        ariaLabel="宗族文化内容"
+        activeKey={activeTab}
+        items={cultureTabItems}
+        onChange={changeTab}
+      />
       {hydratingInitialClan ? <div className="culture-page-loading"><Spin size="large" tip="正在加载宗族文化…" /></div> : renderActiveTab()}
     </div>
   );
