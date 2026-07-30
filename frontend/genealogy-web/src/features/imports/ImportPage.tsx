@@ -1,7 +1,4 @@
-import {
-  SearchOutlined,
-  UploadOutlined
-} from '@ant-design/icons';
+import { UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import {
@@ -14,12 +11,10 @@ import {
   Alert,
   Button,
   Card,
-  Col,
   DatePicker,
   Drawer,
   Form,
   Input,
-  Row,
   Select,
   Space,
   Tabs,
@@ -29,6 +24,7 @@ import { apiClient } from '../../shared/api/client';
 import { useWorkspace } from '../../shared/context/WorkspaceContext';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 import { PageFeedback } from '../../shared/ui/Feedback';
 import { AsyncImportExecutionPanel } from './AsyncImportExecutionPanel';
 import { ImportFilterMultiSelect } from './ImportFilterMultiSelect';
@@ -197,38 +193,37 @@ export function ImportPage({}: Props) {
 
   return (
     <div className="import-center-page import-double-card-page">
-      <Card className="import-query-card" title="查询条件">
-        <Form<QueryFormValues> form={queryForm} layout="vertical" onFinish={applySearch}>
-          <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12} xl={6}>
-              <Form.Item name="importTypes" label="导入对象">
+      <StandardQueryPanel className="import-query-card" actions={(
+        <StandardQueryActions>
+          <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
+          <Button data-query-action="submit" htmlType="submit" form="import-query-form">查询</Button>
+        </StandardQueryActions>
+      )}>
+        <Form<QueryFormValues> id="import-query-form" form={queryForm} layout="vertical" onFinish={applySearch}>
+          <StandardQueryGrid>
+            <StandardQueryField label="导入对象">
+              <Form.Item name="importTypes" noStyle>
                 <ImportFilterMultiSelect<ImportTypeKey> ariaLabel="导入对象" placeholder="全部导入对象" options={availableImportTypes} />
               </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} xl={6}>
-              <Form.Item name="statuses" label="导入状态">
+            </StandardQueryField>
+            <StandardQueryField label="导入状态">
+              <Form.Item name="statuses" noStyle>
                 <ImportFilterMultiSelect<ImportTaskStatusFilter> ariaLabel="导入状态" placeholder="全部导入状态" options={importTaskStatusOptions} />
               </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} xl={6}>
-              <Form.Item name="keyword" label="文件名/任务编号">
-                <Input allowClear suffix={<SearchOutlined />} placeholder="请输入文件名或任务编号" />
+            </StandardQueryField>
+            <StandardQueryField label="文件名/任务编号">
+              <Form.Item name="keyword" noStyle>
+                <Input allowClear placeholder="请输入文件名或任务编号" />
               </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} xl={6}>
-              <Form.Item name="createdRange" label="任务创建时间">
+            </StandardQueryField>
+            <StandardQueryField label="任务创建时间">
+              <Form.Item name="createdRange" noStyle>
                 <RangePicker allowClear style={{ width: '100%' }} placeholder={['开始日期', '结束日期']} />
               </Form.Item>
-            </Col>
-          </Row>
-          <div className="import-query-actions">
-            <StandardQueryActions>
-              <Button data-query-action="reset" onClick={resetSearch}>重置</Button>
-              <Button data-query-action="submit" type="primary" htmlType="submit">查询</Button>
-            </StandardQueryActions>
-          </div>
+            </StandardQueryField>
+          </StandardQueryGrid>
         </Form>
-      </Card>
+      </StandardQueryPanel>
 
       <QueryResultCard
         className="import-result-card"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Row, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography
+  Alert, Button, Card, Descriptions, Drawer, Dropdown, Form, Input, List, Result, Select, Skeleton, Space, Table, Tabs, Tag, Timeline, Typography
 } from 'antd';
 import type { MenuProps, TableProps } from 'antd';
 import type {
@@ -60,7 +60,7 @@ import type { CultureSearchState } from './cultureUrlState';
 import type { CultureTabKey } from './cultureTabState';
 import { QueryResultCard } from '../../shared/ui/QueryResultCards';
 import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
-import { StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
+import { StandardAdvancedFilters, StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 import { feedback } from '../../shared/ui/OperationFeedback';
 import { InlineFeedback, PageFeedback, EmptyState } from '../../shared/ui/Feedback';
 
@@ -398,18 +398,18 @@ export function CultureItemStandardTab({ clanId, clans, clansLoading, onClanChan
       </StandardQueryActions>}
     >
       <Form id="culture-item-query-form" form={searchForm} layout="vertical" onFinish={applySearch}>
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={12} lg={6}><Form.Item label="宗族"><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="category" label="分类"><CultureMultiSelect aria-label="分类" options={categoryOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="branchId" label="支派"><CultureMultiSelect aria-label="支派" options={branches.filter(branch => branch.id).map(branch => ({ value: Number(branch.id), label: branchLabel(branch) }))} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
-        </Row>
-        {moreOpen ? <Row gutter={[16, 0]} id="culture-item-more-filters">
-          <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="privacyLevel" label="可见范围"><CultureMultiSelect aria-label="可见范围" options={privacyOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="hasSource" label="已有来源"><CultureMultiSelect aria-label="已有来源" options={booleanOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="featuredOnHome" label="首页精选"><CultureMultiSelect aria-label="首页精选" options={booleanOptions} /></Form.Item></Col>
-        </Row> : null}
+        <StandardQueryGrid>
+          <StandardQueryField label="宗族"><Form.Item noStyle><CultureClanSelect value={clanId} clans={clans} loading={clansLoading} onChange={onClanChange} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="分类"><Form.Item name="category" noStyle><CultureMultiSelect aria-label="分类" options={categoryOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="支派"><Form.Item name="branchId" noStyle><CultureMultiSelect aria-label="支派" options={branches.filter(branch => branch.id).map(branch => ({ value: Number(branch.id), label: branchLabel(branch) }))} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="关键词"><Form.Item name="keyword" noStyle><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></StandardQueryField>
+        </StandardQueryGrid>
+        <StandardAdvancedFilters expanded={moreOpen} id="culture-item-more-filters">
+          <StandardQueryField label="状态"><Form.Item name="dataStatus" noStyle><CultureMultiSelect aria-label="状态" options={statusOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="可见范围"><Form.Item name="privacyLevel" noStyle><CultureMultiSelect aria-label="可见范围" options={privacyOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="已有来源"><Form.Item name="hasSource" noStyle><CultureMultiSelect aria-label="已有来源" options={booleanOptions} /></Form.Item></StandardQueryField>
+          <StandardQueryField label="首页精选"><Form.Item name="featuredOnHome" noStyle><CultureMultiSelect aria-label="首页精选" options={booleanOptions} /></Form.Item></StandardQueryField>
+        </StandardAdvancedFilters>
       </Form>
     </StandardQueryPanel>
     <QueryResultCard className="culture-result-card" extra={<Button type="primary" disabled={!clanId} onClick={() => openEditor({ target: 'item', mode: 'create' })}>{culturePrimaryAction(activeTab)}</Button>} total={page.totalElements} resultExtra={<Select aria-label="文化资料排序" className="culture-result-sort" value={search.sort} options={sortOptions} onChange={changeSort} />}>
