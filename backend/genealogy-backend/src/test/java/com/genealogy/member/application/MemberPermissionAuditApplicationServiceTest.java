@@ -12,11 +12,10 @@ import com.genealogy.member.repository.ClanMembershipRepository;
 import com.genealogy.member.repository.MemberRoleRepository;
 import com.genealogy.member.repository.RoleRepository;
 import com.genealogy.operationlog.entity.OperationLogEntity;
-import com.genealogy.operationlog.repository.OperationLogRepository;
+import com.genealogy.operationlog.repository.OperationLogMemberAuditQueryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,7 +30,7 @@ import static org.mockito.Mockito.when;
 
 class MemberPermissionAuditApplicationServiceTest {
 
-    private final OperationLogRepository operationLogRepository = mock(OperationLogRepository.class);
+    private final OperationLogMemberAuditQueryRepository operationLogRepository = mock(OperationLogMemberAuditQueryRepository.class);
     private final ClanMembershipRepository clanMembershipRepository = mock(ClanMembershipRepository.class);
     private final MemberRoleRepository memberRoleRepository = mock(MemberRoleRepository.class);
     private final RoleRepository roleRepository = mock(RoleRepository.class);
@@ -74,7 +73,7 @@ class MemberPermissionAuditApplicationServiceTest {
         when(clanMembershipRepository.findById(20L)).thenReturn(Optional.of(membership));
         when(memberRoleRepository.findByMembershipIdIn(List.of(20L))).thenReturn(List.of(grant));
         when(policyService.canViewGrant(scope, MemberRoleScopeType.branch_subtree, 10L)).thenReturn(true);
-        when(operationLogRepository.findAll(any(Specification.class), any(Pageable.class))).thenReturn(Page.empty());
+        when(operationLogRepository.search(any(), any(Pageable.class))).thenReturn(Page.empty());
 
         var result = service.search(1L, 9L, 20L, null, null, null, null, null, 2, 25);
 

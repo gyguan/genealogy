@@ -35,7 +35,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +43,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -222,7 +222,7 @@ class SourceApplicationServiceTest {
         source.setUpdatedAt(LocalDateTime.now());
 
         when(clanRepository.existsById(1L)).thenReturn(true);
-        when(sourceRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(sourceRepository.search(eq(1L), any(SourceSearchCriteria.class), eq(1), eq(20)))
                 .thenReturn(new PageImpl<>(List.of(source), PageRequest.of(0, 20), 1));
         when(sourceBindingRepository.countBySourceId(10L)).thenReturn(3);
         when(sourceAttachmentRepository.countBySourceIdAndDeletedAtIsNull(10L)).thenReturn(2);
