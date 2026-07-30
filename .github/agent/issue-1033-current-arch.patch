@@ -1,6 +1,6 @@
 --- a/backend/genealogy-backend/src/main/java/com/genealogy/person/application/PersonDuplicateDetectionService.java
 +++ b/backend/genealogy-backend/src/main/java/com/genealogy/person/application/PersonDuplicateDetectionService.java
-@@ -26,7 +26,15 @@
+@@ -24,7 +24,15 @@
  
      @Transactional(readOnly = true)
      public PersonDuplicateResult detect(PersonDuplicateQuery query) {
@@ -19,14 +19,15 @@
          PersonDuplicateResult.RiskLevel risk = riskLevel(entities.isEmpty(), score);
 --- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobRowApplicationService.java
 +++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/ImportJobRowApplicationService.java
-@@ -14,7 +14,6 @@
+@@ -12,7 +12,6 @@
+ import com.genealogy.imports.repository.ImportJobRepository;
  import com.genealogy.imports.repository.ImportJobRowRepository;
  import com.genealogy.operationlog.application.OperationLogApplicationService;
 -import com.genealogy.person.application.PersonDuplicateQuery;
  import com.genealogy.person.entity.PersonEntity;
  import com.genealogy.person.repository.PersonRepository;
  import org.springframework.data.domain.Page;
-@@ -244,14 +243,13 @@
+@@ -245,15 +244,14 @@
      }
  
      private void ensureDuplicateConfirmed(ImportJobEntity job, PersonEntity person, boolean confirmed) {
@@ -47,14 +48,15 @@
          }
 --- a/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/PersonAsyncImportChunkService.java
 +++ b/backend/genealogy-backend/src/main/java/com/genealogy/imports/application/PersonAsyncImportChunkService.java
-@@ -13,7 +13,6 @@
+@@ -11,7 +11,6 @@
+ import com.genealogy.imports.repository.ImportJobPayloadRepository;
  import com.genealogy.imports.repository.ImportJobRepository;
  import com.genealogy.imports.repository.ImportJobRowRepository;
 -import com.genealogy.person.application.PersonDuplicateQuery;
  import com.genealogy.person.entity.PersonEntity;
  import com.genealogy.person.repository.PersonRepository;
  import org.apache.poi.ss.usermodel.Cell;
-@@ -274,14 +273,13 @@
+@@ -275,15 +274,14 @@
      }
  
      private int countDuplicates(ImportJobEntity job, ParsedPerson person) {
