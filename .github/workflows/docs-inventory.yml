@@ -19,6 +19,7 @@ jobs:
       - name: Build Markdown inventory
         shell: bash
         run: |
+          echo "TREE_SHA=$(git rev-parse HEAD^{tree})"
           python - <<'PY'
           from pathlib import Path
           import subprocess
