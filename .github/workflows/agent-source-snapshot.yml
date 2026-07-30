@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - agent/issue-1033-person-mybatis
-    paths:
-      - .github/workflows/agent-source-snapshot.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
