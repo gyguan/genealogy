@@ -49,6 +49,17 @@ public class GenSchemeRepository {
         return Optional.ofNullable(mapper.selectById(id));
     }
 
+    public List<GenerationSchemeEntity> findAllById(Iterable<Long> ids) {
+        List<Long> values = new ArrayList<>();
+        ids.forEach(values::add);
+        if (values.isEmpty()) {
+            return List.of();
+        }
+        return mapper.selectList(Wrappers.<GenerationSchemeEntity>lambdaQuery()
+                .in(GenerationSchemeEntity::getId, values)
+                .orderByAsc(GenerationSchemeEntity::getId));
+    }
+
     public boolean existsById(Long id) {
         return id != null && mapper.selectCount(Wrappers.<GenerationSchemeEntity>lambdaQuery()
                 .eq(GenerationSchemeEntity::getId, id)) > 0;
