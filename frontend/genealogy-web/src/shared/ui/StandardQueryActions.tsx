@@ -22,18 +22,28 @@ type ActionElementProps = Pick<ButtonProps, 'loading' | 'disabled' | 'type' | 'i
 
 type ActionElement = ReactElement<ActionElementProps>;
 
+function textOf(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join('');
+  if (!isValidElement(node)) return '';
+  return textOf((node as ReactElement<{ children?: ReactNode }>).props.children);
+}
+
 function activeFilterCount(item: ActionElement) {
   const value = Number(item.props['data-active-filter-count'] || 0);
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 function normalizeMoreAction(item: ActionElement) {
-  const expanded = item.props['aria-expanded'] === true || item.props['aria-expanded'] === 'true';
+  const explicitExpanded = item.props['aria-expanded'] === true || item.props['aria-expanded'] === 'true';
+  const legacyExpanded = /^收起/.test(textOf(item.props.children).trim());
+  const expanded = explicitExpanded || legacyExpanded;
   const count = activeFilterCount(item);
   const label = `${expanded ? '收起筛选' : '更多筛选'}${count ? `（${count}）` : ''}`;
   return cloneElement(item, {
     type: item.props.type || 'text',
     icon: expanded ? <UpOutlined /> : <DownOutlined />,
+    'aria-expanded': expanded,
     'aria-label': label,
     'data-query-more-state': expanded ? 'expanded' : 'collapsed'
   }, label);
