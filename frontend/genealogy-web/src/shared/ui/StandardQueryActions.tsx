@@ -1,12 +1,16 @@
 import { Children, cloneElement, isValidElement } from 'react';
-import type { AriaAttributes, ReactElement, ReactNode } from 'react';
+import type { AriaAttributes, CSSProperties, HTMLAttributes, ReactElement, ReactNode } from 'react';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
-import type { ButtonProps, SpaceProps } from 'antd';
+import { Button } from 'antd';
+import type { ButtonProps } from 'antd';
 import './standard-query-actions.css';
 
 export type StandardQueryActionKind = 'more' | 'reset' | 'submit';
-export type StandardQueryActionsProps = Omit<SpaceProps, 'children' | 'size'> & { children: ReactNode };
+export type StandardQueryActionsProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
+  children: ReactNode;
+  wrap?: boolean;
+  style?: CSSProperties;
+};
 
 export type StandardMoreFiltersButtonProps = Omit<ButtonProps, 'children' | 'icon' | 'type'> & {
   expanded: boolean;
@@ -98,7 +102,7 @@ function normalizeAction(kind: StandardQueryActionKind, item: ActionElement, bus
   });
 }
 
-export function StandardQueryActions({ children, className = '', ...props }: StandardQueryActionsProps) {
+export function StandardQueryActions({ children, className = '', wrap = false, ...props }: StandardQueryActionsProps) {
   const items = Children.toArray(children);
   const action = (kind: StandardQueryActionKind) => items.find(item => isAction(item, kind)) as ActionElement | undefined;
   const submit = action('submit');
@@ -107,5 +111,5 @@ export function StandardQueryActions({ children, className = '', ...props }: Sta
     const item = action(kind);
     return item ? [normalizeAction(kind, item, busy)] : [];
   });
-  return <Space {...props} size={8} className={['standard-query-actions', className].filter(Boolean).join(' ')} aria-busy={busy}>{ordered}</Space>;
+  return <div {...props} className={['standard-query-actions', wrap ? 'standard-query-actions--wrap' : '', className].filter(Boolean).join(' ')} aria-busy={busy}>{ordered}</div>;
 }
