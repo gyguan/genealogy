@@ -84,19 +84,11 @@
 .standard-page-tabs {
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
   background: var(--ant-color-bg-container);
   border: var(--ant-line-width) var(--ant-line-type) var(--ant-color-border-secondary);
   border-radius: var(--ant-border-radius-lg);
   padding: 0 var(--ant-padding-md);
-}
-
-.standard-page-tabs .ant-tabs-nav {
-  margin: 0;
-}
-
-.standard-page-tabs .ant-tabs-tab {
-  min-height: 48px;
 }
 
 .standard-query-panel, .standard-result-section, .standard-editor-page__card {
@@ -165,15 +157,6 @@
   }
 
   .standard-page-tabs {
-    overflow-x: auto;
     padding-inline: var(--ant-padding-sm);
-  }
-
-  .standard-page-tabs .ant-tabs {
-    min-width: max-content;
-  }
-
-  .standard-page-tabs .ant-tabs-tab {
-    min-height: 44px;
   }
 }
