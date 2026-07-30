@@ -144,8 +144,13 @@ export type StandardAdvancedFiltersProps = Omit<HTMLAttributes<HTMLDivElement>, 
 };
 
 export function StandardAdvancedFilters({ children, expanded = true, className = '', ...props }: StandardAdvancedFiltersProps) {
-  if (!expanded) return null;
-  return <div {...props} className={['standard-query-grid', 'standard-query-advanced', className].filter(Boolean).join(' ')} data-query-advanced-role="filters">{children}</div>;
+  return <div
+    {...props}
+    hidden={!expanded}
+    aria-hidden={!expanded}
+    className={['standard-query-grid', 'standard-query-advanced', className].filter(Boolean).join(' ')}
+    data-query-advanced-role="filters"
+  >{children}</div>;
 }
 
 export type StandardResultSectionProps = Omit<CardProps, 'title' | 'children'> & {
