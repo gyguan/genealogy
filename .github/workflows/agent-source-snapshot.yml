@@ -18,9 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Package source
         run: |
-          tar --exclude=.git --exclude='**/target' --exclude='**/node_modules' -czf genealogy-source.tgz .
+          tar --exclude=.git --exclude='**/target' --exclude='**/node_modules' -czf /tmp/genealogy-source.tgz .
       - uses: actions/upload-artifact@v4
         with:
           name: genealogy-source
-          path: genealogy-source.tgz
+          path: /tmp/genealogy-source.tgz
           retention-days: 1
