@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.genealogy.generation.entity.GenerationSchemeEntity;
 import com.genealogy.generation.repository.mybatis.GenSchemePersistenceMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Optional;
 
 /** Framework-neutral Generation Scheme persistence adapter. */
 @Repository
+@Transactional(readOnly = true)
 public class GenSchemeRepository {
 
     private final GenSchemePersistenceMapper mapper;
@@ -20,6 +22,7 @@ public class GenSchemeRepository {
         this.mapper = mapper;
     }
 
+    @Transactional
     public GenerationSchemeEntity save(GenerationSchemeEntity entity) {
         Objects.requireNonNull(entity, "entity");
         if (entity.getId() == null) {
@@ -33,10 +36,12 @@ public class GenSchemeRepository {
         return entity;
     }
 
+    @Transactional
     public GenerationSchemeEntity saveAndFlush(GenerationSchemeEntity entity) {
         return save(entity);
     }
 
+    @Transactional
     public List<GenerationSchemeEntity> saveAll(Iterable<GenerationSchemeEntity> entities) {
         List<GenerationSchemeEntity> saved = new ArrayList<>();
         for (GenerationSchemeEntity entity : entities) {
@@ -77,17 +82,20 @@ public class GenSchemeRepository {
                 .orderByAsc(GenerationSchemeEntity::getId));
     }
 
+    @Transactional
     public void delete(GenerationSchemeEntity entity) {
         Objects.requireNonNull(entity, "entity");
         deleteById(entity.getId());
     }
 
+    @Transactional
     public void deleteById(Long id) {
         if (id != null) {
             mapper.deleteById(id);
         }
     }
 
+    @Transactional
     public void deleteAll(Iterable<GenerationSchemeEntity> entities) {
         List<Long> ids = new ArrayList<>();
         for (GenerationSchemeEntity entity : entities) {
@@ -100,6 +108,7 @@ public class GenSchemeRepository {
         }
     }
 
+    @Transactional
     public void deleteAll() {
         mapper.delete(Wrappers.emptyWrapper());
     }
