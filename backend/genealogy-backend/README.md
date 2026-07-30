@@ -1,6 +1,6 @@
 # Genealogy Backend
 
-中国式族谱系统后端，采用 Java 17、Spring Boot 3、PostgreSQL、Spring Data JPA 与 Flyway，按模块化单体组织。
+中国式族谱系统后端，采用 Java 17、Spring Boot 3、PostgreSQL、Spring Data JPA + MyBatis-Plus 分阶段迁移与 Flyway，按模块化单体组织。
 
 ## 阅读顺序
 
@@ -14,6 +14,7 @@
 
 - `docs/backend/database-and-flyway.md`
 - `docs/backend/environment-configuration.md`
+- `docs/backend/persistence-framework-migration.md`
 - `docs/backend/repository-query-performance.md`
 - `docs/backend/observability-and-audit.md`
 - `docs/experience/backend-code-maintainability.md`
@@ -24,12 +25,14 @@
 Java 17
 Spring Boot 3.x
 PostgreSQL 16
-Spring Data JPA
+Spring Data JPA + MyBatis-Plus / MyBatis（分阶段迁移）
 Flyway
 OpenAPI / Swagger UI
 Actuator / Micrometer / Prometheus
 Maven
 ```
+
+当前 Clan、Generation Scheme、Generation Word 已通过 Repository Adapter 使用 MyBatis-Plus/MyBatis；其他模块暂时保留 Spring Data JPA。持久化框架不得越过 Repository/QueryRepository 边界，具体规则和迁移清单见 `docs/backend/persistence-framework-migration.md`。
 
 ## 本地启动
 
@@ -70,7 +73,7 @@ Controller
 ## 数据库与契约
 
 - Schema 通过 Flyway 前向迁移。
-- Hibernate 使用 `ddl-auto=validate` 校验实体和数据库一致性。
+- 双栈阶段 Hibernate 使用 `ddl-auto=validate` 校验仍由 JPA 管理的实体；MyBatis 映射通过 PostgreSQL 集成测试和 Mapper/XML 加载验证。
 - 禁止通过关闭 Flyway、`flyway repair` 或手工修改 history 表掩盖迁移问题。
 - 公共 API 变更先更新 `docs/api/openapi.json`。
 
