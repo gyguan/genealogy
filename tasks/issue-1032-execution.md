@@ -1,6 +1,7 @@
 # Issue #1032 执行看板
 
 - Issue：https://github.com/gyguan/genealogy/issues/1032
+- Draft PR：https://github.com/gyguan/genealogy/pull/1038
 - 目标：建立 Spring Data JPA 与 MyBatis-Plus 双栈底座，迁移 Clan、Generation 简单仓储，并形成后续模块可复制的持久化样板。
 - 工作分支：`agent/issue-1032-mybatis-plus-foundation`
 - 开始时间：2026-07-30 17:13（北京时间）
@@ -11,8 +12,9 @@
 - 保持 Flyway 和 JPA/Hibernate 校验继续工作，建立同一 DataSource/事务管理器下的双栈模式。
 - 增加框架无关分页模型与 MyBatis-Plus 分页适配。
 - 将 Clan、Generation 的 Entity、Repository 和应用服务迁移为 MyBatis-Plus/MyBatis 实现。
-- 增加 Mapper 加载、Identity 主键回填、Nullable 更新、删除和事务回滚的聚焦测试。
-- 更新后端 README、数据库/Flyway 和 Repository 查询规范，记录迁移清单与样板。
+- 将 Source/Culture 使用的 Generation 兼容 Repository 切换到 MyBatis，避免继续注册已迁移实体的 JPA Repository。
+- 增加 Mapper 加载、Identity 主键回填、Nullable 更新、删除、唯一约束和跨框架事务回滚测试。
+- 更新 README、AGENTS、Repository 查询规范和持久化迁移清单。
 
 ## 非目标
 
@@ -26,27 +28,33 @@
 - Issue 类型：后端持久化底座重构 + CRUD/分页迁移。
 - 流程强度：标准流程；依赖变更和双栈事务属于高风险点，保留恢复检查点与 Draft PR。
 - 契约强度：无公共 API 和 Schema 变化，按轻契约执行；重点验证现有接口行为不变。
-- 自动验证：编译、受影响模块单元测试、Mapper/XML 加载和静态规则。
-- 手工/环境验证：PostgreSQL 16 Testcontainers、Flyway 启动、事务回滚和受影响 E2E；未实际执行时不得标记通过。
-- 拆分判断：Issue 已是五阶段迁移的第一个工作包；虽然验收项较多，但底座、Clan/Generation 样板和聚焦测试必须一起验收，不再拆分新的 Issue。
+- 自动验证：编译、单元/集成测试、Mapper/XML 加载、架构、覆盖率、SpotBugs、依赖漏洞和数据库治理。
+- 环境验证：PostgreSQL 16、Flyway 空库与历史库、Security、Member Scope、Functional E2E。
+- 拆分判断：Issue 已是五阶段迁移的第一个工作包；底座、Clan/Generation 样板和聚焦测试必须一起验收，不再拆分。
 
 ## 任务看板
 
-| 序号 | 任务 | 状态 | 耗时 | Commit / 结果或说明 |
+| 序号 | 任务 | 状态 | 活跃耗时 | Commit / 结果或说明 |
 |---|---|---|---|---|
-| 1 | 刷新规则、Issue、评论、分支和 PR 现场 | ✅ 已完成 | 约 7 分钟 | 无已有分支、PR 或评论；确认从最新 `main` 启动 |
-| 2 | 建立任务分支、执行看板、Draft PR 与 Issue 启动评论 | 🔄 进行中 | 已累计约 2 分钟 | 已创建分支和本看板，待创建 Draft PR |
-| 3 | 建立 MyBatis-Plus 双栈配置和框架无关分页适配 | ⏳ 待处理 | — |  |
-| 4 | 迁移 Clan Entity、Mapper、Repository 与分页调用 | ⏳ 待处理 | — |  |
-| 5 | 迁移 Generation Scheme/Word Entity、Mapper、Repository 与批量写入 | ⏳ 待处理 | — |  |
-| 6 | 增加聚焦测试并执行可用验证 | ⏳ 待处理 | — |  |
-| 7 | 更新迁移清单、规范、README、PR 看板并完成 Review | ⏳ 待处理 | — |  |
+| 1 | 刷新规则、Issue、评论、分支和 PR 现场 | ✅ 已完成 | 约 7 分钟 | 无已有分支、PR 或评论；从 `main` 启动 |
+| 2 | 建立任务分支、执行看板、Draft PR 与 Issue 启动评论 | ✅ 已完成 | 约 4 分钟 | 分支与 PR #1038 已建立 |
+| 3 | 建立 MyBatis-Plus 双栈配置和框架无关分页适配 | ✅ 已完成 | 约 12 分钟 | Boot 依赖统一、限定 Mapper 扫描、PostgreSQL 分页、PageQuery/PageResult |
+| 4 | 迁移 Clan Entity、Mapper、Repository 与分页调用 | ✅ 已完成 | 约 10 分钟 | Identity、显式 null、CRUD、分页和兼容方法完成 |
+| 5 | 迁移 Generation Scheme/Word 与兼容仓储 | ✅ 已完成 | 约 12 分钟 | Scheme/Word、Source/Culture 兼容入口和事务语义完成 |
+| 6 | 增加聚焦测试并执行验证 | 🔄 进行中 | 约 15 分钟 | Backend CI/漏洞扫描已有成功结果；最终 Head 全量门禁运行中 |
+| 7 | 更新迁移清单、规范、README、PR 看板并完成 Review | 🔄 进行中 | 约 10 分钟 | 文档与 PR 描述已更新，待最终 CI 和差异复核 |
 
-## 测试复用
+## 测试复用与新增
 
-- 优先复用仓库现有 PostgreSQL 16 Testcontainers、`@SpringBootTest`、Flyway 初始化和业务 Service 测试模式。
-- Clan/Generation 的既有 DTO、Mapper 和 API 测试继续复用，不复制公共 fixture。
-- 新增 Mapper 测试只覆盖 MyBatis-Plus 特有边界：Identity 回填、显式 Nullable 更新、批量插入、删除和同事务回滚。
+- 复用仓库现有 PostgreSQL 16 Testcontainers、`@SpringBootTest`、Flyway 初始化和 Spring 事务模式。
+- Clan/Generation 既有 DTO、Assembler、API 和业务测试继续复用，不复制公共 fixture。
+- 新增 `PageResultTest`，验证一页起始、参数边界、不可变记录和强类型映射。
+- 新增 `MybatisPlusDualStackPostgreSqlIT`，验证：
+  - PostgreSQL Identity 主键回填；
+  - XML 全字段更新能够显式写入 null；
+  - Clan 稳定分页和物理删除；
+  - Generation 有界集合顺序、唯一约束和整体回滚；
+  - JPA AppUser 与 MyBatis Clan 写入在同一 Spring 事务中整体回滚。
 
 ## 影响模块
 
@@ -57,30 +65,40 @@
 - `src/main/resources/application.yml` 与 Mapper XML
 - 后端聚焦测试和持久化相关文档
 
-## 验证方案
+## 已处理问题
 
-1. 静态检查已迁移模块不再引用 `JpaRepository`、JPA Entity 注解和 Spring Data Page。
-2. Maven 编译和受影响模块测试。
-3. PostgreSQL 16 + Flyway 启动、Mapper XML 加载和 Identity 主键回填。
-4. Clan 新增/查询/修改/删除/分页以及 Generation 新增/列表/替换明细/删除行为回归。
-5. 同一事务内 Clan 创建与管理员成员写入失败时整体回滚。
-6. Diff 范围、依赖树、敏感信息和无关文件检查。
+1. MyBatis-Plus Starter 传递的 Spring Boot 版本高于项目 3.3.5 基线，导致 Maven Upper Bound 门禁失败。
+   - 处理：排除 Starter 的 Boot JDBC/Autoconfigure 传递依赖，由项目 Boot BOM 统一管理。
+2. 迁移后原业务仍调用 JPA `findAllById`。
+   - 处理：在 Repository Adapter 中提供框架无关兼容实现。
+3. Source/Culture 仍通过 `GenerationWordRepository`、`GenerationSchemeRepository` 注册 JPA Repository。
+   - 处理：兼容仓储改为委托 canonical MyBatis Repository，空库启动不再要求迁移实体是 JPA managed type。
+
+## 验证方案与当前证据
+
+1. 已迁移模块生产代码不再引用 `JpaRepository`、JPA Entity 注解和 Spring Data Page。
+2. Backend CI 已在实现 Head 上通过编译、测试、覆盖率、架构和静态分析；最终文档/兼容修复 Head 正在复验。
+3. Critical Dependency Vulnerability Scan 已通过。
+4. Database Migration Governance 已通过，且本 PR 没有 Schema/Flyway 文件变更。
+5. Backend Configuration Governance 已确认生产 Secret 拒绝和构建成功；首次空库启动暴露 Generation 兼容 JPA Repository，已修复并复验中。
+6. Security、Member Branch Scope、Functional E2E 在最终 Head 运行中。
+7. 完成后复核 PR 文件范围、依赖树、敏感信息、未解决 Review Thread 和合并状态。
 
 ## 已知风险与回滚
 
-- 双栈自动配置可能产生 Mapper 扫描、事务管理器或 MyBatis/JPA Bean 冲突；通过限定 Mapper 包和复用唯一 DataSource/事务管理器控制。
-- MyBatis-Plus 默认更新策略可能忽略 null；Repository 必须提供显式 Nullable 更新路径，禁止依赖默认 `updateById` 清空字段。
-- Generation `saveAll` 改为逐条或批量 Mapper 写入时必须保持调用顺序和事务原子性。
+- 双栈自动配置可能产生 Mapper 扫描、事务管理器或 MyBatis/JPA Bean 冲突；通过限定显式 `@Mapper` 和空库启动验证控制。
+- MyBatis-Plus 默认更新策略可能忽略 null；Repository 使用显式 XML 全字段更新，禁止依赖默认 `updateById` 清空字段。
+- Generation `saveAll` 按调用顺序逐条写入，仅适用于业务有界集合；大规模 Import 必须使用后续专用 Batch 方案。
 - 回滚方式：本 Issue 不改 Schema，可整体回滚 PR；JPA Starter 与原有配置在本阶段继续保留。
-- 当前执行环境无法直接 clone GitHub；代码通过已连接 GitHub API 提交，构建与 PostgreSQL 验证以 PR CI/可用执行结果为准。
+- 当前执行环境无法直接 clone GitHub；代码通过已连接 GitHub API 提交，构建与 PostgreSQL 验证以 PR CI 结果为准。
 
 ## 恢复检查点
 
-- 当前阶段：启动门禁和执行看板已建立，准备创建 Draft PR。
-- 最后完成任务：规则、Issue 和现有现场确认。
-- 当前进行中任务：创建 Draft PR 与 Issue 启动评论。
-- 最新 Commit：本文件的检查点提交。
-- CI 状态：尚未触发。
-- 已知阻塞：无业务阻塞；本地容器无法联网 clone。
-- 下一步最小任务：创建 Draft PR，并将真实 PR 链接回写 Issue。
-- 最后更新时间：2026-07-30 17:22（北京时间）
+- 当前阶段：实现和文档完成，最终 Head 全量 CI 验证中。
+- 最后完成任务：Generation Source/Culture 兼容仓储改为 MyBatis 委托，并完成 null-safe 收口。
+- 当前进行中任务：最终 Backend Configuration、Backend CI、Security、Member Scope 和 Functional E2E 验证。
+- 最新代码 Commit：`25daaad5d0a2c67d2c6e3ec36cef73b739a24194`；本看板更新将成为新的 Head。
+- 已确认成功：Backend CI、Critical Dependency Vulnerability Scan、Database Migration Governance（前一有效 Head）。
+- 已知阻塞：无业务阻塞。
+- 下一步最小任务：读取最终 Head 的全部工作流结论；若成功，完成 Review、标记 PR Ready 并更新 Issue 评论。
+- 最后更新时间：2026-07-30 17:50（北京时间）
