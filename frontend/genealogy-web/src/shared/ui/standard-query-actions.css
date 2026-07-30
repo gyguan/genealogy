@@ -29,7 +29,7 @@
     margin-right: 0;
   }
 
-  .standard-query-actions .ant-btn {
+  .standard-query-actions [data-query-action] {
     min-height: 44px;
   }
 }
