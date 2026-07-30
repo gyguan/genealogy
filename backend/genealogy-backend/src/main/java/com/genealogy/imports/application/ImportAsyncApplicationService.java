@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
@@ -37,6 +35,7 @@ public class ImportAsyncApplicationService {
     private final AuthorizationApplicationService authorizationApplicationService;
     private final PersonImportFilePolicyService personImportFilePolicyService;
     private final ImportExecutionProperties properties;
+    private final ImportFileScalePolicy fileScalePolicy;
 
     public ImportAsyncApplicationService(
             ImportJobRepository importJobRepository,
@@ -50,6 +49,7 @@ public class ImportAsyncApplicationService {
         this.authorizationApplicationService = authorizationApplicationService;
         this.personImportFilePolicyService = personImportFilePolicyService;
         this.properties = properties;
+        this.fileScalePolicy = new ImportFileScalePolicy();
     }
 
     public boolean shouldUseAsync(MultipartFile file, String requestedMode) {
@@ -57,7 +57,8 @@ public class ImportAsyncApplicationService {
         if (MODE_ASYNC.equals(mode)) return true;
         if (MODE_SYNC.equals(mode) || file == null || file.isEmpty()) return false;
         if (file.getSize() >= properties.getAsyncFileBytesThreshold()) return true;
-        return estimateDataRows(file) >= properties.getAsyncRowCountThreshold();
+        return fileScalePolicy.evaluate(file, properties.getAsyncRowCountThreshold())
+                == ImportFileScalePolicy.Decision.LARGE;
     }
 
     @Transactional
@@ -145,31 +146,6 @@ public class ImportAsyncApplicationService {
                 saved.getChunkSize(), saved.getExecutionRetryCount(), saved.getExecutionMaxRetries(),
                 saved.getManualInterventionRequired(), saved.getNextRetryAt(), saved.getHeartbeatAt()
         );
-    }
-
-    private int estimateDataRows(MultipartFile file) {
-        String filename = file.getOriginalFilename() == null
-                ? ""
-                : file.getOriginalFilename().trim().toLowerCase(Locale.ROOT);
-        try {
-            if (filename.endsWith(".csv")) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-                    reader.readLine();
-                    int count = 0;
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (!line.isBlank()) count++;
-                        if (count >= properties.getAsyncRowCountThreshold()) return count;
-                    }
-                    return count;
-                }
-            }
-            return filename.endsWith(".xlsx") && file.getSize() > 0
-                    ? properties.getAsyncRowCountThreshold()
-                    : 0;
-        } catch (Exception exception) {
-            throw new BusinessException("IMPORT_FILE_READ_FAILED", "无法评估导入文件规模，请确认文件未损坏");
-        }
     }
 
     private byte[] readBytes(MultipartFile file) {
