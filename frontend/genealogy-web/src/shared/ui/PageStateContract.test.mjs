@@ -27,14 +27,11 @@ test('state kinds map to the approved feedback primitives', () => {
   assert.match(feedback, /刷新失败，当前展示的是上次成功数据/);
 });
 
-test('clan-scoped formal modules block before rendering invalid query areas', () => {
-  for (const moduleKey of ['personArchive', 'treeProduct', 'sourceLibrary', 'culture', 'imports', 'editingWorkspace', 'reviewCenter', 'memberManage', 'auditTrace']) {
-    assert.match(registry, new RegExp(`['"]${moduleKey}['"]`), `${moduleKey} must require clan context`);
-  }
-  assert.match(registry, /const missingClan = clanRequiredModules\.has\(pageKey\) && !workspace\.clanId/);
-  assert.match(registry, /missingClan \? \([\s\S]*<PageState[\s\S]*kind="prerequisite"/);
-  assert.match(registry, /\) : content/);
-  assert.match(registry, /extra=\{missingClan \? undefined : extra\}/);
+test('module registry always mounts pages so they can discover and hydrate business context', () => {
+  assert.match(registry, /<StandardPage[\s\S]*>\{content\}<\/StandardPage>/);
+  assert.doesNotMatch(registry, /clanRequiredModules/);
+  assert.doesNotMatch(registry, /missingClan/);
+  assert.doesNotMatch(registry, /import \{ PageState \} from/);
 });
 
 test('first loading and refresh failure remain distinct from empty data', () => {
