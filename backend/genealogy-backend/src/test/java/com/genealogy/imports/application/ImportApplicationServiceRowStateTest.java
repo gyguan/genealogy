@@ -29,6 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -84,7 +86,8 @@ class ImportApplicationServiceRowStateTest {
                 .thenAnswer(invocation -> Optional.ofNullable(lastSavedJob));
         lenient().when(importJobErrorRepository.findByJobIdOrderByRowNoAsc(anyLong())).thenReturn(List.of());
         lenient().when(personRepository.findDuplicateCandidates(
-                any(), any(), any(), any(), any(), any(), anyInt()
+                anyLong(), nullable(Long.class), anyString(), nullable(Integer.class),
+                nullable(String.class), nullable(java.time.LocalDate.class), anyInt()
         )).thenReturn(List.of());
         lenient().when(personRepository.save(any(PersonEntity.class))).thenAnswer(invocation -> {
             PersonEntity entity = invocation.getArgument(0);

@@ -9,8 +9,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,7 +32,8 @@ class PersonDuplicateDetectionServiceTest {
         candidate.setGender("male");
         candidate.setDataStatus("official");
         when(repository.findDuplicateCandidates(
-                any(), any(), any(), any(), any(), any(), anyInt()
+                anyLong(), nullable(Long.class), anyString(), nullable(Integer.class),
+                nullable(String.class), nullable(LocalDate.class), anyInt()
         )).thenReturn(List.of(candidate));
 
         PersonDuplicateDetectionService service = new PersonDuplicateDetectionService(repository);
