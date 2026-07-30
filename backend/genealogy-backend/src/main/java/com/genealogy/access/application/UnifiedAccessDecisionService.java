@@ -7,6 +7,10 @@ import com.genealogy.access.domain.DataScope;
 import com.genealogy.access.domain.PrivacyDisclosure;
 import com.genealogy.access.domain.ResourceContext;
 import com.genealogy.auth.application.AuthorizationApplicationService;
+import com.genealogy.operationlog.application.OperationLogApplicationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +28,18 @@ public class UnifiedAccessDecisionService {
     public static final String REASON_OUT_OF_SCOPE = "ACCESS_SCOPE_FORBIDDEN";
     public static final String REASON_PERMISSION_DENIED = "ACCESS_PERMISSION_FORBIDDEN";
 
+    private static final Logger log = LoggerFactory.getLogger(UnifiedAccessDecisionService.class);
+
     private final AuthorizationApplicationService authorization;
+    private OperationLogApplicationService operationLogApplicationService;
 
     public UnifiedAccessDecisionService(AuthorizationApplicationService authorization) {
         this.authorization = authorization;
+    }
+
+    @Autowired(required = false)
+    void setOperationLogApplicationService(OperationLogApplicationService operationLogApplicationService) {
+        this.operationLogApplicationService = operationLogApplicationService;
     }
 
     @Transactional(readOnly = true)
@@ -64,13 +76,13 @@ public class UnifiedAccessDecisionService {
     public AccessDecision decide(Long userId, ResourceContext resource, AccessAction action, String permissionCode) {
         ActorContext actor = actor(userId, resource.clanId());
         if (!actor.authenticated()) {
-            return AccessDecision.deny(REASON_UNAUTHENTICATED);
+            return denied(userId, resource, action, REASON_UNAUTHENTICATED, DataScope.Type.NONE);
         }
         if (!actor.activeMember() && !actor.crossClanAdmin()) {
-            return AccessDecision.deny(REASON_OUT_OF_SCOPE);
+            return denied(userId, resource, action, REASON_OUT_OF_SCOPE, DataScope.Type.NONE);
         }
         if (!authorization.can(resource.clanId(), userId, permissionCode)) {
-            return AccessDecision.deny(REASON_PERMISSION_DENIED);
+            return denied(userId, resource, action, REASON_PERMISSION_DENIED, DataScope.Type.NONE);
         }
 
         DataScope scope = actor.crossClanAdmin()
@@ -80,17 +92,55 @@ public class UnifiedAccessDecisionService {
                 : DataScope.branch(resource.clanId(), resource.branchId());
 
         PrivacyDisclosure disclosure = disclosure(actor, resource, action);
+        if (disclosure == PrivacyDisclosure.FULL && containsSensitiveData(resource)) {
+            log.info(
+                    "event=privacy_full_disclosure actorId={} clanId={} branchId={} resourceType={} resourceId={} action={} dataScope={} disclosure=FULL result=allowed",
+                    userId, resource.clanId(), resource.branchId(), resource.type(), resource.resourceId(), action, scope.type()
+            );
+            if (operationLogApplicationService != null) {
+                operationLogApplicationService.record(
+                        resource.clanId(), userId, "privacy_full_disclosure", resource.type().name().toLowerCase(),
+                        resource.resourceId(), "full sensitive disclosure", disclosureDetail(resource, action, scope)
+                );
+            }
+        }
         return AccessDecision.allow(scope, disclosure);
     }
 
+    private AccessDecision denied(
+            Long userId,
+            ResourceContext resource,
+            AccessAction action,
+            String reasonCode,
+            DataScope.Type dataScope
+    ) {
+        log.warn(
+                "event=access_decision_denied actorId={} clanId={} branchId={} resourceType={} resourceId={} action={} reasonCode={} dataScope={} result=denied",
+                userId, resource.clanId(), resource.branchId(), resource.type(), resource.resourceId(), action, reasonCode, dataScope
+        );
+        return AccessDecision.deny(reasonCode);
+    }
+
     private PrivacyDisclosure disclosure(ActorContext actor, ResourceContext resource, AccessAction action) {
-        if (resource.livingPerson() || resource.containsContact() || resource.containsAttachment()) {
+        if (containsSensitiveData(resource)) {
             if (actor.crossClanAdmin() || action == AccessAction.MANAGE || action == AccessAction.UPDATE) {
                 return PrivacyDisclosure.FULL;
             }
             return PrivacyDisclosure.MASKED;
         }
         return PrivacyDisclosure.FULL;
+    }
+
+    private boolean containsSensitiveData(ResourceContext resource) {
+        return resource.livingPerson() || resource.containsContact() || resource.containsAttachment();
+    }
+
+    private String disclosureDetail(ResourceContext resource, AccessAction action, DataScope scope) {
+        return "action=" + action
+                + "; scope=" + scope.type()
+                + "; livingPerson=" + resource.livingPerson()
+                + "; containsContact=" + resource.containsContact()
+                + "; containsAttachment=" + resource.containsAttachment();
     }
 
     private String permission(String resource, AccessAction action) {
