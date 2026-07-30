@@ -24,8 +24,12 @@
 }
 
 /*
- * Some query pages place Form inside StandardQueryPanel while others wrap the
- * panel with Form. Normalize both DOM shapes to the Person Archive 4px rhythm.
+ * Query pages currently use three valid DOM shapes:
+ * 1. Form wraps StandardQueryPanel (person archive and workbench).
+ * 2. Form lives inside StandardQueryPanel (tracking and culture tabs).
+ * 3. StandardQueryPanel owns actions through its actions prop (members,
+ *    workbench and culture tabs).
+ * Keep fields, advanced filters and actions on the same 4px vertical rhythm.
  */
 .standard-query-panel__body > form {
   display: grid;
@@ -44,6 +48,10 @@
 .standard-query-panel__body > form > .standard-query-grid + .standard-query-advanced,
 .standard-query-panel__body > .standard-query-grid + .standard-query-advanced {
   margin-top: 0;
+}
+
+.standard-query-panel__actions {
+  margin-top: var(--standard-query-row-gap, var(--ant-margin-xxs));
 }
 
 @media (max-width: 767px) {
