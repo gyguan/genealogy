@@ -22,9 +22,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/agent/issue-1033-arch.patch.part* | base64 -d > /tmp/issue-1033-arch.patch
-          git apply --check /tmp/issue-1033-arch.patch
-          git apply /tmp/issue-1033-arch.patch
+          git apply --check .github/agent/person-duplicate-service.patch .github/agent/import-job-row.patch .github/agent/person-async-import.patch
+          git apply .github/agent/person-duplicate-service.patch .github/agent/import-job-row.patch .github/agent/person-async-import.patch
+          rm -f .github/agent/person-duplicate-service.patch
+          rm -f .github/agent/import-job-row.patch
+          rm -f .github/agent/person-async-import.patch
           rm -f .github/agent/issue-1033-arch.patch.part*
           rm -f .github/workflows/agent-issue-1033-arch-fix.yml
           git config user.name "github-actions[bot]"
