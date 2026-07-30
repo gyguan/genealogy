@@ -119,13 +119,14 @@ http://localhost:5174
 
 | 入口 | 用途 |
 |---|---|
-| [文档总览](docs/README.md) | 按产品、架构、后端、前端、经验和治理分类查找文档 |
+| [文档总览](docs/README.md) | 按产品、架构、规范、经验和治理分类查找文档 |
 | [规范权威目录](docs/standards/README.md) | 判断某类规则的唯一权威文件和最小阅读集合 |
 | [API 契约](docs/api/openapi.json) | 前后端公共接口的权威契约 |
-| [MVP 1 需求](docs/01-mvp1-requirements.md) | 核心业务范围和验收目标 |
-| [领域模型](docs/03-domain-model.md) | 领域对象、关系和业务不变量 |
-| [技术架构](docs/04-technical-architecture.md) | 系统架构与技术边界 |
-| [权限方案](docs/09-permission-management.md) | 权限、隐私和数据范围语义 |
+| [MVP 1 范围与验收](docs/product/mvp1-scope-and-acceptance.md) | 核心业务范围和验收目标 |
+| [领域模型](docs/product/domain-model.md) | 领域对象、关系和业务不变量 |
+| [系统架构](docs/architecture/system-architecture.md) | 系统分层、模块边界和技术演进原则 |
+| [API 设计规则](docs/standards/api-design.md) | Contract First、分页、错误和兼容原则 |
+| [权限与隐私](docs/standards/authorization-and-privacy.md) | 权限、隐私和数据范围语义 |
 
 ## AI / 开发者阅读顺序
 
