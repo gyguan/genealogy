@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
-import { Button, Card, Col, Form, Input, Row, Select, Space } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Col, Form, Input, Row, Select } from 'antd';
 import type { CultureCategory, CultureDataStatus, CulturePrivacyLevel } from '../../shared/api/generated/culture-types';
 import type { CultureBranchOption } from './cultureLibraryService';
 import { booleanOptions, categoryOptions, privacyOptions, sortOptions, statusOptions } from './cultureOptions';
 import type { CultureSearchState } from './cultureUrlState';
 import { defaultCultureSearch } from './cultureUrlState';
-import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardMoreFiltersButton, StandardQueryActions } from '../../shared/ui/StandardQueryActions';
+import { StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
 type BooleanText = 'true' | 'false';
 
@@ -49,6 +50,20 @@ const multiSelectProps = {
 
 export function CultureSearchPanel(props: Props) {
   const [form] = Form.useForm<FormValues>();
+  const [moreOpen, setMoreOpen] = useState(() => Boolean(
+    props.search.dataStatus?.length
+    || props.search.privacyLevel?.length
+    || props.search.hasSource?.length
+    || props.search.featuredOnHome?.length
+    || props.search.sort !== defaultCultureSearch.sort
+  ));
+  const activeMoreCount = useMemo(() => [
+    props.search.dataStatus?.length,
+    props.search.privacyLevel?.length,
+    props.search.hasSource?.length,
+    props.search.featuredOnHome?.length,
+    props.search.sort !== defaultCultureSearch.sort ? 1 : 0
+  ].filter(Boolean).length, [props.search]);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -88,29 +103,38 @@ export function CultureSearchPanel(props: Props) {
 
   function reset() {
     form.resetFields();
+    setMoreOpen(false);
     props.onSearch({ ...defaultCultureSearch, pageSize: props.search.pageSize });
   }
 
   return (
-    <Card size="small" title="文化资料检索">
-      <Form form={form} layout="vertical" onFinish={submit}>
+    <StandardQueryPanel
+      size="small"
+      className="culture-query-panel"
+      actions={(
+        <StandardQueryActions>
+          <StandardMoreFiltersButton expanded={moreOpen} activeFilterCount={activeMoreCount} onClick={() => setMoreOpen(value => !value)} />
+          <Button data-query-action="reset" onClick={reset}>重置</Button>
+          <Button data-query-action="submit" type="primary" htmlType="submit" loading={props.loading} form="culture-query-form">查询</Button>
+        </StandardQueryActions>
+      )}
+    >
+      <Form id="culture-query-form" form={form} layout="vertical" onFinish={submit}>
         <Row gutter={[12, 0]}>
-          <Col xs={24} sm={12} lg={6}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="category" label="分类"><Select {...multiSelectProps} placeholder="可多选" options={categoryOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={props.branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="privacyLevel" label="可见范围"><Select {...multiSelectProps} placeholder="可多选" options={privacyOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="hasSource" label="已有来源"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
-          <Col xs={24} sm={12} lg={4}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
-          <Col xs={24} lg={8} className="culture-search-actions">
-            <StandardQueryActions>
-<Button data-query-action="reset" onClick={reset}>重置</Button>
-<Button data-query-action="submit" type="primary" htmlType="submit" loading={props.loading}>查询</Button>
-</StandardQueryActions>
-          </Col>
+          <Col xs={24} sm={12} lg={8}><Form.Item name="keyword" label="关键词"><Input allowClear placeholder="标题、摘要、时期或地点" /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={8}><Form.Item name="category" label="分类"><Select {...multiSelectProps} placeholder="可多选" options={categoryOptions} /></Form.Item></Col>
+          <Col xs={24} sm={12} lg={8}><Form.Item name="branchId" label="支派"><Select {...multiSelectProps} placeholder="可多选" showSearch optionFilterProp="label" options={props.branches.filter(branch => branch.id).map(branch => ({ value: branch.id, label: branchLabel(branch) }))} /></Form.Item></Col>
         </Row>
+        {moreOpen ? (
+          <Row gutter={[12, 0]} id="culture-more-filters">
+            <Col xs={24} sm={12} lg={6}><Form.Item name="dataStatus" label="状态"><Select {...multiSelectProps} placeholder="可多选" options={statusOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="privacyLevel" label="可见范围"><Select {...multiSelectProps} placeholder="可多选" options={privacyOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="hasSource" label="已有来源"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="featuredOnHome" label="首页精选"><Select {...multiSelectProps} placeholder="可多选" options={booleanOptions} /></Form.Item></Col>
+            <Col xs={24} sm={12} lg={6}><Form.Item name="sort" label="排序"><Select options={sortOptions} /></Form.Item></Col>
+          </Row>
+        ) : null}
       </Form>
-    </Card>
+    </StandardQueryPanel>
   );
 }
