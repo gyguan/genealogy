@@ -87,7 +87,7 @@ export function StandardPageTabs({ className = '', ariaLabel = '页面内容导�
   );
 }
 
-export type StandardQueryPanelProps = Omit<CardProps, 'title' | 'children'> & {
+export type StandardQueryPanelProps = Omit<CardProps, 'title' | 'children' | 'actions'> & {
   title?: ReactNode;
   description?: ReactNode;
   tabs?: ReactNode;
