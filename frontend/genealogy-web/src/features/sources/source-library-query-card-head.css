@@ -1,0 +1,56 @@
+/* Source library query card head hardening.
+ * The shared StandardQueryPanel supplies the title, while these rules ensure
+ * legacy/page-level styles cannot hide or collapse the Ant Design card head.
+ */
+.source-library-query-page .source-library-query-card > .ant-card-head {
+  display: flex !important;
+  min-height: 48px !important;
+  padding-inline: 24px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  border-bottom: 1px solid var(--ant-color-border-secondary) !important;
+}
+
+.source-library-query-page .source-library-query-card > .ant-card-head .ant-card-head-wrapper {
+  display: flex !important;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+}
+
+.source-library-query-page .source-library-query-card > .ant-card-head .ant-card-head-title {
+  display: block !important;
+  padding-block: 12px !important;
+  overflow: visible !important;
+  color: var(--ant-color-text) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 24px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Defensive fallback for stale/legacy render paths where Ant Card head is absent. */
+.source-library-query-page .source-library-query-card:not(:has(> .ant-card-head))::before {
+  content: '查询条件';
+  display: block;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 12px 24px;
+  color: var(--ant-color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  background: var(--ant-color-bg-container);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+@media (max-width: 767px) {
+  .source-library-query-page .source-library-query-card > .ant-card-head {
+    padding-inline: 16px !important;
+  }
+
+  .source-library-query-page .source-library-query-card:not(:has(> .ant-card-head))::before {
+    padding-inline: 16px;
+  }
+}
