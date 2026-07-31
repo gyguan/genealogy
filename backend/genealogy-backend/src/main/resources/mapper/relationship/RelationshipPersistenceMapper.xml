@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.relationship.repository.mybatis.RelationshipPersistenceMapper">
+  <update id="updateAllById">
+    update relationship
+    set clan_id=#{clanId},
+        from_person_id=#{fromPersonId},
+        to_person_id=#{toPersonId},
+        relation_type=#{relationType},
+        relation_label=#{relationLabel},
+        relation_category=#{relationCategory},
+        ritual_relation_type=#{ritualRelationType},
+        succession_reason=#{successionReason},
+        successor_branch_id=#{successorBranchId},
+        is_lineage_relation=#{isLineageRelation},
+        is_biological=#{isBiological},
+        is_primary=#{isPrimary},
+        description=#{description},
+        confidence_level=#{confidenceLevel},
+        data_status=#{dataStatus},
+        created_by=#{createdBy},
+        created_at=#{createdAt},
+        updated_at=#{updatedAt},
+        deleted_at=#{deletedAt}
+    where id=#{id}
+  </update>
+</mapper>
