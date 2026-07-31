@@ -24,12 +24,9 @@ import com.genealogy.source.repository.SourceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -123,7 +120,6 @@ class CultureItemApplicationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void usesDatabasePagingWithMaximumPageSizeAndReturnsSummaryOnly() {
         ClanEntity clan = clan(1L);
         CultureItemEntity entity = cultureItem(10L, 1L, null, "draft");
@@ -131,7 +127,9 @@ class CultureItemApplicationServiceTest {
         when(authorizationApplicationService.isCrossClanAdmin(7L)).thenReturn(false);
         when(rbacAuthorizationApplicationService.permissionDataScope(eq(7L), eq(1L), any()))
                 .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.full());
-        when(cultureItemRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(cultureItemRepository.search(
+                eq(1L), eq(7L), any(CultureItemSearchCriteria.class),
+                eq(true), any(), eq(true), any(), eq(1), eq(100)))
                 .thenReturn(new PageImpl<>(List.of(entity)));
         when(sourceBindingRepository.countActiveByTargets(eq(1L), eq("culture_item"), any(), eq("archived")))
                 .thenReturn(List.of());
@@ -152,14 +150,12 @@ class CultureItemApplicationServiceTest {
         assertEquals(100, response.page().pageSize());
         assertEquals(1, response.items().size());
         assertEquals("敦本堂", response.items().get(0).title());
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(cultureItemRepository).findAll(any(Specification.class), pageable.capture());
-        assertEquals(100, pageable.getValue().getPageSize());
+        verify(cultureItemRepository).search(
+                eq(1L), eq(7L), any(CultureItemSearchCriteria.class),
+                eq(true), any(), eq(true), any(), eq(1), eq(100));
     }
 
-
     @Test
-    @SuppressWarnings("unchecked")
     void returnsCultureOverviewForConfiguredContractEndpoint() {
         ClanEntity clan = clan(1L);
         CultureItemEntity featured = cultureItem(10L, 1L, null, "official");
@@ -168,8 +164,13 @@ class CultureItemApplicationServiceTest {
         when(authorizationApplicationService.isCrossClanAdmin(7L)).thenReturn(false);
         when(rbacAuthorizationApplicationService.permissionDataScope(eq(7L), eq(1L), any()))
                 .thenReturn(RbacAuthorizationApplicationService.PermissionDataScope.full());
-        when(cultureItemRepository.count(any(Specification.class))).thenReturn(3L, 1L, 2L);
-        when(cultureItemRepository.findAll(any(Specification.class), any(Pageable.class)))
+        when(cultureItemRepository.count(
+                eq(1L), eq(7L), any(CultureItemSearchCriteria.class),
+                eq(true), any(), eq(true), any()))
+                .thenReturn(3L, 1L, 2L);
+        when(cultureItemRepository.search(
+                eq(1L), eq(7L), any(CultureItemSearchCriteria.class),
+                eq(true), any(), eq(true), any(), eq(1), eq(6)))
                 .thenReturn(new PageImpl<>(List.of(featured)));
         when(sourceBindingRepository.countActiveByTargets(eq(1L), eq("culture_item"), any(), eq("archived")))
                 .thenReturn(List.of());
