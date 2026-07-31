@@ -1,72 +1,39 @@
 package com.genealogy.member.repository;
 
-import com.genealogy.member.enums.MemberRoleScopeType;
-import jakarta.persistence.LockModeType;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
 
-import java.lang.reflect.Method;
-import java.util.Collection;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ClanMembershipRepositoryQueryContractTest {
 
     @Test
-    void memberPageMustSupportMultiValueFiltersCastKeywordAndApplyActorScopeBeforePagination() throws NoSuchMethodException {
-        Method method = ClanMembershipRepository.class.getMethod(
-                "searchMembers",
-                Long.class,
-                String.class,
-                boolean.class,
-                Collection.class,
-                boolean.class,
-                Collection.class,
-                boolean.class,
-                Collection.class,
-                boolean.class,
-                MemberRoleScopeType.class,
-                MemberRoleScopeType.class,
-                Collection.class,
-                Collection.class,
-                Pageable.class
-        );
-        Query query = method.getAnnotation(Query.class);
-
-        assertNotNull(query);
-        assertQueryContract(query.value());
-        assertQueryContract(query.countQuery());
+    void memberPageSharesPermissionFiltersBetweenDataAndCountQueries() throws IOException {
+        String xml = resource("/mapper/member/ClanMembershipQueryMapper.xml");
+        assertThat(xml).contains("<sql id=\"SearchWhere\">");
+        assertThat(xml).contains("visible_role.scope_id in");
+        assertThat(xml).contains("criteria.visibleBranchIds");
+        assertThat(xml).contains("criteria.visibleSubtreeIds");
+        assertThat(xml).contains("criteria.filterByMemberStatuses");
+        assertThat(xml).contains("criteria.filterByRoleCodes");
+        assertThat(xml).contains("criteria.filterByScopeTypes");
+        assertThat(xml).contains("select count(distinct membership.id)");
+        assertThat(xml).doesNotContain(" in ()");
     }
 
     @Test
-    void lastAdminGuardMustUseDeterministicPessimisticClanLock() throws NoSuchMethodException {
-        Method method = ClanMembershipRepository.class.getMethod("lockByClanId", Long.class);
-        Lock lock = method.getAnnotation(Lock.class);
-        Query query = method.getAnnotation(Query.class);
-
-        assertNotNull(lock);
-        assertEquals(LockModeType.PESSIMISTIC_WRITE, lock.value());
-        assertNotNull(query);
-        assertTrue(query.value().replaceAll("\\s+", " ").contains("order by membership.id"));
+    void lastAdminGuardUsesDeterministicPostgreSqlRowLock() throws IOException {
+        String xml = resource("/mapper/member/ClanMembershipPersistenceMapper.xml")
+                .replaceAll("\\s+", " ");
+        assertThat(xml).contains("where clan_id=#{clanId} order by id for update");
     }
 
-    private void assertQueryContract(String query) {
-        String compact = query.replaceAll("\\s+", " ");
-        assertTrue(compact.contains("lower(appUser.username) like concat('%', cast(:keyword as string), '%')"));
-        assertTrue(compact.contains("lower(appUser.displayName) like concat('%', cast(:keyword as string), '%')"));
-        assertFalse(compact.contains("lower(concat('%', :keyword, '%'))"));
-        assertTrue(compact.contains(":fullClanAccess = true or exists"));
-        assertTrue(compact.contains("visibleRole.scopeId in :visibleBranchIds"));
-        assertTrue(compact.contains("visibleRole.scopeId in :visibleSubtreeIds"));
-        assertTrue(compact.contains(":filterByMemberStatuses = false or membership.memberStatus in :memberStatuses"));
-        assertTrue(compact.contains(":filterByRoleCodes = false or exists"));
-        assertTrue(compact.contains("role.roleCode in :roleCodes"));
-        assertTrue(compact.contains(":filterByScopeTypes = false or exists"));
-        assertTrue(compact.contains("scopedRole.scopeType in :scopeTypes"));
+    private String resource(String path) throws IOException {
+        try (var stream = getClass().getResourceAsStream(path)) {
+            if (stream == null) throw new IOException("Missing resource " + path);
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 }

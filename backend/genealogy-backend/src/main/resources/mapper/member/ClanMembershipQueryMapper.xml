@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.member.repository.mybatis.ClanMembershipQueryMapper">
+  <sql id="SearchWhere">
+    where membership.clan_id=#{criteria.clanId} and app_user.deleted_at is null
+    <if test="!criteria.fullClanAccess">
+      and exists (select 1 from member_role visible_role where visible_role.membership_id=membership.id and visible_role.status='active' and (
+        <choose><when test="!criteria.visibleBranchIds.isEmpty()">(visible_role.scope_type=#{criteria.branchScope} and visible_role.scope_id in <foreach collection="criteria.visibleBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach>)</when><otherwise>false</otherwise></choose>
+        or
+        <choose><when test="!criteria.visibleSubtreeIds.isEmpty()">(visible_role.scope_type=#{criteria.branchSubtreeScope} and visible_role.scope_id in <foreach collection="criteria.visibleSubtreeIds" item="id" open="(" close=")" separator=",">#{id}</foreach>)</when><otherwise>false</otherwise></choose>
+      ))
+    </if>
+    <if test="criteria.filterByMemberStatuses">
+      <choose><when test="!criteria.memberStatuses.isEmpty()">and membership.member_status in <foreach collection="criteria.memberStatuses" item="v" open="(" close=")" separator=",">#{v}</foreach></when><otherwise>and false</otherwise></choose>
+    </if>
+    <if test="criteria.keyword != null">and (lower(app_user.username) like concat('%',#{criteria.keyword},'%') or lower(app_user.display_name) like concat('%',#{criteria.keyword},'%'))</if>
+    <if test="criteria.filterByRoleCodes">
+      <choose><when test="!criteria.roleCodes.isEmpty()">and exists(select 1 from member_role mr join app_role role on role.id=mr.role_id where mr.membership_id=membership.id and mr.status='active' and role.role_code in <foreach collection="criteria.roleCodes" item="v" open="(" close=")" separator=",">#{v}</foreach>)</when><otherwise>and false</otherwise></choose>
+    </if>
+    <if test="criteria.filterByScopeTypes">
+      <choose><when test="!criteria.scopeTypes.isEmpty()">and exists(select 1 from member_role scoped where scoped.membership_id=membership.id and scoped.status='active' and scoped.scope_type in <foreach collection="criteria.scopeTypes" item="v" open="(" close=")" separator=",">#{v}</foreach>)</when><otherwise>and false</otherwise></choose>
+    </if>
+  </sql>
+  <select id="search" resultType="com.genealogy.member.entity.ClanMembershipEntity">select distinct membership.* from clan_membership membership join app_user on app_user.id=membership.user_id <include refid="SearchWhere"/> order by membership.id asc limit #{limit} offset #{offset}</select>
+  <select id="count" resultType="long">select count(distinct membership.id) from clan_membership membership join app_user on app_user.id=membership.user_id <include refid="SearchWhere"/></select>
+</mapper>

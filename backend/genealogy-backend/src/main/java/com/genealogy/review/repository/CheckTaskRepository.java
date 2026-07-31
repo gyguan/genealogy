@@ -1,22 +1,3 @@
 package com.genealogy.review.repository;
-
-import com.genealogy.review.entity.CheckTaskEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import java.util.List;
-import java.util.Optional;
-
-public interface CheckTaskRepository extends JpaRepository<CheckTaskEntity, Long> {
-
-    List<CheckTaskEntity> findByClanIdAndStatus(Long clanId, String status);
-
-    Optional<CheckTaskEntity> findByRevisionId(Long revisionId);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select task from CheckTaskEntity task where task.id = :taskId")
-    Optional<CheckTaskEntity> findByIdForDecision(@Param("taskId") Long taskId);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.review.entity.CheckTaskEntity; import com.genealogy.review.repository.mybatis.CheckTaskPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class CheckTaskRepository { private final CheckTaskPersistenceMapper mapper; public CheckTaskRepository(CheckTaskPersistenceMapper mapper){this.mapper=mapper;} @Transactional public CheckTaskEntity save(CheckTaskEntity e){if(e.getId()==null)mapper.insert(e);else if(mapper.updateAllById(e)!=1)throw new IllegalStateException("Check task update expected one row for id "+e.getId());return e;} @Transactional public CheckTaskEntity saveAndFlush(CheckTaskEntity e){return save(e);} public Optional<CheckTaskEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public List<CheckTaskEntity> findAllById(Iterable<Long> ids){List<Long>v=new ArrayList<>();if(ids!=null)ids.forEach(v::add);return v.isEmpty()?List.of():mapper.selectBatchIds(v);} public List<CheckTaskEntity> findByClanIdAndStatus(Long clanId,String status){return mapper.selectList(Wrappers.<CheckTaskEntity>lambdaQuery().eq(CheckTaskEntity::getClanId,clanId).eq(CheckTaskEntity::getStatus,status).orderByAsc(CheckTaskEntity::getId));} public Optional<CheckTaskEntity> findByRevisionId(Long revisionId){return Optional.ofNullable(mapper.selectOne(Wrappers.<CheckTaskEntity>lambdaQuery().eq(CheckTaskEntity::getRevisionId,revisionId).orderByAsc(CheckTaskEntity::getId).last("limit 1")));} @Transactional public Optional<CheckTaskEntity> findByIdForDecision(Long taskId){return Optional.ofNullable(mapper.selectByIdForUpdate(taskId));} }

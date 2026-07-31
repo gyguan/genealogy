@@ -1,17 +1,3 @@
 package com.genealogy.review.repository;
-
-import com.genealogy.review.entity.AuditRecordEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
-
-public interface AuditRecordRepository extends JpaRepository<AuditRecordEntity, Long> {
-
-    boolean existsByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
-
-    List<AuditRecordEntity> findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(String targetType, Long targetId);
-
-    List<AuditRecordEntity> findBySubmitterIdOrderBySubmitTimeDesc(Long submitterId);
-
-    List<AuditRecordEntity> findByClanIdAndSubmitterIdOrderBySubmitTimeDesc(Long clanId, Long submitterId);
-}
+import com.baomidou.mybatisplus.core.toolkit.Wrappers; import com.genealogy.review.entity.AuditRecordEntity; import com.genealogy.review.repository.mybatis.AuditRecordPersistenceMapper; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class AuditRecordRepository { private final AuditRecordPersistenceMapper mapper; public AuditRecordRepository(AuditRecordPersistenceMapper mapper){this.mapper=mapper;} @Transactional public AuditRecordEntity save(AuditRecordEntity e){Objects.requireNonNull(e);e.ensureTraceId();if(e.getId()==null)mapper.insertRecord(e);else requireOne(mapper.updateAllById(e),e.getId());return e;} @Transactional public AuditRecordEntity saveAndFlush(AuditRecordEntity e){return save(e);} public Optional<AuditRecordEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public List<AuditRecordEntity> findAllById(Iterable<Long> ids){List<Long>v=ids(ids);return v.isEmpty()?List.of():mapper.selectBatchIds(v);} public boolean existsByTargetTypeAndTargetIdAndStatus(String type,Long id,String status){return mapper.selectCount(Wrappers.<AuditRecordEntity>lambdaQuery().eq(AuditRecordEntity::getTargetType,type).eq(AuditRecordEntity::getTargetId,id).eq(AuditRecordEntity::getStatus,status))>0;} public List<AuditRecordEntity> findByTargetTypeAndTargetIdOrderBySubmitTimeDesc(String type,Long id){return mapper.selectList(Wrappers.<AuditRecordEntity>lambdaQuery().eq(AuditRecordEntity::getTargetType,type).eq(AuditRecordEntity::getTargetId,id).orderByDesc(AuditRecordEntity::getSubmitTime).orderByDesc(AuditRecordEntity::getId));} public List<AuditRecordEntity> findBySubmitterIdOrderBySubmitTimeDesc(Long submitter){return mapper.selectList(Wrappers.<AuditRecordEntity>lambdaQuery().eq(AuditRecordEntity::getSubmitterId,submitter).orderByDesc(AuditRecordEntity::getSubmitTime).orderByDesc(AuditRecordEntity::getId));} public List<AuditRecordEntity> findByClanIdAndSubmitterIdOrderBySubmitTimeDesc(Long clanId,Long submitter){return mapper.selectList(Wrappers.<AuditRecordEntity>lambdaQuery().eq(AuditRecordEntity::getClanId,clanId).eq(AuditRecordEntity::getSubmitterId,submitter).orderByDesc(AuditRecordEntity::getSubmitTime).orderByDesc(AuditRecordEntity::getId));} private static void requireOne(int n,Long id){if(n!=1)throw new IllegalStateException("Audit record update expected one row for id "+id);} private static List<Long> ids(Iterable<Long> x){LinkedHashSet<Long>s=new LinkedHashSet<>();if(x!=null)for(Long v:x)if(v!=null)s.add(v);return List.copyOf(s);} }

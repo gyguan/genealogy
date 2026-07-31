@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.member.repository.mybatis.MemberRolePersistenceMapper">
+ <update id="updateAllById">update member_role set membership_id=#{membershipId},role_id=#{roleId},scope_type=#{scopeType},scope_id=#{scopeId},status=#{status},granted_by=#{grantedBy},granted_at=#{grantedAt},revoked_at=#{revokedAt},created_by=#{createdBy},created_at=#{createdAt},updated_by=#{updatedBy},updated_at=#{updatedAt} where id=#{id}</update>
+ <select id="countActiveRoleGrants" resultType="long">select count(*) from member_role mr join clan_membership m on m.id=mr.membership_id join app_role r on r.id=mr.role_id where m.clan_id=#{clanId} and m.member_status=#{memberStatus} and mr.status=#{grantStatus} and r.role_code=#{roleCode} and mr.scope_type=#{scopeType}</select>
+</mapper>
