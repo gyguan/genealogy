@@ -90,7 +90,7 @@ class BranchRelationshipTreeMybatisPostgreSqlIT {
         Fixture fixture = fixture("REL");
         PersonEntity from = person(fixture, "REL-001", 1);
         PersonEntity to = person(fixture, "REL-002", 2);
-        personRepository.saveAll(List.of(from, to));
+        saveNewPeople(List.of(from, to));
 
         RelationshipEntity relationship = relationship(fixture.clan().getId(), from.getId(), to.getId(), "继嗣");
         relationship.setDescription("clear-me");
@@ -118,7 +118,7 @@ class BranchRelationshipTreeMybatisPostgreSqlIT {
         for (int index = 0; index < 501; index++) {
             people.add(person(fixture, "T-" + String.format("%03d", index), 1));
         }
-        personRepository.saveAll(people);
+        saveNewPeople(people);
         List<Long> personIds = people.stream().map(PersonEntity::getId).toList();
 
         assertThat(treePersonQueryRepository.findTreePersonSnapshotsByIds(
@@ -145,6 +145,12 @@ class BranchRelationshipTreeMybatisPostgreSqlIT {
             assertThat(snapshot.fromPersonId()).isEqualTo(people.get(0).getId());
             assertThat(snapshot.toPersonId()).isEqualTo(people.get(500).getId());
         });
+    }
+
+    private void saveNewPeople(List<PersonEntity> people) {
+        for (PersonEntity person : people) {
+            personRepository.save(person);
+        }
     }
 
     private Fixture fixture(String prefix) {
