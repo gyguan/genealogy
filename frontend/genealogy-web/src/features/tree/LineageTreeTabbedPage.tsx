@@ -82,7 +82,7 @@ import './lineage-tabbed-page.css';
 
 import { feedback } from '../../shared/ui/OperationFeedback';
 
-import { InlineFeedback, PageFeedback } from '../../shared/ui/Feedback';
+import { PageFeedback } from '../../shared/ui/Feedback';
 import { StandardQueryActions } from '../../shared/ui/StandardQueryActions';
 import { StandardQueryField, StandardQueryGrid, StandardQueryPanel } from '../../shared/ui/StandardPagePatterns';
 
@@ -142,13 +142,6 @@ const RELATION_OPTIONS: Array<{ value: TreeRelationScope; label: string }> = [
 
 function text(value: unknown) {
   return value === null || value === undefined ? '' : String(value);
-}
-
-function sameRelations(left: TreeRelationScope[], right: TreeRelationScope[]) {
-  if (left.length !== right.length) return false;
-  const normalizedLeft = [...left].sort();
-  const normalizedRight = [...right].sort();
-  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
 }
 
 function errorMessage(error: unknown) {
@@ -641,15 +634,6 @@ export function LineageTreeTabbedPage({ onNavigate }: Props) {
       label: `${node.displayName}${node.generationNo ? ` · ${node.generationNo}世` : ''}${node.branchName ? ` · ${node.branchName}` : ''}`
     })) || [];
   const currentClanName = clans.find(item => text(item.id) === workspace.clanId)?.clanName || '族谱';
-  const personDirty = personDraft.branchId !== personApplied.branchId
-    || personDraft.personId !== personApplied.personId
-    || personDraft.depth !== personApplied.depth
-    || !sameRelations(personDraft.relationScopes, personApplied.relationScopes);
-  const branchDirty = branchDraft.branchId !== branchApplied.branchId
-    || branchDraft.depth !== branchApplied.depth
-    || branchDraft.includeSubBranches !== branchApplied.includeSubBranches
-    || !sameRelations(branchDraft.relationScopes, branchApplied.relationScopes);
-  const activeDirty = mode === 'person' ? personDirty : branchDirty;
   const activeLoading = mode === 'person' ? loadState.personGraph.loading : loadState.branchGraph.loading;
   const activeDisabled = mode === 'person'
     ? !workspace.clanId || !personDraft.branchId || !personDraft.personId || !personDraft.depth || !personDraft.relationScopes.length
@@ -714,7 +698,7 @@ options={branchOptions}
 onChange={value => void handlePersonBranchChange(value || '')}
         />
       </StandardQueryField>
-      <StandardQueryField label="中心人物" hint="仅影响人物中心图谱">
+      <StandardQueryField label="中心人物">
         <Select
 aria-label="切换中心人物"
 showSearch
@@ -733,10 +717,10 @@ onChange={value => {
 notFoundContent={loadState.search.error || (personSearchInput ? '未找到匹配人物' : '请输入姓名、谱名或字号')}
         />
       </StandardQueryField>
-      <StandardQueryField label="关系范围" hint={!personDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+      <StandardQueryField label="关系范围">
         <RelationScopeSelect value={personDraft.relationScopes} onChange={value => setPersonDraft(previous => ({ ...previous, relationScopes: value }))} />
       </StandardQueryField>
-      <StandardQueryField label="展开深度" hint="默认 1 代，最多 3 代">
+      <StandardQueryField label="展开深度">
         <Select
 aria-label="人物中心展开深度"
 value={personDraft.depth}
@@ -763,7 +747,7 @@ options={branchOptions}
 onChange={value => setBranchDraft(previous => ({ ...previous, branchId: value || '' }))}
         />
       </StandardQueryField>
-      <StandardQueryField label="关系范围" hint={!branchDraft.relationScopes.length ? '请至少选择一种关系范围' : undefined}>
+      <StandardQueryField label="关系范围">
         <RelationScopeSelect value={branchDraft.relationScopes} onChange={value => setBranchDraft(previous => ({ ...previous, relationScopes: value }))} />
       </StandardQueryField>
       <StandardQueryField label="展开深度">
@@ -838,14 +822,6 @@ onChange={value => setBranchDraft(previous => ({ ...previous, depth: value }))}
         )}
       >
         {loadState.clan.error ? <PageFeedback tone="error" title={`宗族范围加载失败：${loadState.clan.error}`} /> : null}
-        <div className="lineage-tab-query-note">
-<Typography.Text type="secondary">
-  {mode === 'person'
-    ? '以中心人物为核心，按 1～3 代深度展示相关亲属；查询只刷新人物中心图谱。'
-    : '按支派范围和展开深度浏览整体世系结构；不受中心人物影响。'}
-</Typography.Text>
-{activeDirty ? <InlineFeedback tone="warning" title={<>查询条件已调整，点击“查询”后刷新当前 TAB 结果。</>} /> : null}
-        </div>
       </StandardQueryPanel>
 
       <QueryResultCard
