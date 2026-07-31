@@ -34,7 +34,7 @@ export type StandardPageProps = {
   pageKey?: string;
 };
 
-export function StandardPage({ title: _title, description: _description, scope: _scope, back, extra, children, className = '', pageKey }: StandardPageProps) {
+export function StandardPage({ back, extra, children, className = '', pageKey }: StandardPageProps) {
   const classes = ['standard-page', className].filter(Boolean).join(' ');
   const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
   const actionContext = useMemo(() => ({ target: actionTarget, setTarget: setActionTarget }), [actionTarget]);
@@ -164,7 +164,7 @@ export function StandardResultSection({ title = '查询结果', total, extra, ch
   const heading = <Space size={4}><span>{title}</span>{typeof total === 'number' ? <Typography.Text type="secondary">（共 {total} 条）</Typography.Text> : null}</Space>;
   const actionContext = useContext(StandardPageActionTarget);
   const resultActions = <Space className="standard-result-section__actions" wrap>
-    {actionContext ? <span ref={actionContext.setTarget} className="standard-result-section__page-action-target" /> : null}
+    {actionContext ? <div ref={actionContext.setTarget} className="standard-result-section__page-action-target" /> : null}
     {extra}
   </Space>;
 
