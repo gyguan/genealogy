@@ -1,6 +1,5 @@
 package com.genealogy.operationlog.repository;
 
-import com.genealogy.operationlog.application.OperationLogEventBridge;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.mybatis.OperationLogPersistenceMapper;
 import com.genealogy.operationlog.repository.query.OperationLogGroupCountRow;
@@ -27,17 +26,13 @@ public class OperationLogRepository {
     @Transactional
     public OperationLogEntity save(OperationLogEntity entity) {
         Objects.requireNonNull(entity, "entity");
-        boolean inserted = entity.getId() == null;
         if (entity.getCreatedAt() == null) {
             entity.setCreatedAt(LocalDateTime.now());
         }
-        if (inserted) {
+        if (entity.getId() == null) {
             mapper.insert(entity);
         } else if (mapper.updateAllById(entity) != 1) {
             throw new IllegalStateException("Operation log update failed for id " + entity.getId());
-        }
-        if (inserted) {
-            OperationLogEventBridge.publish(entity);
         }
         return entity;
     }
@@ -80,11 +75,7 @@ public class OperationLogRepository {
         return search(baseCriteria(clanId, null, null), pageable);
     }
 
-    public Page<OperationLogEntity> findByTargetTypeAndTargetId(
-            String targetType,
-            Long targetId,
-            Pageable pageable
-    ) {
+    public Page<OperationLogEntity> findByTargetTypeAndTargetId(String targetType, Long targetId, Pageable pageable) {
         return search(baseCriteria(null, targetType, targetId), pageable);
     }
 
