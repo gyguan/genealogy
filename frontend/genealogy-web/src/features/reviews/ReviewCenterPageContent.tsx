@@ -685,6 +685,22 @@ export function ReviewCenterPage({}: Props) {
     );
   }
 
+  const resultActions = workspace.clanId && !listFailure?.forbidden ? (
+    <Space wrap>
+      {activeTab === 'pending' ? (
+        <>
+          <Button danger disabled={!selectedTasks.length || batchLoading} onClick={() => openBatchDecision('reject')}>
+            {selectedTasks.length ? `批量驳回（${selectedTasks.length}）` : '批量驳回'}
+          </Button>
+          <Button type="primary" disabled={!selectedTasks.length || batchLoading} onClick={() => openBatchDecision('approve')}>
+            {selectedTasks.length ? `批量通过（${selectedTasks.length}）` : '批量通过'}
+          </Button>
+        </>
+      ) : null}
+      <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button>
+    </Space>
+  ) : null;
+
   return (
     <div className="review-center-page">
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -709,10 +725,9 @@ actions={(
 
         <QueryResultCard
           className="review-result-card"
-          extra={workspace.clanId && !listFailure?.forbidden ? <Button loading={loading} onClick={() => void loadTasks()}>刷新</Button> : null}
-         total={total}>
-          
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          extra={resultActions}
+          total={total}>
+          <Space direction="vertical" size={12} style={{ width: '100%' }}>
             <Space wrap style={{ justifyContent: 'space-between', width: '100%' }}>
               <Tabs activeKey={activeTab} onChange={switchTab} items={[
                 { key: 'pending', label: activeTab === 'pending' && hasLoaded ? `待我审核（${total}）` : '待我审核' },
@@ -725,12 +740,11 @@ actions={(
               <PageFeedback
                 tone="info"
                 title={`已选择 ${selectedTasks.length} 条（仅当前页）`}
-                action={<Space wrap><Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button><Button danger disabled={batchLoading} onClick={() => openBatchDecision('reject')}>批量驳回</Button><Button type="primary" disabled={batchLoading} onClick={() => openBatchDecision('approve')}>批量通过</Button></Space>}
+                action={<Button type="link" onClick={() => setSelectedRowKeys([])}>取消选择</Button>}
               />
             ) : null}
             {renderResultContent()}
-            </Space>
-          
+          </Space>
         </QueryResultCard>
       </Space>
 
