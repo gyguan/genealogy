@@ -165,6 +165,14 @@
   min-width: 824px !important;
 }
 
+/* Redistribute the released width to the task-name column. The generated expand
+ * column remains the first colgroup item and the selection column is second, so
+ * the task-name column is the third item. Other operational columns keep their
+ * fixed widths while this column fills the remaining result-card width. */
+[data-genealogy-app] .workbench-result-card .ant-table-content colgroup > col:nth-child(3) {
+  width: auto !important;
+}
+
 /* Selection state is already reflected by the persistent bulk action button count. */
 [data-genealogy-app] .workbench-result-card .ant-alert-info {
   display: none;
