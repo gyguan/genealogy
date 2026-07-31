@@ -22,16 +22,21 @@ function activeMode(root: HTMLElement): LineageMode {
 }
 
 function syncActiveAdvancedField(root: HTMLElement, expanded: boolean) {
-  const activeGrid = root.querySelector<HTMLElement>(
-    '.lineage-query-tabs .ant-tabs-tabpane-active .standard-query-grid'
-  );
-  const advancedField = activeGrid?.querySelector<HTMLElement>(
-    ':scope > .standard-query-field:nth-child(5)'
-  );
+  const queryCard = root.querySelector<HTMLElement>('.lineage-tabbed-query-card');
+  const activePane = queryCard?.querySelector<HTMLElement>('.ant-tabs-tabpane-active');
+  const activeGrid = activePane?.querySelector<HTMLElement>('[data-query-grid-role="fields"]');
+  const fields = activeGrid
+    ? Array.from(activeGrid.children).filter((child): child is HTMLElement =>
+      child instanceof HTMLElement && child.dataset.queryFieldRole === 'field'
+    )
+    : [];
+  const advancedField = fields[4];
   if (!advancedField) return;
+
   advancedField.hidden = !expanded;
   advancedField.setAttribute('aria-hidden', expanded ? 'false' : 'true');
   advancedField.dataset.lineageAdvancedField = 'true';
+  advancedField.style.setProperty('display', expanded ? 'grid' : 'none', 'important');
 }
 
 export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeProductPageBase>) {
@@ -62,7 +67,12 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
     if (typeof MutationObserver === 'undefined') return;
 
     const observer = new MutationObserver(syncTargets);
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'hidden']
+    });
     return () => observer.disconnect();
   }, [advancedExpanded]);
 
