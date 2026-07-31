@@ -3,33 +3,19 @@ package com.genealogy.operationlog.application;
 import com.genealogy.auth.application.RbacAuthorizationApplicationService.PermissionDataScope;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
-import com.genealogy.member.entity.MemberRoleEntity;
-import com.genealogy.member.enums.MemberRoleScopeType;
 import com.genealogy.operationlog.dto.RiskAuditEventResponse;
 import com.genealogy.operationlog.dto.RiskAuditStatsResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
-import com.genealogy.person.entity.PersonEntity;
-import com.genealogy.relationship.entity.RelationshipEntity;
-import com.genealogy.review.entity.ReviewTaskEntity;
-import com.genealogy.source.entity.SourceAttachmentEntity;
-import com.genealogy.source.entity.SourceBindingEntity;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Tuple;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import com.genealogy.operationlog.repository.query.OperationLogGroupCountRow;
+import com.genealogy.operationlog.repository.query.OperationLogQueryCriteria;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -46,14 +32,9 @@ public class OperationRiskAuditApplicationService {
     private static final Set<String> DISPOSITIONS = Set.of("open", "reviewing", "resolved", "accepted");
 
     private final OperationLogRepository operationLogRepository;
-    private final EntityManager entityManager;
 
-    public OperationRiskAuditApplicationService(
-            OperationLogRepository operationLogRepository,
-            EntityManager entityManager
-    ) {
+    public OperationRiskAuditApplicationService(OperationLogRepository operationLogRepository) {
         this.operationLogRepository = operationLogRepository;
-        this.entityManager = entityManager;
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +54,7 @@ public class OperationRiskAuditApplicationService {
     ) {
         int normalizedPageNo = Math.max(1, pageNo);
         int normalizedPageSize = Math.max(1, Math.min(pageSize, 100));
-        Specification<OperationLogEntity> specification = specification(
+        OperationLogQueryCriteria criteria = criteria(
                 clanId,
                 actorIds,
                 riskLevels,
@@ -84,12 +65,15 @@ public class OperationRiskAuditApplicationService {
                 endTime,
                 scope
         );
-        PageRequest pageRequest = PageRequest.of(
-                normalizedPageNo - 1,
-                normalizedPageSize,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                criteria,
+                PageRequest.of(
+                        normalizedPageNo - 1,
+                        normalizedPageSize,
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                .and(Sort.by(Sort.Direction.DESC, "id"))
+                )
         );
-        Page<OperationLogEntity> page = operationLogRepository.findAll(specification, pageRequest);
         return PageResponse.of(
                 page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
                 page.getTotalElements(),
@@ -114,11 +98,11 @@ public class OperationRiskAuditApplicationService {
     ) {
         return search(
                 clanId,
-                actorId == null ? List.of() : List.of(actorId),
-                riskLevel == null ? List.of() : List.of(riskLevel),
-                eventType == null ? List.of() : List.of(eventType),
-                branchId == null ? List.of() : List.of(branchId),
-                dispositionStatus == null ? List.of() : List.of(dispositionStatus),
+                valueList(actorId),
+                valueList(riskLevel),
+                valueList(eventType),
+                valueList(branchId),
+                valueList(dispositionStatus),
                 startTime,
                 endTime,
                 pageNo,
@@ -140,7 +124,7 @@ public class OperationRiskAuditApplicationService {
             LocalDateTime endTime,
             PermissionDataScope scope
     ) {
-        Specification<OperationLogEntity> specification = specification(
+        OperationLogQueryCriteria criteria = criteria(
                 clanId,
                 actorIds,
                 riskLevels,
@@ -152,10 +136,10 @@ public class OperationRiskAuditApplicationService {
                 scope
         );
         return new RiskAuditStatsResponse(
-                operationLogRepository.count(specification),
-                group(specification, "riskLevel"),
-                group(specification, "riskEventType"),
-                group(specification, "dispositionStatus")
+                operationLogRepository.count(criteria),
+                toStats(operationLogRepository.groupByRiskLevel(criteria)),
+                toStats(operationLogRepository.groupByRiskEventType(criteria)),
+                toStats(operationLogRepository.groupByDispositionStatus(criteria))
         );
     }
 
@@ -172,18 +156,18 @@ public class OperationRiskAuditApplicationService {
     ) {
         return stats(
                 clanId,
-                actorId == null ? List.of() : List.of(actorId),
-                riskLevel == null ? List.of() : List.of(riskLevel),
-                eventType == null ? List.of() : List.of(eventType),
-                branchId == null ? List.of() : List.of(branchId),
-                dispositionStatus == null ? List.of() : List.of(dispositionStatus),
+                valueList(actorId),
+                valueList(riskLevel),
+                valueList(eventType),
+                valueList(branchId),
+                valueList(dispositionStatus),
                 startTime,
                 endTime,
                 scope
         );
     }
 
-    private Specification<OperationLogEntity> specification(
+    private OperationLogQueryCriteria criteria(
             Long clanId,
             List<Long> actorIds,
             List<String> riskLevels,
@@ -195,24 +179,24 @@ public class OperationRiskAuditApplicationService {
             PermissionDataScope scope
     ) {
         List<Long> normalizedActors = normalizeLongs(actorIds);
-        Set<String> normalizedLevels = validatedValues(
+        List<String> normalizedLevels = List.copyOf(validatedValues(
                 riskLevels,
                 LEVELS,
                 "OPERATION_RISK_LEVEL_INVALID",
                 "风险等级不正确"
-        );
-        Set<String> normalizedEventTypes = validatedValues(
+        ));
+        List<String> normalizedEventTypes = List.copyOf(validatedValues(
                 eventTypes,
                 EVENT_TYPES,
                 "OPERATION_RISK_EVENT_INVALID",
                 "风险事件类型不正确"
-        );
-        Set<String> normalizedDispositions = validatedValues(
+        ));
+        List<String> normalizedDispositions = List.copyOf(validatedValues(
                 dispositionStatuses,
                 DISPOSITIONS,
                 "OPERATION_RISK_DISPOSITION_INVALID",
                 "风险处置状态不正确"
-        );
+        ));
         Set<Long> requestedBranchIds = new LinkedHashSet<>(normalizeLongs(branchIds));
         PermissionDataScope effectiveScope = scope == null ? PermissionDataScope.none() : scope;
         for (Long branchId : requestedBranchIds) {
@@ -220,184 +204,33 @@ public class OperationRiskAuditApplicationService {
                 throw new BusinessException("AUTH_FORBIDDEN", "当前账号无权查看该支派的风险事件");
             }
         }
-        Set<Long> constrainedBranchIds = requestedBranchIds.isEmpty()
-                ? effectiveScope.visibleBranchIds()
-                : requestedBranchIds;
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            predicates.add(criteriaBuilder.isNotNull(root.get("riskEventType")));
-            if (!requestedBranchIds.isEmpty() || !effectiveScope.fullClanAccess()) {
-                predicates.add(branchVisibilityPredicate(
-                        root,
-                        query,
-                        criteriaBuilder,
-                        clanId,
-                        constrainedBranchIds
-                ));
-            }
-            if (!normalizedActors.isEmpty()) {
-                predicates.add(root.get("actorId").in(normalizedActors));
-            }
-            if (!normalizedLevels.isEmpty()) {
-                predicates.add(root.get("riskLevel").in(normalizedLevels));
-            }
-            if (!normalizedEventTypes.isEmpty()) {
-                predicates.add(root.get("riskEventType").in(normalizedEventTypes));
-            }
-            if (!normalizedDispositions.isEmpty()) {
-                predicates.add(root.get("dispositionStatus").in(normalizedDispositions));
-            }
-            if (startTime != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
-            }
-            if (endTime != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
-            }
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
-    }
-
-    private Predicate branchVisibilityPredicate(
-            Root<OperationLogEntity> root,
-            CriteriaQuery<?> query,
-            CriteriaBuilder criteriaBuilder,
-            Long clanId,
-            Set<Long> branchIds
-    ) {
-        if (branchIds == null || branchIds.isEmpty()) {
-            return criteriaBuilder.disjunction();
-        }
-
-        Subquery<Long> personIds = query.subquery(Long.class);
-        Root<PersonEntity> person = personIds.from(PersonEntity.class);
-        personIds.select(person.get("id")).where(
-                criteriaBuilder.equal(person.get("clanId"), clanId),
-                person.get("branchId").in(branchIds)
-        );
-
-        Subquery<Long> relationshipIds = query.subquery(Long.class);
-        Root<RelationshipEntity> relationship = relationshipIds.from(RelationshipEntity.class);
-        relationshipIds.select(relationship.get("id")).where(
-                criteriaBuilder.equal(relationship.get("clanId"), clanId),
-                criteriaBuilder.or(
-                        relationship.get("successorBranchId").in(branchIds),
-                        relationship.get("fromPersonId").in(personIds),
-                        relationship.get("toPersonId").in(personIds)
-                )
-        );
-
-        Subquery<Long> reviewTaskIds = query.subquery(Long.class);
-        Root<ReviewTaskEntity> reviewTask = reviewTaskIds.from(ReviewTaskEntity.class);
-        reviewTaskIds.select(reviewTask.get("id")).where(
-                criteriaBuilder.equal(reviewTask.get("clanId"), clanId),
-                reviewTask.get("branchId").in(branchIds)
-        );
-
-        Subquery<Long> memberRoleIds = query.subquery(Long.class);
-        Root<MemberRoleEntity> memberRole = memberRoleIds.from(MemberRoleEntity.class);
-        memberRoleIds.select(memberRole.get("id")).where(
-                memberRole.get("scopeType").in(MemberRoleScopeType.branch, MemberRoleScopeType.branch_subtree),
-                memberRole.get("scopeId").in(branchIds)
-        );
-
-        Subquery<Long> sourceIds = query.subquery(Long.class);
-        Root<SourceBindingEntity> sourceBinding = sourceIds.from(SourceBindingEntity.class);
-        sourceIds.select(sourceBinding.get("sourceId")).distinct(true).where(
-                criteriaBuilder.equal(sourceBinding.get("clanId"), clanId),
-                criteriaBuilder.or(
-                        criteriaBuilder.and(
-                                criteriaBuilder.equal(sourceBinding.get("targetType"), "branch"),
-                                sourceBinding.get("targetId").in(branchIds)
-                        ),
-                        criteriaBuilder.and(
-                                criteriaBuilder.equal(sourceBinding.get("targetType"), "person"),
-                                sourceBinding.get("targetId").in(personIds)
-                        ),
-                        criteriaBuilder.and(
-                                criteriaBuilder.equal(sourceBinding.get("targetType"), "relationship"),
-                                sourceBinding.get("targetId").in(relationshipIds)
-                        )
-                )
-        );
-
-        Subquery<Long> attachmentIds = query.subquery(Long.class);
-        Root<SourceAttachmentEntity> sourceAttachment = attachmentIds.from(SourceAttachmentEntity.class);
-        attachmentIds.select(sourceAttachment.get("id")).where(
-                criteriaBuilder.equal(sourceAttachment.get("clanId"), clanId),
-                sourceAttachment.get("sourceId").in(sourceIds)
-        );
-
-        return criteriaBuilder.or(
-                root.get("branchId").in(branchIds),
-                targetMatches(root, criteriaBuilder, "branch", branchIds),
-                targetMatches(root, criteriaBuilder, "person", personIds),
-                targetMatches(root, criteriaBuilder, "relationship", relationshipIds),
-                targetMatches(root, criteriaBuilder, "review_task", reviewTaskIds),
-                targetMatches(root, criteriaBuilder, "member_role", memberRoleIds),
-                targetMatches(root, criteriaBuilder, "source", sourceIds),
-                targetMatches(root, criteriaBuilder, "source_attachment", attachmentIds)
+        List<Long> constrainedBranchIds = requestedBranchIds.isEmpty()
+                ? effectiveScope.visibleBranchIds().stream().sorted().toList()
+                : List.copyOf(requestedBranchIds);
+        boolean enforceBranchScope = !requestedBranchIds.isEmpty() || !effectiveScope.fullClanAccess();
+        return new OperationLogQueryCriteria(
+                clanId,
+                normalizedActors,
+                List.of(),
+                List.of(),
+                null,
+                List.of(),
+                startTime,
+                endTime,
+                null,
+                List.of(),
+                true,
+                normalizedLevels,
+                normalizedEventTypes,
+                normalizedDispositions,
+                enforceBranchScope,
+                constrainedBranchIds
         );
     }
 
-    private Predicate targetMatches(
-            Root<OperationLogEntity> root,
-            CriteriaBuilder criteriaBuilder,
-            String targetType,
-            Set<Long> ids
-    ) {
-        return criteriaBuilder.or(
-                criteriaBuilder.and(
-                        criteriaBuilder.equal(root.get("targetType"), targetType),
-                        root.get("targetId").in(ids)
-                ),
-                criteriaBuilder.and(
-                        criteriaBuilder.equal(root.get("businessTargetType"), targetType),
-                        root.get("businessTargetId").in(ids)
-                )
-        );
-    }
-
-    private Predicate targetMatches(
-            Root<OperationLogEntity> root,
-            CriteriaBuilder criteriaBuilder,
-            String targetType,
-            Subquery<Long> ids
-    ) {
-        return criteriaBuilder.or(
-                criteriaBuilder.and(
-                        criteriaBuilder.equal(root.get("targetType"), targetType),
-                        root.get("targetId").in(ids)
-                ),
-                criteriaBuilder.and(
-                        criteriaBuilder.equal(root.get("businessTargetType"), targetType),
-                        root.get("businessTargetId").in(ids)
-                )
-        );
-    }
-
-    private List<RiskAuditStatsResponse.Item> group(
-            Specification<OperationLogEntity> specification,
-            String field
-    ) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Tuple> query = criteriaBuilder.createTupleQuery();
-        Root<OperationLogEntity> root = query.from(OperationLogEntity.class);
-        Predicate predicate = specification.toPredicate(root, query, criteriaBuilder);
-        query.multiselect(
-                root.get(field).alias("key"),
-                criteriaBuilder.count(root).alias("count")
-        );
-        if (predicate != null) {
-            query.where(predicate);
-        }
-        query.groupBy(root.get(field));
-        query.orderBy(criteriaBuilder.desc(criteriaBuilder.count(root)));
-        return entityManager.createQuery(query).getResultList().stream()
-                .map(tuple -> new RiskAuditStatsResponse.Item(
-                        tuple.get("key", String.class),
-                        tuple.get("count", Long.class)
-                ))
+    private List<RiskAuditStatsResponse.Item> toStats(List<OperationLogGroupCountRow> rows) {
+        return rows.stream()
+                .map(row -> new RiskAuditStatsResponse.Item(row.key(), row.count()))
                 .toList();
     }
 
@@ -409,32 +242,15 @@ public class OperationRiskAuditApplicationService {
                 ? entity.getTargetId()
                 : entity.getBusinessTargetId();
         return new RiskAuditEventResponse(
-                entity.getId(),
-                entity.getClanId(),
-                entity.getActorId(),
-                null,
-                entity.getActionType(),
-                entity.getRiskLevel(),
-                entity.getRiskEventType(),
-                entity.getDispositionStatus(),
-                entity.getBranchId(),
-                entity.getTargetType(),
-                entity.getTargetId(),
-                null,
-                null,
-                null,
-                entity.getEventResult(),
-                entity.getSummary(),
-                includeTechnicalFields ? entity.getDetail() : null,
+                entity.getId(), entity.getClanId(), entity.getActorId(), null,
+                entity.getActionType(), entity.getRiskLevel(), entity.getRiskEventType(),
+                entity.getDispositionStatus(), entity.getBranchId(), entity.getTargetType(),
+                entity.getTargetId(), null, null, null, entity.getEventResult(),
+                entity.getSummary(), includeTechnicalFields ? entity.getDetail() : null,
                 includeTechnicalFields ? entity.getRequestId() : null,
-                includeTechnicalFields ? entity.getClientIp() : null,
-                entity.getCreatedAt(),
-                entity.getTraceId(),
-                entity.getRevisionId(),
-                entity.getReviewTaskId(),
-                trackingTargetType,
-                trackingTargetId,
-                includeTechnicalFields
+                includeTechnicalFields ? entity.getClientIp() : null, entity.getCreatedAt(),
+                entity.getTraceId(), entity.getRevisionId(), entity.getReviewTaskId(),
+                trackingTargetType, trackingTargetId, includeTechnicalFields
         );
     }
 
@@ -442,10 +258,7 @@ public class OperationRiskAuditApplicationService {
         if (values == null) {
             return List.of();
         }
-        return values.stream()
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
+        return values.stream().filter(java.util.Objects::nonNull).distinct().toList();
     }
 
     private Set<String> validatedValues(
@@ -471,5 +284,9 @@ public class OperationRiskAuditApplicationService {
                     normalized.add(value);
                 });
         return normalized;
+    }
+
+    private <T> List<T> valueList(T value) {
+        return value == null ? List.of() : List.of(value);
     }
 }

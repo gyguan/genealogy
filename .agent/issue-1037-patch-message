@@ -1,1 +1,0 @@
-refactor(persistence): migrate operation log repositories to MyBatis

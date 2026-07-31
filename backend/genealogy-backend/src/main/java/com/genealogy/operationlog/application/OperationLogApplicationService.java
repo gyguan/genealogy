@@ -5,20 +5,19 @@ import com.genealogy.operationlog.dto.OperationLogResponse;
 import com.genealogy.operationlog.dto.OperationLogStatsResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
-import jakarta.persistence.criteria.Predicate;
+import com.genealogy.operationlog.repository.query.OperationLogQueryCriteria;
+import com.genealogy.operationlog.repository.query.OperationLogTargetGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -40,14 +39,16 @@ public class OperationLogApplicationService {
         this.operationLogRepository = operationLogRepository;
     }
 
-    /*
-     * Suspend the caller transaction before writing an audit record. Spring Data
-     * then opens and completes the repository transaction inside the try/catch in
-     * the terminal record method, so commit-time failures cannot roll back the
-     * surrounding business operation.
-     */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail) {
+    public void record(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail
+    ) {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, null, null, null, null);
     }
 
@@ -66,7 +67,17 @@ public class OperationLogApplicationService {
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void record(Long clanId, Long actorId, String actionType, String targetType, Long targetId, String summary, String detail, String requestId, String clientIp) {
+    public void record(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            String summary,
+            String detail,
+            String requestId,
+            String clientIp
+    ) {
         record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, null);
     }
 
@@ -83,7 +94,19 @@ public class OperationLogApplicationService {
             String clientIp,
             OperationTraceContext traceContext
     ) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, traceContext, null);
+        record(
+                clanId,
+                actorId,
+                actionType,
+                targetType,
+                targetId,
+                summary,
+                detail,
+                requestId,
+                clientIp,
+                traceContext,
+                null
+        );
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -113,7 +136,19 @@ public class OperationLogApplicationService {
             String clientIp,
             OperationRiskContext riskContext
     ) {
-        record(clanId, actorId, actionType, targetType, targetId, summary, detail, requestId, clientIp, null, riskContext);
+        record(
+                clanId,
+                actorId,
+                actionType,
+                targetType,
+                targetId,
+                summary,
+                detail,
+                requestId,
+                clientIp,
+                null,
+                riskContext
+        );
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -141,26 +176,14 @@ public class OperationLogApplicationService {
             entity.setDetail(detail);
             entity.setRequestId(trim(requestId, 128));
             entity.setClientIp(trim(clientIp, 64));
-            if (traceContext != null) {
-                entity.setTraceId(traceContext.traceId());
-                entity.setRevisionId(traceContext.revisionId());
-                entity.setReviewTaskId(traceContext.reviewTaskId());
-                entity.setBusinessTargetType(normalize(traceContext.businessTargetType()));
-                entity.setBusinessTargetId(traceContext.businessTargetId());
-                entity.setEventResult(normalize(traceContext.eventResult()));
-            }
-            OperationRiskContext resolvedRisk = OperationRiskPolicy.resolve(actionType, riskContext);
-            if (resolvedRisk != null) {
-                entity.setRiskLevel(resolvedRisk.riskLevel());
-                entity.setRiskEventType(resolvedRisk.eventType());
-                entity.setDispositionStatus(resolvedRisk.dispositionStatus());
-                entity.setBranchId(resolvedRisk.branchId());
-            }
+            applyTrace(entity, traceContext);
+            applyRisk(entity, OperationRiskPolicy.resolve(actionType, riskContext));
             entity.setCreatedAt(LocalDateTime.now());
             operationLogRepository.save(entity);
         } catch (Exception exception) {
             log.warn(
-                    "operation_log_record_failed clanId={} actorId={} actionType={} targetType={} targetId={} requestId={}",
+                    "operation_log_record_failed clanId={} actorId={} actionType={} "
+                            + "targetType={} targetId={} requestId={}",
                     clanId,
                     actorId,
                     normalize(actionType),
@@ -173,7 +196,13 @@ public class OperationLogApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<OperationLogResponse> list(Long clanId, String targetType, Long targetId, int pageNo, int pageSize) {
+    public PageResponse<OperationLogResponse> list(
+            Long clanId,
+            String targetType,
+            Long targetId,
+            int pageNo,
+            int pageSize
+    ) {
         return search(clanId, null, null, targetType, targetId, null, null, null, pageNo, pageSize, false);
     }
 
@@ -184,46 +213,15 @@ public class OperationLogApplicationService {
             int limit,
             boolean includeTechnicalFields
     ) {
-        Map<String, List<Long>> normalizedTargets = new LinkedHashMap<>();
-        if (targetIdsByType != null) {
-            targetIdsByType.forEach((type, ids) -> {
-                String normalizedType = normalize(type);
-                if (normalizedType == null || ids == null) {
-                    return;
-                }
-                List<Long> normalizedIds = ids.stream()
-                        .filter(java.util.Objects::nonNull)
-                        .distinct()
-                        .toList();
-                if (!normalizedIds.isEmpty()) {
-                    normalizedTargets.put(normalizedType, normalizedIds);
-                }
-            });
-        }
+        List<OperationLogTargetGroup> targetGroups = normalizeTargetGroups(targetIdsByType);
         int normalizedLimit = Math.max(1, Math.min(limit, 500));
-        if (clanId == null || normalizedTargets.isEmpty()) {
+        if (clanId == null || targetGroups.isEmpty()) {
             return PageResponse.of(List.of(), 0L, 1, normalizedLimit);
         }
-        Specification<OperationLogEntity> specification = (root, query, criteriaBuilder) -> {
-            List<Predicate> targetPredicates = new ArrayList<>();
-            normalizedTargets.forEach((type, ids) -> targetPredicates.add(criteriaBuilder.or(
-                    criteriaBuilder.and(
-                            criteriaBuilder.equal(root.get("targetType"), type),
-                            root.get("targetId").in(ids)
-                    ),
-                    criteriaBuilder.and(
-                            criteriaBuilder.equal(root.get("businessTargetType"), type),
-                            root.get("businessTargetId").in(ids)
-                    )
-            )));
-            return criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("clanId"), clanId),
-                    criteriaBuilder.or(targetPredicates.toArray(new Predicate[0]))
-            );
-        };
-        PageRequest pageRequest = PageRequest.of(0, normalizedLimit,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
-        Page<OperationLogEntity> page = operationLogRepository.findAll(specification, pageRequest);
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                criteria(clanId, List.of(), List.of(), List.of(), null, List.of(), null, null, null, targetGroups),
+                pageRequest(1, normalizedLimit)
+        );
         return PageResponse.of(
                 page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
                 page.getTotalElements(),
@@ -245,7 +243,19 @@ public class OperationLogApplicationService {
             int pageNo,
             int pageSize
     ) {
-        return search(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword, pageNo, pageSize, false);
+        return search(
+                clanId,
+                actorId,
+                actionType,
+                targetType,
+                targetId,
+                startTime,
+                endTime,
+                keyword,
+                pageNo,
+                pageSize,
+                false
+        );
     }
 
     @Transactional(readOnly = true)
@@ -262,16 +272,29 @@ public class OperationLogApplicationService {
             int pageSize,
             boolean includeTechnicalFields
     ) {
-        PageRequest pageRequest = PageRequest.of(pageNo - 1, pageSize,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
-        Page<OperationLogEntity> page = operationLogRepository.findAll(buildSpecification(
-                clanId, actorId, normalize(actionType), normalize(targetType), targetId, startTime, endTime, trimToNull(keyword)
-        ), pageRequest);
+        int normalizedPageNo = Math.max(1, pageNo);
+        int normalizedPageSize = Math.max(1, Math.min(pageSize, 100));
+        OperationLogQueryCriteria criteria = criteria(
+                clanId,
+                actorId == null ? List.of() : List.of(actorId),
+                valueList(normalize(actionType)),
+                valueList(normalize(targetType)),
+                targetId,
+                List.of(),
+                startTime,
+                endTime,
+                trimToNull(keyword),
+                List.of()
+        );
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                criteria,
+                pageRequest(normalizedPageNo, normalizedPageSize)
+        );
         return PageResponse.of(
                 page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
                 page.getTotalElements(),
-                pageNo,
-                pageSize
+                normalizedPageNo,
+                normalizedPageSize
         );
     }
 
@@ -286,24 +309,17 @@ public class OperationLogApplicationService {
             LocalDateTime endTime,
             String keyword
     ) {
-        List<OperationLogEntity> logs = loadForExport(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword);
-        StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, List.of(
-                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
-                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
-                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
-        ));
-        for (OperationLogEntity log : logs) {
-            appendCsvRow(builder, List.of(
-                    value(log.getId()), value(log.getClanId()), value(log.getActorId()), value(log.getActionType()),
-                    value(log.getTargetType()), value(log.getTargetId()), value(log.getTraceId()), value(log.getRevisionId()),
-                    value(log.getReviewTaskId()), value(log.getBusinessTargetType()), value(log.getBusinessTargetId()),
-                    value(log.getEventResult()), value(log.getRiskLevel()), value(log.getRiskEventType()),
-                    value(log.getDispositionStatus()), value(log.getBranchId()), value(log.getSummary()), value(log.getDetail()),
-                    value(log.getRequestId()), value(log.getClientIp()), value(log.getCreatedAt())
-            ));
-        }
-        return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
+        List<OperationLogEntity> logs = loadForExport(
+                clanId,
+                actorId,
+                actionType,
+                targetType,
+                targetId,
+                startTime,
+                endTime,
+                keyword
+        );
+        return toCsv(logs);
     }
 
     @Transactional(readOnly = true)
@@ -317,7 +333,16 @@ public class OperationLogApplicationService {
             LocalDateTime endTime,
             String keyword
     ) {
-        List<OperationLogEntity> logs = loadForExport(clanId, actorId, actionType, targetType, targetId, startTime, endTime, keyword);
+        List<OperationLogEntity> logs = loadForExport(
+                clanId,
+                actorId,
+                actionType,
+                targetType,
+                targetId,
+                startTime,
+                endTime,
+                keyword
+        );
         return new OperationLogStatsResponse(
                 logs.size(),
                 group(logs.stream().map(OperationLogEntity::getActionType).collect(Collectors.toList())),
@@ -325,58 +350,129 @@ public class OperationLogApplicationService {
         );
     }
 
-    private List<OperationLogEntity> loadForExport(Long clanId, Long actorId, String actionType, String targetType, Long targetId, LocalDateTime startTime, LocalDateTime endTime, String keyword) {
-        PageRequest pageRequest = PageRequest.of(0, EXPORT_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return operationLogRepository.findAll(buildSpecification(
-                clanId, actorId, normalize(actionType), normalize(targetType), targetId, startTime, endTime, trimToNull(keyword)
-        ), pageRequest).getContent();
+    private void applyTrace(OperationLogEntity entity, OperationTraceContext context) {
+        if (context == null) {
+            return;
+        }
+        entity.setTraceId(context.traceId());
+        entity.setRevisionId(context.revisionId());
+        entity.setReviewTaskId(context.reviewTaskId());
+        entity.setBusinessTargetType(normalize(context.businessTargetType()));
+        entity.setBusinessTargetId(context.businessTargetId());
+        entity.setEventResult(normalize(context.eventResult()));
+    }
+
+    private void applyRisk(OperationLogEntity entity, OperationRiskContext context) {
+        if (context == null) {
+            return;
+        }
+        entity.setRiskLevel(context.riskLevel());
+        entity.setRiskEventType(context.eventType());
+        entity.setDispositionStatus(context.dispositionStatus());
+        entity.setBranchId(context.branchId());
+    }
+
+    private List<OperationLogEntity> loadForExport(
+            Long clanId,
+            Long actorId,
+            String actionType,
+            String targetType,
+            Long targetId,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword
+    ) {
+        OperationLogQueryCriteria criteria = criteria(
+                clanId,
+                actorId == null ? List.of() : List.of(actorId),
+                valueList(normalize(actionType)),
+                valueList(normalize(targetType)),
+                targetId,
+                List.of(),
+                startTime,
+                endTime,
+                trimToNull(keyword),
+                List.of()
+        );
+        return operationLogRepository.list(criteria, EXPORT_LIMIT);
+    }
+
+    private OperationLogQueryCriteria criteria(
+            Long clanId,
+            List<Long> actorIds,
+            List<String> actionTypes,
+            List<String> targetTypes,
+            Long targetId,
+            List<String> resultStatuses,
+            LocalDateTime startTime,
+            LocalDateTime endTime,
+            String keyword,
+            List<OperationLogTargetGroup> targetGroups
+    ) {
+        return new OperationLogQueryCriteria(
+                clanId,
+                actorIds,
+                actionTypes,
+                targetTypes,
+                targetId,
+                resultStatuses,
+                startTime,
+                endTime,
+                keyword,
+                targetGroups,
+                false,
+                List.of(),
+                List.of(),
+                List.of(),
+                false,
+                List.of()
+        );
+    }
+
+    private List<OperationLogTargetGroup> normalizeTargetGroups(
+            Map<String, ? extends Collection<Long>> targetIdsByType
+    ) {
+        if (targetIdsByType == null) {
+            return List.of();
+        }
+        Map<String, List<Long>> normalized = new LinkedHashMap<>();
+        targetIdsByType.forEach((type, ids) -> {
+            String normalizedType = normalize(type);
+            if (normalizedType == null || ids == null) {
+                return;
+            }
+            List<Long> normalizedIds = ids.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .toList();
+            if (!normalizedIds.isEmpty()) {
+                normalized.put(normalizedType, normalizedIds);
+            }
+        });
+        return normalized.entrySet().stream()
+                .map(entry -> new OperationLogTargetGroup(entry.getKey(), entry.getValue()))
+                .toList();
+    }
+
+    private PageRequest pageRequest(int pageNo, int pageSize) {
+        return PageRequest.of(
+                Math.max(0, pageNo - 1),
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
     }
 
     private List<OperationLogStatsResponse.Item> group(List<String> values) {
         Map<String, Long> counts = new LinkedHashMap<>();
-        for (String value : values) {
-            String key = value == null || value.isBlank() ? "unknown" : value;
+        for (String item : values) {
+            String key = item == null || item.isBlank() ? "unknown" : item;
             counts.put(key, counts.getOrDefault(key, 0L) + 1);
         }
         return counts.entrySet().stream()
                 .map(entry -> new OperationLogStatsResponse.Item(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparingLong(OperationLogStatsResponse.Item::count).reversed())
                 .toList();
-    }
-
-    private Specification<OperationLogEntity> buildSpecification(Long clanId, Long actorId, String actionType, String targetType, Long targetId, LocalDateTime startTime, LocalDateTime endTime, String keyword) {
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (clanId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            }
-            if (actorId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("actorId"), actorId));
-            }
-            if (actionType != null) {
-                predicates.add(criteriaBuilder.equal(root.get("actionType"), actionType));
-            }
-            if (targetType != null) {
-                predicates.add(criteriaBuilder.equal(root.get("targetType"), targetType));
-            }
-            if (targetId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("targetId"), targetId));
-            }
-            if (startTime != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
-            }
-            if (endTime != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
-            }
-            if (keyword != null) {
-                String likeValue = "%" + keyword.toLowerCase(Locale.ROOT) + "%";
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), likeValue),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("detail")), likeValue)
-                ));
-            }
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
     }
 
     private OperationLogResponse toResponse(OperationLogEntity entity, boolean includeTechnicalFields) {
@@ -406,23 +502,48 @@ public class OperationLogApplicationService {
         );
     }
 
+    private byte[] toCsv(List<OperationLogEntity> logs) {
+        StringBuilder builder = new StringBuilder();
+        appendCsvRow(builder, List.of(
+                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
+                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
+                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
+        ));
+        for (OperationLogEntity item : logs) {
+            appendCsvRow(builder, List.of(
+                    value(item.getId()), value(item.getClanId()), value(item.getActorId()), value(item.getActionType()),
+                    value(item.getTargetType()), value(item.getTargetId()), value(item.getTraceId()),
+                    value(item.getRevisionId()), value(item.getReviewTaskId()), value(item.getBusinessTargetType()),
+                    value(item.getBusinessTargetId()), value(item.getEventResult()), value(item.getRiskLevel()),
+                    value(item.getRiskEventType()), value(item.getDispositionStatus()), value(item.getBranchId()),
+                    value(item.getSummary()), value(item.getDetail()), value(item.getRequestId()),
+                    value(item.getClientIp()), value(item.getCreatedAt())
+            ));
+        }
+        return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
+    }
+
     private void appendCsvRow(StringBuilder builder, List<String> values) {
-        for (int i = 0; i < values.size(); i++) {
-            if (i > 0) {
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) {
                 builder.append(',');
             }
-            builder.append(escapeCsv(values.get(i)));
+            builder.append(escapeCsv(values.get(index)));
         }
         builder.append('\n');
     }
 
     private String escapeCsv(String value) {
-        if (value == null) {
-            return "";
-        }
-        boolean shouldQuote = value.contains(",") || value.contains("\n") || value.contains("\r") || value.contains("\"");
-        String escaped = value.replace("\"", "\"\"");
-        return shouldQuote ? "\"" + escaped + "\"" : escaped;
+        String normalized = value == null ? "" : value;
+        boolean quote = normalized.contains(",")
+                || normalized.contains("\"")
+                || normalized.contains("\n")
+                || normalized.contains("\r");
+        return quote ? "\"" + normalized.replace("\"", "\"\"") + "\"" : normalized;
+    }
+
+    private List<String> valueList(String value) {
+        return value == null ? List.of() : List.of(value);
     }
 
     private String value(Object value) {
@@ -446,9 +567,6 @@ public class OperationLogApplicationService {
             return null;
         }
         String trimmed = value.trim();
-        if (trimmed.length() <= maxLength) {
-            return trimmed;
-        }
-        return trimmed.substring(0, maxLength);
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 }
