@@ -12,6 +12,7 @@ import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.imports.repository.query.ImportJobRowCount;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.review.dto.ReviewTaskListItemResponse;
@@ -126,7 +127,7 @@ class ReviewTaskQueryApplicationServiceTest {
         job.setReviewRound(3);
         when(importJobRepository.findAllById(any())).thenReturn(List.of(job));
         when(importJobRowRepository.countByJobIdsAndRowStatus(any(), eq(ImportJobRowEntity.STATUS_EXCLUDED)))
-                .thenReturn(List.<Object[]>of(new Object[]{301L, 2L}));
+                .thenReturn(List.of(new ImportJobRowCount(301L, 2L)));
         stubEmptyTargets();
 
         PageResponse<ReviewTaskListItemResponse> page = service.search(
