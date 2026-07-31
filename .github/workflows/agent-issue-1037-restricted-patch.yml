@@ -1,0 +1,55 @@
+name: Issue 1037 Restricted Patch
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".agent/issue-1037-patch.b64"
+      - ".agent/issue-1037-patch-parent"
+      - ".github/workflows/agent-issue-1037-restricted-patch.yml"
+
+concurrency:
+  group: issue-1037-restricted-patch
+  cancel-in-progress: false
+
+jobs:
+  apply-patch:
+    if: >-
+      github.event.pull_request.head.ref == 'agent/issue-1037-remove-jpa-final-migration' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1037-remove-jpa-final-migration
+          fetch-depth: 2
+
+      - name: Verify and apply restricted patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .agent/issue-1037-patch.b64 || ! -f .agent/issue-1037-patch-parent ]]; then
+            echo "No pending Issue #1037 patch."
+            exit 0
+          fi
+          mapfile -t changed < <(git diff-tree --no-commit-id --name-only -r HEAD | sort)
+          expected_files=(.agent/issue-1037-patch-parent .agent/issue-1037-patch.b64)
+          if [[ "${changed[*]}" != "${expected_files[*]}" ]]; then
+            echo "Patch trigger commit contains unexpected files: ${changed[*]}" >&2
+            exit 1
+          fi
+          expected_parent="$(tr -d '[:space:]' < .agent/issue-1037-patch-parent)"
+          actual_parent="$(git rev-parse HEAD^)"
+          test "$actual_parent" = "$expected_parent"
+          base64 --decode .agent/issue-1037-patch.b64 > /tmp/issue-1037.patch
+          git apply --check /tmp/issue-1037.patch
+          git apply --index /tmp/issue-1037.patch
+          git rm .agent/issue-1037-patch.b64 .agent/issue-1037-patch-parent
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "refactor(persistence): migrate culture repositories to MyBatis"
+          git push origin HEAD:agent/issue-1037-remove-jpa-final-migration
