@@ -1,74 +1,10 @@
-@import './source-library-query-card-head.css';
-
 .source-library-query-page .source-library-stack {
   width: 100%;
 }
 
-.source-library-query-page .source-library-query-card .ant-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 8px;
-}
-
-.source-library-query-page .source-library-query-grid {
-  display: grid;
-  gap: 0 16px;
-}
-
-.source-library-query-page .source-library-query-grid--primary {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
-  align-items: end;
-}
-
-.source-library-query-page .source-library-query-grid--advanced {
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
-}
-
-.source-library-query-page .source-library-more-filters {
-  display: contents;
-}
-
-.source-library-query-page .source-library-more-filters > .ant-collapse-item {
-  display: contents;
-  border-bottom: 0;
-}
-
-.source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-header {
-  grid-column: 1;
-  grid-row: 3;
-  justify-self: end;
-  align-self: center;
-  width: fit-content;
-  padding: 4px 0;
-  color: rgba(0, 0, 0, 0.65);
-}
-
-.source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-content {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.source-library-query-page .source-library-more-filters > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
-  padding: 0;
-}
-
-.source-library-query-page .source-library-query-actions {
-  display: flex;
-  grid-column: 2;
-  grid-row: 3;
-  align-items: center;
-  justify-content: flex-end;
-  justify-self: end;
-  gap: 8px;
-  margin-top: 0;
-  white-space: nowrap;
-}
-
-.source-library-query-page .source-library-query-status, .source-library-query-page .source-library-result-status, .source-library-query-page .source-library-form-status {
+.source-library-query-page .source-library-query-status,
+.source-library-query-page .source-library-result-status,
+.source-library-query-page .source-library-form-status {
   margin-bottom: 16px;
 }
 
@@ -78,7 +14,9 @@
   text-align: left;
 }
 
-.source-library-query-page .source-library-name-link:focus-visible, .source-library-query-page .source-library-mobile-card__title:focus-visible, .source-library-query-page .source-library-mobile-card__actions .ant-btn:focus-visible {
+.source-library-query-page .source-library-name-link:focus-visible,
+.source-library-query-page .source-library-mobile-card__title:focus-visible,
+.source-library-query-page .source-library-mobile-card__actions .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
@@ -91,7 +29,8 @@
   background: var(--ant-color-fill-tertiary, var(--genealogy-color-bg-layout));
 }
 
-.source-library-query-page .source-library-result-card .ant-table-row[aria-selected='true'] > .ant-table-cell, .source-library-query-page .source-library-result-card .ant-table-row.is-active > .ant-table-cell {
+.source-library-query-page .source-library-result-card .ant-table-row[aria-selected='true'] > .ant-table-cell,
+.source-library-query-page .source-library-result-card .ant-table-row.is-active > .ant-table-cell {
   background: var(--ant-color-primary-bg, var(--genealogy-color-primary-bg));
 }
 
@@ -104,7 +43,8 @@
   margin: 0;
 }
 
-.source-library-query-page .ant-btn[aria-label="刷新查询结果"], .source-library-query-page .ant-card:has(.source-library-detail-title) .ant-row > .ant-col:last-child > .ant-space > .ant-space-item:nth-child(2) {
+.source-library-query-page .ant-btn[aria-label="刷新查询结果"],
+.source-library-query-page .ant-card:has(.source-library-detail-title) .ant-row > .ant-col:last-child > .ant-space > .ant-space-item:nth-child(2) {
   display: none;
 }
 
@@ -167,21 +107,7 @@
   margin-top: 4px;
 }
 
-@media (max-width: 1199px) {
-  .source-library-query-page .source-library-query-grid--primary {
-    grid-template-columns: repeat(2, minmax(200px, 1fr));
-  }
-
-  .source-library-query-page .source-library-query-grid--advanced {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
-  }
-}
-
 @media (max-width: 767px) {
-  .source-library-query-page .source-library-query-grid--primary, .source-library-query-page .source-library-query-grid--advanced {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-head-wrapper {
     align-items: flex-start;
     flex-wrap: wrap;

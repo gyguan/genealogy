@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
@@ -17,6 +18,20 @@ const cultureItem = read('../features/culture/CultureItemStandardTab.tsx');
 const cultureSite = read('../features/culture/CultureSiteStandardTab.tsx');
 const migrationEvent = read('../features/culture/MigrationEventStandardTab.tsx');
 const importCenter = read('../features/imports/ImportPage.tsx');
+
+const srcRoot = fileURLToPath(new URL('..', import.meta.url));
+const canonicalCssFiles = new Set([
+  fileURLToPath(new URL('./shared/standard-query-card.css', import.meta.url)),
+  fileURLToPath(new URL('../shared/ui/standard-query-actions.css', import.meta.url))
+]);
+
+function collectCssFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const path = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) return collectCssFiles(path);
+    return entry.isFile() && path.endsWith('.css') ? [path] : [];
+  });
+}
 
 test('the shared components expose one typed query-card contract', () => {
   for (const component of ['StandardQueryPanel', 'StandardQueryGrid', 'StandardQueryField', 'StandardAdvancedFilters']) {
@@ -71,7 +86,7 @@ test('query actions uniquely decide order hierarchy and prototype sizing', () =>
   assert.match(actions, /\['more', 'reset', 'submit'\]/);
   assert.doesNotMatch(actions, /<Space/);
   assert.match(actionCss, /standard-query-actions[^}]*justify-content:\s*flex-end/s);
-  assert.doesNotMatch(actionCss, /data-query-action|min-width|min-height|@media|grid-template-columns/);
+  assert.doesNotMatch(actionCss, /data-query-action|min-width|min-height|@media|grid-template-columns|aria-controls/);
   assert.match(prototypeCss, /data-query-action="more"[^}]*min-width:\s*112px/s);
   assert.match(prototypeCss, /data-query-action="reset"[^}]*min-width:\s*72px/s);
   assert.match(prototypeCss, /data-query-action="submit"[^}]*min-width:\s*72px/s);
@@ -82,6 +97,18 @@ test('query actions uniquely decide order hierarchy and prototype sizing', () =>
 
 test('legacy page styles cannot redefine any query-card selector', () => {
   assert.doesNotMatch(legacyPageCss, /\.standard-query-(panel|grid|field|advanced|actions)/);
+});
+
+test('only canonical stylesheets may own the standard query-card selectors', () => {
+  const selectorPattern = /\.standard-query-(panel|grid|field|advanced|actions)\b/;
+  const legacyHookPattern = /\.(person-archive-(query-card|query-actions|query-row|filter-grid|more-filter)|source-library-(query-card|query-grid|query-actions|more-filters)|workbench-(filter-grid|query-actions|more-filter|advanced-collapse)|tracking-(query-card|filter-card|filter-grid|filter-actions|query-actions)|culture-search-actions|import-query-actions)\b/;
+
+  for (const cssFile of collectCssFiles(srcRoot)) {
+    if (canonicalCssFiles.has(cssFile)) continue;
+    const css = readFileSync(cssFile, 'utf8');
+    assert.doesNotMatch(css, selectorPattern, `${cssFile} must not override shared StandardQuery selectors`);
+    assert.doesNotMatch(css, legacyHookPattern, `${cssFile} must not retain a page-specific query-card layout hook`);
+  }
 });
 
 test('the visual contract documents the prototype as the authority', () => {

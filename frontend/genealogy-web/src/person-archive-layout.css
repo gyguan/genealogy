@@ -27,59 +27,24 @@
   width: min(320px, 36vw);
 }
 
-.person-archive-query-card .ant-card-body, .person-archive-result-card .ant-card-body {
+.person-archive-result-card .ant-card-body {
   padding: 16px;
-}
-
-.person-archive-query-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 16px;
-}
-
-.person-archive-filter-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0 16px;
-  min-width: 0;
-}
-
-.person-archive-filter-grid--advanced {
-  margin-top: 16px;
-  padding: 0;
-  border: 0;
-}
-
-.person-archive-filter-grid .ant-form-item {
-  min-width: 0;
-}
-
-.person-archive-more-filter {
-  height: 32px;
-  padding-inline: 4px;
-  margin: 0;
-}
-
-.person-archive-query-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding-bottom: 12px;
-  white-space: nowrap;
 }
 
 .person-archive-result-actions {
   display: flex;
   align-items: center;
 }
+
 .person-archive-text-action {
   min-height: 32px;
   min-width: 44px;
   padding-inline: 8px;
 }
 
-.person-archive-text-action:focus-visible, .person-archive-mobile-name:focus-visible, .person-archive-mobile-actions .ant-btn:focus-visible {
+.person-archive-text-action:focus-visible,
+.person-archive-mobile-name:focus-visible,
+.person-archive-mobile-actions .ant-btn:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
@@ -169,7 +134,8 @@
   font-size: 14px;
 }
 
-.person-archive-relationship-table th, .person-archive-relationship-table td {
+.person-archive-relationship-table th,
+.person-archive-relationship-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   text-align: left;
@@ -190,32 +156,6 @@
   background: #fafafa;
 }
 
-/* The clan selector belongs to the query card; keep the standard independent-card treatment. */
-.business-page--personArchive .person-archive-query-card {
-  border-top: 1px solid var(--query-page-border);
-  border-radius: var(--query-page-radius);
-}
-
-.business-page--personArchive .person-archive-query-card > .ant-card-head {
-  display: flex;
-}
-
-@media (max-width: 1399px) {
-  .person-archive-query-row {
-    grid-template-columns: 1fr;
-  }
-
-  .person-archive-query-actions {
-    padding-bottom: 0;
-  }
-}
-
-@media (max-width: 1199px) {
-  .person-archive-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 767px) {
   .person-archive-page-header {
     flex-direction: column;
@@ -225,26 +165,14 @@
     width: 100%;
   }
 
-  .person-archive-filter-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .person-archive-query-actions {
-    width: 100%;
-  }
-
-  .person-archive-query-actions .ant-btn {
-    flex: 1;
-    min-height: 44px;
-  }
-
   .person-archive-result-card > .ant-card-head .ant-card-head-wrapper {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
   }
 
-  .person-archive-result-card > .ant-card-head .ant-card-extra, .person-archive-result-actions {
+  .person-archive-result-card > .ant-card-head .ant-card-extra,
+  .person-archive-result-actions {
     width: 100%;
   }
 
@@ -252,6 +180,7 @@
     flex: 1;
     min-height: 44px;
   }
+
   .person-archive-desktop-list {
     display: none;
   }
