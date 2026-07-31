@@ -56,8 +56,12 @@
   margin-left: auto;
 }
 
-.lineage-tabbed-page .lineage-graph-toolbar-field--locator {
-  margin-bottom: 0;
+[data-genealogy-app]
+  .lineage-tree-product-page-root
+  .lineage-graph-toolbar
+  > .ant-form-item.lineage-graph-toolbar-field--locator {
+  margin-bottom: 0 !important;
+  margin-block-end: 0 !important;
 }
 
 .lineage-inspector-drawer .lineage-drawer-content {
