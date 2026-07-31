@@ -7,24 +7,9 @@
   gap: 16px;
 }
 
-.import-query-card, .import-result-card {
+.import-result-card {
   width: 100%;
   min-width: 0;
-}
-
-.import-query-description {
-  margin-top: -4px;
-  margin-bottom: 12px;
-}
-
-.import-query-card .ant-form-item {
-  margin-bottom: 8px;
-}
-
-.import-query-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 4px;
 }
 
 .import-result-card > .ant-card-head {
@@ -36,7 +21,8 @@
   align-items: center;
 }
 
-.import-result-card .ant-card-head-title, .import-result-card .ant-card-extra {
+.import-result-card .ant-card-head-title,
+.import-result-card .ant-card-extra {
   padding-block: 16px;
 }
 
@@ -73,17 +59,20 @@
   font-size: 18px;
 }
 
-.import-task-type-icon--person, .import-new-type-icon--person {
+.import-task-type-icon--person,
+.import-new-type-icon--person {
   color: var(--genealogy-color-primary);
   background: var(--genealogy-color-primary-bg);
 }
 
-.import-task-type-icon--relationship, .import-new-type-icon--relationship {
+.import-task-type-icon--relationship,
+.import-new-type-icon--relationship {
   color: #389e0d;
   background: #f6ffed;
 }
 
-.import-task-type-icon--source, .import-new-type-icon--source {
+.import-task-type-icon--source,
+.import-new-type-icon--source {
   color: #d46b08;
   background: #fff7e6;
 }
@@ -126,7 +115,8 @@
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 
-.import-new-type-card:hover, .import-new-type-card.is-selected {
+.import-new-type-card:hover,
+.import-new-type-card.is-selected {
   border-color: var(--genealogy-color-primary);
   background: #f5faff;
   box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.08);
@@ -162,7 +152,8 @@
   font-size: 13px;
 }
 
-.import-upload-workspace-drawer .ant-drawer-body, .import-center-page .ant-drawer-body {
+.import-upload-workspace-drawer .ant-drawer-body,
+.import-center-page .ant-drawer-body {
   background: var(--genealogy-color-bg-layout);
 }
 
@@ -205,7 +196,10 @@
   min-height: 156px;
 }
 
-.standard-import-workspace, .person-import-workspace, .relationship-import-workspace, .source-import-workspace {
+.standard-import-workspace,
+.person-import-workspace,
+.relationship-import-workspace,
+.source-import-workspace {
   display: grid;
   gap: 16px;
 }
@@ -214,7 +208,9 @@
   margin-bottom: 12px;
 }
 
-.import-preview-card-list, .import-execution-card-list, .import-history-card-list {
+.import-preview-card-list,
+.import-execution-card-list,
+.import-history-card-list {
   display: none;
 }
 
@@ -239,25 +235,8 @@
     gap: 12px;
   }
 
-  .import-query-card .ant-card-body, .import-result-card .ant-card-body {
+  .import-result-card .ant-card-body {
     padding: 16px;
-  }
-
-  .import-query-card .ant-form-item {
-    margin-bottom: 12px;
-  }
-
-  .import-query-actions, .import-query-actions .ant-space {
-    width: 100%;
-  }
-
-  .import-query-actions .ant-space-item {
-    flex: 1;
-  }
-
-  .import-query-actions .ant-btn {
-    width: 100%;
-    min-height: 44px;
   }
 
   .import-result-card .ant-card-head-wrapper {
@@ -268,7 +247,8 @@
     padding-block: 16px;
   }
 
-  .import-result-card .ant-card-head-title, .import-result-card .ant-card-extra {
+  .import-result-card .ant-card-head-title,
+  .import-result-card .ant-card-extra {
     width: 100%;
     margin: 0;
     padding: 0;
@@ -299,7 +279,8 @@
     padding-inline-start: 0;
   }
 
-  .import-type-selector, .import-target-field {
+  .import-type-selector,
+  .import-target-field {
     max-width: none;
   }
 
@@ -307,11 +288,15 @@
     min-height: 40px;
   }
 
-  .import-preview-table, .import-execution-table, .import-history-table {
+  .import-preview-table,
+  .import-execution-table,
+  .import-history-table {
     display: none;
   }
 
-  .import-preview-card-list, .import-execution-card-list, .import-history-card-list {
+  .import-preview-card-list,
+  .import-execution-card-list,
+  .import-history-card-list {
     display: grid;
     gap: 12px;
   }
@@ -329,12 +314,14 @@
     padding-inline: 4px;
   }
 
-  .import-center-page .ant-drawer-content-wrapper, body:has(.import-center-page) .ant-drawer-content-wrapper {
+  .import-center-page .ant-drawer-content-wrapper,
+  body:has(.import-center-page) .ant-drawer-content-wrapper {
     width: 100vw;
     max-width: 100vw;
   }
 
-  .import-upload-workspace-drawer .ant-drawer-body, body:has(.import-center-page) .ant-drawer-body {
+  .import-upload-workspace-drawer .ant-drawer-body,
+  body:has(.import-center-page) .ant-drawer-body {
     padding: 16px;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
