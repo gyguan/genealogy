@@ -43,7 +43,7 @@
 .lineage-tabbed-page .lineage-graph-toolbar {
   min-height: 50px;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: flex-end;
   flex-direction: row;
   flex-wrap: nowrap;
 }
@@ -54,6 +54,14 @@
   width: min(360px, 100%);
   min-width: 280px;
   margin-left: auto;
+}
+
+.lineage-tabbed-page .lineage-graph-toolbar-field--locator > .ant-form-item-label {
+  display: none;
+}
+
+.lineage-tabbed-page .lineage-graph-toolbar-field--locator > .ant-form-item-control {
+  max-width: 100%;
 }
 
 .lineage-inspector-drawer .lineage-drawer-content {
