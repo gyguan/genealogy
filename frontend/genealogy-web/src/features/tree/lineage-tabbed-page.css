@@ -10,8 +10,14 @@
   min-width: 0;
 }
 
-
-
+/*
+ * 世系图谱两个查询模式的默认区域固定为 4 个核心条件。
+ * 公共查询样式会在 1199px 以下切换为两列，导致 4 个条件显示成 2×2；
+ * 本页面在非移动端保持四列，确保默认只展示一行。
+ */
+.lineage-tabbed-query-card .standard-query-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
 .lineage-tab-switch-field {
   display: flex;
@@ -73,7 +79,6 @@
   padding: 8px;
 }
 
-
 @media (max-width: 900px) {
   .lineage-tab-query-note { align-items: flex-start; flex-direction: column; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
@@ -85,6 +90,7 @@
 
 @media (max-width: 767px) {
   .lineage-tabbed-page { gap: 12px; }
+  .lineage-tabbed-query-card .standard-query-grid { grid-template-columns: minmax(0, 1fr); }
   .lineage-tabbed-page .lineage-graph-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
