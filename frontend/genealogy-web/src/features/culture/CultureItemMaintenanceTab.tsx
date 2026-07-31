@@ -1,14 +1,8 @@
-import {
-  useEffect,
-  useState } from 'react';
-import { Alert,
-  Space
-} from 'antd';
+import { useEffect, useState } from 'react';
 import { CultureItemStandardTab } from './CultureItemStandardTab';
 import type { CultureClanOption } from './cultureLibraryService';
 import type { CultureTabKey } from './cultureTabState';
 import { subscribeCultureItemRefresh } from './cultureLibraryService';
-
 import { PageFeedback } from '../../shared/ui/Feedback';
 
 type Props = {
@@ -30,7 +24,7 @@ export function CultureItemMaintenanceTab({ clanId, clans, clansLoading, onClanC
   }, [clanId]);
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <div className="culture-item-maintenance-tab">
       {refreshError ? (
         <PageFeedback
           tone="warning"
@@ -41,6 +35,6 @@ export function CultureItemMaintenanceTab({ clanId, clans, clansLoading, onClanC
         />
       ) : null}
       <CultureItemStandardTab clanId={clanId} clans={clans} clansLoading={clansLoading} onClanChange={onClanChange} activeTab={activeTab} onTabChange={onTabChange} />
-    </Space>
+    </div>
   );
 }
