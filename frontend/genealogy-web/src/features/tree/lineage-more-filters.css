@@ -16,3 +16,15 @@
   [data-query-grid-role='fields'] {
   align-items: start;
 }
+
+/*
+ * The lineage forms are rendered inside StandardQueryPanel.tabs, so the shared
+ * tabs-container border appears below the query fields instead of below the tab
+ * navigation. Remove only that misplaced divider for this page.
+ */
+[data-genealogy-app]
+  .lineage-tree-product-page-root
+  .lineage-tabbed-query-card
+  .standard-query-panel__tabs {
+  border-bottom: 0;
+}
