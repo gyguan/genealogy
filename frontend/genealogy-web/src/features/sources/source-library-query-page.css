@@ -1,3 +1,60 @@
+/* Ensure the source-library query Card keeps the same native Ant Design head as other standard query pages. */
+[data-genealogy-app]
+  .source-library-query-page
+  .source-library-query-card.standard-query-panel
+  > .ant-card-head {
+  display: flex !important;
+  min-height: 48px !important;
+  padding-inline: var(--standard-query-card-padding, 24px) !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  border-bottom: 1px solid var(--ant-color-border-secondary) !important;
+}
+
+[data-genealogy-app]
+  .source-library-query-page
+  .source-library-query-card.standard-query-panel
+  > .ant-card-head
+  .ant-card-head-wrapper {
+  display: flex !important;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+}
+
+[data-genealogy-app]
+  .source-library-query-page
+  .source-library-query-card.standard-query-panel
+  > .ant-card-head
+  .ant-card-head-title {
+  display: block !important;
+  padding-block: 12px !important;
+  overflow: visible !important;
+  color: var(--ant-color-text) !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 24px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Visual fallback for stale render paths; the normal path remains the native .ant-card-head above. */
+[data-genealogy-app]
+  .source-library-query-page
+  .source-library-query-card.standard-query-panel:not(:has(> .ant-card-head))::before {
+  content: '查询条件';
+  display: block;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 12px var(--standard-query-card-padding, 24px);
+  color: var(--ant-color-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  background: var(--ant-color-bg-container);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
 .source-library-query-page .source-library-stack {
   width: 100%;
 }
@@ -108,6 +165,19 @@
 }
 
 @media (max-width: 767px) {
+  [data-genealogy-app]
+    .source-library-query-page
+    .source-library-query-card.standard-query-panel
+    > .ant-card-head {
+    padding-inline: var(--standard-query-card-padding, 16px) !important;
+  }
+
+  [data-genealogy-app]
+    .source-library-query-page
+    .source-library-query-card.standard-query-panel:not(:has(> .ant-card-head))::before {
+    padding-inline: var(--standard-query-card-padding, 16px);
+  }
+
   .source-library-query-page .source-library-result-card > .ant-card-head .ant-card-head-wrapper {
     align-items: flex-start;
     flex-wrap: wrap;
