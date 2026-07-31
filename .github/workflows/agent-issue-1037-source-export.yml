@@ -1,0 +1,45 @@
+name: Agent Issue 1037 Source Export
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Repository ref to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ inputs.ref }}" in
+            agent/issue-1037-remove-jpa-final-migration|refs/heads/agent/issue-1037-remove-jpa-final-migration) ;;
+            *) echo "Unsupported ref" >&2; exit 1 ;;
+          esac
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+      - name: Package source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude='**/target' --exclude='**/node_modules' -czf issue-1037-source.tar.gz .
+          sha256sum issue-1037-source.tar.gz > issue-1037-source.sha256
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-1037-source-snapshot
+          path: |
+            issue-1037-source.tar.gz
+            issue-1037-source.sha256
+          if-no-files-found: error
+          retention-days: 1
