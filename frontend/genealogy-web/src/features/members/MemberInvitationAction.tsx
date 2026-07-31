@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { apiClient } from '../../shared/api/client';
@@ -15,6 +16,7 @@ export function MemberInvitationAction() {
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<GrantableRole[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
   const clanId = Number(workspace.clanId || 0);
 
   async function loadContext() {
@@ -47,14 +49,32 @@ export function MemberInvitationAction() {
     void loadContext();
   }, [clanId]);
 
+  useEffect(() => {
+    const resolveTarget = () => {
+      const target = document.querySelector<HTMLElement>('.member-result-card .ant-card-extra');
+      setActionTarget(current => current === target ? current : target);
+    };
+    resolveTarget();
+    const observer = new MutationObserver(resolveTarget);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   async function showInvitation() {
     const availableRoles = roles.length ? roles : await loadContext();
     if (availableRoles.length) setOpen(true);
   }
 
-  return (
+  if (!actionTarget) return null;
+
+  return createPortal(
     <>
-      <Button loading={loading} disabled={!clanId || (!loading && !roles.length)} onClick={() => void showInvitation()}>
+      <Button
+        style={{ marginInlineStart: 8 }}
+        loading={loading}
+        disabled={!clanId || (!loading && !roles.length)}
+        onClick={() => void showInvitation()}
+      >
         邀请新成员
       </Button>
       <MemberInvitationModal
@@ -64,6 +84,7 @@ export function MemberInvitationAction() {
         branches={branches}
         onClose={() => setOpen(false)}
       />
-    </>
+    </>,
+    actionTarget
   );
 }
