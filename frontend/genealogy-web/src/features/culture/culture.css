@@ -38,6 +38,18 @@
   min-width: 0;
 }
 
+/*
+ * Culture items previously added an extra Ant Space layer before the query
+ * card. Use a block grid wrapper so its first card starts on the same baseline
+ * as the culture sites tab.
+ */
+[data-genealogy-app] .culture-item-maintenance-tab {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+}
+
 @media (max-width: 767px) {
   .culture-search-card form { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; }
   .culture-more-filters { transform: translateY(3px); }
