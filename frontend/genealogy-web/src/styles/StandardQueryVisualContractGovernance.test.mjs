@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -99,15 +99,17 @@ test('legacy page styles cannot redefine any query-card selector', () => {
   assert.doesNotMatch(legacyPageCss, /\.standard-query-(panel|grid|field|advanced|actions)/);
 });
 
-test('only canonical stylesheets may own the standard query-card selectors', () => {
+test('only canonical stylesheets may own standard query-card layout and field density', () => {
   const selectorPattern = /\.standard-query-(panel|grid|field|advanced|actions)\b/;
   const legacyHookPattern = /\.(person-archive-(query-card|query-actions|query-row|filter-grid|more-filter)|source-library-(query-card|query-grid|query-actions|more-filters)|workbench-(filter-grid|query-actions|more-filter|advanced-collapse)|tracking-(query-card|filter-card|filter-grid|filter-actions|query-actions)|culture-search-actions|import-query-actions)\b/;
+  const queryDensityOverridePattern = /\.(person-archive-list-page|person-archive-query-card|source-library-query-page|source-library-query-card|import-center-page|import-query-card|tracking-double-card-page|tracking-query-card|member-role-page|review-center-page|business-page--editingWorkspace)\b[^,{]*\s+\.(ant-form-item(?:-label|-control|-extra|-explain)?|ant-input(?:-affix-wrapper)?|ant-select-selector|ant-picker|standard-query-field|standard-query-actions)\b/;
 
   for (const cssFile of collectCssFiles(srcRoot)) {
     if (canonicalCssFiles.has(cssFile)) continue;
     const css = readFileSync(cssFile, 'utf8');
     assert.doesNotMatch(css, selectorPattern, `${cssFile} must not override shared StandardQuery selectors`);
     assert.doesNotMatch(css, legacyHookPattern, `${cssFile} must not retain a page-specific query-card layout hook`);
+    assert.doesNotMatch(css, queryDensityOverridePattern, `${cssFile} must not redefine query field density through a page wrapper`);
   }
 });
 
