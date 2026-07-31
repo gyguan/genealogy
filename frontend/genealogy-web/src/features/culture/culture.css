@@ -20,6 +20,24 @@
   min-width: 0;
 }
 
+/*
+ * Keep the StandardPageTabs-to-query-card flow identical to audit tracking.
+ * The outer tabbed page owns the 16px/12px page gap. Ant Design Space is
+ * inline-flex by default, so make the active culture tab's first layout block
+ * a grid to avoid an additional baseline line box before the query card.
+ */
+[data-genealogy-app] .culture-managed-tab > .ant-space-vertical {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+}
+
+[data-genealogy-app] .culture-managed-tab > .ant-space-vertical > .ant-space-item {
+  width: 100%;
+  min-width: 0;
+}
+
 @media (max-width: 767px) {
   .culture-search-card form { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; }
   .culture-more-filters { transform: translateY(3px); }
