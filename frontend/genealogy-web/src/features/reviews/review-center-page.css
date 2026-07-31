@@ -38,3 +38,13 @@
   > .ant-space-item:last-child {
   display: none;
 }
+
+/* Keep batch actions visible in the card header without showing a second
+ * selection-status banner inside the result card after rows are checked.
+ */
+[data-genealogy-app]
+  .business-page--reviewCenter
+  .review-result-card
+  .ant-alert-info {
+  display: none;
+}
