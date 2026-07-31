@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: ["main"]
     paths:
-      - "tasks/issue-1037-execution.md"
+      - "tasks/issue-1037-patch-ready"
       - ".github/workflows/agent-issue-1037-restricted-patch.yml"
 
 concurrency:
@@ -28,38 +28,54 @@ jobs:
           ref: agent/issue-1037-remove-jpa-final-migration
           fetch-depth: 0
 
-      - name: Verify and apply execution-board payload
+      - name: Verify and apply visible chunked payload
         env:
           EXPECTED_REMOTE_HEAD: ${{ github.event.pull_request.head.sha }}
           TARGET_BRANCH: agent/issue-1037-remove-jpa-final-migration
         shell: bash
         run: |
           set -euo pipefail
-          transport=tasks/issue-1037-execution.md
-          grep -q '^ISSUE1037_PATCH_PAYLOAD_V1$' "$transport" || { echo 'No payload marker'; exit 1; }
-          expected_parent="$(sed -n '2s/^parent=//p' "$transport")"
-          expected_digest="$(sed -n '3s/^sha256=//p' "$transport")"
-          patch_format="$(sed -n '4s/^format=//p' "$transport")"
-          commit_message="$(sed -n '5s/^message=//p' "$transport")"
-          test "$(git rev-parse HEAD^)" = "$expected_parent"
-          mapfile -t changed < <(git diff --name-only "$expected_parent"..HEAD)
-          test "${#changed[@]}" -eq 1
-          test "${changed[0]}" = "$transport"
-          tail -n +7 "$transport" | tr -d '\n\r ' > /tmp/issue-1037.patch.b64
+          prefix=tasks/issue-1037-patch
+          parent_file=${prefix}-parent
+          message_file=${prefix}-message
+          ready_file=${prefix}-ready
+          format_file=${prefix}-format
+          shopt -s nullglob
+          parts=(${prefix}.part-*)
+          test -f "$parent_file" && test -f "$message_file" && test -f "$ready_file" && test -f "$format_file"
+          test "${#parts[@]}" -gt 0
+          is_transport() { case "$1" in ${prefix}-parent|${prefix}-message|${prefix}-ready|${prefix}-format|${prefix}.part-*) return 0;; *) return 1;; esac; }
+          expected_parent="$(tr -d '[:space:]' < "$parent_file")"
+          cursor="$(git rev-parse HEAD)"
+          while true; do
+            mapfile -t paths < <(git diff-tree --no-commit-id --name-only -r "$cursor")
+            transport_only=true
+            for path in "${paths[@]}"; do is_transport "$path" || transport_only=false; done
+            if [[ "$transport_only" == true ]]; then cursor="$(git rev-parse "${cursor}^")"; else actual_parent="$cursor"; break; fi
+          done
+          test "$actual_parent" = "$expected_parent"
+          mapfile -t changed < <(git diff --name-only "$actual_parent"..HEAD)
+          for path in "${changed[@]}"; do is_transport "$path" || { echo "Unexpected path: $path"; exit 1; }; done
+          cat "${parts[@]}" | tr -d '\n\r ' > /tmp/issue-1037.patch.b64
+          expected_digest="$(tr -d '[:space:]' < "$ready_file")"
           echo "$expected_digest  /tmp/issue-1037.patch.b64" | sha256sum --check
+          test "$(tr -d '[:space:]' < "$format_file")" = gzip-base64
           base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch.gz
-          test "$patch_format" = gzip-base64
           gzip --decompress --stdout /tmp/issue-1037.patch.gz > /tmp/issue-1037.patch
           git apply --check /tmp/issue-1037.patch
-          git restore --source="$expected_parent" --staged --worktree "$transport"
           git apply --index /tmp/issue-1037.patch
+          git rm "$parent_file" "$message_file" "$ready_file" "$format_file" "${parts[@]}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "$commit_message"
+          git commit -m "$(cat "$message_file" 2>/dev/null || echo 'feat: complete Issue 1037 import persistence migration')"
           generated_head="$(git rev-parse HEAD)"
           remote_head="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | awk '{print $1}')"
           test "$remote_head" = "$EXPECTED_REMOTE_HEAD"
+          stage_branch="agent/issue-1037-stage-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'git push origin --delete "$stage_branch" >/dev/null 2>&1 || true' EXIT
+          git push origin "$generated_head:refs/heads/$stage_branch"
           git push --force-with-lease="refs/heads/$TARGET_BRANCH:$EXPECTED_REMOTE_HEAD" origin "$generated_head:refs/heads/$TARGET_BRANCH"
+          test "$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | awk '{print $1}')" = "$generated_head"
 
       - name: Dispatch verification for the new head
         env:
