@@ -43,6 +43,11 @@
   display: none;
 }
 
+[data-genealogy-app] .query-result-outer-card.member-result-card {
+  margin-top: 0 !important;
+  margin-block-start: 0 !important;
+}
+
 .member-list-card > .ant-card-head .ant-card-head-wrapper {
   gap: 16px;
 }
