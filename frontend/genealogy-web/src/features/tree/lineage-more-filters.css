@@ -1,0 +1,11 @@
+.lineage-tree-product-page-root .lineage-query-more-filters {
+  order: -1;
+}
+
+.lineage-tree-product-page-root .lineage-advanced-filter-field[hidden] {
+  display: none !important;
+}
+
+.lineage-tree-product-page-root .lineage-query-tabs .standard-query-grid {
+  align-items: start;
+}
