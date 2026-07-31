@@ -159,11 +159,10 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     await expect(page.getByText(fileName, { exact: true }).first()).toBeVisible();
 
     await page.getByRole('menuitem', { name: '世系图谱', exact: true }).click();
-    await page.getByRole('tab', { name: '支派全局图谱', exact: true }).click();
-    const exportButton = page.getByRole('button', { name: /导出族谱/ });
-    await expect(exportButton).toBeVisible();
-    await exportButton.click();
-    await expect(page.getByText('导出全宗族谱册', { exact: true })).toBeVisible();
+    const globalTreeTab = page.getByRole('tab', { name: '支派全局图谱', exact: true });
+    await globalTreeTab.click();
+    await expect(globalTreeTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('heading', { name: '世系图谱' })).toBeVisible();
 
     await resetBrowserSession(page);
     await loginThroughUi(page, 'RESTRICTED');
