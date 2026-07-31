@@ -1,5 +1,5 @@
-import { createContext, useContext, useState } from 'react';
-import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Card,
@@ -16,7 +16,12 @@ import { EmptyState, FullPageFeedback, PageFeedback } from './Feedback';
 import '../../styles/shared/standard-page-patterns.css';
 import '../../styles/shared/standard-query-card.css';
 
-const StandardPageActionTarget = createContext<HTMLElement | null | undefined>(undefined);
+type StandardPageActionContextValue = {
+  target: HTMLElement | null;
+  setTarget: (target: HTMLElement | null) => void;
+};
+
+const StandardPageActionTarget = createContext<StandardPageActionContextValue | undefined>(undefined);
 
 export type StandardPageProps = {
   title: ReactNode;
@@ -29,41 +34,34 @@ export type StandardPageProps = {
   pageKey?: string;
 };
 
-export function StandardPage({ title, description, scope, back, extra, children, className = '', pageKey }: StandardPageProps) {
+export function StandardPage({ back, extra, children, className = '', pageKey }: StandardPageProps) {
   const classes = ['standard-page', className].filter(Boolean).join(' ');
   const [actionTarget, setActionTarget] = useState<HTMLElement | null>(null);
-  return <StandardPageActionTarget.Provider value={actionTarget}>
+  const actionContext = useMemo(() => ({ target: actionTarget, setTarget: setActionTarget }), [actionTarget]);
+
+  return <StandardPageActionTarget.Provider value={actionContext}>
     <section className={classes} data-standard-page={pageKey || 'standard'}>
-      <StandardPageHeader title={title} description={description} scope={scope} back={back} extra={extra} actionTargetRef={setActionTarget} />
+      <StandardPageHeader back={back} />
+      {extra ? <StandardPageActions><Space className="standard-result-section__page-actions" wrap>{extra}</Space></StandardPageActions> : null}
       <div className="standard-page__content">{children}</div>
     </section>
   </StandardPageActionTarget.Provider>;
 }
 
 export type StandardPageHeaderProps = {
-  title: ReactNode;
+  title?: ReactNode;
   description?: ReactNode;
   scope?: ReactNode;
   back?: ReactNode;
   extra?: ReactNode;
   className?: string;
-  actionTargetRef?: Ref<HTMLDivElement>;
 };
 
-export function StandardPageHeader({ title, description, scope, back, extra, className = '', actionTargetRef }: StandardPageHeaderProps) {
+export function StandardPageHeader({ back, className = '' }: StandardPageHeaderProps) {
+  if (!back) return null;
   const classes = ['standard-page-header', className].filter(Boolean).join(' ');
   return <header className={classes}>
-    <div className="standard-page-header__leading">
-      {back ? <div className="standard-page-header__back">{back}</div> : null}
-      <div className="standard-page-header__copy">
-        <Typography.Title level={2} className="standard-page-header__title">{title}</Typography.Title>
-        {description ? <Typography.Paragraph type="secondary" className="standard-page-header__description">{description}</Typography.Paragraph> : null}
-        {scope ? <div className="standard-page-header__scope">{scope}</div> : null}
-      </div>
-    </div>
-    <div ref={actionTargetRef} className="standard-page-header__actions" aria-label="页面操作">
-      {extra ? <Space className="standard-page-header__extra" wrap>{extra}</Space> : null}
-    </div>
+    <div className="standard-page-header__back">{back}</div>
   </header>;
 }
 
@@ -72,9 +70,9 @@ export type StandardPageActionsProps = {
 };
 
 export function StandardPageActions({ children }: StandardPageActionsProps) {
-  const target = useContext(StandardPageActionTarget);
-  if (target === undefined) return <>{children}</>;
-  return target ? createPortal(children, target) : null;
+  const context = useContext(StandardPageActionTarget);
+  if (context === undefined) return <>{children}</>;
+  return context.target ? createPortal(children, context.target) : null;
 }
 
 export type StandardPageTabsProps = Omit<TabsProps, 'tabPosition'> & {
@@ -164,7 +162,13 @@ export type StandardResultSectionProps = Omit<CardProps, 'title' | 'children'> &
 export function StandardResultSection({ title = '查询结果', total, extra, children, className = '', ...cardProps }: StandardResultSectionProps) {
   const classes = ['standard-result-section', className].filter(Boolean).join(' ');
   const heading = <Space size={4}><span>{title}</span>{typeof total === 'number' ? <Typography.Text type="secondary">（共 {total} 条）</Typography.Text> : null}</Space>;
-  return <Card {...cardProps} className={classes} title={heading} extra={extra} data-query-result-role="section">
+  const actionContext = useContext(StandardPageActionTarget);
+  const resultActions = <Space className="standard-result-section__actions" wrap>
+    {actionContext ? <div ref={actionContext.setTarget} className="standard-result-section__page-action-target" /> : null}
+    {extra}
+  </Space>;
+
+  return <Card {...cardProps} className={classes} title={heading} extra={resultActions} data-query-result-role="section">
     {children}
   </Card>;
 }

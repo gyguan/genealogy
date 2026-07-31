@@ -9,62 +9,14 @@
 
 .standard-page-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ant-padding-lg);
+  align-items: center;
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 
-.standard-page-header__leading {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--ant-margin-sm);
-  min-width: 0;
-}
-
 .standard-page-header__back {
   flex: 0 0 auto;
-}
-
-.standard-page-header__copy {
-  min-width: 0;
-}
-
-.standard-page-header__title.ant-typography {
-  margin: 0;
-}
-
-.standard-page-header__description.ant-typography {
-  margin: var(--ant-margin-xs) 0 0;
-  max-width: 72ch;
-}
-
-.standard-page-header__scope {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ant-margin-xs);
-  margin-top: var(--ant-margin-sm);
-  color: var(--ant-color-text-secondary);
-}
-
-.standard-page-header__actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ant-margin-sm);
-  min-height: var(--ant-control-height);
-}
-
-.standard-page-header__actions:empty {
-  display: none;
-}
-
-.standard-page-header__extra {
-  justify-content: flex-end;
 }
 
 .standard-page__content {
@@ -94,6 +46,19 @@
 .standard-result-section,
 .standard-editor-page__card {
   min-width: 0;
+}
+
+.standard-result-section__actions,
+.standard-result-section__page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ant-margin-sm);
+}
+
+.standard-result-section__page-action-target:empty {
+  display: none;
 }
 
 .standard-detail-drawer__description.ant-typography {
@@ -135,22 +100,14 @@
 }
 
 @media (max-width: 767px) {
-  .standard-page-header {
-    flex-direction: column;
-  }
-
-  .standard-page-header__leading {
-    width: 100%;
-  }
-
-  .standard-page-header__actions,
-  .standard-page-header__extra,
+  .standard-result-section__actions,
+  .standard-result-section__page-actions,
   .standard-editor-page__actions {
     width: 100%;
     justify-content: flex-start;
   }
 
-  .standard-page-header__actions .ant-btn {
+  .standard-result-section__actions .ant-btn {
     min-height: 40px;
   }
 
