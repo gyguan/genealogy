@@ -160,7 +160,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await expect(page.getByRole('button', { name: '重新加载', exact: true })).toBeVisible();
     await expect(page.getByText(/注入的服务端错误|加载失败/).first()).toBeVisible();
     await page.getByRole('button', { name: '重新加载', exact: true }).click();
-    await expect(page.getByText('编辑人物档案', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /返回人物档案/ })).toBeVisible();
     await expect(page.getByLabel('姓名')).toHaveValue(uiPersonName);
 
     await page.getByLabel('职业').fill('稳定性测试工程师');
@@ -171,7 +171,7 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     await leaveConfirmation.getByRole('button', { name: '继续编辑', exact: true }).click();
     await expect(leaveConfirmation).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`/persons/${uiPersonId}/edit`));
-    await expect(page.getByText('编辑人物档案', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /返回人物档案/ })).toBeVisible();
 
     let saveReleased = false;
     let saveRequestBody: any;
