@@ -208,6 +208,7 @@ class BranchRelationshipTreeMybatisPostgreSqlIT {
         relationship.setFromPersonId(fromId);
         relationship.setToPersonId(toId);
         relationship.setRelationType(type);
+        relationship.setConfidenceLevel("medium");
         relationship.setDataStatus("official");
         relationship.setIsLineageRelation(false);
         relationship.setIsBiological(false);
