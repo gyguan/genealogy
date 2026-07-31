@@ -143,10 +143,26 @@
 }
 
 /* The workbench uses the drawer for full task details, so the result table no longer
- * exposes a second expandable details column. */
+ * exposes a second expandable details column. Collapse the generated column as well
+ * so Ant Design does not keep its original 56px in the table layout. */
+[data-genealogy-app] .workbench-result-card col.ant-table-expand-icon-col {
+  width: 0 !important;
+  min-width: 0 !important;
+  visibility: collapse;
+}
+
 [data-genealogy-app] .workbench-result-card .ant-table-expand-icon-col,
 [data-genealogy-app] .workbench-result-card .ant-table-row-expand-icon-cell {
   display: none;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+/* The previous scroll width included the removed 56px expandable column. */
+[data-genealogy-app] .workbench-result-card .ant-table-content > table {
+  width: 100% !important;
+  min-width: 824px !important;
 }
 
 /* Selection state is already reflected by the persistent bulk action button count. */
