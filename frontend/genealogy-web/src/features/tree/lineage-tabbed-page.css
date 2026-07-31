@@ -56,6 +56,10 @@
   margin-left: auto;
 }
 
+.lineage-tabbed-page .lineage-graph-toolbar-field--locator {
+  margin-bottom: 0;
+}
+
 .lineage-inspector-drawer .lineage-drawer-content {
   display: flex;
   flex-direction: column;
