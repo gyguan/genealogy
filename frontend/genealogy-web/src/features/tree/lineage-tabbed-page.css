@@ -10,16 +10,6 @@
   min-width: 0;
 }
 
-/*
- * 世系图谱两个查询模式的默认区域固定为 4 个核心条件。
- * 公共查询样式会在 1199px 以下切换为两列，并且由 StandardPagePatterns
- * 在本文件之后加载。增加稳定应用根节点和页面 Card 作用域，确保该规则
- * 在同等加载顺序下仍高于公共响应式规则。
- */
-[data-genealogy-app] .lineage-tabbed-query-card .standard-query-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
 .lineage-tab-switch-field {
   display: flex;
   align-items: center;
@@ -91,7 +81,6 @@
 
 @media (max-width: 767px) {
   .lineage-tabbed-page { gap: 12px; }
-  [data-genealogy-app] .lineage-tabbed-query-card .standard-query-grid { grid-template-columns: minmax(0, 1fr); }
   .lineage-tabbed-page .lineage-graph-toolbar { align-items: stretch; flex-direction: column; flex-wrap: nowrap; }
   .lineage-tabbed-page .lineage-graph-toolbar > .lineage-graph-toolbar-field {
     align-self: stretch;
