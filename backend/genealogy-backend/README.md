@@ -32,7 +32,7 @@ Actuator / Micrometer / Prometheus
 Maven
 ```
 
-当前 Clan、Generation、Person、Member、Review 与 Source 的目标仓储已通过 Repository Adapter 与专用 QueryMapper 使用 MyBatis-Plus/MyBatis；PostgreSQL UUID 使用统一 TypeHandler，审核行锁和成员权限范围由显式 SQL 保证。Tree 的 Person Snapshot 暂时保留独立 `@Immutable` 只读 JPA 映射，Branch/Relationship/Tree 与 Import/Export 等模块继续使用 Spring Data JPA。持久化框架不得越过 Repository/QueryRepository 边界，具体规则和迁移清单见 `docs/backend/persistence-framework-migration.md`。
+当前 Clan、Generation、Person、Member、Review、Source、Branch、Relationship 与 Tree 的目标仓储已通过 Repository Adapter 与专用 QueryMapper 使用 MyBatis-Plus/MyBatis。Branch 递归继续使用带循环保护的 PostgreSQL `WITH RECURSIVE`；Relationship 的类型/分类规则在统一写边界显式执行；Tree 直接映射最小不可变 Snapshot，并保持 500 ID 分批、跨批次边、去重和稳定排序。Import/Export 与其他剩余仓储将在 #1037 迁移并最终移除 JPA/Hibernate。持久化框架不得越过 Repository/QueryRepository 边界，具体规则和迁移清单见 `docs/backend/persistence-framework-migration.md`。
 
 ## 本地启动
 
@@ -74,6 +74,7 @@ Controller
 
 - Schema 通过 Flyway 前向迁移。
 - 双栈阶段 Hibernate 使用 `ddl-auto=validate` 校验仍由 JPA 管理的实体；MyBatis 映射通过 PostgreSQL 集成测试和 Mapper/XML 加载验证。
+- Branch/Relationship/Tree 生产代码不得重新引入 JpaRepository、EntityManager、JPQL 或 JPA 生命周期监听器。
 - 禁止通过关闭 Flyway、`flyway repair` 或手工修改 history 表掩盖迁移问题。
 - 公共 API 变更先更新 `docs/api/openapi.json`。
 
@@ -84,7 +85,7 @@ mvn test
 mvn verify
 ```
 
-涉及数据库、权限、安全或关键用户链路时，还应执行相应 PostgreSQL Integration、Security 和 E2E 门禁。
+涉及数据库、权限、安全或关键用户链路时，还应执行 PostgreSQL Integration、Tree 查询契约、Security、Member Scope 和真实 E2E 门禁。
 
 ## README 维护
 
