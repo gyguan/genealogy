@@ -1,9 +1,7 @@
 package com.genealogy.tree.repository;
 
 import com.genealogy.tree.query.TreePersonSnapshot;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
+import com.genealogy.tree.repository.mybatis.TreePersonQueryMapper;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
@@ -11,10 +9,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
-/** Tree-specific person read repository backed by immutable constructor projections. */
 @Repository
 public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository {
 
@@ -23,20 +21,11 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
             .thenComparing(person -> person.personCode() == null ? "" : person.personCode())
             .thenComparing(person -> person.id() == null ? Long.MAX_VALUE : person.id());
 
-    private static final String PERSON_READ_SELECT = """
-            select new com.genealogy.tree.query.TreePersonSnapshot(
-                   p.id, p.clanId, p.branchId, p.personCode, p.name,
-                   p.genealogyName, p.courtesyName, p.aliasName, p.gender,
-                   p.generationNo, p.generationWord, p.rankInFamily,
-                   p.birthDate, p.birthDatePrecision, p.deathDate, p.deathDatePrecision,
-                   p.isLiving, p.birthPlace, p.residencePlace,
-                   p.hasDescendant, p.lineageStatus, p.privacyLevel, p.dataStatus,
-                   p.createdBy, p.updatedBy)
-            from TreePersonJpaEntity p
-            """;
+    private final TreePersonQueryMapper queryMapper;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    public TreePersonQueryRepositoryImpl(TreePersonQueryMapper queryMapper) {
+        this.queryMapper = queryMapper;
+    }
 
     @Override
     public List<TreePersonSnapshot> findTreePersonSnapshotsByIds(
@@ -44,20 +33,14 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
             Collection<Long> personIds,
             Collection<String> statuses
     ) {
-        if (personIds == null || personIds.isEmpty()) {
+        List<Long> ids = normalizedIds(personIds);
+        List<String> normalizedStatuses = normalizedStrings(statuses);
+        if (clanId == null || ids.isEmpty() || normalizedStatuses.isEmpty()) {
             return List.of();
         }
         Map<Long, TreePersonSnapshot> deduplicated = new LinkedHashMap<>();
-        for (List<Long> batch : TreeQueryBatcher.partition(personIds, TreeQueryBatcher.DEFAULT_BATCH_SIZE)) {
-            TypedQuery<TreePersonSnapshot> query = entityManager.createQuery(PERSON_READ_SELECT + """
-                    where p.clanId = :clanId
-                      and p.id in :personIds
-                      and p.dataStatus in :statuses
-                      and p.deletedAt is null
-                    order by p.id
-                    """, TreePersonSnapshot.class);
-            bind(query, clanId, batch, statuses);
-            for (TreePersonSnapshot person : query.getResultList()) {
+        for (List<Long> batch : TreeQueryBatcher.partition(ids, TreeQueryBatcher.DEFAULT_BATCH_SIZE)) {
+            for (TreePersonSnapshot person : queryMapper.selectByIds(clanId, batch, normalizedStatuses)) {
                 deduplicated.putIfAbsent(person.id(), person);
             }
         }
@@ -73,41 +56,54 @@ public class TreePersonQueryRepositoryImpl implements TreePersonQueryRepository 
             Collection<String> statuses,
             Pageable pageable
     ) {
-        if (branchIds == null || branchIds.isEmpty()) {
+        List<Long> ids = normalizedIds(branchIds);
+        List<String> normalizedStatuses = normalizedStrings(statuses);
+        if (clanId == null || ids.isEmpty() || normalizedStatuses.isEmpty()) {
             return List.of();
         }
-        TypedQuery<TreePersonSnapshot> query = entityManager.createQuery(PERSON_READ_SELECT + """
-                where p.clanId = :clanId
-                  and p.branchId in :branchIds
-                  and p.dataStatus in :statuses
-                  and p.deletedAt is null
-                order by
-                  case when p.generationNo is null then 1 else 0 end,
-                  p.generationNo, p.personCode, p.id
-                """, TreePersonSnapshot.class);
-        query.setParameter("clanId", clanId);
-        query.setParameter("branchIds", List.copyOf(branchIds));
-        query.setParameter("statuses", statuses);
-        if (pageable != null) {
-            query.setFirstResult(Math.toIntExact(pageable.getOffset()));
-            query.setMaxResults(pageable.getPageSize());
+
+        Integer fetchLimit = requiredLimit(pageable);
+        Map<Long, TreePersonSnapshot> deduplicated = new LinkedHashMap<>();
+        for (List<Long> batch : TreeQueryBatcher.partition(ids, TreeQueryBatcher.DEFAULT_BATCH_SIZE)) {
+            for (TreePersonSnapshot person : queryMapper.selectByBranches(clanId, batch, normalizedStatuses, fetchLimit)) {
+                deduplicated.putIfAbsent(person.id(), person);
+            }
         }
-        List<TreePersonSnapshot> result = query.getResultList();
-        if (pageable == null) {
-            result = new ArrayList<>(result);
-            result.sort(PERSON_ORDER);
-        }
-        return List.copyOf(result);
+        List<TreePersonSnapshot> result = new ArrayList<>(deduplicated.values());
+        result.sort(PERSON_ORDER);
+        return slice(result, pageable);
     }
 
-    private void bind(
-            TypedQuery<TreePersonSnapshot> query,
-            Long clanId,
-            Collection<Long> ids,
-            Collection<String> statuses
-    ) {
-        query.setParameter("clanId", clanId);
-        query.setParameter("personIds", ids);
-        query.setParameter("statuses", statuses);
+    private static Integer requiredLimit(Pageable pageable) {
+        if (pageable == null || pageable.isUnpaged()) {
+            return null;
+        }
+        long required = pageable.getOffset() + pageable.getPageSize();
+        return Math.toIntExact(Math.min(Integer.MAX_VALUE, required));
+    }
+
+    private static <T> List<T> slice(List<T> values, Pageable pageable) {
+        if (pageable == null || pageable.isUnpaged()) {
+            return List.copyOf(values);
+        }
+        int from = Math.toIntExact(Math.min(values.size(), pageable.getOffset()));
+        int to = Math.min(values.size(), from + pageable.getPageSize());
+        return List.copyOf(values.subList(from, to));
+    }
+
+    private static List<Long> normalizedIds(Collection<Long> values) {
+        LinkedHashSet<Long> normalized = new LinkedHashSet<>();
+        if (values != null) {
+            values.stream().filter(java.util.Objects::nonNull).sorted().forEach(normalized::add);
+        }
+        return List.copyOf(normalized);
+    }
+
+    private static List<String> normalizedStrings(Collection<String> values) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        if (values != null) {
+            values.stream().filter(value -> value != null && !value.isBlank()).forEach(normalized::add);
+        }
+        return List.copyOf(normalized);
     }
 }

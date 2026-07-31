@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.tree.repository.mybatis.TreePersonQueryMapper">
+  <resultMap id="TreePersonSnapshotMap" type="com.genealogy.tree.query.TreePersonSnapshot">
+    <constructor>
+      <idArg column="id" javaType="java.lang.Long"/>
+      <arg column="clan_id" javaType="java.lang.Long"/>
+      <arg column="branch_id" javaType="java.lang.Long"/>
+      <arg column="person_code" javaType="java.lang.String"/>
+      <arg column="name" javaType="java.lang.String"/>
+      <arg column="genealogy_name" javaType="java.lang.String"/>
+      <arg column="courtesy_name" javaType="java.lang.String"/>
+      <arg column="alias_name" javaType="java.lang.String"/>
+      <arg column="gender" javaType="java.lang.String"/>
+      <arg column="generation_no" javaType="java.lang.Integer"/>
+      <arg column="generation_word" javaType="java.lang.String"/>
+      <arg column="rank_in_family" javaType="java.lang.String"/>
+      <arg column="birth_date" javaType="java.time.LocalDate"/>
+      <arg column="birth_date_precision" javaType="java.lang.String"/>
+      <arg column="death_date" javaType="java.time.LocalDate"/>
+      <arg column="death_date_precision" javaType="java.lang.String"/>
+      <arg column="is_living" javaType="java.lang.Boolean"/>
+      <arg column="birth_place" javaType="java.lang.String"/>
+      <arg column="residence_place" javaType="java.lang.String"/>
+      <arg column="has_descendant" javaType="java.lang.Boolean"/>
+      <arg column="lineage_status" javaType="java.lang.String"/>
+      <arg column="privacy_level" javaType="java.lang.String"/>
+      <arg column="data_status" javaType="java.lang.String"/>
+      <arg column="created_by" javaType="java.lang.Long"/>
+      <arg column="updated_by" javaType="java.lang.Long"/>
+    </constructor>
+  </resultMap>
+
+  <sql id="TreePersonColumns">
+    id, clan_id, branch_id, person_code, name,
+    genealogy_name, courtesy_name, alias_name, gender,
+    generation_no, generation_word, rank_in_family,
+    birth_date, birth_date_precision, death_date, death_date_precision,
+    is_living, birth_place, residence_place,
+    has_descendant, lineage_status, privacy_level, data_status,
+    created_by, updated_by
+  </sql>
+
+  <select id="selectByIds" resultMap="TreePersonSnapshotMap">
+    select <include refid="TreePersonColumns"/>
+    from person
+    where clan_id=#{clanId}
+      and id in <foreach collection="personIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      and data_status in <foreach collection="statuses" item="status" open="(" close=")" separator=",">#{status}</foreach>
+      and deleted_at is null
+    order by id
+  </select>
+
+  <select id="selectByBranches" resultMap="TreePersonSnapshotMap">
+    select <include refid="TreePersonColumns"/>
+    from person
+    where clan_id=#{clanId}
+      and branch_id in <foreach collection="branchIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      and data_status in <foreach collection="statuses" item="status" open="(" close=")" separator=",">#{status}</foreach>
+      and deleted_at is null
+    order by generation_no asc nulls last, person_code asc nulls first, id asc
+    <if test="limit != null">limit #{limit}</if>
+  </select>
+</mapper>
