@@ -20,6 +20,22 @@
   min-width: 0;
 }
 
+/* Keep the page-level tabs and the active culture tab content exactly 16px apart. */
+[data-genealogy-app] .culture-product-page.tabbed-module-page {
+  row-gap: 16px !important;
+}
+
+[data-genealogy-app] .culture-product-page > .standard-page-tabs {
+  margin-bottom: 0 !important;
+  margin-block-end: 0 !important;
+}
+
+[data-genealogy-app] .culture-product-page > .standard-page-tabs + .culture-managed-tab,
+[data-genealogy-app] .culture-product-page > .standard-page-tabs + .culture-managed-tab.culture-tab-items {
+  margin-top: 0 !important;
+  margin-block-start: 0 !important;
+}
+
 @media (max-width: 767px) {
   .culture-search-card form { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; }
   .culture-more-filters { transform: translateY(3px); }
