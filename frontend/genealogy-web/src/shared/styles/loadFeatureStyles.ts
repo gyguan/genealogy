@@ -27,7 +27,6 @@ const loaders: Record<FeatureStyleKey, () => Promise<unknown>> = {
   treeProduct: async () => Promise.all([
     import('../../lineage-tree.css'),
     import('../../lineage-graph.css'),
-    import('../../lineage-workbench.css'),
     import('../../lineage-result-toolbar.css')
   ]),
   memberManage: () => import('../../member-permission-page.css'),
