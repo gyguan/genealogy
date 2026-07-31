@@ -18,9 +18,10 @@ jobs:
       github.event.pull_request.head.ref == 'agent/issue-1037-remove-jpa-final-migration' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout exact implementation branch
         uses: actions/checkout@v4
@@ -52,3 +53,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "refactor(persistence): migrate culture repositories to MyBatis"
           git push origin HEAD:agent/issue-1037-remove-jpa-final-migration
+
+      - name: Dispatch verification for the new head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REF: agent/issue-1037-remove-jpa-final-migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow_id in 302465761 321110189 321794444 321993175; do
+            gh api --method POST "/repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/dispatches" -f ref="$TARGET_REF"
+          done
