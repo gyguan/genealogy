@@ -29,6 +29,9 @@ jobs:
           fetch-depth: 0
 
       - name: Verify and apply restricted patch
+        env:
+          EXPECTED_REMOTE_HEAD: ${{ github.event.pull_request.head.sha }}
+          TARGET_BRANCH: agent/issue-1037-remove-jpa-final-migration
         shell: bash
         run: |
           set -euo pipefail
@@ -101,7 +104,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "$commit_message"
-          git push origin HEAD:agent/issue-1037-remove-jpa-final-migration
+          git fetch origin "$TARGET_BRANCH"
+          remote_head="$(git rev-parse "origin/$TARGET_BRANCH")"
+          test "$remote_head" = "$EXPECTED_REMOTE_HEAD" || {
+            echo "Remote branch moved: expected $EXPECTED_REMOTE_HEAD, found $remote_head" >&2
+            exit 1
+          }
+          git push --force-with-lease="refs/heads/$TARGET_BRANCH:$EXPECTED_REMOTE_HEAD" origin "HEAD:$TARGET_BRANCH"
 
       - name: Dispatch verification for the new head
         env:
