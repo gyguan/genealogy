@@ -8,7 +8,7 @@ import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.source.entity.SourceEntity;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +46,7 @@ public class SourceImportJobRowApplicationService {
                 .filter(item -> Objects.equals(item.getJobId(), jobId))
                 .orElseThrow(() -> new BusinessException("IMPORT_JOB_ROW_NOT_FOUND", "导入失败行不存在"));
         if (!Objects.equals(row.getVersion(), request.expectedVersion())) {
-            throw new ObjectOptimisticLockingFailureException(ImportJobRowEntity.class, rowId);
+            throw new OptimisticLockingFailureException("Import row version conflict: " + rowId);
         }
         Map<String, Object> data = normalized(request);
         try {

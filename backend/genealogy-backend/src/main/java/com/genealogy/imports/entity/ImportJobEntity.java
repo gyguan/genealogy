@@ -59,7 +59,6 @@ public class ImportJobEntity {
     public static final String ACTION_CANCEL = "cancel";
 
     @TableId(type = IdType.AUTO)
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long clanId;
     private Long branchId;

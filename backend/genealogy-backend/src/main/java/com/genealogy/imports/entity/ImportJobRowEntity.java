@@ -22,7 +22,6 @@ public class ImportJobRowEntity {
     public static final String STATUS_EXCLUDED = "excluded";
 
     @TableId(type = IdType.AUTO)
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long jobId;
     private Integer rowNo;

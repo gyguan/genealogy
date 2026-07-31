@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 public class ImportJobErrorEntity {
 
     @TableId(type = IdType.AUTO)
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long jobId;
 

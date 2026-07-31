@@ -20,7 +20,6 @@ public class ImportJobChunkEntity {
     public static final String STATUS_FAILED = "failed";
 
     @TableId(type = IdType.AUTO)
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long jobId;
     private String stage;
