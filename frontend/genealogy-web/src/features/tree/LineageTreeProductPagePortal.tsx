@@ -6,6 +6,7 @@ import {
   type FieldPortalResolver
 } from '../../shared/ui/Form';
 import { StandardMoreFiltersButton } from '../../shared/ui/StandardQueryActions';
+import { StandardPageTabs } from '../../shared/ui/StandardPagePatterns';
 import { LineageTreeTabbedPage as LineageTreeProductPageBase } from './LineageTreeTabbedPage';
 import './person-centered-direct.css';
 import './lineage-more-filters.css';
@@ -13,6 +14,11 @@ import './lineage-more-filters.css';
 const LINEAGE_TOOLBAR_FIELD_KIND: Record<string, 'locator'> = {
   图内定位人物: 'locator'
 };
+
+const LINEAGE_PAGE_TABS = [
+  { key: 'person', label: '人物中心图谱' },
+  { key: 'branch', label: '支派全局图谱' }
+];
 
 type LineageMode = 'person' | 'branch';
 type AdvancedState = Record<LineageMode, boolean>;
@@ -128,18 +134,35 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
     };
   }, [toolbarTarget]);
 
+  function changePageTab(key: string) {
+    const nextMode = key as LineageMode;
+    if (nextMode === mode) return;
+    const internalTab = rootRef.current?.querySelector<HTMLElement>(
+      `.lineage-query-tabs .ant-tabs-tab[data-node-key="${nextMode}"]`
+    );
+    internalTab?.click();
+  }
+
   const expanded = advancedExpanded[mode];
 
   return (
     <div
       ref={rootRef}
-      className="lineage-tree-product-page-root"
+      className="lineage-tree-product-page-root tabbed-module-page lineage-product-page"
       data-lineage-mode={mode}
       data-lineage-advanced-expanded={expanded ? 'true' : 'false'}
     >
-      <FieldPortalProvider resolve={resolveFieldPortal}>
-        <LineageTreeProductPageBase {...props} />
-      </FieldPortalProvider>
+      <StandardPageTabs
+        ariaLabel="世系图谱模式"
+        activeKey={mode}
+        items={LINEAGE_PAGE_TABS}
+        onChange={changePageTab}
+      />
+      <div className="lineage-managed-tab">
+        <FieldPortalProvider resolve={resolveFieldPortal}>
+          <LineageTreeProductPageBase {...props} />
+        </FieldPortalProvider>
+      </div>
       {queryActionTarget ? createPortal(
         <StandardMoreFiltersButton
           className="lineage-query-more-filters"
