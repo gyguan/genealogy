@@ -89,14 +89,14 @@ jobs:
           esac
           echo "Patch format: $patch_format"
 
-          echo "Stage: part validation"
+          echo "Stage: chunk assembly and validation"
           for part in "${parts[@]}"; do
-            echo "Checking $part ($(wc -c < "$part") bytes)"
-            base64 --decode "$part" >/dev/null
+            echo "Including $part ($(wc -c < "$part") bytes)"
           done
           cat "${parts[@]}" > /tmp/issue-1037.patch.b64
           expected_digest="$(tr -d '[:space:]' < .agent/issue-1037-patch-ready)"
           echo "$expected_digest  /tmp/issue-1037.patch.b64" | sha256sum --check
+          base64 --decode /tmp/issue-1037.patch.b64 >/dev/null
 
           echo "Stage: patch apply"
           if [[ "$patch_format" == gzip-base64 ]]; then
