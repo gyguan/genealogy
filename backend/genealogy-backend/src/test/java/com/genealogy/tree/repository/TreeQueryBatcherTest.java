@@ -13,6 +13,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class TreeQueryBatcherTest {
 
     @Test
+    void shouldKeepFourHundredNinetyNineIdentifiersInOneBatch() {
+        assertEquals(List.of(499), batchSizes(499));
+    }
+
+    @Test
+    void shouldKeepExactlyFiveHundredIdentifiersInOneBatch() {
+        assertEquals(List.of(500), batchSizes(500));
+    }
+
+    @Test
+    void shouldSplitFiveHundredAndOneIdentifiersWithoutLoss() {
+        assertEquals(List.of(500, 1), batchSizes(501));
+    }
+
+    @Test
     void shouldPartitionLargeIdentifierSetWithoutLossOrReordering() {
         LinkedHashSet<Long> ids = LongStream.rangeClosed(1, 1_205)
                 .boxed()
@@ -32,5 +47,10 @@ class TreeQueryBatcherTest {
     @Test
     void shouldRejectNonPositiveBatchSize() {
         assertThrows(IllegalArgumentException.class, () -> TreeQueryBatcher.partition(List.of(1L), 0));
+    }
+
+    private static List<Integer> batchSizes(long count) {
+        List<Long> ids = LongStream.rangeClosed(1, count).boxed().toList();
+        return TreeQueryBatcher.partition(ids, 500).stream().map(List::size).toList();
     }
 }
