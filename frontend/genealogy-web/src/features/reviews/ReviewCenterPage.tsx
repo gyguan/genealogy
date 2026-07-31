@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { PageState } from '../../shared/ui/Feedback';
 import { ReviewCenterPage as ReviewCenterPageContent } from './ReviewCenterPageContent';
 import { hasValidReviewPageSize, withDefaultReviewPageSize } from './reviewCenterPagination';
+import './review-center-page.css';
 
 type Props = ComponentProps<typeof ReviewCenterPageContent>;
 
