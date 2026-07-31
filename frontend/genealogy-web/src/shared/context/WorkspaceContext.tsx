@@ -118,8 +118,10 @@ function shouldHydrateDirectly(values: WorkspacePatch) {
   return allCleared || restoringSession;
 }
 
-function isClanScopeReset(values: WorkspacePatch) {
-  return values.clanId !== undefined
+function isLineageClanScopeReset(values: WorkspacePatch) {
+  const lineageTreePage = document.querySelector('.lineage-tree-page');
+  return Boolean(lineageTreePage)
+    && values.clanId !== undefined
     && values.branchId === ''
     && values.personId === ''
     && values.relationshipId === ''
@@ -163,7 +165,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }
 
   function requestPatch(values: WorkspacePatch) {
-    if (isClanScopeReset(values)) {
+    if (isLineageClanScopeReset(values)) {
       applyRaw({
         ...values,
         generationSchemeId: '',
