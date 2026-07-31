@@ -25,34 +25,118 @@
     <result column="updated_at" property="updatedAt"/>
     <result column="version" property="version"/>
   </resultMap>
-  <sql id="columns">id, job_id, row_no, raw_data, normalized_data, corrected_data, row_status, error_code, error_message, draft_person_id, draft_target_type, draft_target_id, retry_count, corrected_by, corrected_at, excluded_reason, excluded_by, excluded_at, published_at, created_at, updated_at, version</sql>
-  <sql id="rowWhere"><where>job_id=#{jobId}<if test="statuses != null and !statuses.isEmpty()">AND row_status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach></if><if test="publishedNull">AND published_at IS NULL</if></where></sql>
-  <select id="page" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row <include refid="rowWhere"/> ORDER BY row_no ASC,id ASC OFFSET #{offset} LIMIT #{limit}</select>
-  <select id="count" resultType="long">SELECT count(*) FROM import_job_row <include refid="rowWhere"/></select>
-  <select id="findByJobAndStatuses" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row WHERE job_id=#{jobId} AND row_status IN <foreach collection="statuses" item="s" open="(" separator="," close=")">#{s}</foreach> ORDER BY row_no ASC,id ASC</select>
-  <select id="findByRowNos" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row WHERE job_id=#{jobId} AND row_no IN <foreach collection="rowNos" item="r" open="(" separator="," close=")">#{r}</foreach> ORDER BY row_no ASC,id ASC</select>
-  <select id="findByIdAndJobId" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row WHERE id=#{id} AND job_id=#{jobId}</select>
-  <select id="findByJobIdAndRowNo" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row WHERE job_id=#{jobId} AND row_no=#{rowNo}</select>
-  <select id="findByJobIdAndRowNoForUpdate" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_row WHERE job_id=#{jobId} AND row_no=#{rowNo} FOR UPDATE</select>
-  <select id="countByJobIdsAndStatus" resultType="com.genealogy.imports.repository.query.ImportJobRowCount">SELECT job_id AS jobId,count(*) AS count FROM import_job_row WHERE job_id IN <foreach collection="jobIds" item="id" open="(" separator="," close=")">#{id}</foreach> AND row_status=#{rowStatus} GROUP BY job_id</select>
-  <update id="updateWithVersion">UPDATE import_job_row SET job_id = #{jobId},
-      row_no = #{rowNo},
-      raw_data = #{rawData},
-      normalized_data = #{normalizedData},
-      corrected_data = #{correctedData},
-      row_status = #{rowStatus},
-      error_code = #{errorCode},
-      error_message = #{errorMessage},
-      draft_person_id = #{draftPersonId},
-      draft_target_type = #{draftTargetType},
-      draft_target_id = #{draftTargetId},
-      retry_count = #{retryCount},
-      corrected_by = #{correctedBy},
-      corrected_at = #{correctedAt},
-      excluded_reason = #{excludedReason},
-      excluded_by = #{excludedBy},
-      excluded_at = #{excludedAt},
-      published_at = #{publishedAt},
-      created_at = #{createdAt},
-      updated_at = #{updatedAt}, version=version+1 WHERE id=#{id} AND version=#{version}</update>
+
+  <sql id="columns">
+    id, job_id, row_no, raw_data, normalized_data, corrected_data, row_status,
+    error_code, error_message, draft_person_id, draft_target_type, draft_target_id,
+    retry_count, corrected_by, corrected_at, excluded_reason, excluded_by,
+    excluded_at, published_at, created_at, updated_at, version
+  </sql>
+
+  <sql id="rowWhere">
+    <where>
+      job_id = #{jobId}
+      <if test="statuses != null and !statuses.isEmpty()">
+        AND row_status IN
+        <foreach collection="statuses" item="s" open="(" separator="," close=")">
+          #{s}
+        </foreach>
+      </if>
+      <if test="publishedNull">
+        AND published_at IS NULL
+      </if>
+    </where>
+  </sql>
+
+  <select id="page" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    <include refid="rowWhere"/>
+    ORDER BY row_no ASC, id ASC
+    OFFSET #{offset} LIMIT #{limit}
+  </select>
+
+  <select id="count" resultType="long">
+    SELECT count(*)
+    FROM import_job_row
+    <include refid="rowWhere"/>
+  </select>
+
+  <select id="findByJobAndStatuses" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    WHERE job_id = #{jobId}
+      AND row_status IN
+      <foreach collection="statuses" item="s" open="(" separator="," close=")">
+        #{s}
+      </foreach>
+    ORDER BY row_no ASC, id ASC
+  </select>
+
+  <select id="findByRowNos" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    WHERE job_id = #{jobId}
+      AND row_no IN
+      <foreach collection="rowNos" item="r" open="(" separator="," close=")">
+        #{r}
+      </foreach>
+    ORDER BY row_no ASC, id ASC
+  </select>
+
+  <select id="findByIdAndJobId" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    WHERE id = #{id} AND job_id = #{jobId}
+  </select>
+
+  <select id="findByJobIdAndRowNo" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    WHERE job_id = #{jobId} AND row_no = #{rowNo}
+  </select>
+
+  <select id="findByJobIdAndRowNoForUpdate" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_row
+    WHERE job_id = #{jobId} AND row_no = #{rowNo}
+    FOR UPDATE
+  </select>
+
+  <select id="countByJobIdsAndStatus" resultType="com.genealogy.imports.repository.query.ImportJobRowCount">
+    SELECT job_id AS jobId, count(*) AS count
+    FROM import_job_row
+    WHERE job_id IN
+      <foreach collection="jobIds" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+      AND row_status = #{rowStatus}
+    GROUP BY job_id
+  </select>
+
+  <update id="updateWithVersion">
+    UPDATE import_job_row
+    SET job_id = #{jobId},
+        row_no = #{rowNo},
+        raw_data = #{rawData},
+        normalized_data = #{normalizedData},
+        corrected_data = #{correctedData},
+        row_status = #{rowStatus},
+        error_code = #{errorCode},
+        error_message = #{errorMessage},
+        draft_person_id = #{draftPersonId},
+        draft_target_type = #{draftTargetType},
+        draft_target_id = #{draftTargetId},
+        retry_count = #{retryCount},
+        corrected_by = #{correctedBy},
+        corrected_at = #{correctedAt},
+        excluded_reason = #{excludedReason},
+        excluded_by = #{excludedBy},
+        excluded_at = #{excludedAt},
+        published_at = #{publishedAt},
+        created_at = #{createdAt},
+        updated_at = #{updatedAt},
+        version = version + 1
+    WHERE id = #{id} AND version = #{version}
+  </update>
 </mapper>
