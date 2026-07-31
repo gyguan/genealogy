@@ -1,26 +1,28 @@
-/*
- * Keep the review-center query card aligned with the other standard query pages.
- * The AppShell Content owns the common 18px header-to-page spacing; review-center
- * wrappers must not add another block-start margin or padding on top of it.
+/* Align the review-center content flow with the other query pages.
+ * Ant Design Space is inline-flex by default, which creates an inline line box
+ * before the first query card. Use a block-level grid so the card starts at the
+ * same position as pages whose first child is a block-level Form.
  */
-[data-genealogy-app] .business-page--reviewCenter,
-[data-genealogy-app] .business-page--reviewCenter > .standard-page,
-[data-genealogy-app] .business-page--reviewCenter .standard-page__content,
-[data-genealogy-app] .business-page--reviewCenter .review-center-page,
-[data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space-vertical,
-[data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space-vertical > .ant-space-item:first-child {
-  margin-top: 0 !important;
-  margin-block-start: 0 !important;
-  padding-top: 0 !important;
-  padding-block-start: 0 !important;
+[data-genealogy-app] .business-page--reviewCenter .review-center-page {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-genealogy-app]
+  .business-page--reviewCenter
+  .review-center-page
+  > .ant-space-vertical {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
 }
 
 [data-genealogy-app]
   .business-page--reviewCenter
   .review-center-page
   > .ant-space-vertical
-  > .ant-space-item:first-child
-  > .standard-query-panel {
-  margin-top: 0 !important;
-  margin-block-start: 0 !important;
+  > .ant-space-item {
+  width: 100%;
+  min-width: 0;
 }
