@@ -4,7 +4,7 @@
   width: 100%;
 }
 
-.tracking-query-card, .tracking-result-card {
+.tracking-result-card {
   min-width: 0;
 }
 
@@ -13,7 +13,8 @@
   align-items: center;
 }
 
-.tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
+.tracking-result-card .ant-card-head-title,
+.tracking-result-card .ant-card-extra {
   padding-block: 16px;
 }
 
@@ -53,7 +54,8 @@
     padding-block: 16px;
   }
 
-  .tracking-result-card .ant-card-head-title, .tracking-result-card .ant-card-extra {
+  .tracking-result-card .ant-card-head-title,
+  .tracking-result-card .ant-card-extra {
     width: 100%;
     margin: 0;
     padding: 0;
