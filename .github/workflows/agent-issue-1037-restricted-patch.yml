@@ -48,7 +48,17 @@ jobs:
               *) echo "Patch trigger range contains unexpected file: $path" >&2; exit 1 ;;
             esac
           done
+          for part in "${parts[@]}"; do
+            echo "Checking $part ($(wc -c < "$part") bytes)"
+            if ! base64 --decode "$part" >/dev/null 2>&1; then
+              echo "Invalid Base64 part: $part" >&2
+              LC_ALL=C grep -n '[^A-Za-z0-9+/=]' "$part" || true
+              exit 1
+            fi
+          done
           cat "${parts[@]}" > /tmp/issue-1037.patch.b64
+          expected_digest="$(tr -d '[:space:]' < .agent/issue-1037-patch-ready)"
+          echo "$expected_digest  /tmp/issue-1037.patch.b64" | sha256sum --check
           base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch
           git apply --check /tmp/issue-1037.patch
           git apply --index /tmp/issue-1037.patch
