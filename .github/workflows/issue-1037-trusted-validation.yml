@@ -1,0 +1,50 @@
+name: Issue 1037 Trusted Validation
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "tasks/issue-1037-ci-trigger"
+      - ".github/workflows/issue-1037-trusted-validation.yml"
+
+concurrency:
+  group: issue-1037-trusted-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: >-
+      github.event.pull_request.head.ref == 'agent/issue-1037-remove-jpa-final-migration' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1037-remove-jpa-final-migration
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/genealogy-backend/pom.xml
+      - name: Verify zero JPA references
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend/genealogy-backend
+          if grep -RInE 'jakarta\.persistence|org\.springframework\.data\.jpa|JpaRepository|JpaSpecificationExecutor|EntityManager|TestEntityManager|@DataJpaTest|org\.hibernate' src/main src/test pom.xml --exclude=ZeroJpaUsageTest.java; then
+            echo 'JPA or Hibernate reference remains' >&2
+            exit 1
+          fi
+          if grep -RInE 'spring\.jpa|hibernate\.ddl-auto' src/main/resources src/test/resources; then
+            echo 'JPA configuration remains' >&2
+            exit 1
+          fi
+      - name: Compile and test
+        working-directory: backend/genealogy-backend
+        run: mvn -B -ntp clean test
