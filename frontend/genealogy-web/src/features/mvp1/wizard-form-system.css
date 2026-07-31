@@ -21,6 +21,14 @@
   border-radius: 8px;
 }
 
+.mvp1-wizard .panel:has(input[placeholder="例如：江夏堂黄氏宗族"]) .wizard-form-grid input:not(:disabled) {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  padding-block: 4px;
+  line-height: 22px;
+}
+
 .mvp1-wizard-page .wizard-fixed-actions .ant-btn, .mvp1-wizard-page .ant-modal-footer .ant-btn, .mvp1-wizard .actions .ant-btn {
   min-height: 32px;
 }
