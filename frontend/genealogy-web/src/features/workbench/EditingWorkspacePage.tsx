@@ -413,6 +413,13 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
       : emptyState.action === 'retry' ? <Button onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button> : null}
   </EmptyState>;
   const resultActions = <Space wrap>
+    <Button
+      loading={bulkLoading}
+      disabled={!selectedTasks.length || taskLoading}
+      onClick={() => setBulkModalOpen(true)}
+    >
+      批量标记已核查{selectedTasks.length ? `（${selectedTasks.length}）` : ''}
+    </Button>
     <Button type="primary" icon={<PlusOutlined />} disabled={!currentClanId || !onNavigate} onClick={startNewTask}>新建任务</Button>
     <Button icon={<ExportOutlined />} loading={exporting} disabled={!currentClanId || total === 0 || taskLoading} onClick={() => void exportTasks()}>导出任务</Button>
     <Button icon={<SettingOutlined />} onClick={() => setTemplateModalOpen(true)}>任务模板管理</Button>
@@ -444,7 +451,7 @@ export function EditingWorkspacePage({ onNavigate }: Props) {
     </Form>
 
     <QueryResultCard className="workbench-result-card" extra={resultActions} total={total}>
-      {selectedKeys.length ? <PageFeedback tone="info" title={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Space wrap><Button onClick={() => setSelectedKeys([])}>取消选择</Button><Button type="primary" loading={bulkLoading} onClick={() => setBulkModalOpen(true)}>批量标记已核查</Button></Space>} style={{ marginBottom: 16 }} /> : null}
+      {selectedKeys.length ? <PageFeedback tone="info" title={`已选择 ${selectedKeys.length} 项`} description="选择范围仅限当前页；批量操作完成后保留当前筛选和分页。" action={<Button onClick={() => setSelectedKeys([])}>取消选择</Button>} style={{ marginBottom: 16 }} /> : null}
       {bulkFailures.length ? <PageFeedback tone="warning" closable onClose={() => setBulkFailures([])} title={`上次批量处理有 ${bulkFailures.length} 项失败`} description={<Space direction="vertical" size={2}>{bulkFailures.map(item => <Typography.Text key={item.key}>{item.objectName}：{item.reason}</Typography.Text>)}</Space>} style={{ marginBottom: 16 }} /> : null}
       {taskError ? <PageFeedback tone="error" title="任务列表加载失败" description={taskError} action={<Button size="small" onClick={() => void loadWorkbench(currentClanId, taskPage.pageNo || 1, filters)}>重试</Button>} style={{ marginBottom: 16 }} /> : null}
       {screens.md ? <Table<WorkbenchTask>
