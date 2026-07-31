@@ -1,8 +1,26 @@
-.review-center-page {
-  margin-top: 0;
-  padding-top: 0;
+/*
+ * Keep the review-center query card aligned with the other standard query pages.
+ * The AppShell Content owns the common 18px header-to-page spacing; review-center
+ * wrappers must not add another block-start margin or padding on top of it.
+ */
+[data-genealogy-app] .business-page--reviewCenter,
+[data-genealogy-app] .business-page--reviewCenter > .standard-page,
+[data-genealogy-app] .business-page--reviewCenter .standard-page__content,
+[data-genealogy-app] .business-page--reviewCenter .review-center-page,
+[data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space-vertical,
+[data-genealogy-app] .business-page--reviewCenter .review-center-page > .ant-space-vertical > .ant-space-item:first-child {
+  margin-top: 0 !important;
+  margin-block-start: 0 !important;
+  padding-top: 0 !important;
+  padding-block-start: 0 !important;
 }
 
-.review-center-page > .ant-space-vertical {
-  margin-top: 0;
+[data-genealogy-app]
+  .business-page--reviewCenter
+  .review-center-page
+  > .ant-space-vertical
+  > .ant-space-item:first-child
+  > .standard-query-panel {
+  margin-top: 0 !important;
+  margin-block-start: 0 !important;
 }
