@@ -1,11 +1,15 @@
 import { MemberInvitationAction } from './MemberInvitationAction';
 import { MemberPage } from './MemberPage';
-import { StandardPageActions } from '../../shared/ui/StandardPagePatterns';
 
 export function MemberManagementPage() {
   return (
     <div className="member-management-page">
-      <StandardPageActions><MemberInvitationAction /></StandardPageActions>
+      <div
+        className="member-management-page__actions"
+        style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}
+      >
+        <MemberInvitationAction />
+      </div>
       <MemberPage />
     </div>
   );
