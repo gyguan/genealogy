@@ -158,6 +158,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
   const originalOnChange = element?.props.onChange;
   const portal = portalResolver?.({ label: props.label, child: element }) || null;
   const fieldClassName = ['field', 'antd-field', portal?.className].filter(Boolean).join(' ');
+  const formItemLabel = props.label === '图内定位' ? undefined : props.label;
   const syncedChild = element && context.form && name
     ? cloneElement(element, {
         onChange: (eventOrValue: any) => {
@@ -185,7 +186,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
     fieldNode = (
       <Form.Item
         className={fieldClassName}
-        label={props.label}
+        label={formItemLabel}
         extra={props.hint}
         colon={false}
       >
@@ -203,7 +204,7 @@ export function Field(props: { label: string; children: ReactNode; hint?: string
     fieldNode = (
       <Form.Item
         className={fieldClassName}
-        label={props.label}
+        label={formItemLabel}
         extra={props.hint}
         colon={false}
         name={context.form ? name : undefined}
