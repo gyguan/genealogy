@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ImportRecoveryArchitectureTest {
 
     private static final Path MAIN = Path.of("src/main/java/com/genealogy/imports");
+    private static final Path RESOURCES = Path.of("src/main/resources/mapper/imports");
 
     @Test
     void asyncSubmissionMustUsePersistentIdempotencyKey() throws IOException {
@@ -34,9 +35,9 @@ class ImportRecoveryArchitectureTest {
 
     @Test
     void workerMustUseDatabaseLeaseAndCheckpointIdempotency() throws IOException {
-        String repository = Files.readString(MAIN.resolve("repository/ImportJobRepository.java"));
+        String mapperXml = Files.readString(RESOURCES.resolve("ImportJobPersistenceMapper.xml"));
         String chunk = Files.readString(MAIN.resolve("application/PersonAsyncImportChunkService.java"));
-        assertThat(repository).contains("for update skip locked");
+        assertThat(mapperXml.toLowerCase()).contains("for update skip locked");
         assertThat(chunk)
                 .contains("findByJobIdAndStageAndChunkNo")
                 .contains("STATUS_COMPLETED")
