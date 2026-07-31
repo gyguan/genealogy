@@ -159,6 +159,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     await expect(page.getByText(fileName, { exact: true }).first()).toBeVisible();
 
     await page.getByRole('menuitem', { name: '世系图谱', exact: true }).click();
+    await page.getByRole('tab', { name: '支派全局图谱', exact: true }).click();
     const exportButton = page.getByRole('button', { name: /导出族谱/ });
     await expect(exportButton).toBeVisible();
     await exportButton.click();
