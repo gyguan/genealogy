@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.tree.repository.mybatis.TreeRelationshipQueryMapper">
+  <resultMap id="TreeRelationshipSnapshotMap" type="com.genealogy.tree.query.TreeRelationshipSnapshot">
+    <constructor>
+      <idArg column="id" javaType="java.lang.Long"/>
+      <arg column="clan_id" javaType="java.lang.Long"/>
+      <arg column="from_person_id" javaType="java.lang.Long"/>
+      <arg column="to_person_id" javaType="java.lang.Long"/>
+      <arg column="relation_type" javaType="java.lang.String"/>
+      <arg column="relation_label" javaType="java.lang.String"/>
+      <arg column="relation_category" javaType="java.lang.String"/>
+      <arg column="ritual_relation_type" javaType="java.lang.String"/>
+      <arg column="succession_reason" javaType="java.lang.String"/>
+      <arg column="successor_branch_id" javaType="java.lang.Long"/>
+      <arg column="is_lineage_relation" javaType="java.lang.Boolean"/>
+      <arg column="is_biological" javaType="java.lang.Boolean"/>
+      <arg column="is_primary" javaType="java.lang.Boolean"/>
+      <arg column="description" javaType="java.lang.String"/>
+      <arg column="confidence_level" javaType="java.lang.String"/>
+      <arg column="data_status" javaType="java.lang.String"/>
+      <arg column="created_by" javaType="java.lang.Long"/>
+    </constructor>
+  </resultMap>
+
+  <sql id="TreeRelationshipColumns">
+    id, clan_id, from_person_id, to_person_id,
+    relation_type, relation_label, relation_category,
+    ritual_relation_type, succession_reason, successor_branch_id,
+    is_lineage_relation, is_biological, is_primary,
+    description, confidence_level, data_status, created_by
+  </sql>
+
+  <sql id="CommonFilters">
+    clan_id=#{clanId}
+    and data_status in <foreach collection="statuses" item="status" open="(" close=")" separator=",">#{status}</foreach>
+    and deleted_at is null
+    and relation_category in <foreach collection="categories" item="category" open="(" close=")" separator=",">#{category}</foreach>
+  </sql>
+
+  <select id="selectOutgoing" resultMap="TreeRelationshipSnapshotMap">
+    select <include refid="TreeRelationshipColumns"/>
+    from relationship
+    where <include refid="CommonFilters"/>
+      and from_person_id in <foreach collection="personIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      and (#{lineageOnly}=false or relation_type='parent_child' or is_lineage_relation=true)
+    order by from_person_id, to_person_id, id
+  </select>
+
+  <select id="selectIncoming" resultMap="TreeRelationshipSnapshotMap">
+    select <include refid="TreeRelationshipColumns"/>
+    from relationship
+    where <include refid="CommonFilters"/>
+      and to_person_id in <foreach collection="personIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      and (#{lineageOnly}=false or relation_type='parent_child' or is_lineage_relation=true)
+    order by to_person_id, from_person_id, id
+  </select>
+
+  <select id="selectWithinPeople" resultMap="TreeRelationshipSnapshotMap">
+    select <include refid="TreeRelationshipColumns"/>
+    from relationship
+    where <include refid="CommonFilters"/>
+      and from_person_id in <foreach collection="fromPersonIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      and to_person_id in <foreach collection="toPersonIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    order by from_person_id, to_person_id, id
+    <if test="limit != null">limit #{limit}</if>
+  </select>
+</mapper>
