@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.auth.repository.mybatis.AppRolePermissionPersistenceMapper">
+    <update id="updateAllById">
+        update app_role_permission
+        set role_id = #{entity.roleId},
+            permission_id = #{entity.permissionId},
+            effect = #{entity.effect},
+            status = #{entity.status},
+            created_by = #{entity.createdBy},
+            created_at = #{entity.createdAt},
+            updated_by = #{entity.updatedBy},
+            updated_at = #{entity.updatedAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="findByRoleIdAndStatus"
+            resultType="com.genealogy.auth.entity.AppRolePermissionEntity">
+        select *
+        from app_role_permission
+        where role_id = #{roleId}
+          and status = #{status}
+        order by id asc
+    </select>
+
+    <select id="findByRoleIdsAndStatus"
+            resultType="com.genealogy.auth.entity.AppRolePermissionEntity">
+        select *
+        from app_role_permission
+        where role_id in
+        <foreach collection="roleIds" item="roleId"
+                 open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+          and status = #{status}
+        order by role_id asc, id asc
+    </select>
+
+    <select id="findMapping"
+            resultType="com.genealogy.auth.entity.AppRolePermissionEntity">
+        select *
+        from app_role_permission
+        where role_id = #{roleId}
+          and permission_id = #{permissionId}
+        <if test="effect != null">
+          and effect = #{effect}
+        </if>
+          and status = #{status}
+        order by id asc
+        limit 1
+    </select>
+</mapper>

@@ -1,18 +1,51 @@
 package com.genealogy.auth.repository;
 
 import com.genealogy.auth.entity.AuthInvitationEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import com.genealogy.auth.repository.mybatis.AuthInvitationPersistenceMapper;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
-public interface AuthInvitationRepository extends JpaRepository<AuthInvitationEntity, Long> {
-    Optional<AuthInvitationEntity> findByTokenHash(String tokenHash);
+@Repository
+@Transactional(readOnly = true)
+public class AuthInvitationRepository {
+    private final AuthInvitationPersistenceMapper mapper;
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select invitation from AuthInvitationEntity invitation where invitation.tokenHash = :tokenHash")
-    Optional<AuthInvitationEntity> findForUpdateByTokenHash(@Param("tokenHash") String tokenHash);
+    public AuthInvitationRepository(AuthInvitationPersistenceMapper mapper) {
+        this.mapper = mapper;
+    }
+
+    @Transactional
+    public AuthInvitationEntity save(AuthInvitationEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        if (entity.getId() == null) {
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(LocalDateTime.now());
+            }
+            mapper.insert(entity);
+        } else if (mapper.updateAllById(entity) != 1) {
+            throw new IllegalStateException(
+                    "Invitation update failed for id " + entity.getId()
+            );
+        }
+        return entity;
+    }
+
+    @Transactional
+    public AuthInvitationEntity saveAndFlush(AuthInvitationEntity entity) {
+        return save(entity);
+    }
+
+    public Optional<AuthInvitationEntity> findByTokenHash(String tokenHash) {
+        return Optional.ofNullable(mapper.findByTokenHash(tokenHash, false));
+    }
+
+    public Optional<AuthInvitationEntity> findForUpdateByTokenHash(
+            String tokenHash
+    ) {
+        return Optional.ofNullable(mapper.findByTokenHash(tokenHash, true));
+    }
 }

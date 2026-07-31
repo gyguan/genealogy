@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.auth.repository.mybatis.AppPermissionPersistenceMapper">
+    <update id="updateAllById">
+        update app_permission
+        set permission_code = #{entity.permissionCode},
+            permission_name = #{entity.permissionName},
+            module_code = #{entity.moduleCode},
+            module_name = #{entity.moduleName},
+            resource_code = #{entity.resourceCode},
+            action_code = #{entity.actionCode},
+            description = #{entity.description},
+            system_permission = #{entity.systemPermission},
+            status = #{entity.status},
+            created_by = #{entity.createdBy},
+            created_at = #{entity.createdAt},
+            updated_by = #{entity.updatedBy},
+            updated_at = #{entity.updatedAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="findByPermissionCode"
+            resultType="com.genealogy.auth.entity.AppPermissionEntity">
+        select *
+        from app_permission
+        where permission_code = #{permissionCode}
+        <if test="status != null">
+            and status = #{status}
+        </if>
+        order by id asc
+        limit 1
+    </select>
+
+    <select id="findByStatus"
+            resultType="com.genealogy.auth.entity.AppPermissionEntity">
+        select *
+        from app_permission
+        where status = #{status}
+        order by permission_code asc, id asc
+    </select>
+
+    <select id="findByModuleCodeAndStatus"
+            resultType="com.genealogy.auth.entity.AppPermissionEntity">
+        select *
+        from app_permission
+        where module_code = #{moduleCode}
+          and status = #{status}
+        order by permission_code asc, id asc
+    </select>
+
+    <select id="findByPermissionCodesAndStatus"
+            resultType="com.genealogy.auth.entity.AppPermissionEntity">
+        select *
+        from app_permission
+        where permission_code in
+        <foreach collection="permissionCodes" item="code"
+                 open="(" separator="," close=")">
+            #{code}
+        </foreach>
+          and status = #{status}
+        order by permission_code asc, id asc
+    </select>
+
+    <select id="existsByPermissionCodeAndStatus" resultType="boolean">
+        select exists(
+            select 1
+            from app_permission
+            where permission_code = #{permissionCode}
+              and status = #{status}
+        )
+    </select>
+
+    <select id="findAllByIds"
+            resultType="com.genealogy.auth.entity.AppPermissionEntity">
+        select *
+        from app_permission
+        where id in
+        <foreach collection="ids" item="id"
+                 open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by id asc
+    </select>
+</mapper>

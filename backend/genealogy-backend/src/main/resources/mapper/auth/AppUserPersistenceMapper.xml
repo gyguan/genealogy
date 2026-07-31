@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.auth.repository.mybatis.AppUserPersistenceMapper">
+    <sql id="activeCandidateFilter">
+        deleted_at is null
+        and status = 'active'
+        and (
+            lower(username) like lower(concat('%', #{keyword}, '%'))
+            or lower(display_name) like lower(concat('%', #{keyword}, '%'))
+        )
+    </sql>
+
+    <update id="updateAllById">
+        update app_user
+        set username = #{entity.username},
+            phone = #{entity.phone},
+            email = #{entity.email},
+            password_hash = #{entity.passwordHash},
+            display_name = #{entity.displayName},
+            avatar_url = #{entity.avatarUrl},
+            status = #{entity.status},
+            last_login_at = #{entity.lastLoginAt},
+            created_at = #{entity.createdAt},
+            updated_at = #{entity.updatedAt},
+            deleted_at = #{entity.deletedAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="findByUsername"
+            resultType="com.genealogy.auth.entity.AppUserEntity">
+        select *
+        from app_user
+        where username = #{username}
+        <if test="activeOnly">
+            and deleted_at is null
+        </if>
+        order by id asc
+        limit 1
+    </select>
+
+    <select id="existsUsername" resultType="boolean">
+        select exists(
+            select 1
+            from app_user
+            where username = #{username}
+            <if test="activeOnly">
+                and deleted_at is null
+            </if>
+        )
+    </select>
+
+    <select id="existsPhone" resultType="boolean">
+        select exists(
+            select 1
+            from app_user
+            where phone = #{phone}
+              and deleted_at is null
+        )
+    </select>
+
+    <select id="existsEmail" resultType="boolean">
+        select exists(
+            select 1
+            from app_user
+            where email = #{email}
+              and deleted_at is null
+        )
+    </select>
+
+    <select id="findRecoverableAccount"
+            resultType="com.genealogy.auth.entity.AppUserEntity">
+        select *
+        from app_user
+        where deleted_at is null
+          and (
+            lower(username) = lower(#{account})
+            or lower(coalesce(email, '')) = lower(#{account})
+            or coalesce(phone, '') = #{account}
+          )
+        order by id asc
+        limit 1
+    </select>
+
+    <select id="countActiveCandidates" resultType="long">
+        select count(*)
+        from app_user
+        where <include refid="activeCandidateFilter"/>
+    </select>
+
+    <select id="searchActiveCandidates"
+            resultType="com.genealogy.auth.entity.AppUserEntity">
+        select *
+        from app_user
+        where <include refid="activeCandidateFilter"/>
+        order by display_name asc, id asc
+        offset #{offset}
+        limit #{limit}
+    </select>
+
+    <select id="findAllByIds"
+            resultType="com.genealogy.auth.entity.AppUserEntity">
+        select *
+        from app_user
+        where id in
+        <foreach collection="ids" item="id"
+                 open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        order by id asc
+    </select>
+
+    <select id="findAll"
+            resultType="com.genealogy.auth.entity.AppUserEntity">
+        select *
+        from app_user
+        order by id asc
+    </select>
+</mapper>

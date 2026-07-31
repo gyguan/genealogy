@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.auth.repository.mybatis.AuthLoginAttemptPersistenceMapper">
+    <update id="updateAllById">
+        update app_login_attempt
+        set account_hash = #{entity.accountHash},
+            ip_hash = #{entity.ipHash},
+            user_id = #{entity.userId},
+            success = #{entity.success},
+            result_code = #{entity.resultCode},
+            created_at = #{entity.createdAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="countAccountFailures" resultType="long">
+        select count(*)
+        from app_login_attempt
+        where account_hash = #{accountHash}
+          and success = false
+          and created_at &gt; #{createdAt}
+    </select>
+
+    <select id="countIpFailures" resultType="long">
+        select count(*)
+        from app_login_attempt
+        where ip_hash = #{ipHash}
+          and success = false
+          and created_at &gt; #{createdAt}
+    </select>
+
+    <select id="findLatestAccountFailure"
+            resultType="com.genealogy.auth.entity.AuthLoginAttemptEntity">
+        select *
+        from app_login_attempt
+        where account_hash = #{accountHash}
+          and success = false
+        order by created_at desc, id desc
+        limit 1
+    </select>
+
+    <select id="findLatestIpFailure"
+            resultType="com.genealogy.auth.entity.AuthLoginAttemptEntity">
+        select *
+        from app_login_attempt
+        where ip_hash = #{ipHash}
+          and success = false
+        order by created_at desc, id desc
+        limit 1
+    </select>
+
+    <delete id="deleteAccountFailures">
+        delete from app_login_attempt
+        where account_hash = #{accountHash}
+          and success = false
+    </delete>
+</mapper>
