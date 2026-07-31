@@ -40,11 +40,7 @@ import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceAttachmentRepository;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
-import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -168,13 +164,11 @@ public class CultureSiteApplicationService {
         }
         int safePageNo = Math.max(1, pageNo);
         int safePageSize = Math.max(1, Math.min(pageSize, CultureSiteDomainService.MAX_PAGE_SIZE));
-        Sort.Direction direction = domainService.sortAscending(normalized.sort()) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Sort sort = Sort.by(direction, domainService.sortField(normalized.sort()))
-                .and(Sort.by(Sort.Direction.ASC, "sortOrder"))
-                .and(Sort.by(Sort.Direction.DESC, "id"));
-        Page<CultureSiteEntity> page = siteRepository.findAll(
-                buildSpecification(clanId, actorId, normalized, readScope, sensitiveScope),
-                PageRequest.of(safePageNo - 1, safePageSize, sort)
+        Page<CultureSiteEntity> page = siteRepository.search(
+                clanId, actorId, normalized,
+                readScope.fullClanAccess(), readScope.branchIds(),
+                sensitiveScope.fullClanAccess(), sensitiveScope.branchIds(),
+                safePageNo, safePageSize
         );
         List<CultureSiteEntity> rows = page.getContent();
         Aggregation aggregation = aggregate(clanId, rows);
@@ -332,55 +326,6 @@ if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actor
         return new Aggregation(sourceCounts, attachmentCounts, branchNames, personNames);
     }
 
-    private Specification<CultureSiteEntity> buildSpecification(
-            Long clanId,
-            Long actorId,
-            CultureSiteSearchCriteria criteria,
-            AccessScope readScope,
-            AccessScope sensitiveScope
-    ) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("clanId"), clanId));
-            predicates.add(cb.isNull(root.get("deletedAt")));
-            if (!readScope.fullClanAccess()) {
-                predicates.add(cb.or(cb.isNull(root.get("branchId")), root.get("branchId").in(readScope.branchIds())));
-            }
-            if (!sensitiveScope.fullClanAccess()) {
-                List<Predicate> visiblePrivacy = new ArrayList<>();
-                visiblePrivacy.add(cb.and(
-                        cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)),
-                        cb.notEqual(root.get("sensitiveLevel"), "sensitive"),
-                        cb.notEqual(root.get("sensitiveLevel"), "highly_sensitive")
-                ));
-                visiblePrivacy.add(cb.equal(root.get("createdBy"), actorId));
-                if (!sensitiveScope.branchIds().isEmpty()) visiblePrivacy.add(root.get("branchId").in(sensitiveScope.branchIds()));
-                predicates.add(cb.or(visiblePrivacy.toArray(Predicate[]::new)));
-            }
-            if (criteria.keyword() != null) {
-                String pattern = "%" + criteria.keyword().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(cb.coalesce(root.get("siteName"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.get("addressText"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.get("foundedPeriod"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.get("currentStatus"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.get("summary"), "")), pattern),
-                        cb.like(cb.lower(cb.coalesce(root.get("description"), "")), pattern)
-                ));
-            }
-            if (!criteria.siteTypes().isEmpty()) predicates.add(root.get("siteType").in(criteria.siteTypes()));
-            if (!criteria.branchIds().isEmpty()) predicates.add(root.get("branchId").in(criteria.branchIds()));
-            if (criteria.relatedPersonId() != null) predicates.add(cb.equal(root.get("relatedPersonId"), criteria.relatedPersonId()));
-            if (!criteria.dataStatuses().isEmpty()) predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
-            if (criteria.privacyLevel() != null) predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
-            if (criteria.featuredOnHome() != null) predicates.add(cb.equal(root.get("featuredOnHome"), criteria.featuredOnHome()));
-            addContains(predicates, root.get("addressText"), criteria.addressText(), cb);
-            addContains(predicates, root.get("foundedPeriod"), criteria.foundedPeriod(), cb);
-            addContains(predicates, root.get("currentStatus"), criteria.currentStatus(), cb);
-            return cb.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
     private CultureSiteEntity requireVisible(Long siteId, Long actorId) {
         CultureSiteEntity site = siteRepository.findByIdAndDeletedAtIsNull(siteId).orElseThrow(this::notFound);
         permissionPolicyService.requireVisible(site, actorId);
@@ -468,10 +413,6 @@ if (!permissionPolicyService.canUpdate(site.getClanId(), input.branchId(), actor
         Map<Long, Integer> result = new LinkedHashMap<>();
         counts.forEach(item -> result.put(item.getTargetId(), Math.toIntExact(item.getCount())));
         return result;
-    }
-
-    private void addContains(List<Predicate> predicates, jakarta.persistence.criteria.Path<String> path, String value, jakarta.persistence.criteria.CriteriaBuilder cb) {
-        if (value != null) predicates.add(cb.like(cb.lower(cb.coalesce(path, "")), "%" + value.toLowerCase(Locale.ROOT) + "%"));
     }
 
     private void record(CultureSiteEntity site, Long actorId, String action, String summary, String detail, String requestId, String clientIp) {

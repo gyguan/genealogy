@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.culture.repository.mybatis.MigrationEventQueryMapper">
+ <sql id="Where">where e.clan_id=#{criteria.clanId} and e.deleted_at is null
+  and e.branch_id in <foreach collection="criteria.readableBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+  <if test="criteria.branchIds != null and !criteria.branchIds.isEmpty()">and e.branch_id in <foreach collection="criteria.branchIds" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.founderPersonId != null">and e.founder_person_id=#{criteria.founderPersonId}</if>
+  <if test="criteria.dataStatuses != null and !criteria.dataStatuses.isEmpty()">and e.data_status in <foreach collection="criteria.dataStatuses" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.privacyLevel != null">and e.privacy_level=#{criteria.privacyLevel}</if>
+  <if test="criteria.fromLocation != null">and lower(coalesce(e.from_location,'')) like concat('%',lower(#{criteria.fromLocation}),'%')</if>
+  <if test="criteria.toLocation != null">and lower(coalesce(e.to_location,'')) like concat('%',lower(#{criteria.toLocation}),'%')</if>
+  <if test="criteria.migrationTimeText != null">and lower(coalesce(e.migration_time_text,'')) like concat('%',lower(#{criteria.migrationTimeText}),'%')</if>
+  <if test="criteria.keyword != null">and (lower(coalesce(e.from_location,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(e.to_location,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(e.migration_time_text,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(e.reason,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(e.description,'')) like concat('%',lower(#{criteria.keyword}),'%'))</if>
+  and ((e.privacy_level not in ('relatives_only','private','sealed') and e.sensitive_level not in ('sensitive','highly_sensitive')) or e.created_by=#{criteria.actorId}<if test="criteria.sensitiveBranchIds != null and !criteria.sensitiveBranchIds.isEmpty()"> or e.branch_id in <foreach collection="criteria.sensitiveBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach></if>)
+ </sql>
+ <sql id="Order"><choose>
+  <when test="criteria.sortKey == 'sequenceNo,desc'">order by e.sequence_no desc,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'migrationTimeText,asc'">order by e.migration_time_text asc nulls last,e.branch_id asc,e.sequence_no asc,e.id asc</when><when test="criteria.sortKey == 'migrationTimeText,desc'">order by e.migration_time_text desc nulls last,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'fromLocation,asc'">order by lower(e.from_location) asc,e.branch_id asc,e.sequence_no asc,e.id asc</when><when test="criteria.sortKey == 'fromLocation,desc'">order by lower(e.from_location) desc,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'toLocation,asc'">order by lower(e.to_location) asc,e.branch_id asc,e.sequence_no asc,e.id asc</when><when test="criteria.sortKey == 'toLocation,desc'">order by lower(e.to_location) desc,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'createdAt,asc'">order by e.created_at asc,e.branch_id asc,e.sequence_no asc,e.id asc</when><when test="criteria.sortKey == 'createdAt,desc'">order by e.created_at desc,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'updatedAt,asc'">order by e.updated_at asc,e.branch_id asc,e.sequence_no asc,e.id asc</when><when test="criteria.sortKey == 'updatedAt,desc'">order by e.updated_at desc,e.branch_id asc,e.sequence_no asc,e.id asc</when>
+  <when test="criteria.sortKey == 'id,desc'">order by e.id desc,e.branch_id asc,e.sequence_no asc</when><when test="criteria.sortKey == 'id,asc'">order by e.id asc,e.branch_id asc,e.sequence_no asc</when>
+  <otherwise>order by e.sequence_no asc,e.branch_id asc,e.sequence_no asc,e.id asc</otherwise>
+ </choose></sql>
+ <select id="search" resultType="com.genealogy.culture.entity.MigrationEventEntity">select e.* from migration_event e <include refid="Where"/><include refid="Order"/> limit #{limit} offset #{offset}</select>
+ <select id="count" resultType="long">select count(*) from migration_event e <include refid="Where"/></select>
+ <select id="existsSequence" resultType="boolean">select exists(select 1 from migration_event where clan_id=#{clanId} and branch_id=#{branchId} and sequence_no=#{sequenceNo} and deleted_at is null <if test="excludedId != null">and id&lt;&gt;#{excludedId}</if>)</select>
+</mapper>
