@@ -117,8 +117,7 @@ class RestartRecoveryPostgreSqlIT {
                         "spring.datasource.password", POSTGRES.getPassword(),
                         "spring.datasource.driver-class-name", POSTGRES.getDriverClassName(),
                         "spring.flyway.enabled", "true",
-                        "spring.jpa.hibernate.ddl-auto", "validate",
-                        "spring.task.scheduling.enabled", "false",
+                                                "spring.task.scheduling.enabled", "false",
                         "spring.main.banner-mode", "off"
                 ))
                 .run();

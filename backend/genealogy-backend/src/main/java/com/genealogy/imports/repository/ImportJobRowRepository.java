@@ -1,76 +1,14 @@
 package com.genealogy.imports.repository;
-
-import com.genealogy.imports.entity.ImportJobRowEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-
-public interface ImportJobRowRepository extends JpaRepository<ImportJobRowEntity, Long> {
-
-    Page<ImportJobRowEntity> findByJobIdOrderByRowNoAsc(Long jobId, Pageable pageable);
-
-    Page<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long jobId, String rowStatus, Pageable pageable);
-
-    Page<ImportJobRowEntity> findByJobIdAndRowStatusInOrderByRowNoAsc(
-            Long jobId,
-            Collection<String> rowStatuses,
-            Pageable pageable
-    );
-
-    List<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long jobId, String rowStatus);
-
-    List<ImportJobRowEntity> findByJobIdAndRowStatusInOrderByRowNoAsc(
-            Long jobId,
-            Collection<String> rowStatuses
-    );
-
-    List<ImportJobRowEntity> findByJobIdAndRowNoInOrderByRowNoAsc(
-            Long jobId,
-            Collection<Integer> rowNos
-    );
-
-    List<ImportJobRowEntity> findByJobIdAndRowStatusAndPublishedAtIsNullOrderByRowNoAsc(
-            Long jobId,
-            String rowStatus,
-            Pageable pageable
-    );
-
-    Optional<ImportJobRowEntity> findByIdAndJobId(Long id, Long jobId);
-
-    Optional<ImportJobRowEntity> findByJobIdAndRowNo(Long jobId, Integer rowNo);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select row from ImportJobRowEntity row where row.jobId = :jobId and row.rowNo = :rowNo")
-    Optional<ImportJobRowEntity> findByJobIdAndRowNoForUpdate(
-            @Param("jobId") Long jobId,
-            @Param("rowNo") Integer rowNo
-    );
-
-    @Query("""
-            select row.jobId, count(row.id)
-            from ImportJobRowEntity row
-            where row.jobId in :jobIds
-              and row.rowStatus = :rowStatus
-            group by row.jobId
-            """)
-    List<Object[]> countByJobIdsAndRowStatus(
-            @Param("jobIds") Collection<Long> jobIds,
-            @Param("rowStatus") String rowStatus
-    );
-
-    long countByJobId(Long jobId);
-
-    long countByJobIdAndRowStatus(Long jobId, String rowStatus);
-
-    long countByJobIdAndRowStatusIn(Long jobId, Collection<String> rowStatuses);
-
-    long countByJobIdAndRowStatusAndPublishedAtIsNull(Long jobId, String rowStatus);
+import com.genealogy.common.persistence.PageResult; import com.genealogy.imports.entity.ImportJobRowEntity; import com.genealogy.imports.repository.mybatis.ImportJobRowPersistenceMapper; import com.genealogy.imports.repository.query.ImportJobRowCount;
+import org.springframework.dao.OptimisticLockingFailureException; import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.util.*;
+@Repository @Transactional(readOnly=true) public class ImportJobRowRepository { private final ImportJobRowPersistenceMapper mapper; public ImportJobRowRepository(ImportJobRowPersistenceMapper mapper){this.mapper=mapper;}
+ @Transactional public ImportJobRowEntity save(ImportJobRowEntity e){Objects.requireNonNull(e); if(e.getId()==null){if(e.getVersion()==null)e.setVersion(0L); mapper.insert(e);} else {long v=e.getVersion()==null?0:e.getVersion(); if(mapper.updateWithVersion(e)!=1) throw new OptimisticLockingFailureException("Import row version conflict"); e.setVersion(v+1);} return e;} @Transactional public ImportJobRowEntity saveAndFlush(ImportJobRowEntity e){return save(e);}
+ @Transactional public List<ImportJobRowEntity> saveAll(Collection<ImportJobRowEntity> es){return es==null?List.of():es.stream().map(this::save).toList();} public void flush(){}
+ public Optional<ImportJobRowEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public Optional<ImportJobRowEntity> findByIdAndJobId(Long id,Long j){return Optional.ofNullable(mapper.findByIdAndJobId(id,j));} public Optional<ImportJobRowEntity> findByJobIdAndRowNo(Long j,Integer r){return Optional.ofNullable(mapper.findByJobIdAndRowNo(j,r));} public Optional<ImportJobRowEntity> findByJobIdAndRowNoForUpdate(Long j,Integer r){return Optional.ofNullable(mapper.findByJobIdAndRowNoForUpdate(j,r));}
+ public PageResult<ImportJobRowEntity> page(Long j,Collection<String>s,boolean p,int page,int size){return new PageResult<>(mapper.page(j,s,p,(long)Math.max(page,0)*size,size),mapper.count(j,s,p));}
+ public List<ImportJobRowEntity> findByJobIdAndRowStatusOrderByRowNoAsc(Long j,String s){return mapper.findByJobAndStatuses(j,List.of(s));} public List<ImportJobRowEntity> findByJobIdAndRowStatusInOrderByRowNoAsc(Long j,Collection<String>s){return mapper.findByJobAndStatuses(j,s);}
+ public List<ImportJobRowEntity> findByJobIdAndRowNoInOrderByRowNoAsc(Long j,Collection<Integer>r){return r==null||r.isEmpty()?List.of():mapper.findByRowNos(j,r);}
+ public List<ImportJobRowEntity> findByJobIdAndRowStatusAndPublishedAtIsNullOrderByRowNoAsc(Long j,String s,int limit){return mapper.page(j,List.of(s),true,0,limit);}
+ public List<ImportJobRowCount> countByJobIdsAndRowStatus(Collection<Long> j,String s){return j==null||j.isEmpty()?List.of():mapper.countByJobIdsAndStatus(j,s);}
+ public long countByJobId(Long j){return mapper.count(j,null,false);} public long countByJobIdAndRowStatus(Long j,String s){return mapper.count(j,List.of(s),false);} public long countByJobIdAndRowStatusIn(Long j,Collection<String>s){return mapper.count(j,s,false);} public long countByJobIdAndRowStatusAndPublishedAtIsNull(Long j,String s){return mapper.count(j,List.of(s),true);}
 }

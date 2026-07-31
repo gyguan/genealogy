@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.imports.repository.mybatis.ImportJobPayloadPersistenceMapper">
+  <resultMap id="entityMap" type="com.genealogy.imports.entity.ImportJobPayloadEntity">
+    <id column="job_id" property="jobId"/>
+    <result column="original_filename" property="originalFilename"/>
+    <result column="content_type" property="contentType"/>
+    <result column="confirm_duplicates" property="confirmDuplicates"/>
+    <result column="created_at" property="createdAt"/>
+  </resultMap>
+  <sql id="columns">job_id, original_filename, content_type, confirm_duplicates, created_at</sql>
+  <update id="updateAllById">UPDATE import_job_payload SET original_filename = #{originalFilename},
+      content_type = #{contentType},
+      confirm_duplicates = #{confirmDuplicates},
+      created_at = #{createdAt} WHERE job_id=#{jobId}</update>
+</mapper>

@@ -2,6 +2,7 @@ package com.genealogy.imports.application;
 
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.common.exception.BusinessException;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.PersonImportRowRetryRequest;
@@ -14,9 +15,6 @@ import com.genealogy.imports.repository.ImportJobRowRepository;
 import com.genealogy.operationlog.application.OperationLogApplicationService;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,26 +75,21 @@ public class ImportJobRowApplicationService {
             Long actorId
     ) {
         ImportJobEntity job = requireJob(clanId, jobId, actorId);
-        PageRequest pageRequest = PageRequest.of(
-                Math.max(0, pageNo - 1),
-                pageSize,
-                Sort.by(Sort.Direction.ASC, "rowNo")
-        );
-        Page<ImportJobRowEntity> page;
+        PageResult<ImportJobRowEntity> page;
         String normalizedStatus = normalize(status);
         if (normalizedStatus == null || "failed".equals(normalizedStatus)) {
-            page = importJobRowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(job.getId(), FAILED_STATUSES, pageRequest);
+            page = importJobRowRepository.page(job.getId(), FAILED_STATUSES, false, Math.max(0, pageNo - 1), pageSize);
         } else if ("all".equals(normalizedStatus)) {
-            page = importJobRowRepository.findByJobIdOrderByRowNoAsc(job.getId(), pageRequest);
+            page = importJobRowRepository.page(job.getId(), null, false, Math.max(0, pageNo - 1), pageSize);
         } else {
             if (!QUERYABLE_STATUSES.contains(normalizedStatus)) {
                 throw new BusinessException("IMPORT_ROW_STATUS_INVALID", "导入行状态不合法");
             }
-            page = importJobRowRepository.findByJobIdAndRowStatusOrderByRowNoAsc(job.getId(), normalizedStatus, pageRequest);
+            page = importJobRowRepository.page(job.getId(), List.of(normalizedStatus), false, Math.max(0, pageNo - 1), pageSize);
         }
         return PageResponse.of(
-                page.getContent().stream().map(this::toResponse).toList(),
-                page.getTotalElements(),
+                page.records().stream().map(this::toResponse).toList(),
+                page.total(),
                 pageNo,
                 pageSize
         );

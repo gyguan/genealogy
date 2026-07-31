@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.ImportRowBulkExcludeRequest;
 import com.genealogy.imports.dto.ImportRowBulkItemResult;
@@ -25,8 +26,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -126,18 +125,14 @@ public class ImportRowBulkApplicationService {
             writeCells(sheet.createRow(0), EXPORT_HEADERS);
             int outputRow = 1;
             int pageNo = 0;
-            Page<ImportJobRowEntity> page;
+            PageResult<ImportJobRowEntity> page;
             do {
-                page = importJobRowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(
-                        jobId,
-                        FAILED_STATUSES,
-                        PageRequest.of(pageNo, 500)
-                );
-                for (ImportJobRowEntity row : page.getContent()) {
+                page = importJobRowRepository.page(jobId, FAILED_STATUSES, false, pageNo, 500);
+                for (ImportJobRowEntity row : page.records()) {
                     writeExportRow(sheet.createRow(outputRow++), row);
                 }
                 pageNo++;
-            } while (page.hasNext());
+            } while (((long) (pageNo + 1) * 500 < page.total()));
             workbook.write(output);
             workbook.dispose();
             operationLogApplicationService.record(
@@ -224,18 +219,16 @@ public class ImportRowBulkApplicationService {
     private SelectionSnapshot resolveSelection(Long jobId, ImportRowBulkSelectionRequest selection) {
         String mode = normalizeMode(selection.mode());
         if (MODE_FILTERED.equals(mode)) {
-            Page<ImportJobRowEntity> page = importJobRowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(
-                    jobId,
-                    FAILED_STATUSES,
-                    PageRequest.of(0, MAX_BULK_ROWS + 1)
+            PageResult<ImportJobRowEntity> page = importJobRowRepository.page(
+                    jobId, FAILED_STATUSES, false, 0, MAX_BULK_ROWS + 1
             );
-            if (page.getTotalElements() > MAX_BULK_ROWS) {
+            if (page.total() > MAX_BULK_ROWS) {
                 throw new BusinessException(
                         "IMPORT_BULK_SELECTION_TOO_LARGE",
                         "当前失败行超过 " + MAX_BULK_ROWS + " 条，请先缩小范围或分批处理"
                 );
             }
-            List<ImportRowVersionReference> rows = page.getContent().stream()
+            List<ImportRowVersionReference> rows = page.records().stream()
                     .map(row -> new ImportRowVersionReference(row.getRowNo(), value(row.getVersion())))
                     .toList();
             if (rows.isEmpty()) {

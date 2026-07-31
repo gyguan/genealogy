@@ -14,6 +14,7 @@ import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.entity.ImportJobRowEntity;
 import com.genealogy.imports.repository.ImportJobRepository;
 import com.genealogy.imports.repository.ImportJobRowRepository;
+import com.genealogy.imports.repository.query.ImportJobRowCount;
 import com.genealogy.person.entity.PersonEntity;
 import com.genealogy.person.repository.PersonRepository;
 import com.genealogy.relationship.entity.RelationshipEntity;
@@ -404,13 +405,11 @@ public class ReviewTaskQueryApplicationService {
             return Map.of();
         }
         Map<Long, Integer> result = new HashMap<>();
-        for (Object[] row : importJobRowRepository.countByJobIdsAndRowStatus(
+        for (ImportJobRowCount row : importJobRowRepository.countByJobIdsAndRowStatus(
                 jobIds,
                 ImportJobRowEntity.STATUS_EXCLUDED
         )) {
-            if (row.length >= 2 && row[0] instanceof Number jobId && row[1] instanceof Number count) {
-                result.put(jobId.longValue(), safeInt(count.longValue()));
-            }
+            result.put(row.jobId(), safeInt(row.count()));
         }
         return result;
     }

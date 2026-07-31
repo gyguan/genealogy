@@ -10,15 +10,11 @@ import com.genealogy.imports.dto.ImportRowErrorResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
 import com.genealogy.imports.repository.ImportJobErrorRepository;
 import com.genealogy.imports.repository.ImportJobRepository;
-import jakarta.persistence.criteria.Predicate;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import com.genealogy.imports.repository.query.ImportJobQueryCriteria;
+import com.genealogy.common.persistence.PageResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -67,16 +63,14 @@ public class ImportJobApplicationService {
     ) {
         authorizationApplicationService.requireBranchWriteScope(clanId, actorId, branchId);
         ImportJobDescriptor filter = parseFilter(importType, fileFormat);
-        Specification<ImportJobEntity> specification = jobSpecification(clanId, branchId, status, filter);
-        PageRequest pageRequest = PageRequest.of(
+        PageResult<ImportJobEntity> page = importJobRepository.search(
+                new ImportJobQueryCriteria(clanId, branchId, normalize(status), filter.importType(), filter.fileFormat()),
                 Math.max(0, pageNo - 1),
-                pageSize,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
+                pageSize
         );
-        Page<ImportJobEntity> page = importJobRepository.findAll(specification, pageRequest);
         return PageResponse.of(
-                page.getContent().stream().map(this::toSummary).toList(),
-                page.getTotalElements(),
+                page.records().stream().map(this::toSummary).toList(),
+                page.total(),
                 pageNo,
                 pageSize
         );
@@ -113,41 +107,6 @@ public class ImportJobApplicationService {
                 job.getReviewRound(),
                 job.getLatestReviewTaskId()
         );
-    }
-
-    private Specification<ImportJobEntity> jobSpecification(
-            Long clanId,
-            Long branchId,
-            String status,
-            ImportJobDescriptor filter
-    ) {
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            if (branchId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("branchId"), branchId));
-            }
-            if (!isBlank(status)) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), status.trim().toLowerCase()));
-            }
-            if (filter.hasImportType()) {
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.equal(root.get("importType"), filter.importType()),
-                        criteriaBuilder.equal(root.get("importType"), filter.importType() + "_csv"),
-                        criteriaBuilder.equal(root.get("importType"), filter.importType() + "_xlsx")
-                ));
-            }
-            if (filter.hasFileFormat()) {
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.equal(root.get("fileFormat"), filter.fileFormat()),
-                        criteriaBuilder.and(
-                                criteriaBuilder.isNull(root.get("fileFormat")),
-                                criteriaBuilder.like(root.<String>get("importType"), "%_" + filter.fileFormat())
-                        )
-                ));
-            }
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
     }
 
     private ImportJobSummaryResponse toSummary(ImportJobEntity job) {
@@ -192,6 +151,10 @@ public class ImportJobApplicationService {
         } catch (IllegalArgumentException exception) {
             throw new BusinessException("IMPORT_FILE_FORMAT_INVALID", "文件格式必须是 csv 或 xlsx");
         }
+    }
+
+    private String normalize(String value) {
+        return isBlank(value) ? null : value.trim().toLowerCase();
     }
 
     private boolean isBlank(String value) {

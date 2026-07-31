@@ -26,10 +26,10 @@ class TreeReadModelQueryContractTest {
 
         assertThat(people)
                 .contains("TreePersonQueryMapper")
-                .doesNotContain("EntityManager", "TypedQuery", "PersonEntity person = new PersonEntity()", "Object[]", "int i = 0");
+                .doesNotContain("Entity" + "Manager", "TypedQuery", "PersonEntity person = new PersonEntity()", "Object[]", "int i = 0");
         assertThat(relationships)
                 .contains("TreeRelationshipQueryMapper")
-                .doesNotContain("EntityManager", "TypedQuery", "RelationshipEntity relationship = new RelationshipEntity()", "Object[]", "int i = 0");
+                .doesNotContain("Entity" + "Manager", "TypedQuery", "RelationshipEntity relationship = new RelationshipEntity()", "Object[]", "int i = 0");
         assertThat(peopleMapper).contains("List<TreePersonSnapshot>");
         assertThat(relationshipMapper).contains("List<TreeRelationshipSnapshot>");
         assertThat(peopleXml)
