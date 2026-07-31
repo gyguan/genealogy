@@ -4,8 +4,7 @@ on:
   pull_request:
     branches: ["main"]
     paths:
-      - ".agent/issue-1037-patch.b64"
-      - ".agent/issue-1037-patch-parent"
+      - ".agent/issue-1037-patch-ready"
       - ".github/workflows/agent-issue-1037-restricted-patch.yml"
 
 concurrency:
@@ -27,31 +26,37 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: agent/issue-1037-remove-jpa-final-migration
-          fetch-depth: 10
+          fetch-depth: 20
 
       - name: Verify and apply restricted patch
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! -f .agent/issue-1037-patch.b64 || ! -f .agent/issue-1037-patch-parent ]]; then
-            echo "No pending Issue #1037 patch."
-            exit 0
-          fi
+          required=(.agent/issue-1037-patch-parent .agent/issue-1037-patch-message .agent/issue-1037-patch-ready)
+          for file in "${required[@]}"; do
+            test -f "$file"
+          done
+          shopt -s nullglob
+          parts=(.agent/issue-1037-patch.part-*)
+          test "${#parts[@]}" -gt 0
           expected_parent="$(tr -d '[:space:]' < .agent/issue-1037-patch-parent)"
           git merge-base --is-ancestor "$expected_parent" HEAD
           mapfile -t changed < <(git diff --name-only "$expected_parent"..HEAD | sort)
-          expected_files=(.agent/issue-1037-patch-parent .agent/issue-1037-patch.b64)
-          if [[ "${changed[*]}" != "${expected_files[*]}" ]]; then
-            echo "Patch trigger range contains unexpected files: ${changed[*]}" >&2
-            exit 1
-          fi
-          base64 --decode .agent/issue-1037-patch.b64 > /tmp/issue-1037.patch
+          for path in "${changed[@]}"; do
+            case "$path" in
+              .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch.part-*) ;;
+              *) echo "Patch trigger range contains unexpected file: $path" >&2; exit 1 ;;
+            esac
+          done
+          cat "${parts[@]}" > /tmp/issue-1037.patch.b64
+          base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch
           git apply --check /tmp/issue-1037.patch
           git apply --index /tmp/issue-1037.patch
-          git rm .agent/issue-1037-patch.b64 .agent/issue-1037-patch-parent
+          commit_message="$(cat .agent/issue-1037-patch-message)"
+          git rm .agent/issue-1037-patch-parent .agent/issue-1037-patch-message .agent/issue-1037-patch-ready "${parts[@]}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "refactor(persistence): migrate culture repositories to MyBatis"
+          git commit -m "$commit_message"
           git push origin HEAD:agent/issue-1037-remove-jpa-final-migration
 
       - name: Dispatch verification for the new head
