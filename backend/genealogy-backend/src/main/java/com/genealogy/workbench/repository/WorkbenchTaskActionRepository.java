@@ -29,6 +29,11 @@ public class WorkbenchTaskActionRepository {
         return entity;
     }
 
+    @Transactional
+    public WorkbenchTaskActionEntity saveAndFlush(WorkbenchTaskActionEntity entity) {
+        return save(entity);
+    }
+
     public Optional<WorkbenchTaskActionEntity> findById(Long id) {
         return Optional.ofNullable(id == null ? null : mapper.selectById(id));
     }
