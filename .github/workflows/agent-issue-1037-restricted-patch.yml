@@ -41,25 +41,42 @@ jobs:
           parts=(.agent/issue-1037-patch.part-*)
           test "${#parts[@]}" -gt 0 || { echo "No patch parts found" >&2; exit 1; }
 
+          is_transport_path() {
+            case "$1" in
+              .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch.part-*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
           echo "Stage: parent commit and allowed range"
           expected_parent="$(tr -d '[:space:]' < .agent/issue-1037-patch-parent)"
-          first_transport_commit="$(git log --reverse --format=%H -- .agent/issue-1037-patch-parent | head -n 1)"
-          test -n "$first_transport_commit" || { echo "Cannot locate first transport commit" >&2; exit 1; }
-          actual_parent="$(git rev-parse "${first_transport_commit}^")"
+          cursor="$(git rev-parse HEAD)"
+          while true; do
+            mapfile -t commit_paths < <(git diff-tree --no-commit-id --name-only -r "$cursor" | sort)
+            transport_only=true
+            for path in "${commit_paths[@]}"; do
+              if ! is_transport_path "$path"; then
+                transport_only=false
+                break
+              fi
+            done
+            if [[ "$transport_only" == false ]]; then
+              actual_parent="$cursor"
+              break
+            fi
+            cursor="$(git rev-parse "${cursor}^")"
+          done
           echo "Declared parent: $expected_parent"
           echo "Derived parent:  $actual_parent"
           echo "Current head:    $(git rev-parse HEAD)"
           test "$actual_parent" = "$expected_parent" || {
-            echo "Declared parent does not match the parent of the first transport commit" >&2
+            echo "Declared parent does not match the first non-transport commit" >&2
             exit 1
           }
           mapfile -t changed < <(git diff --name-only "$actual_parent"..HEAD | sort)
           printf 'Changed transport range:\n%s\n' "${changed[*]}"
           for path in "${changed[@]}"; do
-            case "$path" in
-              .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch.part-*) ;;
-              *) echo "Patch trigger range contains unexpected file: $path" >&2; exit 1 ;;
-            esac
+            is_transport_path "$path" || { echo "Patch trigger range contains unexpected file: $path" >&2; exit 1; }
           done
 
           echo "Stage: part validation"
