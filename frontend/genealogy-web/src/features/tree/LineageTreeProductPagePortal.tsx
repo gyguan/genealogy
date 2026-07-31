@@ -21,6 +21,19 @@ function activeMode(root: HTMLElement): LineageMode {
   return activeTab?.textContent?.includes('支派全局') ? 'branch' : 'person';
 }
 
+function syncActiveAdvancedField(root: HTMLElement, expanded: boolean) {
+  const activeGrid = root.querySelector<HTMLElement>(
+    '.lineage-query-tabs .ant-tabs-tabpane-active .standard-query-grid'
+  );
+  const advancedField = activeGrid?.querySelector<HTMLElement>(
+    ':scope > .standard-query-field:nth-child(5)'
+  );
+  if (!advancedField) return;
+  advancedField.hidden = !expanded;
+  advancedField.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+  advancedField.dataset.lineageAdvancedField = 'true';
+}
+
 export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeProductPageBase>) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
@@ -42,6 +55,7 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
       setToolbarTarget(previous => previous === nextToolbarTarget ? previous : nextToolbarTarget);
       setQueryActionTarget(previous => previous === nextQueryActionTarget ? previous : nextQueryActionTarget);
       setMode(previous => previous === nextMode ? previous : nextMode);
+      syncActiveAdvancedField(root, advancedExpanded[nextMode]);
     };
 
     syncTargets();
@@ -50,7 +64,13 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
     const observer = new MutationObserver(syncTargets);
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
-  }, []);
+  }, [advancedExpanded]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    syncActiveAdvancedField(root, advancedExpanded[mode]);
+  }, [advancedExpanded, mode]);
 
   const resolveFieldPortal = useCallback<FieldPortalResolver>(({ child }) => {
     const kind = LINEAGE_TOOLBAR_FIELD_KIND[String(child?.props['aria-label'] || '')];
