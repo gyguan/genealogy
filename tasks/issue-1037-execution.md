@@ -12,9 +12,9 @@
 | 1 | 核对依赖、主干、分支和 Draft PR | ✅ 已完成 | 基于 #1036 合并后的最新 `main` 建立分支 |
 | 2 | 生成全仓 JPA/Entity/Repository/测试清单 | ✅ 已完成 | 零 JPA 门禁已生成生产、测试、依赖与配置的完整违规清单 |
 | 3 | 迁移 Import/Export 与异步批处理 | ⏳ 待开始 | 明确批次大小、事务、去重、租约和流式读取 |
-| 4 | 迁移剩余 Auth/Culture/OperationLog/Attachment 等仓储 | 🔄 进行中 | WorkbenchTaskAction 与 PersonEvent 已切换为 MyBatis Repository Adapter；下一批处理 Culture、Auth、OperationLog |
+| 4 | 迁移剩余 Auth/Culture/OperationLog/Attachment 等仓储 | 🔄 进行中 | WorkbenchTaskAction、PersonEvent 与 Culture 已切换为 MyBatis Repository Adapter；下一批处理 Auth、OperationLog |
 | 5 | 删除 JPA/Hibernate 依赖与配置 | ⏳ 待开始 | pom、spring.jpa、生产/测试引用归零 |
-| 6 | 零 JPA 静态门禁与 PostgreSQL 行为测试 | 🔄 进行中 | `ZeroJpaUsageTest` 已生效；当前失败项即剩余迁移清单 |
+| 6 | 零 JPA 静态门禁与 PostgreSQL 行为测试 | 🔄 进行中 | `ZeroJpaUsageTest` 已生效；Culture 迁移进入标准 PR CI 验证 |
 | 7 | 文档、Review 与 PR 收口 | ⏳ 待开始 | 最终迁移清单、架构、README、AGENTS 与 CI 证据 |
 
 ## 固定边界
@@ -27,8 +27,7 @@
 
 ## 恢复检查点
 
-- 当前 Head：`291d1c207cc4ec68c4eb517c0a4ecb578dc8b662` 之后继续推进。
-- 精确 Head 源码归档已通过受限只读 CI Job 下载并建立本地工作区。
-- 首轮 Backend CI 结果：Security 通过；Backend、Member Scope、Functional E2E 因零 JPA 门禁/应用启动失败而失败。
-- 零 JPA 门禁确认的主体剩余范围：Culture、Import/Export、Auth、OperationLog 及其测试和 JPA 配置/依赖。
-- 下一步最小任务：优先完成 Culture 的 Entity、动态查询和 Repository Adapter，再迁移 Auth 与 OperationLog，最后集中处理 Import/Export 批处理及删除全局 JPA 依赖。
+- Culture 业务迁移 Head：`82d3c8282663343db7ee77d14aee9b31c9a7ec75`。
+- Culture 已完成 4 个实体映射、4 个 Repository Adapter、7 个 Mapper 接口、强类型查询行模型、Mapper XML、显式乐观锁与动态权限分页改造。
+- Culture 补丁已通过父提交、允许文件范围、逐分片 Base64、整体 SHA-256 和 `git apply --check` 校验；传输文件与临时分支已清理。
+- 下一步：处理 Culture 标准 PR CI 暴露的编译/映射问题，再迁移 Auth 与 OperationLog，最后集中处理 Import/Export 批处理及删除全局 JPA 依赖。
