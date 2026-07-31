@@ -3,7 +3,6 @@ import type { HTMLAttributes, ReactElement, ReactNode } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
 import type { ButtonProps, CardProps } from 'antd';
-import { StandardPageActions } from './StandardPagePatterns';
 import './query-result-cards.css';
 
 type QueryResultProps = Omit<HTMLAttributes<HTMLElement>, 'title' | 'children'> & {
@@ -149,8 +148,7 @@ export function QueryResultCard({
   const resolvedPageAction = normalizePageAction(pageAction || split.pageAction);
   const resolvedToolbar = normalizeResultActions(toolbar || split.resultActions);
   const resolvedTitle = title || titleFromAction(resolvedPageAction) || titleFromTotalSuffix(totalSuffix) || titleFromClassName(className) || '查询结果';
-  return <>
-    {resolvedPageAction ? <StandardPageActions>{resolvedPageAction}</StandardPageActions> : null}
+  return (
     <section
       {...sectionProps}
       className={`query-result-outer-card ${className}`.trim()}
@@ -162,14 +160,15 @@ export function QueryResultCard({
           <Typography.Text strong>{resolvedTitle}</Typography.Text>
           {typeof total === 'number' ? <Typography.Text type="secondary">（共 {total} {totalSuffix}）</Typography.Text> : null}
         </div>
-        {resultExtra || resolvedToolbar ? (
+        {resultExtra || resolvedToolbar || resolvedPageAction ? (
           <div className="query-result-outer-card__actions" aria-label="结果操作">
             {resultExtra ? <div className="query-result-outer-card__result-extra" data-result-toolbar-group="view">{resultExtra}</div> : null}
             {resolvedToolbar ? <div className="query-result-outer-card__extra" data-result-toolbar-group="actions">{resolvedToolbar}</div> : null}
+            {resolvedPageAction ? <div className="query-result-outer-card__primary" data-result-toolbar-group="primary">{resolvedPageAction}</div> : null}
           </div>
         ) : null}
       </div>
       {children}
     </section>
-  </>;
+  );
 }
