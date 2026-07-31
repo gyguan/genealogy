@@ -27,6 +27,11 @@
   width: min(320px, 36vw);
 }
 
+[data-genealogy-app] .query-result-outer-card.person-archive-result-card {
+  margin-top: 0 !important;
+  margin-block-start: 0 !important;
+}
+
 .person-archive-result-card .ant-card-body {
   padding: 16px;
 }
