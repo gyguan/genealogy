@@ -144,7 +144,7 @@ export function QueryResultCard({
   size = 'small',
   ...sectionProps
 }: QueryResultProps) {
-  const pageAlreadyOwnsPrimaryAction = /(?:^|\s)member-result-card(?:\s|$)/.test(className);
+  const pageAlreadyOwnsPrimaryAction = /(?:^|\s)(?:member-result-card|culture-result-card)(?:\s|$)/.test(className);
   const split = splitFirstPrimaryAction(extra, promotePrimaryAction && !pageAlreadyOwnsPrimaryAction);
   const resolvedPageAction = normalizePageAction(pageAction || split.pageAction);
   const resolvedToolbar = normalizeResultActions(toolbar || split.resultActions);
