@@ -59,7 +59,11 @@
   width: 100%;
 }
 
-[data-genealogy-app] .antd-field .ant-input.ant-input {
+[data-genealogy-app] .antd-field input.ant-input {
+  min-height: 32px;
+}
+
+[data-genealogy-app] .antd-field .ant-input-textarea textarea.ant-input {
   min-height: 96px;
 }
 
