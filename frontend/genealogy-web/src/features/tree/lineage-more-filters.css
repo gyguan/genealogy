@@ -2,8 +2,26 @@
   order: -1;
 }
 
-.lineage-tree-product-page-root .lineage-advanced-filter-field[hidden] {
+/*
+ * 两个查询 Tab 的第 5 个字段属于高级筛选：
+ * 人物中心为“展开深度”，支派全局为“包含下级支派”。
+ * 直接依据 React 根节点状态控制当前 Tab，避免 MutationObserver 修改字段 DOM 后
+ * 被 Ant Design Tabs 重新渲染覆盖。
+ */
+.lineage-tree-product-page-root[data-lineage-advanced-expanded='false']
+  .lineage-query-tabs
+  .ant-tabs-tabpane-active
+  .standard-query-grid
+  > .standard-query-field:nth-child(n + 5) {
   display: none !important;
+}
+
+.lineage-tree-product-page-root[data-lineage-advanced-expanded='true']
+  .lineage-query-tabs
+  .ant-tabs-tabpane-active
+  .standard-query-grid
+  > .standard-query-field:nth-child(n + 5) {
+  display: grid;
 }
 
 .lineage-tree-product-page-root .lineage-query-tabs .standard-query-grid {

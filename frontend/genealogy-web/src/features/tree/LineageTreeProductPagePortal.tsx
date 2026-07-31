@@ -21,26 +21,6 @@ function activeMode(root: HTMLElement): LineageMode {
   return activeTab?.textContent?.includes('支派全局') ? 'branch' : 'person';
 }
 
-function applyAdvancedFieldState(root: HTMLElement, expanded: Record<LineageMode, boolean>) {
-  const panes = root.querySelectorAll<HTMLElement>('.lineage-query-tabs .ant-tabs-tabpane');
-  const modes: LineageMode[] = ['person', 'branch'];
-
-  panes.forEach((pane, paneIndex) => {
-    const mode = modes[paneIndex];
-    if (!mode) return;
-    const fields = pane.querySelectorAll<HTMLElement>('.standard-query-grid > .standard-query-field');
-    fields.forEach((field, fieldIndex) => {
-      const advanced = fieldIndex >= 4;
-      field.classList.toggle('person-archive-advanced-filters', advanced);
-      field.classList.toggle('lineage-advanced-filter-field', advanced);
-      if (!advanced) return;
-      field.id = `lineage-${mode}-advanced-filters`;
-      field.hidden = !expanded[mode];
-      field.setAttribute('aria-hidden', String(!expanded[mode]));
-    });
-  });
-}
-
 export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeProductPageBase>) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
@@ -62,7 +42,6 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
       setToolbarTarget(previous => previous === nextToolbarTarget ? previous : nextToolbarTarget);
       setQueryActionTarget(previous => previous === nextQueryActionTarget ? previous : nextQueryActionTarget);
       setMode(previous => previous === nextMode ? previous : nextMode);
-      applyAdvancedFieldState(root, advancedExpanded);
     };
 
     syncTargets();
@@ -71,7 +50,7 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
     const observer = new MutationObserver(syncTargets);
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
-  }, [advancedExpanded]);
+  }, []);
 
   const resolveFieldPortal = useCallback<FieldPortalResolver>(({ child }) => {
     const kind = LINEAGE_TOOLBAR_FIELD_KIND[String(child?.props['aria-label'] || '')];
@@ -85,7 +64,12 @@ export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeP
   const expanded = advancedExpanded[mode];
 
   return (
-    <div ref={rootRef} className="lineage-tree-product-page-root">
+    <div
+      ref={rootRef}
+      className="lineage-tree-product-page-root"
+      data-lineage-mode={mode}
+      data-lineage-advanced-expanded={expanded ? 'true' : 'false'}
+    >
       <FieldPortalProvider resolve={resolveFieldPortal}>
         <LineageTreeProductPageBase {...props} />
       </FieldPortalProvider>
