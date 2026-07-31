@@ -16,25 +16,6 @@ export function ReviewCenterPage(props: Props) {
     setReady(true);
   }, [ready]);
 
-  useLayoutEffect(() => {
-    if (!ready) return;
-
-    const removeRootSpaceStyle = () => {
-      const rootSpace = document.querySelector<HTMLElement>('.review-center-page > .ant-space-vertical');
-      rootSpace?.removeAttribute('style');
-      return rootSpace;
-    };
-
-    const rootSpace = removeRootSpaceStyle();
-    if (!rootSpace) return;
-
-    const observer = new MutationObserver(() => {
-      if (rootSpace.hasAttribute('style')) rootSpace.removeAttribute('style');
-    });
-    observer.observe(rootSpace, { attributes: true, attributeFilter: ['style'] });
-    return () => observer.disconnect();
-  }, [ready]);
-
   return ready
     ? <ReviewCenterPageContent {...props} />
     : <PageState kind="loading" title="正在准备审核中心" description="正在恢复分页与查询状态。" />;
