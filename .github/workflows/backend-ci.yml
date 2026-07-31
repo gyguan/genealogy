@@ -20,6 +20,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  issue-1037-source-export:
+    name: Issue 1037 source export
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'agent/issue-1037-remove-jpa-final-migration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-1037-remove-jpa-final-migration
+      - name: Package backend sources
+        run: tar -czf issue-1037-backend-source.tar.gz backend/genealogy-backend
+      - name: Upload backend source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-1037-backend-source-${{ github.event.pull_request.head.sha }}
+          path: issue-1037-backend-source.tar.gz
+          retention-days: 1
+
   backend-build:
     name: Architecture, Tests, Coverage and Static Analysis
     runs-on: ubuntu-latest
