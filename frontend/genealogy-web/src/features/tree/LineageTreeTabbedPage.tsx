@@ -15,7 +15,6 @@ import {
   List,
   Select,
   Space,
-  Switch,
   Tabs,
   Tag,
   Typography
@@ -759,14 +758,15 @@ onChange={value => setBranchDraft(previous => ({ ...previous, depth: value }))}
         />
       </StandardQueryField>
       <StandardQueryField label="包含下级支派">
-        <div className="lineage-tab-switch-field">
-<Switch
-  aria-label="包含下级支派"
-  checked={branchDraft.includeSubBranches}
-  onChange={value => setBranchDraft(previous => ({ ...previous, includeSubBranches: value }))}
-/>
-<Typography.Text type="secondary">{branchDraft.includeSubBranches ? '包含' : '仅当前支派'}</Typography.Text>
-        </div>
+        <Select
+aria-label="包含下级支派"
+value={branchDraft.includeSubBranches ? 'include' : 'current'}
+options={[
+  { value: 'include', label: '包含下级支派' },
+  { value: 'current', label: '仅当前支派' }
+]}
+onChange={value => setBranchDraft(previous => ({ ...previous, includeSubBranches: value === 'include' }))}
+        />
       </StandardQueryField>
     </StandardQueryGrid>
   );
