@@ -77,11 +77,13 @@ test('special entity routes adapt to the same page header while auth remains an 
   assert.doesNotMatch(entityStyles, /entity-page-header__main|entity-page-header__copy|entity-page-header__actions/);
 });
 
-test('page-level primary actions are promoted without moving result tools or using DOM patches', () => {
+test('page-level primary actions remain visible in the result card header without DOM patches', () => {
   assert.match(resultCard, /splitFirstPrimaryAction/);
   assert.match(resultCard, /element\.props\.type === 'primary'/);
   assert.match(resultCard, /element\.props\.menu \|\| element\.props\.overlay/);
-  assert.match(resultCard, /<StandardPageActions>/);
+  assert.match(resultCard, /query-result-outer-card__primary/);
+  assert.match(resultCard, /data-result-toolbar-group="primary"/);
+  assert.doesNotMatch(resultCard, /<StandardPageActions>/);
   assert.match(memberPage, /<StandardPageActions><MemberInvitationAction/);
   assert.doesNotMatch(bookletActions, /createPortal|querySelector|MutationObserver/);
   assert.doesNotMatch(patterns, /appendChild|insertBefore|querySelector|MutationObserver/);
