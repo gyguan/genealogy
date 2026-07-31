@@ -32,22 +32,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Stage: required transport files"
           required=(.agent/issue-1037-patch-parent .agent/issue-1037-patch-message .agent/issue-1037-patch-ready)
           for file in "${required[@]}"; do
-            test -f "$file"
+            test -f "$file" || { echo "Missing required file: $file" >&2; exit 1; }
           done
           shopt -s nullglob
           parts=(.agent/issue-1037-patch.part-*)
-          test "${#parts[@]}" -gt 0
+          test "${#parts[@]}" -gt 0 || { echo "No patch parts found" >&2; exit 1; }
+
+          echo "Stage: parent commit and allowed range"
           expected_parent="$(tr -d '[:space:]' < .agent/issue-1037-patch-parent)"
-          git merge-base --is-ancestor "$expected_parent" HEAD
+          echo "Expected parent: $expected_parent"
+          echo "Current head: $(git rev-parse HEAD)"
+          git fetch --no-tags origin "$expected_parent"
+          git cat-file -e "$expected_parent^{commit}"
+          git merge-base --is-ancestor "$expected_parent" HEAD || {
+            echo "Declared parent is not an ancestor of current head" >&2
+            git log --oneline --decorate -15
+            exit 1
+          }
           mapfile -t changed < <(git diff --name-only "$expected_parent"..HEAD | sort)
+          printf 'Changed transport range:\n%s\n' "${changed[*]}"
           for path in "${changed[@]}"; do
             case "$path" in
               .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch.part-*) ;;
               *) echo "Patch trigger range contains unexpected file: $path" >&2; exit 1 ;;
             esac
           done
+
+          echo "Stage: part validation"
           for part in "${parts[@]}"; do
             echo "Checking $part ($(wc -c < "$part") bytes)"
             if ! base64 --decode "$part" >/dev/null 2>&1; then
@@ -59,6 +73,8 @@ jobs:
           cat "${parts[@]}" > /tmp/issue-1037.patch.b64
           expected_digest="$(tr -d '[:space:]' < .agent/issue-1037-patch-ready)"
           echo "$expected_digest  /tmp/issue-1037.patch.b64" | sha256sum --check
+
+          echo "Stage: patch apply"
           base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch
           git apply --check /tmp/issue-1037.patch
           git apply --index /tmp/issue-1037.patch
