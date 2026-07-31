@@ -1,3 +1,31 @@
+.lineage-product-page,
+.lineage-managed-tab {
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * The page-level StandardPageTabs owns mode navigation, matching audit trace
+ * and culture pages. Keep the existing inner Tabs mounted for query state and
+ * pane lifecycle, but remove its duplicate navigation row.
+ */
+.lineage-managed-tab .lineage-query-tabs > .ant-tabs-nav {
+  display: none;
+}
+
+.lineage-managed-tab .lineage-query-tabs,
+.lineage-managed-tab .lineage-query-tabs > .ant-tabs-content-holder,
+.lineage-managed-tab .lineage-query-tabs .ant-tabs-content,
+.lineage-managed-tab .lineage-query-tabs .ant-tabs-tabpane {
+  width: 100%;
+  min-width: 0;
+}
+
+.lineage-managed-tab .lineage-query-tabs > .ant-tabs-content-holder {
+  margin: 0;
+  padding: 0;
+}
+
 .lineage-tabbed-page {
   display: flex;
   flex-direction: column;
