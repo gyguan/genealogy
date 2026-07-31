@@ -2,6 +2,7 @@
 [data-genealogy-app] .standard-query-panel {
   --standard-query-card-padding: 24px;
   --standard-query-control-height: 32px;
+  --standard-query-field-height: 56px;
   --standard-query-column-gap: 16px;
   --standard-query-row-gap: 4px;
   --standard-query-section-gap: 24px;
@@ -74,6 +75,7 @@
 [data-genealogy-app] .standard-query-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(var(--standard-query-field-height), auto);
   align-items: start;
   width: 100%;
   min-width: 0;
@@ -93,6 +95,8 @@
   display: grid;
   grid-template-rows: auto;
   min-width: 0;
+  min-height: var(--standard-query-field-height);
+  align-content: start;
 }
 
 [data-genealogy-app] .standard-query-field__item.ant-form-item {
@@ -173,16 +177,25 @@
   font-size: 12px;
 }
 
+/*
+ * Empty hint placeholders previously contributed a hidden 20px line box on some
+ * Form/DOM variants. The placeholder child is now removed from layout directly;
+ * a real hint expands the deterministic 56px field baseline only when present.
+ */
 [data-genealogy-app] .standard-query-field__hint {
-  min-height: 20px;
+  min-height: 0;
   padding-top: 4px;
   color: var(--ant-color-text-secondary);
   font-size: 12px;
   line-height: 20px;
 }
 
-[data-genealogy-app] .standard-query-field__hint:has(> span[aria-hidden="true"]:only-child) {
+[data-genealogy-app] .standard-query-field__hint > span[aria-hidden="true"] {
   display: none;
+}
+
+[data-genealogy-app] .standard-query-field__hint:has(> span[aria-hidden="true"]:only-child) {
+  padding-top: 0;
 }
 
 [data-genealogy-app] .standard-query-panel .standard-query-panel__actions {
