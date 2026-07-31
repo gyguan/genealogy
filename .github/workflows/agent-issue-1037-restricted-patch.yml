@@ -43,16 +43,17 @@ jobs:
 
           echo "Stage: parent commit and allowed range"
           expected_parent="$(tr -d '[:space:]' < .agent/issue-1037-patch-parent)"
-          echo "Expected parent: $expected_parent"
-          echo "Current head: $(git rev-parse HEAD)"
-          git fetch --no-tags origin "$expected_parent"
-          git cat-file -e "$expected_parent^{commit}"
-          git merge-base --is-ancestor "$expected_parent" HEAD || {
-            echo "Declared parent is not an ancestor of current head" >&2
-            git log --oneline --decorate -15
+          first_transport_commit="$(git log --reverse --format=%H -- .agent/issue-1037-patch-parent | head -n 1)"
+          test -n "$first_transport_commit" || { echo "Cannot locate first transport commit" >&2; exit 1; }
+          actual_parent="$(git rev-parse "${first_transport_commit}^")"
+          echo "Declared parent: $expected_parent"
+          echo "Derived parent:  $actual_parent"
+          echo "Current head:    $(git rev-parse HEAD)"
+          test "$actual_parent" = "$expected_parent" || {
+            echo "Declared parent does not match the parent of the first transport commit" >&2
             exit 1
           }
-          mapfile -t changed < <(git diff --name-only "$expected_parent"..HEAD | sort)
+          mapfile -t changed < <(git diff --name-only "$actual_parent"..HEAD | sort)
           printf 'Changed transport range:\n%s\n' "${changed[*]}"
           for path in "${changed[@]}"; do
             case "$path" in
