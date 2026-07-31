@@ -20,40 +20,6 @@
   min-width: 0;
 }
 
-/*
- * Culture uses StandardPageTabs as navigation only; the active content is the
- * following sibling instead of an Ant Tabs pane. Remove the empty Tabs content
- * area and nav margin, then let the page grid own the single 16px separation.
- */
-[data-genealogy-app] .culture-product-page.tabbed-module-page {
-  row-gap: 16px !important;
-}
-
-[data-genealogy-app] .culture-product-page > .standard-page-tabs {
-  margin: 0 !important;
-  margin-block: 0 !important;
-}
-
-[data-genealogy-app] .culture-product-page > .standard-page-tabs > .ant-tabs,
-[data-genealogy-app] .culture-product-page > .standard-page-tabs > .ant-tabs > .ant-tabs-nav {
-  margin: 0 !important;
-  margin-block: 0 !important;
-}
-
-[data-genealogy-app] .culture-product-page > .standard-page-tabs > .ant-tabs > .ant-tabs-content-holder {
-  display: none !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-[data-genealogy-app] .culture-product-page > .culture-managed-tab,
-[data-genealogy-app] .culture-product-page > .culture-page-loading {
-  margin: 0 !important;
-  margin-block: 0 !important;
-}
-
 @media (max-width: 767px) {
   .culture-search-card form { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; }
   .culture-more-filters { transform: translateY(3px); }
