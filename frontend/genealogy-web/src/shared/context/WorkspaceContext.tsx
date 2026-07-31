@@ -129,6 +129,10 @@ function isLineageClanScopeReset(values: WorkspacePatch) {
     && values.reviewTaskId === '';
 }
 
+function isLineageWorkspaceChange() {
+  return Boolean(document.querySelector('.lineage-tree-page'));
+}
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [clanId, updateClanId] = useState(loadClanId);
   const [branchId, updateBranchId] = useState('');
@@ -190,6 +194,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
 
     const plan = planWizardDependencyChange(selections, changedField, String(values[changedField] || ''));
+    if (isLineageWorkspaceChange()) {
+      applyRaw({ ...values, ...plan.patch });
+      setInvalidatedSteps([]);
+      return;
+    }
+
     const activeStep = activeWizardStep();
     const affectsUnsavedInput = hasUnsavedWizardInput() && plan.affectedSteps.includes(activeStep);
     if (!plan.hasSelectedImpact && !affectsUnsavedInput) {
