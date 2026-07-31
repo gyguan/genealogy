@@ -163,7 +163,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion><version>[17,18)</version></requireJavaVersion>
-                                <requireMavenVersion><version>[${maven.version.min},)</requireMavenVersion>
+                                <requireMavenVersion><version>[${maven.version.min},)</version></requireMavenVersion>
                                 <banDuplicatePomDependencyVersions/>
                                 <requireUpperBoundDeps/>
                             </rules>
