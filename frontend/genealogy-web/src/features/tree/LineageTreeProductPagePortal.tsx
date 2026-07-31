@@ -33,10 +33,19 @@ function syncActiveAdvancedField(root: HTMLElement, expanded: boolean) {
   const advancedField = fields[4];
   if (!advancedField) return;
 
-  advancedField.hidden = !expanded;
-  advancedField.setAttribute('aria-hidden', expanded ? 'false' : 'true');
-  advancedField.dataset.lineageAdvancedField = 'true';
-  advancedField.style.setProperty('display', expanded ? 'grid' : 'none', 'important');
+  const hidden = !expanded;
+  const display = expanded ? 'grid' : 'none';
+  if (advancedField.hidden !== hidden) advancedField.hidden = hidden;
+  if (advancedField.getAttribute('aria-hidden') !== String(hidden)) {
+    advancedField.setAttribute('aria-hidden', String(hidden));
+  }
+  if (advancedField.dataset.lineageAdvancedField !== 'true') {
+    advancedField.dataset.lineageAdvancedField = 'true';
+  }
+  if (advancedField.style.getPropertyValue('display') !== display
+    || advancedField.style.getPropertyPriority('display') !== 'important') {
+    advancedField.style.setProperty('display', display, 'important');
+  }
 }
 
 export function LineageTreeProductPage(props: ComponentProps<typeof LineageTreeProductPageBase>) {
