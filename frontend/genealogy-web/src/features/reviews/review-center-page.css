@@ -26,3 +26,15 @@
   width: 100%;
   min-width: 0;
 }
+
+/* The last action in the review result card is the redundant refresh button.
+ * Data already reloads when tabs, filters, pagination, or decisions change.
+ */
+[data-genealogy-app]
+  .business-page--reviewCenter
+  .review-result-card
+  .ant-card-extra
+  > .ant-space
+  > .ant-space-item:last-child {
+  display: none;
+}
