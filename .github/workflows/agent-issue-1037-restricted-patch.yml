@@ -37,6 +37,7 @@ jobs:
           set -euo pipefail
           echo "Stage: required transport files"
           required=(.agent/issue-1037-patch-parent .agent/issue-1037-patch-message .agent/issue-1037-patch-ready)
+          format_file=.agent/issue-1037-patch-format
           for file in "${required[@]}"; do
             test -f "$file" || { echo "Missing required file: $file" >&2; exit 1; }
           done
@@ -46,7 +47,7 @@ jobs:
 
           is_transport_path() {
             case "$1" in
-              .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch.part-*) return 0 ;;
+              .agent/issue-1037-patch-parent|.agent/issue-1037-patch-message|.agent/issue-1037-patch-ready|.agent/issue-1037-patch-format|.agent/issue-1037-patch.part-*) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -78,6 +79,16 @@ jobs:
             is_transport_path "$path" || { echo "Patch trigger range contains unexpected file: $path" >&2; exit 1; }
           done
 
+          patch_format=plain-base64
+          if [[ -f "$format_file" ]]; then
+            patch_format="$(tr -d '[:space:]' < "$format_file")"
+          fi
+          case "$patch_format" in
+            plain-base64|gzip-base64) ;;
+            *) echo "Unsupported patch format: $patch_format" >&2; exit 1 ;;
+          esac
+          echo "Patch format: $patch_format"
+
           echo "Stage: part validation"
           for part in "${parts[@]}"; do
             echo "Checking $part ($(wc -c < "$part") bytes)"
@@ -88,11 +99,20 @@ jobs:
           echo "$expected_digest  /tmp/issue-1037.patch.b64" | sha256sum --check
 
           echo "Stage: patch apply"
-          base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch
+          if [[ "$patch_format" == gzip-base64 ]]; then
+            base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch.gz
+            gzip --decompress --stdout /tmp/issue-1037.patch.gz > /tmp/issue-1037.patch
+          else
+            base64 --decode /tmp/issue-1037.patch.b64 > /tmp/issue-1037.patch
+          fi
           git apply --check /tmp/issue-1037.patch
           git apply --index /tmp/issue-1037.patch
           commit_message="$(cat .agent/issue-1037-patch-message)"
-          git rm .agent/issue-1037-patch-parent .agent/issue-1037-patch-message .agent/issue-1037-patch-ready "${parts[@]}"
+          cleanup_files=("${required[@]}" "${parts[@]}")
+          if [[ -f "$format_file" ]]; then
+            cleanup_files+=("$format_file")
+          fi
+          git rm "${cleanup_files[@]}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "$commit_message"
