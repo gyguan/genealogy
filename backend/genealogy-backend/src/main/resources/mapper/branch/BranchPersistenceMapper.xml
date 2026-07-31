@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.branch.repository.mybatis.BranchPersistenceMapper">
+  <update id="updateAllById">
+    update branch
+    set clan_id=#{clanId},
+        parent_id=#{parentId},
+        branch_name=#{branchName},
+        branch_path=#{branchPath},
+        level=#{level},
+        sort_order=#{sortOrder},
+        founder_person_id=#{founderPersonId},
+        migration_from=#{migrationFrom},
+        migration_to=#{migrationTo},
+        manager_member_id=#{managerMemberId},
+        description=#{description},
+        status=#{status},
+        created_at=#{createdAt},
+        updated_at=#{updatedAt}
+    where id=#{id}
+  </update>
+
+  <select id="isDescendantOrSelf" resultType="boolean">
+    with recursive branch_tree(id, parent_id, clan_id, visited_ids) as (
+      select b.id, b.parent_id, b.clan_id, array[b.id]
+      from branch b
+      where b.id=#{ancestorId}
+        and b.clan_id=#{clanId}
+      union all
+      select child.id, child.parent_id, child.clan_id, parent.visited_ids || child.id
+      from branch child
+      join branch_tree parent on child.parent_id=parent.id
+      where child.clan_id=#{clanId}
+        and not child.id=any(parent.visited_ids)
+    )
+    select exists(select 1 from branch_tree where id=#{candidateId})
+  </select>
+
+  <select id="findSubtreeIds" resultType="long">
+    with recursive branch_tree(id, parent_id, clan_id, visited_ids) as (
+      select b.id, b.parent_id, b.clan_id, array[b.id]
+      from branch b
+      where b.clan_id=#{clanId}
+        and b.id in
+        <foreach collection="ancestorIds" item="id" open="(" close=")" separator=",">#{id}</foreach>
+      union all
+      select child.id, child.parent_id, child.clan_id, parent.visited_ids || child.id
+      from branch child
+      join branch_tree parent on child.parent_id=parent.id
+      where child.clan_id=#{clanId}
+        and not child.id=any(parent.visited_ids)
+    )
+    select distinct id
+    from branch_tree
+    order by id
+  </select>
+</mapper>
