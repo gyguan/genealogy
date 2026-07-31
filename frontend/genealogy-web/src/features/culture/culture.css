@@ -1,4 +1,5 @@
 .culture-search-header { display: grid; gap: 4px; margin-bottom: 12px; }
+.culture-search-card > .ant-card-body { padding: 16px; }
 .culture-search-card form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 8px; }
 .culture-search-card form > :first-child { grid-column: 1 / -1; }
 .culture-more-filters { display: block; grid-column: 1; grid-row: 2; min-width: 0; transform: translateY(-3px); }
