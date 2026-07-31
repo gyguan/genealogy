@@ -1,0 +1,16 @@
+/* Keep text inputs and select controls aligned in the branch, generation and source steps. */
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：长沙支"]) .ant-input,
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：长沙支"]) .ant-select-selector,
+.mvp1-wizard .wizard-generation-section .ant-input,
+.mvp1-wizard .wizard-generation-section .ant-select-selector,
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：民国二十年族谱"]) .ant-input,
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：民国二十年族谱"]) .ant-select-selector {
+  height: 32px;
+  min-height: 32px;
+}
+
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：长沙支"]) .ant-input,
+.mvp1-wizard .wizard-generation-section .ant-input,
+.mvp1-wizard .panel:has(.ant-input[placeholder="例如：民国二十年族谱"]) .ant-input {
+  line-height: 30px;
+}
