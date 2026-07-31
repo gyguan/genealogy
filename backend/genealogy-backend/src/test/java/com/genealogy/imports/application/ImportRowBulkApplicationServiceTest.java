@@ -3,6 +3,7 @@ package com.genealogy.imports.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.ImportRowBulkOperationResponse;
 import com.genealogy.imports.dto.ImportRowBulkRetryRequest;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 
 import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
@@ -43,16 +42,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ImportRowBulkApplicationServiceTest {
 
-    @Mock
-    private ImportJobRepository jobRepository;
-    @Mock
-    private ImportJobRowRepository rowRepository;
-    @Mock
-    private ImportRowBulkMutationExecutor mutationExecutor;
-    @Mock
-    private AuthorizationApplicationService authorizationApplicationService;
-    @Mock
-    private OperationLogApplicationService operationLogApplicationService;
+    @Mock private ImportJobRepository jobRepository;
+    @Mock private ImportJobRowRepository rowRepository;
+    @Mock private ImportRowBulkMutationExecutor mutationExecutor;
+    @Mock private AuthorizationApplicationService authorizationApplicationService;
+    @Mock private OperationLogApplicationService operationLogApplicationService;
 
     private ImportRowBulkApplicationService service;
 
@@ -80,8 +74,7 @@ class ImportRowBulkApplicationServiceTest {
                 .thenThrow(new BusinessException("IMPORT_JOB_ROW_VERSION_CONFLICT", "该行已被其他用户修改，请刷新后重试"));
 
         ImportRowBulkOperationResponse result = service.retry(
-                1L,
-                10L,
+                1L, 10L,
                 new ImportRowBulkRetryRequest(new ImportRowBulkSelectionRequest(
                         "selected",
                         List.of(new ImportRowVersionReference(2, 0L), new ImportRowVersionReference(3, 4L))
@@ -105,9 +98,8 @@ class ImportRowBulkApplicationServiceTest {
         ImportJobEntity job = editableJob();
         ImportJobRowEntity row = failedRow(2, 0L);
         when(jobRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(job));
-        when(rowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(
-                eq(10L), any(Set.class), any(PageRequest.class)
-        )).thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 501), 501));
+        when(rowRepository.page(eq(10L), any(Set.class), eq(false), eq(0), eq(501)))
+                .thenReturn(new PageResult<>(List.of(row), 501));
 
         BusinessException error = catchThrowableOfType(
                 () -> service.retry(
@@ -137,9 +129,8 @@ class ImportRowBulkApplicationServiceTest {
         row.setErrorMessage("代次格式错误");
         row.setRetryCount(2);
         when(jobRepository.findByIdAndClanId(10L, 1L)).thenReturn(Optional.of(job));
-        when(rowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(
-                eq(10L), any(Set.class), any(PageRequest.class)
-        )).thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 500), 1));
+        when(rowRepository.page(eq(10L), any(Set.class), eq(false), eq(0), eq(500)))
+                .thenReturn(new PageResult<>(List.of(row), 1));
 
         ImportRowBulkApplicationService.ImportFailureExport export = service.exportFailures(1L, 10L, 9L);
 
@@ -181,13 +172,7 @@ class ImportRowBulkApplicationServiceTest {
         return row;
     }
 
-    private ImportJobRowResponse response(
-            int rowNo,
-            String status,
-            String code,
-            String message,
-            long version
-    ) {
+    private ImportJobRowResponse response(int rowNo, String status, String code, String message, long version) {
         return new ImportJobRowResponse(
                 (long) rowNo,
                 rowNo,
