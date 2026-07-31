@@ -1,3 +1,32 @@
+/* Align the source-library content flow with the other query pages.
+ * Ant Design Space is inline-flex by default, which creates an inline line box
+ * before the first query card. Use a block-level grid so the card starts at the
+ * same position as pages whose first child is a block-level Form.
+ */
+[data-genealogy-app] .business-page--sourceLibrary .source-library-query-page {
+  width: 100%;
+  min-width: 0;
+}
+
+[data-genealogy-app]
+  .business-page--sourceLibrary
+  .source-library-query-page
+  > .ant-space-vertical {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 16px;
+}
+
+[data-genealogy-app]
+  .business-page--sourceLibrary
+  .source-library-query-page
+  > .ant-space-vertical
+  > .ant-space-item {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Ensure the source-library query Card keeps the same native Ant Design head as other standard query pages. */
 [data-genealogy-app]
   .source-library-query-page
