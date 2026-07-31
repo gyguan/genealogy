@@ -51,7 +51,9 @@ export function MemberInvitationAction() {
 
   useEffect(() => {
     const resolveTarget = () => {
-      const target = document.querySelector<HTMLElement>('.member-result-card .ant-card-extra');
+      const target = document.querySelector<HTMLElement>(
+        '.member-result-card .query-result-outer-card__actions'
+      );
       setActionTarget(current => current === target ? current : target);
     };
     resolveTarget();
