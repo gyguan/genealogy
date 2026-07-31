@@ -30,7 +30,6 @@ jobs:
 
       - name: Verify and apply restricted patch
         env:
-          GH_TOKEN: ${{ github.token }}
           EXPECTED_REMOTE_HEAD: ${{ github.event.pull_request.head.sha }}
           TARGET_BRANCH: agent/issue-1037-remove-jpa-final-migration
         shell: bash
@@ -70,15 +69,11 @@ jobs:
             fi
             cursor="$(git rev-parse "${cursor}^")"
           done
-          echo "Declared parent: $expected_parent"
-          echo "Derived parent:  $actual_parent"
-          echo "Current head:    $(git rev-parse HEAD)"
           test "$actual_parent" = "$expected_parent" || {
-            echo "Declared parent does not match the first non-transport commit" >&2
+            echo "Declared parent $expected_parent does not match derived parent $actual_parent" >&2
             exit 1
           }
           mapfile -t changed < <(git diff --name-only "$actual_parent"..HEAD | sort)
-          printf 'Changed transport range:\n%s\n' "${changed[*]}"
           for path in "${changed[@]}"; do
             is_transport_path "$path" || { echo "Patch trigger range contains unexpected file: $path" >&2; exit 1; }
           done
@@ -86,11 +81,7 @@ jobs:
           echo "Stage: part validation"
           for part in "${parts[@]}"; do
             echo "Checking $part ($(wc -c < "$part") bytes)"
-            if ! base64 --decode "$part" >/dev/null 2>&1; then
-              echo "Invalid Base64 part: $part" >&2
-              LC_ALL=C grep -n '[^A-Za-z0-9+/=]' "$part" || true
-              exit 1
-            fi
+            base64 --decode "$part" >/dev/null
           done
           cat "${parts[@]}" > /tmp/issue-1037.patch.b64
           expected_digest="$(tr -d '[:space:]' < .agent/issue-1037-patch-ready)"
@@ -107,19 +98,26 @@ jobs:
           git commit -m "$commit_message"
 
           generated_head="$(git rev-parse HEAD)"
-          remote_head="$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/heads/${TARGET_BRANCH}" --jq '.object.sha')"
+          remote_head="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | awk '{print $1}')"
           echo "Generated business head: $generated_head"
           echo "Remote implementation head: $remote_head"
           test "$remote_head" = "$EXPECTED_REMOTE_HEAD" || {
             echo "Remote branch moved: expected $EXPECTED_REMOTE_HEAD, found $remote_head" >&2
             exit 1
           }
-          gh api --method PATCH "/repos/${GITHUB_REPOSITORY}/git/refs/heads/${TARGET_BRANCH}" -f sha="$generated_head" -F force=true >/dev/null
-          confirmed_head="$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/heads/${TARGET_BRANCH}" --jq '.object.sha')"
+
+          stage_branch="agent/issue-1037-stage-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup_stage() { git push origin --delete "$stage_branch" >/dev/null 2>&1 || true; }
+          trap cleanup_stage EXIT
+          git push origin "$generated_head:refs/heads/$stage_branch"
+          git push --force-with-lease="refs/heads/$TARGET_BRANCH:$EXPECTED_REMOTE_HEAD" origin "$generated_head:refs/heads/$TARGET_BRANCH"
+          confirmed_head="$(git ls-remote origin "refs/heads/$TARGET_BRANCH" | awk '{print $1}')"
           test "$confirmed_head" = "$generated_head" || {
-            echo "Ref update did not persist: expected $generated_head, found $confirmed_head" >&2
+            echo "Target ref update did not persist: expected $generated_head, found $confirmed_head" >&2
             exit 1
           }
+          cleanup_stage
+          trap - EXIT
 
       - name: Dispatch verification for the new head
         env:
