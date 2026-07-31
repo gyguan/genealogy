@@ -6,6 +6,7 @@ import com.genealogy.person.event.repository.mybatis.PersonEventPersistenceMappe
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,18 @@ public class PersonEventRepository {
             mapper.updateById(entity);
         }
         return entity;
+    }
+
+    @Transactional
+    public List<PersonEventEntity> saveAll(Iterable<PersonEventEntity> entities) {
+        List<PersonEventEntity> saved = new ArrayList<>();
+        if (entities == null) {
+            return saved;
+        }
+        for (PersonEventEntity entity : entities) {
+            saved.add(save(entity));
+        }
+        return saved;
     }
 
     public Optional<PersonEventEntity> findById(Long id) {
