@@ -39,16 +39,6 @@
   margin-bottom: 0;
 }
 
-.member-role-page > .ant-card:first-child .ant-row > .ant-col:last-child > .ant-space {
-  align-items: flex-end;
-}
-
-.business-page--memberManage .member-role-page > .ant-card:first-child .ant-col > .ant-typography-secondary:first-child {
-  display: block;
-  margin-bottom: 8px;
-  line-height: 22px;
-}
-
 .member-role-page > .ant-alert {
   display: none;
 }
@@ -95,7 +85,8 @@
     justify-content: stretch;
   }
 
-  .member-management-page__actions .ant-space, .member-management-page__actions .ant-btn {
+  .member-management-page__actions .ant-space,
+  .member-management-page__actions .ant-btn {
     width: 100%;
   }
 
