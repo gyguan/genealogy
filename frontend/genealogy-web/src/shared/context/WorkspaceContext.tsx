@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Modal } from 'antd';
 import {
   dependencyImpactText,
   planWizardDependencyChange,
@@ -119,6 +118,15 @@ function shouldHydrateDirectly(values: WorkspacePatch) {
   return allCleared || restoringSession;
 }
 
+function isClanScopeReset(values: WorkspacePatch) {
+  return values.clanId !== undefined
+    && values.branchId === ''
+    && values.personId === ''
+    && values.relationshipId === ''
+    && values.sourceId === ''
+    && values.reviewTaskId === '';
+}
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [clanId, updateClanId] = useState(loadClanId);
   const [branchId, updateBranchId] = useState('');
@@ -155,6 +163,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }
 
   function requestPatch(values: WorkspacePatch) {
+    if (isClanScopeReset(values)) {
+      applyRaw({
+        ...values,
+        generationSchemeId: '',
+        sourceFocusReason: '',
+        attachmentId: ''
+      });
+      setInvalidatedSteps([]);
+      return;
+    }
+
     if (pendingChange.current || shouldHydrateDirectly(values)) {
       applyRaw(values);
       return;
