@@ -95,9 +95,10 @@ export type StandardQueryPanelProps = Omit<CardProps, 'title' | 'children' | 'ac
   children: ReactNode;
 };
 
-export function StandardQueryPanel({ title = '查询条件', description, tabs, actions, children, className = '', ...cardProps }: StandardQueryPanelProps) {
+export function StandardQueryPanel({ title, description, tabs, actions, children, className = '', ...cardProps }: StandardQueryPanelProps) {
   const classes = ['standard-query-panel', className].filter(Boolean).join(' ');
-  return <Card {...cardProps} className={classes} title={title} data-query-panel-role="query">
+  const resolvedTitle = title === null || title === undefined || title === '' ? '查询条件' : title;
+  return <Card {...cardProps} className={classes} title={resolvedTitle} data-query-panel-role="query">
     {description ? <Typography.Paragraph type="secondary" className="standard-query-panel__description">{description}</Typography.Paragraph> : null}
     {tabs ? <div className="standard-query-panel__tabs" data-query-tabs-level="parallel">{tabs}</div> : null}
     <div className="standard-query-panel__body">{children}</div>
