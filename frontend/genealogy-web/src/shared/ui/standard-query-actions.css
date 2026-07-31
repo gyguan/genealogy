@@ -8,3 +8,18 @@
 .standard-query-actions--wrap {
   flex-wrap: wrap;
 }
+
+/*
+ * 修谱工作台查询 Card 的操作区遵循标准原型：
+ * 整体靠右，顺序固定为“更多筛选/收起筛选 → 重置 → 查询”。
+ * 使用页面唯一的高级筛选 aria-controls 进行限定，避免影响其他查询页面。
+ */
+.standard-query-actions:has([aria-controls='workbench-advanced-filters']) {
+  justify-content: flex-end;
+  gap: var(--ant-margin-xs, 8px);
+}
+
+.standard-query-actions:has([aria-controls='workbench-advanced-filters'])
+  [data-query-action='more'] {
+  margin: 0;
+}
