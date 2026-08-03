@@ -62,14 +62,17 @@ class CurrentSeedDataContractTest {
     }
 
     @Test
-    void currentCultureEntityFeaturedFlagHasForwardMigration() throws IOException {
+    void currentCultureFeaturedFlagsHaveForwardMigration() throws IOException {
         String migration = Files.readString(
                 MIGRATIONS.resolve("V20260803171900__add_culture_item_featured_on_home.sql")
         );
 
         assertThat(migration)
+                .contains("alter table culture_item")
+                .contains("alter table culture_site")
                 .contains("add column if not exists featured_on_home boolean")
                 .contains("idx_culture_item_featured_home")
+                .contains("idx_culture_site_featured_home")
                 .contains("data_status = 'official'");
     }
 
