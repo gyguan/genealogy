@@ -12,6 +12,8 @@ import com.genealogy.auth.repository.AppUserRepository;
 import com.genealogy.auth.repository.AuthSessionRepository;
 import com.genealogy.auth.security.PasswordHashUtil;
 import com.genealogy.common.exception.BusinessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.util.List;
 @Service
 public class AuthApplicationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthApplicationService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32;
     private static final String USER_STATUS_ACTIVE = "active";
@@ -79,7 +82,9 @@ public class AuthApplicationService {
         user.setStatus(USER_STATUS_ACTIVE);
         user.setCreatedAt(now);
         user.setUpdatedAt(now);
-        return toUserResponse(appUserRepository.save(user));
+        AppUserEntity saved = appUserRepository.save(user);
+        log.info("event=user_registered userId={} result=success", saved.getId());
+        return toUserResponse(saved);
     }
 
     /** Compatibility method retained for existing service tests and API clients. */
@@ -106,6 +111,11 @@ public class AuthApplicationService {
                     "AUTH_LOGIN_FAILED",
                     userAgent
             );
+            log.warn(
+                    "event=login_failed userId={} accountHash={} clientIpMasked={} result=AUTH_LOGIN_FAILED reason={}",
+                    user == null ? null : user.getId(), PasswordHashUtil.sha256(account),
+                    authSecurityService.maskIp(clientIp), passwordMatched ? "account_inactive" : "credential_mismatch"
+            );
             throw new BusinessException("AUTH_LOGIN_FAILED", "用户名或密码错误");
         }
 
@@ -115,6 +125,11 @@ public class AuthApplicationService {
         user.setUpdatedAt(now);
         appUserRepository.save(user);
         authSecurityService.recordLoginAttempt(account, clientIp, user.getId(), true, "SUCCESS", userAgent);
+        log.info(
+                "event=login_succeeded userId={} sessionId={} clientIpMasked={} rememberMe={} result=success",
+                user.getId(), material.session().getId(), authSecurityService.maskIp(clientIp),
+                request.rememberMeEnabled()
+        );
 
         String exposedToken = properties.isExposeBearerToken() ? material.sessionToken() : null;
         LoginResponse response = new LoginResponse(
@@ -147,15 +162,14 @@ public class AuthApplicationService {
         current.setRevokedAt(LocalDateTime.now());
         authSessionRepository.save(current);
 
-        SessionMaterial material = createSession(
-                user.getId(),
-                clientIp,
-                userAgent,
-                current.isRememberMe()
-        );
+        SessionMaterial material = createSession(user.getId(), clientIp, userAgent, current.isRememberMe());
         authSecurityService.recordEvent(
                 user.getId(), "session_refresh", "SUCCESS", "low", clientIp, userAgent, null,
                 "previousSessionId=" + current.getId()
+        );
+        log.info(
+                "event=session_refreshed userId={} previousSessionId={} sessionId={} clientIpMasked={} result=success",
+                user.getId(), current.getId(), material.session().getId(), authSecurityService.maskIp(clientIp)
         );
         return new AuthLoginResult(
                 new LoginResponse(
@@ -179,6 +193,7 @@ public class AuthApplicationService {
                 session.getUserId(), "session_logout", "SUCCESS", "low", session.getClientIp(),
                 session.getUserAgent(), null, "sessionId=" + session.getId()
         );
+        log.info("event=session_logged_out userId={} sessionId={} result=success", session.getUserId(), session.getId());
     }
 
     @Transactional(readOnly = true)
@@ -205,6 +220,10 @@ public class AuthApplicationService {
                 current.getUserId(), "session_revoke", "SUCCESS", "medium", current.getClientIp(),
                 current.getUserAgent(), null, "revokedSessionId=" + target.getId()
         );
+        log.info(
+                "event=session_revoked userId={} sessionId={} actorSessionId={} result=success",
+                current.getUserId(), target.getId(), current.getId()
+        );
     }
 
     @Transactional
@@ -213,6 +232,7 @@ public class AuthApplicationService {
         LocalDateTime now = LocalDateTime.now();
         List<AuthSessionEntity> sessions = authSessionRepository
                 .findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastAccessAtDesc(current.getUserId(), now);
+        long revokedCount = sessions.stream().filter(session -> !session.getId().equals(current.getId())).count();
         sessions.stream()
                 .filter(session -> !session.getId().equals(current.getId()))
                 .forEach(session -> session.setRevokedAt(now));
@@ -220,6 +240,10 @@ public class AuthApplicationService {
         authSecurityService.recordEvent(
                 current.getUserId(), "session_revoke_others", "SUCCESS", "medium", current.getClientIp(),
                 current.getUserAgent(), null, "keptSessionId=" + current.getId()
+        );
+        log.info(
+                "event=other_sessions_revoked userId={} keptSessionId={} revokedCount={} result=success",
+                current.getUserId(), current.getId(), revokedCount
         );
     }
 
@@ -231,11 +255,16 @@ public class AuthApplicationService {
         sessions.forEach(session -> session.setRevokedAt(now));
         authSessionRepository.saveAll(sessions);
         authSecurityService.recordEvent(userId, "session_revoke_all", "SUCCESS", "high", null, null, null, reason);
+        log.info(
+                "event=all_sessions_revoked userId={} revokedCount={} reason={} result=success",
+                userId, sessions.size(), safeReason(reason)
+        );
     }
 
     @Transactional(readOnly = true)
     public void validateCsrf(String sessionToken, String csrfToken) {
         if (sessionToken == null || sessionToken.isBlank() || csrfToken == null || csrfToken.isBlank()) {
+            log.warn("event=csrf_rejected userId=null result=AUTH_CSRF_INVALID reason=missing_token");
             throw new BusinessException("AUTH_CSRF_INVALID", "安全校验失败，请刷新页面后重试");
         }
         AuthSessionEntity session = findActiveSession(sessionToken);
@@ -244,6 +273,10 @@ public class AuthApplicationService {
             authSecurityService.recordEvent(
                     session.getUserId(), "csrf_rejected", "AUTH_CSRF_INVALID", "high",
                     session.getClientIp(), session.getUserAgent(), null, "csrf mismatch"
+            );
+            log.warn(
+                    "event=csrf_rejected userId={} sessionId={} clientIpMasked={} result=AUTH_CSRF_INVALID reason=mismatch",
+                    session.getUserId(), session.getId(), authSecurityService.maskIp(session.getClientIp())
             );
             throw new BusinessException("AUTH_CSRF_INVALID", "安全校验失败，请刷新页面后重试");
         }
@@ -283,15 +316,21 @@ public class AuthApplicationService {
 
     private AuthSessionEntity findActiveSession(String rawToken) {
         String tokenHash = PasswordHashUtil.sha256(rawToken);
-        return authSessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
-                        tokenHash, LocalDateTime.now())
+        return authSessionRepository.findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(tokenHash, LocalDateTime.now())
                 .orElseGet(() -> {
-                    authSessionRepository.findByTokenHash(tokenHash).ifPresent(session -> authSecurityService.recordEvent(
-                            session.getUserId(), "session_replay_rejected", "AUTH_SESSION_REPLAYED", "high",
-                            session.getClientIp(), session.getUserAgent(), null,
-                            "sessionId=" + session.getId() + ",state="
-                                    + (session.getRevokedAt() == null ? "expired" : "revoked")
-                    ));
+                    authSessionRepository.findByTokenHash(tokenHash).ifPresent(session -> {
+                        authSecurityService.recordEvent(
+                                session.getUserId(), "session_replay_rejected", "AUTH_SESSION_REPLAYED", "high",
+                                session.getClientIp(), session.getUserAgent(), null,
+                                "sessionId=" + session.getId() + ",state="
+                                        + (session.getRevokedAt() == null ? "expired" : "revoked")
+                        );
+                        log.warn(
+                                "event=session_replay_rejected userId={} sessionId={} state={} result=AUTH_SESSION_REPLAYED",
+                                session.getUserId(), session.getId(),
+                                session.getRevokedAt() == null ? "expired" : "revoked"
+                        );
+                    });
                     throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");
                 });
     }
@@ -305,6 +344,10 @@ public class AuthApplicationService {
             authSecurityService.recordEvent(
                     session.getUserId(), "session_revoked_account_inactive", "AUTH_UNAUTHORIZED", "high",
                     session.getClientIp(), session.getUserAgent(), null, "sessionId=" + session.getId()
+            );
+            log.warn(
+                    "event=session_revoked_account_inactive userId={} sessionId={} result=AUTH_UNAUTHORIZED",
+                    session.getUserId(), session.getId()
             );
             throw new BusinessException("AUTH_UNAUTHORIZED", "登录状态无效或已过期");
         }
@@ -336,12 +379,9 @@ public class AuthApplicationService {
 
     private AuthSessionResponse toSessionResponse(AuthSessionEntity session, boolean current) {
         return new AuthSessionResponse(
-                session.getId(),
-                current,
-                session.getIssuedAt(),
+                session.getId(), current, session.getIssuedAt(),
                 session.getLastAccessAt() == null ? session.getIssuedAt() : session.getLastAccessAt(),
-                session.getExpiresAt(),
-                authSecurityService.maskIp(session.getClientIp()),
+                session.getExpiresAt(), authSecurityService.maskIp(session.getClientIp()),
                 session.getDeviceName() == null ? "未知设备" : session.getDeviceName()
         );
     }
@@ -359,6 +399,12 @@ public class AuthApplicationService {
         String platform = value.contains("Windows") ? "Windows" : value.contains("Macintosh") ? "macOS"
                 : value.contains("Android") ? "Android" : value.contains("iPhone") ? "iPhone" : "设备";
         return platform + " · " + browser;
+    }
+
+    private String safeReason(String reason) {
+        String value = trimToNull(reason);
+        if (value == null) return "unspecified";
+        return value.length() <= 100 ? value : value.substring(0, 100);
     }
 
     private String trimToNull(String value) {
