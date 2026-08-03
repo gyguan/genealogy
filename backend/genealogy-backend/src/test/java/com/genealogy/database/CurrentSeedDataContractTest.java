@@ -45,6 +45,8 @@ class CurrentSeedDataContractTest {
                 .contains("'ritual'")
                 .contains("'marriage'")
                 .contains("'status'")
+                .contains("'oral_history'")
+                .contains("'highly_sensitive'")
                 .contains("insert into clan_membership")
                 .contains("insert into member_role")
                 .contains("insert into culture_item")
@@ -52,7 +54,10 @@ class CurrentSeedDataContractTest {
                 .contains("insert into culture_site")
                 .contains("insert into import_job")
                 .contains("insert into operation_log")
-                .doesNotContain("insert into clan_member (");
+                .doesNotContain("insert into clan_member (")
+                .doesNotContain("'verified'")
+                .doesNotContain("'unverified'")
+                .doesNotContain("'oral_record'");
     }
 
     @Test
