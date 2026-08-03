@@ -1,0 +1,28 @@
+/* Refine authentication form width without changing field behavior. */
+[data-genealogy-app] .commercial-auth-card.ant-card,
+[data-genealogy-app] .commercial-auth-footer {
+  width: 100%;
+  max-width: 360px;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-form,
+[data-genealogy-app] .commercial-auth-card .ant-form-item,
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper,
+[data-genealogy-app] .commercial-auth-card .ant-input,
+[data-genealogy-app] .commercial-auth-card .ant-btn-primary {
+  width: 100%;
+}
+
+@media (max-width: 980px) and (min-width: 721px) {
+  [data-genealogy-app] .commercial-auth-card.ant-card,
+  [data-genealogy-app] .commercial-auth-footer {
+    max-width: 368px;
+  }
+}
+
+@media (max-width: 720px) {
+  [data-genealogy-app] .commercial-auth-card.ant-card,
+  [data-genealogy-app] .commercial-auth-footer {
+    max-width: 390px;
+  }
+}
