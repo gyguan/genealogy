@@ -9,13 +9,40 @@
     <result column="raw_data" property="rawData"/>
     <result column="created_at" property="createdAt"/>
   </resultMap>
-  <sql id="columns">id, job_id, row_no, error_message, raw_data, created_at</sql>
-  <select id="findByJobId" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_error WHERE job_id=#{jobId} ORDER BY row_no ASC NULLS LAST, id ASC</select>
-  <select id="findFirstByJobIdAndRowNo" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_error WHERE job_id=#{jobId} AND row_no=#{rowNo} ORDER BY id ASC LIMIT 1</select>
-  <delete id="deleteByJobIdAndRowNo">DELETE FROM import_job_error WHERE job_id=#{jobId} AND row_no=#{rowNo}</delete>
-  <update id="updateAllById">UPDATE import_job_error SET job_id = #{jobId},
-      row_no = #{rowNo},
-      error_message = #{errorMessage},
-      raw_data = #{rawData},
-      created_at = #{createdAt} WHERE id=#{id}</update>
+
+  <sql id="columns">
+    id, job_id, row_no, error_message, raw_data, created_at
+  </sql>
+
+  <select id="findByJobId" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_error
+    WHERE job_id = #{jobId}
+    ORDER BY row_no ASC NULLS LAST, id ASC
+  </select>
+
+  <select id="findFirstByJobIdAndRowNo" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_error
+    WHERE job_id = #{jobId}
+      AND row_no = #{rowNo}
+    ORDER BY id ASC
+    LIMIT 1
+  </select>
+
+  <delete id="deleteByJobIdAndRowNo">
+    DELETE FROM import_job_error
+    WHERE job_id = #{jobId}
+      AND row_no = #{rowNo}
+  </delete>
+
+  <update id="updateAllById">
+    UPDATE import_job_error
+    SET job_id = #{jobId},
+        row_no = #{rowNo},
+        error_message = #{errorMessage},
+        raw_data = #{rawData},
+        created_at = #{createdAt}
+    WHERE id = #{id}
+  </update>
 </mapper>
