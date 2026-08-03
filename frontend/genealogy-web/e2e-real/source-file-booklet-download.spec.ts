@@ -45,7 +45,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     const createClan = await page.request.post('/api/v1/clans', {
       headers: adminCsrfHeaders,
       data: {
-        name: clanName,
+        clanName,
         surname: '黄',
         description: `booklet e2e ${runId}`
       }
