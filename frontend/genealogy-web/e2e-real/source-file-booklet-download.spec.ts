@@ -42,13 +42,22 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     await login(page, 'EDITOR');
     const editorCsrfHeaders = await csrfHeaders(page);
 
-    const createSource = await page.request.post('/api/v1/sources', {
+    const createSource = await page.request.post(`/api/v1/clans/${clanId}/sources`, {
       headers: editorCsrfHeaders,
       data: {
-        clanId,
-        title: sourceName,
-        sourceType: 'OTHER',
-        description: `booklet source ${runId}`
+        sourceName,
+        sourceType: 'other',
+        providerName: '来源文件与谱册测试',
+        bookTitle: `E2E来源文件-${runId}`,
+        volumeNo: '卷一',
+        pageNo: '第1页',
+        sourceDate: '2026',
+        excerpt: fileContent.trim(),
+        description: `booklet source ${runId}`,
+        confidenceLevel: 'high',
+        privacyLevel: 'clan_only',
+        sensitiveLevel: 'normal',
+        submitReview: false
       }
     });
     expect(createSource.ok(), await createSource.text()).toBeTruthy();
