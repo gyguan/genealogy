@@ -1,0 +1,39 @@
+name: Apply Current Seed Model Alignment
+
+on:
+  push:
+    branches:
+      - agent/current-data-seed-factory
+    paths:
+      - .github/workflows/apply-current-seed-model-alignment.yml
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/current-data-seed-factory
+          fetch-depth: 0
+
+      - name: Apply deterministic seed alignment
+        run: python3 scripts/maintenance/align_current_seed_model.py
+
+      - name: Run seed contract test
+        working-directory: backend/genealogy-backend
+        run: mvn -B -q -Dtest=CurrentSeedDataContractTest test
+
+      - name: Commit aligned scripts
+        run: |
+          rm -f scripts/maintenance/align_current_seed_model.py
+          rm -f .github/workflows/apply-current-seed-model-alignment.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(db): align seed data with current domain model"
+          git push origin HEAD:agent/current-data-seed-factory
