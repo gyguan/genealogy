@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CurrentSeedDataContractTest {
 
     private static final Path ROOT = Path.of("src/main/resources/db/seed/current");
+    private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
 
     @Test
     void resetRequiresNonProductionEnvironmentAndExplicitConfirmation() throws IOException {
@@ -58,6 +59,18 @@ class CurrentSeedDataContractTest {
                 .doesNotContain("'verified'")
                 .doesNotContain("'unverified'")
                 .doesNotContain("'oral_record'");
+    }
+
+    @Test
+    void currentCultureEntityFeaturedFlagHasForwardMigration() throws IOException {
+        String migration = Files.readString(
+                MIGRATIONS.resolve("V20260803171900__add_culture_item_featured_on_home.sql")
+        );
+
+        assertThat(migration)
+                .contains("add column if not exists featured_on_home boolean")
+                .contains("idx_culture_item_featured_home")
+                .contains("data_status = 'official'");
     }
 
     @Test
