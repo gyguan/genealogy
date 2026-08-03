@@ -13,11 +13,34 @@
   width: 100%;
 }
 
-[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-lg,
-[data-genealogy-app] .commercial-auth-card .ant-input-lg {
+/* Keep the compact 44px fields while centering text and icons vertically. */
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-lg {
   min-height: 44px;
   height: 44px;
-  padding-block: 7px;
+  padding-block: 0;
+  align-items: center;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-lg > input.ant-input {
+  min-height: 0;
+  height: auto;
+  padding-block: 0;
+  line-height: 22px;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-input-prefix,
+[data-genealogy-app] .commercial-auth-card .ant-input-suffix,
+[data-genealogy-app] .commercial-auth-card .ant-input-password-icon {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+[data-genealogy-app] .commercial-auth-card > .ant-card-body .ant-input-lg:not(.ant-input-affix-wrapper input) {
+  min-height: 44px;
+  height: 44px;
+  padding-block: 10px;
+  line-height: 22px;
 }
 
 [data-genealogy-app] .commercial-auth-card .ant-btn-primary {
