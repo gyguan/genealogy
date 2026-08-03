@@ -1,1 +1,54 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.genealogy.source.repository.mybatis.SourceBindingPersistenceMapper"><update id="updateAllById">update source_binding set clan_id=#{clanId},source_id=#{sourceId},target_type=#{targetType},target_id=#{targetId},binding_reason=#{bindingReason},excerpt=#{excerpt},confidence_level=#{confidenceLevel},binding_status=#{bindingStatus},created_by=#{createdBy},created_at=#{createdAt},updated_at=#{updatedAt} where id=#{id}</update><select id="countActiveByTargets" resultType="com.genealogy.common.persistence.TargetCountRow">select target_id as targetId,count(id) as count from source_binding where clan_id=#{clanId} and target_type=#{targetType} and target_id in <foreach collection="targetIds" item="id" open="(" close=")" separator=",">#{id}</foreach> and binding_status&lt;&gt;#{excludedStatus} group by target_id</select><select id="findTreeBindingsByTargets" resultType="com.genealogy.source.entity.SourceBindingEntity">select * from source_binding where clan_id=#{clanId} and lower(target_type) in <foreach collection="targetTypes" item="t" open="(" close=")" separator=",">#{t}</foreach> and target_id in <foreach collection="targetIds" item="id" open="(" close=")" separator=",">#{id}</foreach> and lower(binding_status)='official' order by target_type,target_id,id</select></mapper>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.source.repository.mybatis.SourceBindingPersistenceMapper">
+  <update id="updateAllById">
+    UPDATE source_binding
+    SET clan_id = #{clanId},
+        source_id = #{sourceId},
+        target_type = #{targetType},
+        target_id = #{targetId},
+        binding_reason = #{bindingReason},
+        excerpt = #{excerpt},
+        confidence_level = #{confidenceLevel},
+        binding_status = #{bindingStatus},
+        created_by = #{createdBy},
+        created_at = #{createdAt},
+        updated_at = #{updatedAt}
+    WHERE id = #{id}
+  </update>
+
+  <select id="countActiveByTargets"
+          resultType="com.genealogy.common.persistence.TargetCountRow">
+    SELECT target_id AS targetId,
+           COUNT(id) AS count
+    FROM source_binding
+    WHERE clan_id = #{clanId}
+      AND target_type = #{targetType}
+      AND target_id IN
+      <foreach collection="targetIds" item="id" open="(" close=")" separator=",">
+        #{id}
+      </foreach>
+      AND binding_status &lt;&gt; #{excludedStatus}
+    GROUP BY target_id
+  </select>
+
+  <select id="findTreeBindingsByTargets"
+          resultType="com.genealogy.source.entity.SourceBindingEntity">
+    SELECT *
+    FROM source_binding
+    WHERE clan_id = #{clanId}
+      AND LOWER(target_type) IN
+      <foreach collection="targetTypes" item="t" open="(" close=")" separator=",">
+        #{t}
+      </foreach>
+      AND target_id IN
+      <foreach collection="targetIds" item="id" open="(" close=")" separator=",">
+        #{id}
+      </foreach>
+      AND LOWER(binding_status) = 'official'
+    ORDER BY target_type,
+             target_id,
+             id
+  </select>
+</mapper>
