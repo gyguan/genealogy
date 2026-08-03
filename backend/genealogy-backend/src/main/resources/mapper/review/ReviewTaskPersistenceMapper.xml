@@ -1,1 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.genealogy.review.repository.mybatis.ReviewTaskPersistenceMapper"><update id="updateAllById">update review_task set clan_id=#{clanId},revision_id=#{revisionId},trace_id=#{traceId},review_level=#{reviewLevel},reviewer_id=#{reviewerId},reviewer_role=#{reviewerRole},branch_id=#{branchId},status=#{status},review_comment=#{reviewComment},reviewed_at=#{reviewedAt},created_at=#{createdAt} where id=#{id}</update></mapper>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.review.repository.mybatis.ReviewTaskPersistenceMapper">
+  <update id="updateAllById">
+    UPDATE review_task
+    SET clan_id = #{clanId},
+        revision_id = #{revisionId},
+        trace_id = #{traceId},
+        review_level = #{reviewLevel},
+        reviewer_id = #{reviewerId},
+        reviewer_role = #{reviewerRole},
+        branch_id = #{branchId},
+        status = #{status},
+        review_comment = #{reviewComment},
+        reviewed_at = #{reviewedAt},
+        created_at = #{createdAt}
+    WHERE id = #{id}
+  </update>
+</mapper>
