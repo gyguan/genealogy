@@ -12,6 +12,7 @@
 /* shell/base */
 @import './shell/app-shell.css';
 @import '../auth-commercial.css';
+@import '../auth-prototype-alignment.css';
 @import '../tabbed-module.css';
 @import '../entity-page-header.css';
 @import '../runtime-error.css';
