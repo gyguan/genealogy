@@ -1,5 +1,6 @@
 import { expect, test, type APIResponse, type Page } from '@playwright/test';
 import { loginThroughUi } from './support/auth';
+import { csrfHeaders } from './support/api';
 
 async function textOf(response: APIResponse): Promise<string> {
   return Buffer.from(await response.body()).toString('utf8');
@@ -39,8 +40,10 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     const fileContent = `source-file-content-${runId}\n`;
 
     await login(page, 'ADMIN');
+    const adminCsrfHeaders = await csrfHeaders(page);
 
     const createClan = await page.request.post('/api/v1/clans', {
+      headers: adminCsrfHeaders,
       data: {
         name: clanName,
         surname: '黄',
@@ -53,6 +56,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     expect(clanId).toBeGreaterThan(0);
 
     const createBranch = await page.request.post(`/api/v1/clans/${clanId}/branches`, {
+      headers: adminCsrfHeaders,
       data: {
         name: branchName,
         code: `E2E-${runId}`,
@@ -65,6 +69,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     expect(branchId).toBeGreaterThan(0);
 
     const createSource = await page.request.post('/api/v1/sources', {
+      headers: adminCsrfHeaders,
       data: {
         clanId,
         title: sourceName,
@@ -78,6 +83,9 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     expect(sourceId).toBeGreaterThan(0);
 
     const upload = await page.request.post(`/api/v1/sources/${sourceId}/attachments`, {
+      headers: {
+        'X-CSRF-Token': adminCsrfHeaders['X-CSRF-Token']
+      },
       multipart: {
         file: {
           name: fileName,
