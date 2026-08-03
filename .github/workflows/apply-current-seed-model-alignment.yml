@@ -67,11 +67,11 @@ jobs:
           text = text.replace(old, new, 1)
 
           old_generation = '''      where r.relation_type='parent_child' and parent.generation_no is not null and child.generation_no is not null
-        and child.generation_no<>parent.generation_no+1'''
+                  and child.generation_no<>parent.generation_no+1'''
           new_generation = '''      where r.relation_type='parent_child'
-        and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
-        and parent.generation_no is not null and child.generation_no is not null
-        and child.generation_no<>parent.generation_no+1'''
+                  and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
+                  and parent.generation_no is not null and child.generation_no is not null
+                  and child.generation_no<>parent.generation_no+1'''
           if old_generation not in text:
               raise SystemExit('generation invariant marker not found')
           text = text.replace(old_generation, new_generation, 1)
