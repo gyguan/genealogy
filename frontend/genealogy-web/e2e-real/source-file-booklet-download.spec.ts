@@ -45,7 +45,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     const createBranch = await page.request.post(`/api/v1/clans/${clanId}/branches`, {
       headers: adminCsrfHeaders,
       data: {
-        name: branchName,
+        branchName,
         code: `E2E-${runId}`,
         description: `booklet branch ${runId}`
       }
