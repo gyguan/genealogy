@@ -36,9 +36,9 @@ export async function login(page: Page, username: string, password: string) {
     sessionStorage.clear();
   });
   await page.reload();
-  await page.locator('input#username').fill(username);
-  await page.locator('input#password').fill(password);
-  await page.getByRole('button', { name: '登录系统', exact: true }).click();
+  await page.locator('input#username:visible').fill(username);
+  await page.locator('input#password:visible').fill(password);
+  await page.getByRole('button', { name: '登录系统', exact: true }).filter({ visible: true }).click();
   await expect(page.getByRole('menuitem', { name: '族谱首页', exact: true })).toBeVisible();
 }
 
