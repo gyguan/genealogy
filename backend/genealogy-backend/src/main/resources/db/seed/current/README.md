@@ -175,6 +175,15 @@ psql "$DATABASE_URL" \
   -f backend/genealogy-backend/src/main/resources/db/seed/current/30_verify_seed_data.sql
 ```
 
+## CI 验证
+
+`.github/workflows/current-seed-data-ci.yml` 在 PostgreSQL 16 上执行：
+
+```text
+全量 Flyway → 安全清理 → 场景预置 → 完整性校验
+           → 1000 人压测数据 → 再次完整性校验
+```
+
 ## 注意事项
 
 - 不要在生产数据库执行清理或压测脚本；
