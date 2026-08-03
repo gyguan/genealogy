@@ -1,9 +1,8 @@
 package com.genealogy.imports.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,26 +10,14 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "import_job_payload")
+@TableName(value = "import_job_payload")
 public class ImportJobPayloadEntity {
 
-    @Id
-    @Column(name = "job_id")
+    @TableId
     private Long jobId;
-
-    @Column(name = "original_filename", nullable = false, length = 512)
     private String originalFilename;
-
-    @Column(name = "content_type")
     private String contentType;
-
-    @Column(name = "file_content", nullable = false, columnDefinition = "bytea")
     private byte[] fileContent;
-
-    @Column(name = "confirm_duplicates", nullable = false)
     private Boolean confirmDuplicates;
-
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

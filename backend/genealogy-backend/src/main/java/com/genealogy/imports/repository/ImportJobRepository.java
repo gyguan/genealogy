@@ -1,42 +1,11 @@
 package com.genealogy.imports.repository;
-
-import com.genealogy.imports.entity.ImportJobEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-public interface ImportJobRepository extends JpaRepository<ImportJobEntity, Long>, JpaSpecificationExecutor<ImportJobEntity> {
-
-    List<ImportJobEntity> findByClanIdOrderByCreatedAtDesc(Long clanId);
-
-    Optional<ImportJobEntity> findByIdAndClanId(Long id, Long clanId);
-
-    Optional<ImportJobEntity> findFirstByClanIdAndIdempotencyKeyOrderByCreatedAtDesc(Long clanId, String idempotencyKey);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select job from ImportJobEntity job where job.id = :jobId and job.clanId = :clanId")
-    Optional<ImportJobEntity> findByIdAndClanIdForUpdate(
-            @Param("jobId") Long jobId,
-            @Param("clanId") Long clanId
-    );
-
-    @Query(value = """
-            select *
-            from import_job
-            where execution_mode = 'async'
-              and execution_status in ('queued', 'running', 'retry_wait')
-              and (next_retry_at is null or next_retry_at <= :now)
-              and (lease_expires_at is null or lease_expires_at < :now)
-            order by created_at asc, id asc
-            limit 1
-            for update skip locked
-            """, nativeQuery = true)
-    Optional<ImportJobEntity> findNextExecutableForUpdate(@Param("now") LocalDateTime now);
+import com.genealogy.common.persistence.PageResult; import com.genealogy.imports.entity.ImportJobEntity; import com.genealogy.imports.repository.mybatis.ImportJobPersistenceMapper; import com.genealogy.imports.repository.query.ImportJobQueryCriteria;
+import org.springframework.stereotype.Repository; import org.springframework.transaction.annotation.Transactional; import java.time.LocalDateTime; import java.util.*;
+@Repository @Transactional(readOnly=true) public class ImportJobRepository { private final ImportJobPersistenceMapper mapper; public ImportJobRepository(ImportJobPersistenceMapper mapper){this.mapper=mapper;}
+ @Transactional public ImportJobEntity save(ImportJobEntity e){Objects.requireNonNull(e); e.normalizeDescriptor(); LocalDateTime now=LocalDateTime.now(); if(e.getId()==null){if(e.getCreatedAt()==null)e.setCreatedAt(now); e.setUpdatedAt(now); mapper.insert(e);} else {e.setUpdatedAt(now); if(mapper.updateAllById(e)!=1) throw new IllegalStateException("Import job update failed: "+e.getId());} return e;}
+ @Transactional public ImportJobEntity saveAndFlush(ImportJobEntity e){return save(e);}
+ public Optional<ImportJobEntity> findById(Long id){return Optional.ofNullable(id==null?null:mapper.selectById(id));} public List<ImportJobEntity> findAllById(Iterable<Long> ids){List<Long> a=new ArrayList<>(); if(ids!=null)ids.forEach(a::add); return a.isEmpty()?List.of():mapper.findAllByIds(a);}
+ public List<ImportJobEntity> findByClanIdOrderByCreatedAtDesc(Long id){return mapper.findByClanId(id);} public Optional<ImportJobEntity> findByIdAndClanId(Long id,Long c){return Optional.ofNullable(mapper.findByIdAndClanId(id,c));} public Optional<ImportJobEntity> findFirstByClanIdAndIdempotencyKeyOrderByCreatedAtDesc(Long c,String k){return Optional.ofNullable(mapper.findFirstByIdempotencyKey(c,k));}
+ public Optional<ImportJobEntity> findByIdAndClanIdForUpdate(Long id,Long c){return Optional.ofNullable(mapper.findByIdAndClanIdForUpdate(id,c));} public Optional<ImportJobEntity> findNextExecutableForUpdate(LocalDateTime n){return Optional.ofNullable(mapper.findNextExecutableForUpdate(n));}
+ public PageResult<ImportJobEntity> search(ImportJobQueryCriteria c,int page,int size){long offset=(long)Math.max(page,0)*size; return new PageResult<>(mapper.search(c,offset,size),mapper.countSearch(c));}
 }

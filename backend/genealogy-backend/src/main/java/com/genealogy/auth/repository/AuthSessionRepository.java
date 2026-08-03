@@ -1,27 +1,78 @@
 package com.genealogy.auth.repository;
 
 import com.genealogy.auth.entity.AuthSessionEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import com.genealogy.auth.repository.mybatis.AuthSessionPersistenceMapper;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
-public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, Long> {
+@Repository
+@Transactional(readOnly = true)
+public class AuthSessionRepository {
+    private final AuthSessionPersistenceMapper mapper;
 
-    Optional<AuthSessionEntity> findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(String tokenHash, LocalDateTime now);
+    public AuthSessionRepository(AuthSessionPersistenceMapper mapper) {
+        this.mapper = mapper;
+    }
 
-    Optional<AuthSessionEntity> findByTokenHash(String tokenHash);
+    @Transactional
+    public AuthSessionEntity save(AuthSessionEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        if (entity.getId() == null) {
+            mapper.insert(entity);
+        } else if (mapper.updateAllById(entity) != 1) {
+            throw new IllegalStateException(
+                    "Session update failed for id " + entity.getId()
+            );
+        }
+        return entity;
+    }
 
-    List<AuthSessionEntity> findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastAccessAtDesc(
-            Long userId,
-            LocalDateTime now
-    );
+    @Transactional
+    public AuthSessionEntity saveAndFlush(AuthSessionEntity entity) {
+        return save(entity);
+    }
 
-    @Modifying
-    @Query("delete from AuthSessionEntity s where s.expiresAt < :cutoff or (s.revokedAt is not null and s.revokedAt < :cutoff)")
-    int deleteRetiredBefore(@Param("cutoff") LocalDateTime cutoff);
+    @Transactional
+    public List<AuthSessionEntity> saveAll(
+            Collection<AuthSessionEntity> entities
+    ) {
+        return entities.stream().map(this::save).toList();
+    }
+
+    public Optional<AuthSessionEntity> findById(Long id) {
+        return Optional.ofNullable(id == null ? null : mapper.selectById(id));
+    }
+
+    public Optional<AuthSessionEntity>
+            findByTokenHashAndRevokedAtIsNullAndExpiresAtAfter(
+                    String tokenHash,
+                    LocalDateTime now
+            ) {
+        return Optional.ofNullable(
+                mapper.findActiveByTokenHash(tokenHash, now)
+        );
+    }
+
+    public Optional<AuthSessionEntity> findByTokenHash(String tokenHash) {
+        return Optional.ofNullable(mapper.findByTokenHash(tokenHash));
+    }
+
+    public List<AuthSessionEntity>
+            findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastAccessAtDesc(
+                    Long userId,
+                    LocalDateTime now
+            ) {
+        return mapper.findActiveByUserId(userId, now);
+    }
+
+    @Transactional
+    public int deleteRetiredBefore(LocalDateTime cutoff) {
+        return mapper.deleteRetiredBefore(cutoff);
+    }
 }

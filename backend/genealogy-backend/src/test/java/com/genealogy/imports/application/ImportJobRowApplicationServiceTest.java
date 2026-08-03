@@ -3,6 +3,7 @@ package com.genealogy.imports.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.persistence.PageResult;
 import com.genealogy.imports.dto.ImportJobRowResponse;
 import com.genealogy.imports.dto.PersonImportRowRetryRequest;
 import com.genealogy.imports.entity.ImportJobEntity;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -67,11 +66,13 @@ class ImportJobRowApplicationServiceTest {
         ImportJobEntity job = correctableJob();
         ImportJobRowEntity row = failedRow();
         when(importJobRepository.findByIdAndClanId(101L, 1L)).thenReturn(Optional.of(job));
-        when(importJobRowRepository.findByJobIdAndRowStatusInOrderByRowNoAsc(
+        when(importJobRowRepository.page(
                 eq(101L),
                 eq(Set.of(ImportJobRowEntity.STATUS_INVALID, ImportJobRowEntity.STATUS_RETRY_FAILED)),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of(row)));
+                eq(false),
+                eq(0),
+                eq(20)
+        )).thenReturn(new PageResult<>(List.of(row), 1));
 
         PageResponse<ImportJobRowResponse> page = service.listRows(1L, 101L, "failed", 1, 20, 9L);
 

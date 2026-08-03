@@ -28,4 +28,3 @@ genealogy:
 logging:
   level:
     com.genealogy: info
-    org.hibernate.SQL: warn

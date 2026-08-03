@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.imports.repository.mybatis.ImportJobPersistenceMapper">
+  <resultMap id="entityMap" type="com.genealogy.imports.entity.ImportJobEntity">
+    <id column="id" property="id"/>
+    <result column="clan_id" property="clanId"/>
+    <result column="branch_id" property="branchId"/>
+    <result column="import_type" property="importType"/>
+    <result column="file_format" property="fileFormat"/>
+    <result column="original_filename" property="originalFilename"/>
+    <result column="idempotency_key" property="idempotencyKey"/>
+    <result column="total_count" property="totalCount"/>
+    <result column="success_count" property="successCount"/>
+    <result column="failure_count" property="failureCount"/>
+    <result column="skipped_count" property="skippedCount"/>
+    <result column="status" property="status"/>
+    <result column="processing_status" property="processingStatus"/>
+    <result column="review_status" property="reviewStatus"/>
+    <result column="review_round" property="reviewRound"/>
+    <result column="latest_review_task_id" property="latestReviewTaskId"/>
+    <result column="parent_job_id" property="parentJobId"/>
+    <result column="error_summary" property="errorSummary"/>
+    <result column="execution_mode" property="executionMode"/>
+    <result column="execution_status" property="executionStatus"/>
+    <result column="execution_stage" property="executionStage"/>
+    <result column="cursor_row_no" property="cursorRowNo"/>
+    <result column="processed_count" property="processedCount"/>
+    <result column="published_count" property="publishedCount"/>
+    <result column="chunk_size" property="chunkSize"/>
+    <result column="execution_retry_count" property="executionRetryCount"/>
+    <result column="execution_max_retries" property="executionMaxRetries"/>
+    <result column="requested_action" property="requestedAction"/>
+    <result column="failure_stage" property="failureStage"/>
+    <result column="last_error_code" property="lastErrorCode"/>
+    <result column="lease_owner" property="leaseOwner"/>
+    <result column="lease_expires_at" property="leaseExpiresAt"/>
+    <result column="next_retry_at" property="nextRetryAt"/>
+    <result column="started_at" property="startedAt"/>
+    <result column="completed_at" property="completedAt"/>
+    <result column="heartbeat_at" property="heartbeatAt"/>
+    <result column="manual_intervention_required" property="manualInterventionRequired"/>
+    <result column="created_by" property="createdBy"/>
+    <result column="created_at" property="createdAt"/>
+    <result column="updated_at" property="updatedAt"/>
+  </resultMap>
+  <sql id="columns">id, clan_id, branch_id, import_type, file_format, original_filename, idempotency_key, total_count, success_count, failure_count, skipped_count, status, processing_status, review_status, review_round, latest_review_task_id, parent_job_id, error_summary, execution_mode, execution_status, execution_stage, cursor_row_no, processed_count, published_count, chunk_size, execution_retry_count, execution_max_retries, requested_action, failure_stage, last_error_code, lease_owner, lease_expires_at, next_retry_at, started_at, completed_at, heartbeat_at, manual_intervention_required, created_by, created_at, updated_at</sql>
+  <select id="findByClanId" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE clan_id=#{clanId} ORDER BY created_at DESC, id DESC</select>
+  <select id="findByIdAndClanId" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE id=#{id} AND clan_id=#{clanId}</select>
+  <select id="findByIdAndClanIdForUpdate" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE id=#{id} AND clan_id=#{clanId} FOR UPDATE</select>
+  <select id="findFirstByIdempotencyKey" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE clan_id=#{clanId} AND idempotency_key=#{idempotencyKey} ORDER BY created_at DESC, id DESC LIMIT 1</select>
+  <select id="findNextExecutableForUpdate" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE execution_mode='async' AND execution_status IN ('queued','running','retry_wait') AND (next_retry_at IS NULL OR next_retry_at &lt;= #{now}) AND (lease_expires_at IS NULL OR lease_expires_at &lt; #{now}) ORDER BY created_at ASC,id ASC LIMIT 1 FOR UPDATE SKIP LOCKED</select>
+  <sql id="searchWhere"><where>
+      clan_id=#{criteria.clanId}
+      <if test="criteria.branchId != null">AND branch_id=#{criteria.branchId}</if>
+      <if test="criteria.status != null and criteria.status != ''">AND status=#{criteria.status}</if>
+      <if test="criteria.importType != null and criteria.importType != ''">AND (import_type=#{criteria.importType} OR import_type=#{criteria.importType} || '_csv' OR import_type=#{criteria.importType} || '_xlsx')</if>
+      <if test="criteria.fileFormat != null and criteria.fileFormat != ''">AND (file_format=#{criteria.fileFormat} OR (file_format IS NULL AND import_type LIKE '%_' || #{criteria.fileFormat}))</if>
+    </where></sql>
+  <select id="search" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job <include refid="searchWhere"/> ORDER BY created_at DESC,id DESC OFFSET #{offset} LIMIT #{limit}</select>
+  <select id="countSearch" resultType="long">SELECT count(*) FROM import_job <include refid="searchWhere"/></select>
+  <select id="findAllByIds" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job WHERE id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach></select>
+  <update id="updateAllById">UPDATE import_job SET clan_id = #{clanId},
+      branch_id = #{branchId},
+      import_type = #{importType},
+      file_format = #{fileFormat},
+      original_filename = #{originalFilename},
+      idempotency_key = #{idempotencyKey},
+      total_count = #{totalCount},
+      success_count = #{successCount},
+      failure_count = #{failureCount},
+      skipped_count = #{skippedCount},
+      status = #{status},
+      processing_status = #{processingStatus},
+      review_status = #{reviewStatus},
+      review_round = #{reviewRound},
+      latest_review_task_id = #{latestReviewTaskId},
+      parent_job_id = #{parentJobId},
+      error_summary = #{errorSummary},
+      execution_mode = #{executionMode},
+      execution_status = #{executionStatus},
+      execution_stage = #{executionStage},
+      cursor_row_no = #{cursorRowNo},
+      processed_count = #{processedCount},
+      published_count = #{publishedCount},
+      chunk_size = #{chunkSize},
+      execution_retry_count = #{executionRetryCount},
+      execution_max_retries = #{executionMaxRetries},
+      requested_action = #{requestedAction},
+      failure_stage = #{failureStage},
+      last_error_code = #{lastErrorCode},
+      lease_owner = #{leaseOwner},
+      lease_expires_at = #{leaseExpiresAt},
+      next_retry_at = #{nextRetryAt},
+      started_at = #{startedAt},
+      completed_at = #{completedAt},
+      heartbeat_at = #{heartbeatAt},
+      manual_intervention_required = #{manualInterventionRequired},
+      created_by = #{createdBy},
+      created_at = #{createdAt},
+      updated_at = #{updatedAt} WHERE id=#{id}</update>
+</mapper>

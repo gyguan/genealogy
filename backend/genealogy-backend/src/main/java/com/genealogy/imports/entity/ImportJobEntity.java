@@ -1,26 +1,17 @@
 package com.genealogy.imports.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.genealogy.imports.domain.ImportJobDescriptor;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PostLoad;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@DynamicUpdate
-@Table(name = "import_job")
+@TableName(value = "import_job")
 public class ImportJobEntity {
 
     public static final String TYPE_PERSON = "person";
@@ -67,127 +58,50 @@ public class ImportJobEntity {
     public static final String ACTION_PAUSE = "pause";
     public static final String ACTION_CANCEL = "cancel";
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
-
-    @Column(name = "clan_id", nullable = false)
     private Long clanId;
-
-    @Column(name = "branch_id")
     private Long branchId;
-
-    @Column(name = "import_type", nullable = false)
     private String importType;
-
-    @Column(name = "file_format", nullable = false)
     private String fileFormat;
-
-    @Column(name = "original_filename")
     private String originalFilename;
-
-    @Column(name = "idempotency_key", length = 96)
     private String idempotencyKey;
-
-    @Column(name = "total_count")
     private Integer totalCount;
-
-    @Column(name = "success_count")
     private Integer successCount;
-
-    @Column(name = "failure_count")
     private Integer failureCount;
-
-    @Column(name = "skipped_count", nullable = false)
     private Integer skippedCount;
 
     /**
      * Legacy execution status retained for existing API and UI compatibility.
      */
     private String status;
-
-    @Column(name = "processing_status", nullable = false)
     private String processingStatus;
-
-    @Column(name = "review_status", nullable = false)
     private String reviewStatus;
-
-    @Column(name = "review_round", nullable = false)
     private Integer reviewRound;
-
-    @Column(name = "latest_review_task_id")
     private Long latestReviewTaskId;
-
-    @Column(name = "parent_job_id")
     private Long parentJobId;
-
-    @Column(name = "error_summary", columnDefinition = "text")
     private String errorSummary;
-
-    @Column(name = "execution_mode", nullable = false)
     private String executionMode;
-
-    @Column(name = "execution_status", nullable = false)
     private String executionStatus;
-
-    @Column(name = "execution_stage", nullable = false)
     private String executionStage;
-
-    @Column(name = "cursor_row_no", nullable = false)
     private Integer cursorRowNo;
-
-    @Column(name = "processed_count", nullable = false)
     private Integer processedCount;
-
-    @Column(name = "published_count", nullable = false)
     private Integer publishedCount;
-
-    @Column(name = "chunk_size", nullable = false)
     private Integer chunkSize;
-
-    @Column(name = "execution_retry_count", nullable = false)
     private Integer executionRetryCount;
-
-    @Column(name = "execution_max_retries", nullable = false)
     private Integer executionMaxRetries;
-
-    @Column(name = "requested_action")
     private String requestedAction;
-
-    @Column(name = "failure_stage")
     private String failureStage;
-
-    @Column(name = "last_error_code")
     private String lastErrorCode;
-
-    @Column(name = "lease_owner")
     private String leaseOwner;
-
-    @Column(name = "lease_expires_at")
     private LocalDateTime leaseExpiresAt;
-
-    @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
-
-    @Column(name = "started_at")
     private LocalDateTime startedAt;
-
-    @Column(name = "completed_at")
     private LocalDateTime completedAt;
-
-    @Column(name = "heartbeat_at")
     private LocalDateTime heartbeatAt;
-
-    @Column(name = "manual_intervention_required", nullable = false)
     private Boolean manualInterventionRequired;
-
-    @Column(name = "created_by")
     private Long createdBy;
-
-    @Column(name = "created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     public void setImportType(String importType) {
@@ -213,11 +127,7 @@ public class ImportJobEntity {
     public boolean isAsyncExecution() {
         return EXECUTION_MODE_ASYNC.equals(executionMode);
     }
-
-    @PrePersist
-    @PreUpdate
-    @PostLoad
-    void normalizeDescriptor() {
+    public void normalizeDescriptor() {
         ImportJobDescriptor descriptor = ImportJobDescriptor.resolve(importType, fileFormat, originalFilename);
         this.importType = descriptor.importType();
         this.fileFormat = descriptor.fileFormat();

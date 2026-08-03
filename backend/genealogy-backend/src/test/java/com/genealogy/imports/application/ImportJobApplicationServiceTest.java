@@ -3,6 +3,8 @@ package com.genealogy.imports.application;
 import com.genealogy.auth.application.AuthorizationApplicationService;
 import com.genealogy.common.api.PageResponse;
 import com.genealogy.common.exception.BusinessException;
+import com.genealogy.common.persistence.PageResult;
+import com.genealogy.imports.repository.query.ImportJobQueryCriteria;
 import com.genealogy.imports.dto.ImportJobResponse;
 import com.genealogy.imports.dto.ImportJobSummaryResponse;
 import com.genealogy.imports.entity.ImportJobEntity;
@@ -15,9 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -56,8 +55,8 @@ class ImportJobApplicationServiceTest {
     @Test
     void listJobsShouldAcceptLegacyCombinedFilterAndReturnSplitDescriptor() {
         ImportJobEntity job = job(11L, 1L, 5L, "partial_completed", "xlsx");
-        when(importJobRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(job), org.springframework.data.domain.PageRequest.of(1, 20), 21));
+        when(importJobRepository.search(any(ImportJobQueryCriteria.class), any(Integer.class), any(Integer.class)))
+                .thenReturn(new PageResult<>(List.of(job), 21));
 
         PageResponse<ImportJobSummaryResponse> result = service.listJobs(
                 1L,
@@ -82,10 +81,10 @@ class ImportJobApplicationServiceTest {
         verify(authorizationApplicationService).requireBranchWriteScope(1L, 9L, 5L);
         verify(importJobErrorRepository, never()).findByJobIdOrderByRowNoAsc(any());
 
-        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(importJobRepository).findAll(any(Specification.class), pageableCaptor.capture());
-        assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(1);
-        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+        ArgumentCaptor<ImportJobQueryCriteria> criteriaCaptor = ArgumentCaptor.forClass(ImportJobQueryCriteria.class);
+        verify(importJobRepository).search(criteriaCaptor.capture(), org.mockito.ArgumentMatchers.eq(1), org.mockito.ArgumentMatchers.eq(20));
+        assertThat(criteriaCaptor.getValue().clanId()).isEqualTo(1L);
+        assertThat(criteriaCaptor.getValue().branchId()).isEqualTo(5L);
     }
 
     @Test
@@ -123,7 +122,7 @@ class ImportJobApplicationServiceTest {
 
         assertThat(error).isNotNull();
         assertThat(error.getCode()).isEqualTo("IMPORT_FILE_FORMAT_INVALID");
-        verify(importJobRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(importJobRepository, never()).search(any(), any(Integer.class), any(Integer.class));
     }
 
     @Test

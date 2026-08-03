@@ -38,11 +38,7 @@ import com.genealogy.source.entity.SourceBindingEntity;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
-import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -187,17 +183,8 @@ public class MigrationEventApplicationService {
 
         int safePageNo = Math.max(1, pageNo);
         int safePageSize = Math.max(1, Math.min(pageSize, MigrationEventDomainService.MAX_PAGE_SIZE));
-        Sort.Direction direction = domainService.sortAscending(normalized.sort())
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-        Sort sort = Sort.by(direction, domainService.sortField(normalized.sort()))
-                .and(Sort.by(Sort.Direction.ASC, "branchId"))
-                .and(Sort.by(Sort.Direction.ASC, "sequenceNo"))
-                .and(Sort.by(Sort.Direction.ASC, "id"));
-        PageRequest pageRequest = PageRequest.of(safePageNo - 1, safePageSize, sort);
-        Page<MigrationEventEntity> page = migrationEventRepository.findAll(
-                buildSpecification(clanId, actorId, normalized, readableBranchIds, sensitiveBranchIds),
-                pageRequest
+        Page<MigrationEventEntity> page = migrationEventRepository.search(
+                clanId, actorId, normalized, readableBranchIds, sensitiveBranchIds, safePageNo, safePageSize
         );
 
         List<MigrationEventEntity> rows = page.getContent();
@@ -483,71 +470,6 @@ public class MigrationEventApplicationService {
                 .map(AppUserEntity::getDisplayName)
                 .filter(name -> name != null && !name.isBlank())
                 .orElse(null);
-    }
-
-    private Specification<MigrationEventEntity> buildSpecification(
-            Long clanId,
-            Long actorId,
-            MigrationEventSearchCriteria criteria,
-            Collection<Long> readableBranchIds,
-            Collection<Long> sensitiveBranchIds
-    ) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("clanId"), clanId));
-            predicates.add(cb.isNull(root.get("deletedAt")));
-            predicates.add(root.get("branchId").in(readableBranchIds));
-            if (!criteria.branchIds().isEmpty()) {
-                predicates.add(root.get("branchId").in(criteria.branchIds()));
-            }
-            if (criteria.founderPersonId() != null) {
-                predicates.add(cb.equal(root.get("founderPersonId"), criteria.founderPersonId()));
-            }
-            if (!criteria.dataStatuses().isEmpty()) {
-                predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
-            }
-            if (criteria.privacyLevel() != null) {
-                predicates.add(cb.equal(root.get("privacyLevel"), criteria.privacyLevel()));
-            }
-            addContains(predicates, root.get("fromLocation"), criteria.fromLocation(), cb);
-            addContains(predicates, root.get("toLocation"), criteria.toLocation(), cb);
-            addContains(predicates, root.get("migrationTimeText"), criteria.migrationTimeText(), cb);
-            if (criteria.keyword() != null) {
-                String pattern = "%" + criteria.keyword().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("fromLocation")), pattern),
-                        cb.like(cb.lower(root.get("toLocation")), pattern),
-                        cb.like(cb.lower(root.get("migrationTimeText")), pattern),
-                        cb.like(cb.lower(root.get("reason")), pattern),
-                        cb.like(cb.lower(root.get("description")), pattern)
-                ));
-            }
-
-            Predicate unrestricted = cb.and(
-                    cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)),
-                    cb.notEqual(root.get("sensitiveLevel"), "sensitive"),
-                    cb.notEqual(root.get("sensitiveLevel"), "highly_sensitive")
-            );
-            List<Predicate> visibility = new ArrayList<>();
-            visibility.add(unrestricted);
-            visibility.add(cb.equal(root.get("createdBy"), actorId));
-            if (!sensitiveBranchIds.isEmpty()) {
-                visibility.add(root.get("branchId").in(sensitiveBranchIds));
-            }
-            predicates.add(cb.or(visibility.toArray(Predicate[]::new)));
-            return cb.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
-    private void addContains(
-            List<Predicate> predicates,
-            jakarta.persistence.criteria.Path<String> path,
-            String value,
-            jakarta.persistence.criteria.CriteriaBuilder cb
-    ) {
-        if (value != null) {
-            predicates.add(cb.like(cb.lower(path), "%" + value.toLowerCase(Locale.ROOT) + "%"));
-        }
     }
 
     private MigrationEventEntity requireVisible(Long eventId, Long actorId) {

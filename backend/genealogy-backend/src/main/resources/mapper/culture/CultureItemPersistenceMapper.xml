@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.culture.repository.mybatis.CultureItemPersistenceMapper">
+  <update id="updateAllByIdAndVersion">update culture_item set clan_id=#{clanId},branch_id=#{branchId},category=#{category},title=#{title},summary=#{summary},content=#{content},historical_period=#{historicalPeriod},location_text=#{locationText},confidence_level=#{confidenceLevel},privacy_level=#{privacyLevel},sensitive_level=#{sensitiveLevel},data_status=#{dataStatus},is_featured_on_home=#{featuredOnHome},sort_order=#{sortOrder},created_by=#{createdBy},created_at=#{createdAt},updated_at=#{updatedAt},deleted_at=#{deletedAt},version=version+1 where id=#{id} and version=#{version}</update>
+</mapper>

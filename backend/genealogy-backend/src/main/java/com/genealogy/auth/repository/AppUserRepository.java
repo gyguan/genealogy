@@ -1,46 +1,130 @@
 package com.genealogy.auth.repository;
 
 import com.genealogy.auth.entity.AppUserEntity;
+import com.genealogy.auth.repository.mybatis.AppUserPersistenceMapper;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
-public interface AppUserRepository extends JpaRepository<AppUserEntity, Long> {
+@Repository
+@Transactional(readOnly = true)
+public class AppUserRepository {
+    private final AppUserPersistenceMapper mapper;
 
-    Optional<AppUserEntity> findByUsername(String username);
+    public AppUserRepository(AppUserPersistenceMapper mapper) {
+        this.mapper = mapper;
+    }
 
-    Optional<AppUserEntity> findByUsernameAndDeletedAtIsNull(String username);
+    @Transactional
+    public AppUserEntity save(AppUserEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        LocalDateTime now = LocalDateTime.now();
+        if (entity.getId() == null) {
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(now);
+            }
+            if (entity.getUpdatedAt() == null) {
+                entity.setUpdatedAt(now);
+            }
+            mapper.insert(entity);
+        } else {
+            entity.setUpdatedAt(now);
+            if (mapper.updateAllById(entity) != 1) {
+                throw new IllegalStateException(
+                        "User update failed for id " + entity.getId()
+                );
+            }
+        }
+        return entity;
+    }
 
-    boolean existsByUsername(String username);
+    @Transactional
+    public AppUserEntity saveAndFlush(AppUserEntity entity) {
+        return save(entity);
+    }
 
-    boolean existsByUsernameAndDeletedAtIsNull(String username);
+    @Transactional
+    public List<AppUserEntity> saveAll(Collection<AppUserEntity> entities) {
+        return entities.stream().map(this::save).toList();
+    }
 
-    boolean existsByPhoneAndDeletedAtIsNull(String phone);
+    public Optional<AppUserEntity> findById(Long id) {
+        return Optional.ofNullable(id == null ? null : mapper.selectById(id));
+    }
 
-    boolean existsByEmailAndDeletedAtIsNull(String email);
+    public List<AppUserEntity> findAll() {
+        return mapper.findAll();
+    }
 
-    @Query("""
-            select appUser
-            from AppUserEntity appUser
-            where appUser.deletedAt is null
-              and (lower(appUser.username) = lower(:account)
-                   or lower(coalesce(appUser.email, '')) = lower(:account)
-                   or coalesce(appUser.phone, '') = :account)
-            """)
-    Optional<AppUserEntity> findRecoverableAccount(@Param("account") String account);
+    public List<AppUserEntity> findAllById(Iterable<Long> ids) {
+        List<Long> values = toList(ids);
+        return values.isEmpty() ? List.of() : mapper.findAllByIds(values);
+    }
 
-    @Query("""
-            select appUser
-            from AppUserEntity appUser
-            where appUser.deletedAt is null
-              and appUser.status = 'active'
-              and (lower(appUser.username) like lower(concat('%', :keyword, '%'))
-                   or lower(appUser.displayName) like lower(concat('%', :keyword, '%')))
-            order by appUser.displayName asc, appUser.id asc
-            """)
-    Page<AppUserEntity> searchActiveCandidates(@Param("keyword") String keyword, Pageable pageable);
+    public Optional<AppUserEntity> findByUsername(String username) {
+        return Optional.ofNullable(mapper.findByUsername(username, false));
+    }
+
+    public Optional<AppUserEntity> findByUsernameAndDeletedAtIsNull(
+            String username
+    ) {
+        return Optional.ofNullable(mapper.findByUsername(username, true));
+    }
+
+    public boolean existsByUsername(String username) {
+        return mapper.existsUsername(username, false);
+    }
+
+    public boolean existsByUsernameAndDeletedAtIsNull(String username) {
+        return mapper.existsUsername(username, true);
+    }
+
+    public boolean existsByPhoneAndDeletedAtIsNull(String phone) {
+        return mapper.existsPhone(phone);
+    }
+
+    public boolean existsByEmailAndDeletedAtIsNull(String email) {
+        return mapper.existsEmail(email);
+    }
+
+    public Optional<AppUserEntity> findRecoverableAccount(String account) {
+        return Optional.ofNullable(mapper.findRecoverableAccount(account));
+    }
+
+    public Page<AppUserEntity> searchActiveCandidates(
+            String keyword,
+            Pageable pageable
+    ) {
+        long total = mapper.countActiveCandidates(keyword);
+        List<AppUserEntity> content = total == 0
+                ? List.of()
+                : mapper.searchActiveCandidates(
+                        keyword,
+                        pageable.getOffset(),
+                        pageable.getPageSize()
+                );
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    public boolean existsById(Long id) {
+        return id != null && mapper.selectById(id) != null;
+    }
+
+    private List<Long> toList(Iterable<Long> ids) {
+        if (ids == null) {
+            return List.of();
+        }
+        List<Long> values = new ArrayList<>();
+        ids.forEach(values::add);
+        return values;
+    }
 }

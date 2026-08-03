@@ -38,15 +38,7 @@ import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceAttachmentRepository;
 import com.genealogy.source.repository.SourceBindingRepository;
 import com.genealogy.source.repository.SourceRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -181,12 +173,11 @@ public class CultureItemApplicationService {
         }
         int normalizedPageNo = Math.max(1, pageNo);
         int normalizedPageSize = Math.max(1, Math.min(pageSize, CultureItemDomainService.MAX_PAGE_SIZE));
-        Sort.Direction direction = domainService.sortAscending(normalized.sort()) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Sort sort = Sort.by(direction, domainService.sortField(normalized.sort())).and(Sort.by(Sort.Direction.DESC, "id"));
-        PageRequest pageRequest = PageRequest.of(normalizedPageNo - 1, normalizedPageSize, sort);
-        Page<CultureItemEntity> page = cultureItemRepository.findAll(
-                buildSearchSpecification(clanId, actorId, normalized, readScope, updateScope),
-                pageRequest
+        Page<CultureItemEntity> page = cultureItemRepository.search(
+                clanId, actorId, normalized,
+                readScope.fullClanAccess(), readScope.branchIds(),
+                updateScope.fullClanAccess(), updateScope.branchIds(),
+                normalizedPageNo, normalizedPageSize
         );
 
         List<CultureItemEntity> rows = page.getContent();
@@ -211,25 +202,26 @@ public class CultureItemApplicationService {
 
         CultureItemSearchCriteria officialCriteria = new CultureItemSearchCriteria(
                 null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, null, null, "updatedAt,desc");
-        long officialItemCount = cultureItemRepository.count(
-                buildSearchSpecification(clanId, actorId, officialCriteria, readScope, updateScope));
+        long officialItemCount = cultureItemRepository.count(clanId, actorId, officialCriteria,
+                readScope.fullClanAccess(), readScope.branchIds(), updateScope.fullClanAccess(), updateScope.branchIds());
 
         CultureItemSearchCriteria pendingCriteria = new CultureItemSearchCriteria(
                 null, null, null, CultureItemDomainService.STATUS_PENDING_REVIEW, null, null, null, "updatedAt,desc");
-        long pendingReviewCount = cultureItemRepository.count(
-                buildSearchSpecification(clanId, actorId, pendingCriteria, readScope, updateScope));
+        long pendingReviewCount = cultureItemRepository.count(clanId, actorId, pendingCriteria,
+                readScope.fullClanAccess(), readScope.branchIds(), updateScope.fullClanAccess(), updateScope.branchIds());
 
         CultureItemSearchCriteria officialWithSourceCriteria = new CultureItemSearchCriteria(
                 null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, true, null, "updatedAt,desc");
-        long officialWithSourceCount = cultureItemRepository.count(
-                buildSearchSpecification(clanId, actorId, officialWithSourceCriteria, readScope, updateScope));
+        long officialWithSourceCount = cultureItemRepository.count(clanId, actorId, officialWithSourceCriteria,
+                readScope.fullClanAccess(), readScope.branchIds(), updateScope.fullClanAccess(), updateScope.branchIds());
         double sourceCoverageRate = officialItemCount == 0 ? 0D : (double) officialWithSourceCount / officialItemCount;
 
         CultureItemSearchCriteria featuredCriteria = new CultureItemSearchCriteria(
                 null, null, null, CultureItemDomainService.STATUS_OFFICIAL, null, null, true, "sortOrder,asc");
-        PageRequest featuredPage = PageRequest.of(0, 6, Sort.by(Sort.Direction.ASC, "sortOrder").and(Sort.by(Sort.Direction.DESC, "updatedAt")));
-        List<CultureItemEntity> featuredRows = cultureItemRepository.findAll(
-                buildSearchSpecification(clanId, actorId, featuredCriteria, readScope, updateScope), featuredPage).getContent();
+        List<CultureItemEntity> featuredRows = cultureItemRepository.search(
+                clanId, actorId, featuredCriteria,
+                readScope.fullClanAccess(), readScope.branchIds(),
+                updateScope.fullClanAccess(), updateScope.branchIds(), 1, 6).getContent();
         AggregationContext aggregation = aggregatePage(clan, featuredRows, actorId, updateScope, deleteScope);
         List<CultureItemSummaryResponse> featuredItems = featuredRows.stream()
                 .map(entity -> toSummary(entity, clan, aggregation, updateScope, deleteScope))
@@ -406,86 +398,6 @@ public class CultureItemApplicationService {
                 aggregation.reviewCounts().getOrDefault(entity.getId(), 0),
                 allowedActions(entity, updateScope, deleteScope)
         );
-    }
-
-    private Specification<CultureItemEntity> buildSearchSpecification(
-            Long clanId,
-            Long actorId,
-            CultureItemSearchCriteria criteria,
-            AccessScope readScope,
-            AccessScope updateScope
-    ) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.equal(root.get("clanId"), clanId));
-            predicates.add(cb.isNull(root.get("deletedAt")));
-            if (!readScope.fullClanAccess()) {
-                predicates.add(cb.or(
-                        cb.isNull(root.get("branchId")),
-                        root.get("branchId").in(readScope.branchIds())
-                ));
-            }
-            if (!updateScope.fullClanAccess()) {
-                List<Predicate> privacyOptions = new ArrayList<>();
-                privacyOptions.add(cb.not(root.get("privacyLevel").in(RESTRICTED_PRIVACY)));
-                privacyOptions.add(cb.equal(root.get("createdBy"), actorId));
-                if (!updateScope.branchIds().isEmpty()) {
-                    privacyOptions.add(root.get("branchId").in(updateScope.branchIds()));
-                }
-                predicates.add(cb.or(privacyOptions.toArray(Predicate[]::new)));
-            }
-            if (criteria.keyword() != null) {
-                String pattern = "%" + criteria.keyword().toLowerCase(Locale.ROOT) + "%";
-                predicates.add(cb.or(
-                        likeIgnoreCase(cb, root, "title", pattern),
-                        likeIgnoreCase(cb, root, "summary", pattern),
-                        likeIgnoreCase(cb, root, "content", pattern),
-                        likeIgnoreCase(cb, root, "historicalPeriod", pattern),
-                        likeIgnoreCase(cb, root, "locationText", pattern)
-                ));
-            }
-            if (!criteria.categories().isEmpty()) {
-                predicates.add(root.get("category").in(criteria.categories()));
-            }
-            if (!criteria.branchIds().isEmpty()) {
-                predicates.add(root.get("branchId").in(criteria.branchIds()));
-            }
-            if (!criteria.dataStatuses().isEmpty()) {
-                predicates.add(root.get("dataStatus").in(criteria.dataStatuses()));
-            }
-            if (!criteria.privacyLevels().isEmpty()) {
-                predicates.add(root.get("privacyLevel").in(criteria.privacyLevels()));
-            }
-            if (criteria.featuredOnHomeValues().size() == 1) {
-                predicates.add(cb.equal(root.get("featuredOnHome"), criteria.featuredOnHomeValues().get(0)));
-            }
-            if (criteria.hasSourceValues().size() == 1) {
-                Predicate sourceExists = cb.exists(sourceBindingSubquery(root, query, cb, clanId));
-                predicates.add(criteria.hasSourceValues().get(0) ? sourceExists : cb.not(sourceExists));
-            }
-            return cb.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
-    private Subquery<Long> sourceBindingSubquery(
-            Root<CultureItemEntity> root,
-            CriteriaQuery<?> query,
-            CriteriaBuilder cb,
-            Long clanId
-    ) {
-        Subquery<Long> subquery = query.subquery(Long.class);
-        Root<SourceBindingEntity> binding = subquery.from(SourceBindingEntity.class);
-        subquery.select(binding.get("id")).where(
-                cb.equal(binding.get("clanId"), clanId),
-                cb.equal(binding.get("targetType"), TARGET_TYPE),
-                cb.equal(binding.get("targetId"), root.get("id")),
-                cb.notEqual(binding.get("bindingStatus"), STATUS_ARCHIVED)
-        );
-        return subquery;
-    }
-
-    private Predicate likeIgnoreCase(CriteriaBuilder cb, Root<CultureItemEntity> root, String field, String pattern) {
-        return cb.like(cb.lower(cb.coalesce(root.get(field), "")), pattern);
     }
 
     private CultureItemEntity requireVisibleEntity(Long id, Long actorId) {

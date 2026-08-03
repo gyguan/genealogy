@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.operationlog.repository.mybatis.OperationLogPersistenceMapper">
+    <sql id="queryFilter">
+        <where>
+            <if test="criteria.clanId != null">
+                and log.clan_id = #{criteria.clanId}
+            </if>
+            <if test="criteria.actorIds != null and !criteria.actorIds.isEmpty()">
+                and log.actor_id in
+                <foreach collection="criteria.actorIds" item="actorId" open="(" separator="," close=")">
+                    #{actorId}
+                </foreach>
+            </if>
+            <if test="criteria.actionTypes != null and !criteria.actionTypes.isEmpty()">
+                and log.action_type in
+                <foreach collection="criteria.actionTypes" item="actionType" open="(" separator="," close=")">
+                    #{actionType}
+                </foreach>
+            </if>
+            <if test="criteria.targetTypes != null and !criteria.targetTypes.isEmpty()">
+                and log.target_type in
+                <foreach collection="criteria.targetTypes" item="targetType" open="(" separator="," close=")">
+                    #{targetType}
+                </foreach>
+            </if>
+            <if test="criteria.targetId != null">
+                and log.target_id = #{criteria.targetId}
+            </if>
+            <if test="criteria.resultStatuses != null and !criteria.resultStatuses.isEmpty()">
+                and log.event_result in
+                <foreach collection="criteria.resultStatuses" item="resultStatus" open="(" separator="," close=")">
+                    #{resultStatus}
+                </foreach>
+            </if>
+            <if test="criteria.startTime != null">
+                and log.created_at &gt;= #{criteria.startTime}
+            </if>
+            <if test="criteria.endTime != null">
+                and log.created_at &lt;= #{criteria.endTime}
+            </if>
+            <if test="criteria.keyword != null and criteria.keyword != ''">
+                and (
+                    lower(coalesce(log.summary, '')) like concat('%', lower(#{criteria.keyword}), '%')
+                    or lower(coalesce(log.detail, '')) like concat('%', lower(#{criteria.keyword}), '%')
+                )
+            </if>
+            <if test="criteria.targetGroups != null and !criteria.targetGroups.isEmpty()">
+                and (
+                    <foreach collection="criteria.targetGroups" item="group" separator=" or ">
+                        (
+                            (log.target_type = #{group.targetType} and log.target_id in
+                            <foreach collection="group.targetIds" item="targetId" open="(" separator="," close=")">
+                                #{targetId}
+                            </foreach>)
+                            or
+                            (log.business_target_type = #{group.targetType} and log.business_target_id in
+                            <foreach collection="group.targetIds" item="targetId" open="(" separator="," close=")">
+                                #{targetId}
+                            </foreach>)
+                        )
+                    </foreach>
+                )
+            </if>
+            <if test="criteria.riskOnly">
+                and log.risk_event_type is not null
+            </if>
+            <if test="criteria.riskLevels != null and !criteria.riskLevels.isEmpty()">
+                and log.risk_level in
+                <foreach collection="criteria.riskLevels" item="riskLevel" open="(" separator="," close=")">
+                    #{riskLevel}
+                </foreach>
+            </if>
+            <if test="criteria.riskEventTypes != null and !criteria.riskEventTypes.isEmpty()">
+                and log.risk_event_type in
+                <foreach collection="criteria.riskEventTypes" item="riskEventType" open="(" separator="," close=")">
+                    #{riskEventType}
+                </foreach>
+            </if>
+            <if test="criteria.dispositionStatuses != null and !criteria.dispositionStatuses.isEmpty()">
+                and log.disposition_status in
+                <foreach collection="criteria.dispositionStatuses" item="status" open="(" separator="," close=")">
+                    #{status}
+                </foreach>
+            </if>
+            <if test="criteria.enforceBranchScope">
+                <choose>
+                    <when test="criteria.visibleBranchIds != null and !criteria.visibleBranchIds.isEmpty()">
+                        and (
+                            log.branch_id in
+                            <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                     open="(" separator="," close=")">
+                                #{branchId}
+                            </foreach>
+                            or (
+                                log.target_type = 'branch'
+                                and log.target_id in
+                                <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                         open="(" separator="," close=")">
+                                    #{branchId}
+                                </foreach>
+                            )
+                            or (
+                                log.business_target_type = 'branch'
+                                and log.business_target_id in
+                                <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                         open="(" separator="," close=")">
+                                    #{branchId}
+                                </foreach>
+                            )
+                            or exists (
+                                select 1
+                                from person p
+                                where p.clan_id = log.clan_id
+                                  and p.branch_id in
+                                  <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                           open="(" separator="," close=")">
+                                      #{branchId}
+                                  </foreach>
+                                  and (
+                                      (log.target_type = 'person' and log.target_id = p.id)
+                                      or (log.business_target_type = 'person' and log.business_target_id = p.id)
+                                  )
+                            )
+                            or exists (
+                                select 1
+                                from relationship r
+                                where r.clan_id = log.clan_id
+                                  and (
+                                      r.successor_branch_id in
+                                      <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                               open="(" separator="," close=")">
+                                          #{branchId}
+                                      </foreach>
+                                      or exists (
+                                          select 1 from person p
+                                          where p.clan_id = log.clan_id
+                                            and p.branch_id in
+                                            <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                                     open="(" separator="," close=")">
+                                                #{branchId}
+                                            </foreach>
+                                            and (p.id = r.from_person_id or p.id = r.to_person_id)
+                                      )
+                                  )
+                                  and (
+                                      (log.target_type = 'relationship' and log.target_id = r.id)
+                                      or (log.business_target_type = 'relationship'
+                                          and log.business_target_id = r.id)
+                                  )
+                            )
+                            or exists (
+                                select 1
+                                from review_task rt
+                                where rt.clan_id = log.clan_id
+                                  and rt.branch_id in
+                                  <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                           open="(" separator="," close=")">
+                                      #{branchId}
+                                  </foreach>
+                                  and (
+                                      (log.target_type = 'review_task' and log.target_id = rt.id)
+                                      or (log.business_target_type = 'review_task'
+                                          and log.business_target_id = rt.id)
+                                  )
+                            )
+                            or exists (
+                                select 1
+                                from member_role mr
+                                where mr.scope_type in ('branch', 'branch_subtree')
+                                  and mr.scope_id in
+                                  <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                           open="(" separator="," close=")">
+                                      #{branchId}
+                                  </foreach>
+                                  and (
+                                      (log.target_type = 'member_role' and log.target_id = mr.id)
+                                      or (log.business_target_type = 'member_role'
+                                          and log.business_target_id = mr.id)
+                                  )
+                            )
+                            or exists (
+                                select 1
+                                from source_binding sb
+                                where sb.clan_id = log.clan_id
+                                  and (
+                                      (sb.target_type = 'branch' and sb.target_id in
+                                      <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                               open="(" separator="," close=")">
+                                          #{branchId}
+                                      </foreach>)
+                                      or (sb.target_type = 'person' and exists (
+                                          select 1 from person p
+                                          where p.id = sb.target_id
+                                            and p.clan_id = log.clan_id
+                                            and p.branch_id in
+                                            <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                                     open="(" separator="," close=")">
+                                                #{branchId}
+                                            </foreach>
+                                      ))
+                                      or (sb.target_type = 'relationship' and exists (
+                                          select 1 from relationship r
+                                          where r.id = sb.target_id
+                                            and r.clan_id = log.clan_id
+                                            and (
+                                                r.successor_branch_id in
+                                                <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                                         open="(" separator="," close=")">
+                                                    #{branchId}
+                                                </foreach>
+                                                or exists (
+                                                    select 1 from person p
+                                                    where p.clan_id = log.clan_id
+                                                      and p.branch_id in
+                                                      <foreach collection="criteria.visibleBranchIds" item="branchId"
+                                                               open="(" separator="," close=")">
+                                                          #{branchId}
+                                                      </foreach>
+                                                      and (p.id = r.from_person_id or p.id = r.to_person_id)
+                                                )
+                                            )
+                                      ))
+                                  )
+                                  and (
+                                      (log.target_type = 'source' and log.target_id = sb.source_id)
+                                      or (log.business_target_type = 'source'
+                                          and log.business_target_id = sb.source_id)
+                                      or exists (
+                                          select 1 from source_attachment sa
+                                          where sa.clan_id = log.clan_id
+                                            and sa.source_id = sb.source_id
+                                            and (
+                                                (log.target_type = 'source_attachment' and log.target_id = sa.id)
+                                                or (log.business_target_type = 'source_attachment'
+                                                    and log.business_target_id = sa.id)
+                                            )
+                                      )
+                                  )
+                            )
+                        )
+                    </when>
+                    <otherwise>
+                        and 1 = 0
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <update id="updateAllById">
+        update operation_log
+        set clan_id = #{entity.clanId},
+            actor_id = #{entity.actorId},
+            action_type = #{entity.actionType},
+            target_type = #{entity.targetType},
+            target_id = #{entity.targetId},
+            trace_id = #{entity.traceId},
+            revision_id = #{entity.revisionId},
+            review_task_id = #{entity.reviewTaskId},
+            business_target_type = #{entity.businessTargetType},
+            business_target_id = #{entity.businessTargetId},
+            event_result = #{entity.eventResult},
+            risk_level = #{entity.riskLevel},
+            risk_event_type = #{entity.riskEventType},
+            disposition_status = #{entity.dispositionStatus},
+            branch_id = #{entity.branchId},
+            summary = #{entity.summary},
+            detail = #{entity.detail},
+            request_id = #{entity.requestId},
+            client_ip = #{entity.clientIp},
+            created_at = #{entity.createdAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="search" resultType="com.genealogy.operationlog.entity.OperationLogEntity">
+        select log.*
+        from operation_log log
+        <include refid="queryFilter"/>
+        order by log.created_at desc, log.id desc
+        offset #{offset}
+        limit #{limit}
+    </select>
+
+    <select id="count" resultType="long">
+        select count(*)
+        from operation_log log
+        <include refid="queryFilter"/>
+    </select>
+
+    <select id="groupByRiskLevel"
+            resultType="com.genealogy.operationlog.repository.query.OperationLogGroupCountRow">
+        select log.risk_level as key, count(*) as count
+        from operation_log log
+        <include refid="queryFilter"/>
+        group by log.risk_level
+        order by count(*) desc, log.risk_level asc nulls last
+    </select>
+
+    <select id="groupByRiskEventType"
+            resultType="com.genealogy.operationlog.repository.query.OperationLogGroupCountRow">
+        select log.risk_event_type as key, count(*) as count
+        from operation_log log
+        <include refid="queryFilter"/>
+        group by log.risk_event_type
+        order by count(*) desc, log.risk_event_type asc nulls last
+    </select>
+
+    <select id="groupByDispositionStatus"
+            resultType="com.genealogy.operationlog.repository.query.OperationLogGroupCountRow">
+        select log.disposition_status as key, count(*) as count
+        from operation_log log
+        <include refid="queryFilter"/>
+        group by log.disposition_status
+        order by count(*) desc, log.disposition_status asc nulls last
+    </select>
+</mapper>

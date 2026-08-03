@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.culture.repository.mybatis.MigrationEventPersistenceMapper">
+  <update id="updateAllByIdAndVersion">update migration_event set clan_id=#{clanId},branch_id=#{branchId},sequence_no=#{sequenceNo},from_location=#{fromLocation},to_location=#{toLocation},migration_time_text=#{migrationTimeText},founder_person_id=#{founderPersonId},reason=#{reason},description=#{description},confidence_level=#{confidenceLevel},privacy_level=#{privacyLevel},sensitive_level=#{sensitiveLevel},data_status=#{dataStatus},created_by=#{createdBy},created_at=#{createdAt},updated_at=#{updatedAt},deleted_at=#{deletedAt},version=version+1 where id=#{id} and version=#{version}</update>
+</mapper>

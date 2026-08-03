@@ -5,17 +5,15 @@ import com.genealogy.operationlog.dto.OperationLogResponse;
 import com.genealogy.operationlog.dto.OperationLogStatsResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
-import jakarta.persistence.criteria.Predicate;
+import com.genealogy.operationlog.repository.query.OperationLogQueryCriteria;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,14 +46,24 @@ public class OperationLogMultiValueQueryService {
     ) {
         int normalizedPageNo = Math.max(1, pageNo);
         int normalizedPageSize = Math.max(1, Math.min(pageSize, 100));
-        PageRequest pageRequest = PageRequest.of(
-                normalizedPageNo - 1,
-                normalizedPageSize,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
-        );
-        Page<OperationLogEntity> page = operationLogRepository.findAll(
-                specification(clanId, actorIds, actionTypes, targetTypes, targetId, resultStatuses, startTime, endTime, keyword),
-                pageRequest
+        Page<OperationLogEntity> page = operationLogRepository.search(
+                criteria(
+                        clanId,
+                        actorIds,
+                        actionTypes,
+                        targetTypes,
+                        targetId,
+                        resultStatuses,
+                        startTime,
+                        endTime,
+                        keyword
+                ),
+                PageRequest.of(
+                        normalizedPageNo - 1,
+                        normalizedPageSize,
+                        Sort.by(Sort.Direction.DESC, "createdAt")
+                                .and(Sort.by(Sort.Direction.DESC, "id"))
+                )
         );
         return PageResponse.of(
                 page.map(entity -> toResponse(entity, includeTechnicalFields)).getContent(),
@@ -77,32 +85,21 @@ public class OperationLogMultiValueQueryService {
             LocalDateTime endTime,
             String keyword
     ) {
-        PageRequest pageRequest = PageRequest.of(
-                0,
-                OperationLogApplicationService.EXPORT_LIMIT,
-                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"))
+        List<OperationLogEntity> logs = operationLogRepository.list(
+                criteria(
+                        clanId,
+                        actorIds,
+                        actionTypes,
+                        targetTypes,
+                        targetId,
+                        resultStatuses,
+                        startTime,
+                        endTime,
+                        keyword
+                ),
+                OperationLogApplicationService.EXPORT_LIMIT
         );
-        List<OperationLogEntity> logs = operationLogRepository.findAll(
-                specification(clanId, actorIds, actionTypes, targetTypes, targetId, resultStatuses, startTime, endTime, keyword),
-                pageRequest
-        ).getContent();
-        StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, List.of(
-                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
-                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
-                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
-        ));
-        for (OperationLogEntity log : logs) {
-            appendCsvRow(builder, List.of(
-                    value(log.getId()), value(log.getClanId()), value(log.getActorId()), value(log.getActionType()),
-                    value(log.getTargetType()), value(log.getTargetId()), value(log.getTraceId()), value(log.getRevisionId()),
-                    value(log.getReviewTaskId()), value(log.getBusinessTargetType()), value(log.getBusinessTargetId()),
-                    value(log.getEventResult()), value(log.getRiskLevel()), value(log.getRiskEventType()),
-                    value(log.getDispositionStatus()), value(log.getBranchId()), value(log.getSummary()), value(log.getDetail()),
-                    value(log.getRequestId()), value(log.getClientIp()), value(log.getCreatedAt())
-            ));
-        }
-        return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
+        return toCsv(logs);
     }
 
     @Transactional(readOnly = true)
@@ -117,17 +114,28 @@ public class OperationLogMultiValueQueryService {
             LocalDateTime endTime,
             String keyword
     ) {
-        List<OperationLogEntity> logs = operationLogRepository.findAll(
-                specification(clanId, actorIds, actionTypes, targetTypes, targetId, resultStatuses, startTime, endTime, keyword)
+        List<OperationLogEntity> logs = operationLogRepository.list(
+                criteria(
+                        clanId,
+                        actorIds,
+                        actionTypes,
+                        targetTypes,
+                        targetId,
+                        resultStatuses,
+                        startTime,
+                        endTime,
+                        keyword
+                ),
+                Integer.MAX_VALUE
         );
         return new OperationLogStatsResponse(
                 logs.size(),
                 group(logs.stream().map(OperationLogEntity::getActionType).toList()),
-                group(logs.stream().map(log -> log.getActorId() == null ? null : String.valueOf(log.getActorId())).toList())
+                group(logs.stream().map(log -> value(log.getActorId())).toList())
         );
     }
 
-    private Specification<OperationLogEntity> specification(
+    private OperationLogQueryCriteria criteria(
             Long clanId,
             List<Long> actorIds,
             List<String> actionTypes,
@@ -138,54 +146,31 @@ public class OperationLogMultiValueQueryService {
             LocalDateTime endTime,
             String keyword
     ) {
-        List<Long> normalizedActors = normalizeLongs(actorIds);
-        List<String> normalizedActions = normalizeStrings(actionTypes);
-        List<String> normalizedTargets = normalizeStrings(targetTypes);
-        List<String> normalizedResults = normalizeStrings(resultStatuses);
-        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim().toLowerCase(Locale.ROOT);
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("clanId"), clanId));
-            if (!normalizedActors.isEmpty()) {
-                predicates.add(root.get("actorId").in(normalizedActors));
-            }
-            if (!normalizedActions.isEmpty()) {
-                predicates.add(root.get("actionType").in(normalizedActions));
-            }
-            if (!normalizedTargets.isEmpty()) {
-                predicates.add(root.get("targetType").in(normalizedTargets));
-            }
-            if (targetId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("targetId"), targetId));
-            }
-            if (!normalizedResults.isEmpty()) {
-                predicates.add(root.get("eventResult").in(normalizedResults));
-            }
-            if (startTime != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startTime));
-            }
-            if (endTime != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endTime));
-            }
-            if (normalizedKeyword != null) {
-                String likeValue = "%" + normalizedKeyword + "%";
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), likeValue),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("detail")), likeValue)
-                ));
-            }
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        };
+        return new OperationLogQueryCriteria(
+                clanId,
+                normalizeLongs(actorIds),
+                normalizeStrings(actionTypes),
+                normalizeStrings(targetTypes),
+                targetId,
+                normalizeStrings(resultStatuses),
+                startTime,
+                endTime,
+                keyword == null || keyword.isBlank() ? null : keyword.trim(),
+                List.of(),
+                false,
+                List.of(),
+                List.of(),
+                List.of(),
+                false,
+                List.of()
+        );
     }
 
     private List<Long> normalizeLongs(List<Long> values) {
         if (values == null) {
             return List.of();
         }
-        return values.stream()
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
+        return values.stream().filter(java.util.Objects::nonNull).distinct().toList();
     }
 
     private List<String> normalizeStrings(List<String> values) {
@@ -205,8 +190,8 @@ public class OperationLogMultiValueQueryService {
 
     private List<OperationLogStatsResponse.Item> group(List<String> values) {
         Map<String, Long> counts = new LinkedHashMap<>();
-        for (String value : values) {
-            String key = value == null || value.isBlank() ? "unknown" : value;
+        for (String item : values) {
+            String key = item == null || item.isBlank() ? "unknown" : item;
             counts.put(key, counts.getOrDefault(key, 0L) + 1);
         }
         return counts.entrySet().stream()
@@ -217,29 +202,37 @@ public class OperationLogMultiValueQueryService {
 
     private OperationLogResponse toResponse(OperationLogEntity entity, boolean includeTechnicalFields) {
         return new OperationLogResponse(
-                entity.getId(),
-                entity.getClanId(),
-                entity.getActorId(),
-                null,
-                entity.getActionType(),
-                entity.getTargetType(),
-                entity.getTargetId(),
-                null,
-                null,
-                null,
-                null,
-                entity.getSummary(),
+                entity.getId(), entity.getClanId(), entity.getActorId(), null,
+                entity.getActionType(), entity.getTargetType(), entity.getTargetId(),
+                null, null, null, null, entity.getSummary(),
                 includeTechnicalFields ? entity.getDetail() : null,
                 includeTechnicalFields ? entity.getRequestId() : null,
                 includeTechnicalFields ? entity.getClientIp() : null,
-                entity.getCreatedAt(),
-                entity.getTraceId(),
-                entity.getRevisionId(),
-                entity.getReviewTaskId(),
-                entity.getBusinessTargetType(),
-                entity.getBusinessTargetId(),
-                entity.getEventResult()
+                entity.getCreatedAt(), entity.getTraceId(), entity.getRevisionId(),
+                entity.getReviewTaskId(), entity.getBusinessTargetType(),
+                entity.getBusinessTargetId(), entity.getEventResult()
         );
+    }
+
+    private byte[] toCsv(List<OperationLogEntity> logs) {
+        StringBuilder builder = new StringBuilder();
+        appendCsvRow(builder, List.of(
+                "id", "clanId", "actorId", "actionType", "targetType", "targetId", "traceId", "revisionId",
+                "reviewTaskId", "businessTargetType", "businessTargetId", "eventResult", "riskLevel", "riskEventType",
+                "dispositionStatus", "branchId", "summary", "detail", "requestId", "clientIp", "createdAt"
+        ));
+        for (OperationLogEntity item : logs) {
+            appendCsvRow(builder, List.of(
+                    value(item.getId()), value(item.getClanId()), value(item.getActorId()), value(item.getActionType()),
+                    value(item.getTargetType()), value(item.getTargetId()), value(item.getTraceId()),
+                    value(item.getRevisionId()), value(item.getReviewTaskId()), value(item.getBusinessTargetType()),
+                    value(item.getBusinessTargetId()), value(item.getEventResult()), value(item.getRiskLevel()),
+                    value(item.getRiskEventType()), value(item.getDispositionStatus()), value(item.getBranchId()),
+                    value(item.getSummary()), value(item.getDetail()), value(item.getRequestId()),
+                    value(item.getClientIp()), value(item.getCreatedAt())
+            ));
+        }
+        return ("\uFEFF" + builder).getBytes(StandardCharsets.UTF_8);
     }
 
     private void appendCsvRow(StringBuilder builder, List<String> values) {
@@ -254,10 +247,11 @@ public class OperationLogMultiValueQueryService {
 
     private String escapeCsv(String value) {
         String normalized = value == null ? "" : value;
-        if (normalized.contains(",") || normalized.contains("\"") || normalized.contains("\n") || normalized.contains("\r")) {
-            return "\"" + normalized.replace("\"", "\"\"") + "\"";
-        }
-        return normalized;
+        boolean quote = normalized.contains(",")
+                || normalized.contains("\"")
+                || normalized.contains("\n")
+                || normalized.contains("\r");
+        return quote ? "\"" + normalized.replace("\"", "\"\"") + "\"" : normalized;
     }
 
     private String value(Object value) {

@@ -6,11 +6,10 @@ import com.genealogy.common.exception.BusinessException;
 import com.genealogy.operationlog.dto.RiskAuditEventResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
-import jakarta.persistence.EntityManager;
+import com.genealogy.operationlog.repository.query.OperationLogQueryCriteria;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,11 +25,8 @@ import static org.mockito.Mockito.when;
 class OperationRiskAuditApplicationServiceTest {
 
     private final OperationLogRepository repository = mock(OperationLogRepository.class);
-    private final EntityManager entityManager = mock(EntityManager.class);
-    private final OperationRiskAuditApplicationService service = new OperationRiskAuditApplicationService(
-            repository,
-            entityManager
-    );
+    private final OperationRiskAuditApplicationService service =
+            new OperationRiskAuditApplicationService(repository);
 
     @Test
     void rejectsBranchOutsidePermissionScopeBeforeDatabaseQuery() {
@@ -42,7 +38,7 @@ class OperationRiskAuditApplicationServiceTest {
         )).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("无权查看该支派");
 
-        verifyNoInteractions(repository, entityManager);
+        verifyNoInteractions(repository);
     }
 
     @Test
@@ -53,10 +49,9 @@ class OperationRiskAuditApplicationServiceTest {
         )).isInstanceOf(BusinessException.class)
                 .hasMessageContaining("风险等级");
 
-        verifyNoInteractions(repository, entityManager);
+        verifyNoInteractions(repository);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     void paginatesRiskRowsAndHidesTechnicalFieldsWithoutExportPermission() {
         OperationLogEntity entity = new OperationLogEntity();
@@ -73,7 +68,7 @@ class OperationRiskAuditApplicationServiceTest {
         entity.setRequestId("request-1");
         entity.setClientIp("127.0.0.1");
         entity.setCreatedAt(LocalDateTime.of(2026, 7, 15, 10, 0));
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+        when(repository.search(any(OperationLogQueryCriteria.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(entity)));
 
         PageResponse<RiskAuditEventResponse> page = service.search(

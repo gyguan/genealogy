@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.auth.repository.mybatis.AuthInvitationPersistenceMapper">
+    <update id="updateAllById">
+        update app_account_invite
+        set token_hash = #{entity.tokenHash},
+            clan_id = #{entity.clanId},
+            email = #{entity.email},
+            role_code = #{entity.roleCode},
+            scope_type = #{entity.scopeType},
+            scope_id = #{entity.scopeId},
+            invited_by = #{entity.invitedBy},
+            status = #{entity.status},
+            expires_at = #{entity.expiresAt},
+            accepted_at = #{entity.acceptedAt},
+            accepted_user_id = #{entity.acceptedUserId},
+            created_at = #{entity.createdAt}
+        where id = #{entity.id}
+    </update>
+
+    <select id="findByTokenHash"
+            resultType="com.genealogy.auth.entity.AuthInvitationEntity">
+        select *
+        from app_account_invite
+        where token_hash = #{tokenHash}
+        order by id asc
+        limit 1
+        <if test="forUpdate">
+            for update
+        </if>
+    </select>
+</mapper>

@@ -3,6 +3,7 @@ package com.genealogy.culture.repository;
 import com.genealogy.clan.entity.ClanEntity;
 import com.genealogy.clan.repository.ClanRepository;
 import com.genealogy.common.persistence.TargetCountProjection;
+import com.genealogy.culture.dto.CultureItemSearchCriteria;
 import com.genealogy.culture.entity.CultureItemEntity;
 import com.genealogy.review.entity.RevisionEntity;
 import com.genealogy.review.repository.RevisionRepository;
@@ -115,11 +116,12 @@ class CultureItemPostgresIntegrationTest {
         assertCount(revisionRepository.countByTargets(
                 clanId, "culture_item", List.of(itemId)), itemId, 1L);
 
-        assertEquals(1, cultureItemRepository.findAll((root, query, cb) -> cb.and(
-                cb.equal(root.get("clanId"), clanId),
-                cb.isNull(root.get("deletedAt")),
-                cb.like(cb.lower(root.get("title")), "%敦本%")
-        )).size());
+        CultureItemSearchCriteria criteria = new CultureItemSearchCriteria(
+                "敦本", null, null, null, null, null, null, null);
+        assertEquals(1, cultureItemRepository.search(
+                clanId, 1L, criteria,
+                true, List.of(), true, List.of(),
+                1, 10).getContent().size());
     }
 
     private void assertCount(List<TargetCountProjection> values, Long targetId, long expected) {

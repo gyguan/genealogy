@@ -13,7 +13,6 @@ import com.genealogy.relationship.entity.RelationshipEntity;
 import com.genealogy.relationship.repository.RelationshipRepository;
 import com.genealogy.source.entity.SourceEntity;
 import com.genealogy.source.repository.SourceRepository;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,7 +62,7 @@ public class ImportPublishingChunkService {
                 .findByJobIdAndRowStatusAndPublishedAtIsNullOrderByRowNoAsc(
                         jobId,
                         ImportJobRowEntity.STATUS_DRAFT_CREATED,
-                        PageRequest.of(0, chunkSize)
+                        chunkSize
                 );
         if (rows.isEmpty()) {
             completePublishing(job);

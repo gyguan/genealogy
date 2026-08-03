@@ -4,10 +4,10 @@ import com.genealogy.common.api.PageResponse;
 import com.genealogy.operationlog.dto.OperationLogResponse;
 import com.genealogy.operationlog.entity.OperationLogEntity;
 import com.genealogy.operationlog.repository.OperationLogRepository;
+import com.genealogy.operationlog.repository.query.OperationLogQueryCriteria;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,10 +68,9 @@ class OperationLogApplicationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void ordinaryViewerDoesNotReceiveTechnicalFields() {
         OperationLogEntity entity = operationLog();
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+        when(repository.search(any(OperationLogQueryCriteria.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(entity)));
 
         PageResponse<OperationLogResponse> result = service.search(
@@ -86,10 +85,9 @@ class OperationLogApplicationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void exportPermissionAllowsTechnicalFields() {
         OperationLogEntity entity = operationLog();
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+        when(repository.search(any(OperationLogQueryCriteria.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(entity)));
 
         PageResponse<OperationLogResponse> result = service.search(
@@ -103,10 +101,9 @@ class OperationLogApplicationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void compatibilitySearchIsSecureByDefault() {
         OperationLogEntity entity = operationLog();
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+        when(repository.search(any(OperationLogQueryCriteria.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(entity)));
 
         PageResponse<OperationLogResponse> result = service.search(
@@ -117,20 +114,19 @@ class OperationLogApplicationServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void csvExportUsesHardMaximumAndContainsTechnicalEvidence() {
         OperationLogEntity entity = operationLog();
-        when(repository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenAnswer(invocation -> {
-                    Pageable pageable = invocation.getArgument(1);
-                    return new PageImpl<>(List.of(entity), pageable, 1);
-                });
+        when(repository.list(
+                any(OperationLogQueryCriteria.class),
+                org.mockito.ArgumentMatchers.eq(OperationLogApplicationService.EXPORT_LIMIT)
+        )).thenReturn(List.of(entity));
 
         byte[] csv = service.exportCsv(1L, null, null, null, null, null, null, null);
 
-        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-        verify(repository).findAll(any(Specification.class), pageableCaptor.capture());
-        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(OperationLogApplicationService.EXPORT_LIMIT);
+        verify(repository).list(
+                any(OperationLogQueryCriteria.class),
+                org.mockito.ArgumentMatchers.eq(OperationLogApplicationService.EXPORT_LIMIT)
+        );
         assertThat(new String(csv, StandardCharsets.UTF_8))
                 .contains("detail,requestId,clientIp")
                 .contains("before=A, after=B")

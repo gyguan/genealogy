@@ -6,13 +6,6 @@ spring:
     name: genealogy-backend
   datasource:
     driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: false
   flyway:
     enabled: true
     locations: classpath:db/migration

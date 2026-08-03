@@ -1,21 +1,63 @@
 package com.genealogy.auth.repository;
 
 import com.genealogy.auth.entity.PasswordResetTokenEntity;
-import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import com.genealogy.auth.repository.mybatis.PasswordResetTokenPersistenceMapper;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
-public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetTokenEntity, Long> {
-    Optional<PasswordResetTokenEntity> findByTokenHash(String tokenHash);
+@Repository
+@Transactional(readOnly = true)
+public class PasswordResetTokenRepository {
+    private final PasswordResetTokenPersistenceMapper mapper;
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select token from PasswordResetTokenEntity token where token.tokenHash = :tokenHash")
-    Optional<PasswordResetTokenEntity> findForUpdateByTokenHash(@Param("tokenHash") String tokenHash);
+    public PasswordResetTokenRepository(
+            PasswordResetTokenPersistenceMapper mapper
+    ) {
+        this.mapper = mapper;
+    }
 
-    List<PasswordResetTokenEntity> findByUserIdAndUsedAtIsNullAndRevokedAtIsNull(Long userId);
+    @Transactional
+    public PasswordResetTokenEntity save(PasswordResetTokenEntity entity) {
+        Objects.requireNonNull(entity, "entity");
+        if (entity.getId() == null) {
+            if (entity.getCreatedAt() == null) {
+                entity.setCreatedAt(LocalDateTime.now());
+            }
+            mapper.insert(entity);
+        } else if (mapper.updateAllById(entity) != 1) {
+            throw new IllegalStateException(
+                    "Reset token update failed for id " + entity.getId()
+            );
+        }
+        return entity;
+    }
+
+    @Transactional
+    public PasswordResetTokenEntity saveAndFlush(
+            PasswordResetTokenEntity entity
+    ) {
+        return save(entity);
+    }
+
+    public Optional<PasswordResetTokenEntity> findByTokenHash(
+            String tokenHash
+    ) {
+        return Optional.ofNullable(mapper.findByTokenHash(tokenHash, false));
+    }
+
+    public Optional<PasswordResetTokenEntity> findForUpdateByTokenHash(
+            String tokenHash
+    ) {
+        return Optional.ofNullable(mapper.findByTokenHash(tokenHash, true));
+    }
+
+    public List<PasswordResetTokenEntity>
+            findByUserIdAndUsedAtIsNullAndRevokedAtIsNull(Long userId) {
+        return mapper.findActiveByUserId(userId);
+    }
 }

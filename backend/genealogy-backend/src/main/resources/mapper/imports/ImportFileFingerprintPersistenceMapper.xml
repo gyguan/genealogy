@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.imports.repository.mybatis.ImportFileFingerprintPersistenceMapper">
+  <resultMap id="entityMap" type="com.genealogy.imports.entity.ImportFileFingerprintEntity">
+    <id column="id" property="id"/>
+    <result column="clan_id" property="clanId"/>
+    <result column="branch_id" property="branchId"/>
+    <result column="import_type" property="importType"/>
+    <result column="file_hash" property="fileHash"/>
+    <result column="job_id" property="jobId"/>
+    <result column="created_at" property="createdAt"/>
+  </resultMap>
+  <sql id="columns">id, clan_id, branch_id, import_type, file_hash, job_id, created_at</sql>
+  <select id="findExisting" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_file_fingerprint WHERE clan_id=#{clanId} AND branch_id=#{branchId} AND import_type=#{importType} AND file_hash=#{fileHash} LIMIT 1</select>
+  <update id="updateAllById">UPDATE import_file_fingerprint SET clan_id = #{clanId},
+      branch_id = #{branchId},
+      import_type = #{importType},
+      file_hash = #{fileHash},
+      job_id = #{jobId},
+      created_at = #{createdAt} WHERE id=#{id}</update>
+</mapper>

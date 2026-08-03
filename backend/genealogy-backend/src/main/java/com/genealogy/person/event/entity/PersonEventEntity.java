@@ -1,11 +1,8 @@
 package com.genealogy.person.event.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,14 +11,11 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "person_event")
+@TableName("person_event")
 public class PersonEventEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
-
     private Long clanId;
     private Long personId;
     private String eventType;
@@ -29,10 +23,7 @@ public class PersonEventEntity {
     private LocalDate eventDate;
     private String eventDatePrecision;
     private String eventPlace;
-
-    @Column(columnDefinition = "text")
     private String eventDescription;
-
     private String sourceType;
     private Long sourceId;
     private Integer sortOrder;

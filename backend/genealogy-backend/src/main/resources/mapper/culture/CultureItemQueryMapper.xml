@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.culture.repository.mybatis.CultureItemQueryMapper">
+ <sql id="Where">where i.clan_id=#{criteria.clanId} and i.deleted_at is null
+  <if test="!criteria.readFullClan"><choose><when test="criteria.readBranchIds != null and !criteria.readBranchIds.isEmpty()">and (i.branch_id is null or i.branch_id in <foreach collection="criteria.readBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach>)</when><otherwise>and i.branch_id is null</otherwise></choose></if>
+  <if test="!criteria.updateFullClan">and (i.privacy_level not in ('private','sealed') or i.created_by=#{criteria.actorId}<if test="criteria.updateBranchIds != null and !criteria.updateBranchIds.isEmpty()"> or i.branch_id in <foreach collection="criteria.updateBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach></if>)</if>
+  <if test="criteria.keyword != null">and (lower(coalesce(i.title,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(i.summary,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(i.content,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(i.historical_period,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(i.location_text,'')) like concat('%',lower(#{criteria.keyword}),'%'))</if>
+  <if test="criteria.categories != null and !criteria.categories.isEmpty()">and i.category in <foreach collection="criteria.categories" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.branchIds != null and !criteria.branchIds.isEmpty()">and i.branch_id in <foreach collection="criteria.branchIds" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.dataStatuses != null and !criteria.dataStatuses.isEmpty()">and i.data_status in <foreach collection="criteria.dataStatuses" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.privacyLevels != null and !criteria.privacyLevels.isEmpty()">and i.privacy_level in <foreach collection="criteria.privacyLevels" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
+  <if test="criteria.featuredOnHome != null">and i.is_featured_on_home=#{criteria.featuredOnHome}</if>
+  <if test="criteria.hasSource != null"><choose><when test="criteria.hasSource">and exists(select 1 from source_binding b where b.clan_id=i.clan_id and b.target_type='culture_item' and b.target_id=i.id and b.binding_status&lt;&gt;'archived')</when><otherwise>and not exists(select 1 from source_binding b where b.clan_id=i.clan_id and b.target_type='culture_item' and b.target_id=i.id and b.binding_status&lt;&gt;'archived')</otherwise></choose></if>
+ </sql>
+ <sql id="Order"><choose>
+  <when test="criteria.sortKey == 'id,asc'">order by i.id asc</when><when test="criteria.sortKey == 'id,desc'">order by i.id desc</when>
+  <when test="criteria.sortKey == 'title,asc'">order by lower(i.title) asc,i.id desc</when><when test="criteria.sortKey == 'title,desc'">order by lower(i.title) desc,i.id desc</when>
+  <when test="criteria.sortKey == 'category,asc'">order by i.category asc,i.id desc</when><when test="criteria.sortKey == 'category,desc'">order by i.category desc,i.id desc</when>
+  <when test="criteria.sortKey == 'dataStatus,asc'">order by i.data_status asc,i.id desc</when><when test="criteria.sortKey == 'dataStatus,desc'">order by i.data_status desc,i.id desc</when>
+  <when test="criteria.sortKey == 'privacyLevel,asc'">order by i.privacy_level asc,i.id desc</when><when test="criteria.sortKey == 'privacyLevel,desc'">order by i.privacy_level desc,i.id desc</when>
+  <when test="criteria.sortKey == 'sortOrder,asc'">order by i.sort_order asc,i.id desc</when><when test="criteria.sortKey == 'sortOrder,desc'">order by i.sort_order desc,i.id desc</when>
+  <when test="criteria.sortKey == 'createdAt,asc'">order by i.created_at asc,i.id desc</when><when test="criteria.sortKey == 'createdAt,desc'">order by i.created_at desc,i.id desc</when>
+  <when test="criteria.sortKey == 'updatedAt,asc'">order by i.updated_at asc,i.id desc</when><otherwise>order by i.updated_at desc,i.id desc</otherwise>
+ </choose></sql>
+ <select id="search" resultType="com.genealogy.culture.entity.CultureItemEntity">select i.* from culture_item i <include refid="Where"/><include refid="Order"/> limit #{limit} offset #{offset}</select>
+ <select id="count" resultType="long">select count(*) from culture_item i <include refid="Where"/></select>
+</mapper>

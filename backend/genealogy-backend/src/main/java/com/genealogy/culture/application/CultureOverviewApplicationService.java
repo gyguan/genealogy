@@ -16,11 +16,9 @@ import com.genealogy.culture.dto.MigrationEventPageResponse;
 import com.genealogy.culture.dto.MigrationEventSearchCriteria;
 import com.genealogy.culture.dto.MigrationEventSummaryResponse;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class CultureOverviewApplicationService {
@@ -46,7 +44,6 @@ public class CultureOverviewApplicationService {
         this.clanRepository = clanRepository;
     }
 
-    @Transactional(readOnly = true)
     public CultureOverviewResponse getOverview(Long clanId, Long actorId) {
         ClanEntity clan = clanRepository.findById(clanId)
                 .orElseThrow(() -> new BusinessException("CLAN_NOT_FOUND", "宗族不存在"));
