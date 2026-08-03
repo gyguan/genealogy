@@ -1,1 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.genealogy.source.repository.mybatis.AttachmentPersistenceMapper"><update id="updateAllById">update attachment set clan_id=#{clanId},source_id=#{sourceId},file_name=#{fileName},file_type=#{fileType},file_size=#{fileSize},storage_path=#{storagePath},thumbnail_path=#{thumbnailPath},checksum=#{checksum},uploaded_by=#{uploadedBy},uploaded_at=#{uploadedAt},access_level=#{accessLevel} where id=#{id}</update></mapper>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.source.repository.mybatis.AttachmentPersistenceMapper">
+  <update id="updateAllById">
+    UPDATE attachment
+    SET clan_id = #{clanId},
+        source_id = #{sourceId},
+        file_name = #{fileName},
+        file_type = #{fileType},
+        file_size = #{fileSize},
+        storage_path = #{storagePath},
+        thumbnail_path = #{thumbnailPath},
+        checksum = #{checksum},
+        uploaded_by = #{uploadedBy},
+        uploaded_at = #{uploadedAt},
+        access_level = #{accessLevel}
+    WHERE id = #{id}
+  </update>
+</mapper>
