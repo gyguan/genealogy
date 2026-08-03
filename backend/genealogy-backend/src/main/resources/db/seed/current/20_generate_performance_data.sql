@@ -347,9 +347,9 @@ select c.clan_id,
        case n%3 when 0 then c.admin_user_id when 1 then c.editor_user_id else c.reviewer_user_id end,
        case n%5 when 0 then 'person_update' when 1 then 'relationship_create' when 2 then 'tree_query' when 3 then 'source_view' else 'export' end,
        'person',p.id,'person',p.id,case when n%1000=0 then 'denied' else 'success' end,
-       case when n%1000=0 then 'high' when n%100=0 then 'medium' else 'low' end,
-       case when n%1000=0 then 'permission_denied' end,
-       case when n%1000=0 then 'open' else 'closed' end,b.id,
+       case when n%1000=0 then 'high' end,
+       case when n%1000=0 then 'access_denied' end,
+       case when n%1000=0 then 'open' end,b.id,
        format('压测操作日志-%s',n),null,format('perf-%s-%s',c.dataset_code,n),
        '127.0.0.1',now()-(n%86400||' seconds')::interval
 from perf_config c
