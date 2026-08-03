@@ -1,10 +1,5 @@
 import { expect, test, type APIResponse, type Page } from '@playwright/test';
-import { loginThroughUi, resetBrowserSession } from './support/auth-session';
-
-const ADMIN_USERNAME = process.env.E2E_ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'Admin@123456';
-const RESTRICTED_USERNAME = process.env.E2E_RESTRICTED_USERNAME || 'restricted';
-const RESTRICTED_PASSWORD = process.env.E2E_RESTRICTED_PASSWORD || 'Restricted@123456';
+import { loginThroughUi } from './support/auth';
 
 async function textOf(response: APIResponse): Promise<string> {
   return Buffer.from(await response.body()).toString('utf8');
@@ -19,9 +14,19 @@ async function responsePayload(response: APIResponse): Promise<unknown> {
   }
 }
 
-async function login(page: Page, username: string, password: string): Promise<void> {
+async function resetBrowserSession(page: Page): Promise<void> {
+  await page.context().clearCookies();
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.reload();
+}
+
+async function login(page: Page, role: 'ADMIN' | 'RESTRICTED'): Promise<void> {
   await resetBrowserSession(page);
-  await loginThroughUi(page, username, password);
+  await loginThroughUi(page, role);
 }
 
 test.describe('来源文件、谱册导出与下载权限闭环', () => {
@@ -33,7 +38,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     const fileName = `e2e-source-${runId}.txt`;
     const fileContent = `source-file-content-${runId}\n`;
 
-    await login(page, ADMIN_USERNAME, ADMIN_PASSWORD);
+    await login(page, 'ADMIN');
 
     const createClan = await page.request.post('/api/v1/clans', {
       data: {
@@ -131,8 +136,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
     await expect(globalTreeTab).toBeVisible();
     await globalTreeTab.click();
 
-    await resetBrowserSession(page);
-    await loginThroughUi(page, RESTRICTED_USERNAME, RESTRICTED_PASSWORD);
+    await login(page, 'RESTRICTED');
 
     const restrictedList = await page.request.get(`/api/v1/sources/${sourceId}/attachments?pageNo=1&pageSize=20`);
     const restrictedPreview = await page.request.get(`/api/v1/source-attachments/${attachmentId}/preview`);
