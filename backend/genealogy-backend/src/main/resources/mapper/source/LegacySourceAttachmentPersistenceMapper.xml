@@ -1,1 +1,21 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.genealogy.source.attachment.repository.mybatis.LegacySourceAttachmentPersistenceMapper"><update id="updateAllById">update source_attachment set source_id=#{sourceId},clan_id=#{clanId},original_filename=#{originalFilename},stored_filename=#{storedFilename},content_type=#{contentType},file_size=#{fileSize},storage_path=#{storagePath},checksum=#{checksum},upload_status=#{uploadStatus},created_by=#{createdBy},created_at=#{createdAt},deleted_at=#{deletedAt} where id=#{id}</update></mapper>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.source.attachment.repository.mybatis.LegacySourceAttachmentPersistenceMapper">
+  <update id="updateAllById">
+    UPDATE source_attachment
+    SET source_id = #{sourceId},
+        clan_id = #{clanId},
+        original_filename = #{originalFilename},
+        stored_filename = #{storedFilename},
+        content_type = #{contentType},
+        file_size = #{fileSize},
+        storage_path = #{storagePath},
+        checksum = #{checksum},
+        upload_status = #{uploadStatus},
+        created_by = #{createdBy},
+        created_at = #{createdAt},
+        deleted_at = #{deletedAt}
+    WHERE id = #{id}
+  </update>
+</mapper>
