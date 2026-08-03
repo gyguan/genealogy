@@ -8,9 +8,17 @@
     <result column="confirm_duplicates" property="confirmDuplicates"/>
     <result column="created_at" property="createdAt"/>
   </resultMap>
-  <sql id="columns">job_id, original_filename, content_type, confirm_duplicates, created_at</sql>
-  <update id="updateAllById">UPDATE import_job_payload SET original_filename = #{originalFilename},
-      content_type = #{contentType},
-      confirm_duplicates = #{confirmDuplicates},
-      created_at = #{createdAt} WHERE job_id=#{jobId}</update>
+
+  <sql id="columns">
+    job_id, original_filename, content_type, confirm_duplicates, created_at
+  </sql>
+
+  <update id="updateAllById">
+    UPDATE import_job_payload
+    SET original_filename = #{originalFilename},
+        content_type = #{contentType},
+        confirm_duplicates = #{confirmDuplicates},
+        created_at = #{createdAt}
+    WHERE job_id = #{jobId}
+  </update>
 </mapper>
