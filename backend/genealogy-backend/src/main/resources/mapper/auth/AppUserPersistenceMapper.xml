@@ -2,118 +2,118 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.genealogy.auth.repository.mybatis.AppUserPersistenceMapper">
-    <sql id="activeCandidateFilter">
-        deleted_at is null
-        and status = 'active'
-        and (
-            lower(username) like lower(concat('%', #{keyword}, '%'))
-            or lower(display_name) like lower(concat('%', #{keyword}, '%'))
-        )
-    </sql>
+  <sql id="activeCandidateFilter">
+    deleted_at IS NULL
+    AND status = 'active'
+    AND (
+      lower(username) LIKE lower(concat('%', #{keyword}, '%'))
+      OR lower(display_name) LIKE lower(concat('%', #{keyword}, '%'))
+    )
+  </sql>
 
-    <update id="updateAllById">
-        update app_user
-        set username = #{entity.username},
-            phone = #{entity.phone},
-            email = #{entity.email},
-            password_hash = #{entity.passwordHash},
-            display_name = #{entity.displayName},
-            avatar_url = #{entity.avatarUrl},
-            status = #{entity.status},
-            last_login_at = #{entity.lastLoginAt},
-            created_at = #{entity.createdAt},
-            updated_at = #{entity.updatedAt},
-            deleted_at = #{entity.deletedAt}
-        where id = #{entity.id}
-    </update>
+  <update id="updateAllById">
+    UPDATE app_user
+    SET username = #{entity.username},
+        phone = #{entity.phone},
+        email = #{entity.email},
+        password_hash = #{entity.passwordHash},
+        display_name = #{entity.displayName},
+        avatar_url = #{entity.avatarUrl},
+        status = #{entity.status},
+        last_login_at = #{entity.lastLoginAt},
+        created_at = #{entity.createdAt},
+        updated_at = #{entity.updatedAt},
+        deleted_at = #{entity.deletedAt}
+    WHERE id = #{entity.id}
+  </update>
 
-    <select id="findByUsername"
-            resultType="com.genealogy.auth.entity.AppUserEntity">
-        select *
-        from app_user
-        where username = #{username}
-        <if test="activeOnly">
-            and deleted_at is null
-        </if>
-        order by id asc
-        limit 1
-    </select>
+  <select id="findByUsername"
+          resultType="com.genealogy.auth.entity.AppUserEntity">
+    SELECT *
+    FROM app_user
+    WHERE username = #{username}
+    <if test="activeOnly">
+      AND deleted_at IS NULL
+    </if>
+    ORDER BY id ASC
+    LIMIT 1
+  </select>
 
-    <select id="existsUsername" resultType="boolean">
-        select exists(
-            select 1
-            from app_user
-            where username = #{username}
-            <if test="activeOnly">
-                and deleted_at is null
-            </if>
-        )
-    </select>
+  <select id="existsUsername" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+      FROM app_user
+      WHERE username = #{username}
+      <if test="activeOnly">
+        AND deleted_at IS NULL
+      </if>
+    )
+  </select>
 
-    <select id="existsPhone" resultType="boolean">
-        select exists(
-            select 1
-            from app_user
-            where phone = #{phone}
-              and deleted_at is null
-        )
-    </select>
+  <select id="existsPhone" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+      FROM app_user
+      WHERE phone = #{phone}
+        AND deleted_at IS NULL
+    )
+  </select>
 
-    <select id="existsEmail" resultType="boolean">
-        select exists(
-            select 1
-            from app_user
-            where email = #{email}
-              and deleted_at is null
-        )
-    </select>
+  <select id="existsEmail" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+      FROM app_user
+      WHERE email = #{email}
+        AND deleted_at IS NULL
+    )
+  </select>
 
-    <select id="findRecoverableAccount"
-            resultType="com.genealogy.auth.entity.AppUserEntity">
-        select *
-        from app_user
-        where deleted_at is null
-          and (
-            lower(username) = lower(#{account})
-            or lower(coalesce(email, '')) = lower(#{account})
-            or coalesce(phone, '') = #{account}
-          )
-        order by id asc
-        limit 1
-    </select>
+  <select id="findRecoverableAccount"
+          resultType="com.genealogy.auth.entity.AppUserEntity">
+    SELECT *
+    FROM app_user
+    WHERE deleted_at IS NULL
+      AND (
+        lower(username) = lower(#{account})
+        OR lower(coalesce(email, '')) = lower(#{account})
+        OR coalesce(phone, '') = #{account}
+      )
+    ORDER BY id ASC
+    LIMIT 1
+  </select>
 
-    <select id="countActiveCandidates" resultType="long">
-        select count(*)
-        from app_user
-        where <include refid="activeCandidateFilter"/>
-    </select>
+  <select id="countActiveCandidates" resultType="long">
+    SELECT count(*)
+    FROM app_user
+    WHERE <include refid="activeCandidateFilter"/>
+  </select>
 
-    <select id="searchActiveCandidates"
-            resultType="com.genealogy.auth.entity.AppUserEntity">
-        select *
-        from app_user
-        where <include refid="activeCandidateFilter"/>
-        order by display_name asc, id asc
-        offset #{offset}
-        limit #{limit}
-    </select>
+  <select id="searchActiveCandidates"
+          resultType="com.genealogy.auth.entity.AppUserEntity">
+    SELECT *
+    FROM app_user
+    WHERE <include refid="activeCandidateFilter"/>
+    ORDER BY display_name ASC, id ASC
+    OFFSET #{offset}
+    LIMIT #{limit}
+  </select>
 
-    <select id="findAllByIds"
-            resultType="com.genealogy.auth.entity.AppUserEntity">
-        select *
-        from app_user
-        where id in
-        <foreach collection="ids" item="id"
-                 open="(" separator="," close=")">
-            #{id}
-        </foreach>
-        order by id asc
-    </select>
+  <select id="findAllByIds"
+          resultType="com.genealogy.auth.entity.AppUserEntity">
+    SELECT *
+    FROM app_user
+    WHERE id IN
+    <foreach collection="ids" item="id"
+             open="(" separator="," close=")">
+      #{id}
+    </foreach>
+    ORDER BY id ASC
+  </select>
 
-    <select id="findAll"
-            resultType="com.genealogy.auth.entity.AppUserEntity">
-        select *
-        from app_user
-        order by id asc
-    </select>
+  <select id="findAll"
+          resultType="com.genealogy.auth.entity.AppUserEntity">
+    SELECT *
+    FROM app_user
+    ORDER BY id ASC
+  </select>
 </mapper>
