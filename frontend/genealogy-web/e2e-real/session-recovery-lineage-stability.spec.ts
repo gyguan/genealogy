@@ -125,8 +125,8 @@ test.describe('会话、失败恢复、深层世系与稳定性专项', () => {
     expect([401, 403]).toContain(protectedResponse.status());
 
     await resetBrowserSession(page);
-    await expect(page.locator('input[type="text"]:visible').first()).toBeVisible();
-    await expect(page.locator('input[type="password"]:visible')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '账号', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '密码', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '登录系统', exact: true })).toBeVisible();
 
     await loginThroughUi(page, 'EDITOR');
