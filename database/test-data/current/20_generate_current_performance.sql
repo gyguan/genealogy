@@ -66,11 +66,8 @@ begin
     if c.spouse_every < 2 or c.source_bind_every < 1 then
         raise exception 'spouse_every must be >= 2 and source_bind_every must be >= 1';
     end if;
-    if exists (
-        select 1 from clan
-        where clan_code like c.dataset_code || '-C%'
-    ) then
-        raise exception 'dataset code % already exists; reset the database or use another dataset_code', c.dataset_code;
+    if exists (select 1 from clan where clan_code like c.dataset_code || '-C%') then
+        raise exception 'dataset code % already exists; reset or use another dataset_code', c.dataset_code;
     end if;
 end
 $$;
@@ -111,7 +108,6 @@ select cm.clan_id,
 from _perf_clan_map cm
 cross join generate_series(1, (select branches_per_clan from _perf_config)) b;
 
--- Insert one root per clan, then all other branches below that root.
 insert into branch (clan_id, parent_id, branch_name, branch_path, level, sort_order, migration_from, migration_to, description, status, created_at, updated_at)
 select clan_id, null, branch_name, '/总支', 1, 1,
        '压测起点' || clan_seq, '压测中心' || clan_seq,
@@ -146,19 +142,15 @@ select s.clan_id,
        s.branch_seq,
        b.id as branch_id
 from _perf_branch_source s
-join branch b
-  on b.clan_id = s.clan_id
- and b.branch_name = s.branch_name;
+join branch b on b.clan_id = s.clan_id and b.branch_name = s.branch_name;
 
 create temporary table _perf_person_source on commit drop as
 select cm.clan_id,
        cm.clan_seq,
        p as person_seq,
        ((p - 1) % cfg.branches_per_clan) + 1 as branch_seq,
-       case
-           when p = 1 then 1
-           else 2 + floor(ln(p::numeric) / ln((cfg.children_per_parent + 1)::numeric))::int
-       end as generation_no,
+       case when p = 1 then 1
+            else 2 + floor(ln(p::numeric) / ln((cfg.children_per_parent + 1)::numeric))::int end as generation_no,
        cfg.dataset_code || '-C' || lpad(cm.clan_seq::text, 3, '0') || '-P' || lpad(p::text, 8, '0') as person_code
 from _perf_clan_map cm
 cross join _perf_config cfg
@@ -229,7 +221,6 @@ from (
 ) x
 where b.id = x.branch_id;
 
--- Bounded-width biological tree: every node except the root has one deterministic parent.
 insert into relationship (
     clan_id, from_person_id, to_person_id, relation_type, relation_label, relation_category,
     is_lineage_relation, is_biological, is_primary, description,
@@ -250,7 +241,6 @@ join _perf_person_map parent
  and parent.person_seq = floor((child.person_seq - 2)::numeric / cfg.children_per_parent)::int + 1
 where child.person_seq > 1;
 
--- Deterministic spouse edges in both directions.
 insert into relationship (
     clan_id, from_person_id, to_person_id, relation_type, relation_label, relation_category,
     is_lineage_relation, is_biological, is_primary, description,
@@ -262,8 +252,7 @@ select left_p.clan_id, left_p.person_id, right_p.person_id,
 from _perf_person_map left_p
 join _perf_config cfg on true
 join _perf_person_map right_p
-  on right_p.clan_id = left_p.clan_id
- and right_p.person_seq = left_p.person_seq + 1
+  on right_p.clan_id = left_p.clan_id and right_p.person_seq = left_p.person_seq + 1
 where left_p.person_seq % cfg.spouse_every = 0
   and left_p.person_seq < cfg.persons_per_clan;
 
@@ -278,12 +267,10 @@ select right_p.clan_id, right_p.person_id, left_p.person_id,
 from _perf_person_map left_p
 join _perf_config cfg on true
 join _perf_person_map right_p
-  on right_p.clan_id = left_p.clan_id
- and right_p.person_seq = left_p.person_seq + 1
+  on right_p.clan_id = left_p.clan_id and right_p.person_seq = left_p.person_seq + 1
 where left_p.person_seq % cfg.spouse_every = 0
   and left_p.person_seq < cfg.persons_per_clan;
 
--- Sparse ritual edges create non-blood graph paths without dominating the dataset.
 insert into relationship (
     clan_id, from_person_id, to_person_id, relation_type, relation_label, relation_category,
     ritual_relation_type, succession_reason, successor_branch_id,
@@ -300,14 +287,10 @@ select child.clan_id,
 from _perf_person_map child
 join _perf_config cfg on true
 join _perf_person_map ritual_parent
-  on ritual_parent.clan_id = child.clan_id
- and ritual_parent.person_seq = greatest(1, child.person_seq - 100)
-join _perf_branch_map bm
-  on bm.clan_id = child.clan_id
- and bm.branch_seq = child.branch_seq
+  on ritual_parent.clan_id = child.clan_id and ritual_parent.person_seq = greatest(1, child.person_seq - 100)
+join _perf_branch_map bm on bm.clan_id = child.clan_id and bm.branch_seq = child.branch_seq
 where child.person_seq % 1000 = 0;
 
--- One birth event per person drives timeline and aggregate queries.
 insert into person_event (
     clan_id, person_id, event_type, event_title, event_date, event_date_precision,
     event_place, event_description, source_type, source_id, sort_order,
@@ -366,7 +349,6 @@ select sm.id, sm.clan_id,
 from _perf_source_map sm
 cross join _perf_config cfg;
 
--- Grant demo_admin clan-level access to every performance clan.
 insert into clan_membership (
     clan_id, user_id, person_id, join_status, member_status, invited_by,
     joined_at, created_by, created_at, updated_by, updated_at
@@ -388,40 +370,37 @@ join _perf_clan_map cm on cm.clan_id = m.clan_id
 cross join _perf_config cfg
 where m.user_id = cfg.admin_user_id;
 
-if to_regclass(current_schema() || '.culture_item') is not null then
-    insert into culture_item (
-        clan_id, branch_id, category, title, summary, content, historical_period, location_text,
-        confidence_level, privacy_level, sensitive_level, data_status,
-        featured_on_home, sort_order, created_by, created_at, updated_at, version
-    )
-    select bm.clan_id, bm.branch_id, 'other',
-           '压测文化资料-' || bm.branch_seq,
-           '按支派生成的文化资料。', '压测正文 ' || repeat('数据', 20),
-           '当代', '压测地区-' || bm.branch_seq,
-           'medium', 'clan_only', 'normal', 'official',
-           bm.branch_seq = 1, bm.branch_seq, cfg.admin_user_id, now(), now(), 1
-    from _perf_branch_map bm
-    cross join _perf_config cfg;
-end if;
+-- These domains are present in the current main branch and are generated at branch scale.
+insert into culture_item (
+    clan_id, branch_id, category, title, summary, content, historical_period, location_text,
+    confidence_level, privacy_level, sensitive_level, data_status,
+    featured_on_home, sort_order, created_by, created_at, updated_at, version
+)
+select bm.clan_id, bm.branch_id, 'other',
+       '压测文化资料-' || bm.branch_seq,
+       '按支派生成的文化资料。', '压测正文 ' || repeat('数据', 20),
+       '当代', '压测地区-' || bm.branch_seq,
+       'medium', 'clan_only', 'normal', 'official',
+       bm.branch_seq = 1, bm.branch_seq, cfg.admin_user_id, now(), now(), 1
+from _perf_branch_map bm
+cross join _perf_config cfg;
 
-if to_regclass(current_schema() || '.migration_event') is not null then
-    insert into migration_event (
-        clan_id, branch_id, sequence_no, from_location, to_location, migration_time_text,
-        founder_person_id, reason, description, confidence_level,
-        privacy_level, sensitive_level, data_status,
-        created_by, created_at, updated_at, version
-    )
-    select bm.clan_id, bm.branch_id, bm.branch_seq,
-           '压测起点-' || bm.branch_seq,
-           '压测终点-' || bm.branch_seq,
-           '第' || bm.branch_seq || '阶段',
-           b.founder_person_id, '压测迁徙', '按支派生成迁徙事件。', 'medium',
-           'clan_only', 'normal', 'official',
-           cfg.admin_user_id, now(), now(), 1
-    from _perf_branch_map bm
-    join branch b on b.id = bm.branch_id
-    cross join _perf_config cfg;
-end if;
+insert into migration_event (
+    clan_id, branch_id, sequence_no, from_location, to_location, migration_time_text,
+    founder_person_id, reason, description, confidence_level,
+    privacy_level, sensitive_level, data_status,
+    created_by, created_at, updated_at, version
+)
+select bm.clan_id, bm.branch_id, bm.branch_seq,
+       '压测起点-' || bm.branch_seq,
+       '压测终点-' || bm.branch_seq,
+       '第' || bm.branch_seq || '阶段',
+       b.founder_person_id, '压测迁徙', '按支派生成迁徙事件。', 'medium',
+       'clan_only', 'normal', 'official',
+       cfg.admin_user_id, now(), now(), 1
+from _perf_branch_map bm
+join branch b on b.id = bm.branch_id
+cross join _perf_config cfg;
 
 insert into operation_log (clan_id, actor_id, action_type, target_type, target_id, summary, detail, request_id, client_ip, created_at)
 select cm.clan_id, cfg.admin_user_id, 'performance_seed', 'clan', cm.clan_id,
@@ -438,10 +417,10 @@ analyze relationship;
 analyze person_event;
 analyze source;
 analyze source_binding;
+analyze culture_item;
+analyze migration_event;
 
-commit;
-
-\echo 'Performance data generated.'
+\echo 'Performance data generated:'
 select cfg.dataset_code,
        cfg.clan_count,
        cfg.persons_per_clan,
@@ -449,3 +428,5 @@ select cfg.dataset_code,
        cfg.branches_per_clan,
        cfg.children_per_parent
 from _perf_config cfg;
+
+commit;
