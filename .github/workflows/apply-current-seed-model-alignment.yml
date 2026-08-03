@@ -64,7 +64,18 @@ jobs:
           new = '''    if count != 1 and not (label == "scenario quality and workbench coverage" and count == 2):\n        raise RuntimeError(f"{label}: expected one marker, found {count}")'''
           if old not in text:
               raise SystemExit('replace_once guard marker not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          text = text.replace(old, new, 1)
+
+          old_generation = '''      where r.relation_type='parent_child' and parent.generation_no is not null and child.generation_no is not null
+                and child.generation_no<>parent.generation_no+1'''
+          new_generation = '''      where r.relation_type='parent_child'
+                and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
+                and parent.generation_no is not null and child.generation_no is not null
+                and child.generation_no<>parent.generation_no+1'''
+          if old_generation not in text:
+              raise SystemExit('generation invariant marker not found')
+          text = text.replace(old_generation, new_generation, 1)
+          path.write_text(text, encoding='utf-8')
           PY
           python3 scripts/maintenance/align_current_seed_model.py
 
