@@ -1,7 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.genealogy.review.repository.mybatis.RevisionPersistenceMapper">
- <insert id="insertRecord" useGeneratedKeys="true" keyProperty="id">insert into revision(clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason) values(#{clanId},#{traceId},#{targetType},#{targetId},#{changeType},cast(#{beforeData} as jsonb),cast(#{afterData} as jsonb),#{diffSummary},#{submitterId},#{submitTime},#{status},#{approvedAt},#{rejectedReason})</insert>
- <update id="updateAllById">update revision set clan_id=#{clanId},trace_id=#{traceId},target_type=#{targetType},target_id=#{targetId},change_type=#{changeType},before_data=cast(#{beforeData} as jsonb),after_data=cast(#{afterData} as jsonb),diff_summary=#{diffSummary},submitter_id=#{submitterId},submit_time=#{submitTime},status=#{status},approved_at=#{approvedAt},rejected_reason=#{rejectedReason} where id=#{id}</update>
- <select id="countByTargets" resultType="com.genealogy.common.persistence.TargetCountRow">select target_id as targetId,count(id) as count from revision where clan_id=#{clanId} and target_type=#{targetType} and target_id in <foreach collection="targetIds" item="id" open="(" close=")" separator=",">#{id}</foreach> group by target_id</select>
- <select id="findTreeRevisionsByTargets" resultType="com.genealogy.review.entity.RevisionEntity">select * from revision where clan_id=#{clanId} and lower(target_type) in <foreach collection="targetTypes" item="t" open="(" close=")" separator=",">#{t}</foreach> and target_id in <foreach collection="targetIds" item="id" open="(" close=")" separator=",">#{id}</foreach> order by target_type,target_id,submit_time,id</select>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.genealogy.review.repository.mybatis.RevisionPersistenceMapper">
+  <insert id="insertRecord" useGeneratedKeys="true" keyProperty="id">
+    insert into revision (
+      clan_id,
+      trace_id,
+      target_type,
+      target_id,
+      change_type,
+      before_data,
+      after_data,
+      diff_summary,
+      submitter_id,
+      submit_time,
+      status,
+      approved_at,
+      rejected_reason
+    ) values (
+      #{clanId},
+      #{traceId},
+      #{targetType},
+      #{targetId},
+      #{changeType},
+      cast(#{beforeData} as jsonb),
+      cast(#{afterData} as jsonb),
+      #{diffSummary},
+      #{submitterId},
+      #{submitTime},
+      #{status},
+      #{approvedAt},
+      #{rejectedReason}
+    )
+  </insert>
+
+  <update id="updateAllById">
+    update revision
+    set clan_id = #{clanId},
+        trace_id = #{traceId},
+        target_type = #{targetType},
+        target_id = #{targetId},
+        change_type = #{changeType},
+        before_data = cast(#{beforeData} as jsonb),
+        after_data = cast(#{afterData} as jsonb),
+        diff_summary = #{diffSummary},
+        submitter_id = #{submitterId},
+        submit_time = #{submitTime},
+        status = #{status},
+        approved_at = #{approvedAt},
+        rejected_reason = #{rejectedReason}
+    where id = #{id}
+  </update>
+
+  <select id="countByTargets"
+          resultType="com.genealogy.common.persistence.TargetCountRow">
+    select target_id as targetId,
+           count(id) as count
+    from revision
+    where clan_id = #{clanId}
+      and target_type = #{targetType}
+      and target_id in
+      <foreach collection="targetIds" item="id"
+               open="(" close=")" separator=",">
+        #{id}
+      </foreach>
+    group by target_id
+  </select>
+
+  <select id="findTreeRevisionsByTargets"
+          resultType="com.genealogy.review.entity.RevisionEntity">
+    select *
+    from revision
+    where clan_id = #{clanId}
+      and lower(target_type) in
+      <foreach collection="targetTypes" item="t"
+               open="(" close=")" separator=",">
+        #{t}
+      </foreach>
+      and target_id in
+      <foreach collection="targetIds" item="id"
+               open="(" close=")" separator=",">
+        #{id}
+      </foreach>
+    order by target_type,
+             target_id,
+             submit_time,
+             id
+  </select>
 </mapper>
