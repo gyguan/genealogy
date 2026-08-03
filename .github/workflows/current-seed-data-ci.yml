@@ -126,15 +126,11 @@ jobs:
           cp /tmp/current-seed-backend.log /tmp/current-seed-evidence/backend-startup.log 2>/dev/null || true
           psql "${DATABASE_URL}" -X -A -F ',' -c "
             select c.clan_code,
-                   count(distinct b.id) as branches,
-                   count(distinct p.id) as persons,
-                   count(distinct r.id) as relationships
+                   (select count(*) from branch b where b.clan_id = c.id) as branches,
+                   (select count(*) from person p where p.clan_id = c.id and p.deleted_at is null) as persons,
+                   (select count(*) from relationship r where r.clan_id = c.id and r.deleted_at is null) as relationships
             from clan c
-            left join branch b on b.clan_id = c.id
-            left join person p on p.clan_id = c.id and p.deleted_at is null
-            left join relationship r on r.clan_id = c.id and r.deleted_at is null
             where c.clan_code like 'SCENARIO-%' or c.clan_code like 'PERF-%'
-            group by c.clan_code
             order by c.clan_code;
           " > /tmp/current-seed-evidence/row-counts.csv || true
 
