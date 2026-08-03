@@ -3,66 +3,57 @@
   padding: 32px;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: auto;
   background:
-    radial-gradient(circle at 8% 8%, rgba(99, 87, 57, .10), transparent 34%),
-    linear-gradient(145deg, #f2efe7 0%, #f8f7f2 48%, #eef3f1 100%);
+    radial-gradient(circle at 12% 8%, rgba(56, 118, 255, .12), transparent 32%),
+    linear-gradient(145deg, #f5f8ff 0%, #f8fafc 52%, #eef4ff 100%);
 }
 
 [data-genealogy-app] .commercial-auth-layout {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(420px, 1.08fr) minmax(400px, .92fr);
-  width: min(1180px, 100%);
-  min-height: 680px;
+  display: grid !important;
+  grid-template-columns: minmax(400px, 44fr) minmax(500px, 56fr);
+  width: min(1040px, calc(100vw - 64px));
+  min-height: 700px;
   overflow: hidden;
-  border: 1px solid rgba(54, 67, 63, .14);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 28px 80px rgba(38, 47, 44, .16);
+  border: 1px solid #d9e2f1;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(43, 72, 120, .16);
 }
 
-[data-genealogy-app] .commercial-auth-brand {
+[data-genealogy-app] .commercial-auth-brand,
+[data-genealogy-app] .commercial-auth-brand.ant-layout-sider,
+[data-genealogy-app] .commercial-auth-brand.ant-layout-sider-collapsed {
   position: relative;
-  display: flex;
+  display: flex !important;
   flex-direction: column;
   width: auto !important;
   min-width: 0 !important;
   max-width: none !important;
   flex: none !important;
-  padding: 48px 54px;
+  padding: 48px 50px;
   overflow: hidden;
-  color: #f8f5eb;
+  color: #0e2b59;
   background:
-    linear-gradient(145deg, rgba(22, 49, 45, .98), rgba(39, 70, 62, .96)),
-    #183b35;
-}
-
-[data-genealogy-app] .commercial-auth-brand::before,
-[data-genealogy-app] .commercial-auth-brand::after {
-  position: absolute;
-  content: '';
-  border: 1px solid rgba(232, 221, 188, .12);
-  border-radius: 50%;
+    radial-gradient(circle at 18% 15%, rgba(255, 255, 255, .86), transparent 30%),
+    linear-gradient(160deg, #eaf3ff 0%, #dcecff 52%, #cddfff 100%);
 }
 
 [data-genealogy-app] .commercial-auth-brand::before {
-  width: 460px;
-  height: 460px;
-  top: -230px;
-  right: -190px;
-}
-
-[data-genealogy-app] .commercial-auth-brand::after {
-  width: 340px;
-  height: 340px;
-  left: -180px;
-  bottom: -190px;
+  position: absolute;
+  content: '';
+  inset: auto -90px -120px -70px;
+  height: 300px;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(45, 103, 220, .22), transparent 62%),
+    linear-gradient(180deg, transparent, rgba(80, 134, 229, .08));
 }
 
 [data-genealogy-app] .commercial-auth-brand-top,
 [data-genealogy-app] .commercial-auth-brand-copy,
-[data-genealogy-app] .commercial-auth-capabilities {
+[data-genealogy-app] .commercial-auth-capabilities,
+[data-genealogy-app] .commercial-auth-lineage {
   position: relative;
   z-index: 2;
 }
@@ -75,8 +66,9 @@
 
 [data-genealogy-app] .commercial-auth-brand-top h3.ant-typography {
   margin: 0;
-  color: #fffdf6;
+  color: #102a56;
   font-size: 21px;
+  font-weight: 700;
 }
 
 [data-genealogy-app] .commercial-auth-mark {
@@ -85,136 +77,148 @@
   width: 52px;
   height: 52px;
   flex: 0 0 52px;
-  border: 1px solid rgba(245, 233, 198, .54);
-  border-radius: 14px;
-  color: #fff7df;
-  background: rgba(255, 255, 255, .08);
+  border-radius: 13px;
+  color: #fff;
+  background: linear-gradient(145deg, #3f7df4, #245fd5);
   font-family: "STKaiti", "KaiTi", serif;
-  font-size: 29px;
-  box-shadow: inset 0 0 0 4px rgba(255, 255, 255, .035);
+  font-size: 28px;
+  box-shadow: 0 10px 24px rgba(37, 96, 213, .26);
 }
 
 [data-genealogy-app] .commercial-auth-product-en.ant-typography {
   display: block;
-  color: rgba(247, 240, 218, .62);
+  margin-top: 2px;
+  color: #56709a;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .22em;
+  letter-spacing: .08em;
 }
 
 [data-genealogy-app] .commercial-auth-brand-copy {
-  margin-top: 92px;
-  max-width: 520px;
+  margin-top: 68px;
+  max-width: 410px;
 }
 
 [data-genealogy-app] .commercial-auth-brand-tag.ant-tag {
-  margin: 0 0 18px;
-  padding: 5px 12px;
-  border-color: rgba(229, 213, 170, .3);
+  margin: 0 0 16px;
+  padding: 4px 11px;
+  border: 1px solid rgba(48, 103, 213, .18);
   border-radius: 999px;
-  color: #f0dfac;
-  background: rgba(229, 213, 170, .08);
+  color: #2d63c8;
+  background: rgba(255, 255, 255, .56);
 }
 
 [data-genealogy-app] .commercial-auth-brand-copy h1.ant-typography {
   margin: 0 0 18px;
-  color: #fffdf6;
-  font-family: "STKaiti", "KaiTi", "PingFang SC", sans-serif;
-  font-size: clamp(34px, 3.2vw, 48px);
-  font-weight: 500;
-  line-height: 1.38;
-  letter-spacing: .02em;
+  color: #0d2a57;
+  font-size: clamp(34px, 3vw, 44px);
+  font-weight: 750;
+  line-height: 1.34;
+  letter-spacing: -.02em;
 }
 
 [data-genealogy-app] .commercial-auth-brand-copy .ant-typography {
-  color: rgba(246, 242, 226, .72);
-  font-size: 16px;
+  max-width: 380px;
+  color: #4f668a;
+  font-size: 15px;
   line-height: 1.9;
 }
 
 [data-genealogy-app] .commercial-auth-capabilities {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   margin-top: auto;
-  padding-top: 52px;
+  padding-top: 44px;
 }
 
 [data-genealogy-app] .commercial-auth-capability {
-  display: grid;
-  grid-template-columns: 38px 1fr;
-  gap: 13px;
-  align-items: start;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid rgba(70, 117, 205, .14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .44);
+  text-align: center;
 }
 
 [data-genealogy-app] .commercial-auth-capability > span {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(239, 223, 178, .2);
-  border-radius: 10px;
-  color: #f3deb0;
-  background: rgba(255, 255, 255, .07);
-  font-family: "STKaiti", "KaiTi", serif;
-  font-size: 17px;
+  width: 30px;
+  height: 30px;
+  margin: 0 auto 8px;
+  border-radius: 9px;
+  color: #2f67d5;
+  background: rgba(47, 103, 213, .11);
+  font-weight: 700;
 }
 
 [data-genealogy-app] .commercial-auth-capability strong {
   display: block;
-  color: #fffaf0;
-  font-size: 14px;
-  font-weight: 600;
+  color: #17355f;
+  font-size: 12px;
 }
 
 [data-genealogy-app] .commercial-auth-capability p {
-  margin: 4px 0 0;
-  color: rgba(246, 242, 226, .58);
-  font-size: 12px;
-  line-height: 1.55;
+  display: none;
 }
 
 [data-genealogy-app] .commercial-auth-lineage {
   position: absolute;
-  z-index: 1;
-  right: 34px;
-  bottom: 66px;
-  width: 180px;
-  height: 150px;
-  opacity: .22;
+  right: 52px;
+  bottom: 112px;
+  width: 190px;
+  height: 152px;
+  opacity: .2;
 }
 
 [data-genealogy-app] .commercial-auth-lineage::before,
 [data-genealogy-app] .commercial-auth-lineage::after {
   position: absolute;
   content: '';
-  background: #d8c487;
+  background: #2e69d4;
 }
 
-[data-genealogy-app] .commercial-auth-lineage::before { left: 89px; top: 16px; width: 1px; height: 98px; }
-[data-genealogy-app] .commercial-auth-lineage::after { left: 27px; top: 86px; width: 125px; height: 1px; }
-[data-genealogy-app] .commercial-auth-lineage span { position: absolute; width: 13px; height: 13px; border: 1px solid #e6d39a; border-radius: 50%; background: #315b51; }
-[data-genealogy-app] .commercial-auth-lineage span:nth-child(1) { left: 83px; top: 8px; }
-[data-genealogy-app] .commercial-auth-lineage span:nth-child(2) { left: 21px; top: 80px; }
-[data-genealogy-app] .commercial-auth-lineage span:nth-child(3) { left: 83px; top: 80px; }
-[data-genealogy-app] .commercial-auth-lineage span:nth-child(4) { left: 145px; top: 80px; }
-[data-genealogy-app] .commercial-auth-lineage span:nth-child(5) { left: 83px; top: 127px; }
+[data-genealogy-app] .commercial-auth-lineage::before { left: 94px; top: 18px; width: 1px; height: 100px; }
+[data-genealogy-app] .commercial-auth-lineage::after { left: 28px; top: 88px; width: 132px; height: 1px; }
+[data-genealogy-app] .commercial-auth-lineage span { position: absolute; width: 14px; height: 14px; border: 1px solid #2e69d4; border-radius: 50%; background: #e8f1ff; }
+[data-genealogy-app] .commercial-auth-lineage span:nth-child(1) { left: 88px; top: 10px; }
+[data-genealogy-app] .commercial-auth-lineage span:nth-child(2) { left: 22px; top: 82px; }
+[data-genealogy-app] .commercial-auth-lineage span:nth-child(3) { left: 88px; top: 82px; }
+[data-genealogy-app] .commercial-auth-lineage span:nth-child(4) { left: 154px; top: 82px; }
+[data-genealogy-app] .commercial-auth-lineage span:nth-child(5) { left: 88px; top: 130px; }
 
-[data-genealogy-app] .commercial-auth-panel {
+[data-genealogy-app] .commercial-auth-panel,
+[data-genealogy-app] .commercial-auth-panel.ant-layout-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: auto;
   min-width: 0;
-  padding: 46px 62px 28px;
-  background:
-    linear-gradient(rgba(255, 255, 255, .96), rgba(255, 255, 255, .96)),
-    repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(47, 75, 68, .025) 32px);
+  width: auto;
+  padding: 44px 56px 28px;
+  background: #fff;
 }
 
-[data-genealogy-app] .commercial-auth-card {
+[data-genealogy-app] .commercial-auth-panel::before {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  content: '◉  简体中文⌄';
+  color: #52647f;
+  font-size: 12px;
+}
+
+[data-genealogy-app] .commercial-auth-card.ant-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   margin: auto;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-card-body {
+  padding: 0;
 }
 
 [data-genealogy-app] .commercial-auth-card > .ant-alert {
@@ -222,57 +226,78 @@
   border-radius: 10px;
 }
 
-[data-genealogy-app] .commercial-auth-heading { margin: 10px 0 28px; }
+[data-genealogy-app] .commercial-auth-heading {
+  margin: 8px 0 28px;
+}
 
 [data-genealogy-app] .commercial-auth-heading h2.ant-typography {
-  margin: 5px 0 8px;
-  color: #20332e;
-  font-size: 30px;
-  letter-spacing: -.02em;
+  margin: 4px 0 8px;
+  color: #10284f;
+  font-size: 31px;
+  font-weight: 750;
+  letter-spacing: -.025em;
 }
 
 [data-genealogy-app] .commercial-auth-heading .ant-typography-secondary {
   margin-bottom: 0;
+  color: #71809a;
   line-height: 1.7;
 }
 
 [data-genealogy-app] .commercial-auth-eyebrow.ant-typography {
-  color: #9b3f31;
+  color: #3472df;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .15em;
+  letter-spacing: .12em;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-form-item {
+  margin-bottom: 20px;
 }
 
 [data-genealogy-app] .commercial-auth-card .ant-form-item-label > label {
-  color: #384b46;
+  color: #34465f;
   font-weight: 600;
 }
 
 [data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper,
 [data-genealogy-app] .commercial-auth-card .ant-input {
-  border-color: #d7dedb;
-  border-radius: 10px;
-  background: #fcfdfc;
+  border-color: #d8e0ec;
+  border-radius: 8px;
+  background: #fff;
 }
 
-[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-lg { min-height: 46px; }
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-lg,
+[data-genealogy-app] .commercial-auth-card .ant-input-lg {
+  min-height: 48px;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper:hover,
+[data-genealogy-app] .commercial-auth-card .ant-input:hover {
+  border-color: #7ba5f4;
+}
+
+[data-genealogy-app] .commercial-auth-card .ant-input-affix-wrapper-focused,
+[data-genealogy-app] .commercial-auth-card .ant-input:focus {
+  border-color: #3475e5;
+  box-shadow: 0 0 0 3px rgba(52, 117, 229, .1);
+}
 
 [data-genealogy-app] .commercial-auth-card .ant-btn-primary {
-  min-height: 46px;
-  border-color: #244f46;
-  border-radius: 10px;
-  background: #244f46;
-  box-shadow: 0 8px 20px rgba(36, 79, 70, .18);
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #2f72e6, #2b65d6);
+  box-shadow: 0 9px 20px rgba(43, 101, 214, .2);
 }
 
 [data-genealogy-app] .commercial-auth-card .ant-btn-primary:hover,
 [data-genealogy-app] .commercial-auth-card .ant-btn-primary:focus {
-  border-color: #316b5f !important;
-  background: #316b5f !important;
+  background: linear-gradient(90deg, #3c80ee, #3470df) !important;
 }
 
 [data-genealogy-app] .commercial-auth-input-mark {
-  color: #71827d;
+  color: #62738f;
   font-size: 11px;
   font-weight: 700;
 }
@@ -282,14 +307,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: -2px 0 20px;
+  margin: -2px 0 22px;
 }
 
 [data-genealogy-app] .commercial-auth-options .ant-btn-link,
 [data-genealogy-app] .commercial-auth-secondary-action .ant-btn-link,
 [data-genealogy-app] .commercial-auth-footer .ant-btn-link {
   padding-inline: 0;
-  color: #7f382e;
+  color: #2f6edc;
 }
 
 [data-genealogy-app] .commercial-auth-secondary-action {
@@ -297,19 +322,19 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  margin-top: 20px;
+  margin-top: 22px;
   text-align: center;
 }
 
 [data-genealogy-app] .commercial-auth-back.ant-btn {
   margin-left: -12px;
-  color: #566963;
+  color: #5d6d86;
 }
 
 [data-genealogy-app] .commercial-auth-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 [data-genealogy-app] .commercial-auth-security-note {
@@ -317,10 +342,10 @@
   justify-content: center;
   align-items: center;
   gap: 7px;
-  margin-top: 26px;
+  margin-top: 28px;
   padding-top: 20px;
-  border-top: 1px solid #edf0ef;
-  color: #74827e;
+  border-top: 1px solid #edf1f6;
+  color: #7b879b;
   font-size: 12px;
 }
 
@@ -331,7 +356,7 @@
   height: 17px;
   border-radius: 50%;
   color: #fff;
-  background: #47786c;
+  background: #3c76df;
   font-size: 10px;
   font-weight: 700;
 }
@@ -342,8 +367,8 @@
   align-items: center;
   gap: 16px;
   width: 100%;
-  max-width: 440px;
-  margin: 28px auto 0;
+  max-width: 420px;
+  margin: 22px auto 0;
   font-size: 12px;
 }
 
@@ -352,29 +377,79 @@
   font-size: 12px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1080px) {
   [data-genealogy-app] .commercial-auth-shell { padding: 18px; }
-  [data-genealogy-app] .commercial-auth-layout { grid-template-columns: minmax(300px, .82fr) minmax(380px, 1.18fr); }
-  [data-genealogy-app] .commercial-auth-brand { padding: 38px 32px; }
-  [data-genealogy-app] .commercial-auth-brand-copy { margin-top: 70px; }
-  [data-genealogy-app] .commercial-auth-panel { padding: 42px 36px 24px; }
+  [data-genealogy-app] .commercial-auth-layout {
+    grid-template-columns: minmax(300px, 40fr) minmax(420px, 60fr);
+    width: calc(100vw - 36px);
+    min-height: 660px;
+  }
+  [data-genealogy-app] .commercial-auth-brand,
+  [data-genealogy-app] .commercial-auth-brand.ant-layout-sider { padding: 38px 30px; }
+  [data-genealogy-app] .commercial-auth-brand-copy { margin-top: 54px; }
+  [data-genealogy-app] .commercial-auth-brand-copy h1.ant-typography { font-size: 34px; }
+  [data-genealogy-app] .commercial-auth-capabilities { grid-template-columns: 1fr; gap: 8px; }
+  [data-genealogy-app] .commercial-auth-capability { display: flex; align-items: center; gap: 8px; padding: 8px 10px; text-align: left; }
+  [data-genealogy-app] .commercial-auth-capability > span { margin: 0; }
+  [data-genealogy-app] .commercial-auth-panel,
+  [data-genealogy-app] .commercial-auth-panel.ant-layout-content { padding: 42px 38px 24px; }
 }
 
-@media (max-width: 760px) {
-  [data-genealogy-app] .commercial-auth-shell { padding: 0; place-items: stretch; background: #fff; }
-  [data-genealogy-app] .commercial-auth-layout { display: block; min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
-  [data-genealogy-app] .commercial-auth-brand { min-height: auto; width: 100% !important; padding: 22px 22px 42px; }
+@media (max-height: 780px) and (min-width: 721px) {
+  [data-genealogy-app] .commercial-auth-shell { padding-block: 16px; }
+  [data-genealogy-app] .commercial-auth-layout { min-height: 630px; }
   [data-genealogy-app] .commercial-auth-brand-copy { margin-top: 38px; }
-  [data-genealogy-app] .commercial-auth-brand-copy h1.ant-typography { font-size: 31px; }
-  [data-genealogy-app] .commercial-auth-brand-copy .ant-typography { font-size: 14px; }
-  [data-genealogy-app] .commercial-auth-capabilities { display: none; }
-  [data-genealogy-app] .commercial-auth-lineage { right: 4px; bottom: -26px; }
-  [data-genealogy-app] .commercial-auth-panel { min-height: 560px; width: 100%; padding: 30px 22px 24px; }
+  [data-genealogy-app] .commercial-auth-capabilities { padding-top: 24px; }
+  [data-genealogy-app] .commercial-auth-heading { margin-bottom: 18px; }
+  [data-genealogy-app] .commercial-auth-card .ant-form-item { margin-bottom: 15px; }
+  [data-genealogy-app] .commercial-auth-footer { margin-top: 14px; }
+}
+
+@media (max-width: 720px) {
+  [data-genealogy-app] .commercial-auth-shell {
+    padding: 0;
+    place-items: stretch;
+    background: #f5f8ff;
+  }
+  [data-genealogy-app] .commercial-auth-layout {
+    display: block !important;
+    width: 100%;
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  [data-genealogy-app] .commercial-auth-brand,
+  [data-genealogy-app] .commercial-auth-brand.ant-layout-sider,
+  [data-genealogy-app] .commercial-auth-brand.ant-layout-sider-collapsed {
+    display: none !important;
+  }
+  [data-genealogy-app] .commercial-auth-panel,
+  [data-genealogy-app] .commercial-auth-panel.ant-layout-content {
+    min-height: 100vh;
+    width: 100%;
+    padding: 76px 22px 26px;
+  }
+  [data-genealogy-app] .commercial-auth-panel::after {
+    position: absolute;
+    top: 24px;
+    left: 22px;
+    content: '谱  家谱系统';
+    color: #13315d;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  [data-genealogy-app] .commercial-auth-panel::before { top: 28px; right: 22px; }
+  [data-genealogy-app] .commercial-auth-card.ant-card,
+  [data-genealogy-app] .commercial-auth-footer { max-width: 440px; }
+  [data-genealogy-app] .commercial-auth-heading h2.ant-typography { font-size: 27px; }
   [data-genealogy-app] .commercial-auth-form-grid { grid-template-columns: 1fr; gap: 0; }
   [data-genealogy-app] .commercial-auth-footer { flex-direction: column; justify-content: center; gap: 0; }
 }
 
 @media (max-width: 420px) {
+  [data-genealogy-app] .commercial-auth-panel,
+  [data-genealogy-app] .commercial-auth-panel.ant-layout-content { padding-inline: 18px; }
   [data-genealogy-app] .commercial-auth-options { align-items: flex-start; flex-direction: column; }
   [data-genealogy-app] .commercial-auth-options .ant-btn-link { padding: 0; }
   [data-genealogy-app] .commercial-auth-secondary-action { align-items: stretch; flex-direction: column; }
