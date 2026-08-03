@@ -1,5 +1,5 @@
 import { expect, test, type APIResponse, type Page } from '@playwright/test';
-import { loginThroughUi } from './support/auth';
+import { functionalRunId, loginThroughUi } from './support/auth';
 import { csrfHeaders, requiredNumberEnv } from './support/api';
 
 async function textOf(response: APIResponse): Promise<string> {
@@ -25,38 +25,25 @@ async function resetBrowserSession(page: Page): Promise<void> {
   await page.reload();
 }
 
-async function login(page: Page, role: 'ADMIN' | 'RESTRICTED'): Promise<void> {
+async function login(page: Page, role: 'EDITOR' | 'RESTRICTED'): Promise<void> {
   await resetBrowserSession(page);
   await loginThroughUi(page, role);
 }
 
 test.describe('来源文件、谱册导出与下载权限闭环', () => {
-  test('管理员可预览下载并导出谱册，受限账号不可读取', async ({ page }) => {
+  test('宗族编辑者可预览下载并导出谱册，受限账号不可读取', async ({ page }) => {
     const clanId = requiredNumberEnv('FUNCTIONAL_TEST_CORE_CLAN_ID');
-    const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const branchName = `E2E谱册支派-${runId}`;
+    const branchId = requiredNumberEnv('FUNCTIONAL_TEST_CORE_BRANCH_ID');
+    const runId = functionalRunId();
     const sourceName = `E2E来源-${runId}`;
     const fileName = `e2e-source-${runId}.txt`;
     const fileContent = `source-file-content-${runId}\n`;
 
-    await login(page, 'ADMIN');
-    const adminCsrfHeaders = await csrfHeaders(page);
-
-    const createBranch = await page.request.post(`/api/v1/clans/${clanId}/branches`, {
-      headers: adminCsrfHeaders,
-      data: {
-        branchName,
-        code: `E2E-${runId}`,
-        description: `booklet branch ${runId}`
-      }
-    });
-    expect(createBranch.ok(), await createBranch.text()).toBeTruthy();
-    const branchPayload = await createBranch.json();
-    const branchId = Number(branchPayload?.data?.id);
-    expect(branchId).toBeGreaterThan(0);
+    await login(page, 'EDITOR');
+    const editorCsrfHeaders = await csrfHeaders(page);
 
     const createSource = await page.request.post('/api/v1/sources', {
-      headers: adminCsrfHeaders,
+      headers: editorCsrfHeaders,
       data: {
         clanId,
         title: sourceName,
@@ -71,7 +58,7 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
 
     const upload = await page.request.post(`/api/v1/sources/${sourceId}/attachments`, {
       headers: {
-        'X-CSRF-Token': adminCsrfHeaders['X-CSRF-Token']
+        'X-CSRF-Token': editorCsrfHeaders['X-CSRF-Token']
       },
       multipart: {
         file: {
