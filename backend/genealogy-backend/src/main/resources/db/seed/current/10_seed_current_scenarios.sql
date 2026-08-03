@@ -133,6 +133,18 @@ begin
     insert into branch (clan_id,parent_id,branch_name,branch_path,level,sort_order,migration_from,migration_to,description,status,created_at,updated_at)
     values (c_li,b_li_root,'关中北支','/SCENARIO-LI/ROOT/NORTH',2,10,'陕西西安','陕西咸阳','跨宗族隔离支派。','official',now()-interval '160 days',now()) returning id into b_li_north;
 
+
+    -- Match BranchApplicationService: roots use their own id; descendants append child ids.
+    update branch set branch_path=b_root::text,level=1 where id=b_root;
+    update branch set branch_path=b_root::text||'/'||b_long,level=2 where id=b_long;
+    update branch set branch_path=b_root::text||'/'||b_second,level=2 where id=b_second;
+    update branch set branch_path=b_root::text||'/'||b_third,level=2 where id=b_third;
+    update branch set branch_path=b_root::text||'/'||b_long||'/'||b_east,level=3 where id=b_east;
+    update branch set branch_path=b_root::text||'/'||b_long||'/'||b_west,level=3 where id=b_west;
+    update branch set branch_path=b_root::text||'/'||b_second||'/'||b_successor,level=3 where id=b_successor;
+    update branch set branch_path=b_li_root::text,level=1 where id=b_li_root;
+    update branch set branch_path=b_li_root::text||'/'||b_li_north,level=2 where id=b_li_north;
+
     create temporary table seed_person_input (
         clan_id bigint, branch_id bigint, person_code text, person_name text,
         gender text, generation_no integer, generation_word text,
@@ -323,6 +335,60 @@ begin
     insert into review_task (clan_id,revision_id,trace_id,review_level,reviewer_id,reviewer_role,branch_id,status,review_comment,reviewed_at,created_at)
     values (c_zhang,rev_rejected,'33333333-3333-3333-3333-333333333333',1,u_reviewer,'reviewer',b_long,'rejected','补齐材料后重提。',now()-interval '9 days',now()-interval '10 days') returning id into task_rejected;
 
+
+    -- Culture review payload uses the current revision extension table.
+    insert into revision (clan_id,trace_id,target_type,target_id,change_type,before_data,after_data,diff_summary,submitter_id,submit_time,status,approved_at,rejected_reason)
+    values (
+      c_zhang,'44444444-4444-4444-4444-444444444444','culture_item',
+      (select id from culture_item where clan_id=c_zhang and data_status='pending_review' order by id limit 1),
+      'modified',jsonb_build_object('dataStatus','draft'),jsonb_build_object('dataStatus','pending_review'),
+      '文化资料提交审核。',u_editor,now()-interval '4 days','pending',null,null
+    );
+    insert into culture_revision_payload (revision_id,payload_json,created_at)
+    select id,jsonb_build_object(
+        'title','张启文执教故事','dataStatus','pending_review','branchId',b_east,
+        'summary','口述整理稿等待审核','sourceIds',jsonb_build_array(src_oral)
+      )::text,now()-interval '4 days'
+    from revision where trace_id='44444444-4444-4444-4444-444444444444';
+    insert into review_task (clan_id,revision_id,trace_id,review_level,reviewer_id,reviewer_role,branch_id,status,review_comment,reviewed_at,created_at)
+    select c_zhang,id,'44444444-4444-4444-4444-444444444444',1,u_reviewer,'reviewer',b_east,
+           'pending','等待核对口述来源。',null,now()-interval '4 days'
+    from revision where trace_id='44444444-4444-4444-4444-444444444444';
+
+    -- Persist representative quality-check outcomes used by review and workbench APIs.
+    insert into review_quality_check (
+      id,clan_id,scope_type,mode,status,scope_fingerprint,task_ids_json,query_json,
+      rule_codes_json,summary_json,rules_json,review_blocked,triggered_by,
+      queued_at,started_at,completed_at,failure_code,failure_message
+    ) values
+      ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',c_zhang,'TASK_IDS','REVIEW_GATE','PASSED',
+       'scenario-quality-passed',jsonb_build_array(task_approved)::text,null,
+       jsonb_build_array('PAYLOAD_INVALID','RELATIONSHIP_CONFLICT')::text,
+       jsonb_build_object('taskCount',1,'ruleCount',2,'passedRuleCount',2,'issueCount',0,'blockingIssueCount',0,'warningIssueCount',0,'reviewBlocked',false)::text,
+       jsonb_build_array(
+         jsonb_build_object('ruleCode','PAYLOAD_INVALID','ruleName','数据载荷有效性','outcome','PASSED','blockLevel','BLOCKING','affectedTaskCount',0,'message',null,'affectedReviewTaskIds',jsonb_build_array()),
+         jsonb_build_object('ruleCode','RELATIONSHIP_CONFLICT','ruleName','关系冲突','outcome','PASSED','blockLevel','BLOCKING','affectedTaskCount',0,'message',null,'affectedReviewTaskIds',jsonb_build_array())
+       )::text,false,u_reviewer,now()-interval '59 days',now()-interval '59 days',now()-interval '59 days',null,null),
+      ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',c_zhang,'TASK_IDS','FULL','ISSUES_FOUND',
+       'scenario-quality-blocked',jsonb_build_array(task_pending)::text,null,
+       jsonb_build_array('MISSING_SOURCE')::text,
+       jsonb_build_object('taskCount',1,'ruleCount',1,'passedRuleCount',0,'issueCount',1,'blockingIssueCount',1,'warningIssueCount',0,'reviewBlocked',true)::text,
+       jsonb_build_array(
+         jsonb_build_object('ruleCode','MISSING_SOURCE','ruleName','来源证据完整性','outcome','ISSUE','blockLevel','BLOCKING','affectedTaskCount',1,'message','缺少可审核来源证据','affectedReviewTaskIds',jsonb_build_array(task_pending))
+       )::text,true,u_reviewer,now()-interval '4 days',now()-interval '4 days',now()-interval '4 days',null,null),
+      ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',c_zhang,'TASK_IDS','INCREMENTAL','FAILED',
+       'scenario-quality-failed',jsonb_build_array(task_rejected)::text,null,
+       jsonb_build_array('PAYLOAD_INVALID')::text,null,null,false,u_reviewer,
+       now()-interval '8 days',now()-interval '8 days',now()-interval '8 days',
+       'REVIEW_QUALITY_EXECUTION_FAILED','模拟质量检查执行失败');
+
+    insert into workbench_task_action (
+      clan_id,task_key,action_type,comment_text,actor_id,expected_updated_at,created_at
+    )
+    select c_zhang,'review-'||task_pending,'mark_checked','已核对待审核关系，等待补充来源页码。',
+           u_editor,t.created_at,now()-interval '2 days'
+    from review_task t where t.id=task_pending;
+
     insert into import_job (clan_id,branch_id,import_type,file_format,original_filename,idempotency_key,total_count,success_count,failure_count,skipped_count,status,processing_status,review_status,review_round,error_summary,execution_mode,execution_status,execution_stage,cursor_row_no,processed_count,published_count,chunk_size,execution_retry_count,execution_max_retries,manual_intervention_required,created_by,created_at,updated_at,completed_at)
     values (c_zhang,b_east,'person','csv','东支人物成功导入.csv','scenario-person-success',20,20,0,0,'completed','ready_for_review','approved',1,null,'sync','completed','completed',20,20,20,200,0,3,false,u_editor,now()-interval '12 days',now()-interval '12 days',now()-interval '12 days') returning id into import_success;
     insert into import_job (clan_id,branch_id,import_type,file_format,original_filename,idempotency_key,total_count,success_count,failure_count,skipped_count,status,processing_status,review_status,review_round,error_summary,execution_mode,execution_status,execution_stage,cursor_row_no,processed_count,published_count,chunk_size,execution_retry_count,execution_max_retries,manual_intervention_required,created_by,created_at,updated_at,completed_at)
@@ -331,6 +397,78 @@ begin
     values
       (import_partial,5,'父人物编码不存在','SCN-Z-NOT-FOUND,SCN-Z-2101,parent_child',now()-interval '2 days'),
       (import_partial,8,'关系类型不受支持','SCN-Z-0201,SCN-Z-2102,unknown_relation',now()-interval '2 days');
+
+    -- Materialize current import row, recovery, chunk and idempotency models.
+    insert into import_job_row (
+      job_id,row_no,raw_data,normalized_data,corrected_data,row_status,error_code,error_message,
+      draft_person_id,draft_target_type,draft_target_id,retry_count,corrected_by,corrected_at,
+      excluded_reason,excluded_by,excluded_at,published_at,created_at,updated_at,version
+    )
+    select import_success,n,format('SCN-SUCCESS-%s',n),
+           jsonb_build_object('personCode',p.person_code,'name',p.name,'branchId',p.branch_id),
+           null,'draft_created',null,null,p.id,'person',p.id,0,null,null,null,null,null,
+           now()-interval '12 days',now()-interval '12 days',now()-interval '12 days',0
+    from generate_series(1,20)n
+    cross join lateral (
+      select id,person_code,name,branch_id from person
+      where clan_id=c_zhang and deleted_at is null order by id
+      limit 1 offset ((n-1)%18)
+    ) p;
+
+    with row_state(row_no,row_status,error_code,error_message) as (
+      values
+        (1,'draft_created',null,null),(2,'draft_created',null,null),(3,'draft_created',null,null),
+        (4,'draft_created',null,null),(5,'invalid','IMPORT_PERSON_NOT_FOUND','父人物编码不存在'),
+        (6,'draft_created',null,null),(7,'draft_created',null,null),
+        (8,'retry_failed','IMPORT_RELATION_TYPE_INVALID','关系类型不受支持'),
+        (9,'draft_created',null,null),(10,'draft_created',null,null),(11,'draft_created',null,null),
+        (12,'excluded',null,null)
+    )
+    insert into import_job_row (
+      job_id,row_no,raw_data,normalized_data,corrected_data,row_status,error_code,error_message,
+      draft_person_id,draft_target_type,draft_target_id,retry_count,corrected_by,corrected_at,
+      excluded_reason,excluded_by,excluded_at,published_at,created_at,updated_at,version
+    )
+    select import_partial,s.row_no,format('SCN-RELATION-%s',s.row_no),
+           jsonb_build_object('fromPersonCode','SCN-Z-0201','toPersonCode','SCN-Z-2102','relationType','parent_child'),
+           case when s.row_no=8 then jsonb_build_object('relationType','unknown_relation') end,
+           s.row_status,s.error_code,s.error_message,null,
+           case when s.row_status='draft_created' then 'relationship' end,
+           case when s.row_status='draft_created' then r.id end,
+           case when s.row_no=8 then 1 else 0 end,
+           case when s.row_no=8 then u_editor end,
+           case when s.row_no=8 then now()-interval '2 days' end,
+           case when s.row_status='excluded' then '重复关系，人工排除' end,
+           case when s.row_status='excluded' then u_editor end,
+           case when s.row_status='excluded' then now()-interval '2 days' end,
+           null,now()-interval '3 days',now()-interval '2 days',0
+    from row_state s
+    left join lateral (
+      select id from relationship where clan_id=c_zhang and deleted_at is null order by id
+      limit 1 offset ((s.row_no-1)%23)
+    ) r on true;
+
+    update import_job
+       set published_count=0,failure_stage='drafting',last_error_code='IMPORT_ROWS_INVALID',
+           heartbeat_at=now()-interval '2 days',updated_at=now()-interval '2 days'
+     where id=import_partial;
+
+    insert into import_job_payload (job_id,original_filename,content_type,file_content,confirm_duplicates,created_at)
+    values (import_partial,'二房关系部分失败.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            convert_to('deterministic scenario xlsx payload','UTF8'),true,now()-interval '3 days');
+
+    insert into import_job_chunk (
+      job_id,stage,chunk_no,from_row_no,to_row_no,idempotency_key,status,attempt_count,
+      error_summary,started_at,completed_at,version
+    ) values
+      (import_partial,'drafting',0,1,6,'scenario-import-partial-drafting-0','completed',1,null,now()-interval '3 days',now()-interval '3 days',0),
+      (import_partial,'drafting',1,7,12,'scenario-import-partial-drafting-1','failed',2,'第8行重试失败',now()-interval '2 days',now()-interval '2 days',0);
+
+    insert into import_file_fingerprint (clan_id,branch_id,import_type,file_hash,job_id,created_at)
+    values
+      (c_zhang,b_east,'person',repeat(md5('scenario-person-success'),2),import_success,now()-interval '12 days'),
+      (c_zhang,b_second,'relationship',repeat(md5('scenario-relation-partial'),2),import_partial,now()-interval '3 days');
+
 
     insert into clan_membership (clan_id,user_id,person_id,join_status,member_status,invited_by,joined_at,created_by,created_at,updated_by,updated_at)
     values (c_zhang,u_admin,(select id from person where person_code='SCN-Z-0001'),'joined','active',u_admin,now()-interval '100 days',u_admin,now()-interval '100 days',u_admin,now()) returning id into membership_admin;

@@ -69,6 +69,66 @@ begin
     if not exists(select 1 from person p join clan c on c.id=p.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and p.is_living=true and p.privacy_level='private') then raise exception 'Living private-person scenario is missing'; end if;
     if not exists(select 1 from import_job j join clan c on c.id=j.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and j.failure_count>0) then raise exception 'Partial import failure scenario is missing'; end if;
     if not exists(select 1 from operation_log l join clan c on c.id=l.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and l.event_result='denied' and l.risk_level='high') then raise exception 'High-risk denied operation scenario is missing'; end if;
+
+    if exists(select 1 from branch b join verified_seed_clan c on c.id=b.clan_id where b.parent_id is null and (b.level<>1 or b.branch_path<>b.id::text)) then
+      raise exception 'Root branch path/level does not match application hierarchy semantics';
+    end if;
+    if exists(
+      select 1 from branch child join branch parent on parent.id=child.parent_id
+      join verified_seed_clan c on c.id=child.clan_id
+      where child.level<>parent.level+1 or child.branch_path<>parent.branch_path||'/'||child.id
+    ) then raise exception 'Child branch path/level does not match parent hierarchy'; end if;
+
+    if exists(
+      select 1 from person p join verified_seed_clan c on c.id=p.clan_id
+      where p.birth_date is not null and p.death_date is not null and p.death_date<p.birth_date
+    ) then raise exception 'Person death date precedes birth date'; end if;
+    if exists(
+      select 1 from relationship r
+      join person parent on parent.id=r.from_person_id
+      join person child on child.id=r.to_person_id
+      join verified_seed_clan c on c.id=r.clan_id
+      where r.relation_type='parent_child'
+        and parent.person_code like 'PERF-%' and child.person_code like 'PERF-%'
+        and parent.generation_no is not null and child.generation_no is not null
+        and child.generation_no<>parent.generation_no+1
+    ) then raise exception 'Parent-child generation numbers are inconsistent'; end if;
+
+    if exists(
+      select 1 from import_job j join clan c on c.id=j.clan_id
+      where c.clan_code='SCENARIO-ZHANG-HUAIYANG'
+        and (select count(*) from import_job_row r where r.job_id=j.id)<>j.total_count
+    ) then raise exception 'Import job row count does not match total_count'; end if;
+    if exists(
+      select 1 from import_job j join clan c on c.id=j.clan_id
+      where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and j.execution_mode='async'
+        and (not exists(select 1 from import_job_payload p where p.job_id=j.id)
+          or not exists(select 1 from import_job_chunk ch where ch.job_id=j.id)
+          or not exists(select 1 from import_file_fingerprint f where f.job_id=j.id))
+    ) then raise exception 'Async import recovery state is incomplete'; end if;
+    if not exists(
+      select 1 from import_job j join clan c on c.id=j.clan_id
+      where c.clan_code='SCENARIO-ZHANG-HUAIYANG'
+        and (select count(*) from import_job_row r where r.job_id=j.id and r.row_status='draft_created')=9
+        and (select count(*) from import_job_row r where r.job_id=j.id and r.row_status in('invalid','retry_failed'))=2
+        and (select count(*) from import_job_row r where r.job_id=j.id and r.row_status='excluded')=1
+    ) then raise exception 'Partial import row-state scenario is incomplete'; end if;
+
+    select string_agg(required_status,', ' order by required_status) into v_missing
+    from(values('PASSED'),('ISSUES_FOUND'),('FAILED'))req(required_status)
+    where not exists(
+      select 1 from review_quality_check q join clan c on c.id=q.clan_id
+      where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and q.status=req.required_status
+    );
+    if v_missing is not null then raise exception 'Missing quality-check statuses: %',v_missing; end if;
+    if not exists(select 1 from workbench_task_action a join clan c on c.id=a.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG' and a.action_type='mark_checked') then
+      raise exception 'Workbench task action scenario is missing';
+    end if;
+    if not exists(
+      select 1 from culture_revision_payload p join revision r on r.id=p.revision_id
+      join clan c on c.id=r.clan_id where c.clan_code='SCENARIO-ZHANG-HUAIYANG'
+    ) then raise exception 'Culture revision payload scenario is missing'; end if;
+
 end $$;
 
 do $$
@@ -101,6 +161,9 @@ select c.clan_code,
  (select count(*) from revision r where r.clan_id=c.id)revisions,
  (select count(*) from review_task t where t.clan_id=c.id)review_tasks,
  (select count(*) from import_job j where j.clan_id=c.id)import_jobs,
+ (select count(*) from import_job_row r join import_job j on j.id=r.job_id where j.clan_id=c.id)import_rows,
+ (select count(*) from review_quality_check q where q.clan_id=c.id)quality_checks,
+ (select count(*) from workbench_task_action a where a.clan_id=c.id)workbench_actions,
  (select count(*) from operation_log l where l.clan_id=c.id)operation_logs
 from clan c join verified_seed_clan v on v.id=c.id order by c.clan_code;
 

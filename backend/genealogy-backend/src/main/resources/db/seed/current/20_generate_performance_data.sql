@@ -95,27 +95,38 @@ begin
     update perf_config set clan_id=v_clan_id;
 end $$;
 
--- Fixed three-way branch tree. Current branch lifecycle uses official, not legacy active.
+-- Fixed three-way branch tree with application-compatible id paths and exact levels.
 create temporary table perf_branch_map (
     external_id integer primary key,
     id bigint not null unique,
     parent_external_id integer,
-    level_no integer not null
+    level_no integer not null default 0,
+    branch_path text
 ) on commit drop;
-insert into perf_branch_map(external_id,id,parent_external_id,level_no)
-select n,
-       nextval(pg_get_serial_sequence('branch','id')),
-       case when n=1 then null else ((n-2)/3)+1 end,
-       case when n=1 then 1 else 2+floor(ln(greatest(n-1,1))/ln(3))::integer end
+insert into perf_branch_map(external_id,id,parent_external_id)
+select n,nextval(pg_get_serial_sequence('branch','id')),
+       case when n=1 then null else ((n-2)/3)+1 end
 from perf_config c cross join generate_series(1,c.branch_count)n;
+
+with recursive branch_tree as (
+    select m.external_id,m.id,m.parent_external_id,1 as level_no,m.id::text as branch_path
+    from perf_branch_map m where m.parent_external_id is null
+    union all
+    select child.external_id,child.id,child.parent_external_id,parent.level_no+1,
+           parent.branch_path||'/'||child.id
+    from branch_tree parent
+    join perf_branch_map child on child.parent_external_id=parent.external_id
+)
+update perf_branch_map m
+set level_no=t.level_no,branch_path=t.branch_path
+from branch_tree t where t.external_id=m.external_id;
 
 insert into branch (
     id,clan_id,parent_id,branch_name,branch_path,level,sort_order,
     migration_from,migration_to,description,status,created_at,updated_at
 )
 select m.id,c.clan_id,parent.id,format('压测支派-%06s',m.external_id),
-       format('/PERF/%s/%s',c.dataset_code,lpad(m.external_id::text,6,'0')),
-       m.level_no,m.external_id,format('测试地点-%s',((m.external_id-1)%50)+1),
+       m.branch_path,m.level_no,m.external_id,format('测试地点-%s',((m.external_id-1)%50)+1),
        format('测试地点-%s',(m.external_id%50)+51),'集合化生成的压测支派。',
        'official',now(),now()
 from perf_branch_map m
@@ -125,15 +136,27 @@ left join perf_branch_map parent on parent.external_id=m.parent_external_id;
 create temporary table perf_person_map (
     external_id integer primary key,
     id bigint not null unique,
+    parent_external_id integer,
     branch_external_id integer not null,
-    generation_no integer not null
+    generation_no integer not null default 0
 ) on commit drop;
-insert into perf_person_map(external_id,id,branch_external_id,generation_no)
-select n,
-       nextval(pg_get_serial_sequence('person','id')),
-       ((n-1)%c.branch_count)+1,
-       1+floor(ln(greatest(n,1))/ln(c.children_per_parent))::integer
+insert into perf_person_map(external_id,id,parent_external_id,branch_external_id)
+select n,nextval(pg_get_serial_sequence('person','id')),
+       case when n=1 then null else ((n-2)/c.children_per_parent)+1 end,
+       ((n-1)%c.branch_count)+1
 from perf_config c cross join generate_series(1,c.person_count)n;
+
+with recursive person_tree as (
+    select p.external_id,p.parent_external_id,1 as generation_no
+    from perf_person_map p where p.parent_external_id is null
+    union all
+    select child.external_id,child.parent_external_id,parent.generation_no+1
+    from person_tree parent
+    join perf_person_map child on child.parent_external_id=parent.external_id
+)
+update perf_person_map p
+set generation_no=t.generation_no
+from person_tree t where t.external_id=p.external_id;
 
 insert into person (
     id,clan_id,branch_id,person_code,name,genealogy_name,courtesy_name,alias_name,
@@ -150,9 +173,9 @@ select p.id,c.clan_id,b.id,format('PERF-%s-%09s',c.dataset_code,p.external_id),
        case when p.external_id%2=0 then 'male' else 'female' end,p.generation_no,
        substr('承启俊泽仁义礼智信忠孝',((p.generation_no-1)%12)+1,1),
        format('排行-%s',((p.external_id-1)%c.children_per_parent)+1),
-       make_date(1800+(p.external_id%220),(p.external_id%12)+1,(p.external_id%27)+1),
+       life.birth_date,
        case when p.external_id%10=0 then 'year' else 'day' end,
-       case when p.external_id%5=0 then make_date(1870+(p.external_id%150),(p.external_id%12)+1,(p.external_id%27)+1) end,
+       case when p.external_id%5=0 then (life.birth_date+make_interval(years => 40+(p.external_id%56)))::date end,
        case when p.external_id%5=0 then 'year' else 'unknown' end,
        p.external_id%5<>0,format('出生地-%s',p.external_id%200),format('居住地-%s',p.external_id%500),
        format('职业-%s',p.external_id%30),case when p.external_id%3=0 then '本科' else '家学' end,
@@ -168,7 +191,10 @@ select p.id,c.clan_id,b.id,format('PERF-%s-%09s',c.dataset_code,p.external_id),
 from perf_person_map p
 join perf_branch_map bm on bm.external_id=p.branch_external_id
 join branch b on b.id=bm.id
-cross join perf_config c;
+cross join perf_config c
+cross join lateral (
+    select make_date(1800+(p.external_id%180),(p.external_id%12)+1,(p.external_id%27)+1) as birth_date
+) life;
 
 update clan c set ancestor_person_id=(select id from perf_person_map where external_id=1)
 from perf_config cfg where c.id=cfg.clan_id;
@@ -188,7 +214,7 @@ select c.clan_id,parent.id,child.id,'parent_child','father','blood',true,true,tr
        '压测父子关系。','high','official',c.admin_user_id,now(),now()
 from perf_person_map child
 cross join perf_config c
-join perf_person_map parent on parent.external_id=((child.external_id-2)/c.children_per_parent)+1
+join perf_person_map parent on parent.external_id=child.parent_external_id
 where child.external_id>1;
 
 insert into relationship (
@@ -230,12 +256,13 @@ insert into person_event (
 select c.clan_id,p.id,
        case e when 1 then 'birth' when 2 then 'migration' when 3 then 'education' else 'other' end,
        case e when 1 then '出生' when 2 then '迁徙' when 3 then '教育经历' else '其他事件' end,
-       make_date(1800+(p.external_id%220),((p.external_id+e)%12)+1,((p.external_id+e)%27)+1),
+       case when e=1 then person_row.birth_date else (person_row.birth_date+make_interval(years => 8+e*7))::date end,
        case when e=1 then 'day' else 'year' end,format('事件地点-%s',(p.external_id+e)%500),
        format('人物 %s 的第 %s 条性能测试事件。',p.external_id,e),'generated',null,e*10,
        'official',c.admin_user_id,now(),now(),null
 from perf_config c
 join perf_person_map p on true
+join person person_row on person_row.id=p.id
 join generate_series(1,c.events_per_person)e on true;
 
 create temporary table perf_source_map(external_id integer primary key,id bigint not null unique) on commit drop;
@@ -338,6 +365,46 @@ join perf_branch_map bm on bm.external_id=p.branch_external_id
 join branch b on b.id=bm.id
 cross join perf_config c;
 
+
+insert into review_quality_check (
+    id,clan_id,scope_type,mode,status,scope_fingerprint,task_ids_json,query_json,
+    rule_codes_json,summary_json,rules_json,review_blocked,triggered_by,
+    queued_at,started_at,completed_at,failure_code,failure_message
+)
+select md5('perf-quality-'||c.dataset_code||'-'||t.id)::uuid,c.clan_id,'TASK_IDS','FULL',
+       case t.status when 'approved' then 'PASSED' when 'pending' then 'ISSUES_FOUND' else 'FAILED' end,
+       md5('perf-quality-scope-'||c.dataset_code||'-'||t.id),jsonb_build_array(t.id)::text,null,
+       jsonb_build_array(case when t.status='pending' then 'MISSING_SOURCE' else 'PAYLOAD_INVALID' end)::text,
+       case when t.status='rejected' then null else
+         jsonb_build_object('taskCount',1,'ruleCount',1,
+           'passedRuleCount',case when t.status='approved' then 1 else 0 end,
+           'issueCount',case when t.status='pending' then 1 else 0 end,
+           'blockingIssueCount',case when t.status='pending' then 1 else 0 end,
+           'warningIssueCount',0,'reviewBlocked',t.status='pending')::text end,
+       case when t.status='rejected' then null else jsonb_build_array(
+         jsonb_build_object('ruleCode',case when t.status='pending' then 'MISSING_SOURCE' else 'PAYLOAD_INVALID' end,
+           'ruleName','压测质量规则','outcome',case when t.status='approved' then 'PASSED' else 'ISSUE' end,
+           'blockLevel','BLOCKING','affectedTaskCount',case when t.status='approved' then 0 else 1 end,
+           'message',case when t.status='pending' then '压测阻断问题' end,
+           'affectedReviewTaskIds',case when t.status='approved' then jsonb_build_array() else jsonb_build_array(t.id) end)
+       )::text end,
+       t.status='pending',c.reviewer_user_id,t.created_at,t.created_at,now(),
+       case when t.status='rejected' then 'REVIEW_QUALITY_EXECUTION_FAILED' end,
+       case when t.status='rejected' then '压测质量检查失败' end
+from review_task t cross join perf_config c where t.clan_id=c.clan_id;
+
+with ranked as (
+    select t.*,row_number() over(order by t.id) rn
+    from review_task t cross join perf_config c
+    where t.clan_id=c.clan_id and t.status='pending'
+)
+insert into workbench_task_action (
+    clan_id,task_key,action_type,comment_text,actor_id,expected_updated_at,created_at
+)
+select c.clan_id,'review-'||r.id,'mark_checked','压测任务已完成抽样核查。',
+       c.editor_user_id,r.created_at,now()
+from ranked r cross join perf_config c where (r.rn-1)%100=0;
+
 insert into operation_log (
     clan_id,actor_id,action_type,target_type,target_id,business_target_type,
     business_target_id,event_result,risk_level,risk_event_type,disposition_status,
@@ -385,6 +452,8 @@ analyze source;
 analyze source_binding;
 analyze revision;
 analyze review_task;
+analyze review_quality_check;
+analyze workbench_task_action;
 analyze operation_log;
 
 do $$
