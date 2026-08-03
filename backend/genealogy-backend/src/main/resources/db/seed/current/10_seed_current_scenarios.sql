@@ -361,11 +361,11 @@ begin
 
     insert into operation_log (clan_id,actor_id,action_type,target_type,target_id,trace_id,revision_id,review_task_id,business_target_type,business_target_id,event_result,risk_level,risk_event_type,disposition_status,branch_id,summary,detail,request_id,client_ip,created_at)
     values
-      (c_zhang,u_admin,'seed_current_scenarios','clan',c_zhang,null,null,null,'clan',c_zhang,'success','low',null,'closed',null,'创建当前模型全场景测试数据','完整场景。','scenario-seed-zhang','127.0.0.1',now()-interval '1 day'),
-      (c_zhang,u_reviewer,'review_approve','review_task',task_approved,'11111111-1111-1111-1111-111111111111',rev_approved,task_approved,'person',(select id from person where person_code='SCN-Z-0001'),'success','medium','formal_data_change','closed',b_root,'始迁祖资料审核通过','证据完整。','scenario-review-approved','127.0.0.1',now()-interval '59 days'),
-      (c_zhang,u_reviewer,'review_reject','review_task',task_rejected,'33333333-3333-3333-3333-333333333333',rev_rejected,task_rejected,'source',src_oral,'rejected','medium','review_exception','closed',b_long,'口述来源审核驳回','缺少原始录音。','scenario-review-rejected','127.0.0.1',now()-interval '9 days'),
-      (c_zhang,u_viewer,'source_attachment_download_denied','source_attachment',(select id from source_attachment where source_id=src_private limit 1),null,null,null,'source',src_private,'denied','high','sensitive_attachment_access','open',b_east,'受限附件下载被拒绝',null,'scenario-risk-denied','127.0.0.1',now()-interval '1 hour'),
-      (c_zhang,u_editor,'import_partial_failed','import_job',import_partial,null,null,null,'import_job',import_partial,'partial_failed','medium','bulk_import_failure','investigating',b_second,'关系导入部分失败','2行失败。','scenario-import-partial','127.0.0.1',now()-interval '2 days');
+      (c_zhang,u_admin,'seed_current_scenarios','clan',c_zhang,null,null,null,'clan',c_zhang,'success',null,null,null,null,'创建当前模型全场景测试数据','完整场景。','scenario-seed-zhang','127.0.0.1',now()-interval '1 day'),
+      (c_zhang,u_reviewer,'review_approve','review_task',task_approved,'11111111-1111-1111-1111-111111111111',rev_approved,task_approved,'person',(select id from person where person_code='SCN-Z-0001'),'success','medium','formal_data_change','resolved',b_root,'始迁祖资料审核通过','证据完整。','scenario-review-approved','127.0.0.1',now()-interval '59 days'),
+      (c_zhang,u_reviewer,'review_reject','review_task',task_rejected,'33333333-3333-3333-3333-333333333333',rev_rejected,task_rejected,'source',src_oral,'rejected','medium','review_anomaly','open',b_long,'口述来源审核驳回','缺少原始录音。','scenario-review-rejected','127.0.0.1',now()-interval '9 days'),
+      (c_zhang,u_viewer,'source_attachment_download_denied','source_attachment',(select id from source_attachment where source_id=src_private limit 1),null,null,null,'source',src_private,'denied','high','access_denied','open',b_east,'受限附件下载被拒绝',null,'scenario-risk-denied','127.0.0.1',now()-interval '1 hour'),
+      (c_zhang,u_editor,'import_partial_failed','import_job',import_partial,null,null,null,'import_job',import_partial,'partial_failed',null,null,null,b_second,'关系导入部分失败','2行失败。','scenario-import-partial','127.0.0.1',now()-interval '2 days');
 end $$;
 
 commit;
