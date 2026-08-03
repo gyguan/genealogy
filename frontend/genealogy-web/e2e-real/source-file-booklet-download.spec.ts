@@ -1,6 +1,6 @@
 import { expect, test, type APIResponse, type Page } from '@playwright/test';
 import { loginThroughUi } from './support/auth';
-import { csrfHeaders } from './support/api';
+import { csrfHeaders, requiredNumberEnv } from './support/api';
 
 async function textOf(response: APIResponse): Promise<string> {
   return Buffer.from(await response.body()).toString('utf8');
@@ -32,8 +32,8 @@ async function login(page: Page, role: 'ADMIN' | 'RESTRICTED'): Promise<void> {
 
 test.describe('来源文件、谱册导出与下载权限闭环', () => {
   test('管理员可预览下载并导出谱册，受限账号不可读取', async ({ page }) => {
+    const clanId = requiredNumberEnv('FUNCTIONAL_TEST_CORE_CLAN_ID');
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const clanName = `E2E谱册宗族-${runId}`;
     const branchName = `E2E谱册支派-${runId}`;
     const sourceName = `E2E来源-${runId}`;
     const fileName = `e2e-source-${runId}.txt`;
@@ -41,19 +41,6 @@ test.describe('来源文件、谱册导出与下载权限闭环', () => {
 
     await login(page, 'ADMIN');
     const adminCsrfHeaders = await csrfHeaders(page);
-
-    const createClan = await page.request.post('/api/v1/clans', {
-      headers: adminCsrfHeaders,
-      data: {
-        clanName,
-        surname: '黄',
-        description: `booklet e2e ${runId}`
-      }
-    });
-    expect(createClan.ok(), await createClan.text()).toBeTruthy();
-    const clanPayload = await createClan.json();
-    const clanId = Number(clanPayload?.data?.id);
-    expect(clanId).toBeGreaterThan(0);
 
     const createBranch = await page.request.post(`/api/v1/clans/${clanId}/branches`, {
       headers: adminCsrfHeaders,
