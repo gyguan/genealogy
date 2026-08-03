@@ -1,29 +1,165 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.genealogy.culture.repository.mybatis.CultureSiteQueryMapper">
- <sql id="Where">where s.clan_id=#{criteria.clanId} and s.deleted_at is null
-  <if test="!criteria.readFullClan"><choose><when test="criteria.readBranchIds != null and !criteria.readBranchIds.isEmpty()">and (s.branch_id is null or s.branch_id in <foreach collection="criteria.readBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach>)</when><otherwise>and s.branch_id is null</otherwise></choose></if>
-  <if test="!criteria.sensitiveFullClan">and ((s.privacy_level not in ('relatives_only','private','sealed') and s.sensitive_level not in ('sensitive','highly_sensitive')) or s.created_by=#{criteria.actorId}<if test="criteria.sensitiveBranchIds != null and !criteria.sensitiveBranchIds.isEmpty()"> or s.branch_id in <foreach collection="criteria.sensitiveBranchIds" item="id" open="(" close=")" separator=",">#{id}</foreach></if>)</if>
-  <if test="criteria.keyword != null">and (lower(coalesce(s.site_name,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(s.address_text,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(s.founded_period,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(s.current_status,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(s.summary,'')) like concat('%',lower(#{criteria.keyword}),'%') or lower(coalesce(s.description,'')) like concat('%',lower(#{criteria.keyword}),'%'))</if>
-  <if test="criteria.siteTypes != null and !criteria.siteTypes.isEmpty()">and s.site_type in <foreach collection="criteria.siteTypes" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
-  <if test="criteria.branchIds != null and !criteria.branchIds.isEmpty()">and s.branch_id in <foreach collection="criteria.branchIds" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
-  <if test="criteria.relatedPersonId != null">and s.related_person_id=#{criteria.relatedPersonId}</if>
-  <if test="criteria.dataStatuses != null and !criteria.dataStatuses.isEmpty()">and s.data_status in <foreach collection="criteria.dataStatuses" item="v" open="(" close=")" separator=",">#{v}</foreach></if>
-  <if test="criteria.privacyLevel != null">and s.privacy_level=#{criteria.privacyLevel}</if><if test="criteria.featuredOnHome != null">and s.is_featured_on_home=#{criteria.featuredOnHome}</if>
-  <if test="criteria.addressText != null">and lower(coalesce(s.address_text,'')) like concat('%',lower(#{criteria.addressText}),'%')</if>
-  <if test="criteria.foundedPeriod != null">and lower(coalesce(s.founded_period,'')) like concat('%',lower(#{criteria.foundedPeriod}),'%')</if>
-  <if test="criteria.currentStatus != null">and lower(coalesce(s.current_status,'')) like concat('%',lower(#{criteria.currentStatus}),'%')</if>
- </sql>
- <sql id="Order"><choose>
-  <when test="criteria.sortKey == 'siteName,asc'">order by lower(s.site_name) asc,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'siteName,desc'">order by lower(s.site_name) desc,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'siteType,asc'">order by s.site_type asc,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'siteType,desc'">order by s.site_type desc,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'foundedPeriod,asc'">order by s.founded_period asc nulls last,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'foundedPeriod,desc'">order by s.founded_period desc nulls last,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'currentStatus,asc'">order by s.current_status asc nulls last,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'currentStatus,desc'">order by s.current_status desc nulls last,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'createdAt,asc'">order by s.created_at asc,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'createdAt,desc'">order by s.created_at desc,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'updatedAt,asc'">order by s.updated_at asc,s.sort_order asc,s.id desc</when><when test="criteria.sortKey == 'updatedAt,desc'">order by s.updated_at desc,s.sort_order asc,s.id desc</when>
-  <when test="criteria.sortKey == 'id,asc'">order by s.id asc,s.sort_order asc</when><when test="criteria.sortKey == 'id,desc'">order by s.id desc,s.sort_order asc</when>
-  <when test="criteria.sortKey == 'sortOrder,desc'">order by s.sort_order desc,s.id desc</when><otherwise>order by s.sort_order asc,s.id desc</otherwise>
- </choose></sql>
- <select id="search" resultType="com.genealogy.culture.entity.CultureSiteEntity">select s.* from culture_site s <include refid="Where"/><include refid="Order"/> limit #{limit} offset #{offset}</select>
- <select id="count" resultType="long">select count(*) from culture_site s <include refid="Where"/></select>
+  <sql id="Where">
+    WHERE s.clan_id = #{criteria.clanId}
+      AND s.deleted_at IS NULL
+
+    <if test="!criteria.readFullClan">
+      <choose>
+        <when test="criteria.readBranchIds != null and !criteria.readBranchIds.isEmpty()">
+          AND (
+            s.branch_id IS NULL
+            OR s.branch_id IN
+            <foreach collection="criteria.readBranchIds" item="id" open="(" close=")" separator=",">
+              #{id}
+            </foreach>
+          )
+        </when>
+        <otherwise>
+          AND s.branch_id IS NULL
+        </otherwise>
+      </choose>
+    </if>
+
+    <if test="!criteria.sensitiveFullClan">
+      AND (
+        (
+          s.privacy_level NOT IN ('relatives_only', 'private', 'sealed')
+          AND s.sensitive_level NOT IN ('sensitive', 'highly_sensitive')
+        )
+        OR s.created_by = #{criteria.actorId}
+        <if test="criteria.sensitiveBranchIds != null and !criteria.sensitiveBranchIds.isEmpty()">
+          OR s.branch_id IN
+          <foreach collection="criteria.sensitiveBranchIds" item="id" open="(" close=")" separator=",">
+            #{id}
+          </foreach>
+        </if>
+      )
+    </if>
+
+    <if test="criteria.keyword != null">
+      AND (
+        lower(coalesce(s.site_name, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+        OR lower(coalesce(s.address_text, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+        OR lower(coalesce(s.founded_period, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+        OR lower(coalesce(s.current_status, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+        OR lower(coalesce(s.summary, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+        OR lower(coalesce(s.description, '')) LIKE concat('%', lower(#{criteria.keyword}), '%')
+      )
+    </if>
+
+    <if test="criteria.siteTypes != null and !criteria.siteTypes.isEmpty()">
+      AND s.site_type IN
+      <foreach collection="criteria.siteTypes" item="v" open="(" close=")" separator=",">
+        #{v}
+      </foreach>
+    </if>
+
+    <if test="criteria.branchIds != null and !criteria.branchIds.isEmpty()">
+      AND s.branch_id IN
+      <foreach collection="criteria.branchIds" item="v" open="(" close=")" separator=",">
+        #{v}
+      </foreach>
+    </if>
+
+    <if test="criteria.relatedPersonId != null">
+      AND s.related_person_id = #{criteria.relatedPersonId}
+    </if>
+
+    <if test="criteria.dataStatuses != null and !criteria.dataStatuses.isEmpty()">
+      AND s.data_status IN
+      <foreach collection="criteria.dataStatuses" item="v" open="(" close=")" separator=",">
+        #{v}
+      </foreach>
+    </if>
+
+    <if test="criteria.privacyLevel != null">
+      AND s.privacy_level = #{criteria.privacyLevel}
+    </if>
+
+    <if test="criteria.featuredOnHome != null">
+      AND s.is_featured_on_home = #{criteria.featuredOnHome}
+    </if>
+
+    <if test="criteria.addressText != null">
+      AND lower(coalesce(s.address_text, '')) LIKE concat('%', lower(#{criteria.addressText}), '%')
+    </if>
+
+    <if test="criteria.foundedPeriod != null">
+      AND lower(coalesce(s.founded_period, '')) LIKE concat('%', lower(#{criteria.foundedPeriod}), '%')
+    </if>
+
+    <if test="criteria.currentStatus != null">
+      AND lower(coalesce(s.current_status, '')) LIKE concat('%', lower(#{criteria.currentStatus}), '%')
+    </if>
+  </sql>
+
+  <sql id="Order">
+    <choose>
+      <when test="criteria.sortKey == 'siteName,asc'">
+        ORDER BY lower(s.site_name) ASC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'siteName,desc'">
+        ORDER BY lower(s.site_name) DESC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'siteType,asc'">
+        ORDER BY s.site_type ASC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'siteType,desc'">
+        ORDER BY s.site_type DESC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'foundedPeriod,asc'">
+        ORDER BY s.founded_period ASC NULLS LAST, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'foundedPeriod,desc'">
+        ORDER BY s.founded_period DESC NULLS LAST, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'currentStatus,asc'">
+        ORDER BY s.current_status ASC NULLS LAST, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'currentStatus,desc'">
+        ORDER BY s.current_status DESC NULLS LAST, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'createdAt,asc'">
+        ORDER BY s.created_at ASC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'createdAt,desc'">
+        ORDER BY s.created_at DESC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'updatedAt,asc'">
+        ORDER BY s.updated_at ASC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'updatedAt,desc'">
+        ORDER BY s.updated_at DESC, s.sort_order ASC, s.id DESC
+      </when>
+      <when test="criteria.sortKey == 'id,asc'">
+        ORDER BY s.id ASC, s.sort_order ASC
+      </when>
+      <when test="criteria.sortKey == 'id,desc'">
+        ORDER BY s.id DESC, s.sort_order ASC
+      </when>
+      <when test="criteria.sortKey == 'sortOrder,desc'">
+        ORDER BY s.sort_order DESC, s.id DESC
+      </when>
+      <otherwise>
+        ORDER BY s.sort_order ASC, s.id DESC
+      </otherwise>
+    </choose>
+  </sql>
+
+  <select id="search" resultType="com.genealogy.culture.entity.CultureSiteEntity">
+    SELECT s.*
+    FROM culture_site s
+    <include refid="Where"/>
+    <include refid="Order"/>
+    LIMIT #{limit}
+    OFFSET #{offset}
+  </select>
+
+  <select id="count" resultType="long">
+    SELECT count(*)
+    FROM culture_site s
+    <include refid="Where"/>
+  </select>
 </mapper>
