@@ -16,17 +16,36 @@
     <result column="completed_at" property="completedAt"/>
     <result column="version" property="version"/>
   </resultMap>
-  <sql id="columns">id, job_id, stage, chunk_no, from_row_no, to_row_no, idempotency_key, status, attempt_count, error_summary, started_at, completed_at, version</sql>
-  <select id="findByJobStageChunk" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_job_chunk WHERE job_id=#{jobId} AND stage=#{stage} AND chunk_no=#{chunkNo} LIMIT 1</select>
-  <update id="updateWithVersion">UPDATE import_job_chunk SET job_id = #{jobId},
-      stage = #{stage},
-      chunk_no = #{chunkNo},
-      from_row_no = #{fromRowNo},
-      to_row_no = #{toRowNo},
-      idempotency_key = #{idempotencyKey},
-      status = #{status},
-      attempt_count = #{attemptCount},
-      error_summary = #{errorSummary},
-      started_at = #{startedAt},
-      completed_at = #{completedAt}, version=version+1 WHERE id=#{id} AND version=#{version}</update>
+
+  <sql id="columns">
+    id, job_id, stage, chunk_no, from_row_no, to_row_no, idempotency_key,
+    status, attempt_count, error_summary, started_at, completed_at, version
+  </sql>
+
+  <select id="findByJobStageChunk" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_job_chunk
+    WHERE job_id = #{jobId}
+      AND stage = #{stage}
+      AND chunk_no = #{chunkNo}
+    LIMIT 1
+  </select>
+
+  <update id="updateWithVersion">
+    UPDATE import_job_chunk
+    SET job_id = #{jobId},
+        stage = #{stage},
+        chunk_no = #{chunkNo},
+        from_row_no = #{fromRowNo},
+        to_row_no = #{toRowNo},
+        idempotency_key = #{idempotencyKey},
+        status = #{status},
+        attempt_count = #{attemptCount},
+        error_summary = #{errorSummary},
+        started_at = #{startedAt},
+        completed_at = #{completedAt},
+        version = version + 1
+    WHERE id = #{id}
+      AND version = #{version}
+  </update>
 </mapper>
