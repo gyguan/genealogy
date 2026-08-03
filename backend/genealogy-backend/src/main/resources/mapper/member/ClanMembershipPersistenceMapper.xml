@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.genealogy.member.repository.mybatis.ClanMembershipPersistenceMapper">
-  <update id="updateAllById">update clan_membership set clan_id=#{clanId},user_id=#{userId},person_id=#{personId},join_status=#{joinStatus},member_status=#{memberStatus},invited_by=#{invitedBy},joined_at=#{joinedAt},created_by=#{createdBy},created_at=#{createdAt},updated_by=#{updatedBy},updated_at=#{updatedAt} where id=#{id}</update>
-  <select id="selectByClanIdForUpdate" resultType="com.genealogy.member.entity.ClanMembershipEntity">select * from clan_membership where clan_id=#{clanId} order by id for update</select>
+  <update id="updateAllById">
+    UPDATE clan_membership
+    SET clan_id = #{clanId},
+        user_id = #{userId},
+        person_id = #{personId},
+        join_status = #{joinStatus},
+        member_status = #{memberStatus},
+        invited_by = #{invitedBy},
+        joined_at = #{joinedAt},
+        created_by = #{createdBy},
+        created_at = #{createdAt},
+        updated_by = #{updatedBy},
+        updated_at = #{updatedAt}
+    WHERE id = #{id}
+  </update>
+
+  <select id="selectByClanIdForUpdate"
+          resultType="com.genealogy.member.entity.ClanMembershipEntity">
+    SELECT *
+    FROM clan_membership
+    WHERE clan_id = #{clanId}
+    ORDER BY id
+    FOR UPDATE
+  </select>
 </mapper>
