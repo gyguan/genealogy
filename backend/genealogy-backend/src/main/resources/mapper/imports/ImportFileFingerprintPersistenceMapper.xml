@@ -10,12 +10,29 @@
     <result column="job_id" property="jobId"/>
     <result column="created_at" property="createdAt"/>
   </resultMap>
-  <sql id="columns">id, clan_id, branch_id, import_type, file_hash, job_id, created_at</sql>
-  <select id="findExisting" resultMap="entityMap">SELECT <include refid="columns"/> FROM import_file_fingerprint WHERE clan_id=#{clanId} AND branch_id=#{branchId} AND import_type=#{importType} AND file_hash=#{fileHash} LIMIT 1</select>
-  <update id="updateAllById">UPDATE import_file_fingerprint SET clan_id = #{clanId},
-      branch_id = #{branchId},
-      import_type = #{importType},
-      file_hash = #{fileHash},
-      job_id = #{jobId},
-      created_at = #{createdAt} WHERE id=#{id}</update>
+
+  <sql id="columns">
+    id, clan_id, branch_id, import_type, file_hash, job_id, created_at
+  </sql>
+
+  <select id="findExisting" resultMap="entityMap">
+    SELECT <include refid="columns"/>
+    FROM import_file_fingerprint
+    WHERE clan_id = #{clanId}
+      AND branch_id = #{branchId}
+      AND import_type = #{importType}
+      AND file_hash = #{fileHash}
+    LIMIT 1
+  </select>
+
+  <update id="updateAllById">
+    UPDATE import_file_fingerprint
+    SET clan_id = #{clanId},
+        branch_id = #{branchId},
+        import_type = #{importType},
+        file_hash = #{fileHash},
+        job_id = #{jobId},
+        created_at = #{createdAt}
+    WHERE id = #{id}
+  </update>
 </mapper>
