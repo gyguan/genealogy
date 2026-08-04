@@ -1,9 +1,9 @@
 name: Apply Current Seed Alignment
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/fix-current-seed-model-alignment
+      - main
     paths:
       - .github/workflows/apply-current-seed-alignment.yml
   workflow_dispatch:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore(ci): install current seed alignment workflow'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
