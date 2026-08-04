@@ -198,7 +198,10 @@ navicat_section = """
 Navicat 等普通 SQL 客户端不能识别 `\\set`、`\\if`、`\\echo` 等 `psql` 元命令。请使用 [`navicat/`](navicat/) 目录下的纯 PostgreSQL SQL 版本，并按照其中的 README 配置确认值和参数后执行。
 """
 if "## Navicat 执行" not in primary_readme:
-    primary_readme_path.write_text(primary_readme.rstrip() + navicat_section + "\n", encoding="utf-8")
+    primary_readme_path.write_text(
+        primary_readme.rstrip() + navicat_section.rstrip() + "\n",
+        encoding="utf-8",
+    )
 
 
 # Add contract assertions without changing the existing psql contract tests.
@@ -240,27 +243,3 @@ if "navicatVariantsContainNoPsqlMetaCommandsOrVariables" not in test_source:
         raise RuntimeError("contract test insertion marker changed")
     test_source = test_source.replace(marker, navicat_test + marker, 1)
     test_path.write_text(test_source, encoding="utf-8")
-
-
-# Run the pure-SQL variants in the existing PostgreSQL integration workflow.
-workflow_path = Path(".github/workflows/current-seed-data-ci.yml")
-workflow = workflow_path.read_text(encoding="utf-8")
-insert_before = """      - name: Collect row-count evidence
-"""
-navicat_ci_step = """      - name: Execute Navicat-compatible SQL variants
-        run: |
-          navicat_dir="backend/genealogy-backend/src/main/resources/db/seed/current/navicat"
-          sed "s/'CHANGE_ME'/'RESET_CURRENT_GENEALOGY_DATA'/" \\
-            "${navicat_dir}/00_reset_business_data.sql" > /tmp/navicat-reset.sql
-          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f /tmp/navicat-reset.sql
-          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/10_seed_current_scenarios.sql"
-          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/30_verify_seed_data.sql"
-          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/20_generate_performance_data.sql"
-          psql "${DATABASE_URL}" --set=ON_ERROR_STOP=1 -f "${navicat_dir}/30_verify_seed_data.sql"
-
-"""
-if "Execute Navicat-compatible SQL variants" not in workflow:
-    if insert_before not in workflow:
-        raise RuntimeError("workflow insertion marker changed")
-    workflow = workflow.replace(insert_before, navicat_ci_step + insert_before, 1)
-    workflow_path.write_text(workflow, encoding="utf-8")
