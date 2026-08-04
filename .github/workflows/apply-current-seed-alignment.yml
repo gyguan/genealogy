@@ -1,0 +1,62 @@
+name: Apply Current Seed Alignment
+
+on:
+  push:
+    branches:
+      - agent/fix-current-seed-model-alignment
+    paths:
+      - .github/workflows/apply-current-seed-alignment.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore(ci): install current seed alignment workflow'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-current-seed-model-alignment
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Apply reviewed alignment patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/current-seed-alignment.patch.gz.b64 | gzip -d > /tmp/current-seed-alignment.patch
+          git apply --check /tmp/current-seed-alignment.patch
+          git apply /tmp/current-seed-alignment.patch
+          rm .github/current-seed-alignment.patch.gz.b64
+          git diff --check
+
+      - name: Run current seed contract test
+        working-directory: backend/genealogy-backend
+        run: mvn -B -q -Dtest=CurrentSeedDataContractTest test
+
+      - name: Commit repaired seed semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            .github/current-seed-alignment.patch.gz.b64 \
+            backend/genealogy-backend/src/main/resources/db/seed/current/00_reset_business_data.sql \
+            backend/genealogy-backend/src/main/resources/db/seed/current/10_seed_current_scenarios.sql \
+            backend/genealogy-backend/src/main/resources/db/seed/current/20_generate_performance_data.sql \
+            backend/genealogy-backend/src/main/resources/db/seed/current/30_verify_seed_data.sql \
+            backend/genealogy-backend/src/main/resources/db/seed/current/README.md \
+            backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java
+          git commit -m 'fix(db): align current seed data with application semantics'
+          git push origin HEAD:agent/fix-current-seed-model-alignment
