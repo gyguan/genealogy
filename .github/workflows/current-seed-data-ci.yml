@@ -5,12 +5,14 @@ on:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/src/main/resources/db/seed/current/**"
+      - "backend/genealogy-backend/src/main/resources/db/migration/**"
       - "backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java"
       - ".github/workflows/current-seed-data-ci.yml"
   push:
     branches: ["main"]
     paths:
       - "backend/genealogy-backend/src/main/resources/db/seed/current/**"
+      - "backend/genealogy-backend/src/main/resources/db/migration/**"
       - "backend/genealogy-backend/src/test/java/com/genealogy/database/CurrentSeedDataContractTest.java"
       - ".github/workflows/current-seed-data-ci.yml"
   workflow_dispatch:
